@@ -21,12 +21,20 @@ interface CreateUserModalProps {
 export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const { createUser, generateTemporaryPassword } = useUsers();
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    role: "admin" | "manager" | "collaborator" | "supplier";
+    status: "active" | "inactive";
+    client: string;
+    supplier: string;
+  }>({
     name: "",
     email: "",
     phone: "",
-    role: "collaborator" as "admin" | "manager" | "collaborator" | "supplier",
-    status: "active" as "active" | "inactive",
+    role: "collaborator",
+    status: "active",
     client: "",
     supplier: ""
   });

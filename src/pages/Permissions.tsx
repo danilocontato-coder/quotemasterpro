@@ -24,7 +24,7 @@ import {
   Check,
   X
 } from "lucide-react";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions, type Permission } from "@/hooks/usePermissions";
 import { useToast } from "@/hooks/use-toast";
 
 export function Permissions() {
@@ -34,7 +34,7 @@ export function Permissions() {
 
   const currentRole = roles.find(r => r.id === activeRole);
 
-  const handlePermissionChange = (module: string, action: string, value: boolean) => {
+  const handlePermissionChange = (module: string, action: keyof Permission, value: boolean) => {
     updatePermission(activeRole, module, action, value);
     toast({
       title: "Permissão atualizada",
@@ -146,19 +146,19 @@ export function Permissions() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {Object.entries(modulePermissions as Record<string, boolean>).map(([action, hasPermission]) => (
-                    <div key={action} className="flex items-center justify-between p-3 border rounded-md">
+                  {(Object.entries(modulePermissions) as Array<[keyof Permission, boolean]>).map(([action, hasPermission]) => (
+                    <div key={String(action)} className="flex items-center justify-between p-3 border rounded-md">
                       <div className="flex items-center gap-2">
-                        {action === "view" && <Eye className="h-4 w-4 text-primary" />}
-                        {action === "create" && <Plus className="h-4 w-4 text-success" />}
-                        {action === "edit" && <Edit className="h-4 w-4 text-warning" />}
-                        {action === "delete" && <Trash2 className="h-4 w-4 text-destructive" />}
-                        <span className="text-sm font-medium">
-                          {action === "view" ? "Visualizar" :
-                           action === "create" ? "Criar" :
-                           action === "edit" ? "Editar" :
-                           action === "delete" ? "Excluir" : action}
-                        </span>
+                        {String(action) === "view" && <Eye className="h-4 w-4 text-primary" />}
+                        {String(action) === "create" && <Plus className="h-4 w-4 text-success" />}
+                        {String(action) === "edit" && <Edit className="h-4 w-4 text-warning" />}
+                        {String(action) === "delete" && <Trash2 className="h-4 w-4 text-destructive" />}
+                         <span className="text-sm font-medium">
+                           {String(action) === "view" ? "Visualizar" :
+                            String(action) === "create" ? "Criar" :
+                            String(action) === "edit" ? "Editar" :
+                            String(action) === "delete" ? "Excluir" : String(action)}
+                         </span>
                       </div>
                       <Switch
                         checked={hasPermission}

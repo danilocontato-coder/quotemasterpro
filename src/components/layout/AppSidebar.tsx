@@ -10,7 +10,9 @@ import {
   Settings, 
   Home,
   Building,
-  UserCog
+  UserCog,
+  Shield,
+  Sliders
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -37,9 +39,14 @@ const navigationItems = [
 
 const adminItems = [
   { title: "Clientes", url: "/admin/clients", icon: Building },
-  { title: "Usuários", url: "/admin/users", icon: UserCog },
   { title: "Relatórios", url: "/admin/reports", icon: BarChart3 },
-  { title: "Configurações", url: "/admin/settings", icon: Settings },
+];
+
+const systemItems = [
+  { title: "Usuários", url: "/users", icon: UserCog },
+  { title: "Níveis de Aprovação", url: "/approval-levels", icon: Sliders },
+  { title: "Permissões", url: "/permissions", icon: Shield },
+  { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -101,6 +108,31 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {adminItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      end
+                      className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* System Section */}
+        <SidebarGroup className="mt-6">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-2">
+            {!isCollapsed && "Sistema"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {systemItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink 

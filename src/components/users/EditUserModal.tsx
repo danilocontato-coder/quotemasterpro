@@ -20,12 +20,20 @@ interface EditUserModalProps {
 export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
   const { updateUser } = useUsers();
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    role: "admin" | "manager" | "collaborator" | "supplier";
+    status: "active" | "inactive";
+    client: string;
+    supplier: string;
+  }>({
     name: "",
     email: "",
     phone: "",
-    role: "collaborator" as const,
-    status: "active" as const,
+    role: "collaborator",
+    status: "active",
     client: "",
     supplier: ""
   });
