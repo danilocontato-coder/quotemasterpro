@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Package, AlertTriangle, Wrench, Leaf, Zap, Upload, TrendingUp, Trash2 } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Package, AlertTriangle, Wrench, Leaf, Zap, Upload, TrendingUp, Trash2, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { CategoryManager } from "@/components/categories/CategoryManager";
 import { CreateItemModal } from "@/components/items/CreateItemModal";
+import { EditItemModal } from "@/components/items/EditItemModal";
 import { ViewItemModal } from "@/components/items/ViewItemModal";
 import { DeleteItemModal } from "@/components/items/DeleteItemModal";
 import { StockMovementModal } from "@/components/items/StockMovementModal";
 import { InvoiceImportModal } from "@/components/items/InvoiceImportModal";
+import { StockMovementLogModal } from "@/components/items/StockMovementLogModal";
 import { useItems } from "@/hooks/useItems";
 import { getStatusColor, getStatusText } from "@/data/mockData";
 
@@ -19,12 +21,16 @@ export default function Products() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [stockModalOpen, setStockModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [logModalOpen, setLogModalOpen] = useState(false);
 
   const {
     items,
+    stockMovements,
+    auditLogs,
     createItem,
     updateItem,
     deleteItem,
@@ -90,9 +96,8 @@ export default function Products() {
   };
 
   const handleEditItem = (item: any) => {
-    // Would open edit modal - for now, show update form
     setSelectedItem(item);
-    // TODO: Implement edit modal
+    setEditModalOpen(true);
   };
 
   const handleDeleteItem = (item: any) => {
@@ -108,6 +113,12 @@ export default function Products() {
   const handleDeleteConfirm = (item: any, reason?: string) => {
     deleteItem(item.id, reason);
     setDeleteModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const handleItemUpdate = (itemId: string, updates: any) => {
+    updateItem(itemId, updates);
+    setEditModalOpen(false);
     setSelectedItem(null);
   };
 
@@ -138,6 +149,14 @@ export default function Products() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setLogModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <History className="h-4 w-4" />
+            Logs
+          </Button>
           <Button 
             variant="outline" 
             onClick={() => setImportModalOpen(true)}
@@ -297,44 +316,48 @@ export default function Products() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2 pt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleViewItem(item)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Ver
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleEditItem(item)}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </Button>
-                  <div className="flex gap-1">
+                <div className="pt-2 space-y-2">
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleViewItem(item)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleEditItem(item)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
                     {!isService && (
                       <Button 
                         variant="outline" 
                         size="sm"
+                        className="flex-1"
                         onClick={() => handleStockMovement(item)}
-                        title="Movimentar Estoque"
                       >
-                        <TrendingUp className="h-4 w-4" />
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Movimentar
                       </Button>
                     )}
                     <Button 
                       variant="outline" 
                       size="sm"
+                      className={!isService ? "flex-1" : "w-full"}
                       onClick={() => handleDeleteItem(item)}
-                      className="text-destructive hover:text-destructive"
-                      title="Excluir Item"
+                      disabled={item.status === 'inactive'}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
                     </Button>
                   </div>
                 </div>
@@ -412,6 +435,13 @@ export default function Products() {
         onOpenChange={setViewModalOpen}
       />
 
+      <EditItemModal
+        item={selectedItem}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onItemUpdate={handleItemUpdate}
+      />
+
       <DeleteItemModal
         item={selectedItem}
         open={deleteModalOpen}
@@ -430,6 +460,13 @@ export default function Products() {
         open={importModalOpen}
         onOpenChange={setImportModalOpen}
         onImportComplete={handleImportComplete}
+      />
+
+      <StockMovementLogModal
+        open={logModalOpen}
+        onOpenChange={setLogModalOpen}
+        movements={stockMovements}
+        auditLogs={auditLogs}
       />
     </div>
   );
