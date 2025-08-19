@@ -1,27 +1,65 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { CreateQuoteModal } from "@/components/quotes/CreateQuoteModal";
-import { mockQuotes, getStatusColor, getStatusText } from "@/data/mockData";
+import { DeleteConfirmationModal } from "@/components/quotes/DeleteConfirmationModal";
+import { useQuotes } from "@/hooks/useQuotes";
+import { getStatusColor, getStatusText, Quote } from "@/data/mockData";
+import { toast } from "sonner";
 
 export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+  const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+  
+  const { quotes, addQuote, updateQuote, deleteQuote } = useQuotes();
 
   const handleQuoteCreate = (quoteData: any) => {
-    console.log('Nova cotação criada:', quoteData);
-    // Em uma aplicação real, isso salvaria no banco de dados
+    const newQuote = addQuote(quoteData);
+    toast.success(`Cotação ${newQuote.id} criada com sucesso!`);
+    setIsCreateModalOpen(false);
   };
 
-  const filteredQuotes = mockQuotes.filter(quote => {
+  const handleQuoteUpdate = (quoteData: any) => {
+    if (editingQuote) {
+      updateQuote(editingQuote.id, quoteData);
+      toast.success(`Cotação ${editingQuote.id} atualizada com sucesso!`);
+      setEditingQuote(null);
+      setIsCreateModalOpen(false);
+    }
+  };
+
+  const handleDeleteClick = (quote: Quote) => {
+    setQuoteToDelete(quote);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = (reason?: string) => {
+    if (quoteToDelete) {
+      deleteQuote(quoteToDelete.id, reason);
+      const action = quoteToDelete.status === 'draft' ? 'excluída' : 'cancelada';
+      toast.success(`Cotação ${quoteToDelete.id} ${action} com sucesso!`);
+      setQuoteToDelete(null);
+    }
+  };
+
+  const handleEditClick = (quote: Quote) => {
+    setEditingQuote(quote);
+    setIsCreateModalOpen(true);
+  };
+
+  const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quote.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         quote.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quote.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
     if (activeFilter === "active") {
@@ -42,18 +80,18 @@ export default function Quotes() {
   });
 
   // Calculate metrics - Based on all active quotes (not trash)
-  const activeQuotes = mockQuotes.filter(q => q.status !== 'trash');
+  const activeQuotes = quotes.filter(q => q.status !== 'trash');
   const totalActive = activeQuotes.length;
-  const draftQuotes = mockQuotes.filter(q => q.status === 'draft').length;
-  const receivingQuotes = mockQuotes.filter(q => q.status === 'receiving').length;
-  const approvedQuotes = mockQuotes.filter(q => q.status === 'approved').length;
-  const finalizedQuotes = mockQuotes.filter(q => q.status === 'finalized').length;
-  const trashQuotes = mockQuotes.filter(q => q.status === 'trash').length;
+  const draftQuotes = quotes.filter(q => q.status === 'draft').length;
+  const receivingQuotes = quotes.filter(q => q.status === 'receiving').length;
+  const approvedQuotes = quotes.filter(q => q.status === 'approved').length;
+  const finalizedQuotes = quotes.filter(q => q.status === 'finalized').length;
+  const trashQuotes = quotes.filter(q => q.status === 'trash').length;
 
   // Additional metrics
-  const totalRFQs = mockQuotes.length;
+  const totalRFQs = quotes.length;
   const inProgress = receivingQuotes;
-  const dueSoon = mockQuotes.filter(q => {
+  const dueSoon = quotes.filter(q => {
     if (!q.deadline) return false;
     const deadline = new Date(q.deadline);
     const today = new Date();
@@ -196,7 +234,7 @@ export default function Quotes() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Buscar por descrição ou cliente..."
+                placeholder="Buscar por RFQ, título ou cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -289,10 +327,30 @@ export default function Quotes() {
                     </td>
                     <td>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          title="Visualizar"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => handleEditClick(quote)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          title={quote.status === 'draft' ? 'Excluir' : 'Cancelar'}
+                          onClick={() => handleDeleteClick(quote)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -305,11 +363,25 @@ export default function Quotes() {
         </CardContent>
       </Card>
 
-      {/* Create Quote Modal */}
+      {/* Create/Edit Quote Modal */}
       <CreateQuoteModal 
         open={isCreateModalOpen} 
-        onOpenChange={setIsCreateModalOpen}
-        onQuoteCreate={handleQuoteCreate}
+        onOpenChange={(open) => {
+          setIsCreateModalOpen(open);
+          if (!open) {
+            setEditingQuote(null);
+          }
+        }}
+        onQuoteCreate={editingQuote ? handleQuoteUpdate : handleQuoteCreate}
+        editingQuote={editingQuote}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        quote={quoteToDelete}
+        onConfirm={handleDeleteConfirm}
       />
 
       {/* Empty State */}

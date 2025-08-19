@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { Plus, X, FileText, Package, Users, Mail, MessageCircle, Search, AlertCircle } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Calendar, MessageSquare, Send, ArrowLeft, ArrowRight, AlertCircle, FileText, Package, Users, Mail, MessageCircle, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Stepper } from "@/components/ui/stepper";
+import { Stepper } from '@/components/ui/stepper';
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
 import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
-import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup } from "@/data/mockData";
+import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup, Quote } from '@/data/mockData';
 
 interface QuoteFormData {
   title: string;
@@ -29,6 +29,7 @@ interface CreateQuoteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onQuoteCreate: (quoteData: QuoteFormData) => void;
+  editingQuote?: Quote | null;
 }
 
 const steps = [
@@ -39,7 +40,7 @@ const steps = [
   { id: 5, title: "Forma de Envio" }
 ];
 
-export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQuoteModalProps) {
+export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuote }: CreateQuoteModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showNewProductForm, setShowNewProductForm] = useState(false);
@@ -65,6 +66,54 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
       whatsapp: false
     }
   });
+
+  // Initialize form with editing data
+  useEffect(() => {
+    if (editingQuote && open) {
+      const mappedItems = editingQuote.items.map(item => ({
+        product: {
+          id: item.productId,
+          name: item.productName,
+          code: item.productId,
+          description: item.productName,
+          category: 'General',
+          stockQuantity: 0,
+          status: 'active' as const
+        },
+        quantity: item.quantity
+      }));
+
+      const supplierObj = editingQuote.supplierId 
+        ? mockSuppliers.find(s => s.id === editingQuote.supplierId)
+        : undefined;
+
+      setFormData({
+        title: editingQuote.title,
+        description: editingQuote.description,
+        deadline: editingQuote.deadline ? editingQuote.deadline.split('T')[0] : '',
+        items: mappedItems,
+        suppliers: supplierObj ? [supplierObj] : [],
+        communicationMethods: {
+          email: true,
+          whatsapp: false,
+        },
+      });
+    } else if (!editingQuote && open) {
+      // Reset form for new quote
+      setFormData({
+        title: "",
+        description: "",
+        deadline: "",
+        items: [],
+        suppliers: [],
+        communicationMethods: {
+          email: true,
+          whatsapp: false
+        }
+      });
+      setCurrentStep(1);
+    }
+  }, [editingQuote, open]);
 
   const suggestedSuppliers = mockSuppliers.filter(supplier => {
     if (formData.items.length === 0) return false;
@@ -698,7 +747,10 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nova Cotação</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              {editingQuote ? `Editar Cotação ${editingQuote.id}` : 'Nova Cotação'}
+            </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-6">
