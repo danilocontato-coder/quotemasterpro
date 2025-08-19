@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
-import { NewSupplierForm } from "./NewSupplierForm";
+import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
 import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup } from "@/data/mockData";
 
 interface QuoteFormData {
@@ -43,7 +43,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
   const [currentStep, setCurrentStep] = useState(1);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showNewProductForm, setShowNewProductForm] = useState(false);
-  const [showNewSupplierForm, setShowNewSupplierForm] = useState(false);
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   
   const [formData, setFormData] = useState<QuoteFormData>({
     title: "",
@@ -374,7 +374,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => setShowNewSupplierForm(true)}
+                    onClick={() => setShowNewSupplierModal(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Fornecedor
@@ -647,10 +647,11 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
         onProductCreate={handleProductCreate}
       />
 
-      <NewSupplierForm
-        open={showNewSupplierForm}
-        onOpenChange={setShowNewSupplierForm}
+      <NewSupplierModal
+        open={showNewSupplierModal}
+        onOpenChange={setShowNewSupplierModal}
         onSupplierCreate={handleSupplierCreate}
+        availableGroups={mockSupplierGroups}
       />
     </>
   );
