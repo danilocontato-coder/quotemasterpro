@@ -1,19 +1,22 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
-import { mockSuppliers, getStatusColor, getStatusText, Supplier } from "@/data/mockData";
+import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
+import { mockSuppliers, mockSupplierGroups, getStatusColor, getStatusText, Supplier, SupplierGroup } from "@/data/mockData";
 
 export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+  const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [suppliers, setSuppliers] = useState(mockSuppliers);
+  const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
 
   const filteredSuppliers = suppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -50,6 +53,16 @@ export default function Suppliers() {
     setSuppliers(prev => [...prev, newSupplier]);
   };
 
+  const handleGroupCreate = (newGroup: SupplierGroup) => {
+    setSupplierGroups(prev => [...prev, newGroup]);
+  };
+
+  const getGroupName = (groupId?: string) => {
+    if (!groupId) return null;
+    const group = supplierGroups.find(g => g.id === groupId);
+    return group;
+  };
+
   const statusOptions = [
     { value: "all", label: "Todos" },
     { value: "active", label: "Ativo" },
@@ -66,13 +79,23 @@ export default function Suppliers() {
             Gerencie sua rede de fornecedores e parceiros
           </p>
         </div>
-        <Button 
-          className="btn-corporate flex items-center gap-2"
-          onClick={() => setShowNewSupplierModal(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Novo Fornecedor
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => setShowNewGroupModal(true)}
+          >
+            <UserPlus className="h-4 w-4" />
+            Criar Grupo
+          </Button>
+          <Button 
+            className="btn-corporate flex items-center gap-2"
+            onClick={() => setShowNewSupplierModal(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Novo Fornecedor
+          </Button>
+        </div>
       </div>
 
       {/* Filter Metrics Cards */}
@@ -160,11 +183,35 @@ export default function Suppliers() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Group */}
+              {supplier.groupId && getGroupName(supplier.groupId) && (
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
+                  <span className="text-sm font-medium">{getGroupName(supplier.groupId)?.name}</span>
+                </div>
+              )}
+
+              {/* Specialties */}
+              {supplier.specialties && supplier.specialties.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {supplier.specialties.slice(0, 2).map((specialty) => (
+                    <Badge key={specialty} variant="secondary" className="text-xs">
+                      {specialty}
+                    </Badge>
+                  ))}
+                  {supplier.specialties.length > 2 && (
+                    <Badge variant="secondary" className="text-xs">
+                      +{supplier.specialties.length - 2}
+                    </Badge>
+                  )}
+                </div>
+              )}
+
               {/* Address */}
               {supplier.address && (
                 <div className="flex items-start gap-2 text-sm">
                   <Building className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <span className="text-muted-foreground">{supplier.address}</span>
+                  <span className="text-muted-foreground line-clamp-2">{supplier.address}</span>
                 </div>
               )}
 
@@ -245,6 +292,14 @@ export default function Suppliers() {
         open={showNewSupplierModal}
         onOpenChange={setShowNewSupplierModal}
         onSupplierCreate={handleSupplierCreate}
+        availableGroups={supplierGroups}
+      />
+
+      {/* New Group Modal */}
+      <NewGroupModal
+        open={showNewGroupModal}
+        onOpenChange={setShowNewGroupModal}
+        onGroupCreate={handleGroupCreate}
       />
     </div>
   );

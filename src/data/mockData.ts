@@ -27,6 +27,14 @@ export interface QuoteItem {
   total: number;
 }
 
+export interface SupplierGroup {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  createdAt: string;
+}
+
 export interface Supplier {
   id: string;
   name: string;
@@ -38,6 +46,8 @@ export interface Supplier {
   status: 'active' | 'inactive';
   subscriptionPlan: 'basic' | 'premium' | 'enterprise';
   createdAt: string;
+  groupId?: string;
+  specialties?: string[];
 }
 
 export interface Client {
@@ -129,6 +139,54 @@ export const mockQuotes: Quote[] = [
   },
 ];
 
+// Available specialties for suppliers
+export const supplierSpecialties = [
+  'Materiais de Construção',
+  'Produtos de Limpeza',
+  'Elétrica e Iluminação',
+  'Jardinagem',
+  'Hidráulica',
+  'Pintura',
+  'Acabamento',
+  'Ferramentas',
+  'Equipamentos',
+  'Serviços Gerais',
+  'Manutenção Predial',
+  'Segurança',
+];
+
+// Mock supplier groups
+export const mockSupplierGroups: SupplierGroup[] = [
+  {
+    id: '1',
+    name: 'Materiais de Construção',
+    description: 'Fornecedores de materiais básicos de construção',
+    color: 'bg-blue-500',
+    createdAt: '2023-01-15T08:00:00Z',
+  },
+  {
+    id: '2',
+    name: 'Limpeza e Higiene',
+    description: 'Produtos e serviços de limpeza',
+    color: 'bg-green-500',
+    createdAt: '2023-02-20T10:00:00Z',
+  },
+  {
+    id: '3',
+    name: 'Elétrica',
+    description: 'Materiais e serviços elétricos',
+    color: 'bg-yellow-500',
+    createdAt: '2023-03-10T14:00:00Z',
+  },
+  {
+    id: '4',
+    name: 'Jardinagem',
+    description: 'Produtos e serviços de jardinagem',
+    color: 'bg-emerald-500',
+    createdAt: '2023-04-05T09:00:00Z',
+  },
+];
+
 export const mockSuppliers: Supplier[] = [
   {
     id: '1',
@@ -141,6 +199,8 @@ export const mockSuppliers: Supplier[] = [
     status: 'active',
     subscriptionPlan: 'premium',
     createdAt: '2023-12-01T08:00:00Z',
+    groupId: '1',
+    specialties: ['Materiais de Construção', 'Ferramentas'],
   },
   {
     id: '2',
@@ -149,21 +209,51 @@ export const mockSuppliers: Supplier[] = [
     email: 'vendas@limpezatotal.com.br',
     phone: '(11) 2345-6789',
     whatsapp: '(11) 98765-4321',
-    address: 'Av. Paulista, 456 - São Paulo, SP',
+    address: 'Av. Paulista, 1000 - São Paulo, SP',
     status: 'active',
     subscriptionPlan: 'basic',
     createdAt: '2023-11-15T10:30:00Z',
+    groupId: '2',
+    specialties: ['Produtos de Limpeza', 'Equipamentos'],
   },
   {
     id: '3',
     name: 'Elétrica Silva & Cia',
     cnpj: '11.222.333/0001-44',
-    email: 'eletrica@silva.com.br',
-    phone: '(11) 1234-5678',
-    address: 'Rua da Eletricidade, 789 - São Paulo, SP',
+    email: 'orcamento@eletricasilva.com.br',
+    phone: '(11) 4567-8901',
+    address: 'Rua da Luz, 456 - São Paulo, SP',
     status: 'active',
     subscriptionPlan: 'enterprise',
-    createdAt: '2023-10-20T15:20:00Z',
+    createdAt: '2023-10-20T16:15:00Z',
+    groupId: '3',
+    specialties: ['Elétrica e Iluminação', 'Manutenção Predial'],
+  },
+  {
+    id: '4',
+    name: 'Jardins Verdes',
+    cnpj: '55.666.777/0001-88',
+    email: 'contato@jardinsverdes.com.br',
+    phone: '(11) 7890-1234',
+    whatsapp: '(11) 91234-5678',
+    address: 'Av. das Árvores, 789 - São Paulo, SP',
+    status: 'inactive',
+    subscriptionPlan: 'basic',
+    createdAt: '2023-08-30T12:45:00Z',
+    groupId: '4',
+    specialties: ['Jardinagem', 'Serviços Gerais'],
+  },
+  {
+    id: '5',
+    name: 'Hidráulica Rápida',
+    cnpj: '99.888.777/0001-66',
+    email: 'atendimento@hidraulicarapida.com.br',
+    phone: '(11) 5678-9012',
+    address: 'Rua dos Canos, 321 - São Paulo, SP',
+    status: 'active',
+    subscriptionPlan: 'premium',
+    createdAt: '2025-08-25T09:30:00Z',
+    specialties: ['Hidráulica', 'Manutenção Predial'],
   },
 ];
 

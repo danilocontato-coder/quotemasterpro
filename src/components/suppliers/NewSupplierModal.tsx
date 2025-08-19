@@ -5,26 +5,38 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Supplier } from "@/data/mockData";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Supplier, SupplierGroup, supplierSpecialties } from "@/data/mockData";
 
 interface NewSupplierModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSupplierCreate: (supplier: Supplier) => void;
+  availableGroups: SupplierGroup[];
 }
 
-export function NewSupplierModal({ open, onOpenChange, onSupplierCreate }: NewSupplierModalProps) {
+export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availableGroups }: NewSupplierModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     cnpj: "",
     email: "",
     phone: "",
     whatsapp: "",
-    address: "",
+    // Endereço separado
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    // Outros campos
     contactPerson: "",
     description: "",
-    specialties: "",
-    website: ""
+    website: "",
+    groupId: "",
+    specialties: [] as string[]
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -55,6 +67,15 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate }: NewSu
     
     if (!validateForm()) return;
 
+    // Monta endereço completo
+    const fullAddress = [
+      `${formData.street}${formData.number ? `, ${formData.number}` : ''}`,
+      formData.complement,
+      formData.neighborhood,
+      `${formData.city} - ${formData.state}`,
+      formData.zipCode
+    ].filter(Boolean).join(', ');
+
     const newSupplier: Supplier = {
       id: `supplier-${Date.now()}`,
       name: formData.name,
@@ -62,10 +83,12 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate }: NewSu
       email: formData.email,
       phone: formData.phone,
       whatsapp: formData.whatsapp,
-      address: formData.address,
+      address: fullAddress,
       status: 'active',
       subscriptionPlan: 'basic',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      groupId: formData.groupId || undefined,
+      specialties: formData.specialties
     };
 
     onSupplierCreate(newSupplier);
@@ -80,13 +103,29 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate }: NewSu
       email: "",
       phone: "",
       whatsapp: "",
-      address: "",
+      street: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      zipCode: "",
       contactPerson: "",
       description: "",
-      specialties: "",
-      website: ""
+      website: "",
+      groupId: "",
+      specialties: []
     });
     setErrors({});
+  };
+
+  const handleSpecialtyToggle = (specialty: string) => {
+    setFormData(prev => ({
+      ...prev,
+      specialties: prev.specialties.includes(specialty)
+        ? prev.specialties.filter(s => s !== specialty)
+        : [...prev.specialties, specialty]
+    }));
   };
 
   const formatCNPJ = (value: string) => {
@@ -169,12 +208,43 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate }: NewSu
               </div>
 
               <div>
+                <label className="text-sm font-medium mb-2 block">Grupo</label>
+                <Select value={formData.groupId} onValueChange={(value) => setFormData(prev => ({ ...prev, groupId: value }))}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Selecione um grupo (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border shadow-lg z-50">
+                    {availableGroups.map((group) => (
+                      <SelectItem key={group.id} value={group.id}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${group.color}`}></div>
+                          {group.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium mb-2 block">Especialidades</label>
-                <Input
-                  placeholder="Ex: Materiais de Construção, Elétrica, Hidráulica"
-                  value={formData.specialties}
-                  onChange={(e) => setFormData(prev => ({ ...prev, specialties: e.target.value }))}
-                />
+                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border border-border rounded-lg p-3">
+                  {supplierSpecialties.map((specialty) => (
+                    <div key={specialty} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={specialty}
+                        checked={formData.specialties.includes(specialty)}
+                        onCheckedChange={() => handleSpecialtyToggle(specialty)}
+                      />
+                      <label
+                        htmlFor={specialty}
+                        className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {specialty}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -259,15 +329,76 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate }: NewSu
                 Endereço
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Endereço Completo</label>
-                <Textarea
-                  placeholder="Rua, número, complemento, bairro, cidade - UF, CEP"
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  rows={2}
-                />
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium mb-2 block">Rua/Avenida</label>
+                  <Input
+                    placeholder="Ex: Rua das Flores"
+                    value={formData.street}
+                    onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Número</label>
+                  <Input
+                    placeholder="123"
+                    value={formData.number}
+                    onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Complemento</label>
+                  <Input
+                    placeholder="Sala 101, Bloco A..."
+                    value={formData.complement}
+                    onChange={(e) => setFormData(prev => ({ ...prev, complement: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Bairro</label>
+                  <Input
+                    placeholder="Centro"
+                    value={formData.neighborhood}
+                    onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Cidade</label>
+                  <Input
+                    placeholder="São Paulo"
+                    value={formData.city}
+                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Estado</label>
+                  <Input
+                    placeholder="SP"
+                    value={formData.state}
+                    onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                    maxLength={2}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">CEP</label>
+                  <Input
+                    placeholder="01234-567"
+                    value={formData.zipCode}
+                    onChange={(e) => {
+                      const formatted = e.target.value.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2');
+                      if (formatted.length <= 9) {
+                        setFormData(prev => ({ ...prev, zipCode: formatted }));
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

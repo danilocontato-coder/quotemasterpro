@@ -3,6 +3,7 @@ import { Plus, X, FileText, Package, Users, Mail, MessageCircle, Search } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Stepper } from "@/components/ui/stepper";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
 import { NewSupplierForm } from "./NewSupplierForm";
-import { mockSuppliers, Product, Supplier } from "@/data/mockData";
+import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup } from "@/data/mockData";
 
 interface QuoteFormData {
   title: string;
@@ -55,6 +56,43 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
       whatsapp: false
     }
   });
+
+  const suggestedSuppliers = mockSuppliers.filter(supplier => {
+    if (formData.items.length === 0) return false;
+    
+    // Get categories from selected items
+    const itemCategories = formData.items.map(item => item.product.category.toLowerCase());
+    
+    // If supplier has specialties that match item categories
+    if (supplier.specialties && supplier.specialties.length > 0) {
+      return supplier.specialties.some(specialty => 
+        itemCategories.some(category => 
+          specialty.toLowerCase().includes(category) || 
+          category.includes(specialty.toLowerCase()) ||
+          (category.includes('construção') && specialty.toLowerCase().includes('construção')) ||
+          (category.includes('limpeza') && specialty.toLowerCase().includes('limpeza')) ||
+          (category.includes('elétrica') && specialty.toLowerCase().includes('elétrica')) ||
+          (category.includes('jardinagem') && specialty.toLowerCase().includes('jardinagem'))
+        )
+      );
+    }
+    
+    // Fallback to simple name matching
+    const supplierName = supplier.name.toLowerCase();
+    return itemCategories.some(category => 
+      supplierName.includes(category) || 
+      (category.includes('limpeza') && supplierName.includes('limpeza')) ||
+      (category.includes('materiais') && supplierName.includes('materiais')) ||
+      (category.includes('elétrica') && supplierName.includes('elétrica')) ||
+      (category.includes('jardinagem') && supplierName.includes('jardinagem'))
+    );
+  }).filter(supplier => supplier.status === 'active');
+
+  const getGroupName = (groupId?: string) => {
+    if (!groupId) return null;
+    const group = mockSupplierGroups.find(g => g.id === groupId);
+    return group;
+  };
 
   const handleNext = () => {
     if (currentStep < steps.length) {
@@ -271,10 +309,68 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
               <p className="text-sm text-muted-foreground">Escolha os fornecedores que receberão esta cotação</p>
             </div>
 
+            {/* Fornecedores Sugeridos */}
+            {suggestedSuppliers.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Fornecedores Sugeridos</CardTitle>
+                    <p className="text-xs text-muted-foreground">Baseado nos itens selecionados</p>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {suggestedSuppliers.slice(0, 3).map((supplier) => (
+                    <div key={supplier.id} className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {supplier.groupId && getGroupName(supplier.groupId) && (
+                          <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
+                        )}
+                        <div>
+                          <p className="font-medium text-sm">{supplier.name}</p>
+                          <p className="text-xs text-muted-foreground">{supplier.email}</p>
+                          {supplier.specialties && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {supplier.specialties.slice(0, 2).map((specialty) => (
+                                <Badge key={specialty} variant="secondary" className="text-xs py-0">
+                                  {specialty}
+                                </Badge>
+                              ))}
+                              {supplier.specialties.length > 2 && (
+                                <Badge variant="secondary" className="text-xs py-0">
+                                  +{supplier.specialties.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Checkbox
+                        checked={formData.suppliers.some(s => s.id === supplier.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              suppliers: [...prev.suppliers, supplier]
+                            }));
+                          } else {
+                            setFormData(prev => ({
+                              ...prev,
+                              suppliers: prev.suppliers.filter(s => s.id !== supplier.id)
+                            }));
+                          }
+                        }}
+                      />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Todos os Fornecedores */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Fornecedores Disponíveis</CardTitle>
+                  <CardTitle className="text-base">Todos os Fornecedores</CardTitle>
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -285,12 +381,17 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {mockSuppliers.slice(0, 5).map((supplier) => (
+              <CardContent className="space-y-3 max-h-60 overflow-y-auto">
+                {mockSuppliers.filter(s => s.status === 'active').map((supplier) => (
                   <div key={supplier.id} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{supplier.name}</p>
-                      <p className="text-xs text-muted-foreground">{supplier.email}</p>
+                    <div className="flex items-center gap-2">
+                      {supplier.groupId && getGroupName(supplier.groupId) && (
+                        <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
+                      )}
+                      <div>
+                        <p className="font-medium text-sm">{supplier.name}</p>
+                        <p className="text-xs text-muted-foreground">{supplier.email}</p>
+                      </div>
                     </div>
                     <Checkbox
                       checked={formData.suppliers.some(s => s.id === supplier.id)}
@@ -381,7 +482,12 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {formData.suppliers.map((supplier) => (
                       <div key={supplier.id} className="p-3 bg-secondary/20 rounded-lg">
-                        <p className="font-medium text-sm">{supplier.name}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          {supplier.groupId && getGroupName(supplier.groupId) && (
+                            <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
+                          )}
+                          <p className="font-medium text-sm">{supplier.name}</p>
+                        </div>
                         <p className="text-xs text-muted-foreground">{supplier.email}</p>
                         <p className="text-xs text-muted-foreground">{supplier.phone}</p>
                       </div>
