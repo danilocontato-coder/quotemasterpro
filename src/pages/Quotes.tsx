@@ -1,23 +1,23 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Trash2, FileText } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
-import { ProductSelector, QuickAddProduct } from "@/components/products/ProductSelector";
-import { QuickAddSupplier } from "@/components/suppliers/QuickAddSupplier";
-import { mockQuotes, mockProducts, getStatusColor, getStatusText, Product, Supplier } from "@/data/mockData";
+import { CreateQuoteModal } from "@/components/quotes/CreateQuoteModal";
+import { mockQuotes, getStatusColor, getStatusText } from "@/data/mockData";
 
 export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newQuoteProducts, setNewQuoteProducts] = useState<Array<{product: Product, quantity: number}>>([]);
 
-  const filteredQuotes = mockQuotes.filter(quote => {
+  const handleQuoteCreate = (quoteData: any) => {
+    console.log('Nova cotação criada:', quoteData);
+    // Em uma aplicação real, isso salvaria no banco de dados
+  };
     const matchesSearch = quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.description.toLowerCase().includes(searchTerm.toLowerCase());
     
