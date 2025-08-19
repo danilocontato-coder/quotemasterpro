@@ -242,37 +242,7 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
 
                 <Separator />
 
-                {(formData.role === "manager" || formData.role === "collaborator") && (
-                  <div className="space-y-2">
-                    <Label htmlFor="client">Cliente/Condomínio</Label>
-                    <Select value={formData.client} onValueChange={(value) => setFormData({...formData, client: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="condominioazul">Condomínio Azul</SelectItem>
-                        <SelectItem value="condominioverde">Condomínio Verde</SelectItem>
-                        <SelectItem value="condominioamarelo">Condomínio Amarelo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {formData.role === "supplier" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="supplier">Fornecedor</Label>
-                    <Select value={formData.supplier} onValueChange={(value) => setFormData({...formData, supplier: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o fornecedor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="fornecedoralpha">Fornecedor Alpha</SelectItem>
-                        <SelectItem value="fornecedorbeta">Fornecedor Beta</SelectItem>
-                        <SelectItem value="fornecedorgamma">Fornecedor Gamma</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                {/* Removed client/supplier selection - users are end users */}
 
                 <div className="flex items-center justify-between">
                   <div>

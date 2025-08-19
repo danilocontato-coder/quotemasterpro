@@ -13,6 +13,7 @@ import { Users } from "./pages/Users";
 import { ApprovalLevels } from "./pages/ApprovalLevels";
 import { Approvals } from "./pages/Approvals";
 import { Permissions } from "./pages/Permissions";
+import { Reports } from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,11 +34,10 @@ const App = () => (
             <Route path="approval-levels" element={<ApprovalLevels />} />
             <Route path="users" element={<Users />} />
             <Route path="permissions" element={<Permissions />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
             <Route path="payments" element={<div className="p-6"><h1 className="text-2xl font-bold">Pagamentos - Em desenvolvimento</h1></div>} />
             <Route path="communication" element={<div className="p-6"><h1 className="text-2xl font-bold">Comunicação - Em desenvolvimento</h1></div>} />
-            <Route path="admin/clients" element={<div className="p-6"><h1 className="text-2xl font-bold">Clientes - Em desenvolvimento</h1></div>} />
-            <Route path="admin/reports" element={<div className="p-6"><h1 className="text-2xl font-bold">Relatórios - Em desenvolvimento</h1></div>} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

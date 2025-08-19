@@ -37,15 +37,13 @@ const navigationItems = [
   { title: "Comunicação", url: "/communication", icon: Mail },
 ];
 
-const adminItems = [
-  { title: "Clientes", url: "/admin/clients", icon: Building },
-  { title: "Relatórios", url: "/admin/reports", icon: BarChart3 },
-];
+// Removed admin items section
 
 const systemItems = [
   { title: "Usuários", url: "/users", icon: UserCog },
   { title: "Níveis de Aprovação", url: "/approval-levels", icon: Sliders },
   { title: "Permissões", url: "/permissions", icon: Shield },
+  { title: "Relatórios", url: "/reports", icon: BarChart3 },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
@@ -100,30 +98,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin Section */}
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-2">
-            {!isCollapsed && "Administração"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      end
-                      className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Removed Admin Section */}
 
         {/* System Section */}
         <SidebarGroup className="mt-6">

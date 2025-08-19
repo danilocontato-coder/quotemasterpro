@@ -32,11 +32,14 @@ import {
 import { CreateUserModal } from "@/components/users/CreateUserModal";
 import { EditUserModal } from "@/components/users/EditUserModal";
 import { DeleteUserModal } from "@/components/users/DeleteUserModal";
+import { CreateProfileModal } from "@/components/profiles/CreateProfileModal";
 import { useUsers } from "@/hooks/useUsers";
+import { useProfiles } from "@/hooks/useProfiles";
 
 export function Users() {
   const { users, searchTerm, setSearchTerm } = useUsers();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createProfileModalOpen, setCreateProfileModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -90,10 +93,16 @@ export function Users() {
             Gerencie usuários e suas permissões no sistema
           </p>
         </div>
-        <Button onClick={() => setCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Usuário
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setCreateModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Usuário
+          </Button>
+          <Button variant="outline" onClick={() => setCreateProfileModalOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Criar Perfil
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -264,6 +273,11 @@ export function Users() {
       <CreateUserModal 
         open={createModalOpen} 
         onClose={() => setCreateModalOpen(false)} 
+      />
+      
+      <CreateProfileModal
+        open={createProfileModalOpen}
+        onClose={() => setCreateProfileModalOpen(false)}
       />
       
       {selectedUser && (
