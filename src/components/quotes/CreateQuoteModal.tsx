@@ -131,6 +131,11 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
       });
     }
     
+    return { emailErrors, whatsappErrors };
+  };
+
+  const updateContactValidationErrors = () => {
+    const { emailErrors, whatsappErrors } = validateSupplierContacts();
     setContactValidationErrors({ email: emailErrors, whatsapp: whatsappErrors });
     return emailErrors.length === 0 && whatsappErrors.length === 0;
   };
@@ -138,7 +143,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
   const handleNext = () => {
     if (currentStep === 5) {
       // Validate contacts before proceeding
-      if (!validateSupplierContacts()) {
+      if (!updateContactValidationErrors()) {
         return;
       }
     }
@@ -206,7 +211,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
   };
 
   const handleSubmit = () => {
-    if (!validateSupplierContacts()) {
+    if (!updateContactValidationErrors()) {
       return;
     }
     
@@ -242,8 +247,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
       case 4:
         return true;
       case 5:
-        return (formData.communicationMethods.email || formData.communicationMethods.whatsapp) && 
-               validateSupplierContacts();
+        return formData.communicationMethods.email || formData.communicationMethods.whatsapp;
       default:
         return false;
     }
