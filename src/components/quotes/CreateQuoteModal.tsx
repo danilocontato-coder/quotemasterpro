@@ -32,7 +32,7 @@ interface CreateQuoteModalProps {
 const steps = [
   { id: 1, title: "Dados" },
   { id: 2, title: "Itens" },
-  { id: 3, title: "Fornec..." },
+  { id: 3, title: "Fornecedor" },
   { id: 4, title: "Revisão" },
   { id: 5, title: "Propos..." },
   { id: 6, title: "Comparador" }
