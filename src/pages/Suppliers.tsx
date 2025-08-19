@@ -4,19 +4,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { mockSuppliers, getStatusColor, getStatusText } from "@/data/mockData";
 
 export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeFilter, setActiveFilter] = useState("all");
 
   const filteredSuppliers = mockSuppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          supplier.cnpj.includes(searchTerm) ||
                          supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || supplier.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    let matchesFilter = true;
+    if (activeFilter === "active") {
+      matchesFilter = supplier.status === "active";
+    } else if (activeFilter === "premium") {
+      matchesFilter = supplier.subscriptionPlan === "premium";
+    } else if (activeFilter === "enterprise") {
+      matchesFilter = supplier.subscriptionPlan === "enterprise";
+    }
+    
+    return matchesSearch && matchesFilter;
   });
+
+  // Calculate metrics
+  const totalSuppliers = mockSuppliers.length;
+  const activeSuppliers = mockSuppliers.filter(s => s.status === 'active').length;
+  const premiumSuppliers = mockSuppliers.filter(s => s.subscriptionPlan === 'premium').length;
+  const enterpriseSuppliers = mockSuppliers.filter(s => s.subscriptionPlan === 'enterprise').length;
 
   const statusOptions = [
     { value: "all", label: "Todos" },
@@ -47,46 +64,36 @@ export default function Suppliers() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Filter Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="card-corporate">
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-primary">{mockSuppliers.length}</p>
-              <p className="text-sm text-muted-foreground">Total</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="card-corporate">
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-success">
-                {mockSuppliers.filter(s => s.status === 'active').length}
-              </p>
-              <p className="text-sm text-muted-foreground">Ativos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="card-corporate">
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-primary">
-                {mockSuppliers.filter(s => s.subscriptionPlan === 'premium').length}
-              </p>
-              <p className="text-sm text-muted-foreground">Premium</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="card-corporate">
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-warning">
-                {mockSuppliers.filter(s => s.subscriptionPlan === 'enterprise').length}
-              </p>
-              <p className="text-sm text-muted-foreground">Enterprise</p>
-            </div>
-          </CardContent>
-        </Card>
+        <FilterMetricCard
+          title="Total"
+          value={totalSuppliers}
+          isActive={activeFilter === "all"}
+          onClick={() => setActiveFilter("all")}
+          colorClass="text-foreground"
+        />
+        <FilterMetricCard
+          title="Ativos"
+          value={activeSuppliers}
+          isActive={activeFilter === "active"}
+          onClick={() => setActiveFilter("active")}
+          colorClass="text-success"
+        />
+        <FilterMetricCard
+          title="Premium"
+          value={premiumSuppliers}
+          isActive={activeFilter === "premium"}
+          onClick={() => setActiveFilter("premium")}
+          colorClass="text-primary"
+        />
+        <FilterMetricCard
+          title="Enterprise"
+          value={enterpriseSuppliers}
+          isActive={activeFilter === "enterprise"}
+          onClick={() => setActiveFilter("enterprise")}
+          colorClass="text-warning"
+        />
       </div>
 
       {/* Filters and Search */}

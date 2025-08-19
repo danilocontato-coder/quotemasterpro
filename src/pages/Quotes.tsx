@@ -4,18 +4,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { mockQuotes, getStatusColor, getStatusText } from "@/data/mockData";
 
 export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeFilter, setActiveFilter] = useState("all");
 
   const filteredQuotes = mockQuotes.filter(quote => {
     const matchesSearch = quote.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || quote.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    let matchesFilter = true;
+    if (activeFilter === "pending") {
+      matchesFilter = quote.status === "pending";
+    } else if (activeFilter === "approved") {
+      matchesFilter = quote.status === "approved";
+    } else if (activeFilter === "completed") {
+      matchesFilter = quote.status === "completed";
+    }
+    
+    return matchesSearch && matchesFilter;
   });
+
+  // Calculate metrics
+  const totalQuotes = mockQuotes.length;
+  const pendingQuotes = mockQuotes.filter(q => q.status === 'pending').length;
+  const approvedQuotes = mockQuotes.filter(q => q.status === 'approved').length;
+  const completedQuotes = mockQuotes.filter(q => q.status === 'completed').length;
 
   const statusOptions = [
     { value: "all", label: "Todas" },
@@ -40,6 +57,38 @@ export default function Quotes() {
           <Plus className="h-4 w-4" />
           Nova Cotação
         </Button>
+      </div>
+
+      {/* Filter Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <FilterMetricCard
+          title="Total"
+          value={totalQuotes}
+          isActive={activeFilter === "all"}
+          onClick={() => setActiveFilter("all")}
+          colorClass="text-foreground"
+        />
+        <FilterMetricCard
+          title="Pendentes"
+          value={pendingQuotes}
+          isActive={activeFilter === "pending"}
+          onClick={() => setActiveFilter("pending")}
+          colorClass="text-warning"
+        />
+        <FilterMetricCard
+          title="Aprovadas"
+          value={approvedQuotes}
+          isActive={activeFilter === "approved"}
+          onClick={() => setActiveFilter("approved")}
+          colorClass="text-success"
+        />
+        <FilterMetricCard
+          title="Concluídas"
+          value={completedQuotes}
+          isActive={activeFilter === "completed"}
+          onClick={() => setActiveFilter("completed")}
+          colorClass="text-primary"
+        />
       </div>
 
       {/* Filters and Search */}
