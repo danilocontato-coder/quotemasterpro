@@ -18,26 +18,48 @@ export default function Quotes() {
   const [newQuoteProducts, setNewQuoteProducts] = useState<Array<{product: Product, quantity: number}>>([]);
 
   const filteredQuotes = mockQuotes.filter(quote => {
-    const matchesSearch = quote.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quote.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quote.description.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
-    if (activeFilter === "pending") {
-      matchesFilter = quote.status === "pending";
+    if (activeFilter === "active") {
+      matchesFilter = quote.status === "active";
+    } else if (activeFilter === "draft") {
+      matchesFilter = quote.status === "draft";
+    } else if (activeFilter === "receiving") {
+      matchesFilter = quote.status === "receiving";
     } else if (activeFilter === "approved") {
       matchesFilter = quote.status === "approved";
-    } else if (activeFilter === "completed") {
-      matchesFilter = quote.status === "completed";
+    } else if (activeFilter === "finalized") {
+      matchesFilter = quote.status === "finalized";
+    } else if (activeFilter === "trash") {
+      matchesFilter = quote.status === "trash";
     }
     
     return matchesSearch && matchesFilter;
   });
 
-  // Calculate metrics
-  const totalQuotes = mockQuotes.length;
-  const pendingQuotes = mockQuotes.filter(q => q.status === 'pending').length;
+  // Calculate metrics - Based on all active quotes (not trash)
+  const activeQuotes = mockQuotes.filter(q => q.status !== 'trash');
+  const totalActive = activeQuotes.length;
+  const draftQuotes = mockQuotes.filter(q => q.status === 'draft').length;
+  const receivingQuotes = mockQuotes.filter(q => q.status === 'receiving').length;
   const approvedQuotes = mockQuotes.filter(q => q.status === 'approved').length;
-  const completedQuotes = mockQuotes.filter(q => q.status === 'completed').length;
+  const finalizedQuotes = mockQuotes.filter(q => q.status === 'finalized').length;
+  const trashQuotes = mockQuotes.filter(q => q.status === 'trash').length;
+
+  // Additional metrics
+  const totalRFQs = mockQuotes.length;
+  const inProgress = receivingQuotes;
+  const dueSoon = mockQuotes.filter(q => {
+    if (!q.deadline) return false;
+    const deadline = new Date(q.deadline);
+    const today = new Date();
+    const diffTime = deadline.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 2 && diffDays >= 0;
+  }).length;
+  const responseRate = totalActive > 0 ? Math.round((finalizedQuotes / totalActive) * 100) : 0;
 
   const handleProductSelect = (product: Product, quantity: number) => {
     const existingIndex = newQuoteProducts.findIndex(item => item.product.id === product.id);
@@ -80,11 +102,12 @@ export default function Quotes() {
 
   const statusOptions = [
     { value: "all", label: "Todas" },
+    { value: "active", label: "Ativas" },
     { value: "draft", label: "Rascunho" },
-    { value: "pending", label: "Pendente" },
-    { value: "approved", label: "Aprovado" },
-    { value: "completed", label: "Concluído" },
-    { value: "rejected", label: "Rejeitado" },
+    { value: "receiving", label: "Recebendo" },
+    { value: "approved", label: "Aprovadas" },
+    { value: "finalized", label: "Finalizadas" },
+    { value: "trash", label: "Lixeira" },
   ];
 
   return (
@@ -107,35 +130,100 @@ export default function Quotes() {
       </div>
 
       {/* Filter Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <FilterMetricCard
-          title="Total"
-          value={totalQuotes}
+          title="Todas Ativas"
+          value={totalActive}
           isActive={activeFilter === "all"}
           onClick={() => setActiveFilter("all")}
-          colorClass="text-foreground"
+          colorClass="text-blue-600"
         />
         <FilterMetricCard
-          title="Pendentes"
-          value={pendingQuotes}
-          isActive={activeFilter === "pending"}
-          onClick={() => setActiveFilter("pending")}
-          colorClass="text-warning"
+          title="Rascunhos"
+          value={draftQuotes}
+          isActive={activeFilter === "draft"}
+          onClick={() => setActiveFilter("draft")}
+          colorClass="text-gray-600"
+        />
+        <FilterMetricCard
+          title="Recebendo"
+          value={receivingQuotes}
+          isActive={activeFilter === "receiving"}
+          onClick={() => setActiveFilter("receiving")}
+          colorClass="text-orange-600"
         />
         <FilterMetricCard
           title="Aprovadas"
           value={approvedQuotes}
           isActive={activeFilter === "approved"}
           onClick={() => setActiveFilter("approved")}
-          colorClass="text-success"
+          colorClass="text-green-600"
         />
         <FilterMetricCard
-          title="Concluídas"
-          value={completedQuotes}
-          isActive={activeFilter === "completed"}
-          onClick={() => setActiveFilter("completed")}
-          colorClass="text-primary"
+          title="Finalizadas"
+          value={finalizedQuotes}
+          isActive={activeFilter === "finalized"}
+          onClick={() => setActiveFilter("finalized")}
+          colorClass="text-purple-600"
         />
+        <FilterMetricCard
+          title="Lixeira"
+          value={trashQuotes}
+          isActive={activeFilter === "trash"}
+          onClick={() => setActiveFilter("trash")}
+          colorClass="text-red-600"
+        />
+      </div>
+
+      {/* Additional Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{totalRFQs}</p>
+              <p className="text-sm text-muted-foreground">Total de RFQs</p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Eye className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{inProgress}</p>
+              <p className="text-sm text-muted-foreground">Em Andamento</p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <Filter className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{dueSoon}</p>
+              <p className="text-sm text-muted-foreground">Vencendo Hoje</p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Plus className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{responseRate}%</p>
+              <p className="text-sm text-muted-foreground">Taxa de Resposta</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Filters and Search */}
@@ -183,42 +271,53 @@ export default function Quotes() {
             <table className="table-corporate">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Descrição</th>
-                  <th>Cliente</th>
-                  <th>Fornecedor</th>
-                  <th>Valor</th>
+                  <th>Título</th>
                   <th>Status</th>
-                  <th>Data</th>
+                  <th>Itens</th>
+                  <th>Respostas</th>
+                  <th>Prazo</th>
+                  <th>Criado em</th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredQuotes.map((quote) => (
                   <tr key={quote.id}>
-                    <td className="font-mono text-sm">#{quote.id}</td>
                     <td>
-                      <div className="max-w-xs truncate">
-                        <p className="font-medium">{quote.description}</p>
+                      <div>
+                        <p className="font-medium">{quote.title}</p>
+                        <p className="text-sm text-muted-foreground font-mono">ID: {quote.id}</p>
                       </div>
-                    </td>
-                    <td>
-                      <p className="text-sm">{quote.clientName}</p>
-                    </td>
-                    <td>
-                      <p className="text-sm">
-                        {quote.supplierName || "-"}
-                      </p>
-                    </td>
-                    <td>
-                      <p className="font-semibold">
-                        R$ {quote.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
                     </td>
                     <td>
                       <Badge className={getStatusColor(quote.status)}>
                         {getStatusText(quote.status)}
                       </Badge>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">{quote.itemsCount} item(s)</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="text-sm">
+                        {quote.responsesCount}/{quote.responseTotal}
+                        <p className="text-xs text-muted-foreground">propostas</p>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="text-sm">
+                        {quote.deadline ? (
+                          <>
+                            <p>{new Date(quote.deadline).toLocaleDateString('pt-BR')}</p>
+                            <p className="text-xs text-orange-600">
+                              {Math.ceil((new Date(quote.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes
+                            </p>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">Sem prazo</span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <p className="text-sm">
@@ -229,9 +328,6 @@ export default function Quotes() {
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
@@ -255,20 +351,19 @@ export default function Quotes() {
           
           <div className="space-y-6">
             {/* Basic Info */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="text-sm font-medium">Cliente/Condomínio</label>
-                <Input placeholder="Selecionar cliente..." />
+                <label className="text-sm font-medium">Título da Cotação</label>
+                <Input placeholder="Ex: Materiais de Construção, Equipamentos de Limpeza..." />
               </div>
               <div>
-                <label className="text-sm font-medium">Fornecedor (opcional)</label>
-                <Input placeholder="Selecionar fornecedor..." />
+                <label className="text-sm font-medium">Descrição (opcional)</label>
+                <Input placeholder="Descreva detalhes adicionais da cotação..." />
               </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Descrição da Cotação</label>
-              <Input placeholder="Descreva o que está sendo cotado..." />
+              <div>
+                <label className="text-sm font-medium">Prazo para Respostas</label>
+                <Input type="date" />
+              </div>
             </div>
 
             {/* Product Selection */}

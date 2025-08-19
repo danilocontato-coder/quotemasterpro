@@ -1,13 +1,18 @@
 // Mock data for QuoteMaster Pro
 export interface Quote {
   id: string;
+  title: string;
   description: string;
   total: number;
-  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'completed';
+  status: 'active' | 'draft' | 'receiving' | 'approved' | 'finalized' | 'trash';
   clientId: string;
   clientName: string;
   supplierId?: string;
   supplierName?: string;
+  itemsCount: number;
+  responsesCount: number;
+  responseTotal: number;
+  deadline?: string;
   createdAt: string;
   updatedAt: string;
   items: QuoteItem[];
@@ -61,59 +66,65 @@ export interface Product {
 // Mock data
 export const mockQuotes: Quote[] = [
   {
-    id: '1',
+    id: 'RFQ011',
+    title: 'Materiais de Construção',
     description: 'Materiais de construção para reforma do bloco A',
-    total: 15750.00,
-    status: 'pending',
+    total: 0,
+    status: 'draft',
     clientId: '1',
     clientName: 'Condomínio Jardim das Flores',
-    supplierId: '1',
-    supplierName: 'Materiais Santos Ltda',
-    createdAt: '2024-01-15T10:30:00Z',
-    updatedAt: '2024-01-15T10:30:00Z',
-    items: [
-      {
-        id: '1',
-        productId: '1',
-        productName: 'Cimento Portland 50kg',
-        quantity: 20,
-        unitPrice: 35.50,
-        total: 710.00,
-      },
-      {
-        id: '2',
-        productId: '2',
-        productName: 'Areia Fina (m³)',
-        quantity: 5,
-        unitPrice: 45.00,
-        total: 225.00,
-      },
-    ],
-  },
-  {
-    id: '2',
-    description: 'Equipamentos de limpeza para áreas comuns',
-    total: 2340.80,
-    status: 'approved',
-    clientId: '2',
-    clientName: 'Residencial Vista Alegre',
-    supplierId: '2',
-    supplierName: 'Limpeza Total SA',
-    createdAt: '2024-01-14T14:20:00Z',
-    updatedAt: '2024-01-16T09:15:00Z',
+    itemsCount: 0,
+    responsesCount: 0,
+    responseTotal: 0,
+    createdAt: '2025-08-18T10:30:00Z',
+    updatedAt: '2025-08-18T10:30:00Z',
     items: [],
   },
   {
-    id: '3',
-    description: 'Manutenção do sistema elétrico',
-    total: 8900.00,
-    status: 'completed',
+    id: 'RFQ010',
+    title: 'Equipamentos de Limpeza',
+    description: 'Equipamentos de limpeza para áreas comuns',
+    total: 0,
+    status: 'draft',
     clientId: '1',
     clientName: 'Condomínio Jardim das Flores',
-    supplierId: '3',
-    supplierName: 'Elétrica Silva & Cia',
-    createdAt: '2024-01-12T16:45:00Z',
-    updatedAt: '2024-01-18T11:30:00Z',
+    itemsCount: 0,
+    responsesCount: 0,
+    responseTotal: 0,
+    createdAt: '2025-08-18T14:20:00Z',
+    updatedAt: '2025-08-18T14:20:00Z',
+    items: [],
+  },
+  {
+    id: 'RFQ009',
+    title: 'Manutenção Elétrica',
+    description: 'Manutenção do sistema elétrico predial',
+    total: 0,
+    status: 'receiving',
+    clientId: '1',
+    clientName: 'Condomínio Jardim das Flores',
+    itemsCount: 2,
+    responsesCount: 0,
+    responseTotal: 1,
+    deadline: '2025-08-28T23:59:59Z',
+    createdAt: '2025-08-18T16:45:00Z',
+    updatedAt: '2025-08-18T16:45:00Z',
+    items: [],
+  },
+  {
+    id: 'RFQ008',
+    title: 'Serviços de Jardinagem',
+    description: 'Manutenção e paisagismo das áreas verdes',
+    total: 0,
+    status: 'receiving',
+    clientId: '1',
+    clientName: 'Condomínio Jardim das Flores',
+    itemsCount: 3,
+    responsesCount: 0,
+    responseTotal: 1,
+    deadline: '2025-08-20T23:59:59Z',
+    createdAt: '2025-08-18T11:20:00Z',
+    updatedAt: '2025-08-18T11:20:00Z',
     items: [],
   },
 ];
@@ -380,13 +391,15 @@ export const dashboardMetrics = {
 
 export const getStatusColor = (status: string) => {
   switch (status) {
-    case 'completed':
+    case 'finalized':
     case 'approved':
     case 'active':
       return 'badge-success';
-    case 'pending':
-      return 'badge-warning';
-    case 'rejected':
+    case 'receiving':
+      return 'text-orange-600 bg-orange-50 border-orange-200';
+    case 'draft':
+      return 'text-gray-600 bg-gray-50 border-gray-200';
+    case 'trash':
     case 'inactive':
       return 'badge-error';
     default:
@@ -396,12 +409,12 @@ export const getStatusColor = (status: string) => {
 
 export const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
+    active: 'Ativa',
     draft: 'Rascunho',
-    pending: 'Pendente',
-    approved: 'Aprovado',
-    rejected: 'Rejeitado',
-    completed: 'Concluído',
-    active: 'Ativo',
+    receiving: 'Recebendo',
+    approved: 'Aprovada',
+    finalized: 'Finalizada',
+    trash: 'Lixeira',
     inactive: 'Inativo',
     basic: 'Básico',
     premium: 'Premium',
