@@ -1,42 +1,69 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Package, AlertTriangle, Wrench, Leaf, Zap, FolderPlus } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Package, AlertTriangle, Wrench, Leaf, Zap, Upload, TrendingUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { CategoryManager } from "@/components/categories/CategoryManager";
-import { mockProducts, getStatusColor, getStatusText } from "@/data/mockData";
+import { CreateItemModal } from "@/components/items/CreateItemModal";
+import { ViewItemModal } from "@/components/items/ViewItemModal";
+import { DeleteItemModal } from "@/components/items/DeleteItemModal";
+import { StockMovementModal } from "@/components/items/StockMovementModal";
+import { InvoiceImportModal } from "@/components/items/InvoiceImportModal";
+import { useItems } from "@/hooks/useItems";
+import { getStatusColor, getStatusText } from "@/data/mockData";
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [stockModalOpen, setStockModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
-  const filteredProducts = mockProducts.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.category.toLowerCase().includes(searchTerm.toLowerCase());
+  const {
+    items,
+    createItem,
+    updateItem,
+    deleteItem,
+    createStockMovement,
+    importItems,
+    getLowStockItems,
+  } = useItems();
+
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.category.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
-    if (activeFilter === "construction") {
-      matchesFilter = product.category === "Materiais de Construção";
+    if (activeFilter === "products") {
+      matchesFilter = item.type === "product";
+    } else if (activeFilter === "services") {
+      matchesFilter = item.type === "service";
+    } else if (activeFilter === "construction") {
+      matchesFilter = item.category === "Materiais de Construção";
     } else if (activeFilter === "cleaning") {
-      matchesFilter = product.category === "Produtos de Limpeza";
+      matchesFilter = item.category === "Produtos de Limpeza";
     } else if (activeFilter === "electrical") {
-      matchesFilter = product.category === "Elétrica e Iluminação";
+      matchesFilter = item.category === "Elétrica e Iluminação";
     } else if (activeFilter === "lowstock") {
-      matchesFilter = product.stockQuantity <= 10;
+      matchesFilter = item.type === "product" && item.stockQuantity <= 10;
     }
     
     return matchesSearch && matchesFilter;
   });
 
-  // Calculate metrics by category
-  const totalProducts = mockProducts.length;
-  const constructionProducts = mockProducts.filter(p => p.category === "Materiais de Construção").length;
-  const cleaningProducts = mockProducts.filter(p => p.category === "Produtos de Limpeza").length;
-  const electricalProducts = mockProducts.filter(p => p.category === "Elétrica e Iluminação").length;
-  const lowStockProducts = mockProducts.filter(p => p.stockQuantity <= 10).length;
+  // Calculate metrics
+  const totalItems = items.length;
+  const totalProducts = items.filter(i => i.type === "product").length;
+  const totalServices = items.filter(i => i.type === "service").length;
+  const constructionItems = items.filter(i => i.category === "Materiais de Construção").length;
+  const cleaningItems = items.filter(i => i.category === "Produtos de Limpeza").length;
+  const electricalItems = items.filter(i => i.category === "Elétrica e Iluminação").length;
+  const lowStockItems = getLowStockItems().length;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -50,9 +77,48 @@ export default function Products() {
         return <Leaf className="h-4 w-4" />;
       case "Ferramentas":
         return <Wrench className="h-4 w-4" />;
+      case "Serviços":
+        return <Wrench className="h-4 w-4" />;
       default:
         return <Package className="h-4 w-4" />;
     }
+  };
+
+  const handleViewItem = (item: any) => {
+    setSelectedItem(item);
+    setViewModalOpen(true);
+  };
+
+  const handleEditItem = (item: any) => {
+    // Would open edit modal - for now, show update form
+    setSelectedItem(item);
+    // TODO: Implement edit modal
+  };
+
+  const handleDeleteItem = (item: any) => {
+    setSelectedItem(item);
+    setDeleteModalOpen(true);
+  };
+
+  const handleStockMovement = (item: any) => {
+    setSelectedItem(item);
+    setStockModalOpen(true);
+  };
+
+  const handleDeleteConfirm = (item: any, reason?: string) => {
+    deleteItem(item.id, reason);
+    setDeleteModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const handleStockMovementCreate = (movement: any) => {
+    createStockMovement(movement);
+    setStockModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const handleImportComplete = (importedItems: any[]) => {
+    importItems(importedItems);
   };
 
   const getStockStatus = (quantity: number) => {
@@ -66,53 +132,65 @@ export default function Products() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Catálogo de Produtos</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Catálogo de Itens</h1>
           <p className="text-muted-foreground">
-            Gerencie o catálogo de produtos e serviços para facilitar cotações
+            Gerencie produtos e serviços para facilitar cotações e controle de estoque
           </p>
         </div>
         <div className="flex gap-2">
-          <CategoryManager />
-          <Button className="btn-corporate flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Item
+          <Button 
+            variant="outline" 
+            onClick={() => setImportModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Importar NF
           </Button>
+          <CategoryManager />
+          <CreateItemModal onItemCreate={createItem} />
         </div>
       </div>
 
       {/* Filter Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <FilterMetricCard
           title="Total"
-          value={totalProducts}
+          value={totalItems}
           isActive={activeFilter === "all"}
           onClick={() => setActiveFilter("all")}
           colorClass="text-foreground"
         />
         <FilterMetricCard
-          title="Construção"
-          value={constructionProducts}
-          isActive={activeFilter === "construction"}
-          onClick={() => setActiveFilter("construction")}
+          title="Produtos"
+          value={totalProducts}
+          isActive={activeFilter === "products"}
+          onClick={() => setActiveFilter("products")}
           colorClass="text-primary"
         />
         <FilterMetricCard
-          title="Limpeza"
-          value={cleaningProducts}
-          isActive={activeFilter === "cleaning"}
-          onClick={() => setActiveFilter("cleaning")}
+          title="Serviços"
+          value={totalServices}
+          isActive={activeFilter === "services"}
+          onClick={() => setActiveFilter("services")}
           colorClass="text-success"
         />
         <FilterMetricCard
-          title="Elétrica"
-          value={electricalProducts}
-          isActive={activeFilter === "electrical"}
-          onClick={() => setActiveFilter("electrical")}
+          title="Construção"
+          value={constructionItems}
+          isActive={activeFilter === "construction"}
+          onClick={() => setActiveFilter("construction")}
           colorClass="text-warning"
         />
         <FilterMetricCard
+          title="Limpeza"
+          value={cleaningItems}
+          isActive={activeFilter === "cleaning"}
+          onClick={() => setActiveFilter("cleaning")}
+          colorClass="text-info"
+        />
+        <FilterMetricCard
           title="Estoque Baixo"
-          value={lowStockProducts}
+          value={lowStockItems}
           isActive={activeFilter === "lowstock"}
           onClick={() => setActiveFilter("lowstock")}
           colorClass="text-destructive"
@@ -126,7 +204,7 @@ export default function Products() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Buscar por nome, código ou categoria..."
+                placeholder="Buscar por RFQ, nome, código ou categoria..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -139,38 +217,44 @@ export default function Products() {
         </CardContent>
       </Card>
 
-      {/* Products Grid */}
+      {/* Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => {
-          const stockStatus = getStockStatus(product.stockQuantity);
+        {filteredItems.map((item) => {
+          const stockStatus = getStockStatus(item.stockQuantity);
+          const isService = item.type === 'service';
           return (
-            <Card key={product.id} className="card-corporate hover:shadow-md transition-shadow">
+            <Card key={item.id} className="card-corporate hover:shadow-md transition-shadow">
               <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    {getCategoryIcon(product.category)}
+                    {isService ? <Wrench className="h-4 w-4" /> : getCategoryIcon(item.category)}
                     <div className="flex-1">
-                      <CardTitle className="text-base leading-tight">{product.name}</CardTitle>
+                      <CardTitle className="text-base leading-tight">{item.name}</CardTitle>
                       <p className="text-xs text-muted-foreground font-mono mt-1">
-                        {product.code}
+                        {item.code}
                       </p>
+                      {item.imported && (
+                        <Badge variant="outline" className="text-xs mt-1">
+                          Importado
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                  {product.stockQuantity <= 10 && (
+                  {!isService && item.stockQuantity <= 10 && (
                     <AlertTriangle className="h-4 w-4 text-destructive" />
                   )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Product Info */}
+                {/* Item Info */}
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    {product.description}
+                    {item.description}
                   </p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Categoria:</span>
                     <Badge variant="outline" className="text-xs">
-                      {product.category}
+                      {item.category}
                     </Badge>
                   </div>
                 </div>
@@ -179,14 +263,14 @@ export default function Products() {
                 <div className="pt-2 border-t border-border space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
-                      {product.category === 'Serviços' ? 'Disponível' : 'Quantidade'}:
+                      {isService ? 'Disponível' : 'Quantidade'}:
                     </span>
                     <div className="flex items-center gap-2">
-                      {product.category === 'Serviços' ? (
+                      {isService ? (
                         <Badge className="badge-success">Disponível</Badge>
                       ) : (
                         <>
-                          <span className="font-semibold">{product.stockQuantity}</span>
+                          <span className="font-semibold">{item.stockQuantity}</span>
                           <Badge className={stockStatus.color}>
                             {stockStatus.label}
                           </Badge>
@@ -197,24 +281,62 @@ export default function Products() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Tipo:</span>
                     <Badge variant="outline" className="text-xs">
-                      {product.category === 'Serviços' ? 'Serviço' : 'Produto'}
+                      {isService ? 'Serviço' : 'Produto'}
                     </Badge>
                   </div>
+                  {item.unitPrice && item.unitPrice > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        {isService ? 'Preço Ref.' : 'Preço Unit.'}:
+                      </span>
+                      <span className="text-sm font-medium text-primary">
+                        R$ {item.unitPrice.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleViewItem(item)}
+                  >
                     <Eye className="h-4 w-4 mr-2" />
                     Ver
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleEditItem(item)}
+                  >
                     <Edit className="h-4 w-4 mr-2" />
                     Editar
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <Package className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    {!isService && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleStockMovement(item)}
+                        title="Movimentar Estoque"
+                      >
+                        <TrendingUp className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDeleteItem(item)}
+                      className="text-destructive hover:text-destructive"
+                      title="Excluir Item"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -223,11 +345,11 @@ export default function Products() {
       </div>
 
       {/* Empty State */}
-      {filteredProducts.length === 0 && (
+      {filteredItems.length === 0 && (
         <Card className="card-corporate">
           <CardContent className="p-12 text-center">
             <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhum produto encontrado</h3>
+            <h3 className="text-lg font-semibold mb-2">Nenhum item encontrado</h3>
             <p className="text-muted-foreground mb-4">
               {searchTerm || activeFilter !== "all" 
                 ? "Tente ajustar os filtros de busca"
@@ -235,40 +357,44 @@ export default function Products() {
               }
             </p>
             {!searchTerm && activeFilter === "all" && (
-              <Button className="btn-corporate">
-                <Plus className="h-4 w-4 mr-2" />
-                Cadastrar Primeiro Item
-              </Button>
+              <CreateItemModal 
+                onItemCreate={createItem}
+                trigger={
+                  <Button className="btn-corporate">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Cadastrar Primeiro Item
+                  </Button>
+                }
+              />
             )}
           </CardContent>
         </Card>
       )}
 
       {/* Low Stock Alerts - Only for products, not services */}
-      {lowStockProducts > 0 && (
+      {lowStockItems > 0 && (
         <Card className="card-corporate border-destructive/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              Alertas de Quantidade
+              Alertas de Estoque
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              {lowStockProducts} produto(s) com quantidade baixa ou crítica precisam de atenção
+              {lowStockItems} produto(s) com estoque baixo ou crítico precisam de atenção
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockProducts
-                .filter(p => p.stockQuantity <= 10 && p.category !== 'Serviços')
+              {getLowStockItems()
                 .slice(0, 4)
-                .map(product => (
-                  <div key={product.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg">
+                .map(item => (
+                  <div key={item.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg">
                     <div>
-                      <p className="font-medium text-sm">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">{product.code}</p>
+                      <p className="font-medium text-sm">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">{item.code}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-destructive">{product.stockQuantity}</p>
+                      <p className="font-bold text-destructive">{item.stockQuantity}</p>
                       <p className="text-xs text-muted-foreground">unidades</p>
                     </div>
                   </div>
@@ -278,6 +404,33 @@ export default function Products() {
           </CardContent>
         </Card>
       )}
+
+      {/* Modals */}
+      <ViewItemModal
+        item={selectedItem}
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+      />
+
+      <DeleteItemModal
+        item={selectedItem}
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onConfirm={handleDeleteConfirm}
+      />
+
+      <StockMovementModal
+        item={selectedItem}
+        open={stockModalOpen}
+        onOpenChange={setStockModalOpen}
+        onMovementCreate={handleStockMovementCreate}
+      />
+
+      <InvoiceImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onImportComplete={handleImportComplete}
+      />
     </div>
   );
 }

@@ -29,7 +29,7 @@ const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Cotações", url: "/quotes", icon: FileText },
   { title: "Fornecedores", url: "/suppliers", icon: Users },
-  { title: "Produtos", url: "/products", icon: Package },
+  { title: "Itens", url: "/products", icon: Package },
   { title: "Aprovações", url: "/approvals", icon: CheckCircle },
   { title: "Pagamentos", url: "/payments", icon: CreditCard },
   { title: "Comunicação", url: "/communication", icon: Mail },
