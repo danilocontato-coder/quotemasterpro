@@ -49,14 +49,12 @@ export default function Products() {
       matchesFilter = item.type === "product";
     } else if (activeFilter === "services") {
       matchesFilter = item.type === "service";
-    } else if (activeFilter === "construction") {
-      matchesFilter = item.category === "Materiais de Construção";
-    } else if (activeFilter === "cleaning") {
-      matchesFilter = item.category === "Produtos de Limpeza";
-    } else if (activeFilter === "electrical") {
-      matchesFilter = item.category === "Elétrica e Iluminação";
-    } else if (activeFilter === "lowstock") {
-      matchesFilter = item.type === "product" && item.stockQuantity <= 10;
+    } else if (activeFilter === "normal") {
+      matchesFilter = item.type === "product" && item.stockQuantity > 10;
+    } else if (activeFilter === "low") {
+      matchesFilter = item.type === "product" && item.stockQuantity > 5 && item.stockQuantity <= 10;
+    } else if (activeFilter === "critical") {
+      matchesFilter = item.type === "product" && item.stockQuantity <= 5;
     }
     
     return matchesSearch && matchesFilter;
@@ -66,10 +64,9 @@ export default function Products() {
   const totalItems = items.length;
   const totalProducts = items.filter(i => i.type === "product").length;
   const totalServices = items.filter(i => i.type === "service").length;
-  const constructionItems = items.filter(i => i.category === "Materiais de Construção").length;
-  const cleaningItems = items.filter(i => i.category === "Produtos de Limpeza").length;
-  const electricalItems = items.filter(i => i.category === "Elétrica e Iluminação").length;
-  const lowStockItems = getLowStockItems().length;
+  const normalStockItems = items.filter(i => i.type === "product" && i.stockQuantity > 10).length;
+  const lowStockItems = items.filter(i => i.type === "product" && i.stockQuantity > 5 && i.stockQuantity <= 10).length;
+  const criticalStockItems = items.filter(i => i.type === "product" && i.stockQuantity <= 5).length;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -194,24 +191,24 @@ export default function Products() {
           colorClass="text-success"
         />
         <FilterMetricCard
-          title="Construção"
-          value={constructionItems}
-          isActive={activeFilter === "construction"}
-          onClick={() => setActiveFilter("construction")}
+          title="Normal"
+          value={normalStockItems}
+          isActive={activeFilter === "normal"}
+          onClick={() => setActiveFilter("normal")}
+          colorClass="text-success"
+        />
+        <FilterMetricCard
+          title="Baixo"
+          value={lowStockItems}
+          isActive={activeFilter === "low"}
+          onClick={() => setActiveFilter("low")}
           colorClass="text-warning"
         />
         <FilterMetricCard
-          title="Limpeza"
-          value={cleaningItems}
-          isActive={activeFilter === "cleaning"}
-          onClick={() => setActiveFilter("cleaning")}
-          colorClass="text-info"
-        />
-        <FilterMetricCard
-          title="Estoque Baixo"
-          value={lowStockItems}
-          isActive={activeFilter === "lowstock"}
-          onClick={() => setActiveFilter("lowstock")}
+          title="Crítico"
+          value={criticalStockItems}
+          isActive={activeFilter === "critical"}
+          onClick={() => setActiveFilter("critical")}
           colorClass="text-destructive"
         />
       </div>
@@ -395,7 +392,7 @@ export default function Products() {
       )}
 
       {/* Low Stock Alerts - Only for products, not services */}
-      {lowStockItems > 0 && (
+      {(lowStockItems > 0 || criticalStockItems > 0) && (
         <Card className="card-corporate border-destructive/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
@@ -405,10 +402,11 @@ export default function Products() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              {lowStockItems} produto(s) com estoque baixo ou crítico precisam de atenção
+              {lowStockItems + criticalStockItems} produto(s) com estoque baixo ou crítico precisam de atenção
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {getLowStockItems()
+              {items
+                .filter(item => item.type === "product" && item.stockQuantity <= 10)
                 .slice(0, 4)
                 .map(item => (
                   <div key={item.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg">
