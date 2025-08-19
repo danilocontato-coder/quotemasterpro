@@ -18,6 +18,8 @@ export default function Quotes() {
     console.log('Nova cotação criada:', quoteData);
     // Em uma aplicação real, isso salvaria no banco de dados
   };
+
+  const filteredQuotes = mockQuotes.filter(quote => {
     const matchesSearch = quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.description.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -60,45 +62,6 @@ export default function Quotes() {
     return diffDays <= 2 && diffDays >= 0;
   }).length;
   const responseRate = totalActive > 0 ? Math.round((finalizedQuotes / totalActive) * 100) : 0;
-
-  const handleProductSelect = (product: Product, quantity: number) => {
-    const existingIndex = newQuoteProducts.findIndex(item => item.product.id === product.id);
-    if (existingIndex >= 0) {
-      const updated = [...newQuoteProducts];
-      updated[existingIndex].quantity = quantity;
-      setNewQuoteProducts(updated);
-    } else {
-      setNewQuoteProducts(prev => [...prev, { product, quantity }]);
-    }
-  };
-
-  const handleRemoveProduct = (productId: string) => {
-    setNewQuoteProducts(prev => prev.filter(item => item.product.id !== productId));
-  };
-
-  const handleProductAdd = (productData: Omit<Product, 'id'>) => {
-    const newProduct: Product = {
-      ...productData,
-      id: `new-${Date.now()}`
-    };
-    // In a real app, this would be saved to the database
-    console.log('New product created:', newProduct);
-  };
-
-  const handleSupplierAdd = (supplierData: Omit<Supplier, 'id' | 'createdAt'>) => {
-    const newSupplier: Supplier = {
-      ...supplierData,
-      id: `new-${Date.now()}`,
-      createdAt: new Date().toISOString()
-    };
-    // In a real app, this would be saved to the database
-    console.log('New supplier created:', newSupplier);
-  };
-
-  const calculateQuoteTotal = () => {
-    // Since products don't have prices, return 0 - prices will be filled by suppliers
-    return 0;
-  };
 
   const statusOptions = [
     { value: "all", label: "Todas" },
@@ -343,119 +306,11 @@ export default function Quotes() {
       </Card>
 
       {/* Create Quote Modal */}
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nova Cotação</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Basic Info */}
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="text-sm font-medium">Título da Cotação</label>
-                <Input placeholder="Ex: Materiais de Construção, Equipamentos de Limpeza..." />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Descrição (opcional)</label>
-                <Input placeholder="Descreva detalhes adicionais da cotação..." />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Prazo para Respostas</label>
-                <Input type="date" />
-              </div>
-            </div>
-
-            {/* Product Selection */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Produtos e Itens</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ProductSelector 
-                  onProductSelect={handleProductSelect}
-                  selectedProducts={newQuoteProducts.map(item => item.product.id)}
-                />
-                <QuickAddProduct onProductAdd={handleProductAdd} />
-              </div>
-
-              <QuickAddSupplier onSupplierAdd={handleSupplierAdd} />
-
-              {/* Selected Products */}
-              {newQuoteProducts.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Produtos Selecionados</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {newQuoteProducts.map(({ product, quantity }) => (
-                        <div key={product.id} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">{product.code} • {product.category}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-center">
-                              <p className="text-sm font-medium">{quantity}x</p>
-                              <p className="text-xs text-muted-foreground">
-                                {product.category}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">
-                                Aguardando cotação
-                              </p>
-                            </div>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleRemoveProduct(product.id)}
-                            >
-                              ×
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <div className="border-t pt-3 flex justify-between items-center">
-                        <span className="font-semibold">Total de Itens:</span>
-                        <span className="text-lg font-bold text-primary">
-                          {newQuoteProducts.reduce((total, item) => total + item.quantity, 0)} itens
-                        </span>
-                      </div>
-                      <div className="text-center pt-2">
-                        <p className="text-sm text-muted-foreground">
-                          Valores serão preenchidos pelos fornecedores
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setIsCreateModalOpen(false);
-                  setNewQuoteProducts([]);
-                }}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button variant="outline" className="flex-1">
-                Salvar Rascunho
-              </Button>
-              <Button className="flex-1">
-                Enviar Cotação
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CreateQuoteModal 
+        open={isCreateModalOpen} 
+        onOpenChange={setIsCreateModalOpen}
+        onQuoteCreate={handleQuoteCreate}
+      />
 
       {/* Empty State */}
       {filteredQuotes.length === 0 && (
