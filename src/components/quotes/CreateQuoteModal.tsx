@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
+import { NewSupplierForm } from "./NewSupplierForm";
 import { mockSuppliers, Product, Supplier } from "@/data/mockData";
 
 interface QuoteFormData {
@@ -34,14 +35,14 @@ const steps = [
   { id: 2, title: "Itens" },
   { id: 3, title: "Fornecedor" },
   { id: 4, title: "Revisão" },
-  { id: 5, title: "Propos..." },
-  { id: 6, title: "Forma de Envio" }
+  { id: 5, title: "Forma de Envio" }
 ];
 
 export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQuoteModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showNewProductForm, setShowNewProductForm] = useState(false);
+  const [showNewSupplierForm, setShowNewSupplierForm] = useState(false);
   
   const [formData, setFormData] = useState<QuoteFormData>({
     title: "",
@@ -88,6 +89,13 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
     }));
   };
 
+  const handleSupplierCreate = (supplier: Supplier) => {
+    setFormData(prev => ({
+      ...prev,
+      suppliers: [...prev.suppliers, supplier]
+    }));
+  };
+
   const handleRemoveItem = (index: number) => {
     setFormData(prev => ({
       ...prev,
@@ -125,9 +133,8 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
       case 3:
         return formData.suppliers.length > 0;
       case 4:
-      case 5:
         return true;
-      case 6:
+      case 5:
         return formData.communicationMethods.email || formData.communicationMethods.whatsapp;
       default:
         return false;
@@ -266,7 +273,17 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Fornecedores Disponíveis</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Fornecedores Disponíveis</CardTitle>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowNewSupplierForm(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Fornecedor
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {mockSuppliers.slice(0, 5).map((supplier) => (
@@ -377,15 +394,6 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
         );
 
       case 5:
-        return (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-semibold mb-2">Propostas</h3>
-            <p className="text-muted-foreground mb-4">Aguardando implementação das propostas dos fornecedores</p>
-            <Package className="h-12 w-12 text-muted-foreground mx-auto" />
-          </div>
-        );
-
-      case 6:
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -531,6 +539,12 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
         open={showNewProductForm}
         onOpenChange={setShowNewProductForm}
         onProductCreate={handleProductCreate}
+      />
+
+      <NewSupplierForm
+        open={showNewSupplierForm}
+        onOpenChange={setShowNewSupplierForm}
+        onSupplierCreate={handleSupplierCreate}
       />
     </>
   );
