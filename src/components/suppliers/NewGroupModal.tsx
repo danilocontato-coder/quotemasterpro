@@ -1,15 +1,20 @@
 import { useState } from "react";
-import { Plus, Users, Palette } from "lucide-react";
+import { Plus, Users, Palette, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { SupplierGroup } from "@/data/mockData";
 
 interface NewGroupModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGroupCreate: (group: SupplierGroup) => void;
+  existingGroups: SupplierGroup[];
+  onGroupDelete: (groupId: string) => void;
 }
 
 const colorOptions = [
@@ -23,7 +28,7 @@ const colorOptions = [
   { value: 'bg-emerald-500', label: 'Esmeralda', color: '#059669' },
 ];
 
-export function NewGroupModal({ open, onOpenChange, onGroupCreate }: NewGroupModalProps) {
+export function NewGroupModal({ open, onOpenChange, onGroupCreate, existingGroups, onGroupDelete }: NewGroupModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -72,15 +77,58 @@ export function NewGroupModal({ open, onOpenChange, onGroupCreate }: NewGroupMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Criar Novo Grupo
+            Gerenciar Grupos de Fornecedores
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-6">
+          {/* Existing Groups */}
+          {existingGroups.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium mb-3">Grupos Existentes</h3>
+              <div className="space-y-2">
+                {existingGroups.map((group) => (
+                  <Card key={group.id} className="border">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-4 h-4 rounded-full" 
+                            style={{ backgroundColor: colorOptions.find(c => c.value === group.color)?.color || '#3b82f6' }}
+                          />
+                          <div>
+                            <h4 className="font-medium text-sm">{group.name}</h4>
+                            {group.description && (
+                              <p className="text-xs text-muted-foreground">{group.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onGroupDelete(group.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Create New Group Form */}
+          <div>
+            <h3 className="text-sm font-medium mb-4">Criar Novo Grupo</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-medium mb-2 block">
               Nome do Grupo *
@@ -150,8 +198,10 @@ export function NewGroupModal({ open, onOpenChange, onGroupCreate }: NewGroupMod
               <Plus className="h-4 w-4 mr-2" />
               Criar Grupo
             </Button>
+            </div>
+          </form>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

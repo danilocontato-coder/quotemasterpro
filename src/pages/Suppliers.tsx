@@ -57,6 +57,16 @@ export default function Suppliers() {
     setSupplierGroups(prev => [...prev, newGroup]);
   };
 
+  const handleGroupDelete = (groupId: string) => {
+    setSupplierGroups(prev => prev.filter(group => group.id !== groupId));
+    // Also remove the group reference from suppliers
+    setSuppliers(prev => prev.map(supplier => 
+      supplier.groupId === groupId 
+        ? { ...supplier, groupId: undefined }
+        : supplier
+    ));
+  };
+
   const getGroupName = (groupId?: string) => {
     if (!groupId) return null;
     const group = supplierGroups.find(g => g.id === groupId);
@@ -300,6 +310,8 @@ export default function Suppliers() {
         open={showNewGroupModal}
         onOpenChange={setShowNewGroupModal}
         onGroupCreate={handleGroupCreate}
+        existingGroups={supplierGroups}
+        onGroupDelete={handleGroupDelete}
       />
     </div>
   );
