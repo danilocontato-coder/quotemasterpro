@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { mockProducts, Product } from "@/data/mockData";
+import { mockProducts, Product, productCategories } from "@/data/mockData";
 
 interface ProductSelectorProps {
   onProductSelect: (product: Product, quantity: number) => void;
@@ -88,10 +88,12 @@ export function ProductSelector({ onProductSelect, selectedProducts }: ProductSe
                       </div>
 
                       <div className="flex items-center justify-between text-sm">
-                        <span>Estoque: <strong>{product.stockQuantity}</strong></span>
-                        <span className="font-bold text-primary">
-                          R$ {product.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        <span>
+                          {product.category === 'Serviços' ? 'Tipo: Serviço' : `Quantidade: ${product.stockQuantity}`}
                         </span>
+                        <Badge variant="outline" className="text-xs">
+                          {product.category}
+                        </Badge>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -99,7 +101,7 @@ export function ProductSelector({ onProductSelect, selectedProducts }: ProductSe
                           type="number"
                           placeholder="Qtd"
                           min="1"
-                          max={product.stockQuantity}
+                          max={product.category === 'Serviços' ? 999 : product.stockQuantity}
                           value={selectedQuantities[product.id] || 1}
                           onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value) || 1)}
                           className="w-20 text-sm"
@@ -107,7 +109,7 @@ export function ProductSelector({ onProductSelect, selectedProducts }: ProductSe
                         <Button
                           size="sm"
                           onClick={() => handleAddProduct(product)}
-                          disabled={isSelected || (selectedQuantities[product.id] || 1) > product.stockQuantity}
+                          disabled={isSelected || (product.category !== 'Serviços' && (selectedQuantities[product.id] || 1) > product.stockQuantity)}
                           className="flex-1"
                         >
                           {isSelected ? 'Já Adicionado' : 'Adicionar'}
@@ -145,18 +147,10 @@ export function QuickAddProduct({ onProductAdd }: QuickAddProductProps) {
     description: '',
     category: 'Materiais de Construção',
     stockQuantity: 1,
-    unitPrice: 0,
     status: 'active' as const
   });
 
-  const categories = [
-    'Materiais de Construção',
-    'Produtos de Limpeza', 
-    'Elétrica e Iluminação',
-    'Jardinagem',
-    'Ferramentas',
-    'Hidráulica'
-  ];
+  const categories = productCategories;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +162,6 @@ export function QuickAddProduct({ onProductAdd }: QuickAddProductProps) {
       description: '',
       category: 'Materiais de Construção',
       stockQuantity: 1,
-      unitPrice: 0,
       status: 'active'
     });
   };
@@ -178,12 +171,12 @@ export function QuickAddProduct({ onProductAdd }: QuickAddProductProps) {
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full">
           <Plus className="h-4 w-4 mr-2" />
-          Criar Novo Produto
+          Criar Novo Item
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Criar Novo Produto</DialogTitle>
+          <DialogTitle>Criar Novo Item</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -212,11 +205,11 @@ export function QuickAddProduct({ onProductAdd }: QuickAddProductProps) {
           </div>
 
           <div>
-            <label className="text-sm font-medium">Nome do Produto</label>
+            <label className="text-sm font-medium">Nome do Item</label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Nome completo do produto"
+              placeholder="Nome completo do item"
               required
             />
           </div>
@@ -230,26 +223,21 @@ export function QuickAddProduct({ onProductAdd }: QuickAddProductProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Quantidade Inicial</label>
-              <Input
-                type="number"
-                min="0"
-                value={formData.stockQuantity}
-                onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: parseInt(e.target.value) || 0 }))}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Preço Unitário (R$)</label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.unitPrice}
-                onChange={(e) => setFormData(prev => ({ ...prev, unitPrice: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
+          <div>
+            <label className="text-sm font-medium">Quantidade Inicial</label>
+            <Input
+              type="number"
+              min="0"
+              value={formData.stockQuantity}
+              onChange={(e) => setFormData(prev => ({ ...prev, stockQuantity: parseInt(e.target.value) || 0 }))}
+              disabled={formData.category === 'Serviços'}
+              placeholder={formData.category === 'Serviços' ? 'N/A - Serviço' : 'Quantidade inicial'}
+            />
+            {formData.category === 'Serviços' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Serviços não possuem quantidade física
+              </p>
+            )}
           </div>
 
           <div className="flex gap-2 pt-4">
@@ -257,7 +245,7 @@ export function QuickAddProduct({ onProductAdd }: QuickAddProductProps) {
               Cancelar
             </Button>
             <Button type="submit" className="flex-1">
-              Criar Produto
+              Criar Item
             </Button>
           </div>
         </form>

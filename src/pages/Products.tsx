@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Package, AlertTriangle, Wrench, Leaf, Zap } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Package, AlertTriangle, Wrench, Leaf, Zap, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
+import { CategoryManager } from "@/components/categories/CategoryManager";
 import { mockProducts, getStatusColor, getStatusText } from "@/data/mockData";
 
 export default function Products() {
@@ -65,15 +66,18 @@ export default function Products() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Produtos e Estoque</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Catálogo de Produtos</h1>
           <p className="text-muted-foreground">
-            Gerencie o catálogo de produtos e controle de estoque do condomínio
+            Gerencie o catálogo de produtos e serviços para facilitar cotações
           </p>
         </div>
-        <Button className="btn-corporate flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Produto
-        </Button>
+        <div className="flex gap-2">
+          <CategoryManager />
+          <Button className="btn-corporate flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Item
+          </Button>
+        </div>
       </div>
 
       {/* Filter Metrics Cards */}
@@ -171,22 +175,30 @@ export default function Products() {
                   </div>
                 </div>
 
-                {/* Stock and Price */}
+                {/* Stock and Availability */}
                 <div className="pt-2 border-t border-border space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Estoque:</span>
+                    <span className="text-sm text-muted-foreground">
+                      {product.category === 'Serviços' ? 'Disponível' : 'Quantidade'}:
+                    </span>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold">{product.stockQuantity}</span>
-                      <Badge className={stockStatus.color}>
-                        {stockStatus.label}
-                      </Badge>
+                      {product.category === 'Serviços' ? (
+                        <Badge className="badge-success">Disponível</Badge>
+                      ) : (
+                        <>
+                          <span className="font-semibold">{product.stockQuantity}</span>
+                          <Badge className={stockStatus.color}>
+                            {stockStatus.label}
+                          </Badge>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Preço unitário:</span>
-                    <span className="font-bold text-primary">
-                      R$ {product.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
+                    <span className="text-sm text-muted-foreground">Tipo:</span>
+                    <Badge variant="outline" className="text-xs">
+                      {product.category === 'Serviços' ? 'Serviço' : 'Produto'}
+                    </Badge>
                   </div>
                 </div>
 
@@ -201,7 +213,7 @@ export default function Products() {
                     Editar
                   </Button>
                   <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4" />
+                    <Package className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -219,35 +231,35 @@ export default function Products() {
             <p className="text-muted-foreground mb-4">
               {searchTerm || activeFilter !== "all" 
                 ? "Tente ajustar os filtros de busca"
-                : "Comece cadastrando seu primeiro produto"
+                : "Comece cadastrando seu primeiro produto ou serviço"
               }
             </p>
             {!searchTerm && activeFilter === "all" && (
               <Button className="btn-corporate">
                 <Plus className="h-4 w-4 mr-2" />
-                Cadastrar Primeiro Produto
+                Cadastrar Primeiro Item
               </Button>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Stock Alerts */}
+      {/* Low Stock Alerts - Only for products, not services */}
       {lowStockProducts > 0 && (
         <Card className="card-corporate border-destructive/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              Alertas de Estoque
+              Alertas de Quantidade
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              {lowStockProducts} produto(s) com estoque baixo ou crítico precisam de atenção
+              {lowStockProducts} produto(s) com quantidade baixa ou crítica precisam de atenção
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {mockProducts
-                .filter(p => p.stockQuantity <= 10)
+                .filter(p => p.stockQuantity <= 10 && p.category !== 'Serviços')
                 .slice(0, 4)
                 .map(product => (
                   <div key={product.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg">

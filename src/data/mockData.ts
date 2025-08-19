@@ -54,7 +54,6 @@ export interface Product {
   description: string;
   category: string;
   stockQuantity: number;
-  unitPrice: number;
   supplierId?: string;
   status: 'active' | 'inactive';
 }
@@ -191,7 +190,6 @@ export const mockProducts: Product[] = [
     description: 'Cimento Portland comum para construção civil',
     category: 'Materiais de Construção',
     stockQuantity: 150,
-    unitPrice: 35.50,
     supplierId: '1',
     status: 'active',
   },
@@ -202,7 +200,6 @@ export const mockProducts: Product[] = [
     description: 'Areia fina lavada para construção',
     category: 'Materiais de Construção',
     stockQuantity: 25,
-    unitPrice: 45.00,
     supplierId: '1',
     status: 'active',
   },
@@ -213,7 +210,6 @@ export const mockProducts: Product[] = [
     description: 'Brita número 1 para concreto',
     category: 'Materiais de Construção',
     stockQuantity: 15,
-    unitPrice: 52.00,
     supplierId: '1',
     status: 'active',
   },
@@ -224,7 +220,6 @@ export const mockProducts: Product[] = [
     description: 'Tijolo cerâmico estrutural 6 furos 14x19x29cm',
     category: 'Materiais de Construção',
     stockQuantity: 2000,
-    unitPrice: 0.85,
     supplierId: '1',
     status: 'active',
   },
@@ -236,7 +231,6 @@ export const mockProducts: Product[] = [
     description: 'Detergente neutro concentrado para limpeza geral',
     category: 'Produtos de Limpeza',
     stockQuantity: 80,
-    unitPrice: 12.90,
     supplierId: '2',
     status: 'active',
   },
@@ -247,7 +241,6 @@ export const mockProducts: Product[] = [
     description: 'Desinfetante bactericida para áreas comuns',
     category: 'Produtos de Limpeza',
     stockQuantity: 45,
-    unitPrice: 8.50,
     supplierId: '2',
     status: 'active',
   },
@@ -258,7 +251,6 @@ export const mockProducts: Product[] = [
     description: 'Papel higiênico folha dupla pacote com 12 rolos',
     category: 'Produtos de Limpeza',
     stockQuantity: 120,
-    unitPrice: 18.90,
     supplierId: '2',
     status: 'active',
   },
@@ -270,7 +262,6 @@ export const mockProducts: Product[] = [
     description: 'Lâmpada LED bulbo 12W luz branca 6500K',
     category: 'Elétrica e Iluminação',
     stockQuantity: 200,
-    unitPrice: 15.90,
     supplierId: '3',
     status: 'active',
   },
@@ -281,7 +272,6 @@ export const mockProducts: Product[] = [
     description: 'Cabo flexível 2,5mm² para instalações elétricas (metro)',
     category: 'Elétrica e Iluminação',
     stockQuantity: 500,
-    unitPrice: 4.20,
     supplierId: '3',
     status: 'active',
   },
@@ -292,7 +282,6 @@ export const mockProducts: Product[] = [
     description: 'Disjuntor monopolar 20A padrão DIN',
     category: 'Elétrica e Iluminação',
     stockQuantity: 30,
-    unitPrice: 28.50,
     supplierId: '3',
     status: 'active',
   },
@@ -304,7 +293,6 @@ export const mockProducts: Product[] = [
     description: 'Terra vegetal adubada para jardinagem',
     category: 'Jardinagem',
     stockQuantity: 60,
-    unitPrice: 12.00,
     status: 'active',
   },
   {
@@ -314,7 +302,6 @@ export const mockProducts: Product[] = [
     description: 'Adubo granulado NPK 10-10-10 saco 25kg',
     category: 'Jardinagem',
     stockQuantity: 25,
-    unitPrice: 45.00,
     status: 'active',
   },
   // Ferramentas
@@ -325,7 +312,6 @@ export const mockProducts: Product[] = [
     description: 'Martelo unha cabo de madeira 500g',
     category: 'Ferramentas',
     stockQuantity: 15,
-    unitPrice: 35.90,
     status: 'active',
   },
   {
@@ -335,7 +321,6 @@ export const mockProducts: Product[] = [
     description: 'Furadeira de impacto 1/2" 850W com maleta',
     category: 'Ferramentas',
     stockQuantity: 8,
-    unitPrice: 285.00,
     status: 'active',
   },
   // Produtos com estoque baixo
@@ -346,9 +331,41 @@ export const mockProducts: Product[] = [
     description: 'Registro de gaveta bronze 3/4" com canopla',
     category: 'Hidráulica',
     stockQuantity: 3,
-    unitPrice: 42.90,
     status: 'active',
   },
+  // Serviços
+  {
+    id: '16',
+    code: 'SRV001',
+    name: 'Limpeza de Caixa d\'Água',
+    description: 'Serviço de limpeza e desinfecção de reservatório',
+    category: 'Serviços',
+    stockQuantity: 0,
+    status: 'active',
+  },
+  {
+    id: '17',
+    code: 'SRV002',
+    name: 'Manutenção Preventiva Elevador',
+    description: 'Serviço mensal de manutenção preventiva de elevadores',
+    category: 'Serviços',
+    stockQuantity: 0,
+    status: 'active',
+  },
+];
+
+// Available categories for products
+export const productCategories = [
+  'Materiais de Construção',
+  'Produtos de Limpeza',
+  'Elétrica e Iluminação',
+  'Jardinagem',
+  'Ferramentas',
+  'Hidráulica',
+  'Serviços',
+  'Segurança',
+  'Pintura',
+  'Serralheria'
 ];
 
 // Dashboard metrics

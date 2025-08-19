@@ -74,9 +74,8 @@ export default function Quotes() {
   };
 
   const calculateQuoteTotal = () => {
-    return newQuoteProducts.reduce((total, item) => 
-      total + (item.product.unitPrice * item.quantity), 0
-    );
+    // Since products don't have prices, return 0 - prices will be filled by suppliers
+    return 0;
   };
 
   const statusOptions = [
@@ -304,12 +303,12 @@ export default function Quotes() {
                             <div className="text-center">
                               <p className="text-sm font-medium">{quantity}x</p>
                               <p className="text-xs text-muted-foreground">
-                                R$ {product.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                {product.category}
                               </p>
                             </div>
                             <div className="text-right">
-                              <p className="font-bold text-primary">
-                                R$ {(product.unitPrice * quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              <p className="text-sm text-muted-foreground">
+                                Aguardando cotação
                               </p>
                             </div>
                             <Button 
@@ -324,10 +323,15 @@ export default function Quotes() {
                       ))}
                       
                       <div className="border-t pt-3 flex justify-between items-center">
-                        <span className="font-semibold">Total:</span>
-                        <span className="text-xl font-bold text-primary">
-                          R$ {calculateQuoteTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        <span className="font-semibold">Total de Itens:</span>
+                        <span className="text-lg font-bold text-primary">
+                          {newQuoteProducts.reduce((total, item) => total + item.quantity, 0)} itens
                         </span>
+                      </div>
+                      <div className="text-center pt-2">
+                        <p className="text-sm text-muted-foreground">
+                          Valores serão preenchidos pelos fornecedores
+                        </p>
                       </div>
                     </div>
                   </CardContent>
