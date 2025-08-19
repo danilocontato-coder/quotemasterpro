@@ -20,44 +20,38 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-        <div className="xl:col-span-2">
-          <MetricCard
-            title="Total de Cotações"
-            value={dashboardMetrics.totalQuotes}
-            change="+12% vs mês anterior"
-            changeType="positive"
-            icon={FileText}
-            description="Todas as cotações no sistema"
-          />
-        </div>
+      {/* Primary Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <MetricCard
+          title="Total de Cotações"
+          value={dashboardMetrics.totalQuotes}
+          change="+12% vs mês anterior"
+          changeType="positive"
+          icon={FileText}
+          description="Todas as cotações no sistema"
+        />
         
-        <div className="xl:col-span-2">
-          <MetricCard
-            title="Aprovações Pendentes"
-            value={dashboardMetrics.pendingApprovals}
-            change="5 vencendo hoje"
-            changeType="neutral"
-            icon={CheckCircle}
-            description="Aguardando aprovação"
-          />
-        </div>
+        <MetricCard
+          title="Aprovações Pendentes"
+          value={dashboardMetrics.pendingApprovals}
+          change="5 vencendo hoje"
+          changeType="neutral"
+          icon={CheckCircle}
+          description="Aguardando aprovação"
+        />
         
-        <div className="xl:col-span-2">
-          <MetricCard
-            title="Fornecedores Ativos"
-            value={dashboardMetrics.activeSuppliers}
-            change="+3 este mês"
-            changeType="positive"
-            icon={Users}
-            description="Fornecedores cadastrados"
-          />
-        </div>
+        <MetricCard
+          title="Fornecedores Ativos"
+          value={dashboardMetrics.activeSuppliers}
+          change="+3 este mês"
+          changeType="positive"
+          icon={Users}
+          description="Fornecedores cadastrados"
+        />
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <MetricCard
           title="Gasto Mensal"
           value={`R$ ${dashboardMetrics.monthlySpending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
@@ -83,6 +77,15 @@ export default function Dashboard() {
           changeType="positive"
           icon={Clock}
           description="Resposta das cotações"
+        />
+
+        <MetricCard
+          title="Economia Estimada"
+          value="R$ 15.240,00"
+          change="Baseado em propostas aceitas"
+          changeType="positive"
+          icon={DollarSign}
+          description="Economia com cotações"
         />
       </div>
 

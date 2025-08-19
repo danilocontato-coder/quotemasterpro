@@ -152,13 +152,11 @@ All colors MUST be HSL. Design system for enterprise quote management.
 @layer components {
   /* Corporate card components */
   .card-corporate {
-    @apply bg-card shadow-[var(--shadow-card)] border border-border rounded-lg;
-    background: var(--gradient-card);
+    @apply bg-card shadow-sm border border-border rounded-lg;
   }
 
   .card-dashboard {
-    @apply bg-card shadow-[var(--shadow-card)] border border-border rounded-lg p-6;
-    background: var(--gradient-dashboard);
+    @apply bg-card shadow-sm border border-border rounded-lg p-6;
   }
 
   /* Button variants for corporate design */
