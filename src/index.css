@@ -1,40 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* QuoteMaster Pro Design System - Corporate Professional Theme
+All colors MUST be HSL. Design system for enterprise quote management.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Corporate Brand Colors */
+    --background: 0 0% 96%;  /* Light gray #F5F5F5 */
+    --foreground: 207 100% 20%;  /* Dark blue #003366 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;  /* Pure white */
+    --card-foreground: 207 100% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 207 100% 20%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Corporate Blue */
+    --primary: 207 100% 20%;  /* #003366 */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 207 100% 25%;
+    --primary-light: 207 100% 95%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary: Light Gray */
+    --secondary: 0 0% 96%;  /* #F5F5F5 */
+    --secondary-foreground: 207 100% 20%;
+    --secondary-hover: 0 0% 92%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted tones for subtle elements */
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent: Softer blue for highlights */
+    --accent: 207 50% 85%;
+    --accent-foreground: 207 100% 20%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Status colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Borders and inputs */
+    --border: 0 0% 89%;
+    --input: 0 0% 100%;
+    --ring: 207 100% 20%;
+
+    /* Corporate gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(207 100% 20%), hsl(207 100% 30%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(0 0% 98%));
+    --gradient-dashboard: linear-gradient(135deg, hsl(207 100% 95%), hsl(0 0% 98%));
+
+    /* Shadows */
+    --shadow-card: 0 2px 8px hsl(207 100% 20% / 0.08);
+    --shadow-dropdown: 0 4px 16px hsl(207 100% 20% / 0.12);
+    --shadow-modal: 0 8px 32px hsl(207 100% 20% / 0.16);
 
     --radius: 0.5rem;
 
@@ -56,41 +82,55 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark mode: Corporate dark theme */
+    --background: 207 100% 8%;
+    --foreground: 0 0% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 207 100% 10%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 207 100% 10%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 207 100% 70%;
+    --primary-foreground: 207 100% 10%;
+    --primary-hover: 207 100% 75%;
+    --primary-light: 207 100% 15%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 207 50% 15%;
+    --secondary-foreground: 0 0% 95%;
+    --secondary-hover: 207 50% 18%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 207 30% 18%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 207 50% 25%;
+    --accent-foreground: 0 0% 95%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 142 76% 45%;
+    --warning: 38 92% 60%;
+    --destructive: 0 84% 70%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 207 30% 20%;
+    --input: 207 100% 12%;
+    --ring: 207 100% 70%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(207 100% 70%), hsl(207 100% 80%));
+    --gradient-card: linear-gradient(180deg, hsl(207 100% 10%), hsl(207 100% 12%));
+    --gradient-dashboard: linear-gradient(135deg, hsl(207 100% 12%), hsl(207 50% 15%));
+
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.3);
+    --shadow-dropdown: 0 4px 16px hsl(0 0% 0% / 0.4);
+    --shadow-modal: 0 8px 32px hsl(0 0% 0% / 0.5);
+
+    --sidebar-background: 207 100% 6%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 207 100% 70%;
+    --sidebar-primary-foreground: 207 100% 10%;
+    --sidebar-accent: 207 50% 12%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 207 30% 15%;
+    --sidebar-ring: 207 100% 70%;
   }
 }
 
@@ -100,6 +140,89 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-roboto antialiased;
+  }
+
+  /* Corporate typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-roboto font-semibold text-foreground;
+  }
+}
+
+@layer components {
+  /* Corporate card components */
+  .card-corporate {
+    @apply bg-card shadow-[var(--shadow-card)] border border-border rounded-lg;
+    background: var(--gradient-card);
+  }
+
+  .card-dashboard {
+    @apply bg-card shadow-[var(--shadow-card)] border border-border rounded-lg p-6;
+    background: var(--gradient-dashboard);
+  }
+
+  /* Button variants for corporate design */
+  .btn-corporate {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 
+           shadow-[var(--shadow-card)] transition-all duration-200 
+           font-medium rounded-md px-4 py-2;
+    background: var(--gradient-primary);
+  }
+
+  .btn-corporate-outline {
+    @apply border-2 border-primary text-primary hover:bg-primary 
+           hover:text-primary-foreground transition-all duration-200 
+           font-medium rounded-md px-4 py-2;
+  }
+
+  /* Professional table styles */
+  .table-corporate {
+    @apply w-full border-collapse bg-card rounded-lg overflow-hidden 
+           shadow-[var(--shadow-card)];
+  }
+
+  .table-corporate th {
+    @apply bg-secondary text-secondary-foreground font-semibold 
+           p-4 text-left border-b border-border;
+  }
+
+  .table-corporate td {
+    @apply p-4 border-b border-border last:border-b-0 
+           hover:bg-secondary/50 transition-colors;
+  }
+
+  /* Sidebar navigation styles */
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg 
+           text-sidebar-foreground hover:bg-sidebar-accent 
+           hover:text-sidebar-accent-foreground transition-colors cursor-pointer;
+  }
+
+  .nav-item.active {
+    @apply bg-sidebar-primary text-sidebar-primary-foreground 
+           shadow-[var(--shadow-card)];
+  }
+
+  /* Status badges */
+  .badge-success {
+    @apply bg-success text-success-foreground px-2 py-1 
+           rounded-full text-xs font-medium;
+  }
+
+  .badge-warning {
+    @apply bg-warning text-warning-foreground px-2 py-1 
+           rounded-full text-xs font-medium;
+  }
+
+  .badge-error {
+    @apply bg-destructive text-destructive-foreground px-2 py-1 
+           rounded-full text-xs font-medium;
+  }
+
+  /* Metric cards for dashboard */
+  .metric-card {
+    @apply card-dashboard flex flex-col items-start justify-between 
+           min-h-[120px] hover:shadow-[var(--shadow-dropdown)] 
+           transition-shadow duration-200;
   }
 }
