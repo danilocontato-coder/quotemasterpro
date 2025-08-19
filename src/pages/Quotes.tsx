@@ -4,13 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
-import { mockQuotes, getStatusColor, getStatusText } from "@/data/mockData";
+import { ProductSelector, QuickAddProduct } from "@/components/products/ProductSelector";
+import { QuickAddSupplier } from "@/components/suppliers/QuickAddSupplier";
+import { mockQuotes, mockProducts, getStatusColor, getStatusText, Product, Supplier } from "@/data/mockData";
 
 export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newQuoteProducts, setNewQuoteProducts] = useState<Array<{product: Product, quantity: number}>>([]);
 
   const filteredQuotes = mockQuotes.filter(quote => {
     const matchesSearch = quote.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -34,6 +39,46 @@ export default function Quotes() {
   const approvedQuotes = mockQuotes.filter(q => q.status === 'approved').length;
   const completedQuotes = mockQuotes.filter(q => q.status === 'completed').length;
 
+  const handleProductSelect = (product: Product, quantity: number) => {
+    const existingIndex = newQuoteProducts.findIndex(item => item.product.id === product.id);
+    if (existingIndex >= 0) {
+      const updated = [...newQuoteProducts];
+      updated[existingIndex].quantity = quantity;
+      setNewQuoteProducts(updated);
+    } else {
+      setNewQuoteProducts(prev => [...prev, { product, quantity }]);
+    }
+  };
+
+  const handleRemoveProduct = (productId: string) => {
+    setNewQuoteProducts(prev => prev.filter(item => item.product.id !== productId));
+  };
+
+  const handleProductAdd = (productData: Omit<Product, 'id'>) => {
+    const newProduct: Product = {
+      ...productData,
+      id: `new-${Date.now()}`
+    };
+    // In a real app, this would be saved to the database
+    console.log('New product created:', newProduct);
+  };
+
+  const handleSupplierAdd = (supplierData: Omit<Supplier, 'id' | 'createdAt'>) => {
+    const newSupplier: Supplier = {
+      ...supplierData,
+      id: `new-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    // In a real app, this would be saved to the database
+    console.log('New supplier created:', newSupplier);
+  };
+
+  const calculateQuoteTotal = () => {
+    return newQuoteProducts.reduce((total, item) => 
+      total + (item.product.unitPrice * item.quantity), 0
+    );
+  };
+
   const statusOptions = [
     { value: "all", label: "Todas" },
     { value: "draft", label: "Rascunho" },
@@ -53,7 +98,10 @@ export default function Quotes() {
             Gerencie todas as cotações e solicitações de orçamento
           </p>
         </div>
-        <Button className="btn-corporate flex items-center gap-2">
+        <Button 
+          className="btn-corporate flex items-center gap-2"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
           <Plus className="h-4 w-4" />
           Nova Cotação
         </Button>
@@ -198,6 +246,117 @@ export default function Quotes() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create Quote Modal */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nova Cotação</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Basic Info */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Cliente/Condomínio</label>
+                <Input placeholder="Selecionar cliente..." />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Fornecedor (opcional)</label>
+                <Input placeholder="Selecionar fornecedor..." />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Descrição da Cotação</label>
+              <Input placeholder="Descreva o que está sendo cotado..." />
+            </div>
+
+            {/* Product Selection */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Produtos e Itens</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ProductSelector 
+                  onProductSelect={handleProductSelect}
+                  selectedProducts={newQuoteProducts.map(item => item.product.id)}
+                />
+                <QuickAddProduct onProductAdd={handleProductAdd} />
+              </div>
+
+              <QuickAddSupplier onSupplierAdd={handleSupplierAdd} />
+
+              {/* Selected Products */}
+              {newQuoteProducts.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Produtos Selecionados</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {newQuoteProducts.map(({ product, quantity }) => (
+                        <div key={product.id} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{product.name}</p>
+                            <p className="text-xs text-muted-foreground">{product.code} • {product.category}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-center">
+                              <p className="text-sm font-medium">{quantity}x</p>
+                              <p className="text-xs text-muted-foreground">
+                                R$ {product.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-primary">
+                                R$ {(product.unitPrice * quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleRemoveProduct(product.id)}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="border-t pt-3 flex justify-between items-center">
+                        <span className="font-semibold">Total:</span>
+                        <span className="text-xl font-bold text-primary">
+                          R$ {calculateQuoteTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setNewQuoteProducts([]);
+                }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button variant="outline" className="flex-1">
+                Salvar Rascunho
+              </Button>
+              <Button className="flex-1">
+                Enviar Cotação
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Empty State */}
       {filteredQuotes.length === 0 && (
