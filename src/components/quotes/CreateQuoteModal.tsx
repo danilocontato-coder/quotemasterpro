@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, FileText, Package, Users, Mail, MessageCircle } from "lucide-react";
+import { Plus, X, FileText, Package, Users, Mail, MessageCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Stepper } from "@/components/ui/stepper";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockProducts, mockSuppliers, Product, Supplier } from "@/data/mockData";
+import { ProductSearchModal } from "./ProductSearchModal";
+import { NewProductForm } from "./NewProductForm";
+import { mockSuppliers, Product, Supplier } from "@/data/mockData";
 
 interface QuoteFormData {
   title: string;
@@ -28,15 +30,19 @@ interface CreateQuoteModalProps {
 }
 
 const steps = [
-  { id: 1, title: "Dados Básicos" },
+  { id: 1, title: "Dados" },
   { id: 2, title: "Itens" },
-  { id: 3, title: "Fornecedores" },
+  { id: 3, title: "Fornec..." },
   { id: 4, title: "Revisão" },
-  { id: 5, title: "Envio" },
+  { id: 5, title: "Propos..." },
+  { id: 6, title: "Comparador" }
 ];
 
 export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQuoteModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [showNewProductForm, setShowNewProductForm] = useState(false);
+  
   const [formData, setFormData] = useState<QuoteFormData>({
     title: "",
     description: "",
@@ -61,6 +67,34 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
     }
   };
 
+  const handleProductSelect = (product: Product, quantity: number) => {
+    const existingIndex = formData.items.findIndex(item => item.product.id === product.id);
+    if (existingIndex >= 0) {
+      const updatedItems = [...formData.items];
+      updatedItems[existingIndex].quantity = quantity;
+      setFormData(prev => ({ ...prev, items: updatedItems }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        items: [...prev.items, { product, quantity }]
+      }));
+    }
+  };
+
+  const handleProductCreate = (product: Product, quantity: number) => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, { product, quantity }]
+    }));
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
   const handleSubmit = () => {
     onQuoteCreate(formData);
     onOpenChange(false);
@@ -78,6 +112,10 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
     });
   };
 
+  const getTotalUnits = () => {
+    return formData.items.reduce((total, item) => total + item.quantity, 0);
+  };
+
   const canProceed = () => {
     switch (currentStep) {
       case 1:
@@ -87,8 +125,9 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
       case 3:
         return formData.suppliers.length > 0;
       case 4:
-        return true;
       case 5:
+        return true;
+      case 6:
         return formData.communicationMethods.email || formData.communicationMethods.whatsapp;
       default:
         return false;
@@ -133,82 +172,84 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold">Selecionar Itens</h3>
-              <p className="text-sm text-muted-foreground">Escolha os itens que deseja cotar</p>
+              <p className="text-sm text-muted-foreground">Escolha os itens que deseja cotar e defina as quantidades</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Contadores */}
+            <div className="flex gap-6 text-sm">
+              <div>
+                <span className="font-medium">{formData.items.length} item(ns) selecionado(s)</span>
+              </div>
+              <div>
+                <span className="font-medium">{getTotalUnits()} unidades total</span>
+              </div>
+            </div>
+
+            {/* Botões de ação */}
+            <div className="flex gap-4">
               <Button 
                 variant="outline" 
-                className="h-20 flex flex-col gap-2"
-                onClick={() => {
-                  // Simular seleção de produtos existentes
-                  const randomProduct = mockProducts[Math.floor(Math.random() * mockProducts.length)];
-                  setFormData(prev => ({
-                    ...prev,
-                    items: [...prev.items, { product: randomProduct, quantity: 1 }]
-                  }));
-                }}
+                className="flex-1 h-12"
+                onClick={() => setShowProductSearch(true)}
               >
-                <Package className="h-6 w-6" />
-                <span>Selecionar Existente</span>
+                <Plus className="h-4 w-4 mr-2" />
+                Selecionar Existente
               </Button>
               
               <Button 
-                className="h-20 flex flex-col gap-2"
-                onClick={() => {
-                  // Simular criação de novo produto
-                  const newProduct: Product = {
-                    id: `new-${Date.now()}`,
-                    code: `NOVO-${Date.now()}`,
-                    name: "Produto Teste",
-                    description: "Produto criado no modal",
-                    category: "Geral",
-                    stockQuantity: 0,
-                    status: 'active'
-                  };
-                  setFormData(prev => ({
-                    ...prev,
-                    items: [...prev.items, { product: newProduct, quantity: 1 }]
-                  }));
-                }}
+                className="flex-1 h-12"
+                onClick={() => setShowNewProductForm(true)}
               >
-                <Plus className="h-6 w-6" />
-                <span>Criar Novo</span>
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Novo
               </Button>
             </div>
 
-            {/* Itens selecionados */}
-            {formData.items.length > 0 && (
+            {/* Campo de busca (visual apenas) */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar itens..."
+                className="pl-10"
+                disabled
+              />
+            </div>
+
+            {/* Estado vazio ou lista de itens */}
+            {formData.items.length === 0 ? (
+              <div className="text-center py-12">
+                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-medium mb-2">Nenhum item selecionado</h3>
+                <p className="text-sm text-muted-foreground">
+                  Use os botões acima para selecionar itens existentes ou criar novos produtos
+                </p>
+              </div>
+            ) : (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Itens Selecionados ({formData.items.length})</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {formData.items.map(({ product, quantity }, index) => (
-                      <div key={`${product.id}-${index}`} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">{product.code} • {product.category}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium">{quantity}x</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setFormData(prev => ({
-                                ...prev,
-                                items: prev.items.filter((_, i) => i !== index)
-                              }));
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
+                <CardContent className="space-y-3">
+                  {formData.items.map(({ product, quantity }, index) => (
+                    <div key={`${product.id}-${index}`} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{product.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {product.code} • {product.category}
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium">{quantity}x</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveItem(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}
@@ -337,6 +378,15 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
 
       case 5:
         return (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-semibold mb-2">Propostas</h3>
+            <p className="text-muted-foreground mb-4">Aguardando implementação das propostas dos fornecedores</p>
+            <Package className="h-12 w-12 text-muted-foreground mx-auto" />
+          </div>
+        );
+
+      case 6:
+        return (
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-lg font-semibold">Opções de Envio</h3>
@@ -411,55 +461,77 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Nova Cotação</DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          <Stepper steps={steps} currentStep={currentStep} />
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Nova Cotação</DialogTitle>
+          </DialogHeader>
           
-          <div className="min-h-[400px]">
-            {renderStep()}
-          </div>
-          
-          <div className="flex justify-between pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={currentStep === 1}
-            >
-              Anterior
-            </Button>
+          <div className="space-y-6">
+            <Stepper steps={steps} currentStep={currentStep} />
             
-            <div className="flex gap-3">
+            <div className="min-h-[400px]">
+              {renderStep()}
+            </div>
+            
+            <div className="flex justify-between pt-4 border-t">
               <Button
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={handlePrevious}
+                disabled={currentStep === 1}
               >
-                Cancelar
+                Anterior
               </Button>
               
-              {currentStep < steps.length ? (
+              <div className="flex gap-3">
+                {currentStep === 2 && (
+                  <Button variant="outline">
+                    Salvar Rascunho
+                  </Button>
+                )}
+                
                 <Button
-                  onClick={handleNext}
-                  disabled={!canProceed()}
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
                 >
-                  Próximo
+                  Cancelar
                 </Button>
-              ) : (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!canProceed()}
-                >
-                  Enviar Cotação
-                </Button>
-              )}
+                
+                {currentStep < steps.length ? (
+                  <Button
+                    onClick={handleNext}
+                    disabled={!canProceed()}
+                  >
+                    Próximo
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!canProceed()}
+                  >
+                    Enviar Cotação
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modals auxiliares */}
+      <ProductSearchModal
+        open={showProductSearch}
+        onOpenChange={setShowProductSearch}
+        onProductSelect={handleProductSelect}
+        selectedProductIds={formData.items.map(item => item.product.id)}
+      />
+
+      <NewProductForm
+        open={showNewProductForm}
+        onOpenChange={setShowNewProductForm}
+        onProductCreate={handleProductCreate}
+      />
+    </>
   );
 }
