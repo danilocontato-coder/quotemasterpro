@@ -35,7 +35,7 @@ const steps = [
   { id: 3, title: "Fornecedor" },
   { id: 4, title: "Revisão" },
   { id: 5, title: "Propos..." },
-  { id: 6, title: "Comparador" }
+  { id: 6, title: "Forma de Envio" }
 ];
 
 export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQuoteModalProps) {
