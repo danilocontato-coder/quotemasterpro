@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, FileText, Package, Users, Mail, MessageCircle, Search } from "lucide-react";
+import { Plus, X, FileText, Package, Users, Mail, MessageCircle, Search, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +44,15 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+  
+  const [suppliers, setSuppliers] = useState(mockSuppliers);
+  const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [showEditSupplierModal, setShowEditSupplierModal] = useState(false);
+  const [contactValidationErrors, setContactValidationErrors] = useState<{email: string[], whatsapp: string[]}>({
+    email: [],
+    whatsapp: []
+  });
   
   const [formData, setFormData] = useState<QuoteFormData>({
     title: "",
@@ -94,7 +103,46 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
     return group;
   };
 
+  const handleStepClick = (stepId: number) => {
+    // Only allow navigation to current or completed steps
+    if (stepId <= currentStep) {
+      setCurrentStep(stepId);
+      setContactValidationErrors({ email: [], whatsapp: [] }); // Clear validation errors when navigating
+    }
+  };
+
+  const validateSupplierContacts = () => {
+    const emailErrors: string[] = [];
+    const whatsappErrors: string[] = [];
+    
+    if (formData.communicationMethods.email) {
+      formData.suppliers.forEach(supplier => {
+        if (!supplier.email || supplier.email.trim() === '') {
+          emailErrors.push(supplier.name);
+        }
+      });
+    }
+    
+    if (formData.communicationMethods.whatsapp) {
+      formData.suppliers.forEach(supplier => {
+        if (!supplier.phone || supplier.phone.trim() === '') {
+          whatsappErrors.push(supplier.name);
+        }
+      });
+    }
+    
+    setContactValidationErrors({ email: emailErrors, whatsapp: whatsappErrors });
+    return emailErrors.length === 0 && whatsappErrors.length === 0;
+  };
+
   const handleNext = () => {
+    if (currentStep === 5) {
+      // Validate contacts before proceeding
+      if (!validateSupplierContacts()) {
+        return;
+      }
+    }
+    
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
     }
@@ -128,10 +176,26 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
   };
 
   const handleSupplierCreate = (supplier: Supplier) => {
+    setSuppliers(prev => [...prev, supplier]);
     setFormData(prev => ({
       ...prev,
       suppliers: [...prev.suppliers, supplier]
     }));
+  };
+
+  const handleSupplierUpdate = (updatedSupplier: Supplier) => {
+    setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
+    setFormData(prev => ({
+      ...prev,
+      suppliers: prev.suppliers.map(s => s.id === updatedSupplier.id ? updatedSupplier : s)
+    }));
+    setEditingSupplier(null);
+    setShowEditSupplierModal(false);
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setShowEditSupplierModal(true);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -142,9 +206,14 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
   };
 
   const handleSubmit = () => {
+    if (!validateSupplierContacts()) {
+      return;
+    }
+    
     onQuoteCreate(formData);
     onOpenChange(false);
     setCurrentStep(1);
+    setContactValidationErrors({ email: [], whatsapp: [] });
     setFormData({
       title: "",
       description: "",
@@ -173,7 +242,8 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
       case 4:
         return true;
       case 5:
-        return formData.communicationMethods.email || formData.communicationMethods.whatsapp;
+        return (formData.communicationMethods.email || formData.communicationMethods.whatsapp) && 
+               validateSupplierContacts();
       default:
         return false;
     }
@@ -480,18 +550,28 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {formData.suppliers.map((supplier) => (
-                      <div key={supplier.id} className="p-3 bg-secondary/20 rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          {supplier.groupId && getGroupName(supplier.groupId) && (
-                            <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
-                          )}
-                          <p className="font-medium text-sm">{supplier.name}</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{supplier.email}</p>
-                        <p className="text-xs text-muted-foreground">{supplier.phone}</p>
-                      </div>
-                    ))}
+                     {formData.suppliers.map((supplier) => (
+                       <div key={supplier.id} className="p-3 bg-secondary/20 rounded-lg">
+                         <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-2 mb-1">
+                             {supplier.groupId && getGroupName(supplier.groupId) && (
+                               <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
+                             )}
+                             <p className="font-medium text-sm">{supplier.name}</p>
+                           </div>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => handleEditSupplier(supplier)}
+                             className="text-xs px-2 py-1 h-auto"
+                           >
+                             Editar
+                           </Button>
+                         </div>
+                         <p className="text-xs text-muted-foreground">{supplier.email}</p>
+                         <p className="text-xs text-muted-foreground">{supplier.phone}</p>
+                       </div>
+                     ))}
                   </div>
                 </CardContent>
               </Card>
@@ -512,6 +592,41 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
                 <CardTitle className="text-base">Métodos de Comunicação</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Validation Errors */}
+                {(contactValidationErrors.email.length > 0 || contactValidationErrors.whatsapp.length > 0) && (
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="h-4 w-4 text-destructive" />
+                      <p className="text-sm font-medium text-destructive">Dados de contato incompletos</p>
+                    </div>
+                    
+                    {contactValidationErrors.email.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-xs text-destructive">
+                          Fornecedores sem e-mail: {contactValidationErrors.email.join(', ')}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {contactValidationErrors.whatsapp.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-xs text-destructive">
+                          Fornecedores sem WhatsApp: {contactValidationErrors.whatsapp.join(', ')}
+                        </p>
+                      </div>
+                    )}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentStep(3)}
+                      className="text-xs mt-2"
+                    >
+                      Ir para Fornecedores
+                    </Button>
+                  </div>
+                )}
+
                 <div className="flex items-center space-x-3">
                   <Checkbox
                     id="email"
@@ -583,7 +698,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
           </DialogHeader>
           
           <div className="space-y-6">
-            <Stepper steps={steps} currentStep={currentStep} />
+            <Stepper steps={steps} currentStep={currentStep} onStepClick={handleStepClick} />
             
             <div className="min-h-[400px]">
               {renderStep()}
@@ -651,8 +766,19 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate }: CreateQu
         open={showNewSupplierModal}
         onOpenChange={setShowNewSupplierModal}
         onSupplierCreate={handleSupplierCreate}
-        availableGroups={mockSupplierGroups}
+        availableGroups={supplierGroups}
       />
+      
+      {/* Edit Supplier Modal */}
+      {editingSupplier && (
+        <NewSupplierModal
+          open={showEditSupplierModal}
+          onOpenChange={setShowEditSupplierModal}
+          onSupplierCreate={handleSupplierUpdate}
+          availableGroups={supplierGroups}
+          editingSupplier={editingSupplier}
+        />
+      )}
     </>
   );
 }

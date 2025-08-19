@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
+import { Check, AlertCircle } from "lucide-react";
 
 interface StepperProps {
   steps: Array<{
@@ -8,10 +8,11 @@ interface StepperProps {
     description?: string;
   }>;
   currentStep: number;
+  onStepClick?: (stepId: number) => void;
   className?: string;
 }
 
-export function Stepper({ steps, currentStep, className }: StepperProps) {
+export function Stepper({ steps, currentStep, onStepClick, className }: StepperProps) {
   return (
     <div className={cn("w-full", className)}>
       {/* Progress Bar */}
@@ -48,8 +49,10 @@ export function Stepper({ steps, currentStep, className }: StepperProps) {
                   {
                     "bg-primary text-primary-foreground border-primary": isCompleted || isCurrent,
                     "bg-background text-muted-foreground border-border": isUpcoming,
-                  }
+                  },
+                  onStepClick && (isCompleted || isCurrent) && "cursor-pointer hover:scale-105"
                 )}
+                onClick={() => onStepClick && (isCompleted || isCurrent) && onStepClick(step.id)}
               >
                 {isCompleted ? (
                   <Check className="w-5 h-5" />

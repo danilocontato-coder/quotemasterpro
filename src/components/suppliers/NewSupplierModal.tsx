@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Mail, Phone, MessageCircle, MapPin, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,10 @@ interface NewSupplierModalProps {
   onOpenChange: (open: boolean) => void;
   onSupplierCreate: (supplier: Supplier) => void;
   availableGroups: SupplierGroup[];
+  editingSupplier?: Supplier;
 }
 
-export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availableGroups }: NewSupplierModalProps) {
+export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availableGroups, editingSupplier }: NewSupplierModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     cnpj: "",
@@ -40,6 +41,55 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Preenche os dados quando está editando
+  useEffect(() => {
+    if (editingSupplier) {
+      // Parse address back to individual fields (simple approach)
+      const addressParts = editingSupplier.address?.split(', ') || [];
+      
+      setFormData({
+        name: editingSupplier.name || "",
+        cnpj: editingSupplier.cnpj || "",
+        email: editingSupplier.email || "",
+        phone: editingSupplier.phone || "",
+        whatsapp: editingSupplier.whatsapp || "",
+        street: addressParts[0]?.split(', ')[0] || "",
+        number: "",
+        complement: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        contactPerson: "",
+        description: "",
+        website: "",
+        groupId: editingSupplier.groupId || "",
+        specialties: editingSupplier.specialties || []
+      });
+    } else {
+      // Reset form when not editing
+      setFormData({
+        name: "",
+        cnpj: "",
+        email: "",
+        phone: "",
+        whatsapp: "",
+        street: "",
+        number: "",
+        complement: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        contactPerson: "",
+        description: "",
+        website: "",
+        groupId: "",
+        specialties: []
+      });
+    }
+  }, [editingSupplier, open]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -77,16 +127,16 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
     ].filter(Boolean).join(', ');
 
     const newSupplier: Supplier = {
-      id: `supplier-${Date.now()}`,
+      id: editingSupplier ? editingSupplier.id : `supplier-${Date.now()}`,
       name: formData.name,
       cnpj: formData.cnpj,
       email: formData.email,
       phone: formData.phone,
       whatsapp: formData.whatsapp,
       address: fullAddress,
-      status: 'active',
-      subscriptionPlan: 'basic',
-      createdAt: new Date().toISOString(),
+      status: editingSupplier ? editingSupplier.status : 'active',
+      subscriptionPlan: editingSupplier ? editingSupplier.subscriptionPlan : 'basic',
+      createdAt: editingSupplier ? editingSupplier.createdAt : new Date().toISOString(),
       groupId: formData.groupId || undefined,
       specialties: formData.specialties
     };
@@ -149,7 +199,7 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building className="h-5 w-5" />
-            Cadastrar Novo Fornecedor
+            {editingSupplier ? 'Editar Fornecedor' : 'Cadastrar Novo Fornecedor'}
           </DialogTitle>
         </DialogHeader>
         
@@ -421,7 +471,7 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
               className="flex-1"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Cadastrar Fornecedor
+              {editingSupplier ? 'Salvar Alterações' : 'Cadastrar Fornecedor'}
             </Button>
           </div>
         </form>
