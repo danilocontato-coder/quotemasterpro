@@ -1,18 +1,21 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Trash2, Phone, Mail, MessageCircle, Users } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
-import { mockSuppliers, getStatusColor, getStatusText } from "@/data/mockData";
+import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
+import { mockSuppliers, getStatusColor, getStatusText, Supplier } from "@/data/mockData";
 
 export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+  const [suppliers, setSuppliers] = useState(mockSuppliers);
 
-  const filteredSuppliers = mockSuppliers.filter(supplier => {
+  const filteredSuppliers = suppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          supplier.cnpj.includes(searchTerm) ||
                          supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -20,32 +23,37 @@ export default function Suppliers() {
     let matchesFilter = true;
     if (activeFilter === "active") {
       matchesFilter = supplier.status === "active";
-    } else if (activeFilter === "premium") {
-      matchesFilter = supplier.subscriptionPlan === "premium";
-    } else if (activeFilter === "enterprise") {
-      matchesFilter = supplier.subscriptionPlan === "enterprise";
+    } else if (activeFilter === "inactive") {
+      matchesFilter = supplier.status === "inactive";
+    } else if (activeFilter === "recent") {
+      const createdDate = new Date(supplier.createdAt);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      matchesFilter = createdDate >= thirtyDaysAgo;
     }
     
     return matchesSearch && matchesFilter;
   });
 
   // Calculate metrics
-  const totalSuppliers = mockSuppliers.length;
-  const activeSuppliers = mockSuppliers.filter(s => s.status === 'active').length;
-  const premiumSuppliers = mockSuppliers.filter(s => s.subscriptionPlan === 'premium').length;
-  const enterpriseSuppliers = mockSuppliers.filter(s => s.subscriptionPlan === 'enterprise').length;
+  const totalSuppliers = suppliers.length;
+  const activeSuppliers = suppliers.filter(s => s.status === 'active').length;
+  const inactiveSuppliers = suppliers.filter(s => s.status === 'inactive').length;
+  const recentSuppliers = suppliers.filter(s => {
+    const createdDate = new Date(s.createdAt);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return createdDate >= thirtyDaysAgo;
+  }).length;
+
+  const handleSupplierCreate = (newSupplier: Supplier) => {
+    setSuppliers(prev => [...prev, newSupplier]);
+  };
 
   const statusOptions = [
     { value: "all", label: "Todos" },
     { value: "active", label: "Ativo" },
     { value: "inactive", label: "Inativo" },
-  ];
-
-  const planOptions = [
-    { value: "all", label: "Todos os Planos" },
-    { value: "basic", label: "Básico" },
-    { value: "premium", label: "Premium" },
-    { value: "enterprise", label: "Enterprise" },
   ];
 
   return (
@@ -58,7 +66,10 @@ export default function Suppliers() {
             Gerencie sua rede de fornecedores e parceiros
           </p>
         </div>
-        <Button className="btn-corporate flex items-center gap-2">
+        <Button 
+          className="btn-corporate flex items-center gap-2"
+          onClick={() => setShowNewSupplierModal(true)}
+        >
           <Plus className="h-4 w-4" />
           Novo Fornecedor
         </Button>
@@ -78,21 +89,21 @@ export default function Suppliers() {
           value={activeSuppliers}
           isActive={activeFilter === "active"}
           onClick={() => setActiveFilter("active")}
-          colorClass="text-success"
+          colorClass="text-green-600"
         />
         <FilterMetricCard
-          title="Premium"
-          value={premiumSuppliers}
-          isActive={activeFilter === "premium"}
-          onClick={() => setActiveFilter("premium")}
-          colorClass="text-primary"
+          title="Inativos"
+          value={inactiveSuppliers}
+          isActive={activeFilter === "inactive"}
+          onClick={() => setActiveFilter("inactive")}
+          colorClass="text-red-600"
         />
         <FilterMetricCard
-          title="Enterprise"
-          value={enterpriseSuppliers}
-          isActive={activeFilter === "enterprise"}
-          onClick={() => setActiveFilter("enterprise")}
-          colorClass="text-warning"
+          title="Recentes"
+          value={recentSuppliers}
+          isActive={activeFilter === "recent"}
+          onClick={() => setActiveFilter("recent")}
+          colorClass="text-blue-600"
         />
       </div>
 
@@ -149,6 +160,14 @@ export default function Suppliers() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Address */}
+              {supplier.address && (
+                <div className="flex items-start gap-2 text-sm">
+                  <Building className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <span className="text-muted-foreground">{supplier.address}</span>
+                </div>
+              )}
+
               {/* Contact Info */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
@@ -167,13 +186,13 @@ export default function Suppliers() {
                 )}
               </div>
 
-              {/* Subscription Plan */}
+              {/* Date Added */}
               <div className="pt-2 border-t border-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Plano:</span>
-                  <Badge className={getStatusColor(supplier.subscriptionPlan)}>
-                    {getStatusText(supplier.subscriptionPlan)}
-                  </Badge>
+                  <span className="text-sm text-muted-foreground">Cadastrado em:</span>
+                  <span className="text-sm">
+                    {new Date(supplier.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
                 </div>
               </div>
 
@@ -209,7 +228,10 @@ export default function Suppliers() {
               }
             </p>
             {!searchTerm && statusFilter === "all" && (
-              <Button className="btn-corporate">
+              <Button 
+                className="btn-corporate"
+                onClick={() => setShowNewSupplierModal(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Cadastrar Primeiro Fornecedor
               </Button>
@@ -217,6 +239,13 @@ export default function Suppliers() {
           </CardContent>
         </Card>
       )}
+
+      {/* New Supplier Modal */}
+      <NewSupplierModal
+        open={showNewSupplierModal}
+        onOpenChange={setShowNewSupplierModal}
+        onSupplierCreate={handleSupplierCreate}
+      />
     </div>
   );
 }
