@@ -3,7 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SupplierSidebar } from "./SupplierSidebar";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { NotificationDropdown } from "./NotificationDropdown";
+import { RoleBasedNotificationDropdown } from "./RoleBasedNotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 
 export function SupplierLayout() {
@@ -37,7 +37,7 @@ export function SupplierLayout() {
                 <p className="text-[10px] text-muted-foreground">Plano {planDisplayName}</p>
               </div>
               
-              <NotificationDropdown />
+              <RoleBasedNotificationDropdown />
               <UserDropdown />
             </div>
           </header>

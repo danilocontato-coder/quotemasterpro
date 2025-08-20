@@ -18,34 +18,12 @@ import {
   Zap
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 export const SuperAdminDashboard = () => {
-  const globalMetrics = {
-    totalUsers: 2847,
-    activeClients: 142,
-    activeSuppliers: 89,
-    supportTickets: 23,
-    monthlyRevenue: 127500.00,
-    systemUptime: '99.9%',
-    pendingApprovals: 45,
-    apiCalls: 1234567
-  };
+  const { metrics, activities, systemHealth, isLoading } = useDashboardData();
 
-  const recentActivities = [
-    { id: 1, type: 'client', action: 'Novo cliente cadastrado', entity: 'Condomínio Ville Real', time: '2 min atrás', status: 'success' },
-    { id: 2, type: 'supplier', action: 'Fornecedor aprovado', entity: 'TechFlow Solutions', time: '15 min atrás', status: 'success' },
-    { id: 3, type: 'system', action: 'API Stripe configurada', entity: 'Sistema Global', time: '1h atrás', status: 'info' },
-    { id: 4, type: 'support', action: 'Ticket crítico aberto', entity: '#TK-2024-001', time: '2h atrás', status: 'warning' },
-    { id: 5, type: 'system', action: 'Backup automático concluído', entity: 'Database', time: '3h atrás', status: 'success' }
-  ];
 
-  const systemHealth = [
-    { service: 'API Gateway', status: 'online', uptime: '99.9%', response: '120ms' },
-    { service: 'Database', status: 'online', uptime: '99.8%', response: '45ms' },
-    { service: 'Email Service', status: 'online', uptime: '99.7%', response: '200ms' },
-    { service: 'WhatsApp API', status: 'warning', uptime: '98.2%', response: '350ms' },
-    { service: 'Stripe Integration', status: 'online', uptime: '99.9%', response: '180ms' }
-  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,28 +71,28 @@ export const SuperAdminDashboard = () => {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
             <MetricCard
               title="Usuários Totais"
-              value={globalMetrics.totalUsers.toLocaleString()}
+              value={metrics.totalUsers?.toLocaleString() || '0'}
               icon={Users}
             />
           </div>
           <div className="bg-green-50 border border-green-200 rounded-lg p-6">
             <MetricCard
               title="Receita Mensal"
-              value={`R$ ${globalMetrics.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              value={`R$ ${(metrics.monthlyRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
               icon={DollarSign}
             />
           </div>
           <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
             <MetricCard
               title="Uptime do Sistema"
-              value={globalMetrics.systemUptime}
+              value={metrics.systemUptime || '99.9%'}
               icon={Activity}
             />
           </div>
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
             <MetricCard
               title="Chamadas API"
-              value={globalMetrics.apiCalls.toLocaleString()}
+              value={metrics.apiCalls?.toLocaleString() || '0'}
               icon={Zap}
             />
           </div>
@@ -141,7 +119,7 @@ export const SuperAdminDashboard = () => {
                   <CardDescription>Últimas ações na plataforma</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {recentActivities.map((activity) => (
+                  {activities.map((activity) => (
                     <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-full ${
@@ -201,19 +179,19 @@ export const SuperAdminDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Ativos</span>
-                      <span className="font-semibold">{globalMetrics.activeClients}</span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm">Ativos</span>
+                        <span className="font-semibold">{metrics.activeClients || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm">Novos (mês)</span>
+                        <span className="font-semibold text-green-600">+12</span>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full mt-4">
+                        Gerenciar Clientes
+                      </Button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Novos (mês)</span>
-                      <span className="font-semibold text-green-600">+12</span>
-                    </div>
-                    <Button variant="outline" size="sm" className="w-full mt-4">
-                      Gerenciar Clientes
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
 
@@ -225,19 +203,19 @@ export const SuperAdminDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Ativos</span>
-                      <span className="font-semibold">{globalMetrics.activeSuppliers}</span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm">Ativos</span>
+                        <span className="font-semibold">{metrics.activeSuppliers || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm">Pendentes</span>
+                        <span className="font-semibold text-yellow-600">7</span>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full mt-4">
+                        Gerenciar Fornecedores
+                      </Button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Pendentes</span>
-                      <span className="font-semibold text-yellow-600">7</span>
-                    </div>
-                    <Button variant="outline" size="sm" className="w-full mt-4">
-                      Gerenciar Fornecedores
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
 
@@ -249,19 +227,19 @@ export const SuperAdminDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Tickets Abertos</span>
-                      <span className="font-semibold">{globalMetrics.supportTickets}</span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm">Tickets Abertos</span>
+                        <span className="font-semibold">{metrics.supportTickets || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm">Críticos</span>
+                        <span className="font-semibold text-red-600">3</span>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full mt-4">
+                        Central de Suporte
+                      </Button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Críticos</span>
-                      <span className="font-semibold text-red-600">3</span>
-                    </div>
-                    <Button variant="outline" size="sm" className="w-full mt-4">
-                      Central de Suporte
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </div>

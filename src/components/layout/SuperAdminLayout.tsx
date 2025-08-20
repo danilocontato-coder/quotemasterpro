@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { SuperAdminSidebar } from './SuperAdminSidebar';
 import { UserDropdown } from './UserDropdown';
-import { NotificationDropdown } from './NotificationDropdown';
+import { RoleBasedNotificationDropdown } from './RoleBasedNotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -91,7 +91,7 @@ export const SuperAdminLayout = () => {
               </Button>
               
               {/* Notifications */}
-              <NotificationDropdown />
+              <RoleBasedNotificationDropdown />
               
               {/* User Menu */}
               <UserDropdown />

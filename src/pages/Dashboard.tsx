@@ -7,11 +7,13 @@ import { VisualCard } from "@/components/ui/visual-card";
 import { dashboardMetrics, mockQuotes, getStatusColor, getStatusText } from "@/data/mockData";
 import { useCurrentClient } from "@/hooks/useCurrentClient";
 import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
   const { clientName, subscriptionPlan, isLoading } = useCurrentClient();
   const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
+  const { metrics, activities, isLoading: dashboardLoading } = useDashboardData();
   
   // Recent quotes for activity feed
   const recentQuotes = mockQuotes.slice(0, 5);
