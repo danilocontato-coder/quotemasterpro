@@ -25,6 +25,7 @@ import { ClientsManagement } from '@/pages/admin/ClientsManagement';
 import { SuppliersManagement } from '@/pages/admin/SuppliersManagement';
 import { PlansManagement } from '@/pages/admin/PlansManagement';
 import { IntegrationsManagement } from '@/pages/admin/IntegrationsManagement';
+import { AuditLogs } from '@/pages/admin/AuditLogs';
 
 // Existing pages
 import Quotes from '@/pages/Quotes';
@@ -133,6 +134,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <IntegrationsManagement />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/audit" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AuditLogs />
                       </ProtectedRoute>
                     } 
                   />

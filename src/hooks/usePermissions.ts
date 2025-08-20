@@ -76,6 +76,17 @@ export function usePermissions() {
     { id: 'supplier', name: 'Fornecedor', description: 'Responde cotações e gerencia catálogo', userCount: 0 },
   ];
 
+  // Import user groups to show in roles
+  let userGroups: any[] = [];
+  try {
+    const { useUserGroups } = require('./useUsersAndGroups');
+    const { groups } = useUserGroups();
+    userGroups = groups || [];
+  } catch (error) {
+    // Handle circular dependency gracefully
+    userGroups = [];
+  }
+
   const roles: Role[] = [
     ...systemRoles,
     ...profiles.map(profile => ({
@@ -83,6 +94,12 @@ export function usePermissions() {
       name: profile.name,
       description: profile.description,
       userCount: 0 // This would come from actual user data
+    })),
+    ...userGroups.map(group => ({
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      userCount: group.userCount || 0
     }))
   ];
 

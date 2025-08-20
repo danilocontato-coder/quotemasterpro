@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { usePermissions, type Permission } from "@/hooks/usePermissions";
 import { useToast } from "@/hooks/use-toast";
+import { PermissionGroupBridge } from "@/components/users/PermissionGroupBridge";
+import { SupabaseIntegrationStatus } from "@/components/layout/SupabaseIntegrationStatus";
 
 export function Permissions() {
   const { roles, permissions, updatePermission, initializeProfilePermissions } = usePermissions();
@@ -141,6 +143,12 @@ export function Permissions() {
           )}
         </div>
       </div>
+
+      {/* Supabase Integration Status */}
+      <SupabaseIntegrationStatus />
+
+      {/* Groups ↔ Permissions Sync */}
+      <PermissionGroupBridge />
 
       {/* Permissions Configuration */}
       <Card>

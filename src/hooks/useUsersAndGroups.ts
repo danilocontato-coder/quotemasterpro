@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 export interface UserGroup {
   id: string;
@@ -326,12 +326,14 @@ export function useUserGroups() {
   };
 
   // Função para atualizar contagem de usuários nos grupos
-  const updateGroupUserCounts = (users: User[]) => {
+  const updateGroupUserCounts = useCallback((users: User[]) => {
+    if (!users || users.length === 0) return;
+    
     setGroups(prev => prev.map(group => ({
       ...group,
-      userCount: users.filter(user => user.groupIds.includes(group.id)).length
+      userCount: users.filter(user => user.groupIds?.includes(group.id)).length
     })));
-  };
+  }, []);
 
   return {
     groups,
