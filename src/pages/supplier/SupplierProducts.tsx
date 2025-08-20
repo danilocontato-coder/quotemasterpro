@@ -1,10 +1,19 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Plus, Search, Edit, Package, AlertTriangle, MoreHorizontal, Eye, Power, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useSupplierProducts, SupplierProduct } from "@/hooks/useSupplierProducts";
@@ -23,6 +32,8 @@ export default function SupplierProducts() {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { 
     products, 
@@ -114,6 +125,17 @@ export default function SupplierProducts() {
     });
   }, [products, searchTerm, categoryFilter, statusFilter]);
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProducts = filteredProducts.slice(startIndex, endIndex);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter, statusFilter]);
+
 
   return (
     <div className="space-y-6">
@@ -197,6 +219,17 @@ export default function SupplierProducts() {
                 <SelectItem value="inactive">Inativos</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 por página</SelectItem>
+                <SelectItem value="10">10 por página</SelectItem>
+                <SelectItem value="25">25 por página</SelectItem>
+                <SelectItem value="50">50 por página</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -206,6 +239,9 @@ export default function SupplierProducts() {
         <CardHeader>
           <CardTitle className="text-lg font-semibold">
             Produtos ({filteredProducts.length})
+            <span className="text-sm font-normal text-muted-foreground ml-2">
+              Página {currentPage} de {totalPages}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -223,7 +259,7 @@ export default function SupplierProducts() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product) => (
+                {currentProducts.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-mono text-sm">{product.code}</TableCell>
                     <TableCell>
@@ -287,6 +323,56 @@ export default function SupplierProducts() {
               </div>
             )}
           </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      if (totalPages <= 7) return true;
+                      if (page === 1 || page === totalPages) return true;
+                      if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                      return false;
+                    })
+                    .map((page, index, array) => (
+                      <React.Fragment key={page}>
+                        {index > 0 && array[index - 1] !== page - 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    ))
+                  }
+                  
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 

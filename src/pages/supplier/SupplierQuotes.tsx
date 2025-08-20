@@ -1,11 +1,32 @@
-import { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Send, MessageSquare, Search, FileText } from "lucide-react";
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { FilterMetricCard } from "@/components/ui/filter-metric-card";
+import { 
+  Eye, 
+  Send, 
+  MessageSquare, 
+  Search, 
+  FileText, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle,
+  FileCheck 
+} from "lucide-react";
 import { useSupplierQuotes } from "@/hooks/useSupplierQuotes";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
 
@@ -14,6 +35,8 @@ export default function SupplierQuotes() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const { supplierQuotes } = useSupplierQuotes();
 
@@ -34,21 +57,36 @@ export default function SupplierQuotes() {
     }
   };
 
-  const filteredQuotes = supplierQuotes.filter(quote => {
-    const matchesSearch = 
-      quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const filteredQuotes = useMemo(() => {
+    return supplierQuotes.filter(quote => {
+      const matchesSearch = 
+        quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.id.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [supplierQuotes, searchTerm, statusFilter]);
 
-  const statusCounts = supplierQuotes.reduce((acc, quote) => {
-    acc[quote.status] = (acc[quote.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const statusCounts = useMemo(() => {
+    return supplierQuotes.reduce((acc, quote) => {
+      acc[quote.status] = (acc[quote.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [supplierQuotes]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredQuotes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentQuotes = filteredQuotes.slice(startIndex, endIndex);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   const handleViewQuote = (quote: any) => {
     setSelectedQuote(quote);
@@ -70,12 +108,51 @@ export default function SupplierQuotes() {
         </p>
       </div>
 
-      {/* Filters and Search */}
+      {/* Status Overview Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <FilterMetricCard
+          title="Todos"
+          value={supplierQuotes.length}
+          icon={<FileText />}
+          isActive={statusFilter === 'all'}
+          onClick={() => setStatusFilter('all')}
+        />
+        <FilterMetricCard
+          title="Aguardando"
+          value={statusCounts.pending || 0}
+          icon={<Clock />}
+          isActive={statusFilter === 'pending'}
+          onClick={() => setStatusFilter('pending')}
+          variant="warning"
+        />
+        <FilterMetricCard
+          title="Proposta Enviada"
+          value={statusCounts.proposal_sent || 0}
+          icon={<Send />}
+          isActive={statusFilter === 'proposal_sent'}
+          onClick={() => setStatusFilter('proposal_sent')}
+        />
+        <FilterMetricCard
+          title="Aprovadas"
+          value={statusCounts.approved || 0}
+          icon={<CheckCircle />}
+          isActive={statusFilter === 'approved'}
+          onClick={() => setStatusFilter('approved')}
+          variant="success"
+        />
+        <FilterMetricCard
+          title="Rejeitadas"
+          value={statusCounts.rejected || 0}
+          icon={<XCircle />}
+          isActive={statusFilter === 'rejected'}
+          onClick={() => setStatusFilter('rejected')}
+          variant="destructive"
+        />
+      </div>
+
+      {/* Search */}
       <Card className="card-corporate">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -86,17 +163,15 @@ export default function SupplierQuotes() {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Status" />
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="pending">Aguardando ({statusCounts.pending || 0})</SelectItem>
-                <SelectItem value="proposal_sent">Proposta Enviada ({statusCounts.proposal_sent || 0})</SelectItem>
-                <SelectItem value="approved">Aprovado ({statusCounts.approved || 0})</SelectItem>
-                <SelectItem value="rejected">Rejeitado ({statusCounts.rejected || 0})</SelectItem>
-                <SelectItem value="expired">Expirado ({statusCounts.expired || 0})</SelectItem>
+                <SelectItem value="5">5 por página</SelectItem>
+                <SelectItem value="10">10 por página</SelectItem>
+                <SelectItem value="25">25 por página</SelectItem>
+                <SelectItem value="50">50 por página</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -108,6 +183,9 @@ export default function SupplierQuotes() {
         <CardHeader>
           <CardTitle className="text-lg font-semibold">
             Cotações ({filteredQuotes.length})
+            <span className="text-sm font-normal text-muted-foreground ml-2">
+              Página {currentPage} de {totalPages}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -126,7 +204,7 @@ export default function SupplierQuotes() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredQuotes.map((quote) => (
+                {currentQuotes.map((quote) => (
                   <TableRow key={quote.id}>
                     <TableCell className="font-mono text-sm">{quote.id}</TableCell>
                     <TableCell>
@@ -202,6 +280,56 @@ export default function SupplierQuotes() {
               </div>
             )}
           </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      if (totalPages <= 7) return true;
+                      if (page === 1 || page === totalPages) return true;
+                      if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                      return false;
+                    })
+                    .map((page, index, array) => (
+                      <React.Fragment key={page}>
+                        {index > 0 && array[index - 1] !== page - 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    ))
+                  }
+                  
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
 

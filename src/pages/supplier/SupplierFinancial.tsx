@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -26,6 +35,8 @@ export default function SupplierFinancial() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState("30");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { 
     payments, 
@@ -47,6 +58,17 @@ export default function SupplierFinancial() {
       return matchesSearch && matchesStatus;
     });
   }, [payments, searchTerm, statusFilter]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPayments = filteredPayments.slice(startIndex, endIndex);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   const totalEarnings = getTotalEarnings();
   const pendingPayments = getPendingPayments();
@@ -204,17 +226,28 @@ export default function SupplierFinancial() {
                     <SelectItem value="failed">Falhou</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7">7 dias</SelectItem>
-                    <SelectItem value="30">30 dias</SelectItem>
-                    <SelectItem value="90">90 dias</SelectItem>
-                    <SelectItem value="365">1 ano</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Select value={dateRange} onValueChange={setDateRange}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 dias</SelectItem>
+                      <SelectItem value="30">30 dias</SelectItem>
+                      <SelectItem value="90">90 dias</SelectItem>
+                      <SelectItem value="365">1 ano</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 por página</SelectItem>
+                      <SelectItem value="10">10 por página</SelectItem>
+                      <SelectItem value="25">25 por página</SelectItem>
+                      <SelectItem value="50">50 por página</SelectItem>
+                    </SelectContent>
+                  </Select>
               </div>
             </CardContent>
           </Card>
@@ -225,6 +258,9 @@ export default function SupplierFinancial() {
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
                 Histórico de Pagamentos ({filteredPayments.length})
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  Página {currentPage} de {totalPages}
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -242,7 +278,7 @@ export default function SupplierFinancial() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredPayments.map((payment) => (
+                    {currentPayments.map((payment) => (
                       <TableRow key={payment.id}>
                         <TableCell className="font-mono text-sm">
                           {payment.quoteId}
@@ -280,6 +316,56 @@ export default function SupplierFinancial() {
                   </div>
                 )}
               </div>
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex justify-center">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(page => {
+                          if (totalPages <= 7) return true;
+                          if (page === 1 || page === totalPages) return true;
+                          if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                          return false;
+                        })
+                        .map((page, index, array) => (
+                          <React.Fragment key={page}>
+                            {index > 0 && array[index - 1] !== page - 1 && (
+                              <PaginationItem>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            )}
+                            <PaginationItem>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          </React.Fragment>
+                        ))
+                      }
+                      
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
