@@ -83,24 +83,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
-    console.log('Fetching profile for user:', supabaseUser.id, supabaseUser.email);
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
-        .single();
+        .maybeSingle();
 
-      console.log('Profile query result:', { profile, error });
-
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching profile:', error);
+        // Create a basic user even if profile fetch fails
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
+          role: 'client',
+          active: true,
+        });
         setIsLoading(false);
         return;
       }
 
       if (profile) {
-        console.log('Setting user from profile:', profile);
         setUser({
           id: profile.id,
           email: profile.email,
@@ -113,8 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           supplierId: profile.supplier_id,
         });
       } else {
-        console.log('No profile found, creating default user');
-        // Profile doesn't exist, user might need to complete registration
+        // Profile doesn't exist, create a basic user
         setUser({
           id: supabaseUser.id,
           email: supabaseUser.email || '',
@@ -125,8 +128,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
+      // Fallback user creation
+      setUser({
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
+        role: 'client',
+        active: true,
+      });
     } finally {
-      console.log('Setting isLoading to false');
       setIsLoading(false);
     }
   };
