@@ -12,7 +12,7 @@ import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
