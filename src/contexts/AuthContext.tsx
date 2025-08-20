@@ -83,12 +83,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
+    console.log('Fetching profile for user:', supabaseUser.id, supabaseUser.email);
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
         .single();
+
+      console.log('Profile query result:', { profile, error });
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
@@ -97,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (profile) {
+        console.log('Setting user from profile:', profile);
         setUser({
           id: profile.id,
           email: profile.email,
@@ -109,6 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           supplierId: profile.supplier_id,
         });
       } else {
+        console.log('No profile found, creating default user');
         // Profile doesn't exist, user might need to complete registration
         setUser({
           id: supabaseUser.id,
@@ -121,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
     } finally {
+      console.log('Setting isLoading to false');
       setIsLoading(false);
     }
   };

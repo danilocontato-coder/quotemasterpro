@@ -24,19 +24,26 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setError('');
 
+    console.log('Login attempt with:', email);
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
+      console.log('Auth response:', { data, error });
+
       if (error) {
+        console.error('Login error:', error);
         setError(error.message);
         return;
       }
 
+      console.log('Login successful, navigating to:', from);
       navigate(from, { replace: true });
     } catch (err) {
+      console.error('Unexpected error:', err);
       setError('Erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);
