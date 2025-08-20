@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Package, Wrench } from "lucide-react";
-import { productCategories } from "@/data/mockData";
+import { useSupabaseCategories } from "@/hooks/useSupabaseCategories";
+import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
 import { toast } from "sonner";
 
 interface CreateItemModalProps {
@@ -30,7 +31,10 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
     minStock: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { categories } = useSupabaseCategories();
+  const { addProduct } = useSupabaseProducts();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.code || !formData.name || !formData.category) {
@@ -38,37 +42,35 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
       return;
     }
 
-    const newItem = {
-      id: `item-${Date.now()}`,
+    const productData = {
       code: formData.code,
       name: formData.name,
-      description: formData.description,
+      description: formData.description || null,
       category: formData.category,
-      stockQuantity: itemType === 'product' ? parseInt(formData.initialStock || '0') : 0,
-      unitPrice: parseFloat(formData.unitPrice || '0'),
-      minStock: parseInt(formData.minStock || '0'),
-      type: itemType,
-      supplierId: formData.supplier || undefined,
+      stock_quantity: itemType === 'product' ? parseInt(formData.initialStock || '0') : 0,
+      unit_price: parseFloat(formData.unitPrice || '0') || null,
       status: 'active' as const,
-      createdAt: new Date().toISOString(),
     };
 
-    onItemCreate?.(newItem);
-    toast.success(`${itemType === 'product' ? 'Produto' : 'Serviço'} cadastrado com sucesso!`);
+    const result = await addProduct(productData);
     
-    // Reset form
-    setFormData({
-      code: '',
-      name: '',
-      description: '',
-      category: '',
-      initialStock: '',
-      unitPrice: '',
-      supplier: '',
-      minStock: '',
-    });
-    setItemType('product');
-    setOpen(false);
+    if (result) {
+      onItemCreate?.(result);
+      
+      // Reset form
+      setFormData({
+        code: '',
+        name: '',
+        description: '',
+        category: '',
+        initialStock: '',
+        unitPrice: '',
+        supplier: '',
+        minStock: '',
+      });
+      setItemType('product');
+      setOpen(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -152,13 +154,19 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {productCategories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.name}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: category.color }}
+                              />
+                              {category.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                   </Select>
                 </div>
               </div>
