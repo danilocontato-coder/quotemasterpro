@@ -91,7 +91,7 @@ export const useCommunication = () => {
     }));
   }, []);
 
-  const createTicket = useCallback((subject: string, description: string, priority: 'low' | 'medium' | 'high' | 'urgent', category: string) => {
+  const createTicket = useCallback((subject: string, description: string, priority: 'low' | 'medium' | 'high' | 'urgent', category: string, attachments?: string[]) => {
     const newTicket: Ticket = {
       id: `TKT${Date.now()}`,
       subject,
@@ -115,7 +115,7 @@ export const useCommunication = () => {
           senderName: 'João Silva',
           senderType: 'client',
           content: description,
-          attachments: [],
+          attachments: attachments || [],
           timestamp: new Date().toISOString(),
           isInternal: false,
         }

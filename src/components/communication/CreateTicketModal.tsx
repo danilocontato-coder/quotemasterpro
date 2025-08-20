@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Headphones } from "lucide-react";
+import { Headphones, Paperclip, X, Upload, File } from "lucide-react";
 import { useCommunication } from "@/hooks/useCommunication";
 import { ticketCategories } from "@/data/mockCommunication";
 
@@ -19,7 +19,9 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
   const [category, setCategory] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { createTicket } = useCommunication();
 
@@ -29,17 +31,50 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
 
     setIsLoading(true);
     try {
-      const ticketId = createTicket(subject.trim(), description.trim(), priority, category);
+      // Convert files to names for mock data
+      const attachmentNames = attachments.map(file => file.name);
+      const ticketId = createTicket(subject.trim(), description.trim(), priority, category, attachmentNames);
       
       // Reset form
       setSubject("");
       setDescription("");
       setPriority('medium');
       setCategory("");
+      setAttachments([]);
       onOpenChange(false);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(file => {
+      // Limit file size to 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`Arquivo "${file.name}" é muito grande. Máximo 10MB.`);
+        return false;
+      }
+      return true;
+    });
+    
+    setAttachments(prev => [...prev, ...validFiles]);
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const isValid = subject.trim() && description.trim() && category;
@@ -110,6 +145,68 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
               className="resize-none"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Anexos (opcional)</Label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.zip,.rar"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Selecionar Arquivos
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Máximo 10MB por arquivo
+                </span>
+              </div>
+
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Arquivos selecionados:</p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {attachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatFileSize(file.size)}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAttachment(index)}
+                          className="text-red-500 hover:text-red-700 flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                Tipos suportados: PDF, DOC, DOCX, TXT, PNG, JPG, JPEG, GIF, ZIP, RAR
+              </p>
+            </div>
           </div>
 
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
