@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
+import { SupplierLayout } from "./components/layout/SupplierLayout";
 import Dashboard from "./pages/Dashboard";
 import Quotes from "./pages/Quotes";
 import Suppliers from "./pages/Suppliers";
@@ -17,6 +18,9 @@ import { ApprovalLevels } from "./pages/ApprovalLevels";
 import { Approvals } from "./pages/Approvals";
 import { Permissions } from "./pages/Permissions";
 import { Reports } from "./pages/Reports";
+import SupplierDashboard from "./pages/supplier/SupplierDashboard";
+import SupplierQuotes from "./pages/supplier/SupplierQuotes";
+import SupplierProducts from "./pages/supplier/SupplierProducts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +32,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Client Routes */}
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="quotes" element={<Quotes />} />
@@ -42,6 +47,18 @@ const App = () => (
             <Route path="payments" element={<Payments />} />
             <Route path="communication" element={<Communication />} />
           </Route>
+
+          {/* Supplier Routes */}
+          <Route path="/supplier" element={<SupplierLayout />}>
+            <Route index element={<SupplierDashboard />} />
+            <Route path="quotes" element={<SupplierQuotes />} />
+            <Route path="quotes/:id" element={<div>Supplier Quote Detail - Coming Soon</div>} />
+            <Route path="products" element={<SupplierProducts />} />
+            <Route path="deliveries" element={<div>Supplier Deliveries - Coming Soon</div>} />
+            <Route path="messages" element={<div>Supplier Messages - Coming Soon</div>} />
+            <Route path="settings" element={<div>Supplier Settings - Coming Soon</div>} />
+          </Route>
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
