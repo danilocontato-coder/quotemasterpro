@@ -169,7 +169,6 @@ export function Reports() {
                   <SelectValue placeholder="Todos os fornecedores" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
                   <SelectItem value="alpha">Fornecedor Alpha</SelectItem>
                   <SelectItem value="beta">Fornecedor Beta</SelectItem>
                   <SelectItem value="gamma">Fornecedor Gamma</SelectItem>
@@ -183,7 +182,6 @@ export function Reports() {
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
                   <SelectItem value="approved">Aprovado</SelectItem>
                   <SelectItem value="pending">Pendente</SelectItem>
                   <SelectItem value="rejected">Rejeitado</SelectItem>
