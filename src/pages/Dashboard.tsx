@@ -55,7 +55,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <MetricCard
           title="Gasto Mensal"
-          value={`R$ ${dashboardMetrics.monthlySpending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          value={`R$ ${(dashboardMetrics.monthlySpending || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           change="-8% vs mês anterior"
           changeType="positive"
           icon={DollarSign}
