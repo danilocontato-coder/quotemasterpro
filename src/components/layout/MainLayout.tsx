@@ -5,8 +5,13 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
+import { useCurrentClient } from "@/hooks/useCurrentClient";
+import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
 
 export function MainLayout() {
+  const { clientName, subscriptionPlan, isLoading } = useCurrentClient();
+  const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -29,8 +34,17 @@ export function MainLayout() {
             <div className="flex items-center gap-3">
               {/* Company Name */}
               <div className="text-right mr-4">
-                <p className="text-sm font-medium text-foreground">Condomínio Residencial Azul</p>
-                <p className="text-xs text-muted-foreground">Plano Pro</p>
+                {isLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-muted rounded w-32 mb-1"></div>
+                    <div className="h-3 bg-muted rounded w-16"></div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-foreground">{clientName}</p>
+                    <p className="text-xs text-muted-foreground">{planDisplayName}</p>
+                  </>
+                )}
               </div>
               
               <NotificationDropdown />

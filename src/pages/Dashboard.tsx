@@ -5,9 +5,14 @@ import { RatingPrompts } from "@/components/ratings/RatingPrompts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { VisualCard } from "@/components/ui/visual-card";
 import { dashboardMetrics, mockQuotes, getStatusColor, getStatusText } from "@/data/mockData";
+import { useCurrentClient } from "@/hooks/useCurrentClient";
+import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
+  const { clientName, subscriptionPlan, isLoading } = useCurrentClient();
+  const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
+  
   // Recent quotes for activity feed
   const recentQuotes = mockQuotes.slice(0, 5);
 
@@ -23,8 +28,17 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-lg font-semibold text-foreground">Condomínio Residencial Azul</p>
-            <p className="text-sm text-muted-foreground">Plano Pro • Ativo</p>
+            {isLoading ? (
+              <div className="animate-pulse">
+                <div className="h-6 bg-muted rounded w-48 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-24"></div>
+              </div>
+            ) : (
+              <>
+                <p className="text-lg font-semibold text-foreground">{clientName}</p>
+                <p className="text-sm text-muted-foreground">{planDisplayName} • Ativo</p>
+              </>
+            )}
           </div>
         </div>
       </div>

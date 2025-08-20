@@ -9,10 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { useCurrentClient } from "@/hooks/useCurrentClient";
 import { toast } from "sonner";
 
 export function UserDropdown() {
   const navigate = useNavigate();
+  const { currentClient } = useCurrentClient();
 
   const handleEditProfile = () => {
     navigate("/profiles");
@@ -42,9 +44,11 @@ export function UserDropdown() {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">João Silva</p>
+            <p className="text-sm font-medium leading-none">
+              {currentClient?.name || 'Usuário'}
+            </p>
             <p className="text-xs leading-none text-muted-foreground">
-              joao.silva@empresa.com
+              {currentClient?.email || 'usuario@empresa.com'}
             </p>
           </div>
         </DropdownMenuLabel>
