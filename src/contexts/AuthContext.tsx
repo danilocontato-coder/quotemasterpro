@@ -67,11 +67,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         
         if (session?.user) {
-          await fetchUserProfile(session.user);
+          // Use setTimeout to avoid blocking the auth state change
+          setTimeout(() => {
+            fetchUserProfile(session.user);
+          }, 0);
         } else {
           setUser(null);
           setIsLoading(false);
