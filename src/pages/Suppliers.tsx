@@ -16,6 +16,7 @@ export default function Suppliers() {
   const [typeFilter, setTypeFilter] = useState("all"); // Novo filtro para tipo
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [suppliers, setSuppliers] = useState(mockSuppliers);
   const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
 
@@ -93,7 +94,24 @@ export default function Suppliers() {
   ).length;
 
   const handleSupplierCreate = (newSupplier: Supplier) => {
-    setSuppliers(prev => [...prev, newSupplier]);
+    if (editingSupplier) {
+      // Atualizar fornecedor existente
+      setSuppliers(prev => prev.map(s => s.id === editingSupplier.id ? newSupplier : s));
+    } else {
+      // Criar novo fornecedor
+      setSuppliers(prev => [...prev, newSupplier]);
+    }
+    setEditingSupplier(null);
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setShowNewSupplierModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowNewSupplierModal(false);
+    setEditingSupplier(null);
   };
 
   const handleGroupCreate = (newGroup: SupplierGroup) => {
@@ -348,10 +366,31 @@ export default function Suppliers() {
                   <Eye className="h-4 w-4 mr-2" />
                   Ver
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar
-                </Button>
+                
+                {/* Botão Editar - apenas para fornecedores locais */}
+                {supplier.type === 'local' ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleEditSupplier(supplier)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1 cursor-not-allowed opacity-50" 
+                    disabled
+                    title="Fornecedores globais são gerenciados pelo administrador"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                )}
+                
                 <Button variant="outline" size="sm">
                   <MessageCircle className="h-4 w-4" />
                 </Button>
@@ -389,9 +428,10 @@ export default function Suppliers() {
       {/* New Supplier Modal */}
       <NewSupplierModal
         open={showNewSupplierModal}
-        onOpenChange={setShowNewSupplierModal}
+        onOpenChange={handleCloseModal}
         onSupplierCreate={handleSupplierCreate}
         availableGroups={supplierGroups}
+        editingSupplier={editingSupplier}
       />
 
       {/* New Group Modal */}

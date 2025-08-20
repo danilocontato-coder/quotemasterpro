@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Mail, Phone, MessageCircle, MapPin, Building } from "lucide-react";
+import { Plus, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +14,7 @@ interface NewSupplierModalProps {
   onOpenChange: (open: boolean) => void;
   onSupplierCreate: (supplier: Supplier) => void;
   availableGroups: SupplierGroup[];
-  editingSupplier?: Supplier;
+  editingSupplier?: Supplier | null;
 }
 
 export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availableGroups, editingSupplier }: NewSupplierModalProps) {
@@ -44,7 +44,7 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
 
   // Preenche os dados quando está editando
   useEffect(() => {
-    if (editingSupplier) {
+    if (editingSupplier && open) {
       // Parse address back to individual fields (simple approach)
       const addressParts = editingSupplier.address?.split(', ') || [];
       
@@ -54,40 +54,22 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
         email: editingSupplier.email || "",
         phone: editingSupplier.phone || "",
         whatsapp: editingSupplier.whatsapp || "",
-        street: addressParts[0]?.split(', ')[0] || "",
-        number: "",
-        complement: "",
-        neighborhood: "",
-        city: "",
-        state: "",
-        zipCode: "",
+        street: addressParts[0]?.split(' ')[0] || "",
+        number: addressParts[0]?.split(' ').slice(1).join(' ') || "",
+        complement: addressParts[1] || "",
+        neighborhood: addressParts[2] || "",
+        city: addressParts[3]?.split(' - ')[0] || "",
+        state: addressParts[3]?.split(' - ')[1] || "",
+        zipCode: addressParts[4] || "",
         contactPerson: "",
         description: "",
         website: "",
         groupId: editingSupplier.groupId || "",
         specialties: editingSupplier.specialties || []
       });
-    } else {
-      // Reset form when not editing
-      setFormData({
-        name: "",
-        cnpj: "",
-        email: "",
-        phone: "",
-        whatsapp: "",
-        street: "",
-        number: "",
-        complement: "",
-        neighborhood: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        contactPerson: "",
-        description: "",
-        website: "",
-        groupId: "",
-        specialties: []
-      });
+    } else if (!editingSupplier && open) {
+      // Reset form para novo fornecedor
+      handleReset();
     }
   }, [editingSupplier, open]);
 
@@ -110,6 +92,10 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const isFormValid = () => {
+    return formData.name.trim() !== "" && formData.email.trim() !== "";
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -139,10 +125,11 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
       createdAt: editingSupplier ? editingSupplier.createdAt : new Date().toISOString(),
       groupId: formData.groupId || undefined,
       specialties: formData.specialties,
-      type: 'local', // Novos fornecedores são sempre locais
-      clientId: '1', // TODO: Pegar do contexto do cliente logado
-      rating: 0, // Novo fornecedor ainda sem avaliação
-      completedOrders: 0 // Novo fornecedor ainda sem pedidos
+      type: editingSupplier ? editingSupplier.type : 'local',
+      clientId: editingSupplier ? editingSupplier.clientId : '1',
+      rating: editingSupplier ? editingSupplier.rating : 0,
+      completedOrders: editingSupplier ? editingSupplier.completedOrders : 0,
+      region: editingSupplier ? editingSupplier.region : undefined
     };
 
     onSupplierCreate(newSupplier);
@@ -202,8 +189,8 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Building className="h-5 w-5" />
-            {editingSupplier ? 'Editar Fornecedor' : 'Cadastrar Novo Fornecedor'}
+            <Plus className="h-5 w-5" />
+            {editingSupplier ? 'Editar Fornecedor' : 'Novo Fornecedor'}
           </DialogTitle>
         </DialogHeader>
         
@@ -252,32 +239,122 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Website</label>
-                <Input
-                  placeholder="https://www.empresa.com.br"
-                  value={formData.website}
-                  onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    E-mail Principal *
+                  </label>
+                  <Input
+                    type="email"
+                    placeholder="contato@empresa.com.br"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className={errors.email ? "border-destructive" : ""}
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-destructive mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Telefone</label>
+                  <Input
+                    placeholder="(11) 3456-7890"
+                    value={formData.phone}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setFormData(prev => ({ ...prev, phone: formatted }));
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">WhatsApp</label>
+                  <Input
+                    placeholder="(11) 99876-5432"
+                    value={formData.whatsapp}
+                    onChange={(e) => {
+                      const formatted = formatPhone(e.target.value);
+                      setFormData(prev => ({ ...prev, whatsapp: formatted }));
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Grupo</label>
+                  <Select value={formData.groupId} onValueChange={(value) => setFormData(prev => ({ ...prev, groupId: value }))}>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Selecione um grupo (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border shadow-lg z-50">
+                      {availableGroups.map((group) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${group.color}`}></div>
+                            {group.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Grupo</label>
-                <Select value={formData.groupId} onValueChange={(value) => setFormData(prev => ({ ...prev, groupId: value }))}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Selecione um grupo (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border border-border shadow-lg z-50">
-                    {availableGroups.map((group) => (
-                      <SelectItem key={group.id} value={group.id}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${group.color}`}></div>
-                          {group.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium mb-2 block">Endereço</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                  <div className="md:col-span-2">
+                    <Input
+                      placeholder="Rua/Avenida"
+                      value={formData.street}
+                      onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      placeholder="Número"
+                      value={formData.number}
+                      onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <Input
+                    placeholder="Bairro"
+                    value={formData.neighborhood}
+                    onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Complemento"
+                    value={formData.complement}
+                    onChange={(e) => setFormData(prev => ({ ...prev, complement: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Input
+                    placeholder="Cidade"
+                    value={formData.city}
+                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Estado"
+                    value={formData.state}
+                    onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value.toUpperCase() }))}
+                    maxLength={2}
+                  />
+                  <Input
+                    placeholder="CEP"
+                    value={formData.zipCode}
+                    onChange={(e) => {
+                      const formatted = e.target.value.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2');
+                      if (formatted.length <= 9) {
+                        setFormData(prev => ({ ...prev, zipCode: formatted }));
+                      }
+                    }}
+                  />
+                </div>
               </div>
 
               <div>
@@ -300,160 +377,6 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
                   ))}
                 </div>
               </div>
-
-              <div>
-                <label className="text-sm font-medium mb-2 block">Descrição</label>
-                <Textarea
-                  placeholder="Descreva os produtos e serviços oferecidos..."
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contato */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Informações de Contato
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  E-mail Principal *
-                </label>
-                <Input
-                  type="email"
-                  placeholder="contato@empresa.com.br"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className={errors.email ? "border-destructive" : ""}
-                />
-                {errors.email && (
-                  <p className="text-xs text-destructive mt-1">{errors.email}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Telefone</label>
-                  <Input
-                    placeholder="(11) 3456-7890"
-                    value={formData.phone}
-                    onChange={(e) => {
-                      const formatted = formatPhone(e.target.value);
-                      setFormData(prev => ({ ...prev, phone: formatted }));
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">WhatsApp</label>
-                  <Input
-                    placeholder="(11) 99876-5432"
-                    value={formData.whatsapp}
-                    onChange={(e) => {
-                      const formatted = formatPhone(e.target.value);
-                      setFormData(prev => ({ ...prev, whatsapp: formatted }));
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-2 block">Pessoa de Contato</label>
-                <Input
-                  placeholder="Nome do responsável comercial"
-                  value={formData.contactPerson}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Endereço */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Endereço
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="md:col-span-2">
-                  <label className="text-sm font-medium mb-2 block">Rua/Avenida</label>
-                  <Input
-                    placeholder="Ex: Rua das Flores"
-                    value={formData.street}
-                    onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Número</label>
-                  <Input
-                    placeholder="123"
-                    value={formData.number}
-                    onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Complemento</label>
-                  <Input
-                    placeholder="Sala 101, Bloco A..."
-                    value={formData.complement}
-                    onChange={(e) => setFormData(prev => ({ ...prev, complement: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Bairro</label>
-                  <Input
-                    placeholder="Centro"
-                    value={formData.neighborhood}
-                    onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Cidade</label>
-                  <Input
-                    placeholder="São Paulo"
-                    value={formData.city}
-                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Estado</label>
-                  <Input
-                    placeholder="SP"
-                    value={formData.state}
-                    onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
-                    maxLength={2}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">CEP</label>
-                  <Input
-                    placeholder="01234-567"
-                    value={formData.zipCode}
-                    onChange={(e) => {
-                      const formatted = e.target.value.replace(/\D/g, '').replace(/(\d{5})(\d{3})/, '$1-$2');
-                      if (formatted.length <= 9) {
-                        setFormData(prev => ({ ...prev, zipCode: formatted }));
-                      }
-                    }}
-                  />
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -470,12 +393,12 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              className="flex-1"
+            <Button 
+              type="submit" 
+              className="btn-corporate" 
+              disabled={!isFormValid()}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              {editingSupplier ? 'Salvar Alterações' : 'Cadastrar Fornecedor'}
+              {editingSupplier ? 'Atualizar Fornecedor' : 'Cadastrar Fornecedor'}
             </Button>
           </div>
         </form>
