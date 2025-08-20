@@ -11,6 +11,8 @@ import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,7 +27,7 @@ export default function Suppliers() {
 
   const { user } = useAuth();
   const { suppliers, isLoading, refetch } = useSupabaseSuppliers();
-
+  const { toast } = useToast();
   // Load suppliers on component mount
   useEffect(() => {
     refetch();
@@ -66,30 +68,80 @@ export default function Suppliers() {
   const globalSuppliers = availableSuppliers.filter(s => s.type === 'national' || s.type === 'international').length;
   const prioritySuppliers = availableSuppliers.filter(s => s.rating > 4).length;
 
-  const handleSupplierCreate = () => {
-    console.log('Supplier created');
-    refetch();
-  };
+  const handleSupplierCreate = async (data: any) => {
+    try {
+      const payload: any = {
+        name: data.companyName,
+        cnpj: data.cnpj,
+        email: data.email,
+        phone: data.phone || null,
+        website: data.website || null,
+        address: data.address || null,
+        status: data.status || 'pending',
+        subscription_plan_id: data.plan || null,
+        specialties: data.businessInfo?.specialties || [],
+        type: 'local',
+        client_id: (user as any)?.clientId || null,
+        business_info: data.businessInfo || {},
+      };
 
+      if (editingSupplier?.id) {
+        const { error } = await supabase
+          .from('suppliers')
+          .update(payload)
+          .eq('id', editingSupplier.id);
+        if (error) throw error;
+        toast({ title: 'Fornecedor atualizado', description: 'Dados salvos com sucesso.' });
+      } else {
+        const { error } = await supabase
+          .from('suppliers')
+          .insert(payload);
+        if (error) throw error;
+        toast({ title: 'Fornecedor criado', description: 'Cadastro realizado com sucesso.' });
+      }
+
+      await refetch();
+    } catch (error: any) {
+      console.error('Supplier save error:', error);
+      toast({
+        title: 'Erro ao salvar fornecedor',
+        description: error?.message?.toLowerCase().includes('permission') ? 'Você não tem permissão para esta ação' : 'Não foi possível concluir a operação.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditingSupplier(null);
+      setShowNewSupplierModal(false);
+    }
+  };
   const handleEditSupplier = (supplier: any) => {
     console.log('Editando fornecedor:', supplier.name, supplier.type);
     setEditingSupplier(supplier);
     setShowNewSupplierModal(true);
   };
 
-  const handleDeleteSupplier = (supplier: any) => {
-    if (window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) {
-      console.log('Delete supplier:', supplier.id);
-      refetch();
+  const handleDeleteSupplier = async (supplier: any) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) return;
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .delete()
+        .eq('id', supplier.id);
+      if (error) throw error;
+      toast({ title: 'Fornecedor excluído', description: 'Removido com sucesso.' });
+      await refetch();
+    } catch (error: any) {
+      console.error('Supplier delete error:', error);
+      toast({
+        title: 'Erro ao excluir fornecedor',
+        description: error?.message?.toLowerCase().includes('permission') ? 'Você não tem permissão para esta ação' : 'Não foi possível concluir a operação.',
+        variant: 'destructive',
+      });
     }
   };
-
-  const handleCloseModal = () => {
-    console.log('Fechando modal, resetando editingSupplier');
-    setShowNewSupplierModal(false);
-    setEditingSupplier(null);
+  const handleCloseModal = (open: boolean) => {
+    setShowNewSupplierModal(open);
+    if (!open) setEditingSupplier(null);
   };
-
   // Cálculos de paginação
   const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
