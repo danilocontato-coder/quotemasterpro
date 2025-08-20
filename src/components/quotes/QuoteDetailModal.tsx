@@ -17,11 +17,14 @@ import {
   Calendar,
   MessageSquare,
   Download,
-  Send
+  Send,
+  BarChart3
 } from 'lucide-react';
 import { Quote } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 import { QuoteComparison } from './QuoteComparison';
+import { ItemAnalysisModal } from './ItemAnalysisModal';
+import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 
 export interface QuoteProposal {
   id: string;
@@ -168,6 +171,7 @@ const mockProposals: QuoteProposal[] = [
 
 export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: QuoteDetailModalProps) {
   const [showComparison, setShowComparison] = useState(false);
+  const [showItemAnalysis, setShowItemAnalysis] = useState(false);
   const { toast } = useToast();
 
   const proposals = useMemo(() => {
@@ -371,6 +375,17 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                   <Button onClick={handleSendToSuppliers} className="flex items-center gap-2">
                     <Send className="h-4 w-4" />
                     Enviar para Fornecedores
+                  </Button>
+                )}
+
+                {quote.items && quote.items.length > 0 && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowItemAnalysis(true)}
+                    className="flex items-center gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Analisar Mercado dos Itens
                   </Button>
                 )}
                 
@@ -670,6 +685,20 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
           submittedAt: p.submittedAt,
         }))}
         quoteTitle={quote.title}
+      />
+
+      {/* Item Analysis Modal */}
+      <ItemAnalysisModal
+        open={showItemAnalysis}
+        onClose={() => setShowItemAnalysis(false)}
+        items={quote?.items?.map(item => ({
+          productName: item.productName,
+          category: 'Produtos Gerais', // Default category since it's not in the quote item
+          specifications: `Produto ID: ${item.productId}`,
+          quantity: item.quantity,
+          supplierPrice: item.unitPrice
+        } as ItemAnalysisData)) || []}
+        title={`Análise de Mercado - ${quote?.title || 'Cotação'}`}
       />
     </>
   );
