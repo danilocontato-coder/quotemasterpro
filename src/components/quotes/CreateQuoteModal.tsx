@@ -333,7 +333,20 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
                 type="date"
                 value={formData.deadline}
                 onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // Mínimo: amanhã
               />
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Evite prazos muito curtos (mínimo 2-3 dias úteis)
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  • Prazos adequados garantem melhores propostas
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  • Considere complexidade dos itens e época do ano
+                </p>
+              </div>
             </div>
           </div>
         );
