@@ -8,6 +8,7 @@ import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ComprehensiveSupplierModal } from "@/components/suppliers/ComprehensiveSupplierModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
+import type { AdminSupplier } from "@/hooks/useAdminSuppliers";
 import { mockSuppliers, mockSupplierGroups, getStatusColor, getStatusText, Supplier, SupplierGroup } from "@/data/mockData";
 
 export default function Suppliers() {
@@ -557,9 +558,32 @@ export default function Suppliers() {
       <ComprehensiveSupplierModal
         open={showNewSupplierModal}
         onOpenChange={handleCloseModal}
-        onSupplierCreate={handleSupplierCreate}
+        onSupplierCreate={(admin: Omit<AdminSupplier, "id" | "createdAt" | "financialInfo" | "ratings" | "avgRating">) => {
+          const supplier: Supplier = {
+            id: `supplier-${Date.now()}`,
+            name: admin.companyName,
+            cnpj: admin.cnpj,
+            email: admin.email,
+            phone: admin.phone,
+            whatsapp: admin.phone,
+            address: `${admin.address.street}, ${admin.address.number}${admin.address.complement ? ', ' + admin.address.complement : ''}, ${admin.address.neighborhood}, ${admin.address.city} - ${admin.address.state}, ${admin.address.zipCode}`,
+            status: admin.status === 'inactive' ? 'inactive' : 'active',
+            subscriptionPlan: 'basic',
+            createdAt: new Date().toISOString(),
+            groupId: admin.groupId,
+            specialties: admin.businessInfo?.specialties || [],
+            type: 'local',
+            clientId: currentClientId,
+            rating: 0,
+            completedOrders: 0,
+            region: undefined,
+          };
+          handleSupplierCreate(supplier);
+        }}
         availableGroups={supplierGroups}
         editingSupplier={editingSupplier}
+        onPasswordGenerate={() => Math.random().toString(36).slice(-8)}
+        onUsernameGenerate={(name) => name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15) + Math.floor(Math.random()*100)}
       />
 
       {/* New Group Modal */}

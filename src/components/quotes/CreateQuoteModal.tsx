@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
 import { ComprehensiveSupplierModal } from "@/components/suppliers/ComprehensiveSupplierModal";
+import type { AdminSupplier } from "@/hooks/useAdminSuppliers";
 import { QuoteSendingProgress } from "./QuoteSendingProgress";
 import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup, Quote } from '@/data/mockData';
@@ -924,20 +925,66 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
       />
 
         <ComprehensiveSupplierModal
-        open={showNewSupplierModal}
-        onOpenChange={setShowNewSupplierModal}
-        onSupplierCreate={handleSupplierCreate}
-        availableGroups={supplierGroups}
-      />
+          open={showNewSupplierModal}
+          onOpenChange={setShowNewSupplierModal}
+          onSupplierCreate={(admin: Omit<AdminSupplier, "id" | "createdAt" | "financialInfo" | "ratings" | "avgRating">) => {
+            const supplier: Supplier = {
+              id: `supplier-${Date.now()}`,
+              name: admin.companyName,
+              cnpj: admin.cnpj,
+              email: admin.email,
+              phone: admin.phone,
+              whatsapp: admin.phone,
+              address: `${admin.address.street}, ${admin.address.number}${admin.address.complement ? ', ' + admin.address.complement : ''}, ${admin.address.neighborhood}, ${admin.address.city} - ${admin.address.state}, ${admin.address.zipCode}`,
+              status: admin.status === 'inactive' ? 'inactive' : 'active',
+              subscriptionPlan: 'basic',
+              createdAt: new Date().toISOString(),
+              groupId: admin.groupId,
+              specialties: admin.businessInfo?.specialties || [],
+              type: 'local',
+              clientId: '1',
+              rating: 0,
+              completedOrders: 0,
+              region: undefined,
+            };
+            handleSupplierCreate(supplier);
+          }}
+          availableGroups={supplierGroups}
+          onPasswordGenerate={() => Math.random().toString(36).slice(-8)}
+          onUsernameGenerate={(name) => name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15) + Math.floor(Math.random()*100)}
+        />
       
       {/* Edit Supplier Modal */}
       {editingSupplier && (
         <ComprehensiveSupplierModal
           open={showEditSupplierModal}
           onOpenChange={setShowEditSupplierModal}
-          onSupplierCreate={handleSupplierUpdate}
+          onSupplierCreate={(admin: Omit<AdminSupplier, "id" | "createdAt" | "financialInfo" | "ratings" | "avgRating">) => {
+            const updated: Supplier = {
+              id: editingSupplier?.id || `supplier-${Date.now()}`,
+              name: admin.companyName,
+              cnpj: admin.cnpj,
+              email: admin.email,
+              phone: admin.phone,
+              whatsapp: admin.phone,
+              address: `${admin.address.street}, ${admin.address.number}${admin.address.complement ? ', ' + admin.address.complement : ''}, ${admin.address.neighborhood}, ${admin.address.city} - ${admin.address.state}, ${admin.address.zipCode}`,
+              status: admin.status === 'inactive' ? 'inactive' : 'active',
+              subscriptionPlan: 'basic',
+              createdAt: new Date().toISOString(),
+              groupId: admin.groupId,
+              specialties: admin.businessInfo?.specialties || [],
+              type: 'local',
+              clientId: '1',
+              rating: 0,
+              completedOrders: 0,
+              region: undefined,
+            };
+            handleSupplierUpdate(updated);
+          }}
           availableGroups={supplierGroups}
           editingSupplier={editingSupplier}
+          onPasswordGenerate={() => Math.random().toString(36).slice(-8)}
+          onUsernameGenerate={(name) => name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15) + Math.floor(Math.random()*100)}
         />
       )}
     </>

@@ -11,19 +11,23 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { AdminSupplier, SupplierGroup } from "@/hooks/useAdminSuppliers";
+import { AdminSupplier } from "@/hooks/useAdminSuppliers";
 import { supplierSpecialties } from "@/data/mockData";
 import { toast } from "sonner";
+
+// Accept both admin groups and mock groups
+type BasicGroup = { id: string; name: string; color?: string };
 
 interface ComprehensiveSupplierModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSupplierCreate: (supplier: Omit<AdminSupplier, "id" | "createdAt" | "financialInfo" | "ratings" | "avgRating">) => void;
-  availableGroups: SupplierGroup[];
-  editingSupplier?: AdminSupplier | null;
+  availableGroups: BasicGroup[];
+  editingSupplier?: any | null;
   onPasswordGenerate: () => string;
   onUsernameGenerate: (companyName: string) => string;
 }
+
 
 const businessCategories = [
   "Materiais de Construção", "Ferramentas", "Elétrica", "Hidráulica", "Pintura",
