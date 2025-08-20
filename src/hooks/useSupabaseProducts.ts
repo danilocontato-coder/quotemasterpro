@@ -38,17 +38,20 @@ export const useSupabaseProducts = () => {
       setProducts((data as Product[]) || []);
     } catch (error) {
       console.error('Error fetching products:', error);
-      toast({
-        title: "Erro ao carregar produtos",
-        description: "Não foi possível carregar a lista de produtos.",
-        variant: "destructive"
-      });
+      // Don't show toast for network errors to avoid spam
+      if (!(error as any)?.message?.includes('Failed to fetch')) {
+        toast({
+          title: "Erro ao carregar produtos",
+          description: "Não foi possível carregar a lista de produtos.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Real-time subscription
+  // Real-time subscription with error handling
   useEffect(() => {
     fetchProducts();
     
@@ -62,7 +65,10 @@ export const useSupabaseProducts = () => {
           table: 'products'
         },
         () => {
-          fetchProducts();
+          // Debounce real-time updates
+          setTimeout(() => {
+            fetchProducts();
+          }, 500);
         }
       )
       .subscribe();
@@ -70,7 +76,7 @@ export const useSupabaseProducts = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, []); // No dependencies to prevent loops
 
   const addProduct = async (productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     try {

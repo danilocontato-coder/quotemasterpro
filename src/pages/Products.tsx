@@ -37,7 +37,7 @@ export default function Products() {
   // Load products on component mount
   useEffect(() => {
     refetch();
-  }, [refetch]);
+  }, []); // Remove refetch from dependencies to prevent loop
 
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

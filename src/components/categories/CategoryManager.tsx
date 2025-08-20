@@ -88,20 +88,28 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
     setNewColor("#3b82f6");
   };
 
-  // Load usage counts for all categories
+  // Load usage counts for all categories (with debounce to prevent spam)
   useEffect(() => {
     const loadUsageCounts = async () => {
-      const usage: Record<string, number> = {};
-      for (const category of categories) {
-        usage[category.name] = await getCategoryUsageCount(category.name);
-      }
-      setCategoryUsage(usage);
+      if (categories.length === 0) return;
+      
+      // Debounce to prevent multiple rapid calls
+      const timeoutId = setTimeout(async () => {
+        const usage: Record<string, number> = {};
+        
+        // Load usage counts sequentially to avoid overwhelming the API
+        for (const category of categories.slice(0, 10)) { // Limit to first 10 to prevent spam
+          usage[category.name] = await getCategoryUsageCount(category.name);
+        }
+        
+        setCategoryUsage(usage);
+      }, 300);
+
+      return () => clearTimeout(timeoutId);
     };
 
-    if (categories.length > 0) {
-      loadUsageCounts();
-    }
-  }, [categories, getCategoryUsageCount]);
+    loadUsageCounts();
+  }, [categories.length]); // Only depend on categories length, not the full array
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

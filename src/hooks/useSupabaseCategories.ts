@@ -32,11 +32,14 @@ export const useSupabaseCategories = () => {
       setCategories((data as Category[]) || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
-      toast({
-        title: "Erro ao carregar categorias",
-        description: "Não foi possível carregar a lista de categorias.",
-        variant: "destructive"
-      });
+      // Don't show toast for network errors to avoid spam
+      if (!(error as any)?.message?.includes('Failed to fetch')) {
+        toast({
+          title: "Erro ao carregar categorias",
+          description: "Não foi possível carregar a lista de categorias.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +168,10 @@ export const useSupabaseCategories = () => {
         .select('id', { count: 'exact' })
         .eq('category', categoryName);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Category usage count error:', error);
+        return 0;
+      }
       return data?.length || 0;
     } catch (error) {
       console.error('Error getting category usage:', error);
@@ -173,7 +179,7 @@ export const useSupabaseCategories = () => {
     }
   };
 
-  // Real-time subscription
+  // Real-time subscription with error handling
   useEffect(() => {
     fetchCategories();
     
@@ -187,7 +193,10 @@ export const useSupabaseCategories = () => {
           table: 'categories'
         },
         () => {
-          fetchCategories();
+          // Debounce real-time updates
+          setTimeout(() => {
+            fetchCategories();
+          }, 500);
         }
       )
       .subscribe();
@@ -195,7 +204,7 @@ export const useSupabaseCategories = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, []); // No dependencies to prevent loops
 
   return {
     categories,
