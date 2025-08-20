@@ -615,6 +615,21 @@ export const getStatusColor = (status: string) => {
     case 'trash':
     case 'inactive':
       return 'badge-error';
+    // Payment statuses
+    case 'in_escrow':
+      return 'text-blue-600 bg-blue-50 border-blue-200';
+    case 'waiting_confirmation':
+      return 'text-orange-600 bg-orange-50 border-orange-200';
+    case 'delivered':
+      return 'text-green-600 bg-green-50 border-green-200';
+    case 'paid':
+      return 'text-green-600 bg-green-50 border-green-200';
+    case 'disputed':
+      return 'text-red-600 bg-red-50 border-red-200';
+    case 'cancelled':
+      return 'text-gray-600 bg-gray-50 border-gray-200';
+    case 'pending':
+      return 'text-yellow-600 bg-yellow-50 border-yellow-200';
     default:
       return 'badge-warning';
   }
@@ -632,6 +647,223 @@ export const getStatusText = (status: string) => {
     basic: 'Básico',
     premium: 'Premium',
     enterprise: 'Enterprise',
+    // Payment statuses
+    pending: 'Pendente',
+    in_escrow: 'Em Garantia',
+    waiting_confirmation: 'Aguardando Confirmação',
+    delivered: 'Entregue',
+    paid: 'Pago',
+    disputed: 'Em Disputa',
+    cancelled: 'Cancelado',
   };
   return statusMap[status] || status;
 };
+
+// Payment interfaces and data
+export interface Payment {
+  id: string;
+  quoteId: string;
+  quoteName: string;
+  clientId: string;
+  clientName: string;
+  supplierId: string;
+  supplierName: string;
+  amount: number;
+  status: 'pending' | 'in_escrow' | 'waiting_confirmation' | 'delivered' | 'paid' | 'disputed' | 'cancelled';
+  escrowReleaseDate: string; // Data de liberação automática (10 dias)
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  createdAt: string;
+  updatedAt: string;
+  transactions: PaymentTransaction[];
+}
+
+export interface PaymentTransaction {
+  id: string;
+  paymentId: string;
+  type: 'payment_created' | 'payment_received' | 'funds_held' | 'delivery_confirmed' | 'funds_released' | 'dispute_opened' | 'payment_cancelled';
+  description: string;
+  amount?: number;
+  userId: string;
+  userName: string;
+  createdAt: string;
+  metadata?: Record<string, any>;
+}
+
+// Mock payments data
+export const mockPayments: Payment[] = [
+  {
+    id: 'PAY001',
+    quoteId: 'RFQ008',
+    quoteName: 'Serviços de Jardinagem',
+    clientId: '1',
+    clientName: 'Condomínio Jardim das Flores',
+    supplierId: '4',
+    supplierName: 'Jardins Verdes',
+    amount: 2450.00,
+    status: 'waiting_confirmation',
+    escrowReleaseDate: '2025-09-01T10:00:00Z',
+    stripeSessionId: 'cs_test_123456789',
+    stripePaymentIntentId: 'pi_test_987654321',
+    createdAt: '2025-08-20T10:00:00Z',
+    updatedAt: '2025-08-22T14:30:00Z',
+    transactions: [
+      {
+        id: 'TXN001',
+        paymentId: 'PAY001',
+        type: 'payment_created',
+        description: 'Pagamento criado pelo cliente',
+        amount: 2450.00,
+        userId: 'USR001',
+        userName: 'João Silva (Cliente)',
+        createdAt: '2025-08-20T10:00:00Z',
+      },
+      {
+        id: 'TXN002',
+        paymentId: 'PAY001',
+        type: 'payment_received',
+        description: 'Pagamento recebido via Stripe',
+        amount: 2450.00,
+        userId: 'SYSTEM',
+        userName: 'Sistema',
+        createdAt: '2025-08-20T10:05:00Z',
+      },
+      {
+        id: 'TXN003',
+        paymentId: 'PAY001',
+        type: 'funds_held',
+        description: 'Valores retidos em escrow - aguardando confirmação de entrega',
+        amount: 2450.00,
+        userId: 'SYSTEM',
+        userName: 'Sistema',
+        createdAt: '2025-08-20T10:05:00Z',
+        metadata: { release_date: '2025-09-01T10:00:00Z' }
+      }
+    ]
+  },
+  {
+    id: 'PAY002',
+    quoteId: 'RFQ007',
+    quoteName: 'Materiais Elétricos',
+    clientId: '1',
+    clientName: 'Condomínio Jardim das Flores',
+    supplierId: '3',
+    supplierName: 'Elétrica Silva & Cia',
+    amount: 1890.50,
+    status: 'paid',
+    escrowReleaseDate: '2025-08-25T15:00:00Z',
+    stripeSessionId: 'cs_test_abcdef123',
+    stripePaymentIntentId: 'pi_test_fedcba321',
+    createdAt: '2025-08-15T15:00:00Z',
+    updatedAt: '2025-08-18T09:30:00Z',
+    transactions: [
+      {
+        id: 'TXN004',
+        paymentId: 'PAY002',
+        type: 'payment_created',
+        description: 'Pagamento criado pelo cliente',
+        amount: 1890.50,
+        userId: 'USR001',
+        userName: 'João Silva (Cliente)',
+        createdAt: '2025-08-15T15:00:00Z',
+      },
+      {
+        id: 'TXN005',
+        paymentId: 'PAY002',
+        type: 'payment_received',
+        description: 'Pagamento recebido via Stripe',
+        amount: 1890.50,
+        userId: 'SYSTEM',
+        userName: 'Sistema',
+        createdAt: '2025-08-15T15:05:00Z',
+      },
+      {
+        id: 'TXN006',
+        paymentId: 'PAY002',
+        type: 'funds_held',
+        description: 'Valores retidos em escrow',
+        amount: 1890.50,
+        userId: 'SYSTEM',
+        userName: 'Sistema',
+        createdAt: '2025-08-15T15:05:00Z',
+      },
+      {
+        id: 'TXN007',
+        paymentId: 'PAY002',
+        type: 'delivery_confirmed',
+        description: 'Entrega confirmada pelo cliente',
+        userId: 'USR001',
+        userName: 'João Silva (Cliente)',
+        createdAt: '2025-08-18T09:30:00Z',
+      },
+      {
+        id: 'TXN008',
+        paymentId: 'PAY002',
+        type: 'funds_released',
+        description: 'Valores liberados para o fornecedor',
+        amount: 1890.50,
+        userId: 'SYSTEM',
+        userName: 'Sistema',
+        createdAt: '2025-08-18T09:30:00Z',
+      }
+    ]
+  },
+  {
+    id: 'PAY003',
+    quoteId: 'RFQ006',
+    quoteName: 'Produtos de Limpeza',
+    clientId: '2',
+    clientName: 'Residencial Vista Alegre',
+    supplierId: '2',
+    supplierName: 'Limpeza Total SA',
+    amount: 987.30,
+    status: 'disputed',
+    escrowReleaseDate: '2025-08-30T12:00:00Z',
+    stripeSessionId: 'cs_test_dispute123',
+    stripePaymentIntentId: 'pi_test_dispute321',
+    createdAt: '2025-08-10T12:00:00Z',
+    updatedAt: '2025-08-19T16:45:00Z',
+    transactions: [
+      {
+        id: 'TXN009',
+        paymentId: 'PAY003',
+        type: 'payment_created',
+        description: 'Pagamento criado pelo cliente',
+        amount: 987.30,
+        userId: 'USR002',
+        userName: 'Maria Santos (Cliente)',
+        createdAt: '2025-08-10T12:00:00Z',
+      },
+      {
+        id: 'TXN010',
+        paymentId: 'PAY003',
+        type: 'payment_received',
+        description: 'Pagamento recebido via Stripe',
+        amount: 987.30,
+        userId: 'SYSTEM',
+        userName: 'Sistema',
+        createdAt: '2025-08-10T12:05:00Z',
+      },
+      {
+        id: 'TXN011',
+        paymentId: 'PAY003',
+        type: 'funds_held',
+        description: 'Valores retidos em escrow',
+        amount: 987.30,
+        userId: 'SYSTEM',
+        userName: 'Sistema',
+        createdAt: '2025-08-10T12:05:00Z',
+      },
+      {
+        id: 'TXN012',
+        paymentId: 'PAY003',
+        type: 'dispute_opened',
+        description: 'Disputa aberta - produtos não conformes',
+        userId: 'USR002',
+        userName: 'Maria Santos (Cliente)',
+        createdAt: '2025-08-19T16:45:00Z',
+        metadata: { reason: 'Produtos recebidos não conferem com o pedido' }
+      }
+    ]
+  }
+];

@@ -33,7 +33,13 @@ const navigationItems = [
   { title: "Fornecedores", url: "/suppliers", icon: Users },
   { title: "Itens", url: "/products", icon: Package },
   { title: "Aprovações", url: "/approvals", icon: CheckCircle },
+];
+
+const financialItems = [
   { title: "Pagamentos", url: "/payments", icon: CreditCard },
+];
+
+const communicationItems = [
   { title: "Comunicação", url: "/communication", icon: Mail },
 ];
 
@@ -81,6 +87,56 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      end
+                      className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Financial Section */}
+        <SidebarGroup className="mt-6">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-2">
+            {!isCollapsed && "Financeiro"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {financialItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      end
+                      className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Communication Section */}
+        <SidebarGroup className="mt-6">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-2">
+            {!isCollapsed && "Comunicação"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {communicationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink 
