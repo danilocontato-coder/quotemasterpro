@@ -18,12 +18,6 @@ import { Approvals } from "./pages/Approvals";
 import { Permissions } from "./pages/Permissions";
 import { Reports } from "./pages/Reports";
 import NotFound from "./pages/NotFound";
-import SupplierQuotes from "./pages/SupplierQuotes";
-import SupplierQuoteDetail from "./pages/SupplierQuoteDetail";  
-import SupplierReceiving from "./pages/SupplierReceiving";
-import SupplierSettings from "./pages/SupplierSettings";
-import SupportTickets from "./pages/SupportTickets";
-import SupportTicketDetail from "./pages/SupportTicketDetail";
 
 const queryClient = new QueryClient();
 
@@ -47,14 +41,6 @@ const App = () => (
             <Route path="settings" element={<Settings />} />
             <Route path="payments" element={<Payments />} />
             <Route path="communication" element={<Communication />} />
-            {/* Supplier Routes */}
-            <Route path="supplier/quotes" element={<SupplierQuotes />} />
-            <Route path="supplier/quotes/:id" element={<SupplierQuoteDetail />} />
-            <Route path="supplier/receiving" element={<SupplierReceiving />} />
-            <Route path="supplier/settings" element={<SupplierSettings />} />
-            {/* Support Routes */}
-            <Route path="support/tickets" element={<SupportTickets />} />
-            <Route path="support/tickets/:id" element={<SupportTicketDetail />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
