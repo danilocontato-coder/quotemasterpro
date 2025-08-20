@@ -21,6 +21,7 @@ import Dashboard from '@/pages/Dashboard';
 import { SuperAdminDashboard } from '@/pages/admin/SuperAdminDashboard';
 import { AccountsManagement } from '@/pages/admin/AccountsManagement';
 import { SystemSettings } from '@/pages/admin/SystemSettings';
+import { ClientsManagement } from '@/pages/admin/ClientsManagement';
 
 // Existing pages
 import Quotes from '@/pages/Quotes';
@@ -84,10 +85,10 @@ function App() {
                     } 
                   />
                   <Route 
-                    path="/admin/accounts" 
+                    path="/admin/clients" 
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
-                        <AccountsManagement />
+                        <ClientsManagement />
                       </ProtectedRoute>
                     } 
                   />
