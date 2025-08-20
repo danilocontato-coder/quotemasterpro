@@ -289,7 +289,7 @@ export const useSupplierProducts = () => {
     );
   }, [products]);
 
-  const getCategories = useMemo(() => {
+  const categoriesList = useMemo(() => {
     return [...new Set(products.map(p => p.category))];
   }, [products]);
 
@@ -309,6 +309,6 @@ export const useSupplierProducts = () => {
     getStockMovements,
     lowStockProducts: getLowStockProducts,
     outOfStockProducts: getOutOfStockProducts,
-    categories: getCategories,
+    categories: categoriesList,
   };
 };
