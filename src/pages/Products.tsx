@@ -150,9 +150,9 @@ export default function Products() {
   };
 
   const getStockStatus = (quantity: number) => {
-    if (quantity <= 5) return { label: "Crítico", color: "badge-error" };
-    if (quantity <= 10) return { label: "Baixo", color: "badge-warning" };
-    return { label: "Normal", color: "badge-success" };
+    if (quantity <= 5) return { label: "Crítico", color: "text-red-600 bg-red-50 border-red-200" };
+    if (quantity <= 10) return { label: "Baixo", color: "text-orange-600 bg-orange-50 border-orange-200" };
+    return { label: "Normal", color: "text-green-600 bg-green-50 border-green-200" };
   };
 
   return (
@@ -308,9 +308,9 @@ export default function Products() {
                       ) : (
                         <>
                           <span className="font-semibold">{item.stockQuantity}</span>
-                          <Badge className={stockStatus.color}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${stockStatus.color}`}>
                             {stockStatus.label}
-                          </Badge>
+                          </span>
                         </>
                       )}
                     </div>
@@ -458,40 +458,6 @@ export default function Products() {
         </Card>
       )}
 
-      {/* Low Stock Alerts - Only for products, not services */}
-      {(lowStockItems > 0 || criticalStockItems > 0) && (
-        <Card className="card-corporate border-destructive/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Alertas de Estoque
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              {lowStockItems + criticalStockItems} produto(s) com estoque baixo ou crítico precisam de atenção
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {items
-                .filter(item => item.type === "product" && item.stockQuantity <= 10)
-                .slice(0, 4)
-                .map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.code}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-destructive">{item.stockQuantity}</p>
-                      <p className="text-xs text-muted-foreground">unidades</p>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Modals */}
       <ViewItemModal
