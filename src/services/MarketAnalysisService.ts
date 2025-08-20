@@ -22,14 +22,6 @@ interface SupplierAnalysis {
 
 export class MarketAnalysisService {
   private static API_KEY_STORAGE_KEY = 'perplexity_api_key';
-  private static MODEL_CANDIDATES = [
-    // Newer short names
-    'sonar-small-online',
-    'sonar-large-online',
-    // Older explicit names (fallbacks)
-    'llama-3.1-sonar-small-128k-online',
-    'llama-3.1-sonar-large-128k-online'
-  ];
 
   static saveApiKey(apiKey: string): void {
     localStorage.setItem(this.API_KEY_STORAGE_KEY, apiKey);
@@ -40,58 +32,26 @@ export class MarketAnalysisService {
     return localStorage.getItem(this.API_KEY_STORAGE_KEY);
   }
 
-  private static async chatWithFallback(apiKey: string, messages: any[], extraOptions: Record<string, any> = {}) {
-    const url = 'https://api.perplexity.ai/chat/completions';
-    for (const model of this.MODEL_CANDIDATES) {
-      const body = JSON.stringify({
-        model,
-        messages,
-        temperature: 0.2,
-        top_p: 0.9,
-        max_tokens: 1000,
-        return_images: false,
-        return_related_questions: false,
-        frequency_penalty: 1,
-        presence_penalty: 0,
-        ...extraOptions,
-      });
-
-      const res = await fetch(url, {
+  static async testApiKey(apiKey: string): Promise<boolean> {
+    try {
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body,
+        body: JSON.stringify({
+          model: 'sonar',
+          messages: [
+            {
+              role: 'user',
+              content: 'Responda apenas "OK" para testar a conexão.'
+            }
+          ],
+        }),
       });
 
-      let json: any = null;
-      try { json = await res.json(); } catch {}
-
-      if (res.ok && json?.choices?.[0]?.message?.content) {
-        return { ok: true, content: json.choices[0].message.content, modelUsed: model } as const;
-      }
-
-      const errCode = json?.error?.type || json?.error?.code;
-      if (errCode && String(errCode).toLowerCase().includes('invalid_model')) {
-        // Try next model
-        continue;
-      }
-
-      // Other error
-      const msg = json?.error?.message || `Erro na API Perplexity (${res.status})`;
-      return { ok: false, error: msg } as const;
-    }
-    return { ok: false, error: 'Nenhum modelo válido encontrado. Verifique a documentação da Perplexity.' } as const;
-  }
-
-  static async testApiKey(apiKey: string): Promise<boolean> {
-    try {
-      const result = await this.chatWithFallback(apiKey, [
-        { role: 'system', content: 'Responda apenas "OK" se você conseguir processar esta mensagem.' },
-        { role: 'user', content: 'Teste de conexão' }
-      ], { max_tokens: 5 });
-      return result.ok;
+      return response.ok;
     } catch (error) {
       console.error('Error testing Perplexity API key:', error);
       return false;
@@ -133,22 +93,34 @@ Formate a resposta em JSON com a seguinte estrutura:
 }
       `;
 
-      const result = await this.chatWithFallback(apiKey, [
-        {
-          role: 'system',
-          content: 'Você é um especialista em análise de preços de mercado brasileiro. Forneça informações precisas e atualizadas sobre preços de produtos comerciais e industriais no Brasil.'
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ], { max_tokens: 1500, search_recency_filter: 'month' });
+        body: JSON.stringify({
+          model: 'sonar',
+          messages: [
+            {
+              role: 'system',
+              content: 'Você é um especialista em análise de preços de mercado brasileiro. Forneça informações precisas e atualizadas sobre preços de produtos comerciais e industriais no Brasil.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+        }),
+      });
 
-      if (!result.ok) {
-        throw new Error(result.error || 'Falha ao consultar a Perplexity');
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error?.message || `Erro na API Perplexity: ${response.status}`);
       }
 
-      const content = result.content as string;
+      const data = await response.json();
+      const content = data.choices[0].message.content;
 
       try {
         // Try to parse JSON from the response
