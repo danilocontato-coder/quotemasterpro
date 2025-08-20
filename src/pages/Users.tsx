@@ -29,20 +29,21 @@ import {
   Mail,
   Phone,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UsersIcon
 } from "lucide-react";
 import { CreateUserModal } from "@/components/users/CreateUserModal";
 import { EditUserModal } from "@/components/users/EditUserModal";
 import { DeleteUserModal } from "@/components/users/DeleteUserModal";
 import { CreateProfileModal } from "@/components/profiles/CreateProfileModal";
-import { useUsers } from "@/hooks/useUsers";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useUsers, useUserGroups } from "@/hooks/useUsersAndGroups";
+import { GroupManager } from "@/components/users/GroupManager";
 
 export default function Users() {
   const { users, searchTerm, setSearchTerm } = useUsers();
-  const { profiles } = useProfiles();
+  const { groups } = useUserGroups();
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createProfileModalOpen, setCreateProfileModalOpen] = useState(false);
+  const [groupManagerOpen, setGroupManagerOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -76,7 +77,7 @@ export default function Users() {
   const getRoleLabel = (role: string) => {
     const roles = {
       admin: "Administrador",
-      manager: "Gerente", 
+      manager: "Gestor", 
       collaborator: "Colaborador",
       supplier: "Fornecedor"
     };
@@ -85,16 +86,16 @@ export default function Users() {
 
   const getRoleColor = (role: string) => {
     const colors = {
-      admin: "bg-destructive",
-      manager: "bg-primary",
-      collaborator: "bg-secondary", 
-      supplier: "bg-warning"
+      admin: "bg-red-600 text-white",
+      manager: "bg-blue-600 text-white",
+      collaborator: "bg-green-600 text-white", 
+      supplier: "bg-orange-600 text-white"
     };
     return colors[role as keyof typeof colors] || "bg-secondary";
   };
 
   const getStatusColor = (status: string) => {
-    return status === "active" ? "bg-success" : "bg-muted";
+    return status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800";
   };
 
   const handleEdit = (user: any) => {
@@ -121,14 +122,14 @@ export default function Users() {
             <Plus className="h-4 w-4 mr-2" />
             Novo Usuário
           </Button>
-          <Button variant="outline" onClick={() => setCreateProfileModalOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Criar Perfil
+          <Button variant="outline" onClick={() => setGroupManagerOpen(true)}>
+            <UsersIcon className="h-4 w-4 mr-2" />
+            Gerenciar Grupos
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards - showing profile statistics */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -142,46 +143,41 @@ export default function Users() {
           </CardContent>
         </Card>
         
-        {/* Profile-based stats */}
-        {profiles.slice(0, 3).map((profile) => {
-          const profileUserCount = users.filter(u => u.role === profile.id).length;
-          return (
-            <Card key={profile.id}>
-              <CardContent className="pt-6">
-                <div className="flex items-center">
-                  <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
-                    <span className="text-sm font-bold text-accent-foreground">
-                      {profile.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold">{profileUserCount}</p>
-                    <p className="text-sm text-muted-foreground truncate max-w-24">
-                      {profile.name}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        
-        {/* Show "More profiles" if there are many */}
-        {profiles.length > 3 && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center">
-                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                  <span className="text-sm font-bold">+{profiles.length - 3}</span>
-                </div>
-                <div className="ml-4">
-                  <p className="text-2xl font-bold">{profiles.length - 3}</p>
-                  <p className="text-sm text-muted-foreground">Mais Perfis</p>
-                </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Shield className="h-8 w-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-2xl font-bold">{users.filter(u => u.status === 'active').length}</p>
+                <p className="text-sm text-muted-foreground">Usuários Ativos</p>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <UsersIcon className="h-8 w-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-2xl font-bold">{groups.length}</p>
+                <p className="text-sm text-muted-foreground">Grupos Criados</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Mail className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-2xl font-bold">{users.filter(u => u.mustChangePassword).length}</p>
+                <p className="text-sm text-muted-foreground">Senhas Pendentes</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filters */}
@@ -207,7 +203,8 @@ export default function Users() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Usuário</TableHead>
-                  <TableHead>Perfil</TableHead>
+                  <TableHead>Papel</TableHead>
+                  <TableHead>Grupos</TableHead>
                   <TableHead>Contato</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Último Acesso</TableHead>
@@ -237,6 +234,31 @@ export default function Users() {
                       </Badge>
                     </TableCell>
                     <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {user.groupIds?.slice(0, 2).map(groupId => {
+                          const group = groups.find(g => g.id === groupId);
+                          return group ? (
+                            <Badge 
+                              key={group.id} 
+                              variant="outline" 
+                              className="text-xs"
+                              style={{ 
+                                borderColor: group.color,
+                                color: group.color
+                              }}
+                            >
+                              {group.name}
+                            </Badge>
+                          ) : null;
+                        })}
+                        {user.groupIds?.length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{user.groupIds.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <div className="space-y-1">
                         <div className="flex items-center text-sm">
                           <Mail className="h-3 w-3 mr-1" />
@@ -257,6 +279,11 @@ export default function Users() {
                       >
                         {user.status === "active" ? "Ativo" : "Inativo"}
                       </Badge>
+                      {user.mustChangePassword && (
+                        <Badge variant="outline" className="ml-2 text-xs text-yellow-600">
+                          Senha Pendente
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {user.lastAccess}
@@ -341,9 +368,10 @@ export default function Users() {
         onClose={() => setCreateModalOpen(false)} 
       />
       
-      <CreateProfileModal
-        open={createProfileModalOpen}
-        onClose={() => setCreateProfileModalOpen(false)}
+      <GroupManager
+        open={groupManagerOpen}
+        onClose={() => setGroupManagerOpen(false)}
+        users={users}
       />
       
       {selectedUser && (
