@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Globe, MapPin, Star } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Globe, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,10 @@ export default function Suppliers() {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [suppliers, setSuppliers] = useState(mockSuppliers);
   const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9; // 3x3 grid confortável
 
   // Mock do cliente atual - em produção virá do contexto/auth
   const currentClientId = '1';
@@ -110,11 +114,44 @@ export default function Suppliers() {
     setShowNewSupplierModal(true);
   };
 
+  const handleDeleteSupplier = (supplier: Supplier) => {
+    if (supplier.type === 'global') {
+      alert('Fornecedores globais só podem ser excluídos pelo administrador');
+      return;
+    }
+
+    if (window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) {
+      setSuppliers(prev => prev.filter(s => s.id !== supplier.id));
+      // Se estava na última página e ficou vazia, volta uma página
+      const remainingSuppliers = filteredSuppliers.filter(s => s.id !== supplier.id);
+      const maxPage = Math.ceil(remainingSuppliers.length / itemsPerPage);
+      if (currentPage > maxPage && maxPage > 0) {
+        setCurrentPage(maxPage);
+      }
+    }
+  };
+
   const handleCloseModal = () => {
     console.log('Fechando modal, resetando editingSupplier');
     setShowNewSupplierModal(false);
     setEditingSupplier(null);
   };
+
+  // Cálculos de paginação
+  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentSuppliers = filteredSuppliers.slice(startIndex, endIndex);
+
+  // Reset da página quando filtros mudam
+  const resetPage = () => {
+    setCurrentPage(1);
+  };
+
+  // Resetar página quando filtros mudam
+  useEffect(() => {
+    resetPage();
+  }, [searchTerm, activeFilter]);
 
   const handleGroupCreate = (newGroup: SupplierGroup) => {
     setSupplierGroups(prev => [...prev, newGroup]);
@@ -244,8 +281,9 @@ export default function Suppliers() {
       </Card>
 
       {/* Suppliers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredSuppliers.map((supplier) => (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {currentSuppliers.map((supplier) => (
           <Card key={supplier.id} className="card-corporate hover:shadow-[var(--shadow-dropdown)] transition-shadow">
             <CardHeader className="pb-4">
               <div className="flex items-start justify-between">
@@ -364,11 +402,6 @@ export default function Suppliers() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Eye className="h-4 w-4 mr-2" />
-                  Ver
-                </Button>
-                
                 {/* Botão Editar - apenas para fornecedores locais */}
                 {supplier.type === 'local' ? (
                   <Button 
@@ -393,14 +426,78 @@ export default function Suppliers() {
                   </Button>
                 )}
                 
-                <Button variant="outline" size="sm">
-                  <MessageCircle className="h-4 w-4" />
-                </Button>
+                {/* Botão Excluir - apenas para fornecedores locais */}
+                {supplier.type === 'local' ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleDeleteSupplier(supplier)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="cursor-not-allowed opacity-50" 
+                    disabled
+                    title="Fornecedores globais são gerenciados pelo administrador"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Mostrando {startIndex + 1} a {Math.min(endIndex, filteredSuppliers.length)} de {filteredSuppliers.length} fornecedores
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  className="w-10"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
 
       {/* Empty State */}
       {filteredSuppliers.length === 0 && (
