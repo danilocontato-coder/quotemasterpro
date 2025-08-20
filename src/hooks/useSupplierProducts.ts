@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 export interface SupplierProduct {
   id: string;
@@ -267,31 +267,31 @@ export const useSupplierProducts = () => {
   }, [updateProduct]);
 
   const getProductById = useCallback((id: string) => {
-    return productsStore.find(product => product.id === id);
-  }, []);
+    return products.find(product => product.id === id);
+  }, [products]);
 
   const getStockMovements = useCallback((productId: string) => {
-    return stockMovementsStore.filter(movement => movement.productId === productId);
-  }, []);
+    return stockMovements.filter(movement => movement.productId === productId);
+  }, [stockMovements]);
 
-  const getLowStockProducts = useCallback(() => {
-    return productsStore.filter(product => 
+  const getLowStockProducts = useMemo(() => {
+    return products.filter(product => 
       product.status === 'active' && 
       product.stockQuantity <= product.minStockLevel && 
       product.stockQuantity > 0
     );
-  }, []);
+  }, [products]);
 
-  const getOutOfStockProducts = useCallback(() => {
-    return productsStore.filter(product => 
+  const getOutOfStockProducts = useMemo(() => {
+    return products.filter(product => 
       product.status === 'active' && 
       product.stockQuantity === 0
     );
-  }, []);
+  }, [products]);
 
-  const getCategories = useCallback(() => {
-    return [...new Set(productsStore.map(p => p.category))];
-  }, []);
+  const getCategories = useMemo(() => {
+    return [...new Set(products.map(p => p.category))];
+  }, [products]);
 
   return {
     products,
@@ -307,8 +307,8 @@ export const useSupplierProducts = () => {
     setPrimaryImage,
     getProductById,
     getStockMovements,
-    getLowStockProducts,
-    getOutOfStockProducts,
-    getCategories,
+    lowStockProducts: getLowStockProducts,
+    outOfStockProducts: getOutOfStockProducts,
+    categories: getCategories,
   };
 };

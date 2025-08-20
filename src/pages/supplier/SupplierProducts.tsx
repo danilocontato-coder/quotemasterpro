@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,13 +26,11 @@ export default function SupplierProducts() {
     products, 
     deleteProduct, 
     toggleProductStatus, 
-    getCategories,
-    getLowStockProducts,
-    getOutOfStockProducts,
+    categories,
+    lowStockProducts,
+    outOfStockProducts,
     isLoading 
   } = useSupplierProducts();
-
-  const categories = getCategories();
 
   const getStockStatus = (quantity: number, minLevel: number) => {
     if (quantity === 0) {
@@ -100,20 +98,20 @@ export default function SupplierProducts() {
     }
   };
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = 
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
-    
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSearch = 
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+      const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
+      
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [products, searchTerm, categoryFilter, statusFilter]);
 
-  const lowStockProducts = getLowStockProducts();
-  const outOfStockProducts = getOutOfStockProducts();
 
   return (
     <div className="space-y-6">

@@ -31,7 +31,9 @@ const defaultCategories = [
 ];
 
 export function EditProductModal({ product, open, onOpenChange }: EditProductModalProps) {
-  const { updateProduct, getCategories, addProductImage, removeProductImage, setPrimaryImage, isLoading } = useSupplierProducts();
+  const { updateProduct, categories, addProductImage, removeProductImage, setPrimaryImage, isLoading } = useSupplierProducts();
+
+  const existingCategories = categories;
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -48,7 +50,6 @@ export function EditProductModal({ product, open, onOpenChange }: EditProductMod
   const [customCategory, setCustomCategory] = useState('');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
 
-  const existingCategories = getCategories();
   const allCategories = [...new Set([...defaultCategories, ...existingCategories])];
 
   useEffect(() => {

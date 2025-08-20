@@ -30,7 +30,7 @@ const defaultCategories = [
 ];
 
 export function CreateProductModal({ open, onOpenChange }: CreateProductModalProps) {
-  const { addProduct, getCategories, isLoading } = useSupplierProducts();
+  const { addProduct, categories, isLoading } = useSupplierProducts();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -47,7 +47,7 @@ export function CreateProductModal({ open, onOpenChange }: CreateProductModalPro
   const [customCategory, setCustomCategory] = useState('');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
 
-  const existingCategories = getCategories();
+  const existingCategories = categories;
   const allCategories = [...new Set([...defaultCategories, ...existingCategories])];
 
   const handleInputChange = (field: string, value: any) => {
