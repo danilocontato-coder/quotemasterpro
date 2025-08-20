@@ -7,8 +7,9 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Save, Download, Trophy, TrendingUp, TrendingDown } from 'lucide-react';
+import { Save, Download, Trophy, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { MarketAnalysisModal } from './MarketAnalysisModal';
 
 export interface QuoteProposal {
   id: string;
@@ -58,6 +59,7 @@ export function QuoteComparison({
 }: QuoteComparisonProps) {
   const [weights, setWeights] = useState<ComparisonCriteria>(defaultWeights);
   const [matrixName, setMatrixName] = useState('');
+  const [isMarketAnalysisOpen, setIsMarketAnalysisOpen] = useState(false);
   const { toast } = useToast();
 
   // Normalize scores (0-100 scale)
@@ -238,6 +240,41 @@ export function QuoteComparison({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Análise de Mercado */}
+          <Card className="border-green-200 bg-green-50">
+            <CardHeader>
+              <CardTitle className="text-green-800 flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Análise Inteligente de Mercado
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-green-200">
+                <div>
+                  <h3 className="text-lg font-bold text-green-900">Comparação com Preços de Mercado</h3>
+                  <p className="text-sm text-green-700">
+                    Use IA para comparar propostas com preços reais do mercado brasileiro
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setIsMarketAnalysisOpen(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analisar Mercado
+                </Button>
+              </div>
+              <div className="mt-3 p-3 bg-green-100 rounded-lg">
+                <p className="text-sm text-green-800">
+                  🧠 <strong>Análise com IA</strong>: Compare automaticamente os preços propostos com a média do mercado brasileiro, 
+                  identificando oportunidades de economia e fornecedores mais competitivos.
+                  <br />
+                  <span className="text-xs">💡 Configure sua API key Perplexity para funcionalidade completa</span>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Recomendação do Sistema */}
           {bestProposal && (
             <Card className="border-blue-200 bg-blue-50">
@@ -432,6 +469,19 @@ export function QuoteComparison({
               </Button>
             </div>
           </div>
+
+          {/* Market Analysis Modal */}
+          <MarketAnalysisModal
+            open={isMarketAnalysisOpen}
+            onClose={() => setIsMarketAnalysisOpen(false)}
+            productName={quoteTitle}
+            category="Produtos Gerais"
+            proposals={proposals.map(p => ({
+              id: p.id,
+              supplierName: p.supplierName,
+              price: p.price
+            }))}
+          />
         </div>
       </DialogContent>
     </Dialog>
