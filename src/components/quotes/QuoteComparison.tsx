@@ -42,11 +42,11 @@ interface QuoteComparisonProps {
 }
 
 const defaultWeights: ComparisonCriteria = {
-  price: 30,
+  price: 25,
   deliveryTime: 20,
   shippingCost: 15,
   sla: 15,
-  warranty: 10,
+  warranty: 15,
   reputation: 10,
 };
 
@@ -120,7 +120,39 @@ export function QuoteComparison({
   }, [proposals, weights]);
 
   const updateWeight = (criterion: keyof ComparisonCriteria, value: number) => {
-    setWeights(prev => ({ ...prev, [criterion]: value }));
+    const newWeights = { ...weights };
+    const oldValue = weights[criterion];
+    const difference = value - oldValue;
+    
+    // Update the changed criterion
+    newWeights[criterion] = value;
+    
+    // Calculate remaining weight to distribute
+    const otherCriteria = Object.keys(weights).filter(key => key !== criterion) as (keyof ComparisonCriteria)[];
+    const totalOthers = otherCriteria.reduce((sum, key) => sum + weights[key], 0);
+    
+    if (totalOthers > 0) {
+      // Distribute the difference proportionally among other criteria
+      const targetTotal = 100 - value;
+      const scaleFactor = targetTotal / totalOthers;
+      
+      otherCriteria.forEach(key => {
+        newWeights[key] = Math.max(0, Math.round(weights[key] * scaleFactor));
+      });
+      
+      // Ensure total is exactly 100
+      const currentTotal = Object.values(newWeights).reduce((sum, val) => sum + val, 0);
+      if (currentTotal !== 100) {
+        const adjustment = 100 - currentTotal;
+        // Apply adjustment to the largest other criterion
+        const largestOther = otherCriteria.reduce((max, key) => 
+          newWeights[key] > newWeights[max] ? key : max
+        );
+        newWeights[largestOther] = Math.max(0, newWeights[largestOther] + adjustment);
+      }
+    }
+    
+    setWeights(newWeights);
   };
 
   const saveDecisionMatrix = () => {
@@ -193,6 +225,7 @@ export function QuoteComparison({
   };
 
   const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+  const bestProposal = normalizedScores.length > 0 ? normalizedScores[0] : null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -205,12 +238,55 @@ export function QuoteComparison({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Recomendação do Sistema */}
+          {bestProposal && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="text-blue-800 flex items-center gap-2">
+                  <Trophy className="h-5 w-5" />
+                  Recomendação do Sistema
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-blue-200">
+                  <div>
+                    <h3 className="text-lg font-bold text-blue-900">{bestProposal.supplierName}</h3>
+                    <p className="text-sm text-blue-700">
+                      Melhor opção baseada nos critérios definidos
+                    </p>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-blue-600">
+                      <span>Preço: R$ {bestProposal.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      <span>•</span>
+                      <span>Prazo: {bestProposal.deliveryTime} dias</span>
+                      <span>•</span>
+                      <span>Reputação: {bestProposal.reputation}/5 ⭐</span>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-900">{bestProposal.finalScore.toFixed(1)}</div>
+                    <div className="text-sm text-blue-600">Score Final</div>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    📊 <strong>Baseado nos seus critérios</strong>, recomendamos a compra do fornecedor{' '}
+                    <strong>{bestProposal.supplierName}</strong> que oferece a melhor relação 
+                    custo-benefício com score de <strong>{bestProposal.finalScore.toFixed(1)} pontos</strong>.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Configuração de Pesos */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Configuração de Critérios</CardTitle>
               <p className="text-sm text-muted-foreground">
                 Ajuste os pesos conforme a importância de cada critério (Total: {totalWeight}%)
+                {totalWeight !== 100 && (
+                  <span className="text-red-600 font-medium"> - Os pesos serão ajustados automaticamente para 100%</span>
+                )}
               </p>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -228,8 +304,8 @@ export function QuoteComparison({
                   <Slider
                     value={[value]}
                     onValueChange={(newValue) => updateWeight(key as keyof ComparisonCriteria, newValue[0])}
-                    max={50}
-                    min={0}
+                    max={80}
+                    min={5}
                     step={5}
                     className="w-full"
                   />
@@ -241,29 +317,39 @@ export function QuoteComparison({
           {/* Tabela de Comparação */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Comparação das Propostas</CardTitle>
+              <CardTitle className="text-lg">Comparação Detalhada das Propostas</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Análise completa de todas as propostas com scores individuais por critério
+              </p>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <div className="min-w-[800px]">
-                <div className="grid grid-cols-8 gap-4 mb-4 text-sm font-medium text-muted-foreground">
+                <div className="grid grid-cols-8 gap-4 mb-4 text-sm font-medium text-muted-foreground border-b pb-2">
                   <div>Fornecedor</div>
-                  <div>Preço</div>
-                  <div>Prazo</div>
-                  <div>Frete</div>
-                  <div>SLA</div>
-                  <div>Garantia</div>
-                  <div>Reputação</div>
+                  <div>Preço ({weights.price}%)</div>
+                  <div>Prazo ({weights.deliveryTime}%)</div>
+                  <div>Frete ({weights.shippingCost}%)</div>
+                  <div>SLA ({weights.sla}%)</div>
+                  <div>Garantia ({weights.warranty}%)</div>
+                  <div>Reputação ({weights.reputation}%)</div>
                   <div>Score Final</div>
                 </div>
                 
                 {normalizedScores.map((proposal, index) => (
-                  <div key={proposal.id} className="grid grid-cols-8 gap-4 p-4 rounded-lg border bg-card mb-2">
+                  <div key={proposal.id} className={`grid grid-cols-8 gap-4 p-4 rounded-lg border mb-2 ${
+                    index === 0 ? 'bg-blue-50 border-blue-200' : 'bg-card'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Badge variant={getBadgeVariant(index)}>
+                      <Badge variant={getBadgeVariant(index)} className="shrink-0">
                         {index === 0 && <Trophy className="h-3 w-3 mr-1" />}
                         #{index + 1}
                       </Badge>
-                      <span className="font-medium">{proposal.supplierName}</span>
+                      <div>
+                        <span className="font-medium">{proposal.supplierName}</span>
+                        {index === 0 && (
+                          <div className="text-xs text-blue-600 font-medium">RECOMENDADO</div>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-1">
@@ -311,6 +397,7 @@ export function QuoteComparison({
                     <div className="flex items-center">
                       <Badge variant={index === 0 ? 'default' : 'secondary'} className="font-bold">
                         {proposal.finalScore.toFixed(1)}
+                        {index === 0 && ' 🏆'}
                       </Badge>
                     </div>
                   </div>
