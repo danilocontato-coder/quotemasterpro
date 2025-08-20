@@ -6,6 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   BarChart3, 
   FileText, 
@@ -15,45 +21,183 @@ import {
   Users,
   Package,
   Calendar,
-  Filter
+  Filter,
+  FileSpreadsheet,
+  TrendingDown,
+  ChevronDown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 
 export function Reports() {
   const [dateRange, setDateRange] = useState<any>(null);
   const [selectedPeriod, setSelectedPeriod] = useState("30");
   const [selectedSupplier, setSelectedSupplier] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const { toast } = useToast();
 
-  // Mock data for reports
+  // Enhanced mock data for reports with savings information
   const reportData = {
     totalSpent: 125000,
     totalQuotes: 45,
     averageValue: 2777.78,
+    totalSavings: 18750, // 15% savings from competitive quotes
+    savingsPercentage: 13.1,
+    marketComparison: 143750, // What would have been spent without the platform
     topSuppliers: [
-      { name: "Fornecedor Alpha", value: 45000, percentage: 36 },
-      { name: "Fornecedor Beta", value: 32000, percentage: 25.6 },
-      { name: "Fornecedor Gamma", value: 28000, percentage: 22.4 },
+      { name: "Fornecedor Alpha", value: 45000, percentage: 36, savings: 6750 },
+      { name: "Fornecedor Beta", value: 32000, percentage: 25.6, savings: 4800 },
+      { name: "Fornecedor Gamma", value: 28000, percentage: 22.4, savings: 4200 },
     ],
     monthlyData: [
-      { month: "Jan", amount: 12000, quotes: 8 },
-      { month: "Fev", amount: 15000, quotes: 12 },
-      { month: "Mar", amount: 18000, quotes: 15 },
-      { month: "Abr", amount: 22000, quotes: 18 },
-      { month: "Mai", amount: 19000, quotes: 14 },
-      { month: "Jun", amount: 25000, quotes: 20 },
+      { month: "Jan", amount: 12000, quotes: 8, savings: 1800 },
+      { month: "Fev", amount: 15000, quotes: 12, savings: 2250 },
+      { month: "Mar", amount: 18000, quotes: 15, savings: 2700 },
+      { month: "Abr", amount: 22000, quotes: 18, savings: 3300 },
+      { month: "Mai", amount: 19000, quotes: 14, savings: 2850 },
+      { month: "Jun", amount: 25000, quotes: 20, savings: 3750 },
     ],
     recentQuotes: [
-      { id: "Q-001", description: "Material de limpeza", value: 1500, status: "approved", date: "2024-08-15" },
-      { id: "Q-002", description: "Manutenção elevador", value: 3200, status: "pending", date: "2024-08-14" },
-      { id: "Q-003", description: "Materiais elétricos", value: 850, status: "approved", date: "2024-08-13" },
+      { id: "Q-001", description: "Material de limpeza", value: 1500, originalValue: 1765, status: "approved", date: "2024-08-15", savings: 265 },
+      { id: "Q-002", description: "Manutenção elevador", value: 3200, originalValue: 3680, status: "pending", date: "2024-08-14", savings: 480 },
+      { id: "Q-003", description: "Materiais elétricos", value: 850, originalValue: 1020, status: "approved", date: "2024-08-13", savings: 170 },
     ]
   };
 
-  const generateReport = (type: string) => {
-    console.log(`Generating ${type} report...`);
-    // Placeholder for report generation
+  const exportToPDF = async () => {
+    try {
+      // Dynamic import to avoid bundling issues
+      const { jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
+      
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(20);
+      doc.text('Relatório de Cotações - QuoteMaster Pro', 20, 20);
+      
+      // Period
+      doc.setFontSize(12);
+      doc.text(`Período: Últimos ${selectedPeriod} dias`, 20, 35);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, 45);
+      
+      // Summary stats
+      doc.setFontSize(14);
+      doc.text('Resumo Geral:', 20, 65);
+      doc.setFontSize(10);
+      doc.text(`Total Gasto: R$ ${reportData.totalSpent.toLocaleString()}`, 20, 75);
+      doc.text(`Total de Cotações: ${reportData.totalQuotes}`, 20, 85);
+      doc.text(`Economia Gerada: R$ ${reportData.totalSavings.toLocaleString()} (${reportData.savingsPercentage}%)`, 20, 95);
+      doc.text(`Valor Médio: R$ ${reportData.averageValue.toLocaleString()}`, 20, 105);
+      
+      // Top suppliers table
+      const supplierData = reportData.topSuppliers.map(supplier => [
+        supplier.name,
+        `R$ ${supplier.value.toLocaleString()}`,
+        `${supplier.percentage}%`,
+        `R$ ${supplier.savings.toLocaleString()}`
+      ]);
+      
+      (doc as any).autoTable({
+        head: [['Fornecedor', 'Valor', 'Participação', 'Economia']],
+        body: supplierData,
+        startY: 120,
+      });
+      
+      // Recent quotes table
+      const quotesData = reportData.recentQuotes.map(quote => [
+        quote.id,
+        quote.description,
+        `R$ ${quote.value.toLocaleString()}`,
+        `R$ ${quote.savings.toLocaleString()}`,
+        getStatusLabel(quote.status),
+        quote.date
+      ]);
+      
+      (doc as any).autoTable({
+        head: [['ID', 'Descrição', 'Valor Final', 'Economia', 'Status', 'Data']],
+        body: quotesData,
+        startY: (doc as any).lastAutoTable.finalY + 20,
+      });
+      
+      doc.save('relatorio-cotacoes.pdf');
+      
+      toast({
+        title: "Relatório exportado",
+        description: "Relatório PDF gerado com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro na exportação",
+        description: "Erro ao gerar relatório PDF. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const exportToExcel = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Summary sheet
+      const summaryData = [
+        ['Relatório de Cotações - QuoteMaster Pro'],
+        [''],
+        ['Resumo Geral'],
+        ['Total Gasto', `R$ ${reportData.totalSpent.toLocaleString()}`],
+        ['Total de Cotações', reportData.totalQuotes],
+        ['Economia Gerada', `R$ ${reportData.totalSavings.toLocaleString()}`],
+        ['Percentual de Economia', `${reportData.savingsPercentage}%`],
+        ['Valor Médio', `R$ ${reportData.averageValue.toLocaleString()}`],
+        [''],
+        ['Top Fornecedores'],
+        ['Fornecedor', 'Valor', 'Participação', 'Economia'],
+        ...reportData.topSuppliers.map(s => [s.name, s.value, `${s.percentage}%`, s.savings])
+      ];
+      
+      const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'Resumo');
+      
+      // Monthly data sheet
+      const monthlyData = [
+        ['Dados Mensais'],
+        ['Mês', 'Valor Gasto', 'Cotações', 'Economia'],
+        ...reportData.monthlyData.map(m => [m.month, m.amount, m.quotes, m.savings])
+      ];
+      
+      const monthlyWs = XLSX.utils.aoa_to_sheet(monthlyData);
+      XLSX.utils.book_append_sheet(wb, monthlyWs, 'Mensal');
+      
+      // Recent quotes sheet
+      const quotesData = [
+        ['Cotações Recentes'],
+        ['ID', 'Descrição', 'Valor Final', 'Valor Original', 'Economia', 'Status', 'Data'],
+        ...reportData.recentQuotes.map(q => [
+          q.id, q.description, q.value, q.originalValue, q.savings, getStatusLabel(q.status), q.date
+        ])
+      ];
+      
+      const quotesWs = XLSX.utils.aoa_to_sheet(quotesData);
+      XLSX.utils.book_append_sheet(wb, quotesWs, 'Cotações');
+      
+      // Save file
+      XLSX.writeFile(wb, 'relatorio-cotacoes.xlsx');
+      
+      toast({
+        title: "Relatório exportado",
+        description: "Relatório Excel gerado com sucesso!",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro na exportação",
+        description: "Erro ao gerar relatório Excel. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -83,14 +227,29 @@ export function Reports() {
             Análises e relatórios detalhados do sistema
           </p>
         </div>
-        <Button onClick={() => generateReport('general')}>
-          <Download className="h-4 w-4 mr-2" />
-          Exportar Relatório
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Relatório
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportToPDF}>
+              <FileText className="mr-2 h-4 w-4" />
+              Exportar para PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToExcel}>
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Exportar para Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
@@ -98,6 +257,18 @@ export function Reports() {
               <div className="ml-4">
                 <p className="text-2xl font-bold">R$ {reportData.totalSpent.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Total Gasto</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <TrendingDown className="h-8 w-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-2xl font-bold text-green-600">R$ {reportData.totalSavings.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Economia Gerada</p>
+                <p className="text-xs text-green-600 font-medium">{reportData.savingsPercentage}% economizado</p>
               </div>
             </div>
           </CardContent>
@@ -221,7 +392,10 @@ export function Reports() {
                       <span className="font-medium">{month.month}</span>
                       <div className="text-right">
                         <p className="font-bold">R$ {month.amount.toLocaleString()}</p>
-                        <p className="text-sm text-muted-foreground">{month.quotes} cotações</p>
+                        <p className="text-sm text-green-600 font-medium">
+                          Economizou: R$ {month.savings.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{month.quotes} cotações</p>
                       </div>
                     </div>
                   ))}
@@ -244,6 +418,9 @@ export function Reports() {
                       </div>
                       <div className="text-right">
                         <p className="font-bold">R$ {quote.value.toLocaleString()}</p>
+                        <p className="text-sm text-green-600 font-medium">
+                          -R$ {quote.savings.toLocaleString()}
+                        </p>
                         <Badge className={getStatusColor(quote.status)}>
                           {getStatusLabel(quote.status)}
                         </Badge>
@@ -279,7 +456,10 @@ export function Reports() {
                     </div>
                     <div className="text-right">
                       <p className="font-bold">R$ {supplier.value.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">{supplier.percentage}%</p>
+                      <p className="text-sm text-green-600 font-medium">
+                        Economizou: R$ {supplier.savings.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{supplier.percentage}%</p>
                     </div>
                   </div>
                 ))}
