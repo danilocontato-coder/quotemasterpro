@@ -1,32 +1,36 @@
 import { Plus, FileText, Users, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export function QuickActions() {
+  const navigate = useNavigate();
+  
   const actions = [
     {
       title: "Nova Cotação",
       description: "Criar uma nova solicitação de cotação",
       icon: Plus,
-      action: () => console.log("Nova cotação"),
+      action: () => navigate("/quotes"),
     },
     {
       title: "Cadastrar Fornecedor",
       description: "Adicionar novo fornecedor ao sistema",
       icon: Users,
-      action: () => console.log("Novo fornecedor"),
+      action: () => navigate("/suppliers"),
     },
     {
       title: "Adicionar Produto",
       description: "Incluir produto no catálogo",
       icon: Package,
-      action: () => console.log("Novo produto"),
+      action: () => navigate("/products"),
     },
     {
       title: "Relatório",
       description: "Gerar relatório de cotações",
       icon: FileText,
-      action: () => console.log("Gerar relatório"),
+      action: () => navigate("/reports"),
     },
   ];
 

@@ -1,18 +1,14 @@
-import { useState } from "react";
 import { 
   BarChart3, 
   FileText, 
   Users, 
   Package, 
-  CheckCircle, 
   CreditCard, 
   Mail, 
   Settings, 
   Home,
-  Building,
   UserCog,
-  Shield,
-  Sliders
+  Shield
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -32,7 +28,6 @@ const navigationItems = [
   { title: "Cotações", url: "/quotes", icon: FileText },
   { title: "Fornecedores", url: "/suppliers", icon: Users },
   { title: "Itens", url: "/products", icon: Package },
-  { title: "Aprovações", url: "/approvals", icon: CheckCircle },
 ];
 
 const financialItems = [
@@ -47,7 +42,6 @@ const communicationItems = [
 
 const systemItems = [
   { title: "Usuários", url: "/users", icon: UserCog },
-  { title: "Níveis de Aprovação", url: "/approval-levels", icon: Sliders },
   { title: "Permissões", url: "/permissions", icon: Shield },
   { title: "Relatórios", url: "/reports", icon: BarChart3 },
   { title: "Configurações", url: "/settings", icon: Settings },

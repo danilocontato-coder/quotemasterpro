@@ -15,10 +15,18 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Visão geral do sistema de cotações e orçamentos
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground">
+              Visão geral do sistema de cotações e orçamentos
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-semibold text-foreground">Condomínio Residencial Azul</p>
+            <p className="text-sm text-muted-foreground">Plano Pro • Ativo</p>
+          </div>
+        </div>
       </div>
 
       {/* Primary Metrics */}

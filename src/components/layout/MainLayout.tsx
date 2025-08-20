@@ -1,9 +1,10 @@
 import { Outlet } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { Bell, Search, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { NotificationDropdown } from "./NotificationDropdown";
+import { UserDropdown } from "./UserDropdown";
 
 export function MainLayout() {
   return (
@@ -26,16 +27,14 @@ export function MainLayout() {
             </div>
             
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full text-xs w-5 h-5 flex items-center justify-center">
-                  3
-                </span>
-              </Button>
+              {/* Company Name */}
+              <div className="text-right mr-4">
+                <p className="text-sm font-medium text-foreground">Condomínio Residencial Azul</p>
+                <p className="text-xs text-muted-foreground">Plano Pro</p>
+              </div>
               
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-              </Button>
+              <NotificationDropdown />
+              <UserDropdown />
             </div>
           </header>
 
