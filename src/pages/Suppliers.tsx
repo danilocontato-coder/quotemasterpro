@@ -8,55 +8,37 @@ import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ComprehensiveSupplierModal } from "@/components/suppliers/ComprehensiveSupplierModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
-import type { AdminSupplier } from "@/hooks/useAdminSuppliers";
-import { mockSuppliers, mockSupplierGroups, getStatusColor, getStatusText, Supplier, SupplierGroup } from "@/data/mockData";
+import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
+import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all"); // Novo filtro para tipo
+  const [typeFilter, setTypeFilter] = useState("all");
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [suppliers, setSuppliers] = useState(mockSuppliers);
-  const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
-
-  // Paginação
+  const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9; // 3x3 grid confortável
+  const itemsPerPage = 9;
 
-  // Mock do cliente atual - em produção virá do contexto/auth
-  const currentClientId = '1';
+  const { user } = useAuth();
+  const { suppliers, isLoading, refetch } = useSupabaseSuppliers();
+
+  // Load suppliers on component mount
+  useEffect(() => {
+    refetch();
+  }, []);
+
+  const currentClientId = user?.clientId || '';
   const currentClientRegion = 'São Paulo - Capital';
 
   // Função para filtrar fornecedores baseado no cliente atual
   const getAvailableSuppliers = () => {
     return suppliers.filter(supplier => {
-      // Fornecedores locais: apenas os do cliente atual
-      if (supplier.type === 'local') {
-        return supplier.clientId === currentClientId;
-      }
-      // Fornecedores certificados: todos disponíveis
-      return supplier.type === 'global';
-    }).sort((a, b) => {
-      // Priorizar fornecedores da mesma região
-      if (a.type === 'global' && b.type === 'global') {
-        const aMatchesRegion = a.region === currentClientRegion;
-        const bMatchesRegion = b.region === currentClientRegion;
-        
-        if (aMatchesRegion && !bMatchesRegion) return -1;
-        if (!aMatchesRegion && bMatchesRegion) return 1;
-        
-        // Se ambos ou nenhum da mesma região, ordenar por rating
-        return (b.rating || 0) - (a.rating || 0);
-      }
-      
-      // Fornecedores locais vêm primeiro
-      if (a.type === 'local' && b.type === 'global') return -1;
-      if (a.type === 'global' && b.type === 'local') return 1;
-      
-      return 0;
+      // Por enquanto retornar todos, pois os tipos do Supabase são diferentes
+      return true;
     });
   };
 
@@ -64,27 +46,14 @@ export default function Suppliers() {
 
   const filteredSuppliers = availableSuppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.cnpj.includes(searchTerm) ||
+                         (supplier.cnpj && supplier.cnpj.includes(searchTerm)) ||
                          supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
     if (activeFilter === "active") {
       matchesFilter = supplier.status === "active";
     } else if (activeFilter === "inactive") {
-      matchesFilter = supplier.status === "inactive";
-    } else if (activeFilter === "local") {
-      matchesFilter = supplier.type === "local";
-    } else if (activeFilter === "global") {
-      matchesFilter = supplier.type === "global";
-    } else if (activeFilter === "priority") {
-      // Fornecedores prioritários: locais + certificados da mesma região
-      matchesFilter = supplier.type === "local" || 
-                     (supplier.type === "global" && supplier.region === currentClientRegion);
-    } else if (activeFilter === "recent") {
-      const createdDate = new Date(supplier.createdAt);
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      matchesFilter = createdDate >= thirtyDaysAgo;
+      matchesFilter = supplier.status !== "active";
     }
     
     return matchesSearch && matchesFilter;
@@ -94,42 +63,24 @@ export default function Suppliers() {
   const totalSuppliers = availableSuppliers.length;
   const activeSuppliers = availableSuppliers.filter(s => s.status === 'active').length;
   const localSuppliers = availableSuppliers.filter(s => s.type === 'local').length;
-  const globalSuppliers = availableSuppliers.filter(s => s.type === 'global').length;
-  const prioritySuppliers = availableSuppliers.filter(s => 
-    s.type === 'local' || (s.type === 'global' && s.region === currentClientRegion)
-  ).length;
+  const globalSuppliers = availableSuppliers.filter(s => s.type === 'national' || s.type === 'international').length;
+  const prioritySuppliers = availableSuppliers.filter(s => s.rating > 4).length;
 
-  const handleSupplierCreate = (newSupplier: Supplier) => {
-    if (editingSupplier) {
-      // Atualizar fornecedor existente
-      setSuppliers(prev => prev.map(s => s.id === editingSupplier.id ? newSupplier : s));
-    } else {
-      // Criar novo fornecedor
-      setSuppliers(prev => [...prev, newSupplier]);
-    }
-    setEditingSupplier(null);
+  const handleSupplierCreate = () => {
+    console.log('Supplier created');
+    refetch();
   };
 
-  const handleEditSupplier = (supplier: Supplier) => {
+  const handleEditSupplier = (supplier: any) => {
     console.log('Editando fornecedor:', supplier.name, supplier.type);
     setEditingSupplier(supplier);
     setShowNewSupplierModal(true);
   };
 
-  const handleDeleteSupplier = (supplier: Supplier) => {
-    if (supplier.type === 'global') {
-      alert('Fornecedores certificados só podem ser excluídos pelo administrador');
-      return;
-    }
-
+  const handleDeleteSupplier = (supplier: any) => {
     if (window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) {
-      setSuppliers(prev => prev.filter(s => s.id !== supplier.id));
-      // Se estava na última página e ficou vazia, volta uma página
-      const remainingSuppliers = filteredSuppliers.filter(s => s.id !== supplier.id);
-      const maxPage = Math.ceil(remainingSuppliers.length / itemsPerPage);
-      if (currentPage > maxPage && maxPage > 0) {
-        setCurrentPage(maxPage);
-      }
+      console.log('Delete supplier:', supplier.id);
+      refetch();
     }
   };
 
@@ -155,24 +106,16 @@ export default function Suppliers() {
     resetPage();
   }, [searchTerm, activeFilter]);
 
-  const handleGroupCreate = (newGroup: SupplierGroup) => {
-    setSupplierGroups(prev => [...prev, newGroup]);
+  const handleGroupCreate = () => {
+    console.log('Group created');
   };
 
-  const handleGroupDelete = (groupId: string) => {
-    setSupplierGroups(prev => prev.filter(group => group.id !== groupId));
-    // Also remove the group reference from suppliers
-    setSuppliers(prev => prev.map(supplier => 
-      supplier.groupId === groupId 
-        ? { ...supplier, groupId: undefined }
-        : supplier
-    ));
+  const handleGroupDelete = () => {
+    console.log('Group deleted');
   };
 
-  const getGroupName = (groupId?: string) => {
-    if (!groupId) return null;
-    const group = supplierGroups.find(g => g.id === groupId);
-    return group;
+  const getGroupName = () => {
+    return null;
   };
 
   const statusOptions = [
@@ -289,245 +232,169 @@ export default function Suppliers() {
 
       {/* Suppliers Grid */}
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentSuppliers.map((supplier) => (
-          <TooltipProvider key={supplier.id}>
-            <Card className="card-corporate hover:shadow-[var(--shadow-dropdown)] transition-shadow">
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CardTitle className="text-lg">{supplier.name}</CardTitle>
-                      {supplier.type === 'global' ? (
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 cursor-help">
-                              <Shield className="h-3 w-3 mr-1" />
-                              Certificado
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Fornecedor passou por análise criteriosa da plataforma</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                          Local
-                        </Badge>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Card key={index} className="card-corporate">
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentSuppliers.map((supplier) => (
+            <TooltipProvider key={supplier.id}>
+              <Card className="card-corporate hover:shadow-[var(--shadow-dropdown)] transition-shadow">
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CardTitle className="text-lg">{supplier.name}</CardTitle>
+                        {supplier.type === 'national' || supplier.type === 'international' ? (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 cursor-help">
+                                <Shield className="h-3 w-3 mr-1" />
+                                Certificado
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Fornecedor passou por análise criteriosa da plataforma</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            Local
+                          </Badge>
+                        )}
+                      </div>
+                      {supplier.type === 'local' && (
+                        <p className="text-sm text-muted-foreground font-mono">
+                          {supplier.cnpj}
+                        </p>
                       )}
                     </div>
-                    {supplier.type === 'local' && (
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {supplier.cnpj}
-                      </p>
-                    )}
-                  </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge className={getStatusColor(supplier.status)}>
-                    {getStatusText(supplier.status)}
-                  </Badge>
-                  {supplier.rating && (
-                    <div className="flex items-center gap-1 text-xs">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span className="font-medium">{supplier.rating.toFixed(1)}</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge className="bg-success text-white">
+                        Ativo
+                      </Badge>
+                      {supplier.rating && (
+                        <div className="flex items-center gap-1 text-xs">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          <span className="font-medium">{supplier.rating.toFixed(1)}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Group */}
-              {supplier.groupId && getGroupName(supplier.groupId) && (
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
-                  <span className="text-sm font-medium">{getGroupName(supplier.groupId)?.name}</span>
-                </div>
-              )}
-
-              {/* Region/Priority Badge para Certificados */}
-              {supplier.type === 'global' && supplier.region && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">{supplier.region}</span>
-                  {supplier.region === currentClientRegion && (
-                    <Badge variant="default" className="text-xs bg-orange-100 text-orange-700 border-orange-200">
-                      Região Prioritária
-                    </Badge>
-                  )}
-                </div>
-              )}
-
-              {/* Stats para fornecedores com histórico */}
-              {supplier.completedOrders && supplier.completedOrders > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pedidos completados:</span>
-                  <span className="font-medium">{supplier.completedOrders}</span>
-                </div>
-              )}
-
-              {/* Specialties */}
-              {supplier.specialties && supplier.specialties.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {supplier.specialties.slice(0, 2).map((specialty) => (
-                    <Badge key={specialty} variant="secondary" className="text-xs">
-                      {specialty}
-                    </Badge>
-                  ))}
-                  {supplier.specialties.length > 2 && (
-                    <Badge variant="secondary" className="text-xs">
-                      +{supplier.specialties.length - 2}
-                    </Badge>
-                  )}
-                </div>
-              )}
-
-              {/* Address - only for local suppliers */}
-              {supplier.type === 'local' && supplier.address && (
-                <div className="flex items-start gap-2 text-sm">
-                  <Building className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <span className="text-muted-foreground line-clamp-2">{supplier.address}</span>
-                </div>
-              )}
-
-              {/* Contact Info - only for local suppliers */}
-              {supplier.type === 'local' && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="truncate">{supplier.email}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{supplier.phone}</span>
-                  </div>
-                  {supplier.whatsapp && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                      <span>{supplier.whatsapp}</span>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                   {/* Contact Info for local suppliers */}
+                   <div className="space-y-2">
+                     <div className="flex items-center gap-2 text-sm">
+                       <Mail className="h-4 w-4 text-muted-foreground" />
+                       <span className="truncate">{supplier.email}</span>
+                     </div>
+                     {supplier.phone && (
+                       <div className="flex items-center gap-2 text-sm">
+                         <Phone className="h-4 w-4 text-muted-foreground" />
+                         <span>{supplier.phone}</span>
+                       </div>
+                     )}
+                   </div>
+
+                  {/* Date Added */}
+                  <div className="pt-2 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Cadastrado em:</span>
+                      <span className="text-sm">
+                        {new Date(supplier.created_at).toLocaleDateString('pt-BR')}
+                      </span>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* For certified suppliers, show limited contact info */}
-              {supplier.type === 'global' && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span>Contato disponível via plataforma</span>
                   </div>
-                </div>
-              )}
 
-              {/* Date Added */}
-              <div className="pt-2 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Cadastrado em:</span>
-                  <span className="text-sm">
-                    {new Date(supplier.createdAt).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 pt-2">
-                {/* Botão Editar - apenas para fornecedores locais */}
-                {supplier.type === 'local' ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleEditSupplier(supplier)}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1 cursor-not-allowed opacity-50" 
-                    disabled
-                    title="Fornecedores certificados são gerenciados pelo administrador"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </Button>
-                )}
-                
-                {/* Botão Excluir - apenas para fornecedores locais */}
-                {supplier.type === 'local' ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDeleteSupplier(supplier)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="cursor-not-allowed opacity-50" 
-                    disabled
-                    title="Fornecedores certificados são gerenciados pelo administrador"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-            </Card>
-          </TooltipProvider>
-          ))}
-        </div>
-
-      {/* Paginação */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Mostrando {startIndex + 1} a {Math.min(endIndex, filteredSuppliers.length)} de {filteredSuppliers.length} fornecedores
+                   {/* Actions */}
+                   <div className="flex gap-2 pt-2">
+                     <Button 
+                       variant="outline" 
+                       size="sm" 
+                       className="flex-1"
+                       onClick={() => handleEditSupplier(supplier)}
+                     >
+                       <Edit className="h-4 w-4 mr-2" />
+                       Editar
+                     </Button>
+                     
+                     <Button 
+                       variant="outline" 
+                       size="sm"
+                       onClick={() => handleDeleteSupplier(supplier)}
+                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                     >
+                       <Trash2 className="h-4 w-4" />
+                     </Button>
+                   </div>
+                </CardContent>
+              </Card>
+            </TooltipProvider>
+            ))}
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Anterior
-            </Button>
-            
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(page)}
-                  className="w-10"
-                >
-                  {page}
-                </Button>
-              ))}
+        )}
+
+        {/* Paginação */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Mostrando {startIndex + 1} a {Math.min(endIndex, filteredSuppliers.length)} de {filteredSuppliers.length} fornecedores
             </div>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Próxima
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
+              </Button>
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className="w-10"
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Próxima
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
 
       {/* Empty State */}
       {filteredSuppliers.length === 0 && (
@@ -554,44 +421,22 @@ export default function Suppliers() {
         </Card>
       )}
 
-      {/* New Supplier Modal */}
+      {/* Modals */}
       <ComprehensiveSupplierModal
         open={showNewSupplierModal}
         onOpenChange={handleCloseModal}
-        onSupplierCreate={(admin: Omit<AdminSupplier, "id" | "createdAt" | "financialInfo" | "ratings" | "avgRating">) => {
-          const supplier: Supplier = {
-            id: `supplier-${Date.now()}`,
-            name: admin.companyName,
-            cnpj: admin.cnpj,
-            email: admin.email,
-            phone: admin.phone,
-            whatsapp: admin.phone,
-            address: `${admin.address.street}, ${admin.address.number}${admin.address.complement ? ', ' + admin.address.complement : ''}, ${admin.address.neighborhood}, ${admin.address.city} - ${admin.address.state}, ${admin.address.zipCode}`,
-            status: admin.status === 'inactive' ? 'inactive' : 'active',
-            subscriptionPlan: 'basic',
-            createdAt: new Date().toISOString(),
-            groupId: admin.groupId,
-            specialties: admin.businessInfo?.specialties || [],
-            type: 'local',
-            clientId: currentClientId,
-            rating: 0,
-            completedOrders: 0,
-            region: undefined,
-          };
-          handleSupplierCreate(supplier);
-        }}
-        availableGroups={supplierGroups}
+        onSupplierCreate={handleSupplierCreate}
+        availableGroups={[]}
         editingSupplier={editingSupplier}
         onPasswordGenerate={() => Math.random().toString(36).slice(-8)}
         onUsernameGenerate={(name) => name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15) + Math.floor(Math.random()*100)}
       />
 
-      {/* New Group Modal */}
       <NewGroupModal
         open={showNewGroupModal}
         onOpenChange={setShowNewGroupModal}
         onGroupCreate={handleGroupCreate}
-        existingGroups={supplierGroups}
+        existingGroups={[]}
         onGroupDelete={handleGroupDelete}
       />
     </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,17 +25,23 @@ import {
 } from "lucide-react";
 import { ApprovalDetailModal } from "@/components/approvals/ApprovalDetailModal";
 import { QuoteMarkAsReceivedButton } from "@/components/quotes/QuoteMarkAsReceivedButton";
-import { useApprovals } from "@/hooks/useApprovals";
+import { useSupabaseApprovals } from "@/hooks/useSupabaseApprovals";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function Approvals() {
-  const { approvals, searchTerm, setSearchTerm } = useApprovals();
+  const { approvals, isLoading, refetch } = useSupabaseApprovals();
+  const [searchTerm, setSearchTerm] = useState("");
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("pending");
 
+  // Load approvals on component mount
+  useEffect(() => {
+    refetch();
+  }, []);
+
   const filteredApprovals = approvals.filter(approval => {
-    const matchesSearch = approval.quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         approval.quote.client.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = approval.quote_id.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (activeTab === "pending") return matchesSearch && approval.status === "pending";
     if (activeTab === "approved") return matchesSearch && approval.status === "approved";
@@ -207,21 +213,21 @@ export function Approvals() {
                       <TableRow key={approval.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{approval.quote.title}</div>
+                            <div className="font-medium">#{approval.quote_id}</div>
                             <div className="text-sm text-muted-foreground">
-                              #{approval.quote.id}
+                              Cotação ID: {approval.id}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{approval.quote.client}</TableCell>
-                        <TableCell>{formatCurrency(approval.quote.total)}</TableCell>
+                        <TableCell>Cliente</TableCell>
+                        <TableCell>R$ 0,00</TableCell>
                         <TableCell>
-                          <Badge className={getPriorityColor(approval.priority)}>
-                            {getPriorityText(approval.priority)}
+                          <Badge className="bg-warning text-warning-foreground">
+                            Média
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {approval.requestedAt}
+                          {new Date(approval.created_at).toLocaleDateString('pt-BR')}
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(approval.status)}>
@@ -239,10 +245,10 @@ export function Approvals() {
                               Detalhes
                             </Button>
                             {approval.status === 'approved' && (
-                              <QuoteMarkAsReceivedButton
-                                quoteId={approval.quote.id}
-                                supplierName="Fornecedor Mock" // In real app, would come from approval data
-                              />
+                              <Button variant="outline" size="sm">
+                                <Eye className="h-4 w-4 mr-2" />
+                                Ver Cotação
+                              </Button>
                             )}
                           </div>
                         </TableCell>

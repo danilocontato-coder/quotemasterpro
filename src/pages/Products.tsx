@@ -13,8 +13,9 @@ import { DeleteItemModal } from "@/components/items/DeleteItemModal";
 import { StockMovementModal } from "@/components/items/StockMovementModal";
 import { InvoiceImportModal } from "@/components/items/InvoiceImportModal";
 import { StockMovementLogModal } from "@/components/items/StockMovementLogModal";
-import { useItems } from "@/hooks/useItems";
+import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
 import { getStatusColor, getStatusText } from "@/data/mockData";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,34 +32,36 @@ export default function Products() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9; // 9 itens por página (grid 3x3 confortável)
 
-  const {
-    items,
-    stockMovements,
-    auditLogs,
-    createItem,
-    updateItem,
-    deleteItem,
-    createStockMovement,
-    importItems,
-    getLowStockItems,
-  } = useItems();
+  const { products: items, isLoading, refetch } = useSupabaseProducts();
+
+  // Load products on component mount
+  useEffect(() => {
+    refetch();
+  }, []);
+
+  // Mock functions for now - will be implemented later
+  const createItem = () => console.log('Create item');
+  const updateItem = () => console.log('Update item');
+  const deleteItem = () => console.log('Delete item');
+  const createStockMovement = () => console.log('Stock movement');
+  const importItems = () => console.log('Import items');
 
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.category.toLowerCase().includes(searchTerm.toLowerCase());
+                         (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase()));
     
     let matchesFilter = true;
     if (activeFilter === "products") {
-      matchesFilter = item.type === "product";
+      matchesFilter = !item.category || !item.category.includes("Serviços");
     } else if (activeFilter === "services") {
-      matchesFilter = item.type === "service";
+      matchesFilter = item.category && item.category.includes("Serviços");
     } else if (activeFilter === "normal") {
-      matchesFilter = item.type === "product" && item.stockQuantity > 10;
+      matchesFilter = item.stock_quantity > 10;
     } else if (activeFilter === "low") {
-      matchesFilter = item.type === "product" && item.stockQuantity > 5 && item.stockQuantity <= 10;
+      matchesFilter = item.stock_quantity > 5 && item.stock_quantity <= 10;
     } else if (activeFilter === "critical") {
-      matchesFilter = item.type === "product" && item.stockQuantity <= 5;
+      matchesFilter = item.stock_quantity <= 5;
     }
     
     return matchesSearch && matchesFilter;
@@ -66,11 +69,11 @@ export default function Products() {
 
   // Calculate metrics
   const totalItems = items.length;
-  const totalProducts = items.filter(i => i.type === "product").length;
-  const totalServices = items.filter(i => i.type === "service").length;
-  const normalStockItems = items.filter(i => i.type === "product" && i.stockQuantity > 10).length;
-  const lowStockItems = items.filter(i => i.type === "product" && i.stockQuantity > 5 && i.stockQuantity <= 10).length;
-  const criticalStockItems = items.filter(i => i.type === "product" && i.stockQuantity <= 5).length;
+  const totalProducts = items.filter(i => !i.category || !i.category.includes("Serviços")).length;
+  const totalServices = items.filter(i => i.category && i.category.includes("Serviços")).length;
+  const normalStockItems = items.filter(i => i.stock_quantity > 10).length;
+  const lowStockItems = items.filter(i => i.stock_quantity > 5 && i.stock_quantity <= 10).length;
+  const criticalStockItems = items.filter(i => i.stock_quantity <= 5).length;
 
   // Cálculos de paginação
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -128,25 +131,25 @@ export default function Products() {
   };
 
   const handleDeleteConfirm = (item: any, reason?: string) => {
-    deleteItem(item.id, reason);
+    deleteItem();
     setDeleteModalOpen(false);
     setSelectedItem(null);
   };
 
   const handleItemUpdate = (itemId: string, updates: any) => {
-    updateItem(itemId, updates);
+    updateItem();
     setEditModalOpen(false);
     setSelectedItem(null);
   };
 
   const handleStockMovementCreate = (movement: any) => {
-    createStockMovement(movement);
+    createStockMovement();
     setStockModalOpen(false);
     setSelectedItem(null);
   };
 
   const handleImportComplete = (importedItems: any[]) => {
-    importItems(importedItems);
+    importItems();
   };
 
   const getStockStatus = (quantity: number) => {
@@ -263,8 +266,8 @@ export default function Products() {
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {currentItems.map((item) => {
-          const stockStatus = getStockStatus(item.stockQuantity);
-          const isService = item.type === 'service';
+          const stockStatus = getStockStatus(item.stock_quantity);
+          const isService = item.category && item.category.includes("Serviços");
           return (
             <Card key={item.id} className="card-corporate hover:shadow-md transition-shadow">
               <CardHeader className="pb-4">
@@ -276,14 +279,9 @@ export default function Products() {
                       <p className="text-xs text-muted-foreground font-mono mt-1">
                         {item.code}
                       </p>
-                      {item.imported && (
-                        <Badge variant="outline" className="text-xs mt-1">
-                          Importado
-                        </Badge>
-                      )}
                     </div>
                   </div>
-                  {!isService && item.stockQuantity <= 10 && (
+                  {!isService && item.stock_quantity <= 10 && (
                     <AlertTriangle className="h-4 w-4 text-destructive" />
                   )}
                 </div>
@@ -313,7 +311,7 @@ export default function Products() {
                         <Badge className="badge-success">Disponível</Badge>
                       ) : (
                         <>
-                          <span className="font-semibold">{item.stockQuantity}</span>
+                          <span className="font-semibold">{item.stock_quantity}</span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium border ${stockStatus.color}`}>
                             {stockStatus.label}
                           </span>
@@ -327,13 +325,13 @@ export default function Products() {
                       {isService ? 'Serviço' : 'Produto'}
                     </Badge>
                   </div>
-                  {item.unitPrice && item.unitPrice > 0 && (
+                  {item.unit_price && item.unit_price > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">
                         {isService ? 'Preço Ref.' : 'Preço Unit.'}:
                       </span>
                       <span className="text-sm font-medium text-primary">
-                        R$ {item.unitPrice.toFixed(2)}
+                        R$ {item.unit_price.toFixed(2)}
                       </span>
                     </div>
                   )}
@@ -502,8 +500,8 @@ export default function Products() {
       <StockMovementLogModal
         open={logModalOpen}
         onOpenChange={setLogModalOpen}
-        movements={stockMovements}
-        auditLogs={auditLogs}
+        movements={[]}
+        auditLogs={[]}
       />
     </div>
   );
