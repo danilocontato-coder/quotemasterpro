@@ -44,7 +44,10 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
 
   // Preenche os dados quando está editando
   useEffect(() => {
+    console.log('UseEffect triggered - editingSupplier:', editingSupplier?.name, 'open:', open);
+    
     if (editingSupplier && open) {
+      console.log('Preenchendo formulário com dados do fornecedor:', editingSupplier);
       // Parse address back to individual fields (simple approach)
       const addressParts = editingSupplier.address?.split(', ') || [];
       
@@ -68,6 +71,7 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
         specialties: editingSupplier.specialties || []
       });
     } else if (!editingSupplier && open) {
+      console.log('Resetando formulário para novo fornecedor');
       // Reset form para novo fornecedor
       handleReset();
     }

@@ -105,11 +105,13 @@ export default function Suppliers() {
   };
 
   const handleEditSupplier = (supplier: Supplier) => {
+    console.log('Editando fornecedor:', supplier.name, supplier.type);
     setEditingSupplier(supplier);
     setShowNewSupplierModal(true);
   };
 
   const handleCloseModal = () => {
+    console.log('Fechando modal, resetando editingSupplier');
     setShowNewSupplierModal(false);
     setEditingSupplier(null);
   };
