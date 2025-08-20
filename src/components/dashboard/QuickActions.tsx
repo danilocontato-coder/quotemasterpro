@@ -1,60 +1,55 @@
-import { Plus, FileText, Users, Package } from "lucide-react";
+import { Plus, Users, Package, BarChart3 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
 
 export function QuickActions() {
+  const navigate = useNavigate();
+
   const actions = [
     {
       title: "Nova Cotação",
       description: "Criar uma nova solicitação de cotação",
       icon: Plus,
-      action: () => console.log("Nova cotação"),
+      color: "bg-blue-50 text-blue-600 hover:bg-blue-100",
+      action: () => navigate('/quotes')
     },
     {
       title: "Cadastrar Fornecedor",
       description: "Adicionar novo fornecedor ao sistema",
       icon: Users,
-      action: () => console.log("Novo fornecedor"),
+      color: "bg-green-50 text-green-600 hover:bg-green-100",
+      action: () => navigate('/suppliers')
     },
     {
       title: "Adicionar Produto",
       description: "Incluir produto no catálogo",
       icon: Package,
-      action: () => console.log("Novo produto"),
+      color: "bg-purple-50 text-purple-600 hover:bg-purple-100",
+      action: () => navigate('/products')
     },
     {
       title: "Relatório",
       description: "Gerar relatório de cotações",
-      icon: FileText,
-      action: () => console.log("Gerar relatório"),
-    },
+      icon: BarChart3,
+      color: "bg-orange-50 text-orange-600 hover:bg-orange-100",
+      action: () => navigate('/reports')
+    }
   ];
 
   return (
-    <Card className="card-corporate">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold">Ações Rápidas</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {actions.map((action, index) => (
-            <Button
-              key={index}
-              variant="outline"
-              className="h-auto p-4 flex flex-col items-center gap-3 hover:bg-primary/5 hover:border-primary/20 transition-colors"
-              onClick={action.action}
-            >
-              <action.icon className="h-6 w-6 text-primary" />
-              <div className="text-center">
-                <p className="font-medium text-sm">{action.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {action.description}
-                </p>
-              </div>
-            </Button>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {actions.map((action) => (
+        <Card key={action.title} className="hover:shadow-md transition-shadow cursor-pointer" onClick={action.action}>
+          <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-3 ${action.color}`}>
+              <action.icon className="h-6 w-6" />
+            </div>
+            <h3 className="font-medium text-sm mb-1">{action.title}</h3>
+            <p className="text-xs text-muted-foreground">{action.description}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }

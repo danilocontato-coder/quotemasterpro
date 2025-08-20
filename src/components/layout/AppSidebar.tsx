@@ -4,15 +4,12 @@ import {
   FileText, 
   Users, 
   Package, 
-  CheckCircle, 
   CreditCard, 
-  Mail, 
+  MessageSquare, 
   Settings, 
   Home,
-  Building,
-  UserCog,
-  Shield,
-  Sliders
+  User,
+  ShieldCheck
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -31,25 +28,22 @@ const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Cotações", url: "/quotes", icon: FileText },
   { title: "Fornecedores", url: "/suppliers", icon: Users },
-  { title: "Itens", url: "/products", icon: Package },
-  { title: "Aprovações", url: "/approvals", icon: CheckCircle },
+  { title: "Produtos", url: "/products", icon: Package },
 ];
 
 const financialItems = [
   { title: "Pagamentos", url: "/payments", icon: CreditCard },
+  { title: "Relatórios", url: "/reports", icon: BarChart3 },
 ];
 
 const communicationItems = [
-  { title: "Comunicação", url: "/communication", icon: Mail },
+  { title: "Comunicação", url: "/communication", icon: MessageSquare },
 ];
 
-// Removed admin items section
-
 const systemItems = [
-  { title: "Usuários", url: "/users", icon: UserCog },
-  { title: "Níveis de Aprovação", url: "/approval-levels", icon: Sliders },
-  { title: "Permissões", url: "/permissions", icon: Shield },
-  { title: "Relatórios", url: "/reports", icon: BarChart3 },
+  { title: "Usuários", url: "/users", icon: User },
+  { title: "Perfis", url: "/profiles", icon: ShieldCheck },
+  { title: "Permissões", url: "/permissions", icon: Settings },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
