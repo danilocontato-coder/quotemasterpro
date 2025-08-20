@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Eye, EyeOff, Mail, Lock, Building2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRoleBasedRoute } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 export default function Login() {
@@ -33,11 +34,21 @@ export default function Login() {
         description: "Bem-vindo ao QuoteMaster Pro.",
       });
 
-      // Redirecionar baseado no role ou local anterior
-      if (from !== '/') {
-        navigate(from, { replace: true });
+      // Recuperar dados do usuário logado
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        
+        // Redirecionar baseado no role ou local anterior
+        if (from !== '/') {
+          navigate(from, { replace: true });
+        } else {
+          // Redirecionar baseado no role do usuário
+          const redirectPath = getRoleBasedRoute(userData.role);
+          navigate(redirectPath, { replace: true });
+        }
       } else {
-        // Redirecionar para dashboard padrão será feito pelo AuthContext
+        // Fallback para dashboard padrão
         navigate('/dashboard', { replace: true });
       }
     } catch (err) {

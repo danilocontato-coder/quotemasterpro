@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRoleBasedRoute } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const RoleBasedRedirect: React.FC = () => {
@@ -22,21 +23,5 @@ export const RoleBasedRedirect: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirect based on user role
-  const getDashboardRoute = () => {
-    switch (user.role) {
-      case 'admin':
-        return '/admin/superadmin';
-      case 'client':
-        return '/dashboard';
-      case 'supplier':
-        return '/supplier';
-      case 'support':
-        return '/support';
-      default:
-        return '/dashboard';
-    }
-  };
-
-  return <Navigate to={getDashboardRoute()} replace />;
+  return <Navigate to={getRoleBasedRoute(user.role)} replace />;
 };

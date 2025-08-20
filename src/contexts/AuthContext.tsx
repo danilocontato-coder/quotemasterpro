@@ -12,6 +12,21 @@ export interface User {
   active: boolean;
 }
 
+export const getRoleBasedRoute = (role: UserRole): string => {
+  switch (role) {
+    case 'admin':
+      return '/admin/superadmin';
+    case 'client':
+      return '/dashboard';
+    case 'supplier':
+      return '/supplier';
+    case 'support':
+      return '/support';
+    default:
+      return '/dashboard';
+  }
+};
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
