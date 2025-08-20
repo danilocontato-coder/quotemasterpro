@@ -14,13 +14,619 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          entity_id: string
+          entity_type: string
+          id: string
+          panel_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          panel_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          panel_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          address: string | null
+          cnpj: string
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          status: string | null
+          subscription_plan_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          cnpj: string
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          status?: string | null
+          subscription_plan_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          cnpj?: string
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          status?: string | null
+          subscription_plan_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          priority: string | null
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          priority?: string | null
+          read?: boolean | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          priority?: string | null
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string | null
+          escrow_release_date: string | null
+          id: string
+          quote_id: string
+          status: string | null
+          stripe_session_id: string | null
+          supplier_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string | null
+          escrow_release_date?: string | null
+          id: string
+          quote_id: string
+          status?: string | null
+          stripe_session_id?: string | null
+          supplier_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string | null
+          escrow_release_date?: string | null
+          id?: string
+          quote_id?: string
+          status?: string | null
+          stripe_session_id?: string | null
+          supplier_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          category: string | null
+          client_id: string | null
+          code: string
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          status: string | null
+          stock_quantity: number | null
+          supplier_id: string | null
+          unit_price: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          client_id?: string | null
+          code: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          status?: string | null
+          stock_quantity?: number | null
+          supplier_id?: string | null
+          unit_price?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          client_id?: string | null
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string | null
+          stock_quantity?: number | null
+          supplier_id?: string | null
+          unit_price?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active: boolean | null
+          avatar_url: string | null
+          client_id: string | null
+          company_name: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          role: string
+          supplier_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          avatar_url?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          role?: string
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          avatar_url?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          quote_id: string | null
+          total: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          quote_id?: string | null
+          total?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          quote_id?: string | null
+          total?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_responses: {
+        Row: {
+          created_at: string | null
+          delivery_time: number | null
+          id: string
+          notes: string | null
+          quote_id: string | null
+          status: string | null
+          supplier_id: string
+          supplier_name: string
+          total_amount: number
+        }
+        Insert: {
+          created_at?: string | null
+          delivery_time?: number | null
+          id?: string
+          notes?: string | null
+          quote_id?: string | null
+          status?: string | null
+          supplier_id: string
+          supplier_name: string
+          total_amount: number
+        }
+        Update: {
+          created_at?: string | null
+          delivery_time?: number | null
+          id?: string
+          notes?: string | null
+          quote_id?: string | null
+          status?: string | null
+          supplier_id?: string
+          supplier_name?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_responses_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_responses_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          client_id: string
+          client_name: string
+          created_at: string | null
+          created_by: string | null
+          deadline: string | null
+          description: string | null
+          id: string
+          items_count: number | null
+          responses_count: number | null
+          status: string | null
+          supplier_id: string | null
+          supplier_name: string | null
+          title: string
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          client_name: string
+          created_at?: string | null
+          created_by?: string | null
+          deadline?: string | null
+          description?: string | null
+          id: string
+          items_count?: number | null
+          responses_count?: number | null
+          status?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+          title: string
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          client_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          items_count?: number | null
+          responses_count?: number | null
+          status?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+          title?: string
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_name: string
+          features: Json | null
+          id: string
+          is_popular: boolean | null
+          max_quotes: number
+          max_storage_gb: number
+          max_suppliers: number
+          max_users: number
+          monthly_price: number
+          name: string
+          status: string | null
+          target_audience: string | null
+          updated_at: string | null
+          yearly_price: number
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          features?: Json | null
+          id: string
+          is_popular?: boolean | null
+          max_quotes?: number
+          max_storage_gb?: number
+          max_suppliers?: number
+          max_users?: number
+          monthly_price?: number
+          name: string
+          status?: string | null
+          target_audience?: string | null
+          updated_at?: string | null
+          yearly_price?: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          features?: Json | null
+          id?: string
+          is_popular?: boolean | null
+          max_quotes?: number
+          max_storage_gb?: number
+          max_suppliers?: number
+          max_users?: number
+          monthly_price?: number
+          name?: string
+          status?: string | null
+          target_audience?: string | null
+          updated_at?: string | null
+          yearly_price?: number
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          address: Json | null
+          business_info: Json | null
+          client_id: string | null
+          cnpj: string
+          completed_orders: number | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          rating: number | null
+          region: string | null
+          specialties: string[] | null
+          status: string | null
+          subscription_plan_id: string | null
+          type: string | null
+          updated_at: string | null
+          website: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: Json | null
+          business_info?: Json | null
+          client_id?: string | null
+          cnpj: string
+          completed_orders?: number | null
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          rating?: number | null
+          region?: string | null
+          specialties?: string[] | null
+          status?: string | null
+          subscription_plan_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: Json | null
+          business_info?: Json | null
+          client_id?: string | null
+          cnpj?: string
+          completed_orders?: number | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          rating?: number | null
+          region?: string | null
+          specialties?: string[] | null
+          status?: string | null
+          subscription_plan_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suppliers_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       current_user_account_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
