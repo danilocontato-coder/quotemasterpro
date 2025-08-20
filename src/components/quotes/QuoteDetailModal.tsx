@@ -256,7 +256,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
     handleStatusChange('approved');
     toast({
       title: "Combinação aprovada!",
-      description: `Economia de R$ ${bestCombination.totalSavings.toFixed(2)} (${bestCombination.savingsPercentage.toFixed(1)}%) confirmada.`,
+      description: `Economia de R$ ${bestCombination?.totalSavings?.toFixed(2) || '0.00'} (${bestCombination?.savingsPercentage?.toFixed(1) || '0.0'}%) confirmada.`,
     });
   };
 
@@ -360,7 +360,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                               <p className="font-medium">{item.productName}</p>
                               <p className="text-sm text-muted-foreground">Quantidade: {item.quantity}</p>
                             </div>
-                            <p className="font-semibold">R$ {item.total.toFixed(2)}</p>
+                             <p className="font-semibold">R$ {(item.total || 0).toFixed(2)}</p>
                           </div>
                         ))}
                       </div>
@@ -435,7 +435,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                               {proposal.reputation}/5 ⭐
                             </Badge>
                             <Badge>
-                              R$ {proposal.totalPrice.toFixed(2)}
+                               R$ {(proposal.totalPrice || 0).toFixed(2)}
                             </Badge>
                           </div>
                         </div>
@@ -448,7 +448,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Frete</p>
-                            <p className="font-semibold">R$ {proposal.shippingCost.toFixed(2)}</p>
+                            <p className="font-semibold">R$ {(proposal.shippingCost || 0).toFixed(2)}</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">SLA</p>
@@ -468,10 +468,10 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                                 <p className="font-medium">{item.productName}</p>
                                 <p className="text-muted-foreground">
                                   {item.brand && `${item.brand} • `}
-                                  Qtd: {item.quantity} • R$ {item.unitPrice.toFixed(2)}/un
+                                  Qtd: {item.quantity} • R$ {(item.unitPrice || 0).toFixed(2)}/un
                                 </p>
                               </div>
-                              <p className="font-semibold">R$ {item.total.toFixed(2)}</p>
+                              <p className="font-semibold">R$ {(item.total || 0).toFixed(2)}</p>
                             </div>
                           ))}
                         </div>
@@ -509,19 +509,19 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                         <div>
                           <p className="text-sm text-green-600">Economia Total</p>
                           <p className="text-2xl font-bold text-green-800">
-                            R$ {bestCombination.totalSavings.toFixed(2)}
+                            R$ {(bestCombination?.totalSavings || 0).toFixed(2)}
                           </p>
                         </div>
                         <div>
                           <p className="text-sm text-green-600">Percentual</p>
                           <p className="text-2xl font-bold text-green-800">
-                            {bestCombination.savingsPercentage.toFixed(1)}%
+                            {(bestCombination?.savingsPercentage || 0).toFixed(1)}%
                           </p>
                         </div>
                         <div>
                           <p className="text-sm text-green-600">Custo Final</p>
                           <p className="text-2xl font-bold text-green-800">
-                            R$ {bestCombination.totalCost.toFixed(2)}
+                            R$ {(bestCombination?.totalCost || 0).toFixed(2)}
                           </p>
                         </div>
                         <div>
@@ -558,10 +558,10 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                               </div>
                               <div className="text-right">
                                 <p className="text-lg font-bold text-green-600">
-                                  Economia: R$ {(item.savings * item.quantity).toFixed(2)}
+                                  Economia: R$ {((item.savings || 0) * (item.quantity || 0)).toFixed(2)}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                  por unidade: R$ {item.savings.toFixed(2)}
+                                  por unidade: R$ {(item.savings || 0).toFixed(2)}
                                 </p>
                               </div>
                             </div>
@@ -574,7 +574,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                                       Melhor: {item.bestProposal.supplierName}
                                     </p>
                                     <p className="text-sm text-green-600">
-                                      R$ {item.bestProposal.item?.unitPrice.toFixed(2)}/un
+                                      R$ {(item.bestProposal?.item?.unitPrice || 0).toFixed(2)}/un
                                       {item.bestProposal.item?.brand && ` • ${item.bestProposal.item.brand}`}
                                     </p>
                                   </div>
@@ -642,7 +642,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                         <div className="flex-1">
                           <p className="font-medium">Proposta recebida - {proposal.supplierName}</p>
                           <p className="text-sm text-muted-foreground">
-                            R$ {proposal.totalPrice.toFixed(2)} • {new Date(proposal.submittedAt).toLocaleString('pt-BR')}
+                            R$ {(proposal.totalPrice || 0).toFixed(2)} • {new Date(proposal.submittedAt).toLocaleString('pt-BR')}
                           </p>
                         </div>
                       </div>
@@ -696,7 +696,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
           category: 'Produtos Gerais', // Default category since it's not in the quote item
           specifications: `Produto ID: ${item.productId}`,
           quantity: item.quantity,
-          supplierPrice: item.unitPrice
+          supplierPrice: (item.total || 0) / (item.quantity || 1) // Calculate unit price from total
         } as ItemAnalysisData)) || []}
         title={`Análise de Mercado - ${quote?.title || 'Cotação'}`}
       />
