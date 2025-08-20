@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { User, Mail, Phone, Shield, Key, Copy } from "lucide-react";
 import { useUsers } from "@/hooks/useUsers";
+import { useProfiles } from "@/hooks/useProfiles";
 import { useToast } from "@/hooks/use-toast";
 
 interface CreateUserModalProps {
@@ -20,6 +21,7 @@ interface CreateUserModalProps {
 
 export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const { createUser, generateTemporaryPassword } = useUsers();
+  const { profiles } = useProfiles();
   const { toast } = useToast();
   const [formData, setFormData] = useState<{
     name: string;
@@ -202,37 +204,60 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="role">Perfil do Usuário</Label>
-                  <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value as any})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">
-                        <div className="flex items-center gap-2">
-                          <Shield className="h-4 w-4 text-destructive" />
-                          <span>Administrador</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="manager">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-primary" />
-                          <span>Gerente</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="collaborator">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-secondary" />
-                          <span>Colaborador</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="supplier">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-warning" />
-                          <span>Fornecedor</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                      <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value as any})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* System roles */}
+                          <SelectItem value="admin">
+                            <div className="flex items-center gap-2">
+                              <Shield className="h-4 w-4 text-destructive" />
+                              <span>Administrador</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="manager">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-primary" />
+                              <span>Gerente</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="collaborator">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-secondary" />
+                              <span>Colaborador</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="supplier">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-warning" />
+                              <span>Fornecedor</span>
+                            </div>
+                          </SelectItem>
+                          
+                          {/* Custom profiles */}
+                          {profiles.filter(p => p.active).length > 0 && (
+                            <>
+                              <div className="px-2 py-1">
+                                <div className="h-px bg-border" />
+                                <p className="text-xs text-muted-foreground mt-1">Perfis Personalizados</p>
+                              </div>
+                              {profiles.filter(p => p.active).map((profile) => (
+                                <SelectItem key={profile.id} value={profile.id}>
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-4 w-4 rounded-full bg-accent flex items-center justify-center">
+                                      <span className="text-xs font-bold">
+                                        {profile.name.charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <span>{profile.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
                   {formData.role && (
                     <p className="text-sm text-muted-foreground">
                       {getRoleDescription(formData.role)}

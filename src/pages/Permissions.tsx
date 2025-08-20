@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -28,11 +28,18 @@ import { usePermissions, type Permission } from "@/hooks/usePermissions";
 import { useToast } from "@/hooks/use-toast";
 
 export function Permissions() {
-  const { roles, permissions, updatePermission } = usePermissions();
+  const { roles, permissions, updatePermission, initializeProfilePermissions } = usePermissions();
   const { toast } = useToast();
-  const [activeRole, setActiveRole] = useState("manager");
+  const [activeRole, setActiveRole] = useState("admin");
 
   const currentRole = roles.find(r => r.id === activeRole);
+
+  // Initialize permissions for the active role if it doesn't exist
+  useEffect(() => {
+    if (activeRole && !permissions[activeRole]) {
+      initializeProfilePermissions(activeRole);
+    }
+  }, [activeRole, permissions, initializeProfilePermissions]);
 
   const handlePermissionChange = (module: string, action: keyof Permission, value: boolean) => {
     updatePermission(activeRole, module, action, value);
@@ -54,13 +61,16 @@ export function Permissions() {
   };
 
   const getRoleColor = (roleId: string) => {
-    const colors = {
+    // Default colors for system roles
+    const systemColors = {
       admin: "bg-destructive",
       manager: "bg-primary",
       collaborator: "bg-secondary",
       supplier: "bg-warning"
     };
-    return colors[roleId as keyof typeof colors] || "bg-secondary";
+    
+    // Return system color if it exists, otherwise use a default for custom profiles
+    return systemColors[roleId as keyof typeof systemColors] || "bg-accent";
   };
 
   const getModuleIcon = (module: string) => {
@@ -88,32 +98,48 @@ export function Permissions() {
         </div>
       </div>
 
-      {/* Role Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {roles.map((role) => (
-          <Card key={role.id} className={activeRole === role.id ? "ring-2 ring-primary" : ""}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className={`p-2 rounded-full ${getRoleColor(role.id)} text-white mr-3`}>
-                    {getRoleIcon(role.id)}
+      {/* Role Stats - Organized in scrollable grid for many profiles */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Perfis Disponíveis</h2>
+        <div className="max-h-96 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pr-2">
+            {roles.map((role) => (
+              <Card key={role.id} className={`cursor-pointer transition-all hover:shadow-md ${activeRole === role.id ? "ring-2 ring-primary shadow-md" : ""}`}>
+                <CardContent className="pt-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className={`p-2 rounded-full ${getRoleColor(role.id)} text-white`}>
+                        {getRoleIcon(role.id)}
+                      </div>
+                      <Badge variant={activeRole === role.id ? "default" : "outline"} className="text-xs">
+                        {activeRole === role.id ? "Ativo" : "Clique para selecionar"}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-sm">{role.name}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{role.description}</p>
+                      <p className="text-xs text-muted-foreground">{role.userCount} usuários</p>
+                    </div>
+                    <Button
+                      variant={activeRole === role.id ? "default" : "outline"}
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setActiveRole(role.id)}
+                    >
+                      {activeRole === role.id ? "Configurando" : "Configurar"}
+                    </Button>
                   </div>
-                  <div>
-                    <p className="font-medium">{role.name}</p>
-                    <p className="text-sm text-muted-foreground">{role.userCount} usuários</p>
-                  </div>
-                </div>
-                <Button
-                  variant={activeRole === role.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveRole(role.id)}
-                >
-                  {activeRole === role.id ? "Ativo" : "Selecionar"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {roles.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Nenhum perfil encontrado</p>
+              <p className="text-sm text-muted-foreground">Crie novos perfis na página de usuários</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Permissions Configuration */}

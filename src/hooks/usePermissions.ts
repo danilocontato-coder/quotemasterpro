@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProfiles } from "./useProfiles";
 
 export interface Role {
   id: string;
@@ -19,33 +20,6 @@ export interface Permissions {
     [module: string]: Permission;
   };
 }
-
-const mockRoles: Role[] = [
-  {
-    id: "admin",
-    name: "Administrador",
-    description: "Acesso completo ao sistema",
-    userCount: 2
-  },
-  {
-    id: "manager", 
-    name: "Gerente",
-    description: "Gerenciamento de cotações e aprovações",
-    userCount: 5
-  },
-  {
-    id: "collaborator",
-    name: "Colaborador",
-    description: "Criação e edição de cotações",
-    userCount: 8
-  },
-  {
-    id: "supplier",
-    name: "Fornecedor", 
-    description: "Resposta a cotações e gestão de produtos",
-    userCount: 15
-  }
-];
 
 const defaultPermissions: Permissions = {
   admin: {
@@ -91,8 +65,18 @@ const defaultPermissions: Permissions = {
 };
 
 export function usePermissions() {
-  const [roles] = useState<Role[]>(mockRoles);
+  const { profiles } = useProfiles();
   const [permissions, setPermissions] = useState<Permissions>(defaultPermissions);
+
+  // Convert profiles to roles format and include default roles
+  const roles: Role[] = [
+    ...profiles.map(profile => ({
+      id: profile.id,
+      name: profile.name,
+      description: profile.description,
+      userCount: 0 // This would come from actual user data
+    }))
+  ];
 
   const updatePermission = (roleId: string, module: string, action: keyof Permission, value: boolean) => {
     setPermissions(prev => ({
@@ -100,7 +84,7 @@ export function usePermissions() {
       [roleId]: {
         ...prev[roleId],
         [module]: {
-          ...prev[roleId][module],
+          ...prev[roleId]?.[module] || { view: false, create: false, edit: false, delete: false },
           [action]: value
         }
       }
@@ -115,31 +99,24 @@ export function usePermissions() {
     return permissions[roleId] || {};
   };
 
-  const createRole = (roleData: Omit<Role, "id" | "userCount">) => {
-    const newRole: Role = {
-      ...roleData,
-      id: roleData.name.toLowerCase().replace(/\s+/g, '-'),
-      userCount: 0
-    };
-    
-    // Initialize with basic permissions
-    const basicPermissions = {
-      quotes: { view: false, create: false, edit: false, delete: false },
-      items: { view: false, create: false, edit: false, delete: false },
-      suppliers: { view: false, create: false, edit: false, delete: false },
-      approvals: { view: false, create: false, edit: false, delete: false },
-      payments: { view: false, create: false, edit: false, delete: false },
-      users: { view: false, create: false, edit: false, delete: false },
-      settings: { view: false, create: false, edit: false, delete: false },
-      reports: { view: false, create: false, edit: false, delete: false }
-    };
+  const initializeProfilePermissions = (profileId: string) => {
+    if (!permissions[profileId]) {
+      const basicPermissions = {
+        quotes: { view: false, create: false, edit: false, delete: false },
+        items: { view: false, create: false, edit: false, delete: false },
+        suppliers: { view: false, create: false, edit: false, delete: false },
+        approvals: { view: false, create: false, edit: false, delete: false },
+        payments: { view: false, create: false, edit: false, delete: false },
+        users: { view: false, create: false, edit: false, delete: false },
+        settings: { view: false, create: false, edit: false, delete: false },
+        reports: { view: false, create: false, edit: false, delete: false }
+      };
 
-    setPermissions(prev => ({
-      ...prev,
-      [newRole.id]: basicPermissions
-    }));
-
-    return newRole;
+      setPermissions(prev => ({
+        ...prev,
+        [profileId]: basicPermissions
+      }));
+    }
   };
 
   return {
@@ -148,6 +125,6 @@ export function usePermissions() {
     updatePermission,
     hasPermission,
     getRolePermissions,
-    createRole
+    initializeProfilePermissions
   };
 }

@@ -98,10 +98,12 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
     }
 
     try {
-      createProfile(formData);
+      const newProfile = createProfile(formData);
+      // Initialize permissions for the new profile
+      // This would be handled by the permissions system
       toast({
         title: "Perfil criado",
-        description: "Novo perfil criado com sucesso.",
+        description: "Novo perfil criado com sucesso. Configure suas permissões na página de Permissões.",
       });
       onClose();
       // Reset form

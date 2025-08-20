@@ -38,6 +38,7 @@ import { useProfiles } from "@/hooks/useProfiles";
 
 export function Users() {
   const { users, searchTerm, setSearchTerm } = useUsers();
+  const { profiles } = useProfiles();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createProfileModalOpen, setCreateProfileModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -105,8 +106,8 @@ export function Users() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Stats Cards - showing profile statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
@@ -118,49 +119,47 @@ export function Users() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <Shield className="h-8 w-8 text-destructive" />
-              <div className="ml-4">
-                <p className="text-2xl font-bold">
-                  {users.filter(u => u.role === "admin").length}
-                </p>
-                <p className="text-sm text-muted-foreground">Administradores</p>
+        
+        {/* Profile-based stats */}
+        {profiles.slice(0, 3).map((profile) => {
+          const profileUserCount = users.filter(u => u.role === profile.id).length;
+          return (
+            <Card key={profile.id}>
+              <CardContent className="pt-6">
+                <div className="flex items-center">
+                  <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                    <span className="text-sm font-bold text-accent-foreground">
+                      {profile.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-2xl font-bold">{profileUserCount}</p>
+                    <p className="text-sm text-muted-foreground truncate max-w-24">
+                      {profile.name}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        
+        {/* Show "More profiles" if there are many */}
+        {profiles.length > 3 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                  <span className="text-sm font-bold">+{profiles.length - 3}</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-2xl font-bold">{profiles.length - 3}</p>
+                  <p className="text-sm text-muted-foreground">Mais Perfis</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-sm font-bold text-primary-foreground">M</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-2xl font-bold">
-                  {users.filter(u => u.role === "manager").length}
-                </p>
-                <p className="text-sm text-muted-foreground">Gerentes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-success flex items-center justify-center">
-                <span className="text-sm font-bold text-white">A</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-2xl font-bold">
-                  {users.filter(u => u.status === "active").length}
-                </p>
-                <p className="text-sm text-muted-foreground">Ativos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Search and Filters */}
