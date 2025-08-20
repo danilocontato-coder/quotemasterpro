@@ -179,44 +179,50 @@ export default function Quotes() {
         <FilterMetricCard
           title="Todas Ativas"
           value={totalActive}
+          icon={<FileText />}
           isActive={activeFilter === "all"}
           onClick={() => setActiveFilter("all")}
-          colorClass="text-blue-600"
+          variant="default"
         />
         <FilterMetricCard
           title="Rascunhos"
           value={draftQuotes}
+          icon={<Edit />}
           isActive={activeFilter === "draft"}
           onClick={() => setActiveFilter("draft")}
-          colorClass="text-gray-600"
+          variant="secondary"
         />
         <FilterMetricCard
           title="Recebendo"
           value={receivingQuotes}
+          icon={<Eye />}
           isActive={activeFilter === "receiving"}
           onClick={() => setActiveFilter("receiving")}
-          colorClass="text-orange-600"
+          variant="warning"
         />
         <FilterMetricCard
           title="Aprovadas"
           value={approvedQuotes}
+          icon={<Plus />}
           isActive={activeFilter === "approved"}
           onClick={() => setActiveFilter("approved")}
-          colorClass="text-green-600"
+          variant="success"
         />
         <FilterMetricCard
           title="Finalizadas"
           value={finalizedQuotes}
+          icon={<Archive />}
           isActive={activeFilter === "finalized"}
           onClick={() => setActiveFilter("finalized")}
-          colorClass="text-purple-600"
+          variant="default"
         />
         <FilterMetricCard
           title="Lixeira"
           value={trashQuotes}
+          icon={<Trash2 />}
           isActive={activeFilter === "trash"}
           onClick={() => setActiveFilter("trash")}
-          colorClass="text-red-600"
+          variant="destructive"
         />
       </div>
 

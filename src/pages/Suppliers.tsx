@@ -214,37 +214,42 @@ export default function Suppliers() {
         <FilterMetricCard
           title="Total"
           value={totalSuppliers}
+          icon={<Users />}
           isActive={activeFilter === "all"}
           onClick={() => setActiveFilter("all")}
-          colorClass="text-foreground"
+          variant="default"
         />
         <FilterMetricCard
           title="Ativos"
           value={activeSuppliers}
+          icon={<Shield />}
           isActive={activeFilter === "active"}
           onClick={() => setActiveFilter("active")}
-          colorClass="text-green-600"
+          variant="success"
         />
         <FilterMetricCard
           title="Locais"
           value={localSuppliers}
+          icon={<MapPin />}
           isActive={activeFilter === "local"}
           onClick={() => setActiveFilter("local")}
-          colorClass="text-blue-600"
+          variant="default"
         />
         <FilterMetricCard
           title="Certificados"
           value={globalSuppliers}
+          icon={<Building />}
           isActive={activeFilter === "global"}
           onClick={() => setActiveFilter("global")}
-          colorClass="text-purple-600"
+          variant="default"
         />
         <FilterMetricCard
           title="Prioritários"
           value={prioritySuppliers}
+          icon={<Star />}
           isActive={activeFilter === "priority"}
           onClick={() => setActiveFilter("priority")}
-          colorClass="text-orange-600"
+          variant="warning"
         />
       </div>
 

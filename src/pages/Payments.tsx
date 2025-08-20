@@ -148,44 +148,50 @@ export default function Payments() {
         <FilterMetricCard
           title="Total"
           value={totalPayments}
+          icon={<CreditCard />}
           isActive={activeFilter === "all"}
           onClick={() => setActiveFilter("all")}
-          colorClass="text-foreground"
+          variant="default"
         />
         <FilterMetricCard
           title="Pendente"
           value={pendingPayments}
+          icon={<Clock />}
           isActive={activeFilter === "pending"}
           onClick={() => setActiveFilter("pending")}
-          colorClass="text-orange-600"
+          variant="warning"
         />
         <FilterMetricCard
           title="Em Garantia"
           value={inEscrowPayments}
+          icon={<ShieldCheck />}
           isActive={activeFilter === "in_escrow"}
           onClick={() => setActiveFilter("in_escrow")}
-          colorClass="text-blue-600"
+          variant="default"
         />
         <FilterMetricCard
           title="Aguardando"
           value={waitingConfirmationPayments}
+          icon={<AlertTriangle />}
           isActive={activeFilter === "waiting_confirmation"}
           onClick={() => setActiveFilter("waiting_confirmation")}
-          colorClass="text-yellow-600"
+          variant="warning"
         />
         <FilterMetricCard
           title="Pagos"
           value={paidPayments}
+          icon={<CheckCircle />}
           isActive={activeFilter === "paid"}
           onClick={() => setActiveFilter("paid")}
-          colorClass="text-green-600"
+          variant="success"
         />
         <FilterMetricCard
           title="Disputas"
           value={disputedPayments}
+          icon={<AlertTriangle />}
           isActive={activeFilter === "disputed"}
           onClick={() => setActiveFilter("disputed")}
-          colorClass="text-red-600"
+          variant="destructive"
         />
       </div>
 

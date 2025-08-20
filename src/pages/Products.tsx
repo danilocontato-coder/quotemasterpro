@@ -192,44 +192,50 @@ export default function Products() {
         <FilterMetricCard
           title="Total"
           value={totalItems}
+          icon={<Package />}
           isActive={activeFilter === "all"}
           onClick={() => setActiveFilter("all")}
-          colorClass="text-foreground"
+          variant="default"
         />
         <FilterMetricCard
           title="Produtos"
           value={totalProducts}
+          icon={<Package />}
           isActive={activeFilter === "products"}
           onClick={() => setActiveFilter("products")}
-          colorClass="text-primary"
+          variant="default"
         />
         <FilterMetricCard
           title="Serviços"
           value={totalServices}
+          icon={<Wrench />}
           isActive={activeFilter === "services"}
           onClick={() => setActiveFilter("services")}
-          colorClass="text-success"
+          variant="success"
         />
         <FilterMetricCard
           title="Normal"
           value={normalStockItems}
+          icon={<Eye />}
           isActive={activeFilter === "normal"}
           onClick={() => setActiveFilter("normal")}
-          colorClass="text-success"
+          variant="success"
         />
         <FilterMetricCard
           title="Baixo"
           value={lowStockItems}
+          icon={<AlertTriangle />}
           isActive={activeFilter === "low"}
           onClick={() => setActiveFilter("low")}
-          colorClass="text-warning"
+          variant="warning"
         />
         <FilterMetricCard
           title="Crítico"
           value={criticalStockItems}
+          icon={<AlertTriangle />}
           isActive={activeFilter === "critical"}
           onClick={() => setActiveFilter("critical")}
-          colorClass="text-destructive"
+          variant="destructive"
         />
       </div>
 
