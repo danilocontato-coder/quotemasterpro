@@ -22,7 +22,8 @@ import {
   MapPin,
   Tag,
   FileText,
-  Shield
+  Shield,
+  CreditCard
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -39,6 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAdminClients } from '@/hooks/useAdminClients';
+import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { ClientGroupsManager } from '@/components/admin/ClientGroupsManager';
 
@@ -62,6 +64,8 @@ export const ClientsManagement = () => {
     generateUsername,
     stats
   } = useAdminClients();
+  
+  const { plans, getPlanById } = useSubscriptionPlans();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGroupsManager, setShowGroupsManager] = useState(false);
@@ -78,6 +82,19 @@ export const ClientsManagement = () => {
   const getGroupColor = (groupId?: string) => {
     const group = clientGroups.find(g => g.id === groupId);
     return group?.color || 'gray';
+  };
+  
+  const getPlanInfo = (planId: string) => {
+    const plan = getPlanById(planId);
+    return plan ? {
+      displayName: plan.displayName,
+      price: plan.pricing.monthly,
+      isPopular: plan.isPopular
+    } : {
+      displayName: planId,
+      price: 0,
+      isPopular: false
+    };
   };
 
   const formatCurrency = (value: number) => {
@@ -292,7 +309,22 @@ export const ClientsManagement = () => {
                     </TableCell>
                     
                     <TableCell>
-                      <Badge variant="outline">{client.plan}</Badge>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm font-medium">
+                            {getPlanInfo(client.plan).displayName}
+                          </span>
+                          {getPlanInfo(client.plan).isPopular && (
+                            <Badge variant="secondary" className="text-xs">
+                              Popular
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatCurrency(getPlanInfo(client.plan).price)}/mês
+                        </div>
+                      </div>
                     </TableCell>
                     
                     <TableCell>

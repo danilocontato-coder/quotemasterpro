@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import {
   Building2,
   User,
@@ -26,7 +27,8 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
-  Send
+  Send,
+  CreditCard
 } from 'lucide-react';
 import { AdminClient, ClientGroup, ClientContact, ClientDocument } from '@/hooks/useAdminClients';
 
@@ -48,6 +50,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
   generateTemporaryPassword
 }) => {
   const { toast } = useToast();
+  const { plans } = useSubscriptionPlans();
   const [currentTab, setCurrentTab] = useState('basic');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +70,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       zipCode: ''
     },
     groupId: '',
-    plan: 'Basic',
+    plan: 'basic',
     status: 'active' as const,
     notes: ''
   });
@@ -254,7 +257,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
           zipCode: ''
         },
         groupId: '',
-        plan: 'Basic',
+        plan: 'basic',
         status: 'active',
         notes: ''
       });
@@ -378,16 +381,25 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="plan">Plano</Label>
+                      <Label htmlFor="plan">Plano de Assinatura</Label>
                       <Select value={formData.plan} onValueChange={(value) => setFormData(prev => ({ ...prev, plan: value }))}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Basic">Basic</SelectItem>
-                          <SelectItem value="Pro">Pro</SelectItem>
-                          <SelectItem value="Premium">Premium</SelectItem>
-                          <SelectItem value="Enterprise">Enterprise</SelectItem>
+                          {plans.map(plan => (
+                            <SelectItem key={plan.id} value={plan.id}>
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  <CreditCard className="h-4 w-4" />
+                                  <span>{plan.displayName}</span>
+                                </div>
+                                <span className="text-sm text-muted-foreground ml-2">
+                                  R$ {plan.pricing.monthly.toFixed(2)}/mês
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

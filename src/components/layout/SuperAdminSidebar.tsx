@@ -56,6 +56,12 @@ const navigation = [
         description: 'Parceiros fornecedores'
       },
       {
+        name: 'Planos',
+        href: '/admin/plans',
+        icon: CreditCard,
+        description: 'Planos de assinatura'
+      },
+      {
         name: 'Equipe Suporte',
         href: '/admin/support-team',
         icon: HeadphonesIcon,
