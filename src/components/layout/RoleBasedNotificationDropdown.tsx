@@ -24,6 +24,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRoleBasedNotifications } from '@/hooks/useRoleBasedNotifications';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useDashboardNotifications } from '@/hooks/useDashboardNotifications';
 import { cn } from '@/lib/utils';
 
 const getNotificationIcon = (type: string) => {
@@ -65,17 +67,34 @@ const getPriorityBadge = (priority: string) => {
 
 export function RoleBasedNotificationDropdown() {
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Usar notificações específicas do dashboard se estivermos na página principal
+  const isDashboardPage = location.pathname === '/dashboard' || 
+                          location.pathname === '/admin/superadmin' ||
+                          location.pathname === '/supplier' ||
+                          location.pathname.includes('/admin');
+                          
+  const dashboardNotifications = useDashboardNotifications();
+  const globalNotifications = useRoleBasedNotifications();
+  
+  // Escolher o sistema de notificações baseado na página atual
+  const notificationSystem = isDashboardPage ? dashboardNotifications : globalNotifications;
+  
   const { 
     notifications, 
     unreadCount, 
-    highPriorityCount, 
     markAsRead, 
     markAllAsRead,
     deleteNotification
-  } = useRoleBasedNotifications();
+  } = notificationSystem;
 
+  const highPriorityCount = notifications.filter(n => !n.read && n.priority === 'high').length;
+  
   const handleNotificationClick = (notification: any) => {
-    markAsRead(notification.id);
+    if (markAsRead) {
+      markAsRead(notification.id);
+    }
     if (notification.actionUrl) {
       navigate(notification.actionUrl);
     }
@@ -83,7 +102,9 @@ export function RoleBasedNotificationDropdown() {
 
   const handleDeleteNotification = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    deleteNotification(id);
+    if (deleteNotification) {
+      deleteNotification(id);
+    }
   };
 
   return (
@@ -120,16 +141,19 @@ export function RoleBasedNotificationDropdown() {
               </Button>
             )}
           </div>
-          {unreadCount > 0 && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {unreadCount} não lida{unreadCount > 1 ? 's' : ''}
-              {highPriorityCount > 0 && (
-                <span className="text-red-600 font-medium">
-                  {' '}• {highPriorityCount} de alta prioridade
-                </span>
-              )}
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground mt-1">
+            {isDashboardPage ? 'Notificações do Dashboard' : 'Notificações Gerais'}
+            {unreadCount > 0 && (
+              <>
+                {' '}• {unreadCount} não lida{unreadCount > 1 ? 's' : ''}
+                {highPriorityCount > 0 && (
+                  <span className="text-red-600 font-medium">
+                    {' '}• {highPriorityCount} de alta prioridade
+                  </span>
+                )}
+              </>
+            )}
+          </p>
         </div>
 
         <ScrollArea className="h-96">

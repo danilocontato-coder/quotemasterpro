@@ -13,7 +13,7 @@ interface Notification {
   actionUrl?: string;
 }
 
-// Notificações específicas por papel
+// Notificações específicas e exclusivas por papel
 const getNotificationsByRole = (role: string): Notification[] => {
   const baseTime = new Date();
   
@@ -23,7 +23,7 @@ const getNotificationsByRole = (role: string): Notification[] => {
         {
           id: 'sa-1',
           title: 'Sistema de backup concluído',
-          message: 'Backup automático das 03:00 executado com sucesso',
+          message: 'Backup automático das 03:00 executado com sucesso em todos os servidores',
           type: 'success',
           time: '30 min atrás',
           read: false,
@@ -33,7 +33,7 @@ const getNotificationsByRole = (role: string): Notification[] => {
         {
           id: 'sa-2',
           title: 'Novo cliente aprovado',
-          message: 'Condomínio Vista Alegre foi aprovado e ativado',
+          message: 'Condomínio Vista Alegre foi aprovado e ativado no sistema',
           type: 'info',
           time: '1 hora atrás',
           read: false,
@@ -43,11 +43,11 @@ const getNotificationsByRole = (role: string): Notification[] => {
         },
         {
           id: 'sa-3',
-          title: 'Alerta de segurança',
-          message: '3 tentativas de login falharam para admin@sistema.com',
+          title: 'Alerta de segurança crítico',
+          message: '3 tentativas de login falharam para admin@sistema.com - IP bloqueado',
           type: 'warning',
           time: '2 horas atrás',
-          read: true,
+          read: false,
           category: 'seguranca',
           priority: 'high',
           actionUrl: '/admin/security'
@@ -55,13 +55,23 @@ const getNotificationsByRole = (role: string): Notification[] => {
         {
           id: 'sa-4',
           title: 'Integração WhatsApp offline',
-          message: 'Serviço WhatsApp apresentou instabilidade',
+          message: 'Serviço WhatsApp Business API apresentou instabilidade - verificar configuração',
           type: 'error',
           time: '4 horas atrás',
           read: false,
           category: 'integracao',
           priority: 'high',
           actionUrl: '/admin/integrations'
+        },
+        {
+          id: 'sa-5',
+          title: 'Relatório mensal gerado',
+          message: 'Relatório de receitas e usuários de Julho/2024 disponível para download',
+          type: 'success',
+          time: '6 horas atrás',
+          read: true,
+          category: 'relatorio',
+          priority: 'low'
         }
       ];
       
@@ -70,7 +80,7 @@ const getNotificationsByRole = (role: string): Notification[] => {
         {
           id: 'ad-1',
           title: 'Limite de plano atingido',
-          message: 'Cliente XYZ atingiu 95% do limite de cotações',
+          message: 'Cliente Condomínio XYZ atingiu 95% do limite de cotações do plano Pro',
           type: 'warning',
           time: '15 min atrás',
           read: false,
@@ -80,8 +90,8 @@ const getNotificationsByRole = (role: string): Notification[] => {
         },
         {
           id: 'ad-2',
-          title: 'Novo fornecedor pendente',
-          message: 'TechFlow Solutions aguarda aprovação',
+          title: 'Novo fornecedor aguarda aprovação',
+          message: 'TechFlow Solutions enviou solicitação de cadastro como fornecedor',
           type: 'info',
           time: '45 min atrás',
           read: false,
@@ -91,13 +101,24 @@ const getNotificationsByRole = (role: string): Notification[] => {
         },
         {
           id: 'ad-3',
-          title: 'Pagamento processado',
-          message: 'Fatura #2024-001 paga com sucesso - R$ 1.299,00',
+          title: 'Pagamento processado com sucesso',
+          message: 'Fatura #2024-001 paga automaticamente via Stripe - R$ 1.299,00',
           type: 'success',
           time: '2 horas atrás',
           read: true,
           category: 'financeiro',
           priority: 'low'
+        },
+        {
+          id: 'ad-4',
+          title: 'Upgrade de plano solicitado',
+          message: 'Cliente Edifício Central solicitou upgrade para plano Enterprise',
+          type: 'info',
+          time: '3 horas atrás',
+          read: false,
+          category: 'plano',
+          priority: 'medium',
+          actionUrl: '/admin/plans'
         }
       ];
       
@@ -105,8 +126,8 @@ const getNotificationsByRole = (role: string): Notification[] => {
       return [
         {
           id: 'mg-1',
-          title: 'Cotação aprovada',
-          message: 'Cotação #QT-2024-156 foi aprovada - R$ 3.450,00',
+          title: 'Cotação #QT-2024-156 aprovada',
+          message: 'Cotação para "Material de construção" aprovada pelo gestor - Valor: R$ 3.450,00',
           type: 'success',
           time: '10 min atrás',
           read: false,
@@ -117,7 +138,7 @@ const getNotificationsByRole = (role: string): Notification[] => {
         {
           id: 'mg-2',
           title: 'Nova proposta recebida',
-          message: 'Fornecedor Alpha enviou proposta para "Material de limpeza"',
+          message: 'Fornecedor Alpha Materiais enviou proposta para "Kit de limpeza mensal"',
           type: 'info',
           time: '30 min atrás',
           read: false,
@@ -127,14 +148,24 @@ const getNotificationsByRole = (role: string): Notification[] => {
         },
         {
           id: 'mg-3',
-          title: 'Aprovação pendente',
-          message: 'Cotação #QT-2024-157 aguarda sua aprovação',
+          title: 'Aprovação urgente necessária',
+          message: 'Cotação #QT-2024-157 para serviços de emergência aguarda sua aprovação',
           type: 'warning',
           time: '1 hora atrás',
-          read: true,
+          read: false,
           category: 'aprovacao',
           priority: 'high',
           actionUrl: '/approvals'
+        },
+        {
+          id: 'mg-4',
+          title: 'Orçamento mensal atingido',
+          message: 'Gastos do mês atingiram 85% do orçamento aprovado para sua unidade',
+          type: 'warning',
+          time: '2 horas atrás',
+          read: true,
+          category: 'orcamento',
+          priority: 'medium'
         }
       ];
       
@@ -142,8 +173,8 @@ const getNotificationsByRole = (role: string): Notification[] => {
       return [
         {
           id: 'co-1',
-          title: 'Cotação enviada com sucesso',
-          message: 'Sua cotação #QT-2024-158 foi enviada para aprovação',
+          title: 'Cotação #QT-2024-158 enviada',
+          message: 'Sua cotação para "Equipamentos de segurança" foi enviada para aprovação do gestor',
           type: 'success',
           time: '5 min atrás',
           read: false,
@@ -152,14 +183,24 @@ const getNotificationsByRole = (role: string): Notification[] => {
         },
         {
           id: 'co-2',
-          title: 'Cotação rejeitada',
-          message: 'Cotação #QT-2024-155 foi rejeitada. Verifique os comentários.',
+          title: 'Cotação #QT-2024-155 rejeitada',
+          message: 'Cotação rejeitada: "Valores acima do orçamento". Verifique os comentários do gestor.',
           type: 'error',
           time: '2 horas atrás',
           read: false,
           category: 'cotacao',
           priority: 'high',
           actionUrl: '/quotes'
+        },
+        {
+          id: 'co-3',
+          title: 'Novo fornecedor disponível',
+          message: 'Fornecedor "Beta Suprimentos" foi aprovado e está disponível para cotações',
+          type: 'info',
+          time: '4 horas atrás',
+          read: true,
+          category: 'fornecedor',
+          priority: 'low'
         }
       ];
       
@@ -168,7 +209,7 @@ const getNotificationsByRole = (role: string): Notification[] => {
         {
           id: 'sp-1',
           title: 'Nova solicitação de cotação',
-          message: 'Condomínio ABC solicitou cotação para "Materiais elétricos"',
+          message: 'Condomínio ABC solicitou cotação para "Materiais elétricos" - Prazo: 48h',
           type: 'info',
           time: '20 min atrás',
           read: false,
@@ -178,8 +219,8 @@ const getNotificationsByRole = (role: string): Notification[] => {
         },
         {
           id: 'sp-2',
-          title: 'Proposta aceita',
-          message: 'Sua proposta #PR-2024-089 foi aceita - R$ 2.100,00',
+          title: 'Proposta #PR-2024-089 aceita',
+          message: 'Sua proposta foi aceita! Pagamento de R$ 2.100,00 será processado em 5 dias úteis',
           type: 'success',
           time: '1 hora atrás',
           read: false,
@@ -188,14 +229,24 @@ const getNotificationsByRole = (role: string): Notification[] => {
         },
         {
           id: 'sp-3',
-          title: 'Estoque baixo',
-          message: 'Produto "Cabo elétrico 2.5mm" com apenas 12 unidades',
+          title: 'Alerta de estoque baixo',
+          message: 'Produto "Cabo elétrico 2.5mm" com apenas 12 unidades restantes',
           type: 'warning',
           time: '3 horas atrás',
-          read: true,
+          read: false,
           category: 'estoque',
           priority: 'medium',
           actionUrl: '/supplier/products'
+        },
+        {
+          id: 'sp-4',
+          title: 'Avaliação recebida',
+          message: 'Cliente avaliou seu atendimento com 5 estrelas. Parabéns!',
+          type: 'success',
+          time: '5 horas atrás',
+          read: true,
+          category: 'avaliacao',
+          priority: 'low'
         }
       ];
       
