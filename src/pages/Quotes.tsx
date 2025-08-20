@@ -9,6 +9,9 @@ import { CreateQuoteModal } from "@/components/quotes/CreateQuoteModal";
 import { DeleteConfirmationModal } from "@/components/quotes/DeleteConfirmationModal";
 import { QuoteComparisonButton } from "@/components/quotes/QuoteComparisonButton";
 import { DecisionMatrixManager } from "@/components/quotes/DecisionMatrixManager";
+import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
+import { StatusProgressIndicator } from "@/components/quotes/StatusProgressIndicator";
+import { EconomyNotification, useEconomyAlerts } from "@/components/quotes/EconomyNotification";
 import { useQuotes } from "@/hooks/useQuotes";
 import { getStatusColor, getStatusText, Quote } from "@/data/mockData";
 import { toast } from "sonner";
@@ -20,10 +23,13 @@ export default function Quotes() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isMatrixManagerOpen, setIsMatrixManagerOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+  const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   
   const { quotes, addQuote, updateQuote, deleteQuote } = useQuotes();
+  const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
   const handleQuoteCreate = (quoteData: any) => {
     const newQuote = addQuote(quoteData);
@@ -57,6 +63,11 @@ export default function Quotes() {
   const handleEditClick = (quote: Quote) => {
     setEditingQuote(quote);
     setIsCreateModalOpen(true);
+  };
+
+  const handleViewClick = (quote: Quote) => {
+    setViewingQuote(quote);
+    setIsDetailModalOpen(true);
   };
 
   const filteredQuotes = quotes.filter(quote => {
@@ -304,9 +315,7 @@ export default function Quotes() {
                       </div>
                     </td>
                     <td>
-                      <Badge className={getStatusColor(quote.status)}>
-                        {getStatusText(quote.status)}
-                      </Badge>
+                      <StatusProgressIndicator status={quote.status} />
                     </td>
                     <td>
                       <div className="flex items-center gap-1">
@@ -344,6 +353,7 @@ export default function Quotes() {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8"
+                          onClick={() => handleViewClick(quote)}
                           title="Visualizar"
                         >
                           <Eye className="h-4 w-4" />
@@ -405,6 +415,19 @@ export default function Quotes() {
         onOpenChange={setIsDeleteModalOpen}
         quote={quoteToDelete}
         onConfirm={handleDeleteConfirm}
+      />
+
+      {/* Quote Detail Modal */}
+      <QuoteDetailModal
+        open={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setViewingQuote(null);
+        }}
+        quote={viewingQuote}
+        onStatusChange={(quoteId, newStatus) => {
+          updateQuote(quoteId, { status: newStatus });
+        }}
       />
 
       {/* Decision Matrix Manager */}

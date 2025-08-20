@@ -83,12 +83,29 @@ export const mockQuotes: Quote[] = [
     status: 'draft',
     clientId: '1',
     clientName: 'Condomínio Jardim das Flores',
-    itemsCount: 0,
+    itemsCount: 3,
     responsesCount: 0,
     responseTotal: 0,
     createdAt: '2025-08-18T10:30:00Z',
     updatedAt: '2025-08-18T10:30:00Z',
-    items: [],
+    items: [
+      {
+        id: '1',
+        productId: '1',
+        productName: 'Cimento Portland 50kg',
+        quantity: 10,
+        unitPrice: 32.50,
+        total: 325.00
+      },
+      {
+        id: '2',
+        productId: '8',
+        productName: 'Lâmpada LED 12W',
+        quantity: 20,
+        unitPrice: 15.90,
+        total: 318.00
+      }
+    ],
   },
   {
     id: 'RFQ010',
@@ -98,12 +115,21 @@ export const mockQuotes: Quote[] = [
     status: 'draft',
     clientId: '1',
     clientName: 'Condomínio Jardim das Flores',
-    itemsCount: 0,
+    itemsCount: 2,
     responsesCount: 0,
     responseTotal: 0,
     createdAt: '2025-08-18T14:20:00Z',
     updatedAt: '2025-08-18T14:20:00Z',
-    items: [],
+    items: [
+      {
+        id: '3',
+        productId: '5',
+        productName: 'Detergente Neutro 5L',
+        quantity: 5,
+        unitPrice: 28.90,
+        total: 144.50
+      }
+    ],
   },
   {
     id: 'RFQ009',
@@ -114,27 +140,44 @@ export const mockQuotes: Quote[] = [
     clientId: '1',
     clientName: 'Condomínio Jardim das Flores',
     itemsCount: 2,
-    responsesCount: 0,
-    responseTotal: 1,
+    responsesCount: 3,
+    responseTotal: 3,
     deadline: '2025-08-28T23:59:59Z',
     createdAt: '2025-08-18T16:45:00Z',
     updatedAt: '2025-08-18T16:45:00Z',
-    items: [],
+    items: [
+      {
+        id: '4',
+        productId: '1',
+        productName: 'Cimento Portland 50kg',
+        quantity: 10,
+        unitPrice: 32.50,
+        total: 325.00
+      },
+      {
+        id: '5',
+        productId: '8',
+        productName: 'Lâmpada LED 12W',
+        quantity: 20,
+        unitPrice: 15.90,
+        total: 318.00
+      }
+    ],
   },
   {
     id: 'RFQ008',
     title: 'Serviços de Jardinagem',
     description: 'Manutenção e paisagismo das áreas verdes',
     total: 0,
-    status: 'receiving',
+    status: 'approved',
     clientId: '1',
     clientName: 'Condomínio Jardim das Flores',
     itemsCount: 3,
-    responsesCount: 0,
-    responseTotal: 1,
+    responsesCount: 2,
+    responseTotal: 2,
     deadline: '2025-08-20T23:59:59Z',
     createdAt: '2025-08-18T11:20:00Z',
-    updatedAt: '2025-08-18T11:20:00Z',
+    updatedAt: '2025-08-19T14:30:00Z',
     items: [],
   },
 ];
