@@ -26,7 +26,7 @@ export const RoleBasedRedirect: React.FC = () => {
   const getDashboardRoute = () => {
     switch (user.role) {
       case 'admin':
-        return '/admin';
+        return '/admin/superadmin';
       case 'client':
         return '/dashboard';
       case 'supplier':
