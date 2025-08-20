@@ -35,6 +35,7 @@ import { Reports } from '@/pages/Reports';
 import { Approvals } from '@/pages/Approvals';
 import { ApprovalLevels } from '@/pages/ApprovalLevels';
 import Users from '@/pages/Users';
+import Notifications from '@/pages/Notifications';
 import { Profiles } from '@/pages/Profiles';
 import { Permissions } from '@/pages/Permissions';
 import Communication from '@/pages/Communication';
@@ -190,6 +191,22 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={['client', 'admin']}>
                         <ApprovalLevels />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/users" 
+                    element={
+                      <ProtectedRoute allowedRoles={['client', 'admin']}>
+                        <Users />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/notifications" 
+                    element={
+                      <ProtectedRoute>
+                        <Notifications />
                       </ProtectedRoute>
                     } 
                   />

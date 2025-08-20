@@ -1,96 +1,71 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle } from "lucide-react";
-import { useUsers, type User } from "@/hooks/useUsers";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useUsers } from '@/hooks/useUsersAndGroups';
+import { toast } from 'sonner';
 
 interface DeleteUserModalProps {
   open: boolean;
   onClose: () => void;
-  user: User;
+  user: any;
 }
 
 export function DeleteUserModal({ open, onClose, user }: DeleteUserModalProps) {
   const { deleteUser } = useUsers();
-  const { toast } = useToast();
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    setIsDeleting(true);
     try {
       deleteUser(user.id);
-      
-      toast({
-        title: "Usuário excluído",
-        description: `O usuário ${user.name} foi excluído com sucesso.`,
-      });
-      
+      toast.success('Usuário excluído com sucesso');
       onClose();
     } catch (error) {
-      toast({
-        title: "Erro ao excluir usuário",
-        description: "Ocorreu um erro ao excluir o usuário. Tente novamente.",
-        variant: "destructive",
-      });
+      toast.error('Erro ao excluir usuário');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
-            Excluir Usuário
-          </DialogTitle>
+          <DialogTitle>Confirmar Exclusão</DialogTitle>
+          <DialogDescription>
+            Tem certeza que deseja excluir o usuário <strong>{user?.name}</strong>?
+            Esta ação não pode ser desfeita e removerá permanentemente:
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 p-4 bg-destructive/5 rounded-lg border border-destructive/20">
-            <AlertTriangle className="h-8 w-8 text-destructive flex-shrink-0" />
-            <div>
-              <p className="font-medium text-destructive">Atenção!</p>
-              <p className="text-sm text-muted-foreground">
-                Esta ação não pode ser desfeita.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm">
-              Você está prestes a excluir o usuário:
-            </p>
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="font-medium">{user.name}</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-              <p className="text-sm text-muted-foreground capitalize">
-                {user.role === "admin" ? "Administrador" :
-                 user.role === "manager" ? "Gerente" :
-                 user.role === "collaborator" ? "Colaborador" :
-                 user.role === "supplier" ? "Fornecedor" : user.role}
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Consequências da exclusão:</p>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li>O usuário não poderá mais fazer login</li>
-              <li>Histórico de ações será mantido para auditoria</li>
-              <li>Cotações criadas pelo usuário permanecerão no sistema</li>
-              {user.role === "manager" && (
-                <li>Aprovações pendentes serão reatribuídas</li>
-              )}
-            </ul>
-          </div>
+        
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <ul className="list-disc list-inside space-y-1">
+            <li>Todas as informações do usuário</li>
+            <li>Histórico de atividades</li>
+            <li>Permissões e grupos associados</li>
+            <li>Credenciais de acesso</li>
+          </ul>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
             Cancelar
           </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            Confirmar Exclusão
+          <Button 
+            variant="destructive" 
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Excluindo...' : 'Excluir Usuário'}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

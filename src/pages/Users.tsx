@@ -30,7 +30,8 @@ import {
   Phone,
   ChevronLeft,
   ChevronRight,
-  UsersIcon
+  Users as UsersIcon,
+  UserCog
 } from "lucide-react";
 import { CreateUserModal } from "@/components/users/CreateUserModal";
 import { EditUserModal } from "@/components/users/EditUserModal";
