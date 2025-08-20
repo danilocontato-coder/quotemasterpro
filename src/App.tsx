@@ -10,6 +10,7 @@ import Quotes from "./pages/Quotes";
 import Suppliers from "./pages/Suppliers";
 import Products from "./pages/Products";
 import Payments from "./pages/Payments";
+import Communication from "./pages/Communication";
 import { Settings } from "./pages/Settings";
 import Users from "./pages/Users";
 import { ApprovalLevels } from "./pages/ApprovalLevels";
@@ -39,7 +40,7 @@ const App = () => (
             <Route path="reports" element={<Reports />} />
             <Route path="settings" element={<Settings />} />
             <Route path="payments" element={<Payments />} />
-            <Route path="communication" element={<div className="p-6"><h1 className="text-2xl font-bold">Comunicação - Em desenvolvimento</h1></div>} />
+            <Route path="communication" element={<Communication />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -80,15 +80,15 @@ export function AppSidebar() {
 
       <SidebarContent className="py-4">
         {/* Main Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-2">
+        <SidebarGroup className="px-3">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
             {!isCollapsed && "Principal"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="h-10">
                     <NavLink 
                       to={item.url} 
                       end
@@ -105,15 +105,15 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Financial Section */}
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-2">
+        <SidebarGroup className="px-3 pt-4">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
             {!isCollapsed && "Financeiro"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {financialItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="h-10">
                     <NavLink 
                       to={item.url} 
                       end
@@ -130,15 +130,15 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Communication Section */}
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-2">
+        <SidebarGroup className="px-3 pt-4">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
             {!isCollapsed && "Comunicação"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {communicationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="h-10">
                     <NavLink 
                       to={item.url} 
                       end
@@ -154,18 +154,16 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Removed Admin Section */}
-
         {/* System Section */}
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-2">
+        <SidebarGroup className="px-3 pt-4">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
             {!isCollapsed && "Sistema"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {systemItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="h-10">
                     <NavLink 
                       to={item.url} 
                       end
