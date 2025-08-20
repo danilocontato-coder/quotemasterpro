@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
-import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
+import { ComprehensiveSupplierModal } from "@/components/suppliers/ComprehensiveSupplierModal";
 import { QuoteSendingProgress } from "./QuoteSendingProgress";
 import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup, Quote } from '@/data/mockData';
@@ -923,7 +923,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
         onProductCreate={handleProductCreate}
       />
 
-      <NewSupplierModal
+        <ComprehensiveSupplierModal
         open={showNewSupplierModal}
         onOpenChange={setShowNewSupplierModal}
         onSupplierCreate={handleSupplierCreate}
@@ -932,7 +932,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
       
       {/* Edit Supplier Modal */}
       {editingSupplier && (
-        <NewSupplierModal
+        <ComprehensiveSupplierModal
           open={showEditSupplierModal}
           onOpenChange={setShowEditSupplierModal}
           onSupplierCreate={handleSupplierUpdate}

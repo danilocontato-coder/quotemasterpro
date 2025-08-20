@@ -42,6 +42,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAdminSuppliers } from '@/hooks/useAdminSuppliers';
+import { ComprehensiveSupplierModal } from '@/components/suppliers/ComprehensiveSupplierModal';
+import { EnhancedGroupModal } from '@/components/suppliers/EnhancedGroupModal';
 
 export const SuppliersManagement = () => {
   const {
@@ -53,6 +55,12 @@ export const SuppliersManagement = () => {
     setFilterGroup,
     filterStatus,
     setFilterStatus,
+    createSupplier,
+    updateGroup,
+    deleteGroup,
+    createGroup,
+    generateTemporaryPassword,
+    generateUsername,
     stats
   } = useAdminSuppliers();
 
@@ -451,6 +459,25 @@ export const SuppliersManagement = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modals */}
+      <ComprehensiveSupplierModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onSupplierCreate={createSupplier}
+        availableGroups={supplierGroups}
+        onPasswordGenerate={generateTemporaryPassword}
+        onUsernameGenerate={generateUsername}
+      />
+      
+      <EnhancedGroupModal
+        open={showGroupsManager}
+        onOpenChange={setShowGroupsManager}
+        onGroupCreate={createGroup}
+        onGroupUpdate={updateGroup}
+        onGroupDelete={deleteGroup}
+        existingGroups={supplierGroups}
+      />
     </div>
   );
 };

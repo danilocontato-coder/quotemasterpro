@@ -46,7 +46,7 @@ export interface AdminSupplier {
   address: {
     street: string;
     number: string;
-    complement?: string;
+    complement: string;
     neighborhood: string;
     city: string;
     state: string;
@@ -243,6 +243,7 @@ const mockSuppliers: AdminSupplier[] = [
     address: {
       street: "Rua das Flores",
       number: "850",
+      complement: "",
       neighborhood: "Vila Madalena",
       city: "São Paulo",
       state: "SP",

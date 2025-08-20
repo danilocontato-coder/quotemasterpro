@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
+import { ComprehensiveSupplierModal } from "@/components/suppliers/ComprehensiveSupplierModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { mockSuppliers, mockSupplierGroups, getStatusColor, getStatusText, Supplier, SupplierGroup } from "@/data/mockData";
 
@@ -554,7 +554,7 @@ export default function Suppliers() {
       )}
 
       {/* New Supplier Modal */}
-      <NewSupplierModal
+      <ComprehensiveSupplierModal
         open={showNewSupplierModal}
         onOpenChange={handleCloseModal}
         onSupplierCreate={handleSupplierCreate}
