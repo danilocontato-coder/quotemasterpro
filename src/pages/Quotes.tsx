@@ -1,18 +1,20 @@
+import { Edit2, Plus, Search, Trash2, Eye, BarChart3, Filter, CheckCircle2, FileText } from 'lucide-react';
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
-import { CreateQuoteModal } from "@/components/quotes/CreateQuoteModal";
-import { DeleteConfirmationModal } from "@/components/quotes/DeleteConfirmationModal";
+import { useQuotes } from '@/hooks/useQuotes';
+import { CreateQuoteModal } from '@/components/quotes/CreateQuoteModal';
+import { DeleteConfirmationModal } from '@/components/quotes/DeleteConfirmationModal';
+import { QuoteDetailModal } from '@/components/quotes/QuoteDetailModal';
+import { DecisionMatrixManager } from '@/components/quotes/DecisionMatrixManager';
+import { PDFUploadModal, ExtractedData } from '@/components/quotes/PDFUploadModal';
+import { NotificationStatus, NotificationData } from '@/components/quotes/NotificationSystem';
+import { useQuoteStatusManager } from '@/components/quotes/QuoteStatusManager';
 import { QuoteComparisonButton } from "@/components/quotes/QuoteComparisonButton";
-import { DecisionMatrixManager } from "@/components/quotes/DecisionMatrixManager";
-import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
 import { StatusProgressIndicator } from "@/components/quotes/StatusProgressIndicator";
-import { EconomyNotification, useEconomyAlerts } from "@/components/quotes/EconomyNotification";
-import { useQuotes } from "@/hooks/useQuotes";
 import { getStatusColor, getStatusText, Quote } from "@/data/mockData";
 import { toast } from "sonner";
 
@@ -20,54 +22,95 @@ export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isMatrixManagerOpen, setIsMatrixManagerOpen] = useState(false);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
-  const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
-  const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showDecisionMatrix, setShowDecisionMatrix] = useState(false);
+  const [showPDFUpload, setShowPDFUpload] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [showActiveOnly, setShowActiveOnly] = useState(true);
   
   const { quotes, addQuote, updateQuote, deleteQuote } = useQuotes();
-  const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
+  const { approveQuote, finalizeQuote } = useQuoteStatusManager();
 
   const handleQuoteCreate = (quoteData: any) => {
     const newQuote = addQuote(quoteData);
     toast.success(`Cotação ${newQuote.id} criada com sucesso!`);
-    setIsCreateModalOpen(false);
+    setShowCreateModal(false);
   };
 
   const handleQuoteUpdate = (quoteData: any) => {
-    if (editingQuote) {
-      updateQuote(editingQuote.id, quoteData);
-      toast.success(`Cotação ${editingQuote.id} atualizada com sucesso!`);
-      setEditingQuote(null);
-      setIsCreateModalOpen(false);
+    if (selectedQuote) {
+      updateQuote(selectedQuote.id, quoteData);
+      toast.success(`Cotação ${selectedQuote.id} atualizada com sucesso!`);
+      setSelectedQuote(null);
+      setShowCreateModal(false);
     }
   };
 
   const handleDeleteClick = (quote: Quote) => {
-    setQuoteToDelete(quote);
-    setIsDeleteModalOpen(true);
+    setSelectedQuote(quote);
+    setShowDeleteModal(true);
   };
 
   const handleDeleteConfirm = (reason?: string) => {
-    if (quoteToDelete) {
-      deleteQuote(quoteToDelete.id, reason);
-      const action = quoteToDelete.status === 'draft' ? 'excluída' : 'cancelada';
-      toast.success(`Cotação ${quoteToDelete.id} ${action} com sucesso!`);
-      setQuoteToDelete(null);
+    if (selectedQuote) {
+      deleteQuote(selectedQuote.id, reason);
+      const action = selectedQuote.status === 'draft' ? 'excluída' : 'cancelada';
+      toast.success(`Cotação ${selectedQuote.id} ${action} com sucesso!`);
+      setSelectedQuote(null);
     }
   };
 
   const handleEditClick = (quote: Quote) => {
-    setEditingQuote(quote);
-    setIsCreateModalOpen(true);
+    setSelectedQuote(quote);
+    setShowCreateModal(true);
   };
 
   const handleViewClick = (quote: Quote) => {
-    setViewingQuote(quote);
-    setIsDetailModalOpen(true);
+    setSelectedQuote(quote);
+    setShowDetailModal(true);
+  };
+
+  const handleApproveQuote = async (quote: Quote) => {
+    const result = await approveQuote(
+      quote,
+      'current-user', // In real app, get from auth context
+      'fornecedor@example.com', // In real app, get from supplier data
+      '+5511999999999' // In real app, get from supplier data
+    );
+
+    if (result.success && result.notifications) {
+      setNotifications(result.notifications);
+      updateQuote(quote.id, { status: result.newStatus });
+    }
+  };
+
+  const handleReceivePDF = (quote: Quote) => {
+    setSelectedQuote(quote);
+    setShowPDFUpload(true);
+  };
+
+  const handlePDFDataExtracted = async (data: ExtractedData) => {
+    if (!selectedQuote) return;
+
+    const result = await finalizeQuote(
+      selectedQuote,
+      data,
+      'current-user' // In real app, get from auth context
+    );
+
+    if (result.success) {
+      updateQuote(selectedQuote.id, { 
+        status: result.newStatus,
+        total: data.total,
+        supplierName: data.supplier.name
+      });
+      setShowPDFUpload(false);
+      setSelectedQuote(null);
+    }
   };
 
   const filteredQuotes = quotes.filter(quote => {
@@ -90,7 +133,10 @@ export default function Quotes() {
       matchesFilter = quote.status === "trash";
     }
     
-    return matchesSearch && matchesFilter;
+    // Filter out finalized quotes if showing only active
+    const isActive = showActiveOnly ? quote.status !== 'finalized' : true;
+    
+    return matchesSearch && matchesFilter && isActive;
   });
 
   // Calculate metrics - Based on all active quotes (not trash)
@@ -136,17 +182,25 @@ export default function Quotes() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowActiveOnly(!showActiveOnly)}
+            className="flex items-center gap-2"
+          >
+            <Filter className="h-4 w-4" />
+            {showActiveOnly ? 'Mostrar Todas' : 'Apenas Ativas'}
+          </Button>
           <Button 
             variant="outline"
             className="flex items-center gap-2"
-            onClick={() => setIsMatrixManagerOpen(true)}
+            onClick={() => setShowDecisionMatrix(true)}
           >
-            <Archive className="h-4 w-4" />
+            <BarChart3 className="h-4 w-4" />
             Matrizes de Decisão
           </Button>
           <Button 
             className="btn-corporate flex items-center gap-2"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => setShowCreateModal(true)}
           >
             <Plus className="h-4 w-4" />
             Nova Cotação
@@ -358,23 +412,52 @@ export default function Quotes() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => handleEditClick(quote)}
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
                         
-                        {/* Comparator button - only show for quotes with multiple proposals */}
-                        {(quote.status === 'receiving' || quote.status === 'approved') && quote.responsesCount >= 1 && (
-                          <QuoteComparisonButton
-                            quoteId={quote.id}
-                            quoteTitle={quote.title}
-                            disabled={false}
-                          />
+                        {quote.status === 'receiving' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-600 hover:text-green-700"
+                            onClick={() => handleApproveQuote(quote)}
+                            title="Aprovar"
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {quote.status === 'approved' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                            onClick={() => handleReceivePDF(quote)}
+                            title="Receber PDF"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
+                        {quote.status !== 'finalized' && (
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => handleEditClick(quote)}
+                              title="Editar"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            
+                            {/* Comparator button - only show for quotes with multiple proposals */}
+                            {(quote.status === 'receiving' || quote.status === 'approved') && quote.responsesCount >= 1 && (
+                              <QuoteComparisonButton
+                                quoteId={quote.id}
+                                quoteTitle={quote.title}
+                                disabled={false}
+                              />
+                            )}
+                          </>
                         )}
                         
                         <Button 
@@ -398,33 +481,33 @@ export default function Quotes() {
 
       {/* Create/Edit Quote Modal */}
       <CreateQuoteModal 
-        open={isCreateModalOpen} 
+        open={showCreateModal} 
         onOpenChange={(open) => {
-          setIsCreateModalOpen(open);
+          setShowCreateModal(open);
           if (!open) {
-            setEditingQuote(null);
+            setSelectedQuote(null);
           }
         }}
-        onQuoteCreate={editingQuote ? handleQuoteUpdate : handleQuoteCreate}
-        editingQuote={editingQuote}
+        onQuoteCreate={selectedQuote ? handleQuoteUpdate : handleQuoteCreate}
+        editingQuote={selectedQuote}
       />
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
-        open={isDeleteModalOpen}
-        onOpenChange={setIsDeleteModalOpen}
-        quote={quoteToDelete}
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        quote={selectedQuote}
         onConfirm={handleDeleteConfirm}
       />
 
       {/* Quote Detail Modal */}
       <QuoteDetailModal
-        open={isDetailModalOpen}
+        open={showDetailModal}
         onClose={() => {
-          setIsDetailModalOpen(false);
-          setViewingQuote(null);
+          setShowDetailModal(false);
+          setSelectedQuote(null);
         }}
-        quote={viewingQuote}
+        quote={selectedQuote}
         onStatusChange={(quoteId, newStatus) => {
           updateQuote(quoteId, { status: newStatus });
         }}
@@ -432,8 +515,26 @@ export default function Quotes() {
 
       {/* Decision Matrix Manager */}
       <DecisionMatrixManager
-        open={isMatrixManagerOpen}
-        onClose={() => setIsMatrixManagerOpen(false)}
+        open={showDecisionMatrix}
+        onClose={() => setShowDecisionMatrix(false)}
+      />
+
+      {selectedQuote && (
+        <PDFUploadModal
+          isOpen={showPDFUpload}
+          onClose={() => {
+            setShowPDFUpload(false);
+            setSelectedQuote(null);
+          }}
+          quoteId={selectedQuote.id}
+          quoteName={selectedQuote.title}
+          onDataExtracted={handlePDFDataExtracted}
+        />
+      )}
+
+      <NotificationStatus
+        notifications={notifications}
+        onClose={() => setNotifications([])}
       />
 
       {/* Empty State */}
@@ -449,7 +550,7 @@ export default function Quotes() {
               }
             </p>
             {!searchTerm && statusFilter === "all" && (
-              <Button className="btn-corporate">
+              <Button className="btn-corporate" onClick={() => setShowCreateModal(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeira Cotação
               </Button>
