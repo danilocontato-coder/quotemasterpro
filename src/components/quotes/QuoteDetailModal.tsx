@@ -378,11 +378,27 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                   </Button>
                 )}
 
-                {quote.items && quote.items.length > 0 && (
+                {/* Análise de Mercado - Só disponível quando há propostas recebidas */}
+                {quote.items && quote.items.length > 0 && proposals.length > 0 && 
+                 ['receiving', 'approved', 'finalized'].includes(quote.status) && (
                   <Button 
                     variant="outline"
                     onClick={() => setShowItemAnalysis(true)}
                     className="flex items-center gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Analisar Mercado dos Itens
+                  </Button>
+                )}
+
+                {/* Mensagem explicativa quando análise não está disponível */}
+                {quote.items && quote.items.length > 0 && proposals.length === 0 && 
+                 quote.status !== 'draft' && (
+                  <Button 
+                    variant="outline"
+                    disabled
+                    className="flex items-center gap-2 border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                    title="Aguardando propostas dos fornecedores para análise"
                   >
                     <BarChart3 className="h-4 w-4" />
                     Analisar Mercado dos Itens
