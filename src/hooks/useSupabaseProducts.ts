@@ -83,11 +83,23 @@ export const useSupabaseProducts = () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user?.user) throw new Error('User not authenticated');
 
+      // Get user profile to determine client_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id, supplier_id')
+        .eq('id', user.user.id)
+        .single();
+
+      if (!profile?.client_id && !profile?.supplier_id) {
+        throw new Error('User profile not found or missing client/supplier association');
+      }
+
       const { data, error } = await supabase
         .from('products')
         .insert([{
           ...productData,
-          // Set client_id based on user's profile or leave null for global products
+          client_id: profile.client_id,
+          supplier_id: profile.supplier_id,
         }])
         .select()
         .single();
