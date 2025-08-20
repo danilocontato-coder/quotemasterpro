@@ -141,13 +141,13 @@ export function ComprehensiveSupplierModal({
           password: "",
           temporaryPassword: true
         },
-        businessInfo: editingSupplier.business_info || {
-          categories: [],
+        businessInfo: {
+          categories: editingSupplier.business_info?.categories || [],
           specialties: editingSupplier.specialties || [],
-          servicesOffered: [],
-          coverage: [],
-          businessHours: "Segunda a Sexta: 8h às 18h",
-          languages: ["Português"]
+          servicesOffered: editingSupplier.business_info?.servicesOffered || [],
+          coverage: editingSupplier.business_info?.coverage || [],
+          businessHours: editingSupplier.business_info?.businessHours || "Segunda a Sexta: 8h às 18h",
+          languages: editingSupplier.business_info?.languages || ["Português"]
         },
         documents: [], // Initialize as empty array since not in Supabase structure
         notes: "", // Initialize as empty since not in Supabase structure
