@@ -364,6 +364,7 @@ export default function Quotes() {
                           className="h-8 w-8"
                           onClick={() => handleEditClick(quote)}
                           title="Editar"
+                          disabled={quote.status === 'approved' || quote.status === 'finalized'}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>

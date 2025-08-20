@@ -469,25 +469,179 @@ export function Reports() {
         </TabsContent>
 
         <TabsContent value="categories">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gastos por Categoria</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Relatório de categorias em desenvolvimento...</p>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gastos por Categoria</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[
+                    { category: 'Materiais de Construção', amount: 45000, percentage: 35, growth: 12 },
+                    { category: 'Produtos de Limpeza', amount: 28000, percentage: 22, growth: -5 },
+                    { category: 'Elétrica e Iluminação', amount: 22000, percentage: 18, growth: 8 },
+                    { category: 'Jardinagem', amount: 18000, percentage: 14, growth: 15 },
+                    { category: 'Serviços Gerais', amount: 12000, percentage: 11, growth: -2 }
+                  ].map((item) => (
+                    <div key={item.category} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium">{item.category}</p>
+                        <div className="w-full bg-muted rounded-full h-2 mt-2">
+                          <div 
+                            className="h-2 bg-primary rounded-full" 
+                            style={{ width: `${item.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <p className="font-bold">R$ {item.amount.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">{item.percentage}% do total</p>
+                        <div className={`text-xs font-medium ${item.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {item.growth >= 0 ? '+' : ''}{item.growth}% vs mês anterior
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance por Categoria</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[
+                    { category: 'Materiais de Construção', quotes: 18, avgTime: '3.2 dias', savings: '14%' },
+                    { category: 'Produtos de Limpeza', quotes: 12, avgTime: '2.1 dias', savings: '18%' },
+                    { category: 'Elétrica e Iluminação', quotes: 8, avgTime: '4.5 dias', savings: '12%' },
+                    { category: 'Jardinagem', quotes: 5, avgTime: '2.8 dias', savings: '22%' },
+                    { category: 'Serviços Gerais', quotes: 7, avgTime: '5.1 dias', savings: '8%' }
+                  ].map((item) => (
+                    <div key={item.category} className="p-3 border rounded-lg">
+                      <p className="font-medium mb-2">{item.category}</p>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Cotações</p>
+                          <p className="font-semibold">{item.quotes}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Tempo Médio</p>
+                          <p className="font-semibold">{item.avgTime}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Economia</p>
+                          <p className="font-semibold text-green-600">{item.savings}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="trends">
-          <Card>
-            <CardHeader>
-              <CardTitle>Análise de Tendências</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Análise de tendências em desenvolvimento...</p>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tendências de Gastos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="h-5 w-5 text-red-600" />
+                      <p className="font-medium text-red-800">Tendência de Alta</p>
+                    </div>
+                    <p className="text-sm text-red-700 mb-2">
+                      Gastos com materiais de construção aumentaram 12% este mês
+                    </p>
+                    <Badge className={'bg-red-100 text-red-700'}>
+                      Requer atenção
+                    </Badge>
+                  </div>
+
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingDown className="h-5 w-5 text-green-600" />
+                      <p className="font-medium text-green-800">Economia Crescente</p>
+                    </div>
+                    <p className="text-sm text-green-700 mb-2">
+                      Economia em jardinagem aumentou 22% através de negociações
+                    </p>
+                    <Badge className={'bg-green-100 text-green-700'}>
+                      Excelente performance
+                    </Badge>
+                  </div>
+
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-5 w-5 text-yellow-600" />
+                      <p className="font-medium text-yellow-800">Sazonalidade</p>
+                    </div>
+                    <p className="text-sm text-yellow-700 mb-2">
+                      Agosto tradicionalmente tem 15% mais gastos em manutenção
+                    </p>
+                    <Badge className={'bg-yellow-100 text-yellow-700'}>
+                      Padrão esperado
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Previsões e Recomendações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-3 border rounded-lg">
+                    <p className="font-medium mb-2">🎯 Oportunidade de Economia</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Concentrar compras de materiais elétricos pode gerar desconto de até 8%
+                    </p>
+                    <p className="text-xs text-green-600 font-medium">
+                      Economia estimada: R$ 2.400
+                    </p>
+                  </div>
+
+                  <div className="p-3 border rounded-lg">
+                    <p className="font-medium mb-2">📊 Análise de Fornecedores</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      3 fornecedores representam 80% dos gastos. Considere diversificar
+                    </p>
+                    <p className="text-xs text-orange-600 font-medium">
+                      Risco de dependência elevado
+                    </p>
+                  </div>
+
+                  <div className="p-3 border rounded-lg">
+                    <p className="font-medium mb-2">📈 Tendência de Preços</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Materiais de construção com alta de 5% prevista para setembro
+                    </p>
+                    <p className="text-xs text-blue-600 font-medium">
+                      Considere antecipar compras estratégicas
+                    </p>
+                  </div>
+
+                  <div className="p-3 border rounded-lg">
+                    <p className="font-medium mb-2">⚡ Automação</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Produtos de limpeza podem ser automatizados (compra recorrente)
+                    </p>
+                    <p className="text-xs text-purple-600 font-medium">
+                      Economia de tempo estimada: 4h/mês
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
