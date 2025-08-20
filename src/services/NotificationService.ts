@@ -1,4 +1,6 @@
-// Serviço de notificações - estrutura preparada para integração Supabase
+import { supabase } from '@/integrations/supabase/client';
+
+// Serviço de notificações - integração com Supabase Edge Functions
 export interface NotificationConfig {
   email: {
     provider: 'sendgrid' | 'resend' | 'smtp';
@@ -7,10 +9,10 @@ export interface NotificationConfig {
     fromName?: string;
   };
   whatsapp: {
-    provider: 'twilio' | 'whatsapp-business';
-    apiKey?: string;
-    accountSid?: string;
-    fromNumber?: string;
+    provider: 'evolution-api' | 'twilio' | 'whatsapp-business';
+    apiUrl?: string;
+    apiToken?: string;
+    instanceId?: string;
   };
 }
 
@@ -51,8 +53,7 @@ class NotificationService {
         fromName: 'QuoteMaster Pro'
       },
       whatsapp: {
-        provider: 'twilio',
-        fromNumber: '+5511999999999'
+        provider: 'evolution-api'
       }
     };
   }
@@ -63,32 +64,18 @@ class NotificationService {
     quoteData: QuoteNotificationData
   ): Promise<NotificationResult> {
     try {
-      // TODO: Implementar chamada real para API de email via Supabase Edge Function
-      // const { data, error } = await supabase.functions.invoke('send-email', {
-      //   body: {
-      //     to: recipientEmail,
-      //     template: 'quote-request',
-      //     data: {
-      //       supplierName,
-      //       ...quoteData
-      //     }
-      //   }
-      // });
-
-      console.log(`[EMAIL] Enviando cotação para ${supplierName} (${recipientEmail}):`, {
-        quoteId: quoteData.quoteId,
-        title: quoteData.quoteTitle,
-        items: quoteData.items.length,
-        deadline: quoteData.deadline
+      const { data, error } = await supabase.functions.invoke('notify', {
+        body: {
+          type: 'email',
+          to: recipientEmail,
+          supplierName,
+          quoteData
+        }
       });
 
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (error) throw error;
 
-      return {
-        success: true,
-        messageId: `email_${Date.now()}`
-      };
+      return data;
     } catch (error) {
       console.error('Erro ao enviar email:', error);
       return {
@@ -104,32 +91,18 @@ class NotificationService {
     quoteData: QuoteNotificationData
   ): Promise<NotificationResult> {
     try {
-      // TODO: Implementar chamada real para API do WhatsApp via Supabase Edge Function
-      // const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-      //   body: {
-      //     to: recipientPhone,
-      //     template: 'quote-request',
-      //     data: {
-      //       supplierName,
-      //       ...quoteData
-      //     }
-      //   }
-      // });
-
-      console.log(`[WHATSAPP] Enviando cotação para ${supplierName} (${recipientPhone}):`, {
-        quoteId: quoteData.quoteId,
-        title: quoteData.quoteTitle,
-        items: quoteData.items.length,
-        deadline: quoteData.deadline
+      const { data, error } = await supabase.functions.invoke('notify', {
+        body: {
+          type: 'whatsapp',
+          to: recipientPhone,
+          supplierName,
+          quoteData
+        }
       });
 
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (error) throw error;
 
-      return {
-        success: true,
-        messageId: `whatsapp_${Date.now()}`
-      };
+      return data;
     } catch (error) {
       console.error('Erro ao enviar WhatsApp:', error);
       return {
