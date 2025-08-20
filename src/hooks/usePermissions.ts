@@ -24,40 +24,40 @@ export interface Permissions {
 const defaultPermissions: Permissions = {
   admin: {
     quotes: { view: true, create: true, edit: true, delete: true },
-    items: { view: true, create: true, edit: true, delete: true },
+    products: { view: true, create: true, edit: true, delete: true },
     suppliers: { view: true, create: true, edit: true, delete: true },
-    approvals: { view: true, create: true, edit: true, delete: true },
     payments: { view: true, create: true, edit: true, delete: true },
+    communication: { view: true, create: true, edit: true, delete: true },
     users: { view: true, create: true, edit: true, delete: true },
     settings: { view: true, create: true, edit: true, delete: true },
     reports: { view: true, create: true, edit: true, delete: true }
   },
   manager: {
     quotes: { view: true, create: true, edit: true, delete: false },
-    items: { view: true, create: true, edit: true, delete: false },
+    products: { view: true, create: true, edit: true, delete: false },
     suppliers: { view: true, create: true, edit: true, delete: false },
-    approvals: { view: true, create: false, edit: true, delete: false },
     payments: { view: true, create: false, edit: false, delete: false },
+    communication: { view: true, create: true, edit: true, delete: false },
     users: { view: true, create: true, edit: true, delete: false },
     settings: { view: true, create: false, edit: true, delete: false },
     reports: { view: true, create: true, edit: false, delete: false }
   },
   collaborator: {
     quotes: { view: true, create: true, edit: true, delete: false },
-    items: { view: true, create: false, edit: false, delete: false },
+    products: { view: true, create: false, edit: false, delete: false },
     suppliers: { view: true, create: false, edit: false, delete: false },
-    approvals: { view: true, create: false, edit: false, delete: false },
     payments: { view: true, create: false, edit: false, delete: false },
+    communication: { view: true, create: true, edit: false, delete: false },
     users: { view: false, create: false, edit: false, delete: false },
     settings: { view: true, create: false, edit: true, delete: false },
     reports: { view: true, create: false, edit: false, delete: false }
   },
   supplier: {
     quotes: { view: true, create: false, edit: true, delete: false },
-    items: { view: true, create: true, edit: true, delete: false },
+    products: { view: true, create: true, edit: true, delete: false },
     suppliers: { view: false, create: false, edit: true, delete: false },
-    approvals: { view: false, create: false, edit: false, delete: false },
     payments: { view: true, create: false, edit: false, delete: false },
+    communication: { view: true, create: true, edit: true, delete: false },
     users: { view: false, create: false, edit: false, delete: false },
     settings: { view: true, create: false, edit: true, delete: false },
     reports: { view: true, create: false, edit: false, delete: false }
@@ -69,7 +69,15 @@ export function usePermissions() {
   const [permissions, setPermissions] = useState<Permissions>(defaultPermissions);
 
   // Convert profiles to roles format and include default roles
+  const systemRoles: Role[] = [
+    { id: 'admin', name: 'Administrador', description: 'Acesso completo ao sistema', userCount: 0 },
+    { id: 'manager', name: 'Gerente', description: 'Gerencia cotações, fornecedores e equipe', userCount: 0 },
+    { id: 'collaborator', name: 'Colaborador', description: 'Cria e edita cotações', userCount: 0 },
+    { id: 'supplier', name: 'Fornecedor', description: 'Responde cotações e gerencia catálogo', userCount: 0 },
+  ];
+
   const roles: Role[] = [
+    ...systemRoles,
     ...profiles.map(profile => ({
       id: profile.id,
       name: profile.name,
@@ -103,10 +111,10 @@ export function usePermissions() {
     if (!permissions[profileId]) {
       const basicPermissions = {
         quotes: { view: false, create: false, edit: false, delete: false },
-        items: { view: false, create: false, edit: false, delete: false },
+        products: { view: false, create: false, edit: false, delete: false },
         suppliers: { view: false, create: false, edit: false, delete: false },
-        approvals: { view: false, create: false, edit: false, delete: false },
         payments: { view: false, create: false, edit: false, delete: false },
+        communication: { view: false, create: false, edit: false, delete: false },
         users: { view: false, create: false, edit: false, delete: false },
         settings: { view: false, create: false, edit: false, delete: false },
         reports: { view: false, create: false, edit: false, delete: false }

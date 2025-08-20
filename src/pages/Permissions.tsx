@@ -76,9 +76,9 @@ export function Permissions() {
   const getModuleIcon = (module: string) => {
     const icons = {
       quotes: "💼",
-      items: "📦",
+      products: "📦",
       suppliers: "🏢",
-      approvals: "✅",
+      communication: "💬",
       payments: "💳",
       users: "👥",
       settings: "⚙️",
@@ -161,9 +161,9 @@ export function Permissions() {
                   <span className="text-2xl">{getModuleIcon(module)}</span>
                   <h3 className="text-lg font-semibold capitalize">
                     {module === "quotes" ? "Cotações" :
-                     module === "items" ? "Itens" :
+                     module === "products" ? "Produtos" :
                      module === "suppliers" ? "Fornecedores" :
-                     module === "approvals" ? "Aprovações" :
+                     module === "communication" ? "Comunicação" :
                      module === "payments" ? "Pagamentos" :
                      module === "users" ? "Usuários" :
                      module === "settings" ? "Configurações" :
@@ -223,14 +223,14 @@ export function Permissions() {
                     <TableCell className="font-medium capitalize">
                       <div className="flex items-center gap-2">
                         <span>{getModuleIcon(module)}</span>
-                        {module === "quotes" ? "Cotações" :
-                         module === "items" ? "Itens" :
-                         module === "suppliers" ? "Fornecedores" :
-                         module === "approvals" ? "Aprovações" :
-                         module === "payments" ? "Pagamentos" :
-                         module === "users" ? "Usuários" :
-                         module === "settings" ? "Configurações" :
-                         module === "reports" ? "Relatórios" : module}
+                         {module === "quotes" ? "Cotações" :
+                          module === "products" ? "Produtos" :
+                          module === "suppliers" ? "Fornecedores" :
+                          module === "communication" ? "Comunicação" :
+                          module === "payments" ? "Pagamentos" :
+                          module === "users" ? "Usuários" :
+                          module === "settings" ? "Configurações" :
+                          module === "reports" ? "Relatórios" : module}
                       </div>
                     </TableCell>
                     <TableCell>
