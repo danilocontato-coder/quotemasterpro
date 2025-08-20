@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Globe, MapPin, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,12 +13,49 @@ export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all"); // Novo filtro para tipo
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [suppliers, setSuppliers] = useState(mockSuppliers);
   const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
 
-  const filteredSuppliers = suppliers.filter(supplier => {
+  // Mock do cliente atual - em produção virá do contexto/auth
+  const currentClientId = '1';
+  const currentClientRegion = 'São Paulo - Capital';
+
+  // Função para filtrar fornecedores baseado no cliente atual
+  const getAvailableSuppliers = () => {
+    return suppliers.filter(supplier => {
+      // Fornecedores locais: apenas os do cliente atual
+      if (supplier.type === 'local') {
+        return supplier.clientId === currentClientId;
+      }
+      // Fornecedores globais: todos disponíveis
+      return supplier.type === 'global';
+    }).sort((a, b) => {
+      // Priorizar fornecedores da mesma região
+      if (a.type === 'global' && b.type === 'global') {
+        const aMatchesRegion = a.region === currentClientRegion;
+        const bMatchesRegion = b.region === currentClientRegion;
+        
+        if (aMatchesRegion && !bMatchesRegion) return -1;
+        if (!aMatchesRegion && bMatchesRegion) return 1;
+        
+        // Se ambos ou nenhum da mesma região, ordenar por rating
+        return (b.rating || 0) - (a.rating || 0);
+      }
+      
+      // Fornecedores locais vêm primeiro
+      if (a.type === 'local' && b.type === 'global') return -1;
+      if (a.type === 'global' && b.type === 'local') return 1;
+      
+      return 0;
+    });
+  };
+
+  const availableSuppliers = getAvailableSuppliers();
+
+  const filteredSuppliers = availableSuppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          supplier.cnpj.includes(searchTerm) ||
                          supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -28,6 +65,14 @@ export default function Suppliers() {
       matchesFilter = supplier.status === "active";
     } else if (activeFilter === "inactive") {
       matchesFilter = supplier.status === "inactive";
+    } else if (activeFilter === "local") {
+      matchesFilter = supplier.type === "local";
+    } else if (activeFilter === "global") {
+      matchesFilter = supplier.type === "global";
+    } else if (activeFilter === "priority") {
+      // Fornecedores prioritários: locais + globais da mesma região
+      matchesFilter = supplier.type === "local" || 
+                     (supplier.type === "global" && supplier.region === currentClientRegion);
     } else if (activeFilter === "recent") {
       const createdDate = new Date(supplier.createdAt);
       const thirtyDaysAgo = new Date();
@@ -39,15 +84,13 @@ export default function Suppliers() {
   });
 
   // Calculate metrics
-  const totalSuppliers = suppliers.length;
-  const activeSuppliers = suppliers.filter(s => s.status === 'active').length;
-  const inactiveSuppliers = suppliers.filter(s => s.status === 'inactive').length;
-  const recentSuppliers = suppliers.filter(s => {
-    const createdDate = new Date(s.createdAt);
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return createdDate >= thirtyDaysAgo;
-  }).length;
+  const totalSuppliers = availableSuppliers.length;
+  const activeSuppliers = availableSuppliers.filter(s => s.status === 'active').length;
+  const localSuppliers = availableSuppliers.filter(s => s.type === 'local').length;
+  const globalSuppliers = availableSuppliers.filter(s => s.type === 'global').length;
+  const prioritySuppliers = availableSuppliers.filter(s => 
+    s.type === 'local' || (s.type === 'global' && s.region === currentClientRegion)
+  ).length;
 
   const handleSupplierCreate = (newSupplier: Supplier) => {
     setSuppliers(prev => [...prev, newSupplier]);
@@ -109,7 +152,7 @@ export default function Suppliers() {
       </div>
 
       {/* Filter Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <FilterMetricCard
           title="Total"
           value={totalSuppliers}
@@ -125,18 +168,25 @@ export default function Suppliers() {
           colorClass="text-green-600"
         />
         <FilterMetricCard
-          title="Inativos"
-          value={inactiveSuppliers}
-          isActive={activeFilter === "inactive"}
-          onClick={() => setActiveFilter("inactive")}
-          colorClass="text-red-600"
+          title="Locais"
+          value={localSuppliers}
+          isActive={activeFilter === "local"}
+          onClick={() => setActiveFilter("local")}
+          colorClass="text-blue-600"
         />
         <FilterMetricCard
-          title="Recentes"
-          value={recentSuppliers}
-          isActive={activeFilter === "recent"}
-          onClick={() => setActiveFilter("recent")}
-          colorClass="text-blue-600"
+          title="Globais"
+          value={globalSuppliers}
+          isActive={activeFilter === "global"}
+          onClick={() => setActiveFilter("global")}
+          colorClass="text-purple-600"
+        />
+        <FilterMetricCard
+          title="Prioritários"
+          value={prioritySuppliers}
+          isActive={activeFilter === "priority"}
+          onClick={() => setActiveFilter("priority")}
+          colorClass="text-orange-600"
         />
       </div>
 
@@ -180,15 +230,33 @@ export default function Suppliers() {
             <CardHeader className="pb-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className="text-lg">{supplier.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground font-mono mt-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CardTitle className="text-lg">{supplier.name}</CardTitle>
+                    {supplier.type === 'global' ? (
+                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                        <Globe className="h-3 w-3 mr-1" />
+                        Global
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                        Local
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground font-mono">
                     {supplier.cnpj}
                   </p>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex flex-col items-end gap-1">
                   <Badge className={getStatusColor(supplier.status)}>
                     {getStatusText(supplier.status)}
                   </Badge>
+                  {supplier.rating && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      <span className="font-medium">{supplier.rating.toFixed(1)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -198,6 +266,27 @@ export default function Suppliers() {
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
                   <span className="text-sm font-medium">{getGroupName(supplier.groupId)?.name}</span>
+                </div>
+              )}
+
+              {/* Region/Priority Badge para Globais */}
+              {supplier.type === 'global' && supplier.region && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">{supplier.region}</span>
+                  {supplier.region === currentClientRegion && (
+                    <Badge variant="default" className="text-xs bg-orange-100 text-orange-700 border-orange-200">
+                      Região Prioritária
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Stats para fornecedores com histórico */}
+              {supplier.completedOrders && supplier.completedOrders > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Pedidos completados:</span>
+                  <span className="font-medium">{supplier.completedOrders}</span>
                 </div>
               )}
 

@@ -19,7 +19,11 @@ export function QuickAddSupplier({ onSupplierAdd }: QuickAddSupplierProps) {
     whatsapp: '',
     address: '',
     status: 'active' as const,
-    subscriptionPlan: 'basic' as const
+    subscriptionPlan: 'basic' as const,
+    type: 'local' as const,
+    clientId: '1', // TODO: Pegar do contexto do cliente logado
+    rating: 0,
+    completedOrders: 0
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -33,8 +37,12 @@ export function QuickAddSupplier({ onSupplierAdd }: QuickAddSupplierProps) {
       phone: '',
       whatsapp: '',
       address: '',
-      status: 'active',
-      subscriptionPlan: 'basic'
+      status: 'active' as const,
+      subscriptionPlan: 'basic' as const,
+      type: 'local' as const,
+      clientId: '1',
+      rating: 0,
+      completedOrders: 0
     });
   };
 

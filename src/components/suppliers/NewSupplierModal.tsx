@@ -138,7 +138,11 @@ export function NewSupplierModal({ open, onOpenChange, onSupplierCreate, availab
       subscriptionPlan: editingSupplier ? editingSupplier.subscriptionPlan : 'basic',
       createdAt: editingSupplier ? editingSupplier.createdAt : new Date().toISOString(),
       groupId: formData.groupId || undefined,
-      specialties: formData.specialties
+      specialties: formData.specialties,
+      type: 'local', // Novos fornecedores são sempre locais
+      clientId: '1', // TODO: Pegar do contexto do cliente logado
+      rating: 0, // Novo fornecedor ainda sem avaliação
+      completedOrders: 0 // Novo fornecedor ainda sem pedidos
     };
 
     onSupplierCreate(newSupplier);

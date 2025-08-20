@@ -48,6 +48,11 @@ export interface Supplier {
   createdAt: string;
   groupId?: string;
   specialties?: string[];
+  type: 'local' | 'global'; // Local: específico do cliente, Global: disponível para todos
+  clientId?: string; // Para fornecedores locais, especifica qual cliente
+  region?: string; // Para fornecedores globais, região de atuação preferencial
+  rating?: number; // Avaliação média (1-5)
+  completedOrders?: number; // Número de pedidos completados
 }
 
 export interface Client {
@@ -231,6 +236,7 @@ export const mockSupplierGroups: SupplierGroup[] = [
 ];
 
 export const mockSuppliers: Supplier[] = [
+  // Fornecedores Locais (específicos do cliente '1')
   {
     id: '1',
     name: 'Materiais Santos Ltda',
@@ -244,6 +250,10 @@ export const mockSuppliers: Supplier[] = [
     createdAt: '2023-12-01T08:00:00Z',
     groupId: '1',
     specialties: ['Materiais de Construção', 'Ferramentas'],
+    type: 'local',
+    clientId: '1',
+    rating: 4.2,
+    completedOrders: 15,
   },
   {
     id: '2',
@@ -258,33 +268,10 @@ export const mockSuppliers: Supplier[] = [
     createdAt: '2023-11-15T10:30:00Z',
     groupId: '2',
     specialties: ['Produtos de Limpeza', 'Equipamentos'],
-  },
-  {
-    id: '3',
-    name: 'Elétrica Silva & Cia',
-    cnpj: '11.222.333/0001-44',
-    email: 'orcamento@eletricasilva.com.br',
-    phone: '(11) 4567-8901',
-    address: 'Rua da Luz, 456 - São Paulo, SP',
-    status: 'active',
-    subscriptionPlan: 'enterprise',
-    createdAt: '2023-10-20T16:15:00Z',
-    groupId: '3',
-    specialties: ['Elétrica e Iluminação', 'Manutenção Predial'],
-  },
-  {
-    id: '4',
-    name: 'Jardins Verdes',
-    cnpj: '55.666.777/0001-88',
-    email: 'contato@jardinsverdes.com.br',
-    phone: '(11) 7890-1234',
-    whatsapp: '(11) 91234-5678',
-    address: 'Av. das Árvores, 789 - São Paulo, SP',
-    status: 'inactive',
-    subscriptionPlan: 'basic',
-    createdAt: '2023-08-30T12:45:00Z',
-    groupId: '4',
-    specialties: ['Jardinagem', 'Serviços Gerais'],
+    type: 'local',
+    clientId: '1',
+    rating: 3.8,
+    completedOrders: 8,
   },
   {
     id: '5',
@@ -297,6 +284,99 @@ export const mockSuppliers: Supplier[] = [
     subscriptionPlan: 'premium',
     createdAt: '2025-08-25T09:30:00Z',
     specialties: ['Hidráulica', 'Manutenção Predial'],
+    type: 'local',
+    clientId: '1',
+    rating: 4.5,
+    completedOrders: 22,
+  },
+  // Fornecedores Globais (disponíveis para todos os clientes)
+  {
+    id: '3',
+    name: 'Elétrica Silva & Cia',
+    cnpj: '11.222.333/0001-44',
+    email: 'orcamento@eletricasilva.com.br',
+    phone: '(11) 4567-8901',
+    address: 'Rua da Luz, 456 - São Paulo, SP',
+    status: 'active',
+    subscriptionPlan: 'enterprise',
+    createdAt: '2023-10-20T16:15:00Z',
+    groupId: '3',
+    specialties: ['Elétrica e Iluminação', 'Manutenção Predial'],
+    type: 'global',
+    region: 'São Paulo - Capital',
+    rating: 4.8,
+    completedOrders: 156,
+  },
+  {
+    id: '4',
+    name: 'Jardins Verdes',
+    cnpj: '55.666.777/0001-88',
+    email: 'contato@jardinsverdes.com.br',
+    phone: '(11) 7890-1234',
+    whatsapp: '(11) 91234-5678',
+    address: 'Av. das Árvores, 789 - São Paulo, SP',
+    status: 'active', // Alterado para ativo
+    subscriptionPlan: 'basic',
+    createdAt: '2023-08-30T12:45:00Z',
+    groupId: '4',
+    specialties: ['Jardinagem', 'Serviços Gerais'],
+    type: 'global',
+    region: 'São Paulo - Zona Sul',
+    rating: 4.1,
+    completedOrders: 89,
+  },
+  {
+    id: '6',
+    name: 'Construtech Solutions',
+    cnpj: '88.999.000/0001-12',
+    email: 'comercial@construtech.com.br',
+    phone: '(11) 3344-5566',
+    whatsapp: '(11) 99887-7665',
+    address: 'Av. Industrial, 1500 - São Paulo, SP',
+    status: 'active',
+    subscriptionPlan: 'enterprise',
+    createdAt: '2023-06-15T14:20:00Z',
+    groupId: '1',
+    specialties: ['Materiais de Construção', 'Acabamento', 'Ferramentas'],
+    type: 'global',
+    region: 'São Paulo - Grande ABC',
+    rating: 4.6,
+    completedOrders: 203,
+  },
+  {
+    id: '7',
+    name: 'EcoLimpeza Brasil',
+    cnpj: '77.666.555/0001-33',
+    email: 'vendas@ecolimpeza.com.br',
+    phone: '(11) 2233-4455',
+    whatsapp: '(11) 98776-6554',
+    address: 'Rua Sustentável, 888 - São Paulo, SP',
+    status: 'active',
+    subscriptionPlan: 'premium',
+    createdAt: '2023-05-10T11:45:00Z',
+    groupId: '2',
+    specialties: ['Produtos de Limpeza', 'Equipamentos', 'Serviços Gerais'],
+    type: 'global',
+    region: 'São Paulo - Zona Norte',
+    rating: 4.4,
+    completedOrders: 134,
+  },
+  {
+    id: '8',
+    name: 'MegaElétrica Nacional',
+    cnpj: '66.555.444/0001-77',
+    email: 'atendimento@megaeletrica.com.br',
+    phone: '(11) 1122-3344',
+    address: 'Av. Voltagem, 2000 - São Paulo, SP',
+    status: 'active',
+    subscriptionPlan: 'enterprise',
+    createdAt: '2023-04-05T16:30:00Z',
+    groupId: '3',
+    specialties: ['Elétrica e Iluminação', 'Manutenção Predial', 'Segurança'],
+    type: 'global',
+    region: 'São Paulo - Zona Oeste',
+    rating: 4.7,
+    completedOrders: 298,
   },
 ];
 
