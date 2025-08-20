@@ -12,8 +12,10 @@ import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
 import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
 import { ItemAnalysisModal } from "./ItemAnalysisModal";
+import { QuoteSendingProgress } from "./QuoteSendingProgress";
 import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup, Quote } from '@/data/mockData';
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
+import { notificationService, QuoteNotificationData } from '@/services/NotificationService';
 
 interface QuoteFormData {
   title: string;
@@ -57,6 +59,12 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
     email: [],
     whatsapp: []
   });
+  
+  // Estados para controle de envio
+  const [isSending, setIsSending] = useState(false);
+  const [sendingResults, setSendingResults] = useState<any[]>([]);
+  const [sendingProgress, setSendingProgress] = useState({ completed: 0, total: 0 });
+  const [showSendingProgress, setShowSendingProgress] = useState(false);
   
   const [formData, setFormData] = useState<QuoteFormData>({
     title: "",
@@ -262,26 +270,54 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!updateContactValidationErrors()) {
       return;
     }
     
+    // Criar cotação primeiro
     onQuoteCreate(formData);
-    onOpenChange(false);
-    setCurrentStep(1);
-    setContactValidationErrors({ email: [], whatsapp: [] });
-    setFormData({
-      title: "",
-      description: "",
-      deadline: "",
-      items: [],
-      suppliers: [],
-      communicationMethods: {
-        email: true,
-        whatsapp: false
-      }
-    });
+    
+    // Iniciar processo de envio
+    setIsSending(true);
+    setShowSendingProgress(true);
+    setSendingProgress({ completed: 0, total: formData.suppliers.length });
+    setSendingResults([]);
+    
+    try {
+      // Preparar dados da cotação para notificação
+      const quoteData: QuoteNotificationData = {
+        quoteId: `quote_${Date.now()}`,
+        quoteTitle: formData.title,
+        deadline: formData.deadline,
+        items: formData.items.map(item => ({
+          name: item.product.name,
+          quantity: item.quantity
+        })),
+        clientName: 'Cliente Demo', // TODO: Buscar do contexto do usuário
+        clientContact: 'contato@cliente.com'
+      };
+      
+      // Enviar para fornecedores
+      const sendingResult = await notificationService.sendQuoteToSuppliers(
+        formData.suppliers.map(supplier => ({
+          id: supplier.id,
+          name: supplier.name,
+          email: supplier.email,
+          phone: supplier.phone
+        })),
+        quoteData,
+        formData.communicationMethods
+      );
+      
+      setSendingResults(sendingResult.results);
+      
+    } catch (error) {
+      console.error('Erro no envio da cotação:', error);
+    } finally {
+      setIsSending(false);
+      setSendingProgress({ completed: formData.suppliers.length, total: formData.suppliers.length });
+    }
   };
 
   const getTotalUnits = () => {
@@ -663,105 +699,117 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
       case 5:
         return (
           <div className="space-y-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">Opções de Envio</h3>
-              <p className="text-sm text-muted-foreground">Escolha como deseja enviar a cotação para os fornecedores</p>
-            </div>
+            {!showSendingProgress ? (
+              <>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold">Opções de Envio</h3>
+                  <p className="text-sm text-muted-foreground">Escolha como deseja enviar a cotação para os fornecedores</p>
+                </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Métodos de Comunicação</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Validation Errors */}
-                {(contactValidationErrors.email.length > 0 || contactValidationErrors.whatsapp.length > 0) && (
-                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-4 w-4 text-destructive" />
-                      <p className="text-sm font-medium text-destructive">Dados de contato incompletos</p>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Métodos de Comunicação</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Validation Errors */}
+                    {(contactValidationErrors.email.length > 0 || contactValidationErrors.whatsapp.length > 0) && (
+                      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-destructive" />
+                          <p className="text-sm font-medium text-destructive">Dados de contato incompletos</p>
+                        </div>
+                        
+                        {contactValidationErrors.email.length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-xs text-destructive">
+                              Fornecedores sem e-mail: {contactValidationErrors.email.join(', ')}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {contactValidationErrors.whatsapp.length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-xs text-destructive">
+                              Fornecedores sem WhatsApp: {contactValidationErrors.whatsapp.join(', ')}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentStep(3)}
+                          className="text-xs mt-2"
+                        >
+                          Ir para Fornecedores
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="email"
+                        checked={formData.communicationMethods.email}
+                        onCheckedChange={(checked) => 
+                          setFormData(prev => ({
+                            ...prev,
+                            communicationMethods: { ...prev.communicationMethods, email: !!checked }
+                          }))
+                        }
+                      />
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-blue-600" />
+                        <label htmlFor="email" className="text-sm font-medium cursor-pointer">
+                          Enviar por E-mail
+                        </label>
+                      </div>
                     </div>
-                    
-                    {contactValidationErrors.email.length > 0 && (
-                      <div className="mb-2">
-                        <p className="text-xs text-destructive">
-                          Fornecedores sem e-mail: {contactValidationErrors.email.join(', ')}
-                        </p>
+
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="whatsapp"
+                        checked={formData.communicationMethods.whatsapp}
+                        onCheckedChange={(checked) => 
+                          setFormData(prev => ({
+                            ...prev,
+                            communicationMethods: { ...prev.communicationMethods, whatsapp: !!checked }
+                          }))
+                        }
+                      />
+                      <div className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-green-600" />
+                        <label htmlFor="whatsapp" className="text-sm font-medium cursor-pointer">
+                          Enviar por WhatsApp
+                        </label>
                       </div>
-                    )}
-                    
-                    {contactValidationErrors.whatsapp.length > 0 && (
-                      <div className="mb-2">
-                        <p className="text-xs text-destructive">
-                          Fornecedores sem WhatsApp: {contactValidationErrors.whatsapp.join(', ')}
-                        </p>
-                      </div>
-                    )}
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentStep(3)}
-                      className="text-xs mt-2"
-                    >
-                      Ir para Fornecedores
-                    </Button>
-                  </div>
-                )}
+                    </div>
+                  </CardContent>
+                </Card>
 
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="email"
-                    checked={formData.communicationMethods.email}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({
-                        ...prev,
-                        communicationMethods: { ...prev.communicationMethods, email: !!checked }
-                      }))
-                    }
-                  />
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-blue-600" />
-                    <label htmlFor="email" className="text-sm font-medium cursor-pointer">
-                      Enviar por E-mail
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="whatsapp"
-                    checked={formData.communicationMethods.whatsapp}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({
-                        ...prev,
-                        communicationMethods: { ...prev.communicationMethods, whatsapp: !!checked }
-                      }))
-                    }
-                  />
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="h-4 w-4 text-green-600" />
-                    <label htmlFor="whatsapp" className="text-sm font-medium cursor-pointer">
-                      Enviar por WhatsApp
-                    </label>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Preview do Envio</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="p-4 bg-secondary/20 rounded-lg">
-                  <p className="text-sm font-medium mb-2">Assunto: Nova Cotação - {formData.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Olá! Você foi selecionado para participar de uma nova cotação com {formData.items.length} item(s). 
-                    {formData.deadline && ` Prazo para resposta: ${new Date(formData.deadline).toLocaleDateString('pt-BR')}.`}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Preview do Envio</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="p-4 bg-secondary/20 rounded-lg">
+                      <p className="text-sm font-medium mb-2">Assunto: Nova Cotação - {formData.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Olá! Você foi selecionado para participar de uma nova cotação com {formData.items.length} item(s). 
+                        {formData.deadline && ` Prazo para resposta: ${new Date(formData.deadline).toLocaleDateString('pt-BR')}.`}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <QuoteSendingProgress
+                isLoading={isSending}
+                results={sendingResults}
+                totalSuppliers={formData.suppliers.length}
+                completedSuppliers={sendingProgress.completed}
+                methods={formData.communicationMethods}
+              />
+            )}
           </div>
         );
 
@@ -818,12 +866,47 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
                   >
                     Próximo
                   </Button>
+                ) : showSendingProgress ? (
+                  <Button
+                    onClick={() => {
+                      onOpenChange(false);
+                      setCurrentStep(1);
+                      setShowSendingProgress(false);
+                      setIsSending(false);
+                      setSendingResults([]);
+                      setContactValidationErrors({ email: [], whatsapp: [] });
+                      setFormData({
+                        title: "",
+                        description: "",
+                        deadline: "",
+                        items: [],
+                        suppliers: [],
+                        communicationMethods: {
+                          email: true,
+                          whatsapp: false
+                        }
+                      });
+                    }}
+                    disabled={isSending}
+                  >
+                    Fechar
+                  </Button>
                 ) : (
                   <Button
                     onClick={handleSubmit}
-                    disabled={!canProceed()}
+                    disabled={!canProceed() || isSending}
                   >
-                    Enviar Cotação
+                    {isSending ? (
+                      <>
+                        <Send className="h-4 w-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Enviar Cotação
+                      </>
+                    )}
                   </Button>
                 )}
               </div>
