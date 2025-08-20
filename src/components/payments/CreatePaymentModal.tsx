@@ -43,6 +43,15 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
 
   const selectedQuote = approvedQuotes.find(q => q.id === selectedQuoteId);
 
+  // Auto-fill amount when quote is selected
+  const handleQuoteSelect = (quoteId: string) => {
+    setSelectedQuoteId(quoteId);
+    const quote = approvedQuotes.find(q => q.id === quoteId);
+    if (quote) {
+      setAmount(quote.total.toString());
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -65,7 +74,7 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="quote">Cotação Aprovada</Label>
-            <Select value={selectedQuoteId} onValueChange={setSelectedQuoteId}>
+            <Select value={selectedQuoteId} onValueChange={handleQuoteSelect}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma cotação aprovada" />
               </SelectTrigger>
@@ -74,7 +83,9 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
                   <SelectItem key={quote.id} value={quote.id}>
                     <div className="flex flex-col">
                       <span className="font-medium">{quote.title}</span>
-                      <span className="text-sm text-muted-foreground">{quote.id}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {quote.id} • {quote.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}

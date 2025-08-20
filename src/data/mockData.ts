@@ -681,7 +681,7 @@ export interface Payment {
 export interface PaymentTransaction {
   id: string;
   paymentId: string;
-  type: 'payment_created' | 'payment_received' | 'funds_held' | 'delivery_confirmed' | 'funds_released' | 'dispute_opened' | 'payment_cancelled';
+  type: 'payment_created' | 'payment_received' | 'funds_held' | 'delivery_confirmed' | 'funds_released' | 'dispute_opened' | 'payment_cancelled' | 'delay_reported';
   description: string;
   amount?: number;
   userId: string;

@@ -1,18 +1,91 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { getStatusColor, getStatusText } from "@/data/mockData";
-import { Clock, User, Building, CreditCard, Calendar, FileText } from "lucide-react";
+import { Clock, User, Building, CreditCard, Calendar, FileText, CheckCircle, AlertTriangle, Flag } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface PaymentDetailModalProps {
   payment: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onConfirmDelivery?: (paymentId: string, notes?: string) => void;
+  onReportDelay?: (paymentId: string, reason: string) => void;
+  onOpenDispute?: (paymentId: string, reason: string) => void;
 }
 
-export function PaymentDetailModal({ payment, open, onOpenChange }: PaymentDetailModalProps) {
+export function PaymentDetailModal({ 
+  payment, 
+  open, 
+  onOpenChange, 
+  onConfirmDelivery,
+  onReportDelay,
+  onOpenDispute 
+}: PaymentDetailModalProps) {
+  const [showConfirmDelivery, setShowConfirmDelivery] = useState(false);
+  const [showReportDelay, setShowReportDelay] = useState(false);
+  const [showOpenDispute, setShowOpenDispute] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [reason, setReason] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
   if (!payment) return null;
+
+  const handleConfirmDelivery = async () => {
+    if (!onConfirmDelivery) return;
+    setIsLoading(true);
+    try {
+      await onConfirmDelivery(payment.id, notes);
+      setShowConfirmDelivery(false);
+      setNotes("");
+      toast({
+        title: "Entrega confirmada",
+        description: "O pagamento foi liberado para o fornecedor.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReportDelay = async () => {
+    if (!onReportDelay || !reason.trim()) return;
+    setIsLoading(true);
+    try {
+      await onReportDelay(payment.id, reason);
+      setShowReportDelay(false);
+      setReason("");
+      toast({
+        title: "Atraso reportado",
+        description: "O fornecedor foi notificado sobre o atraso.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenDispute = async () => {
+    if (!onOpenDispute || !reason.trim()) return;
+    setIsLoading(true);
+    try {
+      await onOpenDispute(payment.id, reason);
+      setShowOpenDispute(false);
+      setReason("");
+      toast({
+        title: "Disputa aberta",
+        description: "A disputa foi registrada e será analisada.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString('pt-BR', {
@@ -43,6 +116,8 @@ export function PaymentDetailModal({ payment, open, onOpenChange }: PaymentDetai
         return <FileText className="h-4 w-4 text-green-600" />;
       case 'funds_released':
         return <CreditCard className="h-4 w-4 text-green-600" />;
+      case 'delay_reported':
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
       case 'dispute_opened':
         return <FileText className="h-4 w-4 text-red-600" />;
       case 'payment_cancelled':
@@ -61,6 +136,7 @@ export function PaymentDetailModal({ payment, open, onOpenChange }: PaymentDetai
       funds_released: 'Valores Liberados',
       dispute_opened: 'Disputa Aberta',
       payment_cancelled: 'Pagamento Cancelado',
+      delay_reported: 'Atraso Reportado',
     };
     return types[type as keyof typeof types] || type;
   };
@@ -195,6 +271,171 @@ export function PaymentDetailModal({ payment, open, onOpenChange }: PaymentDetai
                   <div>
                     <p className="text-sm text-muted-foreground">Payment Intent ID</p>
                     <p className="font-mono text-sm">{payment.stripePaymentIntentId}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Actions */}
+          {(payment.status === 'in_escrow' || payment.status === 'waiting_confirmation') && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Ações</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!showConfirmDelivery && !showReportDelay && !showOpenDispute && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      onClick={() => setShowConfirmDelivery(true)}
+                      className="flex items-center gap-2"
+                      size="sm"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Confirmar Entrega
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => setShowReportDelay(true)}
+                      className="flex items-center gap-2"
+                      size="sm"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                      Reportar Atraso
+                    </Button>
+                    <Button 
+                      variant="destructive"
+                      onClick={() => setShowOpenDispute(true)}
+                      className="flex items-center gap-2"
+                      size="sm"
+                    >
+                      <Flag className="h-4 w-4" />
+                      Abrir Disputa
+                    </Button>
+                  </div>
+                )}
+
+                {/* Confirm Delivery Form */}
+                {showConfirmDelivery && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-green-50">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <h4 className="font-medium text-green-900">Confirmar Entrega</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="delivery-notes">Observações (opcional)</Label>
+                      <Textarea
+                        id="delivery-notes"
+                        placeholder="Adicione observações sobre a entrega..."
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleConfirmDelivery}
+                        disabled={isLoading}
+                        size="sm"
+                      >
+                        {isLoading ? "Confirmando..." : "Confirmar"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowConfirmDelivery(false);
+                          setNotes("");
+                        }}
+                        disabled={isLoading}
+                        size="sm"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Report Delay Form */}
+                {showReportDelay && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-yellow-50">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      <h4 className="font-medium text-yellow-900">Reportar Atraso</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="delay-reason">Motivo do atraso *</Label>
+                      <Textarea
+                        id="delay-reason"
+                        placeholder="Descreva o motivo do atraso..."
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleReportDelay}
+                        disabled={isLoading || !reason.trim()}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        {isLoading ? "Reportando..." : "Reportar Atraso"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowReportDelay(false);
+                          setReason("");
+                        }}
+                        disabled={isLoading}
+                        size="sm"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Open Dispute Form */}
+                {showOpenDispute && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-red-50">
+                    <div className="flex items-center gap-2">
+                      <Flag className="h-5 w-5 text-red-600" />
+                      <h4 className="font-medium text-red-900">Abrir Disputa</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dispute-reason">Motivo da disputa *</Label>
+                      <Textarea
+                        id="dispute-reason"
+                        placeholder="Descreva detalhadamente o motivo da disputa..."
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        rows={4}
+                        required
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleOpenDispute}
+                        disabled={isLoading || !reason.trim()}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        {isLoading ? "Abrindo..." : "Abrir Disputa"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowOpenDispute(false);
+                          setReason("");
+                        }}
+                        disabled={isLoading}
+                        size="sm"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>

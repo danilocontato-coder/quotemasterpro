@@ -3,35 +3,28 @@ import {
   Search, 
   Filter, 
   Eye, 
-  CheckCircle, 
-  AlertTriangle, 
   CreditCard, 
   Clock, 
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
-  Plus
+  Plus,
+  CheckCircle, 
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { usePayments } from "@/hooks/usePayments";
 import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
-import { ConfirmDeliveryModal } from "@/components/payments/ConfirmDeliveryModal";
-import { DisputeModal } from "@/components/payments/DisputeModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 
 export default function Payments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [confirmDeliveryModalOpen, setConfirmDeliveryModalOpen] = useState(false);
-  const [disputeModalOpen, setDisputeModalOpen] = useState(false);
-  const [createPaymentModalOpen, setCreatePaymentModalOpen] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,6 +33,7 @@ export default function Payments() {
   const {
     payments,
     confirmDelivery,
+    reportDelay,
     openDispute,
     cancelPayment,
     createPayment,
@@ -92,33 +86,6 @@ export default function Payments() {
 
   const handleViewPayment = (payment: any) => {
     setSelectedPayment(payment);
-    setDetailModalOpen(true);
-  };
-
-  const handleConfirmDelivery = (payment: any) => {
-    setSelectedPayment(payment);
-    setConfirmDeliveryModalOpen(true);
-  };
-
-  const handleOpenDispute = (payment: any) => {
-    setSelectedPayment(payment);
-    setDisputeModalOpen(true);
-  };
-
-  const handleConfirmDeliverySubmit = (notes?: string) => {
-    if (selectedPayment) {
-      confirmDelivery(selectedPayment.id, notes);
-      setConfirmDeliveryModalOpen(false);
-      setSelectedPayment(null);
-    }
-  };
-
-  const handleOpenDisputeSubmit = (reason: string) => {
-    if (selectedPayment) {
-      openDispute(selectedPayment.id, reason);
-      setDisputeModalOpen(false);
-      setSelectedPayment(null);
-    }
   };
 
   const getPaymentStatusIcon = (status: string) => {
@@ -319,7 +286,7 @@ export default function Payments() {
                           variant="outline" 
                           size="sm"
                           className="flex-1 text-green-600 border-green-200 hover:bg-green-50"
-                          onClick={() => handleConfirmDelivery(payment)}
+                          onClick={() => handleViewPayment(payment)}
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Confirmar Entrega
@@ -328,7 +295,7 @@ export default function Payments() {
                           variant="outline" 
                           size="sm"
                           className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => handleOpenDispute(payment)}
+                          onClick={() => handleViewPayment(payment)}
                         >
                           <AlertTriangle className="h-4 w-4 mr-2" />
                           Abrir Disputa
@@ -418,22 +385,11 @@ export default function Payments() {
       {/* Modals */}
       <PaymentDetailModal
         payment={selectedPayment}
-        open={detailModalOpen}
-        onOpenChange={setDetailModalOpen}
-      />
-
-      <ConfirmDeliveryModal
-        payment={selectedPayment}
-        open={confirmDeliveryModalOpen}
-        onOpenChange={setConfirmDeliveryModalOpen}
-        onConfirm={handleConfirmDeliverySubmit}
-      />
-
-      <DisputeModal
-        payment={selectedPayment}
-        open={disputeModalOpen}
-        onOpenChange={setDisputeModalOpen}
-        onConfirm={handleOpenDisputeSubmit}
+        open={!!selectedPayment}
+        onOpenChange={(open) => !open && setSelectedPayment(null)}
+        onConfirmDelivery={confirmDelivery}
+        onReportDelay={reportDelay}
+        onOpenDispute={openDispute}
       />
     </div>
   );

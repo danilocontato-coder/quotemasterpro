@@ -46,6 +46,36 @@ export const usePayments = () => {
     });
   }, [toast]);
 
+  const reportDelay = useCallback((paymentId: string, reason: string) => {
+    setPayments(prev => prev.map(payment => {
+      if (payment.id === paymentId) {
+        const newTransaction: PaymentTransaction = {
+          id: `TXN${Date.now()}`,
+          paymentId,
+          type: 'delay_reported',
+          description: `Atraso reportado: ${reason}`,
+          userId: 'USR001', // Mock user
+          userName: 'João Silva (Cliente)',
+          createdAt: new Date().toISOString(),
+          metadata: { reason },
+        };
+
+        return {
+          ...payment,
+          updatedAt: new Date().toISOString(),
+          transactions: [...payment.transactions, newTransaction],
+        };
+      }
+      return payment;
+    }));
+
+    toast({
+      title: "Atraso reportado",
+      description: "O fornecedor foi notificado sobre o atraso.",
+      variant: "destructive",
+    });
+  }, [toast]);
+
   const openDispute = useCallback((paymentId: string, reason: string) => {
     setPayments(prev => prev.map(payment => {
       if (payment.id === paymentId) {
@@ -200,6 +230,7 @@ export const usePayments = () => {
   return {
     payments,
     confirmDelivery,
+    reportDelay,
     openDispute,
     cancelPayment,
     createPayment,
