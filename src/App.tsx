@@ -71,67 +71,104 @@ function App() {
                 {/* Public routes */}
                 <Route path="/" element={<RoleBasedRedirect />} />
                 
-                {/* Dashboard routes */}
+                {/* Dashboard routes - organized as nested routes */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Dashboard />} />
+                  <Route path="quotes" element={<Navigate to="/quotes" replace />} />
+                  <Route path="suppliers" element={<Navigate to="/suppliers" replace />} />
+                  <Route path="products" element={<Navigate to="/products" replace />} />
+                  <Route path="approvals" element={<Navigate to="/approvals" replace />} />
+                  <Route path="payments" element={<Navigate to="/payments" replace />} />
+                  <Route path="users" element={<Navigate to="/users" replace />} />
+                  <Route path="communication" element={<Navigate to="/communication" replace />} />
+                  <Route path="notifications" element={<Navigate to="/notifications" replace />} />
+                  <Route path="settings" element={<Navigate to="/settings" replace />} />
+                  <Route path="permissions" element={<Navigate to="/permissions" replace />} />
+                  <Route path="reports" element={<Navigate to="/reports" replace />} />
+                </Route>
+                
+                {/* Main application routes */}
                 <Route path="/quotes" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Quotes />} />
+                </Route>
                 <Route path="/suppliers" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Suppliers />} />
+                </Route>
                 <Route path="/products" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Products />} />
+                </Route>
                 <Route path="/approvals" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Approvals />} />
+                </Route>
                 <Route path="/payments" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Payments />} />
+                </Route>
                 <Route path="/users" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Users />} />
+                </Route>
                 <Route path="/communication" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Communication />} />
+                </Route>
                 <Route path="/notifications" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Notifications />} />
+                </Route>
                 <Route path="/settings" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Settings />} />
+                </Route>
                 <Route path="/permissions" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Permissions />} />
+                </Route>
                 <Route path="/reports" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<Reports />} />
+                </Route>
 
                 {/* Admin routes */}
                 <Route path="/admin/superadmin" element={
