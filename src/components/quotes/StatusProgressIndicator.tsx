@@ -1,30 +1,34 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Eye, Send, FileText, Package } from 'lucide-react';
-import { Quote } from '@/data/mockData';
+import { CheckCircle2, Clock, Eye, Send, FileText, Package, X } from 'lucide-react';
 
 interface StatusProgressIndicatorProps {
-  status: Quote['status'];
+  status: string;
   showProgress?: boolean;
 }
 
 const statusSteps = [
   { key: 'draft', label: 'Rascunho', icon: FileText },
-  { key: 'active', label: 'Enviada', icon: Send },
-  { key: 'receiving', label: 'Recebendo', icon: Eye },
+  { key: 'sent', label: 'Enviada', icon: Send },
+  { key: 'under_review', label: 'Em Análise', icon: Eye },
   { key: 'approved', label: 'Aprovada', icon: CheckCircle2 },
-  { key: 'finalized', label: 'Finalizada', icon: Package },
+  { key: 'rejected', label: 'Rejeitada', icon: X },
 ];
 
-const getStatusVariant = (status: Quote['status']) => {
+const getStatusVariant = (status: string) => {
   switch (status) {
-    case 'draft': return 'draft';
-    case 'active': return 'sent';
-    case 'receiving': return 'receiving';
-    case 'approved': return 'approved';
-    case 'finalized': return 'finalized';
-    case 'trash': return 'destructive';
-    default: return 'default';
+    case 'draft':
+      return 'secondary';
+    case 'sent':
+      return 'default';
+    case 'under_review':
+      return 'secondary';
+    case 'approved':
+      return 'secondary';
+    case 'rejected':
+      return 'destructive';
+    default:
+      return 'secondary';
   }
 };
 
@@ -46,7 +50,7 @@ export function StatusProgressIndicator({ status, showProgress = false }: Status
     );
   }
 
-return (
+  return (
     <div className="flex items-center gap-2">
       {statusSteps.map((step, index) => {
         const Icon = step.icon;
@@ -63,17 +67,17 @@ return (
             case 'draft':
               stepClasses = 'bg-gray-100 text-gray-700';
               break;
-            case 'active':
+            case 'sent':
               stepClasses = 'bg-blue-100 text-blue-800';
               break;
-            case 'receiving':
+            case 'under_review':
               stepClasses = 'bg-orange-100 text-orange-800';
               break;
             case 'approved':
               stepClasses = 'bg-green-100 text-green-800';
               break;
-            case 'finalized':
-              stepClasses = 'bg-green-200 text-green-900';
+            case 'rejected':
+              stepClasses = 'bg-red-100 text-red-800';
               break;
             default:
               stepClasses = 'bg-blue-100 text-blue-800';

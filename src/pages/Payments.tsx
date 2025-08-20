@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
-import { usePayments } from "@/hooks/usePayments";
+import { useSupabasePayments } from "@/hooks/useSupabasePayments";
 import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
@@ -32,34 +32,25 @@ export default function Payments() {
 
   const {
     payments,
-    confirmDelivery,
-    reportDelay,
-    openDispute,
-    cancelPayment,
-    createPayment,
-    getPaymentsByStatus,
-  } = usePayments();
+    isLoading
+  } = useSupabasePayments();
 
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = 
-      payment.quoteName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.supplierName.toLowerCase().includes(searchTerm.toLowerCase());
+      (payment.quote_id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
     if (activeFilter === "pending") {
       matchesFilter = payment.status === "pending";
-    } else if (activeFilter === "in_escrow") {
-      matchesFilter = payment.status === "in_escrow";
-    } else if (activeFilter === "waiting_confirmation") {
-      matchesFilter = payment.status === "waiting_confirmation";
-    } else if (activeFilter === "paid") {
-      matchesFilter = payment.status === "paid";
+    } else if (activeFilter === "processing") {
+      matchesFilter = payment.status === "processing";
+    } else if (activeFilter === "completed") {
+      matchesFilter = payment.status === "completed";
+    } else if (activeFilter === "failed") {
+      matchesFilter = payment.status === "failed";
     } else if (activeFilter === "disputed") {
       matchesFilter = payment.status === "disputed";
-    } else if (activeFilter === "cancelled") {
-      matchesFilter = payment.status === "cancelled";
     }
     
     return matchesSearch && matchesFilter;
@@ -68,9 +59,8 @@ export default function Payments() {
   // Calculate metrics
   const totalPayments = payments.length;
   const pendingPayments = payments.filter(p => p.status === "pending").length;
-  const inEscrowPayments = payments.filter(p => p.status === "in_escrow").length;
-  const waitingConfirmationPayments = payments.filter(p => p.status === "waiting_confirmation").length;
-  const paidPayments = payments.filter(p => p.status === "paid").length;
+  const processingPayments = payments.filter(p => p.status === "processing").length;
+  const completedPayments = payments.filter(p => p.status === "completed").length;
   const disputedPayments = payments.filter(p => p.status === "disputed").length;
 
   // Pagination calculations
@@ -131,15 +121,10 @@ export default function Payments() {
           </p>
         </div>
         <div className="flex gap-2">
-          <CreatePaymentModal
-            onPaymentCreate={createPayment}
-            trigger={
-              <Button className="btn-corporate">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Pagamento
-              </Button>
-            }
-          />
+          <Button className="btn-corporate">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Pagamento
+          </Button>
         </div>
       </div>
 
@@ -162,27 +147,19 @@ export default function Payments() {
           variant="warning"
         />
         <FilterMetricCard
-          title="Em Garantia"
-          value={inEscrowPayments}
+          title="Processando"
+          value={processingPayments}
           icon={<ShieldCheck />}
-          isActive={activeFilter === "in_escrow"}
-          onClick={() => setActiveFilter("in_escrow")}
+          isActive={activeFilter === "processing"}
+          onClick={() => setActiveFilter("processing")}
           variant="default"
         />
         <FilterMetricCard
-          title="Aguardando"
-          value={waitingConfirmationPayments}
-          icon={<AlertTriangle />}
-          isActive={activeFilter === "waiting_confirmation"}
-          onClick={() => setActiveFilter("waiting_confirmation")}
-          variant="warning"
-        />
-        <FilterMetricCard
-          title="Pagos"
-          value={paidPayments}
+          title="Concluídos"
+          value={completedPayments}
           icon={<CheckCircle />}
-          isActive={activeFilter === "paid"}
-          onClick={() => setActiveFilter("paid")}
+          isActive={activeFilter === "completed"}
+          onClick={() => setActiveFilter("completed")}
           variant="success"
         />
         <FilterMetricCard
@@ -220,7 +197,6 @@ export default function Payments() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {currentPayments.map((payment) => {
             const statusColor = getStatusColor(payment.status);
-            const daysUntilRelease = getDaysUntilRelease(payment.escrowReleaseDate);
             
             return (
               <Card key={payment.id} className="card-corporate hover:shadow-md transition-shadow">
@@ -228,7 +204,7 @@ export default function Payments() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <CardTitle className="text-lg">{payment.quoteName}</CardTitle>
+                        <CardTitle className="text-lg">{payment.quote_id}</CardTitle>
                         {getPaymentStatusIcon(payment.status)}
                       </div>
                       <p className="text-sm text-muted-foreground font-mono">
@@ -250,27 +226,7 @@ export default function Payments() {
                         {formatCurrency(payment.amount)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Cliente:</span>
-                      <span className="font-medium">{payment.clientName}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Fornecedor:</span>
-                      <span className="font-medium">{payment.supplierName}</span>
-                    </div>
                   </div>
-
-                  {/* Escrow Info */}
-                  {(payment.status === 'in_escrow' || payment.status === 'waiting_confirmation') && (
-                    <div className="pt-2 border-t border-border">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Liberação automática:</span>
-                        <span className={`font-medium ${daysUntilRelease <= 3 ? 'text-orange-600' : 'text-muted-foreground'}`}>
-                          {daysUntilRelease > 0 ? `${daysUntilRelease} dias` : 'Hoje'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Actions */}
                   <div className="pt-2 space-y-2">
@@ -285,29 +241,6 @@ export default function Payments() {
                         Ver Detalhes
                       </Button>
                     </div>
-                    
-                    {payment.status === 'waiting_confirmation' && (
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="flex-1 text-green-600 border-green-200 hover:bg-green-50"
-                          onClick={() => handleViewPayment(payment)}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Confirmar Entrega
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => handleViewPayment(payment)}
-                        >
-                          <AlertTriangle className="h-4 w-4 mr-2" />
-                          Abrir Disputa
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -374,15 +307,10 @@ export default function Payments() {
               }
             </p>
             {!searchTerm && activeFilter === "all" && (
-              <CreatePaymentModal
-                onPaymentCreate={createPayment}
-                trigger={
-                  <Button className="btn-corporate">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Criar Primeiro Pagamento
-                  </Button>
-                }
-              />
+              <Button className="btn-corporate">
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Primeiro Pagamento
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -393,9 +321,9 @@ export default function Payments() {
         payment={selectedPayment}
         open={!!selectedPayment}
         onOpenChange={(open) => !open && setSelectedPayment(null)}
-        onConfirmDelivery={confirmDelivery}
-        onReportDelay={reportDelay}
-        onOpenDispute={openDispute}
+        onConfirmDelivery={() => {}}
+        onReportDelay={() => {}}
+        onOpenDispute={() => {}}
       />
     </div>
   );

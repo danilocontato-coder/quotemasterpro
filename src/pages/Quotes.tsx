@@ -12,8 +12,8 @@ import { DecisionMatrixManager } from "@/components/quotes/DecisionMatrixManager
 import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
 import { StatusProgressIndicator } from "@/components/quotes/StatusProgressIndicator";
 import { EconomyNotification, useEconomyAlerts } from "@/components/quotes/EconomyNotification";
-import { useQuotes } from "@/hooks/useQuotes";
-import { getStatusColor, getStatusText, Quote } from "@/data/mockData";
+import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
+import { getStatusColor, getStatusText } from "@/data/mockData";
 import { toast } from "sonner";
 
 export default function Quotes() {
@@ -24,91 +24,99 @@ export default function Quotes() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isMatrixManagerOpen, setIsMatrixManagerOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
-  const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
-  const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+  const [editingQuote, setEditingQuote] = useState<any | null>(null);
+  const [viewingQuote, setViewingQuote] = useState<any | null>(null);
+  const [quoteToDelete, setQuoteToDelete] = useState<any | null>(null);
   
   // Paginação
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6; // 6 cotações por página para visualização confortável
   
-  const { quotes, addQuote, updateQuote, deleteQuote } = useQuotes();
+  const { quotes, createQuote, updateQuote, deleteQuote, isLoading } = useSupabaseQuotes();
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
-  const handleQuoteCreate = (quoteData: any) => {
-    const newQuote = addQuote(quoteData);
-    toast.success(`Cotação ${newQuote.id} criada com sucesso!`);
-    setIsCreateModalOpen(false);
-  };
-
-  const handleQuoteUpdate = (quoteData: any) => {
-    if (editingQuote) {
-      updateQuote(editingQuote.id, quoteData);
-      toast.success(`Cotação ${editingQuote.id} atualizada com sucesso!`);
-      setEditingQuote(null);
+  const handleQuoteCreate = async (quoteData: any) => {
+    try {
+      const newQuote = await createQuote(quoteData);
+      toast.success(`Cotação criada com sucesso!`);
       setIsCreateModalOpen(false);
+    } catch (error) {
+      toast.error("Erro ao criar cotação");
     }
   };
 
-  const handleDeleteClick = (quote: Quote) => {
+  const handleQuoteUpdate = async (quoteData: any) => {
+    if (editingQuote) {
+      try {
+        await updateQuote(editingQuote.id, quoteData);
+        toast.success(`Cotação atualizada com sucesso!`);
+        setEditingQuote(null);
+        setIsCreateModalOpen(false);
+      } catch (error) {
+        toast.error("Erro ao atualizar cotação");
+      }
+    }
+  };
+
+  const handleDeleteClick = (quote: any) => {
     setQuoteToDelete(quote);
     setIsDeleteModalOpen(true);
   };
 
-  const handleDeleteConfirm = (reason?: string) => {
+  const handleDeleteConfirm = async (reason?: string) => {
     if (quoteToDelete) {
-      deleteQuote(quoteToDelete.id, reason);
-      const action = quoteToDelete.status === 'draft' ? 'excluída' : 'cancelada';
-      toast.success(`Cotação ${quoteToDelete.id} ${action} com sucesso!`);
-      setQuoteToDelete(null);
+      try {
+        await deleteQuote(quoteToDelete.id, reason);
+        const action = quoteToDelete.status === 'draft' ? 'excluída' : 'cancelada';
+        toast.success(`Cotação ${action} com sucesso!`);
+        setQuoteToDelete(null);
+      } catch (error) {
+        toast.error("Erro ao excluir cotação");
+      }
     }
   };
 
-  const handleEditClick = (quote: Quote) => {
+  const handleEditClick = (quote: any) => {
     setEditingQuote(quote);
     setIsCreateModalOpen(true);
   };
 
-  const handleViewClick = (quote: Quote) => {
+  const handleViewClick = (quote: any) => {
     setViewingQuote(quote);
     setIsDetailModalOpen(true);
   };
 
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quote.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (quote.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
-    if (activeFilter === "active") {
-      matchesFilter = quote.status === "active";
-    } else if (activeFilter === "draft") {
+    if (activeFilter === "draft") {
       matchesFilter = quote.status === "draft";
-    } else if (activeFilter === "receiving") {
-      matchesFilter = quote.status === "receiving";
+    } else if (activeFilter === "sent") {
+      matchesFilter = quote.status === "sent";
+    } else if (activeFilter === "under_review") {
+      matchesFilter = quote.status === "under_review";
     } else if (activeFilter === "approved") {
       matchesFilter = quote.status === "approved";
-    } else if (activeFilter === "finalized") {
-      matchesFilter = quote.status === "finalized";
-    } else if (activeFilter === "trash") {
-      matchesFilter = quote.status === "trash";
+    } else if (activeFilter === "rejected") {
+      matchesFilter = quote.status === "rejected";
     }
     
     return matchesSearch && matchesFilter;
   });
 
-  // Calculate metrics - Based on all active quotes (not trash)
-  const activeQuotes = quotes.filter(q => q.status !== 'trash');
-  const totalActive = activeQuotes.length;
+  // Calculate metrics - Based on all quotes
+  const totalActive = quotes.length;
   const draftQuotes = quotes.filter(q => q.status === 'draft').length;
-  const receivingQuotes = quotes.filter(q => q.status === 'receiving').length;
+  const sentQuotes = quotes.filter(q => q.status === 'sent').length;
+  const underReviewQuotes = quotes.filter(q => q.status === 'under_review').length;
   const approvedQuotes = quotes.filter(q => q.status === 'approved').length;
-  const finalizedQuotes = quotes.filter(q => q.status === 'finalized').length;
-  const trashQuotes = quotes.filter(q => q.status === 'trash').length;
 
   // Additional metrics
   const totalRFQs = quotes.length;
-  const inProgress = receivingQuotes;
+  const inProgress = sentQuotes + underReviewQuotes;
   const dueSoon = quotes.filter(q => {
     if (!q.deadline) return false;
     const deadline = new Date(q.deadline);
@@ -117,7 +125,7 @@ export default function Quotes() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 2 && diffDays >= 0;
   }).length;
-  const responseRate = totalActive > 0 ? Math.round((finalizedQuotes / totalActive) * 100) : 0;
+  const responseRate = totalActive > 0 ? Math.round((approvedQuotes / totalActive) * 100) : 0;
 
   // Cálculos de paginação
   const totalPages = Math.ceil(filteredQuotes.length / itemsPerPage);
@@ -137,12 +145,11 @@ export default function Quotes() {
 
   const statusOptions = [
     { value: "all", label: "Todas" },
-    { value: "active", label: "Ativas" },
     { value: "draft", label: "Rascunho" },
-    { value: "receiving", label: "Recebendo" },
+    { value: "sent", label: "Enviadas" },
+    { value: "under_review", label: "Em Análise" },
     { value: "approved", label: "Aprovadas" },
-    { value: "finalized", label: "Finalizadas" },
-    { value: "trash", label: "Lixeira" },
+    { value: "rejected", label: "Rejeitadas" },
   ];
 
   return (
@@ -193,11 +200,11 @@ export default function Quotes() {
           variant="secondary"
         />
         <FilterMetricCard
-          title="Recebendo"
-          value={receivingQuotes}
+          title="Enviadas"
+          value={sentQuotes}
           icon={<Eye />}
-          isActive={activeFilter === "receiving"}
-          onClick={() => setActiveFilter("receiving")}
+          isActive={activeFilter === "sent"}
+          onClick={() => setActiveFilter("sent")}
           variant="warning"
         />
         <FilterMetricCard
@@ -209,20 +216,12 @@ export default function Quotes() {
           variant="success"
         />
         <FilterMetricCard
-          title="Finalizadas"
-          value={finalizedQuotes}
+          title="Em Análise"
+          value={underReviewQuotes}
           icon={<Archive />}
-          isActive={activeFilter === "finalized"}
-          onClick={() => setActiveFilter("finalized")}
+          isActive={activeFilter === "under_review"}
+          onClick={() => setActiveFilter("under_review")}
           variant="default"
-        />
-        <FilterMetricCard
-          title="Lixeira"
-          value={trashQuotes}
-          icon={<Trash2 />}
-          isActive={activeFilter === "trash"}
-          onClick={() => setActiveFilter("trash")}
-          variant="destructive"
         />
       </div>
 
@@ -345,12 +344,12 @@ export default function Quotes() {
                     </td>
                     <td>
                       <div className="flex items-center gap-1">
-                        <span className="text-sm">{quote.itemsCount} item(s)</span>
+                        <span className="text-sm">{quote.items_count || 0} item(s)</span>
                       </div>
                     </td>
                     <td>
                       <div className="text-sm">
-                        {quote.responsesCount}/{quote.responseTotal}
+                        {quote.responses_count || 0}/5
                         <p className="text-xs text-muted-foreground">propostas</p>
                       </div>
                     </td>
@@ -370,7 +369,7 @@ export default function Quotes() {
                     </td>
                     <td>
                       <p className="text-sm">
-                        {new Date(quote.createdAt).toLocaleDateString('pt-BR')}
+                        {new Date(quote.created_at).toLocaleDateString('pt-BR')}
                       </p>
                     </td>
                     <td>
@@ -390,13 +389,13 @@ export default function Quotes() {
                           className="h-8 w-8"
                           onClick={() => handleEditClick(quote)}
                           title="Editar"
-                          disabled={quote.status === 'approved' || quote.status === 'finalized'}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        
-                        {/* Comparator button - only show for quotes with multiple proposals */}
-                        {(quote.status === 'receiving' || quote.status === 'approved') && quote.responsesCount >= 1 && (
+                           disabled={quote.status === 'approved'}
+                         >
+                           <Edit className="h-4 w-4" />
+                         </Button>
+                         
+                         {/* Comparator button - only show for quotes with multiple proposals */}
+                         {(quote.status === 'sent' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
                           <QuoteComparisonButton
                             quoteId={quote.id}
                             quoteTitle={quote.title}
