@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Calendar, MessageSquare, Send, ArrowLeft, ArrowRight, AlertCircle, FileText, Package, Users, Mail, MessageCircle, Search, BarChart3 } from 'lucide-react';
+import { X, Plus, Calendar, MessageSquare, Send, ArrowLeft, ArrowRight, AlertCircle, FileText, Package, Users, Mail, MessageCircle, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
 import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
-import { ItemAnalysisModal } from "./ItemAnalysisModal";
 import { QuoteSendingProgress } from "./QuoteSendingProgress";
 import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup, Quote } from '@/data/mockData';
-import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { notificationService, QuoteNotificationData } from '@/services/NotificationService';
 
 interface QuoteFormData {
@@ -49,7 +47,6 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
-  const [showItemAnalysis, setShowItemAnalysis] = useState(false);
   
   const [suppliers, setSuppliers] = useState(mockSuppliers);
   const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
@@ -425,17 +422,6 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
               </Button>
             </div>
 
-            {/* Análise de Mercado */}
-            {formData.items.length > 0 && (
-              <Button 
-                variant="outline"
-                className="w-full h-12 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                onClick={() => setShowItemAnalysis(true)}
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Analisar Preços de Mercado ({formData.items.length} item{formData.items.length > 1 ? 'ns' : ''})
-              </Button>
-            )}
 
             {/* Campo de busca (visual apenas) */}
             <div className="relative">
