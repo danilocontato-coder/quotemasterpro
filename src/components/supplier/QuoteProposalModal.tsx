@@ -1,0 +1,481 @@
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from '@/hooks/use-toast';
+import { Plus, Trash2, Upload, FileText, X, Send, Save } from 'lucide-react';
+import { SupplierQuote, ProposalItem, useSupplierQuotes } from '@/hooks/useSupplierQuotes';
+
+interface QuoteProposalModalProps {
+  quote: SupplierQuote | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalModalProps) {
+  const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment } = useSupplierQuotes();
+  const [proposalItems, setProposalItems] = useState<ProposalItem[]>(
+    quote?.proposal?.items || quote?.items.map(item => ({
+      id: item.id,
+      productName: item.productName,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice || 0,
+      total: (item.unitPrice || 0) * item.quantity,
+      brand: '',
+      specifications: '',
+    })) || []
+  );
+  const [deliveryTime, setDeliveryTime] = useState(quote?.proposal?.deliveryTime || 7);
+  const [paymentTerms, setPaymentTerms] = useState(quote?.proposal?.paymentTerms || '30 dias');
+  const [observations, setObservations] = useState(quote?.proposal?.observations || '');
+  const [isUploading, setIsUploading] = useState(false);
+
+  if (!quote) return null;
+
+  const totalValue = proposalItems.reduce((sum, item) => sum + item.total, 0);
+  const hasProposal = !!quote.proposal;
+  const canEdit = !hasProposal || quote.proposal?.status === 'draft';
+  const canSend = hasProposal && quote.proposal?.status === 'draft' && proposalItems.length > 0;
+
+  const handleItemChange = (index: number, field: keyof ProposalItem, value: string | number) => {
+    if (!canEdit) return;
+    
+    const updatedItems = [...proposalItems];
+    const item = { ...updatedItems[index] };
+    
+    if (field === 'unitPrice' || field === 'quantity') {
+      (item as any)[field] = Number(value);
+      item.total = item.unitPrice * item.quantity;
+    } else {
+      (item as any)[field] = value;
+    }
+    
+    updatedItems[index] = item;
+    setProposalItems(updatedItems);
+  };
+
+  const handleAddItem = () => {
+    if (!canEdit) return;
+    
+    const newItem: ProposalItem = {
+      id: crypto.randomUUID(),
+      productName: '',
+      description: '',
+      quantity: 1,
+      unitPrice: 0,
+      total: 0,
+      brand: '',
+      specifications: '',
+    };
+    setProposalItems([...proposalItems, newItem]);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    if (!canEdit) return;
+    setProposalItems(proposalItems.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    if (!quote) return;
+
+    try {
+      const proposalData = {
+        items: proposalItems,
+        totalValue,
+        deliveryTime,
+        paymentTerms,
+        observations,
+        attachments: quote.proposal?.attachments || [],
+      };
+
+      if (hasProposal && quote.proposal) {
+        await updateProposal(quote.proposal.id, proposalData);
+        toast({
+          title: "Proposta salva",
+          description: "Sua proposta foi salva como rascunho.",
+        });
+      } else {
+        await createProposal(quote.id, proposalData);
+        toast({
+          title: "Proposta criada",
+          description: "Sua proposta foi criada e salva como rascunho.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar a proposta.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSend = async () => {
+    if (!quote?.proposal) return;
+
+    try {
+      await sendProposal(quote.proposal.id);
+      toast({
+        title: "Proposta enviada",
+        description: "Sua proposta foi enviada para o cliente.",
+      });
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível enviar a proposta.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !canEdit) return;
+
+    setIsUploading(true);
+    try {
+      const file = event.target.files[0];
+      await addAttachment(quote.id, file);
+      toast({
+        title: "Arquivo anexado",
+        description: `${file.name} foi anexado à proposta.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro no upload",
+        description: "Não foi possível anexar o arquivo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    if (!canEdit) return;
+    removeAttachment(quote.id, attachmentId);
+    toast({
+      title: "Arquivo removido",
+      description: "O arquivo foi removido da proposta.",
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {quote.title} - {quote.id}
+            <Badge variant={quote.status === 'pending' ? 'secondary' : quote.status === 'proposal_sent' ? 'default' : 'outline'}>
+              {quote.status === 'pending' ? 'Aguardando Proposta' : 
+               quote.status === 'proposal_sent' ? 'Proposta Enviada' : 
+               quote.status}
+            </Badge>
+          </DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="details">Detalhes da Solicitação</TabsTrigger>
+            <TabsTrigger value="proposal">Minha Proposta</TabsTrigger>
+            <TabsTrigger value="attachments">Anexos</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="details" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Informações da Solicitação</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Cliente</Label>
+                    <p className="font-medium">{quote.client}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Prazo</Label>
+                    <p className="font-medium">
+                      {new Date(quote.deadline).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Descrição</Label>
+                  <p className="text-sm">{quote.description}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Itens Solicitados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Preço Unit. (Referência)</TableHead>
+                      <TableHead>Total (Referência)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quote.items.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{item.productName}</p>
+                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>
+                          {item.unitPrice ? `R$ ${item.unitPrice.toFixed(2)}` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {item.total ? `R$ ${item.total.toFixed(2)}` : '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="proposal" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Itens da Proposta
+                  {canEdit && (
+                    <Button onClick={handleAddItem} size="sm">
+                      <Plus className="h-4 w-4" />
+                      Adicionar Item
+                    </Button>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {proposalItems.map((item, index) => (
+                    <Card key={item.id} className="p-4">
+                      <div className="grid grid-cols-12 gap-4 items-end">
+                        <div className="col-span-3">
+                          <Label>Produto *</Label>
+                          <Input
+                            value={item.productName}
+                            onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
+                            placeholder="Nome do produto"
+                            disabled={!canEdit}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>Marca</Label>
+                          <Input
+                            value={item.brand}
+                            onChange={(e) => handleItemChange(index, 'brand', e.target.value)}
+                            placeholder="Marca"
+                            disabled={!canEdit}
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <Label>Qtd *</Label>
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
+                            min="1"
+                            disabled={!canEdit}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>Preço Unit. *</Label>
+                          <Input
+                            type="number"
+                            value={item.unitPrice}
+                            onChange={(e) => handleItemChange(index, 'unitPrice', Number(e.target.value))}
+                            min="0"
+                            step="0.01"
+                            disabled={!canEdit}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>Total</Label>
+                          <Input
+                            value={`R$ ${item.total.toFixed(2)}`}
+                            disabled
+                          />
+                        </div>
+                        <div className="col-span-2 flex gap-2">
+                          {canEdit && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveItem(index)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="col-span-12">
+                          <Label>Especificações</Label>
+                          <Textarea
+                            value={item.specifications}
+                            onChange={(e) => handleItemChange(index, 'specifications', e.target.value)}
+                            placeholder="Especificações técnicas do produto"
+                            disabled={!canEdit}
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                <Separator className="my-6" />
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label>Prazo de Entrega (dias) *</Label>
+                    <Input
+                      type="number"
+                      value={deliveryTime}
+                      onChange={(e) => setDeliveryTime(Number(e.target.value))}
+                      min="1"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  <div>
+                    <Label>Condições de Pagamento *</Label>
+                    <Input
+                      value={paymentTerms}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
+                      placeholder="Ex: 30 dias após entrega"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  <div>
+                    <Label>Valor Total</Label>
+                    <Input
+                      value={`R$ ${totalValue.toFixed(2)}`}
+                      disabled
+                      className="font-bold text-lg"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={observations}
+                    onChange={(e) => setObservations(e.target.value)}
+                    placeholder="Informações adicionais, condições especiais, etc."
+                    disabled={!canEdit}
+                    rows={3}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="attachments" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Anexos
+                  {canEdit && (
+                    <div>
+                      <input
+                        type="file"
+                        id="file-upload"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                      />
+                      <Button
+                        onClick={() => document.getElementById('file-upload')?.click()}
+                        size="sm"
+                        disabled={isUploading}
+                      >
+                        <Upload className="h-4 w-4" />
+                        {isUploading ? 'Enviando...' : 'Anexar Arquivo'}
+                      </Button>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {quote.attachments && quote.attachments.length > 0 ? (
+                  <div className="space-y-2">
+                    {quote.attachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{attachment.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {(attachment.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveAttachment(attachment.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhum arquivo anexado
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex justify-between pt-4 border-t">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
+          <div className="flex gap-2">
+            {canEdit && (
+              <Button onClick={handleSave} disabled={proposalItems.length === 0}>
+                <Save className="h-4 w-4" />
+                Salvar Rascunho
+              </Button>
+            )}
+            {canSend && (
+              <Button onClick={handleSend}>
+                <Send className="h-4 w-4" />
+                Enviar Proposta
+              </Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

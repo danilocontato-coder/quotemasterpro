@@ -5,83 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Send, MessageSquare, Search } from "lucide-react";
-import { Link } from "react-router-dom";
-
-interface Quote {
-  id: string;
-  title: string;
-  description: string;
-  client: string;
-  status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired';
-  deadline: string;
-  estimatedValue?: number;
-  sentAt?: string;
-  createdAt: string;
-}
+import { Eye, Send, MessageSquare, Search, FileText } from "lucide-react";
+import { useSupplierQuotes } from "@/hooks/useSupplierQuotes";
+import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedQuote, setSelectedQuote] = useState<any>(null);
+  const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+  
+  const { supplierQuotes } = useSupplierQuotes();
 
-  // Mock data - In production this would come from hooks/API
-  const quotes: Quote[] = [
-    {
-      id: 'RFQ009',
-      title: 'Manutenção Elétrica',
-      description: 'Manutenção do sistema elétrico predial',
-      client: 'Condomínio Jardim das Flores',
-      status: 'pending',
-      deadline: '2025-08-28T23:59:59Z',
-      estimatedValue: 3500.00,
-      createdAt: '2025-08-18T16:45:00Z'
-    },
-    {
-      id: 'RFQ008',
-      title: 'Materiais de Construção',
-      description: 'Materiais para reforma do bloco A',
-      client: 'Residencial Vista Alegre',
-      status: 'approved',
-      deadline: '2025-08-25T23:59:59Z',
-      estimatedValue: 8200.00,
-      sentAt: '2025-08-20T10:30:00Z',
-      createdAt: '2025-08-18T14:20:00Z'
-    },
-    {
-      id: 'RFQ007',
-      title: 'Equipamentos de Limpeza',
-      description: 'Equipamentos para áreas comuns',
-      client: 'Condomínio Jardim das Flores',
-      status: 'proposal_sent',
-      deadline: '2025-08-30T23:59:59Z',
-      estimatedValue: 1200.00,
-      sentAt: '2025-08-19T15:20:00Z',
-      createdAt: '2025-08-17T09:10:00Z'
-    },
-    {
-      id: 'RFQ006',
-      title: 'Pintura Externa',
-      description: 'Pintura da fachada do edifício',
-      client: 'Condomínio Sol Nascente',
-      status: 'rejected',
-      deadline: '2025-08-22T23:59:59Z',
-      estimatedValue: 15000.00,
-      sentAt: '2025-08-15T11:00:00Z',
-      createdAt: '2025-08-14T08:30:00Z'
-    },
-    {
-      id: 'RFQ005',
-      title: 'Jardinagem',
-      description: 'Manutenção das áreas verdes',
-      client: 'Residencial Primavera',
-      status: 'expired',
-      deadline: '2025-08-15T23:59:59Z',
-      estimatedValue: 2500.00,
-      createdAt: '2025-08-10T14:15:00Z'
-    }
-  ];
-
-  const getStatusBadge = (status: Quote['status']) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
         return <Badge variant="secondary">Aguardando Proposta</Badge>;
@@ -98,18 +34,7 @@ export default function SupplierQuotes() {
     }
   };
 
-  const getStatusColor = (status: Quote['status']) => {
-    switch (status) {
-      case 'pending': return 'text-blue-600';
-      case 'proposal_sent': return 'text-yellow-600';
-      case 'approved': return 'text-green-600';
-      case 'rejected': return 'text-red-600';
-      case 'expired': return 'text-orange-600';
-      default: return 'text-gray-600';
-    }
-  };
-
-  const filteredQuotes = quotes.filter(quote => {
+  const filteredQuotes = supplierQuotes.filter(quote => {
     const matchesSearch = 
       quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -120,10 +45,20 @@ export default function SupplierQuotes() {
     return matchesSearch && matchesStatus;
   });
 
-  const statusCounts = quotes.reduce((acc, quote) => {
+  const statusCounts = supplierQuotes.reduce((acc, quote) => {
     acc[quote.status] = (acc[quote.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const handleViewQuote = (quote: any) => {
+    setSelectedQuote(quote);
+    setIsProposalModalOpen(true);
+  };
+
+  const handleSendProposal = (quote: any) => {
+    setSelectedQuote(quote);
+    setIsProposalModalOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -186,6 +121,7 @@ export default function SupplierQuotes() {
                   <TableHead>Status</TableHead>
                   <TableHead>Prazo</TableHead>
                   <TableHead>Valor Estimado</TableHead>
+                  <TableHead>Proposta</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -216,18 +152,41 @@ export default function SupplierQuotes() {
                       )}
                     </TableCell>
                     <TableCell>
+                      {quote.proposal ? (
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium">
+                            R$ {quote.proposal.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                          <Badge variant={quote.proposal.status === 'sent' ? 'default' : 'secondary'}>
+                            {quote.proposal.status === 'sent' ? 'Enviada' : 'Rascunho'}
+                          </Badge>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/supplier/quotes/${quote.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleViewQuote(quote)}
+                          title="Ver detalhes e proposta"
+                        >
+                          <Eye className="h-4 w-4" />
                         </Button>
                         {quote.status === 'pending' && (
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleSendProposal(quote)}
+                            title="Enviar proposta"
+                          >
                             <Send className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" title="Mensagens">
                           <MessageSquare className="h-4 w-4" />
                         </Button>
                       </div>
@@ -245,6 +204,12 @@ export default function SupplierQuotes() {
           </div>
         </CardContent>
       </Card>
+
+      <QuoteProposalModal
+        quote={selectedQuote}
+        open={isProposalModalOpen}
+        onOpenChange={setIsProposalModalOpen}
+      />
     </div>
   );
 }
