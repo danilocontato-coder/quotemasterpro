@@ -1,198 +1,177 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Mail, Lock, Building2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getRoleBasedRoute } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-export default function Login() {
+const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     setError('');
 
     try {
-      await login(email, password);
-      
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo ao QuoteMaster Pro.",
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      // Recuperar dados do usuário logado
-      const storedUser = localStorage.getItem('currentUser');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        
-        // Redirecionar baseado no role ou local anterior
-        if (from !== '/') {
-          navigate(from, { replace: true });
-        } else {
-          // Redirecionar baseado no role do usuário
-          const redirectPath = getRoleBasedRoute(userData.role);
-          navigate(redirectPath, { replace: true });
-        }
-      } else {
-        // Fallback para dashboard padrão
-        navigate('/dashboard', { replace: true });
+      if (error) {
+        setError(error.message);
+        return;
       }
+
+      // Redirect to intended page or dashboard
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
+      setError('Erro inesperado. Tente novamente.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const quickLoginOptions = [
-    { email: 'admin@quotemaster.com', role: 'Administrador', password: '123456' },
-    { email: 'cliente@condominio.com', role: 'Cliente/Condomínio', password: '123456' },
-    { email: 'fornecedor@empresa.com', role: 'Fornecedor', password: '123456' },
-    { email: 'suporte@quotemaster.com', role: 'Suporte', password: '123456' },
-  ];
+  const handleGoogleLogin = async () => {
+    setError('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
 
-  const handleQuickLogin = (userEmail: string, userPassword: string) => {
-    setEmail(userEmail);
-    setPassword(userPassword);
+      if (error) {
+        setError(error.message);
+      }
+    } catch (err) {
+      setError('Erro ao fazer login com Google');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Logo/Brand */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
-            <Building2 className="h-8 w-8 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">QuoteMaster Pro</h1>
-          <p className="text-muted-foreground">Plataforma de Gestão de Cotações</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">QuoteMaster Pro</CardTitle>
+          <CardDescription className="text-center">
+            Entre na sua conta para continuar
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        {/* Login Form */}
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-semibold">Entrar</CardTitle>
-            <CardDescription>
-              Digite suas credenciais para acessar sua conta
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Sua senha"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <Button 
-                type="submit" 
-                className="w-full" 
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                required
                 disabled={isLoading}
-              >
-                {isLoading ? 'Entrando...' : 'Entrar'}
-              </Button>
-            </form>
+              />
+            </div>
 
-            <div className="flex items-center justify-between">
-              <Link 
-                to="/forgot-password" 
-                className="text-sm text-primary hover:underline"
-              >
-                Esqueceu a senha?
-              </Link>
-              <Link 
-                to="/register" 
-                className="text-sm text-primary hover:underline"
-              >
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  disabled={isLoading}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Entrar
+            </Button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Ou</span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+          >
+            Entrar com Google
+          </Button>
+
+          <div className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Não tem uma conta?{' '}
+              <Link to="/auth/register" className="text-primary hover:underline">
                 Criar conta
               </Link>
-            </div>
+            </p>
+            <p className="text-sm">
+              <Link to="/auth/forgot-password" className="text-primary hover:underline">
+                Esqueceu a senha?
+              </Link>
+            </p>
+          </div>
 
-            {/* Demo Login Options */}
-            <div className="pt-4">
-              <Separator className="mb-4" />
-              <p className="text-sm text-muted-foreground text-center mb-3">
-                Login rápido para demonstração:
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {quickLoginOptions.map((option, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleQuickLogin(option.email, option.password)}
-                    className="text-xs h-8"
-                  >
-                    {option.role}
-                  </Button>
-                ))}
-              </div>
+          <div className="mt-6 text-xs text-muted-foreground text-center">
+            <p className="mb-2">Dados para teste:</p>
+            <div className="space-y-1">
+              <p><strong>Admin:</strong> admin@quotemaster.com / 123456</p>
+              <p><strong>Cliente:</strong> cliente@condominio.com / 123456</p>
+              <p><strong>Fornecedor:</strong> fornecedor@empresa.com / 123456</p>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground">
-          © 2024 QuoteMaster Pro. Todos os direitos reservados.
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default Login;

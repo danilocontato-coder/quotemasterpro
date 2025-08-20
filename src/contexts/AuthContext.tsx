@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 export type UserRole = 'admin' | 'client' | 'supplier' | 'support';
 
@@ -10,6 +12,8 @@ export interface User {
   avatar?: string;
   companyName?: string;
   active: boolean;
+  clientId?: string;
+  supplierId?: string;
 }
 
 export const getRoleBasedRoute = (role: UserRole): string => {
@@ -29,10 +33,9 @@ export const getRoleBasedRoute = (role: UserRole): string => {
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  register: (email: string, password: string, name: string, role: UserRole, companyName?: string) => Promise<void>;
+  logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
 }
 
@@ -46,142 +49,117 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock users for development
-const mockUsers: User[] = [
-  {
-    id: '1',
-    email: 'admin@quotemaster.com',
-    name: 'Administrador',
-    role: 'admin',
-    active: true,
-  },
-  {
-    id: '2',
-    email: 'cliente@condominio.com',
-    name: 'João Silva',
-    role: 'client',
-    companyName: 'Condomínio Residencial Vista Verde',
-    active: true,
-  },
-  {
-    id: '3',
-    email: 'fornecedor@empresa.com',
-    name: 'Maria Santos',
-    role: 'supplier',
-    companyName: 'Fornecedora Alpha Ltda',
-    active: true,
-  },
-  {
-    id: '4',
-    email: 'suporte@quotemaster.com',
-    name: 'Carlos Oliveira',
-    role: 'support',
-    active: true,
-  },
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simular verificação de token armazenado
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        localStorage.removeItem('currentUser');
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        fetchUserProfile(session.user);
+      } else {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        
+        if (session?.user) {
+          await fetchUserProfile(session.user);
+        } else {
+          setUser(null);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<void> => {
-    setIsLoading(true);
-    
-    // Simular delay de API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = mockUsers.find(u => u.email === email);
-    
-    if (!foundUser) {
+  const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (profile) {
+        setUser({
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: profile.role as UserRole,
+          avatar: profile.avatar_url,
+          companyName: profile.company_name,
+          active: profile.active,
+          clientId: profile.client_id,
+          supplierId: profile.supplier_id,
+        });
+      } else {
+        // Profile doesn't exist, user might need to complete registration
+        setUser({
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
+          role: 'client',
+          active: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+    } finally {
       setIsLoading(false);
-      throw new Error('Usuário não encontrado');
     }
-    
-    if (!foundUser.active) {
-      setIsLoading(false);
-      throw new Error('Conta desativada. Entre em contato com o suporte.');
-    }
-    
-    // Em produção, verificar password hash
-    if (password.length === 0) {
-      setIsLoading(false);
-      throw new Error('Senha é obrigatória');
-    }
-    
-    setUser(foundUser);
-    localStorage.setItem('currentUser', JSON.stringify(foundUser));
-    setIsLoading(false);
   };
 
-  const register = async (
-    email: string, 
-    password: string, 
-    name: string, 
-    role: UserRole,
-    companyName?: string
-  ): Promise<void> => {
-    setIsLoading(true);
-    
-    // Simular delay de API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const existingUser = mockUsers.find(u => u.email === email);
-    if (existingUser) {
-      setIsLoading(false);
-      throw new Error('Email já está em uso');
-    }
-    
-    const newUser: User = {
-      id: Date.now().toString(),
-      email,
-      name,
-      role,
-      companyName,
-      active: true,
-    };
-    
-    mockUsers.push(newUser);
-    setUser(newUser);
-    localStorage.setItem('currentUser', JSON.stringify(newUser));
-    setIsLoading(false);
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('currentUser');
+  const logout = async (): Promise<void> => {
+    await supabase.auth.signOut();
   };
 
   const updateProfile = async (updates: Partial<User>): Promise<void> => {
-    if (!user) return;
+    if (!user || !session) return;
     
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const updatedUser = { ...user, ...updates };
-    setUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-    setIsLoading(false);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: updates.name,
+          avatar_url: updates.avatar,
+          company_name: updates.companyName,
+          role: updates.role,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setUser({ ...user, ...updates });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const value = {
     user,
+    session,
     isLoading,
-    login,
     logout,
-    register,
     updateProfile,
   };
 
