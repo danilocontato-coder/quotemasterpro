@@ -408,17 +408,18 @@ export function ComprehensiveSupplierModal({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="company">Empresa</TabsTrigger>
-            <TabsTrigger value="contacts">Contatos</TabsTrigger>
-            <TabsTrigger value="business">Negócio</TabsTrigger>
-            <TabsTrigger value="credentials">Acesso</TabsTrigger>
-            <TabsTrigger value="additional">Extras</TabsTrigger>
-          </TabsList>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="company">Empresa</TabsTrigger>
+              <TabsTrigger value="contacts">Contatos</TabsTrigger>
+              <TabsTrigger value="business">Negócio</TabsTrigger>
+              <TabsTrigger value="credentials">Acesso</TabsTrigger>
+              <TabsTrigger value="additional">Extras</TabsTrigger>
+            </TabsList>
 
-          <div className="flex-1 overflow-y-auto mt-4">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="flex-1 overflow-y-auto mt-4">
+              <div className="space-y-6">
               {/* Company Tab */}
               <TabsContent value="company" className="space-y-4">
                 <Card>
@@ -1059,6 +1060,8 @@ export function ComprehensiveSupplierModal({
                 </Card>
               </TabsContent>
 
+              </div>
+
               {/* Action Buttons */}
               <div className="sticky bottom-0 bg-background border-t pt-4 flex gap-3">
                 <Button
@@ -1076,9 +1079,9 @@ export function ComprehensiveSupplierModal({
                   {editingSupplier ? 'Atualizar Fornecedor' : 'Criar Fornecedor'}
                 </Button>
               </div>
-            </form>
-          </div>
-        </Tabs>
+            </div>
+          </Tabs>
+        </form>
       </DialogContent>
     </Dialog>
   );
