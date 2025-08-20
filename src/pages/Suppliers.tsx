@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Globe, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { mockSuppliers, mockSupplierGroups, getStatusColor, getStatusText, Supplier, SupplierGroup } from "@/data/mockData";
@@ -35,7 +36,7 @@ export default function Suppliers() {
       if (supplier.type === 'local') {
         return supplier.clientId === currentClientId;
       }
-      // Fornecedores globais: todos disponíveis
+      // Fornecedores certificados: todos disponíveis
       return supplier.type === 'global';
     }).sort((a, b) => {
       // Priorizar fornecedores da mesma região
@@ -75,7 +76,7 @@ export default function Suppliers() {
     } else if (activeFilter === "global") {
       matchesFilter = supplier.type === "global";
     } else if (activeFilter === "priority") {
-      // Fornecedores prioritários: locais + globais da mesma região
+      // Fornecedores prioritários: locais + certificados da mesma região
       matchesFilter = supplier.type === "local" || 
                      (supplier.type === "global" && supplier.region === currentClientRegion);
     } else if (activeFilter === "recent") {
@@ -116,7 +117,7 @@ export default function Suppliers() {
 
   const handleDeleteSupplier = (supplier: Supplier) => {
     if (supplier.type === 'global') {
-      alert('Fornecedores globais só podem ser excluídos pelo administrador');
+      alert('Fornecedores certificados só podem ser excluídos pelo administrador');
       return;
     }
 
@@ -232,7 +233,7 @@ export default function Suppliers() {
           colorClass="text-blue-600"
         />
         <FilterMetricCard
-          title="Globais"
+          title="Certificados"
           value={globalSuppliers}
           isActive={activeFilter === "global"}
           onClick={() => setActiveFilter("global")}
@@ -284,27 +285,37 @@ export default function Suppliers() {
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {currentSuppliers.map((supplier) => (
-          <Card key={supplier.id} className="card-corporate hover:shadow-[var(--shadow-dropdown)] transition-shadow">
-            <CardHeader className="pb-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <CardTitle className="text-lg">{supplier.name}</CardTitle>
-                    {supplier.type === 'global' ? (
-                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                        <Globe className="h-3 w-3 mr-1" />
-                        Global
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                        Local
-                      </Badge>
+          <TooltipProvider key={supplier.id}>
+            <Card className="card-corporate hover:shadow-[var(--shadow-dropdown)] transition-shadow">
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CardTitle className="text-lg">{supplier.name}</CardTitle>
+                      {supplier.type === 'global' ? (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 cursor-help">
+                              <Shield className="h-3 w-3 mr-1" />
+                              Certificado
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Fornecedor passou por análise criteriosa da plataforma</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          Local
+                        </Badge>
+                      )}
+                    </div>
+                    {supplier.type === 'local' && (
+                      <p className="text-sm text-muted-foreground font-mono">
+                        {supplier.cnpj}
+                      </p>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground font-mono">
-                    {supplier.cnpj}
-                  </p>
-                </div>
                 <div className="flex flex-col items-end gap-1">
                   <Badge className={getStatusColor(supplier.status)}>
                     {getStatusText(supplier.status)}
@@ -327,7 +338,7 @@ export default function Suppliers() {
                 </div>
               )}
 
-              {/* Region/Priority Badge para Globais */}
+              {/* Region/Priority Badge para Certificados */}
               {supplier.type === 'global' && supplier.region && (
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -364,31 +375,43 @@ export default function Suppliers() {
                 </div>
               )}
 
-              {/* Address */}
-              {supplier.address && (
+              {/* Address - only for local suppliers */}
+              {supplier.type === 'local' && supplier.address && (
                 <div className="flex items-start gap-2 text-sm">
                   <Building className="h-4 w-4 text-muted-foreground mt-0.5" />
                   <span className="text-muted-foreground line-clamp-2">{supplier.address}</span>
                 </div>
               )}
 
-              {/* Contact Info */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="truncate">{supplier.email}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{supplier.phone}</span>
-                </div>
-                {supplier.whatsapp && (
+              {/* Contact Info - only for local suppliers */}
+              {supplier.type === 'local' && (
+                <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                    <span>{supplier.whatsapp}</span>
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate">{supplier.email}</span>
                   </div>
-                )}
-              </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{supplier.phone}</span>
+                  </div>
+                  {supplier.whatsapp && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                      <span>{supplier.whatsapp}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* For certified suppliers, show limited contact info */}
+              {supplier.type === 'global' && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="h-4 w-4" />
+                    <span>Contato disponível via plataforma</span>
+                  </div>
+                </div>
+              )}
 
               {/* Date Added */}
               <div className="pt-2 border-t border-border">
@@ -419,7 +442,7 @@ export default function Suppliers() {
                     size="sm" 
                     className="flex-1 cursor-not-allowed opacity-50" 
                     disabled
-                    title="Fornecedores globais são gerenciados pelo administrador"
+                    title="Fornecedores certificados são gerenciados pelo administrador"
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Editar
@@ -442,16 +465,17 @@ export default function Suppliers() {
                     size="sm" 
                     className="cursor-not-allowed opacity-50" 
                     disabled
-                    title="Fornecedores globais são gerenciados pelo administrador"
+                    title="Fornecedores certificados são gerenciados pelo administrador"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
               </div>
             </CardContent>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          </TooltipProvider>
+          ))}
+        </div>
 
       {/* Paginação */}
       {totalPages > 1 && (
