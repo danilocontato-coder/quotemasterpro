@@ -175,14 +175,14 @@ export const PlansManagement = () => {
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
                     <Building2 className="h-6 w-6 mx-auto mb-2 text-blue-600" />
                     <p className="text-lg font-bold text-blue-800">
-                      {formatCurrency(stats.revenueByAudience.client)}
+                      {formatCurrency(stats.revenueByAudience.clients)}
                     </p>
                     <p className="text-sm text-blue-600">Clientes</p>
                   </div>
                   <div className="text-center p-4 bg-orange-50 rounded-lg">
                     <Truck className="h-6 w-6 mx-auto mb-2 text-orange-600" />
                     <p className="text-lg font-bold text-orange-800">
-                      {formatCurrency(stats.revenueByAudience.supplier)}
+                      {formatCurrency(stats.revenueByAudience.suppliers)}
                     </p>
                     <p className="text-sm text-orange-600">Fornecedores</p>
                   </div>
@@ -218,8 +218,8 @@ export const PlansManagement = () => {
                           {formatCurrency(plan.pricing.monthly)}/mês
                         </p>
                         <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <span>{plan.targetAudience === 'client' ? 'Cliente' : plan.targetAudience === 'supplier' ? 'Fornecedor' : 'Ambos'}</span>
-                          <span>{plan.usageStats.clientsSubscribed + plan.usageStats.suppliersSubscribed} usuários</span>
+                          <span>{plan.targetAudience === 'clients' ? 'Cliente' : plan.targetAudience === 'suppliers' ? 'Fornecedor' : 'Ambos'}</span>
+                          <span>{(plan.usageStats.clientsSubscribed || 0) + (plan.usageStats.suppliersSubscribed || 0)} usuários</span>
                         </div>
                       </div>
                     ))}
@@ -250,7 +250,7 @@ export const PlansManagement = () => {
                     </div>
                   </div>
                   
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as 'all' | 'active' | 'inactive')}>
                     <SelectTrigger className="w-full md:w-48">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
@@ -264,7 +264,7 @@ export const PlansManagement = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {plans.filter(p => p.targetAudience === 'client' || p.targetAudience === 'both').map((plan) => (
+                  {plans.filter(p => p.targetAudience === 'clients' || p.targetAudience === 'both').map((plan) => (
                     <Card key={plan.id} className={`relative ${plan.isPopular ? 'ring-2 ring-primary' : ''}`}>
                       {plan.isPopular && (
                         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -278,8 +278,8 @@ export const PlansManagement = () => {
                       <CardHeader className="pb-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg bg-${plan.customizations.color}-100`}>
-                              <Building2 className={`h-4 w-4 text-${plan.customizations.color}-600`} />
+                            <div className="p-2 rounded-lg bg-blue-100">
+                              <Building2 className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>
                               <CardTitle className="text-lg">{plan.name}</CardTitle>
@@ -349,7 +349,7 @@ export const PlansManagement = () => {
                             </span>
                             <Badge variant="outline" className="text-xs">
                               <Percent className="h-3 w-3 mr-1" />
-                              {plan.pricing.discountYearly}% desconto
+                              {plan.pricing.discount || 15}% desconto
                             </Badge>
                           </div>
                         </div>
@@ -405,7 +405,7 @@ export const PlansManagement = () => {
                         <div className="pt-2 border-t">
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Assinantes:</span>
-                            <span className="font-medium">{plan.usageStats.clientsSubscribed}</span>
+                            <span className="font-medium">{plan.usageStats.clientsSubscribed || 0}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Receita:</span>
@@ -431,7 +431,7 @@ export const PlansManagement = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {plans.filter(p => p.targetAudience === 'supplier' || p.targetAudience === 'both').map((plan) => (
+                  {plans.filter(p => p.targetAudience === 'suppliers' || p.targetAudience === 'both').map((plan) => (
                     <Card key={plan.id} className={`relative ${plan.isPopular ? 'ring-2 ring-primary' : ''}`}>
                       {plan.isPopular && (
                         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -445,8 +445,8 @@ export const PlansManagement = () => {
                       <CardHeader className="pb-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg bg-${plan.customizations.color}-100`}>
-                              <Truck className={`h-4 w-4 text-${plan.customizations.color}-600`} />
+                            <div className="p-2 rounded-lg bg-orange-100">
+                              <Truck className="h-4 w-4 text-orange-600" />
                             </div>
                             <div>
                               <CardTitle className="text-lg">{plan.name}</CardTitle>
@@ -539,7 +539,7 @@ export const PlansManagement = () => {
                         <div className="pt-2 border-t">
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Assinantes:</span>
-                            <span className="font-medium">{plan.usageStats.suppliersSubscribed}</span>
+                            <span className="font-medium">{plan.usageStats.suppliersSubscribed || 0}</span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Receita:</span>
