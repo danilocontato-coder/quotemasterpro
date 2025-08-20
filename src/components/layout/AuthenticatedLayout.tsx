@@ -3,6 +3,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from './MainLayout';
 import { SupplierLayout } from './SupplierLayout';
+import { SuperAdminLayout } from './SuperAdminLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const AuthenticatedLayout: React.FC = () => {
@@ -26,9 +27,10 @@ export const AuthenticatedLayout: React.FC = () => {
 
   // Determine which layout to use based on user role
   switch (user.role) {
+    case 'admin':
+      return <SuperAdminLayout />;
     case 'supplier':
       return <SupplierLayout />;
-    case 'admin':
     case 'client':
     case 'support':
     default:
