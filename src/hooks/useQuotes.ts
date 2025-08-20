@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { mockQuotes, Quote } from '@/data/mockData';
+import { useSupplierRatings } from '@/hooks/useSupplierRatings';
 
 export interface AuditLog {
   id: string;
@@ -18,6 +19,7 @@ let quoteCounter = 12; // Start after RFQ011
 export const useQuotes = () => {
   const [quotes, setQuotes] = useState<Quote[]>(quotesStore);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(auditStore);
+  const { createRatingPrompt } = useSupplierRatings();
 
   const generateRFQId = useCallback(() => {
     const id = `RFQ${String(quoteCounter).padStart(3, '0')}`;
@@ -53,6 +55,9 @@ export const useQuotes = () => {
   }, [generateRFQId]);
 
   const updateQuote = useCallback((id: string, updates: Partial<Quote>) => {
+    const quote = quotesStore.find(q => q.id === id);
+    if (!quote) return;
+
     const updatedQuotes = quotesStore.map(quote => 
       quote.id === id 
         ? { ...quote, ...updates, updatedAt: new Date().toISOString() }
@@ -60,6 +65,16 @@ export const useQuotes = () => {
     );
     quotesStore = updatedQuotes;
     setQuotes([...quotesStore]);
+    
+    // Check if quote was marked as finalized and should trigger rating
+    if (updates.status === 'finalized' && quote.status !== 'finalized' && quote.supplierName) {
+      createRatingPrompt({
+        type: 'quote_completed',
+        supplierId: quote.supplierId || '1', // Mock supplier ID
+        supplierName: quote.supplierName,
+        quoteId: quote.id,
+      });
+    }
     
     // Add audit log
     const auditLog: AuditLog = {
@@ -73,7 +88,7 @@ export const useQuotes = () => {
     };
     auditStore = [auditLog, ...auditStore];
     setAuditLogs([...auditStore]);
-  }, []);
+  }, [createRatingPrompt]);
 
   const deleteQuote = useCallback((id: string, reason?: string) => {
     const quote = quotesStore.find(q => q.id === id);

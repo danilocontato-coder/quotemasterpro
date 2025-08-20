@@ -24,6 +24,7 @@ import {
   FileText
 } from "lucide-react";
 import { ApprovalDetailModal } from "@/components/approvals/ApprovalDetailModal";
+import { QuoteMarkAsReceivedButton } from "@/components/quotes/QuoteMarkAsReceivedButton";
 import { useApprovals } from "@/hooks/useApprovals";
 
 export function Approvals() {
@@ -228,14 +229,22 @@ export function Approvals() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleViewDetails(approval)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            Detalhes
-                          </Button>
+                          <div className="flex gap-2 justify-end">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleViewDetails(approval)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Detalhes
+                            </Button>
+                            {approval.status === 'approved' && (
+                              <QuoteMarkAsReceivedButton
+                                quoteId={approval.quote.id}
+                                supplierName="Fornecedor Mock" // In real app, would come from approval data
+                              />
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

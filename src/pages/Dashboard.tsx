@@ -1,6 +1,7 @@
 import { FileText, Users, CheckCircle, DollarSign, Clock, TrendingUp } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { RatingPrompts } from "@/components/ratings/RatingPrompts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { VisualCard } from "@/components/ui/visual-card";
 import { dashboardMetrics, mockQuotes, getStatusColor, getStatusText } from "@/data/mockData";
@@ -89,8 +90,11 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Quick Actions */}
-      <QuickActions />
+          {/* Quick Actions */}
+          <QuickActions />
+
+          {/* Rating Prompts */}
+          <RatingPrompts />
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

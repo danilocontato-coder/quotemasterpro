@@ -1,0 +1,47 @@
+import { useState } from "react";
+import { useSupplierRatings } from "@/hooks/useSupplierRatings";
+import { RatingPromptCard } from "./RatingPromptCard";
+import { SupplierRatingModal } from "./SupplierRatingModal";
+
+export function RatingPrompts() {
+  const { ratingPrompts, createRating, dismissPrompt } = useSupplierRatings();
+  const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
+
+  const handleRate = (prompt: any) => {
+    setSelectedPrompt(prompt);
+  };
+
+  const handleSubmitRating = (ratingData: any) => {
+    createRating(ratingData);
+    setSelectedPrompt(null);
+  };
+
+  if (ratingPrompts.length === 0) return null;
+
+  return (
+    <>
+      <div className="space-y-4">
+        {ratingPrompts.map((prompt) => (
+          <RatingPromptCard
+            key={prompt.id}
+            prompt={prompt}
+            onRate={() => handleRate(prompt)}
+            onDismiss={() => dismissPrompt(prompt.id)}
+          />
+        ))}
+      </div>
+
+      {selectedPrompt && (
+        <SupplierRatingModal
+          open={!!selectedPrompt}
+          onOpenChange={(open) => !open && setSelectedPrompt(null)}
+          supplierId={selectedPrompt.supplierId}
+          supplierName={selectedPrompt.supplierName}
+          quoteId={selectedPrompt.quoteId}
+          paymentId={selectedPrompt.paymentId}
+          onSubmit={handleSubmitRating}
+        />
+      )}
+    </>
+  );
+}
