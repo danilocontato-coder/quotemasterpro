@@ -34,7 +34,13 @@ const SupportTickets = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newTicket, setNewTicket] = useState({
+  const [newTicket, setNewTicket] = useState<{
+    subject: string;
+    description: string;
+    priority: 'low' | 'medium' | 'high';
+    entityType: string;
+    entityId: string;
+  }>({
     subject: '',
     description: '',
     priority: 'medium',
@@ -159,7 +165,7 @@ const SupportTickets = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="priority">Prioridade</Label>
-                <Select value={newTicket.priority} onValueChange={(value) => setNewTicket(prev => ({ ...prev, priority: value }))}>
+                <Select value={newTicket.priority} onValueChange={(value: 'low' | 'medium' | 'high') => setNewTicket(prev => ({ ...prev, priority: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

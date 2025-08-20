@@ -66,8 +66,8 @@ export function AppSidebar() {
 
   const isActive = (path: string) => currentPath === path;
   
-  // Mock user role - in real app, this would come from auth context
-  const userRole: 'admin' | 'manager' | 'collaborator' | 'supplier' = 'admin';
+  // Mock user role - in real app, this would come from auth context  
+  const userRole = 'admin' as 'admin' | 'manager' | 'collaborator' | 'supplier';
   
   // Determine which sections to show based on role
   const showSupplierSection = userRole === 'supplier' || userRole === 'admin';

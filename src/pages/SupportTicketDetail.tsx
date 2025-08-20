@@ -15,7 +15,7 @@ const SupportTicketDetail = () => {
   const { getTicketById, addMessage, updateTicketStatus } = useSupport();
   const { toast } = useToast();
   const [newMessage, setNewMessage] = useState('');
-  const [newStatus, setNewStatus] = useState('');
+  const [newStatus, setNewStatus] = useState<'open' | 'in_progress' | 'waiting' | 'closed' | ''>('');
 
   const ticket = getTicketById(id || '');
 
@@ -81,7 +81,7 @@ const SupportTicketDetail = () => {
     });
   };
 
-  const handleStatusChange = (status: string) => {
+  const handleStatusChange = (status: 'open' | 'in_progress' | 'waiting' | 'closed') => {
     updateTicketStatus(ticket.id, status);
     setNewStatus('');
     
@@ -152,7 +152,7 @@ const SupportTicketDetail = () => {
             <div className="pt-4 border-t space-y-3">
               <div>
                 <p className="text-sm font-medium mb-2">Alterar Status</p>
-                <Select value={newStatus} onValueChange={setNewStatus}>
+                <Select value={newStatus} onValueChange={(value: 'open' | 'in_progress' | 'waiting' | 'closed') => setNewStatus(value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar status" />
                   </SelectTrigger>
