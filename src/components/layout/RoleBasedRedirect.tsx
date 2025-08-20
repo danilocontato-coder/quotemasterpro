@@ -20,7 +20,7 @@ export const RoleBasedRedirect: React.FC = () => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/auth/login" replace />;
   }
 
   return <Navigate to={getRoleBasedRoute(user.role)} replace />;

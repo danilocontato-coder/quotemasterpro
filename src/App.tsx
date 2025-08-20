@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 
 // Auth pages
 import Login from '@/pages/auth/Login';
@@ -68,7 +69,7 @@ function App() {
                 <Route path="/auth/forgot-password" element={<ForgotPassword />} />
                 
                 {/* Public routes */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<RoleBasedRedirect />} />
                 
                 {/* Dashboard routes */}
                 <Route path="/dashboard" element={
