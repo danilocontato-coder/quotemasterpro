@@ -15,10 +15,12 @@ import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
 
-// Dashboard pages
-import Dashboard from '@/pages/Dashboard';
 import AdminDashboard from '@/pages/dashboards/AdminDashboard';
 import SupportDashboard from '@/pages/dashboards/SupportDashboard';
+import Dashboard from '@/pages/Dashboard';
+import { SuperAdminDashboard } from '@/pages/admin/SuperAdminDashboard';
+import { AccountsManagement } from '@/pages/admin/AccountsManagement';
+import { SystemSettings } from '@/pages/admin/SystemSettings';
 
 // Existing pages
 import Quotes from '@/pages/Quotes';
@@ -70,6 +72,30 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
                         <AdminDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/superadmin" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <SuperAdminDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/accounts" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AccountsManagement />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/settings" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <SystemSettings />
                       </ProtectedRoute>
                     } 
                   />
