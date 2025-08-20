@@ -21,6 +21,8 @@ import { Reports } from "./pages/Reports";
 import SupplierDashboard from "./pages/supplier/SupplierDashboard";
 import SupplierQuotes from "./pages/supplier/SupplierQuotes";
 import SupplierProducts from "./pages/supplier/SupplierProducts";
+import SupplierFinancial from "./pages/supplier/SupplierFinancial";
+import SupplierHistory from "./pages/supplier/SupplierHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +56,8 @@ const App = () => (
             <Route path="quotes" element={<SupplierQuotes />} />
             <Route path="quotes/:id" element={<div>Supplier Quote Detail - Coming Soon</div>} />
             <Route path="products" element={<SupplierProducts />} />
+            <Route path="financial" element={<SupplierFinancial />} />
+            <Route path="history" element={<SupplierHistory />} />
             <Route path="deliveries" element={<div>Supplier Deliveries - Coming Soon</div>} />
             <Route path="messages" element={<div>Supplier Messages - Coming Soon</div>} />
             <Route path="settings" element={<div>Supplier Settings - Coming Soon</div>} />

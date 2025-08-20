@@ -5,7 +5,9 @@ import {
   Settings, 
   Home,
   Truck,
-  MessageSquare
+  MessageSquare,
+  DollarSign,
+  History
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -24,14 +26,12 @@ const navigationItems = [
   { title: "Dashboard", url: "/supplier", icon: Home },
   { title: "Cotações", url: "/supplier/quotes", icon: FileText },
   { title: "Meus Produtos", url: "/supplier/products", icon: Package2 },
+  { title: "Financeiro", url: "/supplier/financial", icon: DollarSign },
   { title: "Entregas", url: "/supplier/deliveries", icon: Truck },
 ];
 
-const communicationItems = [
-  { title: "Mensagens", url: "/supplier/messages", icon: MessageSquare },
-];
-
 const systemItems = [
+  { title: "Histórico", url: "/supplier/history", icon: History },
   { title: "Configurações", url: "/supplier/settings", icon: Settings },
 ];
 
@@ -93,20 +93,18 @@ export function SupplierSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {communicationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="h-10">
-                    <NavLink 
-                      to={item.url} 
-                      end
-                      className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="h-10">
+                  <NavLink 
+                    to="/supplier/messages" 
+                    end
+                    className={`nav-item ${isActive("/supplier/messages") ? 'active' : ''}`}
+                  >
+                    <MessageSquare className="h-5 w-5" />
+                    {!isCollapsed && <span>Mensagens</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -11,6 +11,7 @@ import { useSupplierProducts, SupplierProduct } from "@/hooks/useSupplierProduct
 import { CreateProductModal } from "@/components/supplier/CreateProductModal";
 import { EditProductModal } from "@/components/supplier/EditProductModal";
 import { StockManagementModal } from "@/components/supplier/StockManagementModal";
+import { CategoryManagerModal } from "@/components/supplier/CategoryManagerModal";
 import { toast } from "@/hooks/use-toast";
 
 export default function SupplierProducts() {
@@ -20,6 +21,7 @@ export default function SupplierProducts() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SupplierProduct | null>(null);
 
   const { 
@@ -129,6 +131,13 @@ export default function SupplierProducts() {
         >
           <Plus className="mr-2 h-4 w-4" />
           Novo Produto
+        </Button>
+        <Button 
+          onClick={() => setIsCategoryModalOpen(true)}
+          variant="outline"
+        >
+          <Package className="mr-2 h-4 w-4" />
+          Gerenciar Categorias
         </Button>
       </div>
 
@@ -297,6 +306,11 @@ export default function SupplierProducts() {
         product={selectedProduct}
         open={isStockModalOpen}
         onOpenChange={setIsStockModalOpen}
+      />
+
+      <CategoryManagerModal
+        open={isCategoryModalOpen}
+        onOpenChange={setIsCategoryModalOpen}
       />
     </div>
   );
