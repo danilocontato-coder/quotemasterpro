@@ -22,6 +22,9 @@ import { SuperAdminDashboard } from '@/pages/admin/SuperAdminDashboard';
 import { AccountsManagement } from '@/pages/admin/AccountsManagement';
 import { SystemSettings } from '@/pages/admin/SystemSettings';
 import { ClientsManagement } from '@/pages/admin/ClientsManagement';
+import { SuppliersManagement } from '@/pages/admin/SuppliersManagement';
+import { PlansManagement } from '@/pages/admin/PlansManagement';
+import { IntegrationsManagement } from '@/pages/admin/IntegrationsManagement';
 
 // Existing pages
 import Quotes from '@/pages/Quotes';
@@ -112,7 +115,23 @@ function App() {
                     path="/admin/suppliers" 
                     element={
                       <ProtectedRoute allowedRoles={['admin']}>
-                        <AdminSuppliers />
+                        <SuppliersManagement />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/plans" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <PlansManagement />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/integrations" 
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <IntegrationsManagement />
                       </ProtectedRoute>
                     } 
                   />
