@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,10 @@ export default function Quotes() {
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
+  
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6; // 6 cotações por página para visualização confortável
   
   const { quotes, addQuote, updateQuote, deleteQuote } = useQuotes();
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
@@ -114,6 +118,22 @@ export default function Quotes() {
     return diffDays <= 2 && diffDays >= 0;
   }).length;
   const responseRate = totalActive > 0 ? Math.round((finalizedQuotes / totalActive) * 100) : 0;
+
+  // Cálculos de paginação
+  const totalPages = Math.ceil(filteredQuotes.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentQuotes = filteredQuotes.slice(startIndex, endIndex);
+
+  // Reset da página quando filtros mudam
+  const resetPage = () => {
+    setCurrentPage(1);
+  };
+
+  // Resetar página quando filtros mudam
+  useEffect(() => {
+    resetPage();
+  }, [searchTerm, activeFilter]);
 
   const statusOptions = [
     { value: "all", label: "Todas" },
@@ -306,7 +326,7 @@ export default function Quotes() {
                 </tr>
               </thead>
               <tbody>
-                {filteredQuotes.map((quote) => (
+                {currentQuotes.map((quote) => (
                   <tr key={quote.id}>
                     <td>
                       <div>
@@ -394,6 +414,51 @@ export default function Quotes() {
               </tbody>
             </table>
           </div>
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between p-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredQuotes.length)} de {filteredQuotes.length} cotações
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-10"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

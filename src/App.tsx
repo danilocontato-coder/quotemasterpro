@@ -10,7 +10,7 @@ import Quotes from "./pages/Quotes";
 import Suppliers from "./pages/Suppliers";
 import Products from "./pages/Products";
 import { Settings } from "./pages/Settings";
-import { Users } from "./pages/Users";
+import Users from "./pages/Users";
 import { ApprovalLevels } from "./pages/ApprovalLevels";
 import { Approvals } from "./pages/Approvals";
 import { Permissions } from "./pages/Permissions";

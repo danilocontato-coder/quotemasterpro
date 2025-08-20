@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Search, Filter, Eye, Edit, Package, AlertTriangle, Wrench, Leaf, Zap, Upload, TrendingUp, Trash2, History } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Search, Filter, Eye, Edit, Package, AlertTriangle, Wrench, Leaf, Zap, Upload, TrendingUp, Trash2, History, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,10 @@ export default function Products() {
   const [stockModalOpen, setStockModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [logModalOpen, setLogModalOpen] = useState(false);
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9; // 9 itens por página (grid 3x3 confortável)
 
   const {
     items,
@@ -67,6 +71,22 @@ export default function Products() {
   const normalStockItems = items.filter(i => i.type === "product" && i.stockQuantity > 10).length;
   const lowStockItems = items.filter(i => i.type === "product" && i.stockQuantity > 5 && i.stockQuantity <= 10).length;
   const criticalStockItems = items.filter(i => i.type === "product" && i.stockQuantity <= 5).length;
+
+  // Cálculos de paginação
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = filteredItems.slice(startIndex, endIndex);
+
+  // Reset da página quando filtros mudam
+  const resetPage = () => {
+    setCurrentPage(1);
+  };
+
+  // Resetar página quando filtros mudam
+  useEffect(() => {
+    resetPage();
+  }, [searchTerm, activeFilter]);
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -234,8 +254,9 @@ export default function Products() {
       </Card>
 
       {/* Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredItems.map((item) => {
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {currentItems.map((item) => {
           const stockStatus = getStockStatus(item.stockQuantity);
           const isService = item.type === 'service';
           return (
@@ -363,6 +384,52 @@ export default function Products() {
           );
         })}
       </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Mostrando {startIndex + 1} a {Math.min(endIndex, filteredItems.length)} de {filteredItems.length} itens
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  className="w-10"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
 
       {/* Empty State */}
       {filteredItems.length === 0 && (
