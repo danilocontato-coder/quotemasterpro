@@ -36,13 +36,13 @@ export function MainLayout() {
               <div className="text-right mr-4">
                 {isLoading ? (
                   <div className="animate-pulse">
-                    <div className="h-4 bg-muted rounded w-32 mb-1"></div>
-                    <div className="h-3 bg-muted rounded w-16"></div>
+                    <div className="h-3 bg-muted rounded w-32 mb-1"></div>
+                    <div className="h-2 bg-muted rounded w-16"></div>
                   </div>
                 ) : (
                   <>
-                    <p className="text-sm font-medium text-foreground">{clientName}</p>
-                    <p className="text-xs text-muted-foreground">{planDisplayName}</p>
+                    <p className="text-xs font-medium text-foreground">{clientName}</p>
+                    <p className="text-[10px] text-muted-foreground">{planDisplayName}</p>
                   </>
                 )}
               </div>

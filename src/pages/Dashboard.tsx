@@ -20,27 +20,10 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Visão geral do sistema de cotações e orçamentos
-            </p>
-          </div>
-          <div className="text-right">
-            {isLoading ? (
-              <div className="animate-pulse">
-                <div className="h-6 bg-muted rounded w-48 mb-2"></div>
-                <div className="h-4 bg-muted rounded w-24"></div>
-              </div>
-            ) : (
-              <>
-                <p className="text-lg font-semibold text-foreground">{clientName}</p>
-                <p className="text-sm text-muted-foreground">{planDisplayName} • Ativo</p>
-              </>
-            )}
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Visão geral do sistema de cotações e orçamentos
+        </p>
       </div>
 
       {/* Primary Metrics */}
