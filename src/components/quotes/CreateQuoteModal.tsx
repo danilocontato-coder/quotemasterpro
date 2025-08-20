@@ -8,10 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Stepper } from '@/components/ui/stepper';
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ProductSearchModal } from "./ProductSearchModal";
 import { NewProductForm } from "./NewProductForm";
 import { NewSupplierModal } from "@/components/suppliers/NewSupplierModal";
 import { QuoteSendingProgress } from "./QuoteSendingProgress";
+import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
 import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup, Quote } from '@/data/mockData';
 import { notificationService, QuoteNotificationData } from '@/services/NotificationService';
 
@@ -43,6 +45,7 @@ const steps = [
 ];
 
 export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuote }: CreateQuoteModalProps) {
+  const { enforceLimit, isNearLimit, currentUsage, userPlan } = useSubscriptionGuard();
   const [currentStep, setCurrentStep] = useState(1);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showNewProductForm, setShowNewProductForm] = useState(false);
@@ -269,6 +272,11 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
 
   const handleSubmit = async () => {
     if (!updateContactValidationErrors()) {
+      return;
+    }
+    
+    // Verificar limites antes de criar cotação
+    if (!enforceLimit('CREATE_QUOTE')) {
       return;
     }
     

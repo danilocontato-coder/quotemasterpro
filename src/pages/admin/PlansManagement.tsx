@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
+import { CreatePlanModal } from '@/components/admin/CreatePlanModal';
 
 export const PlansManagement = () => {
   const {
@@ -566,6 +567,13 @@ export const PlansManagement = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal de Criação de Plano */}
+      <CreatePlanModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onCreatePlan={createPlan}
+      />
     </div>
   );
 };
