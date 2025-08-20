@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { CreateQuoteModal } from "@/components/quotes/CreateQuoteModal";
 import { DeleteConfirmationModal } from "@/components/quotes/DeleteConfirmationModal";
+import { QuoteComparisonButton } from "@/components/quotes/QuoteComparisonButton";
+import { DecisionMatrixManager } from "@/components/quotes/DecisionMatrixManager";
 import { useQuotes } from "@/hooks/useQuotes";
 import { getStatusColor, getStatusText, Quote } from "@/data/mockData";
 import { toast } from "sonner";
@@ -17,6 +19,7 @@ export default function Quotes() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isMatrixManagerOpen, setIsMatrixManagerOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   
@@ -121,13 +124,23 @@ export default function Quotes() {
             Gerencie todas as cotações e solicitações de orçamento
           </p>
         </div>
-        <Button 
-          className="btn-corporate flex items-center gap-2"
-          onClick={() => setIsCreateModalOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Nova Cotação
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => setIsMatrixManagerOpen(true)}
+          >
+            <Archive className="h-4 w-4" />
+            Matrizes de Decisão
+          </Button>
+          <Button 
+            className="btn-corporate flex items-center gap-2"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Nova Cotação
+          </Button>
+        </div>
       </div>
 
       {/* Filter Metrics Cards */}
@@ -326,7 +339,7 @@ export default function Quotes() {
                       </p>
                     </td>
                     <td>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -344,6 +357,16 @@ export default function Quotes() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        
+                        {/* Comparator button - only show for quotes with multiple proposals */}
+                        {(quote.status === 'receiving' || quote.status === 'approved') && quote.responsesCount >= 1 && (
+                          <QuoteComparisonButton
+                            quoteId={quote.id}
+                            quoteTitle={quote.title}
+                            disabled={false}
+                          />
+                        )}
+                        
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -382,6 +405,12 @@ export default function Quotes() {
         onOpenChange={setIsDeleteModalOpen}
         quote={quoteToDelete}
         onConfirm={handleDeleteConfirm}
+      />
+
+      {/* Decision Matrix Manager */}
+      <DecisionMatrixManager
+        open={isMatrixManagerOpen}
+        onClose={() => setIsMatrixManagerOpen(false)}
       />
 
       {/* Empty State */}
