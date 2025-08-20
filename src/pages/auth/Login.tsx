@@ -35,7 +35,6 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Redirect to intended page or dashboard
       navigate(from, { replace: true });
     } catch (err) {
       setError('Erro inesperado. Tente novamente.');
