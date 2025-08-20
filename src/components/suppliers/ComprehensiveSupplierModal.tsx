@@ -126,26 +126,33 @@ export function ComprehensiveSupplierModal({
   useEffect(() => {
     if (editingSupplier && open) {
       setFormData({
-        companyName: editingSupplier.companyName,
-        cnpj: editingSupplier.cnpj,
-        email: editingSupplier.email,
-        phone: editingSupplier.phone,
+        companyName: editingSupplier.name || "",
+        cnpj: editingSupplier.cnpj || "",
+        email: editingSupplier.email || "",
+        phone: editingSupplier.phone || "",
         website: editingSupplier.website || "",
-        address: editingSupplier.address,
-        contacts: editingSupplier.contacts,
-        groupId: editingSupplier.groupId || "",
-        status: editingSupplier.status,
-        plan: editingSupplier.plan,
+        address: editingSupplier.address || {},
+        contacts: [], // Initialize as empty array since Supabase structure is different
+        groupId: "", // Initialize as empty since not in Supabase structure
+        status: editingSupplier.status || "pending",
+        plan: editingSupplier.subscription_plan_id || "basic",
         loginCredentials: {
-          username: editingSupplier.loginCredentials.username,
+          username: "", // Initialize as empty since not in Supabase structure
           password: "",
-          temporaryPassword: editingSupplier.loginCredentials.temporaryPassword
+          temporaryPassword: true
         },
-        businessInfo: editingSupplier.businessInfo,
-        documents: editingSupplier.documents,
-        notes: editingSupplier.notes || "",
-        certifications: editingSupplier.certifications,
-        insurance: editingSupplier.insurance || {
+        businessInfo: editingSupplier.business_info || {
+          categories: [],
+          specialties: editingSupplier.specialties || [],
+          servicesOffered: [],
+          coverage: [],
+          businessHours: "Segunda a Sexta: 8h às 18h",
+          languages: ["Português"]
+        },
+        documents: [], // Initialize as empty array since not in Supabase structure
+        notes: "", // Initialize as empty since not in Supabase structure
+        certifications: [], // Initialize as empty array since not in Supabase structure
+        insurance: {
           provider: "",
           policyNumber: "",
           expiryDate: "",
