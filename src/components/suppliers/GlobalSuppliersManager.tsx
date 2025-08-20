@@ -424,7 +424,7 @@ export function GlobalSuppliersManager({
                     <SelectValue placeholder="Selecionar grupo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum grupo</SelectItem>
+                    <SelectItem value="none">Nenhum grupo</SelectItem>
                     {supplierGroups.map(group => (
                       <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
                     ))}
