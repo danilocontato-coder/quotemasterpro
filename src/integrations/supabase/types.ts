@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      approval_levels: {
+        Row: {
+          active: boolean
+          amount_threshold: number
+          approvers: string[]
+          client_id: string
+          created_at: string
+          id: string
+          name: string
+          order_level: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount_threshold?: number
+          approvers?: string[]
+          client_id: string
+          created_at?: string
+          id?: string
+          name: string
+          order_level?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount_threshold?: number
+          approvers?: string[]
+          client_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          order_level?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      approvals: {
+        Row: {
+          approved_at: string | null
+          approver_id: string | null
+          comments: string | null
+          created_at: string
+          id: string
+          quote_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approver_id?: string | null
+          comments?: string | null
+          created_at?: string
+          id?: string
+          quote_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approver_id?: string | null
+          comments?: string | null
+          created_at?: string
+          id?: string
+          quote_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -93,6 +162,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      integrations: {
+        Row: {
+          active: boolean
+          api_key_encrypted: string | null
+          client_id: string | null
+          configuration: Json
+          created_at: string
+          id: string
+          integration_type: string
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          api_key_encrypted?: string | null
+          client_id?: string | null
+          configuration?: Json
+          created_at?: string
+          id?: string
+          integration_type: string
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          api_key_encrypted?: string | null
+          client_id?: string | null
+          configuration?: Json
+          created_at?: string
+          id?: string
+          integration_type?: string
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {

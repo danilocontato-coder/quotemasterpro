@@ -31,13 +31,18 @@ export const useSupabaseSuppliers = () => {
 
   const fetchSuppliers = async () => {
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('suppliers')
         .select('*')
         .order('name', { ascending: true });
 
-      if (error) throw error;
-      setSuppliers(data || []);
+      if (error) {
+        console.error('Suppliers fetch error:', error);
+        throw error;
+      }
+      
+      setSuppliers((data as Supplier[]) || []);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       toast({
@@ -50,111 +55,10 @@ export const useSupabaseSuppliers = () => {
     }
   };
 
-  const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>) => {
-    try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .insert([supplierData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Add audit log
-      await supabase.from('audit_logs').insert([{
-        action: 'CREATE_SUPPLIER',
-        entity_type: 'suppliers',
-        entity_id: data.id,
-        details: { supplier_data: supplierData }
-      }]);
-
-      await fetchSuppliers();
-      toast({
-        title: "Fornecedor criado",
-        description: "Fornecedor cadastrado com sucesso."
-      });
-      return data;
-    } catch (error) {
-      console.error('Error creating supplier:', error);
-      toast({
-        title: "Erro ao criar fornecedor",
-        description: "Não foi possível cadastrar o fornecedor.",
-        variant: "destructive"
-      });
-      throw error;
-    }
-  };
-
-  const updateSupplier = async (supplierId: string, updates: Partial<Supplier>) => {
-    try {
-      const { error } = await supabase
-        .from('suppliers')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', supplierId);
-
-      if (error) throw error;
-
-      // Add audit log
-      await supabase.from('audit_logs').insert([{
-        action: 'UPDATE_SUPPLIER',
-        entity_type: 'suppliers',
-        entity_id: supplierId,
-        details: { updates }
-      }]);
-
-      await fetchSuppliers();
-      toast({
-        title: "Fornecedor atualizado",
-        description: "Dados do fornecedor atualizados com sucesso."
-      });
-    } catch (error) {
-      console.error('Error updating supplier:', error);
-      toast({
-        title: "Erro ao atualizar fornecedor",
-        description: "Não foi possível atualizar os dados do fornecedor.",
-        variant: "destructive"
-      });
-      throw error;
-    }
-  };
-
-  const updateSupplierStatus = async (supplierId: string, status: Supplier['status']) => {
-    try {
-      const { error } = await supabase
-        .from('suppliers')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', supplierId);
-
-      if (error) throw error;
-
-      // Add audit log
-      await supabase.from('audit_logs').insert([{
-        action: 'UPDATE_SUPPLIER_STATUS',
-        entity_type: 'suppliers',
-        entity_id: supplierId,
-        details: { new_status: status }
-      }]);
-
-      await fetchSuppliers();
-      toast({
-        title: "Status atualizado",
-        description: "Status do fornecedor foi atualizado com sucesso."
-      });
-    } catch (error) {
-      console.error('Error updating supplier status:', error);
-      toast({
-        title: "Erro ao atualizar status",
-        description: "Não foi possível atualizar o status do fornecedor.",
-        variant: "destructive"
-      });
-      throw error;
-    }
-  };
-
   // Real-time subscription
   useEffect(() => {
     fetchSuppliers();
-
+    
     const channel = supabase
       .channel('suppliers-changes')
       .on(
@@ -178,9 +82,6 @@ export const useSupabaseSuppliers = () => {
   return {
     suppliers,
     isLoading,
-    createSupplier,
-    updateSupplier,
-    updateSupplierStatus,
     refetch: fetchSuppliers
   };
 };
