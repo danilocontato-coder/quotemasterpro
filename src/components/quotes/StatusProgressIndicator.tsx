@@ -16,6 +16,18 @@ const statusSteps = [
   { key: 'finalized', label: 'Finalizada', icon: Package },
 ];
 
+const getStatusVariant = (status: Quote['status']) => {
+  switch (status) {
+    case 'draft': return 'draft';
+    case 'active': return 'sent';
+    case 'receiving': return 'receiving';
+    case 'approved': return 'approved';
+    case 'finalized': return 'finalized';
+    case 'trash': return 'destructive';
+    default: return 'default';
+  }
+};
+
 export function StatusProgressIndicator({ status, showProgress = false }: StatusProgressIndicatorProps) {
   const currentStepIndex = statusSteps.findIndex(step => step.key === status);
   
@@ -24,15 +36,17 @@ export function StatusProgressIndicator({ status, showProgress = false }: Status
     if (!currentStep) return null;
     
     const Icon = currentStep.icon;
+    const variant = getStatusVariant(status) as any;
+    
     return (
-      <Badge className="flex items-center gap-1">
+      <Badge variant={variant} className="flex items-center gap-1">
         <Icon className="h-3 w-3" />
         {currentStep.label}
       </Badge>
     );
   }
 
-  return (
+return (
     <div className="flex items-center gap-2">
       {statusSteps.map((step, index) => {
         const Icon = step.icon;
@@ -40,15 +54,37 @@ export function StatusProgressIndicator({ status, showProgress = false }: Status
         const isCurrent = index === currentStepIndex;
         const isPending = index > currentStepIndex;
         
+        let stepClasses = '';
+        if (isCompleted) {
+          stepClasses = 'bg-green-100 text-green-800';
+        } else if (isCurrent) {
+          // Use specific colors based on current step
+          switch (step.key) {
+            case 'draft':
+              stepClasses = 'bg-gray-100 text-gray-700';
+              break;
+            case 'active':
+              stepClasses = 'bg-blue-100 text-blue-800';
+              break;
+            case 'receiving':
+              stepClasses = 'bg-orange-100 text-orange-800';
+              break;
+            case 'approved':
+              stepClasses = 'bg-green-100 text-green-800';
+              break;
+            case 'finalized':
+              stepClasses = 'bg-green-200 text-green-900';
+              break;
+            default:
+              stepClasses = 'bg-blue-100 text-blue-800';
+          }
+        } else {
+          stepClasses = 'bg-gray-100 text-gray-500';
+        }
+        
         return (
           <React.Fragment key={step.key}>
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-              isCompleted 
-                ? 'bg-green-100 text-green-800' 
-                : isCurrent 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'bg-gray-100 text-gray-500'
-            }`}>
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${stepClasses}`}>
               <Icon className="h-3 w-3" />
               <span className="font-medium">{step.label}</span>
             </div>
