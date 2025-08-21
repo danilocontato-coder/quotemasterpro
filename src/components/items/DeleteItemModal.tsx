@@ -21,7 +21,7 @@ export function DeleteItemModal({ item, open, onOpenChange, onConfirm }: DeleteI
   if (!item) return null;
 
   const isService = item.category === 'Serviços' || item.type === 'service';
-  const hasStock = !isService && item.stockQuantity > 0;
+  const hasStock = !isService && (item.stock_quantity || 0) > 0;
 
   const handleConfirm = async () => {
     if (hasStock && !reason.trim()) {
@@ -67,7 +67,7 @@ export function DeleteItemModal({ item, open, onOpenChange, onConfirm }: DeleteI
                     <p><strong>Código:</strong> {item.code}</p>
                     <p><strong>Nome:</strong> {item.name}</p>
                     {!isService && (
-                      <p><strong>Estoque atual:</strong> {item.stockQuantity} unidades</p>
+                      <p><strong>Estoque atual:</strong> {item.stock_quantity || 0} unidades</p>
                     )}
                   </div>
                 </div>
@@ -83,7 +83,7 @@ export function DeleteItemModal({ item, open, onOpenChange, onConfirm }: DeleteI
                   <div className="space-y-2">
                     <p className="font-medium text-warning">Atenção: Item com estoque</p>
                     <p className="text-sm text-muted-foreground">
-                      Este produto possui {item.stockQuantity} unidades em estoque. 
+                      Este produto possui {item.stock_quantity || 0} unidades em estoque. 
                       A exclusão resultará na perda total do controle deste estoque.
                     </p>
                   </div>

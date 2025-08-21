@@ -56,19 +56,38 @@ export const useSupabaseProducts = () => {
     fetchProducts();
     
     const channel = supabase
-      .channel('products-changes')
+      .channel('products-realtime')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'products'
         },
-        () => {
-          // Debounce real-time updates
-          setTimeout(() => {
-            fetchProducts();
-          }, 500);
+        (payload) => {
+          setProducts(prev => [...prev, payload.new as Product].sort((a, b) => a.name.localeCompare(b.name)));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'products'
+        },
+        (payload) => {
+          setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'products'
+        },
+        (payload) => {
+          setProducts(prev => prev.filter(p => p.id !== payload.old.id));
         }
       )
       .subscribe();
@@ -106,7 +125,7 @@ export const useSupabaseProducts = () => {
 
       if (error) throw error;
 
-      setProducts(prev => [...prev, data as Product].sort((a, b) => a.name.localeCompare(b.name)));
+      // A lista será atualizada automaticamente pelo real-time subscription
       toast({
         title: "Produto criado",
         description: `O produto "${productData.name}" foi criado com sucesso.`,
@@ -158,12 +177,12 @@ export const useSupabaseProducts = () => {
     try {
       const { error } = await supabase
         .from('products')
-        .update({ status: 'discontinued' })
+        .delete()
         .eq('id', id);
 
       if (error) throw error;
 
-      setProducts(prev => prev.filter(product => product.id !== id));
+      // A lista será atualizada automaticamente pelo real-time subscription
       toast({
         title: "Produto removido",
         description: `O produto "${productName}" foi removido com sucesso.`,

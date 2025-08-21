@@ -34,11 +34,6 @@ export default function Products() {
 
   const { products: items, isLoading, refetch, addProduct, updateProduct, deleteProduct, updateStock } = useSupabaseProducts();
 
-  // Load products on component mount
-  useEffect(() => {
-    refetch();
-  }, []); // Remove refetch from dependencies to prevent loop
-
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
