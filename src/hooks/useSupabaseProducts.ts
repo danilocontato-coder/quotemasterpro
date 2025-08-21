@@ -65,6 +65,7 @@ export const useSupabaseProducts = () => {
           table: 'products'
         },
         (payload) => {
+          console.log('Real-time INSERT:', payload.new);
           setProducts(prev => [...prev, payload.new as Product].sort((a, b) => a.name.localeCompare(b.name)));
         }
       )
@@ -76,6 +77,7 @@ export const useSupabaseProducts = () => {
           table: 'products'
         },
         (payload) => {
+          console.log('Real-time UPDATE:', payload.new);
           setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
         }
       )
@@ -87,10 +89,13 @@ export const useSupabaseProducts = () => {
           table: 'products'
         },
         (payload) => {
+          console.log('Real-time DELETE:', payload.old);
           setProducts(prev => prev.filter(p => p.id !== payload.old.id));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -125,6 +130,7 @@ export const useSupabaseProducts = () => {
 
       if (error) throw error;
 
+      console.log('Product created successfully:', data);
       // A lista será atualizada automaticamente pelo real-time subscription
       toast({
         title: "Produto criado",
@@ -175,13 +181,18 @@ export const useSupabaseProducts = () => {
 
   const deleteProduct = async (id: string, productName: string) => {
     try {
+      console.log('Attempting to delete product:', id, productName);
       const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
+      console.log('Product deleted successfully:', id);
       // A lista será atualizada automaticamente pelo real-time subscription
       toast({
         title: "Produto removido",
