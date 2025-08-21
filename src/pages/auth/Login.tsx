@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const Login: React.FC = () => {
@@ -74,6 +74,11 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+              <FileText className="h-6 w-6 text-primary-foreground" />
+            </div>
+          </div>
           <CardTitle className="text-2xl font-bold text-center">QuoteMaster Pro</CardTitle>
           <CardDescription className="text-center">
             Entre na sua conta para continuar
