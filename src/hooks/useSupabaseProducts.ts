@@ -131,7 +131,10 @@ export const useSupabaseProducts = () => {
       if (error) throw error;
 
       console.log('Product created successfully:', data);
-      // A lista será atualizada automaticamente pelo real-time subscription
+      
+      // Update local state immediately for better UX
+      setProducts(prev => [...prev, data as Product].sort((a, b) => a.name.localeCompare(b.name)));
+      
       toast({
         title: "Produto criado",
         description: `O produto "${productData.name}" foi criado com sucesso.`,
@@ -193,7 +196,10 @@ export const useSupabaseProducts = () => {
       }
 
       console.log('Product deleted successfully:', id);
-      // A lista será atualizada automaticamente pelo real-time subscription
+      
+      // Update local state immediately for better UX
+      setProducts(prev => prev.filter(product => product.id !== id));
+      
       toast({
         title: "Produto removido",
         description: `O produto "${productName}" foi removido com sucesso.`,
