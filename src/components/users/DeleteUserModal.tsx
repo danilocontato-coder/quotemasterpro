@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useUsers } from '@/hooks/useUsersAndGroups';
+import { useSupabaseUsers } from '@/hooks/useSupabaseUsers';
 import { toast } from 'sonner';
 
 interface DeleteUserModalProps {
@@ -18,17 +18,16 @@ interface DeleteUserModalProps {
 }
 
 export function DeleteUserModal({ open, onClose, user }: DeleteUserModalProps) {
-  const { deleteUser } = useUsers();
+  const { deleteUser } = useSupabaseUsers();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      deleteUser(user.id);
-      toast.success('Usuário excluído com sucesso');
+      await deleteUser(user.id);
       onClose();
     } catch (error) {
-      toast.error('Erro ao excluir usuário');
+      // Error is handled in the hook
     } finally {
       setIsDeleting(false);
     }

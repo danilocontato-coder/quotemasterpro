@@ -33,17 +33,15 @@ import {
   Users as UsersIcon,
   UserCog
 } from "lucide-react";
-import { CreateUserModal } from "@/components/users/CreateUserModal";
-import { EditUserModal } from "@/components/users/EditUserModal";
+import { CreateUserModal } from "@/components/users/CreateUserModalSupabase";
+import { EditUserModal } from "@/components/users/EditUserModalSupabase";
 import { DeleteUserModal } from "@/components/users/DeleteUserModal";
-import { CreateProfileModal } from "@/components/profiles/CreateProfileModal";
-import { useUsers, useUserGroups } from "@/hooks/useUsersAndGroups";
-import { GroupManager } from "@/components/users/GroupManager";
+import { useSupabaseUsers } from "@/hooks/useSupabaseUsers";
+import { GroupManager } from "@/components/users/GroupManagerSupabase";
 import { SupabaseIntegrationStatus } from "@/components/layout/SupabaseIntegrationStatus";
 
 export default function Users() {
-  const { users, searchTerm, setSearchTerm } = useUsers();
-  const { groups } = useUserGroups();
+  const { users, groups, loading, searchTerm, setSearchTerm } = useSupabaseUsers();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [groupManagerOpen, setGroupManagerOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -54,11 +52,7 @@ export default function Users() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8; // 8 usuários por página na tabela
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users;
 
   // Cálculos de paginação
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
@@ -177,7 +171,7 @@ export default function Users() {
             <div className="flex items-center">
               <Mail className="h-8 w-8 text-orange-600" />
               <div className="ml-4">
-                <p className="text-2xl font-bold">{users.filter(u => u.mustChangePassword).length}</p>
+                <p className="text-2xl font-bold">{users.filter(u => u.force_password_change).length}</p>
                 <p className="text-sm text-muted-foreground">Senhas Pendentes</p>
               </div>
             </div>
@@ -204,121 +198,134 @@ export default function Users() {
           </div>
 
           <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Papel</TableHead>
-                  <TableHead>Grupos</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Último Acesso</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  <span>Carregando usuários...</span>
+                </div>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Papel</TableHead>
+                    <TableHead>Grupos</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Último Acesso</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
                   {currentUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarImage src={user.avatar} />
-                          <AvatarFallback>
-                            {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{user.name}</div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <Avatar>
+                            <AvatarImage src={user.avatar_url} />
+                            <AvatarFallback>
+                              {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{user.name}</div>
+                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getRoleColor(user.role)}>
-                        {getRoleLabel(user.role)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {user.groupIds?.slice(0, 2).map(groupId => {
-                          const group = groups.find(g => g.id === groupId);
-                          return group ? (
-                            <Badge 
-                              key={group.id} 
-                              variant="outline" 
-                              className="text-xs"
-                              style={{ 
-                                borderColor: group.color,
-                                color: group.color
-                              }}
-                            >
-                              {group.name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getRoleColor(user.role)}>
+                          {getRoleLabel(user.role)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {user.groups?.slice(0, 2).map(groupName => {
+                            const group = groups.find(g => g.name === groupName);
+                            return group ? (
+                              <Badge 
+                                key={group.id} 
+                                variant="outline" 
+                                className="text-xs"
+                                style={{ 
+                                  borderColor: group.color,
+                                  color: group.color
+                                }}
+                              >
+                                {group.name}
+                              </Badge>
+                            ) : (
+                              <Badge key={groupName} variant="outline" className="text-xs">
+                                {groupName}
+                              </Badge>
+                            );
+                          })}
+                          {user.groups && user.groups.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{user.groups.length - 2}
                             </Badge>
-                          ) : null;
-                        })}
-                        {user.groupIds?.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{user.groupIds.length - 2}
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm">
+                            <Mail className="h-3 w-3 mr-1" />
+                            {user.email}
+                          </div>
+                          {user.phone && (
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3 mr-1" />
+                              {user.phone}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={user.status === "active" ? "default" : "secondary"}
+                          className={getStatusColor(user.status)}
+                        >
+                          {user.status === "active" ? "Ativo" : "Inativo"}
+                        </Badge>
+                        {user.force_password_change && (
+                          <Badge variant="outline" className="ml-2 text-xs text-yellow-600">
+                            Senha Pendente
                           </Badge>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center text-sm">
-                          <Mail className="h-3 w-3 mr-1" />
-                          {user.email}
-                        </div>
-                        {user.phone && (
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Phone className="h-3 w-3 mr-1" />
-                            {user.phone}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={user.status === "active" ? "default" : "secondary"}
-                        className={getStatusColor(user.status)}
-                      >
-                        {user.status === "active" ? "Ativo" : "Inativo"}
-                      </Badge>
-                      {user.mustChangePassword && (
-                        <Badge variant="outline" className="ml-2 text-xs text-yellow-600">
-                          Senha Pendente
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {user.lastAccess}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(user)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDelete(user)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {user.last_access ? new Date(user.last_access).toLocaleDateString() : 'Nunca'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(user)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(user)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
+            )}
 
               {/* Paginação */}
               {totalPages > 1 && (

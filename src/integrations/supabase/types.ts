@@ -749,6 +749,144 @@ export type Database = {
           },
         ]
       }
+      user_group_memberships: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_group_memberships_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "user_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_group_memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_groups: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_system_group: boolean | null
+          name: string
+          permissions: string[] | null
+          updated_at: string
+          user_count: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system_group?: boolean | null
+          name: string
+          permissions?: string[] | null
+          updated_at?: string
+          user_count?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system_group?: boolean | null
+          name?: string
+          permissions?: string[] | null
+          updated_at?: string
+          user_count?: number | null
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          auth_user_id: string | null
+          avatar_url: string | null
+          client_id: string | null
+          created_at: string
+          email: string
+          force_password_change: boolean | null
+          id: string
+          last_access: string | null
+          name: string
+          phone: string | null
+          role: string
+          status: string
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          client_id?: string | null
+          created_at?: string
+          email: string
+          force_password_change?: boolean | null
+          id?: string
+          last_access?: string | null
+          name: string
+          phone?: string | null
+          role?: string
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          avatar_url?: string | null
+          client_id?: string | null
+          created_at?: string
+          email?: string
+          force_password_change?: boolean | null
+          id?: string
+          last_access?: string | null
+          name?: string
+          phone?: string | null
+          role?: string
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
