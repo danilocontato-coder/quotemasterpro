@@ -9,6 +9,8 @@ import { Stepper } from '@/components/ui/stepper';
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ProductSearchModalSupabase } from "./ProductSearchModalSupabase";
+import { NewProductFormSupabase } from "./NewProductFormSupabase";
 import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
@@ -51,8 +53,8 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
   const { suppliers, isLoading: suppliersLoading } = useSupabaseSuppliers();
   
   const [currentStep, setCurrentStep] = useState(1);
-  const [newProductName, setNewProductName] = useState('');
-  const [newProductQuantity, setNewProductQuantity] = useState(1);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [showNewProductForm, setShowNewProductForm] = useState(false);
   
   const [formData, setFormData] = useState<QuoteFormData>({
     title: "",
@@ -109,48 +111,28 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     }
   };
 
-  const handleAddNewProduct = async () => {
-    if (!newProductName.trim() || newProductQuantity < 1) return;
+  const handleProductSelect = (product: any, quantity: number) => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, {
+        product_name: product.name,
+        product_id: product.id,
+        quantity: quantity
+      }]
+    }));
+    setShowProductSearch(false);
+  };
 
-    // Try to find existing product first
-    const existingProduct = products.find(p => 
-      p.name.toLowerCase() === newProductName.toLowerCase()
-    );
-
-    if (existingProduct) {
-      // Use existing product
-      setFormData(prev => ({
-        ...prev,
-        items: [...prev.items, {
-          product_name: existingProduct.name,
-          product_id: existingProduct.id,
-          quantity: newProductQuantity
-        }]
-      }));
-    } else {
-      // Create new product
-      const newProduct = await addProduct({
-        name: newProductName,
-        code: `PRD-${Date.now()}`,
-        description: newProductName,
-        status: 'active',
-        stock_quantity: 0
-      });
-
-      if (newProduct) {
-        setFormData(prev => ({
-          ...prev,
-          items: [...prev.items, {
-            product_name: newProduct.name,
-            product_id: newProduct.id,
-            quantity: newProductQuantity
-          }]
-        }));
-      }
-    }
-
-    setNewProductName('');
-    setNewProductQuantity(1);
+  const handleProductCreate = (product: any, quantity: number) => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, {
+        product_name: product.name,
+        product_id: product.id,
+        quantity: quantity
+      }]
+    }));
+    setShowNewProductForm(false);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -257,25 +239,24 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
               <p className="text-sm text-muted-foreground">Adicione os produtos que deseja cotar</p>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Nome do produto..."
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  type="number"
-                  min="1"
-                  value={newProductQuantity}
-                  onChange={(e) => setNewProductQuantity(parseInt(e.target.value) || 1)}
-                  className="w-20"
-                />
-                <Button onClick={handleAddNewProduct} disabled={!newProductName.trim()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
+            {/* Botões de ação */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button 
+                variant="outline" 
+                className="h-12"
+                onClick={() => setShowProductSearch(true)}
+              >
+                <Search className="h-4 w-4 mr-2" />
+                Buscar Produtos
+              </Button>
+              
+              <Button 
+                className="h-12"
+                onClick={() => setShowNewProductForm(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Criar Novo
+              </Button>
             </div>
 
             {formData.items.length === 0 ? (
@@ -534,6 +515,20 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
             )}
           </div>
         </div>
+
+        {/* Product Search Modal */}
+        <ProductSearchModalSupabase
+          open={showProductSearch}
+          onClose={() => setShowProductSearch(false)}
+          onProductSelect={handleProductSelect}
+        />
+
+        {/* New Product Form Modal */}
+        <NewProductFormSupabase
+          open={showNewProductForm}
+          onClose={() => setShowNewProductForm(false)}
+          onProductCreate={handleProductCreate}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Quote } from '@/data/mockData';
+import { Quote } from '@/hooks/useSupabaseQuotes';
 
 interface DeleteConfirmationModalProps {
   open: boolean;

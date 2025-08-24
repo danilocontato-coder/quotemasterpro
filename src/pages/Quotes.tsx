@@ -13,7 +13,7 @@ import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
 import { StatusProgressIndicator } from "@/components/quotes/StatusProgressIndicator";
 import { EconomyNotification, useEconomyAlerts } from "@/components/quotes/EconomyNotification";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
-import { getStatusColor, getStatusText } from "@/data/mockData";
+import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { toast } from "sonner";
 
 export default function Quotes() {
