@@ -17,6 +17,7 @@ import { getStatusColor, getStatusText } from "@/data/mockData";
 import { toast } from "sonner";
 
 export default function Quotes() {
+  console.log('Quotes component rendering, CreateQuoteModalSupabase available:', typeof CreateQuoteModalSupabase);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -520,7 +521,10 @@ export default function Quotes() {
               }
             </p>
             {!searchTerm && statusFilter === "all" && (
-              <Button className="btn-corporate">
+              <Button 
+                className="btn-corporate"
+                onClick={() => setIsCreateModalOpen(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeira Cotação
               </Button>
