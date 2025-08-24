@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
-import { CreateQuoteModal } from "@/components/quotes/CreateQuoteModal";
+import { CreateQuoteModalSupabase } from "@/components/quotes/CreateQuoteModalSupabase";
 import { DeleteConfirmationModal } from "@/components/quotes/DeleteConfirmationModal";
 import { QuoteComparisonButton } from "@/components/quotes/QuoteComparisonButton";
 import { DecisionMatrixManager } from "@/components/quotes/DecisionMatrixManager";
@@ -468,8 +468,8 @@ export default function Quotes() {
       </Card>
 
       {/* Create/Edit Quote Modal */}
-      <CreateQuoteModal 
-        open={isCreateModalOpen} 
+      <CreateQuoteModalSupabase
+        open={isCreateModalOpen}
         onOpenChange={(open) => {
           setIsCreateModalOpen(open);
           if (!open) {

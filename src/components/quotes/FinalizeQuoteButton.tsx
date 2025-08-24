@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useToast } from "@/hooks/use-toast";
 
 interface FinalizeQuoteButtonProps {
@@ -12,7 +12,7 @@ export function FinalizeQuoteButton({
   quoteId, 
   disabled = false 
 }: FinalizeQuoteButtonProps) {
-  const { updateQuote } = useQuotes();
+  const { updateQuote } = useSupabaseQuotes();
   const { toast } = useToast();
 
   const handleFinalize = () => {

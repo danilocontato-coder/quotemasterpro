@@ -15,7 +15,8 @@ import { ComprehensiveSupplierModal } from "@/components/suppliers/Comprehensive
 import type { AdminSupplier } from "@/hooks/useAdminSuppliers";
 import { QuoteSendingProgress } from "./QuoteSendingProgress";
 import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
-import { mockSuppliers, mockSupplierGroups, Product, Supplier, SupplierGroup, Quote } from '@/data/mockData';
+import { Product, Supplier, SupplierGroup, Quote } from '@/data/mockData';
+import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { notificationService, QuoteNotificationData } from '@/services/NotificationService';
 
 interface QuoteFormData {
@@ -47,13 +48,11 @@ const steps = [
 
 export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuote }: CreateQuoteModalProps) {
   const { enforceLimit, isNearLimit, currentUsage, userPlan } = useSubscriptionGuard();
+  const { suppliers, isLoading: suppliersLoading } = useSupabaseSuppliers();
   const [currentStep, setCurrentStep] = useState(1);
   const [showProductSearch, setShowProductSearch] = useState(false);
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
-  
-  const [suppliers, setSuppliers] = useState(mockSuppliers);
-  const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [showEditSupplierModal, setShowEditSupplierModal] = useState(false);
   const [contactValidationErrors, setContactValidationErrors] = useState<{email: string[], whatsapp: string[]}>({
@@ -96,7 +95,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
       }));
 
       const supplierObj = editingQuote.supplierId 
-        ? mockSuppliers.find(s => s.id === editingQuote.supplierId)
+        ? suppliers.find(s => s.id === editingQuote.supplierId)
         : undefined;
 
       setFormData({
@@ -104,7 +103,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
         description: editingQuote.description,
         deadline: editingQuote.deadline ? editingQuote.deadline.split('T')[0] : '',
         items: mappedItems,
-        suppliers: supplierObj ? [supplierObj] : [],
+        suppliers: [],
         communicationMethods: {
           email: true,
           whatsapp: false,
@@ -127,7 +126,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
     }
   }, [editingQuote, open]);
 
-  const suggestedSuppliers = mockSuppliers.filter(supplier => {
+  const suggestedSuppliers = suppliers.filter(supplier => {
     if (formData.items.length === 0) return false;
     
     // Get categories from selected items
@@ -160,8 +159,8 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
 
   const getGroupName = (groupId?: string) => {
     if (!groupId) return null;
-    const group = mockSupplierGroups.find(g => g.id === groupId);
-    return group;
+    // TODO: Implement supplier groups when they are moved to Supabase
+    return null;
   };
 
   const handleStepClick = (stepId: number) => {
@@ -242,7 +241,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
   };
 
   const handleSupplierCreate = (supplier: Supplier) => {
-    setSuppliers(prev => [...prev, supplier]);
+    // Supplier will be created via Supabase hook and automatically updated via real-time
     setFormData(prev => ({
       ...prev,
       suppliers: [...prev.suppliers, supplier]
@@ -250,7 +249,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
   };
 
   const handleSupplierUpdate = (updatedSupplier: Supplier) => {
-    setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
+    // Supplier will be updated via Supabase hook and automatically updated via real-time
     setFormData(prev => ({
       ...prev,
       suppliers: prev.suppliers.map(s => s.id === updatedSupplier.id ? updatedSupplier : s)
@@ -504,9 +503,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
                   {suggestedSuppliers.slice(0, 3).map((supplier) => (
                     <div key={supplier.id} className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
                       <div className="flex items-center gap-2">
-                        {supplier.groupId && getGroupName(supplier.groupId) && (
-                          <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
-                        )}
+                        {/* Group indicator removed until supplier groups are implemented */}
                         <div>
                           <p className="font-medium text-sm">{supplier.name}</p>
                           <p className="text-xs text-muted-foreground">{supplier.email}</p>
@@ -532,7 +529,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
                           if (checked) {
                             setFormData(prev => ({
                               ...prev,
-                              suppliers: [...prev.suppliers, supplier]
+                              suppliers: [...prev.suppliers, supplier as any]
                             }));
                           } else {
                             setFormData(prev => ({
@@ -564,12 +561,10 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 max-h-60 overflow-y-auto">
-                {mockSuppliers.filter(s => s.status === 'active').map((supplier) => (
+                {suppliers.filter(s => s.status === 'active').map((supplier) => (
                   <div key={supplier.id} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
                     <div className="flex items-center gap-2">
-                      {supplier.groupId && getGroupName(supplier.groupId) && (
-                        <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
-                      )}
+                        {/* Group indicator removed until supplier groups are implemented */}
                       <div>
                         <p className="font-medium text-sm">{supplier.name}</p>
                         <p className="text-xs text-muted-foreground">{supplier.email}</p>
@@ -581,7 +576,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
                         if (checked) {
                           setFormData(prev => ({
                             ...prev,
-                            suppliers: [...prev.suppliers, supplier]
+                            suppliers: [...prev.suppliers, supplier as any]
                           }));
                         } else {
                           setFormData(prev => ({
@@ -666,9 +661,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
                        <div key={supplier.id} className="p-3 bg-secondary/20 rounded-lg">
                          <div className="flex items-center justify-between">
                            <div className="flex items-center gap-2 mb-1">
-                             {supplier.groupId && getGroupName(supplier.groupId) && (
-                               <div className={`w-3 h-3 rounded-full ${getGroupName(supplier.groupId)?.color}`}></div>
-                             )}
+                            {/* Group indicator removed until supplier groups are implemented */}
                              <p className="font-medium text-sm">{supplier.name}</p>
                            </div>
                            <Button
@@ -949,7 +942,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
             };
             handleSupplierCreate(supplier);
           }}
-          availableGroups={supplierGroups}
+          availableGroups={[]}
           onPasswordGenerate={() => Math.random().toString(36).slice(-8)}
           onUsernameGenerate={(name) => name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15) + Math.floor(Math.random()*100)}
         />
@@ -981,7 +974,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
             };
             handleSupplierUpdate(updated);
           }}
-          availableGroups={supplierGroups}
+          availableGroups={[]}
           editingSupplier={editingSupplier}
           onPasswordGenerate={() => Math.random().toString(36).slice(-8)}
           onUsernameGenerate={(name) => name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15) + Math.floor(Math.random()*100)}
