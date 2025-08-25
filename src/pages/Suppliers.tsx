@@ -11,7 +11,7 @@ import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/integrations/supabase/client";
+
 import { useToast } from "@/hooks/use-toast";
 
 export default function Suppliers() {
@@ -26,7 +26,7 @@ export default function Suppliers() {
   const itemsPerPage = 9;
 
   const { user } = useAuth();
-  const { suppliers, isLoading, refetch } = useSupabaseSuppliers();
+  const { suppliers, isLoading, refetch, createSupplier, updateSupplier, deleteSupplier } = useSupabaseSuppliers();
   const { toast } = useToast();
   // Load suppliers on component mount
   useEffect(() => {
@@ -86,28 +86,12 @@ export default function Suppliers() {
       };
 
       if (editingSupplier?.id) {
-        const { error } = await supabase
-          .from('suppliers')
-          .update(payload)
-          .eq('id', editingSupplier.id);
-        if (error) throw error;
-        toast({ title: 'Fornecedor atualizado', description: 'Dados salvos com sucesso.' });
+        await updateSupplier(editingSupplier.id, payload);
       } else {
-        const { error } = await supabase
-          .from('suppliers')
-          .insert(payload);
-        if (error) throw error;
-        toast({ title: 'Fornecedor criado', description: 'Cadastro realizado com sucesso.' });
+        await createSupplier(payload);
       }
-
-      await refetch();
     } catch (error: any) {
       console.error('Supplier save error:', error);
-      toast({
-        title: 'Erro ao salvar fornecedor',
-        description: error?.message?.toLowerCase().includes('permission') ? 'Você não tem permissão para esta ação' : 'Não foi possível concluir a operação.',
-        variant: 'destructive',
-      });
     } finally {
       setEditingSupplier(null);
       setShowNewSupplierModal(false);
@@ -121,22 +105,7 @@ export default function Suppliers() {
 
   const handleDeleteSupplier = async (supplier: any) => {
     if (!window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) return;
-    try {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', supplier.id);
-      if (error) throw error;
-      toast({ title: 'Fornecedor excluído', description: 'Removido com sucesso.' });
-      await refetch();
-    } catch (error: any) {
-      console.error('Supplier delete error:', error);
-      toast({
-        title: 'Erro ao excluir fornecedor',
-        description: error?.message?.toLowerCase().includes('permission') ? 'Você não tem permissão para esta ação' : 'Não foi possível concluir a operação.',
-        variant: 'destructive',
-      });
-    }
+    await deleteSupplier(supplier.id, supplier.name);
   };
   const handleCloseModal = (open: boolean) => {
     setShowNewSupplierModal(open);

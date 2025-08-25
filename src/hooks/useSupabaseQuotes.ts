@@ -170,9 +170,7 @@ export const useSupabaseQuotes = () => {
       const quote = quotes.find(q => q.id === id);
       if (!quote) return false;
 
-      // If quote is draft, delete permanently, otherwise move to trash
-      let updateData: Partial<Quote>;
-      
+      // If quote is draft, delete permanently, otherwise update status to cancelled
       if (quote.status === 'draft') {
         const { error } = await supabase
           .from('quotes')
@@ -182,8 +180,16 @@ export const useSupabaseQuotes = () => {
         if (error) throw error;
         setQuotes(prev => prev.filter(q => q.id !== id));
       } else {
-        updateData = { status: 'trash' };
-        await updateQuote(id, updateData);
+        // Update status to cancelled instead of trash
+        const { error } = await supabase
+          .from('quotes')
+          .update({ status: 'cancelled' })
+          .eq('id', id);
+
+        if (error) throw error;
+        setQuotes(prev => 
+          prev.map(q => q.id === id ? { ...q, status: 'cancelled' } : q)
+        );
       }
 
       // Create audit log

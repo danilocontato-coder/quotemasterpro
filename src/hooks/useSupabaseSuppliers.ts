@@ -79,9 +79,102 @@ export const useSupabaseSuppliers = () => {
     };
   }, []);
 
+  const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .insert([{
+          ...supplierData,
+          rating: 0,
+          completed_orders: 0
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSuppliers(prev => [...prev, data as Supplier].sort((a, b) => a.name.localeCompare(b.name)));
+      
+      toast({
+        title: "Fornecedor criado",
+        description: `O fornecedor "${supplierData.name}" foi criado com sucesso.`,
+      });
+      return data;
+    } catch (error) {
+      console.error('Error creating supplier:', error);
+      toast({
+        title: "Erro ao criar fornecedor",
+        description: "Não foi possível criar o fornecedor.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
+  const updateSupplier = async (id: string, updates: Partial<Supplier>) => {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSuppliers(prev => 
+        prev.map(supplier => supplier.id === id ? { ...supplier, ...data as Supplier } : supplier)
+      );
+      
+      toast({
+        title: "Fornecedor atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
+      return true;
+    } catch (error) {
+      console.error('Error updating supplier:', error);
+      toast({
+        title: "Erro ao atualizar fornecedor",
+        description: "Não foi possível atualizar o fornecedor.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  const deleteSupplier = async (id: string, name: string) => {
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSuppliers(prev => prev.filter(supplier => supplier.id !== id));
+      
+      toast({
+        title: "Fornecedor removido",
+        description: `O fornecedor "${name}" foi removido com sucesso.`,
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      toast({
+        title: "Erro ao remover fornecedor",
+        description: "Não foi possível remover o fornecedor.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   return {
     suppliers,
     isLoading,
-    refetch: fetchSuppliers
+    refetch: fetchSuppliers,
+    createSupplier,
+    updateSupplier,
+    deleteSupplier
   };
 };

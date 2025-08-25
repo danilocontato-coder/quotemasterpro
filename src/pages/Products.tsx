@@ -136,9 +136,9 @@ export default function Products() {
 
   const handleStockMovementCreate = async (movement: any) => {
     const success = await updateStock(
-      movement.productId, 
+      movement.itemId, 
       movement.quantity, 
-      movement.type, 
+      movement.type === 'in' ? 'add' : 'subtract', 
       movement.reason
     );
     if (success) {

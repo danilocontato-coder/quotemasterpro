@@ -44,7 +44,7 @@ export function StockMovementModal({ item, open, onOpenChange, onMovementCreate 
       return;
     }
 
-    if (movementType === 'out' && quantity > item.stockQuantity) {
+    if (movementType === 'out' && quantity > (item.stock_quantity || 0)) {
       toast.error("Quantidade de saída não pode ser maior que o estoque atual");
       return;
     }
@@ -66,10 +66,10 @@ export function StockMovementModal({ item, open, onOpenChange, onMovementCreate 
       destination: formData.destination,
       requester: formData.requester,
       observations: formData.observations,
-      previousStock: item.stockQuantity,
+      previousStock: item.stock_quantity || 0,
       newStock: movementType === 'in' 
-        ? item.stockQuantity + quantity 
-        : item.stockQuantity - quantity,
+        ? (item.stock_quantity || 0) + quantity 
+        : (item.stock_quantity || 0) - quantity,
       createdAt: new Date().toISOString(),
       createdBy: 'current-user', // Would come from auth context
     };
@@ -141,7 +141,7 @@ export function StockMovementModal({ item, open, onOpenChange, onMovementCreate 
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Estoque Atual:</span>
-                <span className="text-sm font-bold text-primary">{item.stockQuantity} unidades</span>
+                <span className="text-sm font-bold text-primary">{item.stock_quantity || 0} unidades</span>
               </div>
             </CardContent>
           </Card>
@@ -197,12 +197,12 @@ export function StockMovementModal({ item, open, onOpenChange, onMovementCreate 
                     value={formData.quantity}
                     onChange={(e) => handleInputChange('quantity', e.target.value)}
                     min="1"
-                    max={movementType === 'out' ? item.stockQuantity : undefined}
+                    max={movementType === 'out' ? (item.stock_quantity || 0) : undefined}
                     required
                   />
                   {movementType === 'out' && (
                     <p className="text-xs text-muted-foreground">
-                      Máximo disponível: {item.stockQuantity} unidades
+                      Máximo disponível: {item.stock_quantity || 0} unidades
                     </p>
                   )}
                 </div>
@@ -312,7 +312,7 @@ export function StockMovementModal({ item, open, onOpenChange, onMovementCreate 
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-sm text-muted-foreground">Estoque Atual</p>
-                    <p className="text-xl font-bold">{item.stockQuantity}</p>
+                    <p className="text-xl font-bold">{item.stock_quantity || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">
@@ -326,8 +326,8 @@ export function StockMovementModal({ item, open, onOpenChange, onMovementCreate 
                     <p className="text-sm text-muted-foreground">Novo Estoque</p>
                     <p className="text-xl font-bold text-primary">
                       {movementType === 'in' 
-                        ? item.stockQuantity + parseInt(formData.quantity || '0')
-                        : item.stockQuantity - parseInt(formData.quantity || '0')
+                        ? (item.stock_quantity || 0) + parseInt(formData.quantity || '0')
+                        : (item.stock_quantity || 0) - parseInt(formData.quantity || '0')
                       }
                     </p>
                   </div>
