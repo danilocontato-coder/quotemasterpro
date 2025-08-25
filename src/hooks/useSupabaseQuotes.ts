@@ -178,6 +178,8 @@ export const useSupabaseQuotes = () => {
           .eq('id', id);
 
         if (error) throw error;
+        
+        // Force immediate local state update
         setQuotes(prev => prev.filter(q => q.id !== id));
       } else {
         // Update status to cancelled instead of trash
@@ -187,6 +189,8 @@ export const useSupabaseQuotes = () => {
           .eq('id', id);
 
         if (error) throw error;
+        
+        // Force immediate local state update
         setQuotes(prev => 
           prev.map(q => q.id === id ? { ...q, status: 'cancelled' } : q)
         );
@@ -209,9 +213,14 @@ export const useSupabaseQuotes = () => {
         });
       }
 
+      // Force refetch to ensure sync
+      setTimeout(() => {
+        fetchQuotes();
+      }, 100);
+
       toast({
         title: 'Sucesso',
-        description: quote.status === 'draft' ? 'Cotação excluída permanentemente' : 'Cotação movida para lixeira',
+        description: quote.status === 'draft' ? 'Cotação excluída permanentemente' : 'Cotação cancelada',
       });
 
       return true;
