@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GlobalSuppliersManager } from "@/components/suppliers/GlobalSuppliersManager";
-import { mockSuppliers, mockSupplierGroups, Supplier, SupplierGroup } from "@/data/mockData";
+import { Supplier, SupplierGroup } from "@/data/mockData";
 import { Shield, Globe, Users } from "lucide-react";
 
 export default function AdminSuppliers() {
-  const [suppliers, setSuppliers] = useState(mockSuppliers);
-  const [supplierGroups, setSupplierGroups] = useState(mockSupplierGroups);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierGroups, setSupplierGroups] = useState<SupplierGroup[]>([]);
 
   const handleSupplierUpdate = (updatedSupplier: Supplier) => {
     setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
