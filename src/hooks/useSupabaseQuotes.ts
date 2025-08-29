@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { ApprovalService } from '@/services/ApprovalService';
 
 export interface Quote {
   id: string;
@@ -106,6 +107,19 @@ export const useSupabaseQuotes = () => {
         title: 'Sucesso',
         description: 'Cotação criada com sucesso',
       });
+
+      // Verificar se precisa de aprovação e criar se necessário
+      if (data.status === 'sent' && data.total > 0) {
+        try {
+          await ApprovalService.createApprovalForQuote({
+            quoteId: data.id,
+            clientId: data.client_id,
+            amount: data.total
+          });
+        } catch (error) {
+          console.log('No approval required or error creating approval');
+        }
+      }
 
       return data;
     } catch (err) {

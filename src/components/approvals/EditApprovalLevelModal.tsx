@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useApprovalLevels, type ApprovalLevel } from "@/hooks/useApprovalLevels";
+import { useSupabaseApprovalLevels, type ApprovalLevel } from "@/hooks/useSupabaseApprovalLevels";
 import { useToast } from "@/hooks/use-toast";
 
 interface EditApprovalLevelModalProps {
@@ -13,33 +13,37 @@ interface EditApprovalLevelModalProps {
 }
 
 export function EditApprovalLevelModal({ open, onClose, level }: EditApprovalLevelModalProps) {
-  const { updateApprovalLevel } = useApprovalLevels();
+  const { updateApprovalLevel } = useSupabaseApprovalLevels();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
-    minValue: 0,
-    maxValue: 0
+    active: true,
+    amount_threshold: 0,
+    order_level: 1,
+    approvers: [] as string[]
   });
 
   useEffect(() => {
     if (level) {
       setFormData({
         name: level.name,
-        description: level.description,
-        minValue: level.minValue,
-        maxValue: level.maxValue
+        active: level.active,
+        amount_threshold: level.amount_threshold,
+        order_level: level.order_level,
+        approvers: level.approvers
       });
     }
   }, [level]);
 
-  const handleSubmit = () => {
-    updateApprovalLevel(level.id, formData);
-    toast({
-      title: "Nível atualizado",
-      description: "Nível de aprovação atualizado com sucesso.",
-    });
-    onClose();
+  const handleSubmit = async () => {
+    const success = await updateApprovalLevel(level.id, formData);
+    if (success) {
+      toast({
+        title: "Nível atualizado",
+        description: "Nível de aprovação atualizado com sucesso.",
+      });
+      onClose();
+    }
   };
 
   return (
@@ -57,10 +61,12 @@ export function EditApprovalLevelModal({ open, onClose, level }: EditApprovalLev
             />
           </div>
           <div className="space-y-2">
-            <Label>Descrição</Label>
+            <Label>Limite de Valor (R$)</Label>
             <Input
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              type="number"
+              value={formData.amount_threshold}
+              onChange={(e) => setFormData({...formData, amount_threshold: parseFloat(e.target.value)})}
+              placeholder="0.00"
             />
           </div>
         </div>

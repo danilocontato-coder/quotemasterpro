@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useApprovalLevels, type ApprovalLevel } from "@/hooks/useApprovalLevels";
+import { useSupabaseApprovalLevels, type ApprovalLevel } from "@/hooks/useSupabaseApprovalLevels";
 import { useToast } from "@/hooks/use-toast";
 
 interface DeleteApprovalLevelModalProps {
@@ -10,16 +10,18 @@ interface DeleteApprovalLevelModalProps {
 }
 
 export function DeleteApprovalLevelModal({ open, onClose, level }: DeleteApprovalLevelModalProps) {
-  const { deleteApprovalLevel } = useApprovalLevels();
+  const { deleteApprovalLevel } = useSupabaseApprovalLevels();
   const { toast } = useToast();
 
-  const handleDelete = () => {
-    deleteApprovalLevel(level.id);
-    toast({
-      title: "Nível excluído",
-      description: "Nível de aprovação excluído com sucesso.",
-    });
-    onClose();
+  const handleDelete = async () => {
+    const success = await deleteApprovalLevel(level.id);
+    if (success) {
+      toast({
+        title: "Nível excluído",
+        description: "Nível de aprovação excluído com sucesso.",
+      });
+      onClose();
+    }
   };
 
   return (

@@ -11,40 +11,38 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { 
   Plus, 
   Search, 
-  MoreHorizontal, 
   Edit, 
   Trash2,
   Users,
   DollarSign,
   CheckCircle,
-  Settings
+  Layers
 } from "lucide-react";
 import { CreateApprovalLevelModal } from "@/components/approvals/CreateApprovalLevelModal";
 import { EditApprovalLevelModal } from "@/components/approvals/EditApprovalLevelModal";
 import { DeleteApprovalLevelModal } from "@/components/approvals/DeleteApprovalLevelModal";
-import { useApprovalLevels } from "@/hooks/useApprovalLevels";
+import { useSupabaseApprovalLevels, type ApprovalLevel } from "@/hooks/useSupabaseApprovalLevels";
 
 export function ApprovalLevels() {
-  const { approvalLevels, searchTerm, setSearchTerm } = useApprovalLevels();
+  const { 
+    approvalLevels, 
+    searchTerm, 
+    setSearchTerm, 
+    isLoading,
+    updateApprovalLevel,
+    deleteApprovalLevel 
+  } = useSupabaseApprovalLevels();
+  
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [selectedLevel, setSelectedLevel] = useState<any>(null);
-
-  const filteredLevels = approvalLevels.filter(level =>
-    level.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    level.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
+  const [selectedLevel, setSelectedLevel] = useState<ApprovalLevel | null>(null);
+  
+  const filteredLevels = approvalLevels || [];
+  
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -52,14 +50,21 @@ export function ApprovalLevels() {
     }).format(value);
   };
 
-  const handleEdit = (level: any) => {
+  const handleEdit = (level: ApprovalLevel) => {
     setSelectedLevel(level);
     setEditModalOpen(true);
   };
 
-  const handleDelete = (level: any) => {
+  const handleDelete = (level: ApprovalLevel) => {
     setSelectedLevel(level);
     setDeleteModalOpen(true);
+  };
+
+  const stats = {
+    total: filteredLevels.length,
+    active: filteredLevels.filter(l => l.active).length,
+    approvers: [...new Set(filteredLevels.flatMap(l => l.approvers))].length,
+    maxThreshold: Math.max(...filteredLevels.map(l => l.amount_threshold), 0)
   };
 
   return (
@@ -82,10 +87,10 @@ export function ApprovalLevels() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
-              <Settings className="h-8 w-8 text-primary" />
+              <Layers className="h-8 w-8 text-primary" />
               <div className="ml-4">
-                <p className="text-2xl font-bold">{approvalLevels.length}</p>
-                <p className="text-sm text-muted-foreground">Níveis Configurados</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-sm text-muted-foreground">Total de Níveis</p>
               </div>
             </div>
           </CardContent>
@@ -95,9 +100,7 @@ export function ApprovalLevels() {
             <div className="flex items-center">
               <CheckCircle className="h-8 w-8 text-success" />
               <div className="ml-4">
-                <p className="text-2xl font-bold">
-                  {approvalLevels.filter(l => l.active).length}
-                </p>
+                <p className="text-2xl font-bold">{stats.active}</p>
                 <p className="text-sm text-muted-foreground">Níveis Ativos</p>
               </div>
             </div>
@@ -108,10 +111,8 @@ export function ApprovalLevels() {
             <div className="flex items-center">
               <Users className="h-8 w-8 text-info" />
               <div className="ml-4">
-                <p className="text-2xl font-bold">
-                  {approvalLevels.reduce((total, level) => total + level.approvers.length, 0)}
-                </p>
-                <p className="text-sm text-muted-foreground">Total Aprovadores</p>
+                <p className="text-2xl font-bold">{stats.approvers}</p>
+                <p className="text-sm text-muted-foreground">Total de Aprovadores</p>
               </div>
             </div>
           </CardContent>
@@ -121,9 +122,7 @@ export function ApprovalLevels() {
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-warning" />
               <div className="ml-4">
-                <p className="text-2xl font-bold">
-                  {formatCurrency(Math.max(...approvalLevels.map(l => l.maxValue)))}
-                </p>
+                <p className="text-2xl font-bold">{formatCurrency(stats.maxThreshold)}</p>
                 <p className="text-sm text-muted-foreground">Maior Limite</p>
               </div>
             </div>
@@ -141,7 +140,7 @@ export function ApprovalLevels() {
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou descrição..."
+                placeholder="Buscar por nome..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
@@ -154,85 +153,95 @@ export function ApprovalLevels() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nível</TableHead>
-                  <TableHead>Faixa de Valores</TableHead>
+                  <TableHead>Limite de Valor</TableHead>
                   <TableHead>Aprovadores</TableHead>
-                  <TableHead>Tipo de Aprovação</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Criado em</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLevels.map((level) => (
-                  <TableRow key={level.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{level.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {level.description}
-                        </div>
+                {isLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><div className="h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 bg-muted rounded animate-pulse" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredLevels.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <Layers className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-muted-foreground">Nenhum nível de aprovação encontrado</p>
+                        <Button onClick={() => setCreateModalOpen(true)} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Criar primeiro nível
+                        </Button>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>Min: {formatCurrency(level.minValue)}</div>
-                        <div>Max: {formatCurrency(level.maxValue)}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {level.approvers.slice(0, 3).map((approver: string) => (
-                          <Badge key={approver} variant="secondary" className="text-xs">
-                            {approver}
-                          </Badge>
-                        ))}
-                        {level.approvers.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{level.approvers.length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={level.approvalType === "all" ? "default" : "secondary"}
-                      >
-                        {level.approvalType === "all" ? "Todos" : 
-                         level.approvalType === "any" ? "Qualquer um" : 
-                         `${level.requiredApprovals} de ${level.approvers.length}`}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={level.active ? "default" : "secondary"}
-                        className={level.active ? "bg-success" : "bg-muted"}
-                      >
-                        {level.active ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(level)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDelete(level)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredLevels.map((level) => (
+                    <TableRow key={level.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{level.name}</div>
+                          <div className="text-sm text-muted-foreground">Ordem: {level.order_level}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">A partir de {formatCurrency(level.amount_threshold)}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {level.approvers.slice(0, 2).map((approver, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs">
+                              {approver}
+                            </Badge>
+                          ))}
+                          {level.approvers.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{level.approvers.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={level.active ? "default" : "secondary"}>
+                          {level.active ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(level.created_at).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEdit(level)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDelete(level)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

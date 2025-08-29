@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { ExternalLink, FileText, User, Calendar } from "lucide-react";
 import { useSupabaseApprovals, type Approval } from "@/hooks/useSupabaseApprovals";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
@@ -17,10 +19,13 @@ interface ApprovalDetailModalProps {
 }
 
 export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailModalProps) {
+  const { approveRequest, rejectRequest } = useSupabaseApprovals();
   const { toast } = useToast();
   const { quotes } = useSupabaseQuotes();
   const [quoteData, setQuoteData] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  const [rejectComment, setRejectComment] = useState("");
+  const [showRejectForm, setShowRejectForm] = useState(false);
 
   // Buscar dados da cotação quando o modal abrir
   useEffect(() => {
@@ -32,16 +37,29 @@ export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailM
     }
   }, [open, approval?.quote_id, quotes]);
 
-  const handleApprove = () => {
-    // TODO: Implement approval logic with Supabase
-    toast({ title: "Aprovação realizada", description: "Cotação aprovada com sucesso." });
-    onClose();
+  const handleApprove = async () => {
+    const success = await approveRequest(approval.id, "Aprovado via interface");
+    if (success) {
+      onClose();
+    }
   };
 
-  const handleReject = () => {
-    // TODO: Implement rejection logic with Supabase
-    toast({ title: "Aprovação rejeitada", description: "Cotação rejeitada." });
-    onClose();
+  const handleReject = async () => {
+    if (!rejectComment.trim()) {
+      toast({
+        title: "Comentário obrigatório",
+        description: "Por favor, informe o motivo da rejeição.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const success = await rejectRequest(approval.id, rejectComment);
+    if (success) {
+      setRejectComment("");
+      setShowRejectForm(false);
+      onClose();
+    }
   };
 
   const handleViewFullQuote = () => {
@@ -184,12 +202,44 @@ export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailM
               <Button variant="outline" onClick={onClose}>Fechar</Button>
               {approval.status === "pending" && (
                 <>
-                  <Button variant="destructive" onClick={handleReject}>
-                    Rejeitar
-                  </Button>
-                  <Button onClick={handleApprove}>
-                    Aprovar
-                  </Button>
+                  {!showRejectForm ? (
+                    <>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => setShowRejectForm(true)}
+                      >
+                        Rejeitar
+                      </Button>
+                      <Button onClick={handleApprove}>
+                        Aprovar
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-2 w-full max-w-md">
+                      <Label htmlFor="reject-comment">Motivo da rejeição:</Label>
+                      <Textarea
+                        id="reject-comment"
+                        placeholder="Informe o motivo da rejeição..."
+                        value={rejectComment}
+                        onChange={(e) => setRejectComment(e.target.value)}
+                        className="min-h-20"
+                      />
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowRejectForm(false);
+                            setRejectComment("");
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button variant="destructive" onClick={handleReject}>
+                          Confirmar Rejeição
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

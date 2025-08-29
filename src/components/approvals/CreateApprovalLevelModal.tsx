@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
-import { useApprovalLevels } from "@/hooks/useApprovalLevels";
+import { useSupabaseApprovalLevels } from "@/hooks/useSupabaseApprovalLevels";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,19 +17,15 @@ interface CreateApprovalLevelModalProps {
 }
 
 export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelModalProps) {
-  const { createApprovalLevel } = useApprovalLevels();
+  const { createApprovalLevel } = useSupabaseApprovalLevels();
   const { profiles } = useProfiles();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
-    minValue: 0,
-    maxValue: 0,
-    approvers: [] as string[],
-    approvalType: "any" as "all" | "any" | "majority",
-    requiredApprovals: 1,
     active: true,
-    requireAll: false
+    amount_threshold: 0,
+    order_level: 1,
+    approvers: [] as string[]
   });
 
   const handleProfileChange = (profileId: string, checked: boolean) => {
@@ -41,8 +37,8 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
     }));
   };
 
-  const handleSubmit = () => {
-    if (!formData.name || !formData.description || formData.approvers.length === 0) {
+  const handleSubmit = async () => {
+    if (!formData.name || formData.approvers.length === 0) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos obrigatórios.",
@@ -51,21 +47,14 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
       return;
     }
 
-    if (formData.minValue >= formData.maxValue) {
+    const success = await createApprovalLevel(formData);
+    if (success) {
       toast({
-        title: "Valores inválidos",
-        description: "O valor máximo deve ser maior que o valor mínimo.",
-        variant: "destructive",
+        title: "Nível criado",
+        description: "Novo nível de aprovação criado com sucesso.",
       });
-      return;
+      onClose();
     }
-
-    createApprovalLevel(formData);
-    toast({
-      title: "Nível criado",
-      description: "Novo nível de aprovação criado com sucesso.",
-    });
-    onClose();
   };
 
   return (
