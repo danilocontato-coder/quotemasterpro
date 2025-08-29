@@ -25,14 +25,14 @@ import {
 } from "lucide-react";
 import { ApprovalDetailModal } from "@/components/approvals/ApprovalDetailModal";
 import { QuoteMarkAsReceivedButton } from "@/components/quotes/QuoteMarkAsReceivedButton";
-import { useSupabaseApprovals } from "@/hooks/useSupabaseApprovals";
+import { useSupabaseApprovals, type Approval } from "@/hooks/useSupabaseApprovals";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function Approvals() {
   const { approvals, isLoading, refetch } = useSupabaseApprovals();
   const [searchTerm, setSearchTerm] = useState("");
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedApproval, setSelectedApproval] = useState<any>(null);
+  const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
 
   // Load approvals on component mount
@@ -92,7 +92,7 @@ export function Approvals() {
     return priorityText[priority as keyof typeof priorityText] || priority;
   };
 
-  const handleViewDetails = (approval: any) => {
+  const handleViewDetails = (approval: Approval) => {
     setSelectedApproval(approval);
     setDetailModalOpen(true);
   };
