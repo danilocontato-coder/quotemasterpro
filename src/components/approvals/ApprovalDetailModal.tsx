@@ -1,8 +1,14 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ExternalLink, FileText, User, Calendar } from "lucide-react";
 import { useSupabaseApprovals, type Approval } from "@/hooks/useSupabaseApprovals";
+import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useToast } from "@/hooks/use-toast";
+import { QuoteItemsPreview } from "./QuoteItemsPreview";
 
 interface ApprovalDetailModalProps {
   open: boolean;
@@ -12,6 +18,19 @@ interface ApprovalDetailModalProps {
 
 export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailModalProps) {
   const { toast } = useToast();
+  const { quotes } = useSupabaseQuotes();
+  const [quoteData, setQuoteData] = useState<any>(null);
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+
+  // Buscar dados da cotação quando o modal abrir
+  useEffect(() => {
+    if (open && approval?.quote_id) {
+      setIsLoadingQuote(true);
+      const quote = quotes.find(q => q.id === approval.quote_id);
+      setQuoteData(quote);
+      setIsLoadingQuote(false);
+    }
+  }, [open, approval?.quote_id, quotes]);
 
   const handleApprove = () => {
     // TODO: Implement approval logic with Supabase
@@ -25,44 +44,157 @@ export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailM
     onClose();
   };
 
+  const handleViewFullQuote = () => {
+    // Navegar para a página da cotação completa
+    window.open(`/quotes?id=${approval.quote_id}`, '_blank');
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    const colors = {
+      pending: "bg-yellow-100 text-yellow-800",
+      approved: "bg-green-100 text-green-800",
+      rejected: "bg-red-100 text-red-800"
+    };
+    return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
+  };
+
   if (!approval) {
     return null;
   }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Detalhes da Aprovação</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Detalhes da Aprovação
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-medium">Cotação #{approval.quote_id}</h3>
-            <p className="text-sm text-muted-foreground">ID da Aprovação: {approval.id}</p>
-            {approval.comments && (
-              <p className="text-sm mt-2">Comentários: {approval.comments}</p>
-            )}
+
+        <div className="space-y-6">
+          {/* Informações da Aprovação */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Informações da Aprovação</h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Status:</span>
+                  <Badge className={getStatusBadgeColor(approval.status)}>
+                    {approval.status === 'pending' ? 'Pendente' : 
+                     approval.status === 'approved' ? 'Aprovado' : 'Rejeitado'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Criado em: {new Date(approval.created_at).toLocaleDateString('pt-BR')}</span>
+                </div>
+                {approval.approved_at && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Aprovado em: {new Date(approval.approved_at).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                )}
+                {approval.comments && (
+                  <div>
+                    <span className="text-sm font-medium">Comentários:</span>
+                    <p className="text-sm text-muted-foreground mt-1">{approval.comments}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Informações da Cotação</h3>
+              {isLoadingQuote ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ) : quoteData ? (
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-sm font-medium">Título:</span>
+                    <p className="text-sm">{quoteData.title}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium">Descrição:</span>
+                    <p className="text-sm text-muted-foreground">{quoteData.description || 'Sem descrição'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium">Cliente:</span>
+                    <p className="text-sm">{quoteData.client_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium">Fornecedor:</span>
+                    <p className="text-sm">{quoteData.supplier_name || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium">Valor Total:</span>
+                    <p className="text-lg font-semibold text-primary">{formatCurrency(quoteData.total)}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium">Status da Cotação:</span>
+                    <Badge variant="outline" className="ml-2">{quoteData.status}</Badge>
+                  </div>
+                  {quoteData.deadline && (
+                    <div>
+                      <span className="text-sm font-medium">Prazo:</span>
+                      <p className="text-sm">{new Date(quoteData.deadline).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    Cotação #{approval.quote_id} não encontrada ou ainda não carregada
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="text-sm"><strong>Status:</strong> <Badge>{approval.status}</Badge></p>
-            <p className="text-sm"><strong>Criado em:</strong> {new Date(approval.created_at).toLocaleDateString('pt-BR')}</p>
-            {approval.approved_at && (
-              <p className="text-sm"><strong>Aprovado em:</strong> {new Date(approval.approved_at).toLocaleDateString('pt-BR')}</p>
-            )}
+
+          {/* Itens da Cotação */}
+          {quoteData && (
+            <QuoteItemsPreview quoteId={approval.quote_id} />
+          )}
+
+          <Separator />
+
+          {/* Ações */}
+          <div className="flex justify-between items-center">
+            <Button 
+              variant="outline" 
+              onClick={handleViewFullQuote}
+              className="flex items-center gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Ver Cotação Completa
+            </Button>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>Fechar</Button>
+              {approval.status === "pending" && (
+                <>
+                  <Button variant="destructive" onClick={handleReject}>
+                    Rejeitar
+                  </Button>
+                  <Button onClick={handleApprove}>
+                    Aprovar
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-        {approval.status === "pending" && (
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={onClose}>Fechar</Button>
-            <Button variant="destructive" onClick={handleReject}>Rejeitar</Button>
-            <Button onClick={handleApprove}>Aprovar</Button>
-          </div>
-        )}
-        {approval.status !== "pending" && (
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={onClose}>Fechar</Button>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );
