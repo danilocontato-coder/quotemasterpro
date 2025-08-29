@@ -8,7 +8,9 @@ import {
   Settings, 
   Home,
   UserCog,
-  Shield
+  Shield,
+  CheckCircle,
+  Layers
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -28,6 +30,11 @@ const navigationItems = [
   { title: "Cotações", url: "/quotes", icon: FileText },
   { title: "Fornecedores", url: "/suppliers", icon: Users },
   { title: "Itens", url: "/products", icon: Package },
+];
+
+const approvalItems = [
+  { title: "Aprovações", url: "/approvals", icon: CheckCircle },
+  { title: "Níveis de Aprovação", url: "/approval-levels", icon: Layers },
 ];
 
 const financialItems = [
@@ -106,6 +113,31 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {financialItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild className="h-10">
+                    <NavLink 
+                      to={item.url} 
+                      end
+                      className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Approval Section */}
+        <SidebarGroup className="px-3 pt-4">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
+            {!isCollapsed && "Aprovações"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-1">
+              {approvalItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild className="h-10">
                     <NavLink 

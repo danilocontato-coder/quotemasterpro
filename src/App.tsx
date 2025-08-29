@@ -120,6 +120,13 @@ function App() {
                 }>
                   <Route index element={<Approvals />} />
                 </Route>
+                <Route path="/approval-levels" element={
+                  <ProtectedRoute allowedRoles={['client', 'admin']}>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<ApprovalLevels />} />
+                </Route>
                 <Route path="/payments" element={
                   <ProtectedRoute allowedRoles={['client', 'admin']}>
                     <MainLayout />
