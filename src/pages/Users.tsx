@@ -38,7 +38,7 @@ import { EditUserModal } from "@/components/users/EditUserModalSupabase";
 import { DeleteUserModal } from "@/components/users/DeleteUserModal";
 import { useSupabaseUsers } from "@/hooks/useSupabaseUsers";
 import { GroupManager } from "@/components/users/GroupManagerSupabase";
-import { SupabaseIntegrationStatus } from "@/components/layout/SupabaseIntegrationStatus";
+
 
 export default function Users() {
   const { users, groups, loading, searchTerm, setSearchTerm } = useSupabaseUsers();
@@ -125,8 +125,6 @@ export default function Users() {
         </div>
       </div>
 
-      {/* Supabase Integration Status */}
-      <SupabaseIntegrationStatus />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
