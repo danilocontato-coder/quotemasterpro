@@ -54,7 +54,7 @@ export const useSupabaseApprovalLevels = () => {
     }
   };
 
-  const createApprovalLevel = async (levelData: Omit<ApprovalLevel, 'id' | 'created_at' | 'updated_at'>) => {
+  const createApprovalLevel = async (levelData: Omit<ApprovalLevel, 'id' | 'created_at' | 'updated_at' | 'client_id'>) => {
     if (!user || !user.clientId) return null;
 
     try {

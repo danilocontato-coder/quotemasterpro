@@ -83,25 +83,25 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="minValue">Valor Mínimo (R$) *</Label>
+              <Label htmlFor="amount_threshold">Valor Mínimo (R$) *</Label>
               <Input
-                id="minValue"
+                id="amount_threshold"
                 type="number"
                 step="0.01"
-                value={formData.minValue}
-                onChange={(e) => setFormData({...formData, minValue: Number(e.target.value)})}
+                value={formData.amount_threshold}
+                onChange={(e) => setFormData({...formData, amount_threshold: Number(e.target.value)})}
                 placeholder="0.00"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maxValue">Valor Máximo (R$)</Label>
+              <Label htmlFor="order_level">Ordem do Nível *</Label>
               <Input
-                id="maxValue"
+                id="order_level"
                 type="number"
-                step="0.01"
-                value={formData.maxValue || ""}
-                onChange={(e) => setFormData({...formData, maxValue: Number(e.target.value)})}
-                placeholder="Deixe vazio para ilimitado"
+                value={formData.order_level}
+                onChange={(e) => setFormData({...formData, order_level: Number(e.target.value)})}
+                placeholder="1"
+                min="1"
               />
             </div>
           </div>
@@ -126,27 +126,6 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <Switch
-              id="requireAll"
-              checked={formData.requireAll}
-              onCheckedChange={(checked) => setFormData({...formData, requireAll: checked})}
-            />
-            <Label htmlFor="requireAll" className="text-sm">
-              Requer TODOS os papéis selecionados (ao invés de apenas um)
-            </Label>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              placeholder="Descrição opcional do nível de aprovação..."
-              rows={3}
-            />
-          </div>
 
           <div className="flex items-center justify-between">
             <div>
