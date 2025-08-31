@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -111,12 +111,37 @@ export function useSupabaseUsers() {
       // Add to groups if specified
       if (userData.groups && userData.groups.length > 0) {
         const groupsToAdd = groups.filter(g => userData.groups?.includes(g.name));
-        for (const group of groupsToAdd) {
-          await supabase
+        const membershipInserts = groupsToAdd.map(group => ({
+          user_id: data.id,
+          group_id: group.id
+        }));
+        
+        if (membershipInserts.length > 0) {
+          const { error: membershipError } = await supabase
             .from('user_group_memberships')
-            .insert({ user_id: data.id, group_id: group.id });
+            .insert(membershipInserts);
+          
+          if (membershipError) {
+            console.error('Error adding user to groups:', membershipError);
+            // Don't fail the user creation if group assignment fails
+          }
         }
       }
+
+      // Create audit log
+      await supabase.from('audit_logs').insert({
+        user_id: data.id,
+        action: 'CREATE',
+        entity_type: 'users',
+        entity_id: data.id,
+        panel_type: 'admin',
+        details: { 
+          name: data.name, 
+          email: data.email, 
+          role: data.role,
+          groups: userData.groups || []
+        }
+      });
 
       toast.success('Usuário criado com sucesso');
       await fetchUsers();
@@ -253,10 +278,10 @@ export function useSupabaseUsers() {
     }
   };
 
-  // Generate temporary password
-  const generateTemporaryPassword = () => {
+  // Generate temporary password (memoized to prevent re-renders)
+  const generateTemporaryPassword = useCallback(() => {
     return Math.random().toString(36).slice(-8).toUpperCase();
-  };
+  }, []);
 
   // Reset password
   const resetPassword = async (userId: string) => {

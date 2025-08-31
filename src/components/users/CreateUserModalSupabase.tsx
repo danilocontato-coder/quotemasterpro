@@ -63,7 +63,7 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const [passwordCopied, setPasswordCopied] = useState(false);
 
   React.useEffect(() => {
-    if (formData.generateCredentials && formData.name && formData.email) {
+    if (formData.generateCredentials && formData.name && formData.email && !formData.password) {
       const username = formData.email.split('@')[0];
       const password = generateTemporaryPassword();
       setFormData(prev => ({
@@ -72,7 +72,7 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
         password
       }));
     }
-  }, [formData.name, formData.email, formData.generateCredentials, generateTemporaryPassword]);
+  }, [formData.name, formData.email, formData.generateCredentials]);
 
   const resetForm = () => {
     setFormData({
@@ -98,8 +98,15 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Digite um e-mail válido');
+      return;
+    }
+
     try {
-      await createUser({
+      const userData = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone || undefined,
@@ -109,12 +116,16 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
         supplier_id: formData.supplier_id || undefined,
         force_password_change: formData.force_password_change,
         groups: formData.groups
-      });
+      };
+
+      await createUser(userData);
       
-      onClose();
+      toast.success(`Usuário ${formData.name} criado com sucesso!`);
       resetForm();
+      onClose();
     } catch (error) {
       // Error is handled in the hook
+      console.error('Error in handleSubmit:', error);
     }
   };
 
@@ -316,7 +327,15 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
                   </div>
                   <Switch
                     checked={formData.generateCredentials}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, generateCredentials: checked }))}
+                    onCheckedChange={(checked) => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        generateCredentials: checked,
+                        // Clear password when disabling auto-generation
+                        password: checked ? prev.password : '',
+                        username: checked ? prev.username : ''
+                      }));
+                    }}
                   />
                 </div>
 
