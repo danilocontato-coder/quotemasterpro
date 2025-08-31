@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
@@ -28,12 +27,12 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
     approvers: [] as string[]
   });
 
-  const handleProfileChange = (profileId: string, checked: boolean) => {
+  const handleUserChange = (userId: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
       approvers: checked
-        ? [...prev.approvers, profileId]
-        : prev.approvers.filter(id => id !== profileId)
+        ? [...prev.approvers, userId]
+        : prev.approvers.filter(id => id !== userId)
     }));
   };
 
@@ -53,9 +52,21 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
         title: "Nível criado",
         description: "Novo nível de aprovação criado com sucesso.",
       });
+      setFormData({
+        name: "",
+        active: true,
+        amount_threshold: 0,
+        order_level: 1,
+        approvers: []
+      });
       onClose();
     }
   };
+
+  // Filter users that can approve (only managers and admins)
+  const approverUsers = users.filter(u => 
+    u.status === 'active' && (u.role === 'manager' || u.role === 'admin')
+  );
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -109,13 +120,13 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
           <div className="space-y-4">
             <Label className="text-base font-medium">Usuários Aprovadores *</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {users.filter(u => u.status === 'active' && (u.role === 'manager' || u.role === 'admin')).map((user) => (
+              {approverUsers.map((user) => (
                 <div key={user.id} className="flex items-center space-x-3">
                   <Checkbox
                     id={user.id}
                     checked={formData.approvers.includes(user.id)}
                     onCheckedChange={(checked) => 
-                      handleProfileChange(user.id, checked as boolean)
+                      handleUserChange(user.id, checked as boolean)
                     }
                   />
                   <Label htmlFor={user.id} className="text-sm">
@@ -124,13 +135,12 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
                 </div>
               ))}
             </div>
-            {users.filter(u => u.status === 'active' && (u.role === 'manager' || u.role === 'admin')).length === 0 && (
+            {approverUsers.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 Nenhum usuário com permissão de aprovação encontrado. Apenas usuários com papel "Manager" ou "Admin" podem aprovar.
               </p>
             )}
           </div>
-
 
           <div className="flex items-center justify-between">
             <div>
