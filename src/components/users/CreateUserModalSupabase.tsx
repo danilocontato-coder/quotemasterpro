@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,7 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordCopied, setPasswordCopied] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (formData.generateCredentials && formData.name && formData.email && !formData.password) {
       const username = formData.email.split('@')[0];
       const password = generateTemporaryPassword();
@@ -72,7 +72,7 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
         password
       }));
     }
-  }, [formData.name, formData.email, formData.generateCredentials]);
+  }, [formData.name, formData.email, formData.generateCredentials, generateTemporaryPassword]);
 
   const resetForm = () => {
     setFormData({
