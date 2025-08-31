@@ -37,6 +37,30 @@ export function useSupabaseUsers() {
   const [groups, setGroups] = useState<UserGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentProfile, setCurrentProfile] = useState<{ id: string; client_id?: string | null; role?: string | null } | null>(null);
+  const [currentAuthUserId, setCurrentAuthUserId] = useState<string | null>(null);
+
+  // Load current auth user and profile
+  useEffect(() => {
+    const loadCurrentProfile = async () => {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const authUserId = authData.user?.id || null;
+        setCurrentAuthUserId(authUserId);
+        if (!authUserId) return;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, client_id, role')
+          .eq('id', authUserId)
+          .maybeSingle();
+        if (profile) setCurrentProfile(profile);
+      } catch (e) {
+        console.error('Error loading current profile', e);
+      }
+    };
+    loadCurrentProfile();
+  }, []);
 
   // Fetch users from Supabase
   const fetchUsers = async () => {
@@ -91,6 +115,14 @@ export function useSupabaseUsers() {
   // Create new user
   const createUser = async (userData: Omit<SupabaseUser, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      const isAdmin = currentProfile?.role === 'admin';
+      const effectiveClientId = userData.client_id ?? currentProfile?.client_id ?? null;
+
+      if (!isAdmin && !effectiveClientId) {
+        toast.error('Você não tem permissão para criar usuários sem um cliente associado.');
+        throw new Error('RLS: client_id required for non-admin users');
+      }
+
       const { data, error } = await supabase
         .from('users')
         .insert([{
@@ -99,7 +131,7 @@ export function useSupabaseUsers() {
           phone: userData.phone,
           role: userData.role,
           status: userData.status,
-          client_id: userData.client_id,
+          client_id: effectiveClientId,
           supplier_id: userData.supplier_id,
           force_password_change: userData.force_password_change
         }])
@@ -128,27 +160,33 @@ export function useSupabaseUsers() {
         }
       }
 
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        user_id: data.id,
-        action: 'CREATE',
-        entity_type: 'users',
-        entity_id: data.id,
-        panel_type: 'admin',
-        details: { 
-          name: data.name, 
-          email: data.email, 
-          role: data.role,
-          groups: userData.groups || []
-        }
-      });
+      // Create audit log - must use current auth user id due to RLS policy
+      if (currentAuthUserId) {
+        await supabase.from('audit_logs').insert({
+          user_id: currentAuthUserId,
+          action: 'CREATE',
+          entity_type: 'users',
+          entity_id: data.id,
+          panel_type: isAdmin ? 'admin' : 'client',
+          details: { 
+            name: data.name, 
+            email: data.email, 
+            role: data.role,
+            groups: userData.groups || []
+          }
+        });
+      }
 
       toast.success('Usuário criado com sucesso');
       await fetchUsers();
       return data;
     } catch (error: any) {
       console.error('Error creating user:', error);
-      toast.error('Erro ao criar usuário: ' + error.message);
+      if (error?.code === '42501') {
+        toast.error('Permissão negada pelas políticas de acesso (RLS). Verifique o cliente selecionado e suas permissões.');
+      } else {
+        toast.error('Erro ao criar usuário: ' + (error?.message || 'Tente novamente'));
+      }
       throw error;
     }
   };
