@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import { useSupabaseApprovalLevels } from "@/hooks/useSupabaseApprovalLevels";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useSupabaseUsers } from "@/hooks/useSupabaseUsers";
 import { useToast } from "@/hooks/use-toast";
 
 interface CreateApprovalLevelModalProps {
@@ -18,7 +18,7 @@ interface CreateApprovalLevelModalProps {
 
 export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelModalProps) {
   const { createApprovalLevel } = useSupabaseApprovalLevels();
-  const { profiles } = useProfiles();
+  const { users } = useSupabaseUsers();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
@@ -107,23 +107,28 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
           </div>
 
           <div className="space-y-4">
-            <Label className="text-base font-medium">Papéis Requeridos *</Label>
+            <Label className="text-base font-medium">Usuários Aprovadores *</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {profiles.filter(p => p.active).map((profile) => (
-                <div key={profile.id} className="flex items-center space-x-3">
+              {users.filter(u => u.status === 'active' && (u.role === 'manager' || u.role === 'admin')).map((user) => (
+                <div key={user.id} className="flex items-center space-x-3">
                   <Checkbox
-                    id={profile.id}
-                    checked={formData.approvers.includes(profile.id)}
+                    id={user.id}
+                    checked={formData.approvers.includes(user.id)}
                     onCheckedChange={(checked) => 
-                      handleProfileChange(profile.id, checked as boolean)
+                      handleProfileChange(user.id, checked as boolean)
                     }
                   />
-                  <Label htmlFor={profile.id} className="text-sm">
-                    {profile.name}
+                  <Label htmlFor={user.id} className="text-sm">
+                    {user.name} ({user.role})
                   </Label>
                 </div>
               ))}
             </div>
+            {users.filter(u => u.status === 'active' && (u.role === 'manager' || u.role === 'admin')).length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nenhum usuário com permissão de aprovação encontrado. Apenas usuários com papel "Manager" ou "Admin" podem aprovar.
+              </p>
+            )}
           </div>
 
 
