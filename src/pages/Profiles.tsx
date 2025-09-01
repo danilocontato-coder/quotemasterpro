@@ -27,12 +27,19 @@ import {
   Users,
   CheckCircle
 } from "lucide-react";
-import { CreateProfileModal } from "@/components/profiles/CreateProfileModal";
-import { useProfiles } from "@/hooks/useProfiles";
+import { CreateProfileModalSupabase } from "@/components/profiles/CreateProfileModalSupabase";
+import { useSupabasePermissions } from "@/hooks/useSupabasePermissions";
 
 export function Profiles() {
-  const { filteredProfiles, searchTerm, setSearchTerm } = useProfiles();
+  const { permissionProfiles } = useSupabasePermissions();
+  const [searchTerm, setSearchTerm] = useState("");
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  // Filter profiles based on search term
+  const filteredProfiles = permissionProfiles.filter(profile =>
+    profile.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (profile.description && profile.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <div className="space-y-6">
@@ -81,7 +88,7 @@ export function Profiles() {
               <Users className="h-8 w-8 text-secondary" />
               <div className="ml-4">
                 <p className="text-2xl font-bold">
-                  {filteredProfiles.reduce((acc, p) => acc + p.permissions.length, 0)}
+                  {filteredProfiles.reduce((acc, p) => acc + Object.keys(p.permissions).length, 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Total Permissões</p>
               </div>
@@ -139,7 +146,7 @@ export function Profiles() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         <Badge variant="outline" className="text-xs">
-                          {profile.permissions.length} permissões
+                          {Object.keys(profile.permissions).length} módulos
                         </Badge>
                       </div>
                     </TableCell>
@@ -152,7 +159,7 @@ export function Profiles() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {profile.createdAt}
+                      {new Date(profile.created_at).toLocaleDateString('pt-BR')}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -181,7 +188,7 @@ export function Profiles() {
         </CardContent>
       </Card>
 
-      <CreateProfileModal 
+      <CreateProfileModalSupabase 
         open={createModalOpen} 
         onClose={() => setCreateModalOpen(false)} 
       />

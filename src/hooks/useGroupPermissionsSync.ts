@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { usePermissions } from './usePermissions';
+import { useSupabasePermissions } from './useSupabasePermissions';
 import { useUserGroups } from './useUsersAndGroups';
 
 /**
@@ -7,7 +7,7 @@ import { useUserGroups } from './useUsersAndGroups';
  * Garante que as permissões sejam consistentes entre os dois sistemas
  */
 export function useGroupPermissionsSync() {
-  const { permissions, updatePermission, initializeProfilePermissions } = usePermissions();
+  const { permissions, updatePermission } = useSupabasePermissions();
   const { groups } = useUserGroups();
 
   // Mapeamento de permissões de grupo para módulos do sistema de permissões
@@ -71,9 +71,9 @@ export function useGroupPermissionsSync() {
   // Sincronizar permissões dos grupos com o sistema de permissões
   useEffect(() => {
     groups.forEach(group => {
-      // Inicializar permissões para o grupo se não existir
+      // Skip if no permissions for this group
       if (!permissions[group.id]) {
-        initializeProfilePermissions(group.id);
+        return;
       }
 
       // Atualizar permissões baseado nas permissões do grupo
@@ -119,7 +119,7 @@ export function useGroupPermissionsSync() {
         }
       });
     });
-  }, [groups, permissions, permissionMapping, updatePermission, initializeProfilePermissions]);
+  }, [groups, permissions, permissionMapping, updatePermission]);
 
   /**
    * Obter permissões efetivas para um usuário baseado em seus grupos
@@ -137,10 +137,10 @@ export function useGroupPermissionsSync() {
           }
           
           // Aplicar OR lógico para combinar permissões (se qualquer grupo permite, usuário pode)
-          effectivePermissions[module].view = effectivePermissions[module].view || modulePermissions.view;
-          effectivePermissions[module].create = effectivePermissions[module].create || modulePermissions.create;
-          effectivePermissions[module].edit = effectivePermissions[module].edit || modulePermissions.edit;
-          effectivePermissions[module].delete = effectivePermissions[module].delete || modulePermissions.delete;
+          effectivePermissions[module].view = effectivePermissions[module].view || (modulePermissions as any).view;
+          effectivePermissions[module].create = effectivePermissions[module].create || (modulePermissions as any).create;
+          effectivePermissions[module].edit = effectivePermissions[module].edit || (modulePermissions as any).edit;
+          effectivePermissions[module].delete = effectivePermissions[module].delete || (modulePermissions as any).delete;
         });
       }
     });

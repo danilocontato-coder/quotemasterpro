@@ -24,31 +24,31 @@ import {
   Check,
   X
 } from "lucide-react";
-import { usePermissions, type Permission } from "@/hooks/usePermissions";
+import { useSupabasePermissions, type Permission } from "@/hooks/useSupabasePermissions";
 import { useToast } from "@/hooks/use-toast";
-import { PermissionGroupBridge } from "@/components/users/PermissionGroupBridge";
-import { SupabaseIntegrationStatus } from "@/components/layout/SupabaseIntegrationStatus";
+import { CreateProfileModalSupabase } from "@/components/profiles/CreateProfileModalSupabase";
 
 export function Permissions() {
-  const { roles, permissions, updatePermission, initializeProfilePermissions } = usePermissions();
+  const { roles, permissions, updatePermission, loading } = useSupabasePermissions();
   const { toast } = useToast();
-  const [activeRole, setActiveRole] = useState("admin");
+  const [activeRole, setActiveRole] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const currentRole = roles.find(r => r.id === activeRole);
 
-  // Initialize permissions for the active role if it doesn't exist
+  // Set first role as active when roles load
   useEffect(() => {
-    if (activeRole && !permissions[activeRole]) {
-      initializeProfilePermissions(activeRole);
+    if (roles.length > 0 && !activeRole) {
+      setActiveRole(roles[0].id);
     }
-  }, [activeRole, permissions, initializeProfilePermissions]);
+  }, [roles, activeRole]);
 
-  const handlePermissionChange = (module: string, action: keyof Permission, value: boolean) => {
-    updatePermission(activeRole, module, action, value);
-    toast({
-      title: "Permissão atualizada",
-      description: `Permissão ${value ? 'concedida' : 'removida'} com sucesso.`,
-    });
+  const handlePermissionChange = async (module: string, action: keyof Permission, value: boolean) => {
+    try {
+      await updatePermission(activeRole, module, action, value);
+    } catch (error) {
+      // Error handling is done in the hook
+    }
   };
 
   const getRoleIcon = (roleId: string) => {
@@ -98,6 +98,10 @@ export function Permissions() {
             Configure permissões por perfil de usuário
           </p>
         </div>
+        <Button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Novo Perfil
+        </Button>
       </div>
 
       {/* Role Stats - Organized in scrollable grid for many profiles */}
@@ -144,12 +148,6 @@ export function Permissions() {
         </div>
       </div>
 
-      {/* Supabase Integration Status */}
-      <SupabaseIntegrationStatus />
-
-      {/* Groups ↔ Permissions Sync */}
-      <PermissionGroupBridge />
-
       {/* Permissions Configuration */}
       <Card>
         <CardHeader>
@@ -162,6 +160,17 @@ export function Permissions() {
           </p>
         </CardHeader>
         <CardContent>
+          {loading && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Carregando permissões...</p>
+            </div>
+          )}
+          {!loading && !currentRole && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Selecione um perfil para configurar suas permissões</p>
+            </div>
+          )}
+          {!loading && currentRole && (
           <div className="space-y-6">
             {Object.entries(permissions[activeRole] || {}).map(([module, modulePermissions]) => (
               <div key={module} className="border rounded-lg p-4">
@@ -205,6 +214,7 @@ export function Permissions() {
               </div>
             ))}
           </div>
+          )}
         </CardContent>
       </Card>
 
@@ -276,6 +286,12 @@ export function Permissions() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create Profile Modal */}
+      <CreateProfileModalSupabase 
+        open={showCreateModal} 
+        onClose={() => setShowCreateModal(false)} 
+      />
     </div>
   );
 }

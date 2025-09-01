@@ -326,6 +326,47 @@ export type Database = {
           },
         ]
       }
+      permission_profiles: {
+        Row: {
+          active: boolean
+          client_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          permissions: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permission_profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string | null
@@ -793,6 +834,7 @@ export type Database = {
           id: string
           is_system_group: boolean | null
           name: string
+          permission_profile_id: string | null
           permissions: string[] | null
           updated_at: string
           user_count: number | null
@@ -804,6 +846,7 @@ export type Database = {
           id?: string
           is_system_group?: boolean | null
           name: string
+          permission_profile_id?: string | null
           permissions?: string[] | null
           updated_at?: string
           user_count?: number | null
@@ -815,11 +858,20 @@ export type Database = {
           id?: string
           is_system_group?: boolean | null
           name?: string
+          permission_profile_id?: string | null
           permissions?: string[] | null
           updated_at?: string
           user_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_groups_permission_profile_id_fkey"
+            columns: ["permission_profile_id"]
+            isOneToOne: false
+            referencedRelation: "permission_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
@@ -832,6 +884,7 @@ export type Database = {
           id: string
           last_access: string | null
           name: string
+          permission_profile_id: string | null
           phone: string | null
           role: string
           status: string
@@ -848,6 +901,7 @@ export type Database = {
           id?: string
           last_access?: string | null
           name: string
+          permission_profile_id?: string | null
           phone?: string | null
           role?: string
           status?: string
@@ -864,6 +918,7 @@ export type Database = {
           id?: string
           last_access?: string | null
           name?: string
+          permission_profile_id?: string | null
           phone?: string | null
           role?: string
           status?: string
@@ -876,6 +931,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_permission_profile_id_fkey"
+            columns: ["permission_profile_id"]
+            isOneToOne: false
+            referencedRelation: "permission_profiles"
             referencedColumns: ["id"]
           },
           {

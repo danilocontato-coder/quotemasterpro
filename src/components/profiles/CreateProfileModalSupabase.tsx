@@ -8,10 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
-import { useProfiles } from "@/hooks/useProfiles";
+import { useSupabasePermissions } from "@/hooks/useSupabasePermissions";
 import { useToast } from "@/hooks/use-toast";
 
-interface CreateProfileModalProps {
+interface CreateProfileModalSupabaseProps {
   open: boolean;
   onClose: () => void;
 }
@@ -21,64 +21,98 @@ const availablePermissions = {
     { id: "quotes.view", name: "Visualizar cotações" },
     { id: "quotes.create", name: "Criar cotações" },
     { id: "quotes.edit", name: "Editar cotações" },
-    { id: "quotes.delete", name: "Excluir cotações" },
-    { id: "quotes.manage", name: "Gerenciar todas as cotações" },
-    { id: "quotes.respond", name: "Responder cotações" }
-  ],
-  "Aprovações": [
-    { id: "approvals.view", name: "Visualizar aprovações" },
-    { id: "approvals.level1", name: "Aprovar até R$ 1.000" },
-    { id: "approvals.level2", name: "Aprovar até R$ 5.000" },
-    { id: "approvals.level3", name: "Aprovar até R$ 20.000" },
-    { id: "approvals.unlimited", name: "Aprovar valores ilimitados" },
-    { id: "approvals.manage", name: "Gerenciar aprovações" }
-  ],
-  "Usuários": [
-    { id: "users.view", name: "Visualizar usuários" },
-    { id: "users.create", name: "Criar usuários" },
-    { id: "users.edit", name: "Editar usuários" },
-    { id: "users.delete", name: "Excluir usuários" },
-    { id: "users.manage", name: "Gerenciar usuários" }
+    { id: "quotes.delete", name: "Excluir cotações" }
   ],
   "Produtos": [
     { id: "products.view", name: "Visualizar produtos" },
     { id: "products.create", name: "Criar produtos" },
     { id: "products.edit", name: "Editar produtos" },
-    { id: "products.delete", name: "Excluir produtos" },
-    { id: "products.manage", name: "Gerenciar produtos" }
+    { id: "products.delete", name: "Excluir produtos" }
+  ],
+  "Fornecedores": [
+    { id: "suppliers.view", name: "Visualizar fornecedores" },
+    { id: "suppliers.create", name: "Criar fornecedores" },
+    { id: "suppliers.edit", name: "Editar fornecedores" },
+    { id: "suppliers.delete", name: "Excluir fornecedores" }
+  ],
+  "Pagamentos": [
+    { id: "payments.view", name: "Visualizar pagamentos" },
+    { id: "payments.create", name: "Criar pagamentos" },
+    { id: "payments.edit", name: "Editar pagamentos" },
+    { id: "payments.delete", name: "Excluir pagamentos" }
+  ],
+  "Comunicação": [
+    { id: "communication.view", name: "Visualizar comunicações" },
+    { id: "communication.create", name: "Criar comunicações" },
+    { id: "communication.edit", name: "Editar comunicações" },
+    { id: "communication.delete", name: "Excluir comunicações" }
+  ],
+  "Usuários": [
+    { id: "users.view", name: "Visualizar usuários" },
+    { id: "users.create", name: "Criar usuários" },
+    { id: "users.edit", name: "Editar usuários" },
+    { id: "users.delete", name: "Excluir usuários" }
+  ],
+  "Configurações": [
+    { id: "settings.view", name: "Visualizar configurações" },
+    { id: "settings.create", name: "Criar configurações" },
+    { id: "settings.edit", name: "Editar configurações" },
+    { id: "settings.delete", name: "Excluir configurações" }
   ],
   "Relatórios": [
     { id: "reports.view", name: "Visualizar relatórios" },
-    { id: "reports.export", name: "Exportar relatórios" },
-    { id: "reports.manage", name: "Gerenciar relatórios" }
-  ],
-  "Sistema": [
-    { id: "system.settings", name: "Configurações do sistema" },
-    { id: "system.permissions", name: "Gerenciar permissões" },
-    { id: "system.audit", name: "Logs de auditoria" }
+    { id: "reports.create", name: "Criar relatórios" },
+    { id: "reports.edit", name: "Editar relatórios" },
+    { id: "reports.delete", name: "Excluir relatórios" }
   ]
 };
 
-export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
-  const { createProfile } = useProfiles();
+export function CreateProfileModalSupabase({ open, onClose }: CreateProfileModalSupabaseProps) {
+  const { createPermissionProfile } = useSupabasePermissions();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    permissions: [] as string[],
+    selectedPermissions: [] as string[],
     active: true
   });
+  const [loading, setLoading] = useState(false);
 
   const handlePermissionChange = (permissionId: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      permissions: checked
-        ? [...prev.permissions, permissionId]
-        : prev.permissions.filter(p => p !== permissionId)
+      selectedPermissions: checked
+        ? [...prev.selectedPermissions, permissionId]
+        : prev.selectedPermissions.filter(p => p !== permissionId)
     }));
   };
 
-  const handleSubmit = () => {
+  const convertPermissionsToStructure = (selectedPermissions: string[]) => {
+    const permissions: Record<string, Record<string, boolean>> = {};
+    
+    // Initialize all modules with false permissions
+    const modules = ['quotes', 'products', 'suppliers', 'payments', 'communication', 'users', 'settings', 'reports'];
+    modules.forEach(module => {
+      permissions[module] = {
+        view: false,
+        create: false,
+        edit: false,
+        delete: false
+      };
+    });
+
+    // Set selected permissions to true
+    selectedPermissions.forEach(permission => {
+      const [module, action] = permission.split('.');
+      if (permissions[module] && action in permissions[module]) {
+        permissions[module][action] = true;
+      }
+    });
+
+    return permissions;
+  };
+
+  const handleSubmit = async () => {
     if (!formData.name || !formData.description) {
       toast({
         title: "Campos obrigatórios",
@@ -88,7 +122,7 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
       return;
     }
 
-    if (formData.permissions.length === 0) {
+    if (formData.selectedPermissions.length === 0) {
       toast({
         title: "Permissões obrigatórias",
         description: "Selecione pelo menos uma permissão.",
@@ -98,27 +132,27 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
     }
 
     try {
-      const newProfile = createProfile(formData);
-      // Initialize permissions for the new profile
-      // This would be handled by the permissions system
-      toast({
-        title: "Perfil criado",
-        description: "Novo perfil criado com sucesso. Configure suas permissões na página de Permissões.",
+      setLoading(true);
+      const permissions = convertPermissionsToStructure(formData.selectedPermissions);
+      
+      await createPermissionProfile({
+        name: formData.name,
+        description: formData.description,
+        permissions
       });
+
       onClose();
       // Reset form
       setFormData({
         name: "",
         description: "",
-        permissions: [],
+        selectedPermissions: [],
         active: true
       });
     } catch (error) {
-      toast({
-        title: "Erro ao criar perfil",
-        description: "Ocorreu um erro ao criar o perfil. Tente novamente.",
-        variant: "destructive",
-      });
+      // Error handling is done in the hook
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -128,7 +162,7 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Criar Novo Perfil
+            Criar Novo Perfil de Permissões
           </DialogTitle>
         </DialogHeader>
 
@@ -141,6 +175,7 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 placeholder="Ex: Síndico, Conselho Fiscal..."
+                disabled={loading}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -153,6 +188,7 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
               <Switch
                 checked={formData.active}
                 onCheckedChange={(checked) => setFormData({...formData, active: checked})}
+                disabled={loading}
               />
             </div>
           </div>
@@ -164,6 +200,7 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
               placeholder="Descreva as responsabilidades deste perfil..."
+              disabled={loading}
             />
           </div>
 
@@ -180,10 +217,11 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
                       <div key={permission.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={permission.id}
-                          checked={formData.permissions.includes(permission.id)}
+                          checked={formData.selectedPermissions.includes(permission.id)}
                           onCheckedChange={(checked) => 
                             handlePermissionChange(permission.id, checked as boolean)
                           }
+                          disabled={loading}
                         />
                         <Label htmlFor={permission.id} className="text-sm">
                           {permission.name}
@@ -198,11 +236,11 @@ export function CreateProfileModal({ open, onClose }: CreateProfileModalProps) {
         </div>
 
         <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit}>
-            Criar Perfil
+          <Button onClick={handleSubmit} disabled={loading}>
+            {loading ? "Criando..." : "Criar Perfil"}
           </Button>
         </div>
       </DialogContent>
