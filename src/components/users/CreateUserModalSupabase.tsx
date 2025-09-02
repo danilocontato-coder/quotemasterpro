@@ -115,7 +115,8 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
         client_id: formData.client_id || undefined,
         supplier_id: formData.supplier_id || undefined,
         force_password_change: formData.force_password_change,
-        groups: formData.groups
+        groups: formData.groups,
+        password: formData.generateCredentials ? formData.password : undefined
       };
 
       await createUser(userData);

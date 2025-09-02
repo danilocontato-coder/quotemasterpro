@@ -113,7 +113,7 @@ export function useSupabaseUsers() {
   };
 
   // Create new user
-  const createUser = async (userData: Omit<SupabaseUser, 'id' | 'created_at' | 'updated_at'>) => {
+  const createUser = async (userData: Omit<SupabaseUser, 'id' | 'created_at' | 'updated_at'> & { password?: string }) => {
     try {
       const isAdmin = currentProfile?.role === 'admin';
       const effectiveClientId = userData.client_id ?? currentProfile?.client_id ?? null;
@@ -121,6 +121,27 @@ export function useSupabaseUsers() {
       if (!isAdmin && !effectiveClientId) {
         toast.error('Você não tem permissão para criar usuários sem um cliente associado.');
         throw new Error('RLS: client_id required for non-admin users');
+      }
+
+      // Se uma senha foi fornecida, criar o usuário no Supabase Auth primeiro
+      let authUserId = null;
+      if (userData.password) {
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: userData.email,
+          password: userData.password,
+          email_confirm: true, // Auto-confirma email para usuários criados por admin
+          user_metadata: {
+            name: userData.name,
+            role: userData.role
+          }
+        });
+
+        if (authError) {
+          console.error('Error creating auth user:', authError);
+          throw new Error(`Erro ao criar usuário no auth: ${authError.message}`);
+        }
+
+        authUserId = authData.user?.id;
       }
 
       const { data, error } = await supabase
@@ -133,12 +154,23 @@ export function useSupabaseUsers() {
           status: userData.status,
           client_id: effectiveClientId,
           supplier_id: userData.supplier_id,
-          force_password_change: userData.force_password_change
+          force_password_change: userData.force_password_change,
+          auth_user_id: authUserId
         }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Se deu erro na criação da tabela users mas o auth foi criado, limpar o auth
+        if (authUserId) {
+          try {
+            await supabase.auth.admin.deleteUser(authUserId);
+          } catch (cleanupError) {
+            console.error('Error cleaning up auth user:', cleanupError);
+          }
+        }
+        throw error;
+      }
 
       // Add to groups if specified
       if (userData.groups && userData.groups.length > 0) {

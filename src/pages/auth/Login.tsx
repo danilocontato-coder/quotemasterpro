@@ -40,8 +40,49 @@ const Login: React.FC = () => {
       });
 
       if (error) {
-        setError(error.message);
+        // Traduzir erros comuns para português
+        if (error.message.includes('Invalid login credentials')) {
+          setError('Email ou senha incorretos. Verifique suas credenciais.');
+        } else if (error.message.includes('Email not confirmed')) {
+          setError('Email não confirmado. Verifique sua caixa de entrada.');
+        } else if (error.message.includes('Too many requests')) {
+          setError('Muitas tentativas de login. Tente novamente em alguns minutos.');
+        } else {
+          setError(error.message);
+        }
         return;
+      }
+
+      // Verificar se o usuário tem um perfil associado
+      if (data.user) {
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('id, name, email, role, status, force_password_change')
+          .eq('auth_user_id', data.user.id)
+          .single();
+
+        // Se o usuário tem perfil na tabela users mas está com force_password_change
+        if (userProfile?.force_password_change) {
+          // Aqui poderia redirecionar para tela de alteração de senha
+          setError('Você precisa alterar sua senha. Entre em contato com o administrador.');
+          await supabase.auth.signOut();
+          return;
+        }
+
+        // Se não tem perfil na tabela users, verificar se existe no profiles
+        if (!userProfile) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, name, email, role')
+            .eq('id', data.user.id)
+            .single();
+
+          if (!profile) {
+            setError('Usuário não encontrado no sistema. Entre em contato com o administrador.');
+            await supabase.auth.signOut();
+            return;
+          }
+        }
       }
 
       // Don't navigate here - let AuthContext handle it
