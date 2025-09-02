@@ -80,22 +80,21 @@ Deno.serve(async (req) => {
     // Check if the requesting user has permission to create users
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, client_id')
       .eq('id', user.id)
       .single();
 
-    const userRole = profile?.role;
+    const userRole = profile?.role as string | undefined;
     console.log('User role:', userRole);
 
-    // Only admin users or users with appropriate permissions can create auth users
-    if (userRole !== 'admin') {
-      console.error('User does not have admin permissions');
+    // Allow admins; allow managers to create non-admin users
+    const isAdmin = userRole === 'admin';
+    const isManager = userRole === 'manager';
+    if (!isAdmin && !isManager) {
+      console.error('User does not have permissions to create auth users');
       return new Response(
-        JSON.stringify({ error: 'Forbidden - admin permissions required' }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403 
-        }
+        JSON.stringify({ error: 'Forbidden - admin or manager permissions required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
 
@@ -112,6 +111,15 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400 
         }
+      );
+    }
+
+    // Managers cannot create admin users
+    if (!isAdmin && role === 'admin') {
+      console.error('Only admins can create admin users');
+      return new Response(
+        JSON.stringify({ error: 'Forbidden - only admin can create admin users' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
 
