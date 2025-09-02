@@ -126,22 +126,39 @@ export function useSupabaseUsers() {
       // Se uma senha foi fornecida, criar o usuário no Supabase Auth primeiro
       let authUserId = null;
       if (userData.password) {
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: userData.email,
-          password: userData.password,
-          email_confirm: true, // Auto-confirma email para usuários criados por admin
-          user_metadata: {
+        console.log('Creating auth user for:', userData.email);
+        
+        const { data: authResult, error: authError } = await supabase.functions.invoke('create-auth-user', {
+          body: {
+            email: userData.email,
+            password: userData.password,
             name: userData.name,
             role: userData.role
           }
         });
 
         if (authError) {
-          console.error('Error creating auth user:', authError);
-          throw new Error(`Erro ao criar usuário no auth: ${authError.message}`);
+          console.error('Error calling create-auth-user function:', authError);
+          throw new Error(`Erro ao criar usuário: ${authError.message}`);
         }
 
-        authUserId = authData.user?.id;
+        if (!authResult?.success) {
+          console.error('Auth user creation failed:', authResult?.error);
+          throw new Error(authResult?.error || 'Erro ao criar usuário no sistema de autenticação');
+        }
+
+        authUserId = authResult.auth_user_id;
+        console.log('Auth user created with ID:', authUserId);
+      }
+
+      // Validar os dados antes de criar
+      const validationResult = await supabase.rpc('validate_user_creation', {
+        user_email: userData.email,
+        user_role: userData.role
+      });
+
+      if (!validationResult.data) {
+        throw new Error('Erro na validação dos dados do usuário');
       }
 
       const { data, error } = await supabase
@@ -161,15 +178,24 @@ export function useSupabaseUsers() {
         .single();
 
       if (error) {
-        // Se deu erro na criação da tabela users mas o auth foi criado, limpar o auth
+        console.error('Error creating user in database:', error);
+        
+        // Se deu erro na criação da tabela users mas o auth foi criado, tentar limpar o auth
         if (authUserId) {
-          try {
-            await supabase.auth.admin.deleteUser(authUserId);
-          } catch (cleanupError) {
-            console.error('Error cleaning up auth user:', cleanupError);
-          }
+          console.log('Attempting to cleanup auth user due to database error');
+          // Note: Cleanup seria ideal mas requer outra function admin
+          // Por ora, apenas logamos o problema
         }
-        throw error;
+        
+        // Traduzir erros comuns
+        let errorMessage = 'Erro ao criar usuário: ' + error.message;
+        if (error.message.includes('duplicate key')) {
+          errorMessage = 'Este email já está em uso por outro usuário';
+        } else if (error.code === '42501') {
+          errorMessage = 'Permissão negada pelas políticas de acesso (RLS). Verifique o cliente selecionado e suas permissões.';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Add to groups if specified

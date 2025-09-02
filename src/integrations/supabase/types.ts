@@ -966,6 +966,10 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
+      validate_user_creation: {
+        Args: { user_email: string; user_role: string }
+        Returns: boolean
+      }
     }
     Enums: {
       account_status: "active" | "inactive" | "suspended" | "trial"

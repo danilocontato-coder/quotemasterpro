@@ -63,7 +63,7 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const [passwordCopied, setPasswordCopied] = useState(false);
 
   useEffect(() => {
-    if (formData.generateCredentials && formData.name && formData.email && !formData.password) {
+    if (formData.generateCredentials && formData.email && !formData.password) {
       const username = formData.email.split('@')[0];
       const password = generateTemporaryPassword();
       setFormData(prev => ({
@@ -72,7 +72,7 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
         password
       }));
     }
-  }, [formData.name, formData.email, formData.generateCredentials, generateTemporaryPassword]);
+  }, [formData.email, formData.generateCredentials, generateTemporaryPassword]);
 
   const resetForm = () => {
     setFormData({
