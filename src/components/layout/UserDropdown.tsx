@@ -35,16 +35,6 @@ export function UserDropdown() {
     }
   };
 
-  const getInitials = (name?: string) => {
-    if (!name) return 'U';
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
-
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case 'super_admin':
@@ -60,6 +50,16 @@ export function UserDropdown() {
       default:
         return role;
     }
+  };
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
   };
 
   const handleEditProfile = () => {
