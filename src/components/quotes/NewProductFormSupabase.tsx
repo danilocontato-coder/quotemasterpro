@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
+import { useSupabaseCategories } from "@/hooks/useSupabaseCategories";
 
 interface NewProductFormSupabaseProps {
   open: boolean;
@@ -13,6 +15,7 @@ interface NewProductFormSupabaseProps {
 
 export function NewProductFormSupabase({ open, onClose, onProductCreate }: NewProductFormSupabaseProps) {
   const { addProduct } = useSupabaseProducts();
+  const { categories, refetch } = useSupabaseCategories();
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -21,6 +24,12 @@ export function NewProductFormSupabase({ open, onClose, onProductCreate }: NewPr
     quantity: 1
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      refetch();
+    }
+  }, [open, refetch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,11 +97,22 @@ export function NewProductFormSupabase({ open, onClose, onProductCreate }: NewPr
 
           <div>
             <label className="text-sm font-medium">Categoria</label>
-            <Input
+            <Select
               value={formData.category}
-              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-              placeholder="Categoria do produto"
-            />
+              onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Geral">Geral</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.name}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
