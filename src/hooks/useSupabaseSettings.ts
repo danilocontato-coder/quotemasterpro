@@ -349,29 +349,40 @@ export const useSupabaseSettings = () => {
     }
   };
 
-  // Real-time subscription
+  // Real-time subscription - only for current user
   useEffect(() => {
     fetchUserAndSettings();
 
-    const channel = supabase
-      .channel('user-settings-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_settings'
-        },
-        () => {
-          fetchUserAndSettings();
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+
+    // Only set up subscription if we have a current user
+    if (currentUser?.id) {
+      channel = supabase
+        .channel('user-settings-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'user_settings',
+            filter: `user_id=eq.${currentUser.id}` // Only listen to current user's changes
+          },
+          () => {
+            // Only refetch if we're not already loading to prevent loops
+            if (!isLoading) {
+              fetchUserAndSettings();
+            }
+          }
+        )
+        .subscribe();
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
-  }, []);
+  }, [currentUser?.id]); // Depend on current user ID
 
   return {
     settings,

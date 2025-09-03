@@ -159,8 +159,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Listen for profile updates from settings
+  // Listen for profile updates from settings - only if user exists and hasn't changed
   useEffect(() => {
+    if (!user?.id) return; // Early return if no user
+
     const handleProfileUpdate = (event: any) => {
       if (user && event.detail) {
         const updates: Partial<User> = {};
@@ -178,14 +180,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    // Listen for the custom event we dispatch from useRealtimeDataSync
+    const handleProfileReload = () => {
+      if (user?.id) {
+        // Instead of reloading, just refetch the profile data
+        supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
+          if (currentUser) {
+            fetchUserProfile(currentUser);
+          }
+        });
+      }
+    };
+
     window.addEventListener('userProfileUpdated', handleProfileUpdate);
     window.addEventListener('userAvatarUpdated', handleAvatarUpdate);
+    window.addEventListener('user-profile-updated', handleProfileReload);
 
     return () => {
       window.removeEventListener('userProfileUpdated', handleProfileUpdate);
       window.removeEventListener('userAvatarUpdated', handleAvatarUpdate);
+      window.removeEventListener('user-profile-updated', handleProfileReload);
     };
-  }, [user]);
+  }, [user?.id]); // Only depend on user ID to prevent unnecessary re-runs
 
   const logout = async (): Promise<void> => {
     await supabase.auth.signOut();

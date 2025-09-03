@@ -94,8 +94,13 @@ export function useSupabaseCurrentClient() {
   };
 
   useEffect(() => {
-    fetchClientInfo();
-  }, [user]);
+    if (user) {
+      fetchClientInfo();
+    } else {
+      setClient(null);
+      setIsLoading(false);
+    }
+  }, [user?.id, user?.clientId]); // Only depend on specific user properties
 
   const updateClient = async (updates: Partial<ClientInfo>) => {
     if (!client || !user?.clientId) return;
