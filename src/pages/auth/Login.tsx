@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, Building2, Users, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { getRoleBasedRoute } from '@/contexts/AuthContext';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -22,14 +22,16 @@ const Login: React.FC = () => {
   const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || getRoleBasedRoute('client');
 
   // Auto redirect when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
-      navigate(from, { replace: true });
+      const redirectPath = getRoleBasedRoute(user.role);
+      console.log('Login: redirecting user', user.email, 'with role', user.role, 'to', redirectPath);
+      navigate(redirectPath, { replace: true });
     }
-  }, [user, authLoading, navigate, from]);
+  }, [user, authLoading, navigate]);
 
   // Detectar tipo de usuário baseado no email
   const detectUserType = async (emailValue: string) => {
@@ -165,7 +167,7 @@ const Login: React.FC = () => {
 
         // Se o usuário tem perfil na tabela users mas está com force_password_change
         if (userProfile?.force_password_change) {
-          toast.info('Você precisa alterar sua senha temporária no primeiro acesso.');
+          console.log('Usuário precisa alterar senha no primeiro acesso');
           // Pode redirecionar para tela de mudança de senha ou permitir login
         }
 
@@ -185,7 +187,8 @@ const Login: React.FC = () => {
         }
       }
 
-      toast.success('Login realizado com sucesso!');
+      console.log('Login realizado com sucesso!');
+      // O redirecionamento será feito automaticamente pelo useEffect que monitora o user
     } catch (err) {
       setError('Erro inesperado. Tente novamente.');
     } finally {
