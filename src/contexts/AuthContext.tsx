@@ -95,7 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
-    console.log('fetchUserProfile: iniciando para usuário', supabaseUser.email);
     setIsLoading(true);
     
     try {
@@ -104,9 +103,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('*')
         .eq('id', supabaseUser.id)
         .maybeSingle();
-
-      console.log('fetchUserProfile: profile encontrado:', profile);
-      console.log('fetchUserProfile: erro:', error);
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -118,7 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: 'client' as UserRole,
           active: true,
         };
-        console.log('fetchUserProfile: usando fallback user:', fallbackUser);
         setUser(fallbackUser);
         setIsLoading(false);
         return;
@@ -136,7 +131,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           clientId: profile.client_id,
           supplierId: profile.supplier_id,
         };
-        console.log('fetchUserProfile: definindo user a partir do profile:', userProfile);
         setUser(userProfile);
       } else {
         // Profile doesn't exist, create a basic user
@@ -147,7 +141,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: 'client' as UserRole,
           active: true,
         };
-        console.log('fetchUserProfile: profile não existe, criando user básico:', basicUser);
         setUser(basicUser);
       }
     } catch (error) {
@@ -160,10 +153,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: 'client' as UserRole,
         active: true,
       };
-      console.log('fetchUserProfile: erro capturado, usando fallback:', errorFallbackUser);
       setUser(errorFallbackUser);
     } finally {
-      console.log('fetchUserProfile: finalizando com isLoading = false');
       setIsLoading(false);
     }
   };

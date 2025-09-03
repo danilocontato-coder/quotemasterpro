@@ -32,16 +32,51 @@ export const useSupabaseSuppliers = () => {
   const fetchSuppliers = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      // Get current user to determine filtering
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        console.log('No authenticated user, skipping suppliers fetch');
+        setSuppliers([]);
+        return;
+      }
+
+      // Get user profile to check client_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id, role')
+        .eq('id', authUser.id)
+        .single();
+
+      console.log('Fetching suppliers for user profile:', profile);
+
+      let query = supabase
         .from('suppliers')
         .select('*')
         .order('name', { ascending: true });
+
+      // Apply filters based on user role and context
+      if (profile?.role !== 'admin') {
+        // Non-admin users should only see suppliers from their client context
+        if (profile?.client_id) {
+          console.log('Filtering suppliers by client_id:', profile.client_id);
+          query = query.or(`client_id.eq.${profile.client_id},status.eq.active`);
+        } else {
+          // If user has no client_id context, only show active global suppliers
+          console.log('No client context, showing only active suppliers');
+          query = query.eq('status', 'active').is('client_id', null);
+        }
+      }
+      // Admin users see all suppliers
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Suppliers fetch error:', error);
         throw error;
       }
       
+      console.log('Suppliers fetched:', data?.length, 'records');
       setSuppliers((data as Supplier[]) || []);
     } catch (error) {
       console.error('Error fetching suppliers:', error);

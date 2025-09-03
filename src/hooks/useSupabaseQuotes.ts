@@ -43,8 +43,10 @@ export const useSupabaseQuotes = () => {
         .order('created_at', { ascending: false });
 
       // Filter based on user role
-      if (user.role === 'client' && user.clientId) {
-        query = query.eq('client_id', user.clientId);
+      if (user.role === 'client' || user.role === 'manager' || user.role === 'collaborator') {
+        if (user.clientId) {
+          query = query.eq('client_id', user.clientId);
+        }
       } else if (user.role === 'supplier' && user.supplierId) {
         query = query.eq('supplier_id', user.supplierId);
       }
@@ -277,7 +279,7 @@ export const useSupabaseQuotes = () => {
             const newQuote = payload.new as Quote;
             // Only add if it belongs to current user's scope
             if (user.role === 'admin' || 
-                (user.role === 'client' && newQuote.client_id === user.clientId) ||
+                ((user.role === 'client' || user.role === 'manager' || user.role === 'collaborator') && newQuote.client_id === user.clientId) ||
                 (user.role === 'supplier' && newQuote.supplier_id === user.supplierId)) {
               setQuotes(prev => [newQuote, ...prev]);
             }
