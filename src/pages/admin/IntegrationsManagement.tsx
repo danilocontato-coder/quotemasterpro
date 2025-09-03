@@ -24,7 +24,8 @@ import {
   TestTube,
   CheckCircle,
   AlertCircle,
-  Globe
+  Globe,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,169 +41,89 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { NewIntegrationModal } from '@/components/admin/NewIntegrationModal';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { IntegrationFormModal } from '@/components/admin/IntegrationFormModal';
+import { useSupabaseIntegrations, Integration } from '@/hooks/useSupabaseIntegrations';
 import { toast } from 'sonner';
 
-// Interface para integração
-interface Integration {
-  id: string;
-  name: string;
-  type: string;
-  description: string;
-  status: 'active' | 'inactive' | 'testing';
-  lastUsed: string;
-  totalCalls: number;
-  settings: Record<string, any>;
-  createdAt: string;
-}
-
-// Mock data with comprehensive integrations
-const mockIntegrations: Integration[] = [
-  {
-    id: "int-1",
-    name: "WhatsApp Principal",
-    type: "whatsapp",
-    description: "Envio de notificações via WhatsApp",
-    status: "active",
-    lastUsed: "2 horas atrás",
-    totalCalls: 1250,
-    settings: {
-      twilioAccountSid: "AC*********************",
-      twilioPhoneNumber: "+5511999999999"
-    },
-    createdAt: "2024-01-15"
-  },
-  {
-    id: "int-2", 
-    name: "E-mail SendGrid",
-    type: "email_sendgrid",
-    description: "Envio de e-mails transacionais",
-    status: "active",
-    lastUsed: "30 minutos atrás",
-    totalCalls: 5420,
-    settings: {
-      fromEmail: "noreply@empresa.com",
-      fromName: "QuoteMaster Pro"
-    },
-    createdAt: "2024-01-10"
-  },
-  {
-    id: "int-3",
-    name: "Pagamentos Stripe",
-    type: "payment_stripe", 
-    description: "Processamento de pagamentos",
-    status: "active",
-    lastUsed: "1 hora atrás",
-    totalCalls: 890,
-    settings: {
-      currency: "BRL"
-    },
-    createdAt: "2024-01-20"
-  },
-  {
-    id: "int-4",
-    name: "Automação Zapier",
-    type: "zapier",
-    description: "Integração com workflows externos",
-    status: "inactive",
-    lastUsed: "3 dias atrás", 
-    totalCalls: 45,
-    settings: {
-      triggerEvents: ["quote_created", "quote_approved"]
-    },
-    createdAt: "2024-02-01"
-  },
-  {
-    id: "int-5",
-    name: "Perplexity AI",
-    type: "perplexity",
-    description: "Análise inteligente de mercado",
-    status: "testing",
-    lastUsed: "Nunca",
-    totalCalls: 0,
-    settings: {
-      model: "llama-3.1-sonar-small-128k-online"
-    },
-    createdAt: "2024-02-10"
-  }
-];
 
 const getIntegrationIcon = (type: string) => {
   switch (type) {
-    case 'whatsapp': return MessageSquare;
+    case 'whatsapp_twilio': return MessageSquare;
     case 'email_sendgrid': 
     case 'email_smtp': return Mail;
     case 'payment_stripe':
     case 'payment_pagseguro': return CreditCard;
-    case 'zapier': return Zap;
+    case 'zapier_webhook':
+    case 'n8n_webhook': return Zap;
     case 'perplexity': return Brain;
     case 'delivery_api': return Truck;
     case 'cep_api': return MapPin;
     case 'currency_api': return DollarSign;
     case 'document_validation': return FileText;
-    case 'webhook_generic': return Link;
+    case 'generic_webhook': return Link;
     default: return Globe;
   }
 };
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-100 text-green-800 border-green-200';
-    case 'inactive': return 'bg-red-100 text-red-800 border-red-200';
-    case 'testing': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    default: return 'bg-gray-100 text-gray-800 border-gray-200';
-  }
+const getStatusBadge = (active: boolean) => {
+  return active 
+    ? <Badge className="bg-green-100 text-green-800 border-green-200">Ativa</Badge>
+    : <Badge className="bg-red-100 text-red-800 border-red-200">Inativa</Badge>;
 };
 
 export const IntegrationsManagement = () => {
-  const [integrations, setIntegrations] = useState(mockIntegrations);
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    integrations,
+    loading,
+    searchTerm,
+    setSearchTerm,
+    filterType,
+    setFilterType,
+    filterStatus,
+    setFilterStatus,
+    createIntegration,
+    updateIntegration,
+    deleteIntegration,
+    toggleIntegrationStatus,
+    testIntegration,
+    stats
+  } = useSupabaseIntegrations();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingIntegration, setEditingIntegration] = useState<Integration | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
 
-  const filteredIntegrations = integrations.filter(integration =>
-    integration.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    integration.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    integration.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleCreateIntegration = (newIntegration: any) => {
-    const integration = {
-      id: `int-${Date.now()}`,
-      ...newIntegration,
-      lastUsed: "Nunca",
-      totalCalls: 0,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    
-    setIntegrations(prev => [...prev, integration]);
-    toast.success("Integração criada com sucesso!");
+  const handleCreateIntegration = async (data: any) => {
+    await createIntegration(data);
   };
 
-  const handleToggleStatus = (id: string) => {
-    setIntegrations(prev => prev.map(integration => 
-      integration.id === id 
-        ? { 
-            ...integration, 
-            status: integration.status === 'active' ? 'inactive' as const : 'active' as const
-          }
-        : integration
-    ) as Integration[]);
-    toast.success("Status da integração atualizado!");
-  };
-
-  const handleDeleteIntegration = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir esta integração?")) {
-      setIntegrations(prev => prev.filter(integration => integration.id !== id));
-      toast.success("Integração excluída com sucesso!");
+  const handleEditIntegration = async (data: any) => {
+    if (editingIntegration) {
+      await updateIntegration(editingIntegration.id, data);
+      setEditingIntegration(null);
     }
   };
 
-  const stats = {
-    total: integrations.length,
-    active: integrations.filter(i => i.status === 'active').length,
-    inactive: integrations.filter(i => i.status === 'inactive').length,
-    testing: integrations.filter(i => i.status === 'testing').length,
-    totalCalls: integrations.reduce((sum, i) => sum + i.totalCalls, 0)
+  const handleDeleteIntegration = async (id: string) => {
+    if (confirm("Tem certeza que deseja excluir esta integração?")) {
+      await deleteIntegration(id);
+    }
+  };
+
+  const handleTestIntegration = async (id: string) => {
+    setTestingId(id);
+    try {
+      await testIntegration(id);
+    } finally {
+      setTestingId(null);
+    }
   };
 
   return (
@@ -227,7 +148,7 @@ export const IntegrationsManagement = () => {
 
       <div className="p-6 space-y-6">
         {/* Estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <Settings className="h-6 w-6 mx-auto mb-2 text-primary" />
@@ -251,20 +172,12 @@ export const IntegrationsManagement = () => {
               <p className="text-xs text-muted-foreground">Inativas</p>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardContent className="p-4 text-center">
               <TestTube className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
               <p className="text-2xl font-bold">{stats.testing}</p>
               <p className="text-xs text-muted-foreground">Em Teste</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Zap className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-              <p className="text-2xl font-bold">{stats.totalCalls.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Chamadas Total</p>
             </CardContent>
           </Card>
         </div>
@@ -287,6 +200,35 @@ export const IntegrationsManagement = () => {
                   />
                 </div>
               </div>
+              <div className="w-48">
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os tipos</SelectItem>
+                    <SelectItem value="whatsapp_twilio">WhatsApp</SelectItem>
+                    <SelectItem value="email_sendgrid">E-mail SendGrid</SelectItem>
+                    <SelectItem value="email_smtp">E-mail SMTP</SelectItem>
+                    <SelectItem value="payment_stripe">Stripe</SelectItem>
+                    <SelectItem value="zapier_webhook">Zapier</SelectItem>
+                    <SelectItem value="n8n_webhook">N8N</SelectItem>
+                    <SelectItem value="generic_webhook">Webhook</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-40">
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="active">Ativas</SelectItem>
+                    <SelectItem value="inactive">Inativas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -294,111 +236,137 @@ export const IntegrationsManagement = () => {
         {/* Lista de Integrações */}
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Integrações ({filteredIntegrations.length})</CardTitle>
+            <CardTitle>Lista de Integrações ({integrations.length})</CardTitle>
             <CardDescription>Gerencie todas as integrações de APIs e serviços externos</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Integração</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Último Uso</TableHead>
-                  <TableHead>Chamadas</TableHead>
-                  <TableHead>Ativo</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredIntegrations.map((integration) => {
-                  const Icon = getIntegrationIcon(integration.type);
-                  return (
-                    <TableRow key={integration.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-full bg-muted">
-                            <Icon className="h-4 w-4" />
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span>Carregando integrações...</span>
+              </div>
+            ) : integrations.length === 0 ? (
+              <div className="text-center py-8">
+                <Globe className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">Nenhuma integração encontrada</h3>
+                <p className="text-muted-foreground mb-4">
+                  Comece criando sua primeira integração para conectar APIs e serviços externos.
+                </p>
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Primeira Integração
+                </Button>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Integração</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Criado em</TableHead>
+                    <TableHead>Ativo</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {integrations.map((integration) => {
+                    const Icon = getIntegrationIcon(integration.integration_type);
+                    return (
+                      <TableRow key={integration.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-muted">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{integration.integration_type.replace('_', ' ')}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {Object.keys(integration.configuration).length} configurações
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{integration.name}</p>
-                            <p className="text-sm text-muted-foreground">{integration.description}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {integration.type.replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Badge className={getStatusColor(integration.status)}>
-                          {integration.status === 'active' ? 'Ativa' : 
-                           integration.status === 'inactive' ? 'Inativa' : 'Testando'}
-                        </Badge>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">{integration.lastUsed}</span>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <span className="text-sm font-medium">{integration.totalCalls.toLocaleString()}</span>
-                      </TableCell>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {integration.integration_type.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        
+                        <TableCell>
+                          {getStatusBadge(integration.active)}
+                        </TableCell>
+                        
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(integration.created_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        </TableCell>
 
-                      <TableCell>
-                        <Switch
-                          checked={integration.status === 'active'}
-                          onCheckedChange={() => handleToggleStatus(integration.id)}
-                        />
-                      </TableCell>
-                      
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-background border z-50">
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <TestTube className="h-4 w-4 mr-2" />
-                              Testar Conexão
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Settings className="h-4 w-4 mr-2" />
-                              Configurações
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-red-600"
-                              onClick={() => handleDeleteIntegration(integration.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        <TableCell>
+                          <Switch
+                            checked={integration.active}
+                            onCheckedChange={() => toggleIntegrationStatus(integration.id)}
+                          />
+                        </TableCell>
+                        
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background border z-50">
+                              <DropdownMenuItem onClick={() => setEditingIntegration(integration)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleTestIntegration(integration.id)}
+                                disabled={testingId === integration.id}
+                              >
+                                {testingId === integration.id ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <TestTube className="h-4 w-4 mr-2" />
+                                )}
+                                Testar Conexão
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-red-600"
+                                onClick={() => handleDeleteIntegration(integration.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Modal de Nova Integração */}
-      <NewIntegrationModal
+      <IntegrationFormModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
-        onIntegrationCreate={handleCreateIntegration}
+        onSubmit={handleCreateIntegration}
+      />
+
+      {/* Modal de Edição */}
+      <IntegrationFormModal
+        open={!!editingIntegration}
+        onOpenChange={(open) => !open && setEditingIntegration(null)}
+        onSubmit={handleEditIntegration}
+        editingIntegration={editingIntegration}
       />
     </div>
   );
