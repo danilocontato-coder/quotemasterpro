@@ -311,7 +311,7 @@ export const ClientsManagement = () => {
         </Card>
 
         {/* Tabela de Clientes */}
-        <Card>
+        <Card className="flex-1 flex flex-col">
           <CardHeader>
             <CardTitle>Lista de Clientes ({filteredClients.length})</CardTitle>
             <CardDescription>
@@ -321,23 +321,24 @@ export const ClientsManagement = () => {
               }
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead>Grupo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Plano</TableHead>
-                  <TableHead>Métricas</TableHead>
-                  <TableHead>Último Acesso</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pagination.paginatedData.map((client) => (
-                  <TableRow key={client.id}>
+          <CardContent className="flex-1 flex flex-col p-0">
+            <div className="flex-1 overflow-auto">
+              <Table>
+                 <TableHeader>
+                   <TableRow>
+                     <TableHead>Cliente</TableHead>
+                     <TableHead>Contato</TableHead>
+                     <TableHead>Grupo</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead>Plano</TableHead>
+                     <TableHead>Métricas</TableHead>
+                     <TableHead>Último Acesso</TableHead>
+                     <TableHead className="text-right">Ações</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {pagination.paginatedData.map((client) => (
+                     <TableRow key={client.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-full bg-muted">
@@ -466,34 +467,37 @@ export const ClientsManagement = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                     </TableRow>
+                   ))}
+                 </TableBody>
+               </Table>
 
-            {/* Empty state */}
-            {pagination.paginatedData.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                  {filteredClients.length === 0 ? 'Nenhum cliente encontrado' : 'Nenhum cliente nesta página'}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {filteredClients.length === 0 
-                    ? 'Tente ajustar os filtros ou criar um novo cliente'
-                    : 'Navegue para outra página ou ajuste os filtros'
-                  }
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Pagination */}
-        {filteredClients.length > 0 && (
-          <DataTablePagination {...pagination} />
-        )}
-      </div>
+               {/* Empty state */}
+               {pagination.paginatedData.length === 0 && (
+                 <div className="flex flex-col items-center justify-center py-12">
+                   <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+                   <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                     {filteredClients.length === 0 ? 'Nenhum cliente encontrado' : 'Nenhum cliente nesta página'}
+                   </h3>
+                   <p className="text-sm text-muted-foreground">
+                     {filteredClients.length === 0 
+                       ? 'Tente ajustar os filtros ou criar um novo cliente'
+                       : 'Navegue para outra página ou ajuste os filtros'
+                     }
+                   </p>
+                 </div>
+               )}
+             </div>
+             
+             {/* Pagination integrada */}
+             {filteredClients.length > 0 && (
+               <div className="border-t px-6 py-4">
+                 <DataTablePagination {...pagination} showCard={false} />
+               </div>
+             )}
+           </CardContent>
+         </Card>
+       </div>
 
       {/* Modals */}
       <CreateClientModal
