@@ -175,8 +175,8 @@ export const ClientsManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card px-6 py-4">
+    <div className="h-full flex flex-col">
+      <div className="border-b bg-card px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Clientes</h1>
@@ -201,7 +201,7 @@ export const ClientsManagement = () => {
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Estatísticas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
