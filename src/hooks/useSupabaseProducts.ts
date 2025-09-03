@@ -119,7 +119,7 @@ export const useSupabaseProducts = () => {
       }
 
       // For admins, allow creating products without client/supplier association
-      // For clients/managers/collaborators, prefer client_id but allow without it
+      // For clients/managers/collaborators, require client_id
       // For suppliers, require supplier_id
       let productPayload = { ...productData };
       
@@ -129,12 +129,10 @@ export const useSupabaseProducts = () => {
         if (profile.client_id) productPayload.client_id = profile.client_id;
         if (profile.supplier_id) productPayload.supplier_id = profile.supplier_id;
       } else if (['manager', 'collaborator'].includes(profile.role)) {
-        // For managers/collaborators, set client_id if available, but don't require it
-        // This allows creating general products that can be used by multiple clients
-        if (profile.client_id) {
-          productPayload.client_id = profile.client_id;
+        if (!profile.client_id) {
+          throw new Error('Perfil de usuário não está associado a um cliente');
         }
-        // If no client_id, the product will be available globally
+        productPayload.client_id = profile.client_id;
       } else if (profile.role === 'supplier') {
         if (!profile.supplier_id) {
           throw new Error('Perfil de usuário não está associado a um fornecedor');
