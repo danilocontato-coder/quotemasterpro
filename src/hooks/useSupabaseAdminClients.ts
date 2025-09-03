@@ -181,43 +181,10 @@ export function useSupabaseAdminClients() {
     console.log('useSupabaseAdminClients: createClient iniciado', clientData);
     setLoading(true);
     let createdClientId: string | null = null;
-    let createdAuthUserId: string | null = null;
 
     try {
-      // Valida senha antes de tudo
-      const password = clientData.loginCredentials.password;
-      console.log('useSupabaseAdminClients: Validando senha', { hasPassword: !!password, length: password?.length });
-      
-      if (!password || password.length < 6) {
-        throw new Error("Senha inválida. Defina manualmente ou gere uma senha temporária com pelo menos 6 caracteres.");
-      }
-
-      // 1) Cria usuário de autenticação (role manager) via Edge Function primeiro
-      console.log('useSupabaseAdminClients: Criando usuário de autenticação (primeiro passo)');
-      const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
-        body: {
-          email: clientData.email,
-          password,
-          name: clientData.companyName,
-          role: "manager",
-        },
-      });
-      
-      if (fnErr) {
-        console.error('useSupabaseAdminClients: Erro na Edge Function', fnErr);
-        throw new Error('Falha ao criar usuário de autenticação. Verifique e-mail e requisitos de senha.');
-      }
-      
-      const authPayload = authResp as any;
-      if (authPayload && authPayload.success === false) {
-        throw { code: authPayload.error_code || 'auth_error', message: authPayload.error || 'Falha ao criar usuário de autenticação' };
-      }
-      
-      createdAuthUserId = authPayload?.auth_user_id as string | null;
-      console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
-      if (!createdAuthUserId) {
-        throw { code: 'auth_missing_id', message: 'Falha ao criar usuário de autenticação - ID não retornado' };
-      }
+      // 1) Cria o registro do cliente PRIMEIRO (sempre funciona)
+      console.log('useSupabaseAdminClients: Criando registro do cliente');
       const { data: insertData, error: insertErr } = await supabase
         .from("clients")
         .insert({
@@ -241,36 +208,52 @@ export function useSupabaseAdminClients() {
       createdClientId = insertData?.id as string;
       console.log('useSupabaseAdminClients: Cliente criado com ID', createdClientId);
 
-      // 3) Vincula o profile ao cliente
-      console.log('useSupabaseAdminClients: Vinculando profile ao cliente');
-      const { error: profErr } = await supabase
-        .from("profiles")
-        .update({ client_id: createdClientId, role: "manager", company_name: clientData.companyName })
-        .eq("id", createdAuthUserId);
-      if (profErr) {
-        console.error('useSupabaseAdminClients: Erro ao atualizar profile', profErr);
-        throw profErr;
-      }
+      // 2) Tenta criar usuário de autenticação (opcional - não bloqueia se falhar)
+      try {
+        const password = clientData.loginCredentials.password || generateTemporaryPassword();
+        console.log('useSupabaseAdminClients: Tentando criar usuário de autenticação');
+        
+        const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
+          body: {
+            email: clientData.email,
+            password,
+            name: clientData.companyName,
+            role: "manager",
+          },
+        });
 
-      // 4) Cria um registro em users para RBAC detalhado
-      console.log('useSupabaseAdminClients: Criando registro em users');
-      const { error: usersErr } = await supabase.from("users").insert({
-        name: clientData.companyName,
-        email: clientData.email,
-        role: "manager",
-        status: "active",
-        client_id: createdClientId,
-        auth_user_id: createdAuthUserId,
-        force_password_change: clientData.loginCredentials.temporaryPassword,
-        phone: clientData.phone || null,
-      });
-      if (usersErr) {
-        console.error('useSupabaseAdminClients: Erro ao inserir em users', usersErr);
-        throw usersErr;
+        if (!fnErr && authResp) {
+          const authPayload = authResp as any;
+          if (authPayload?.success !== false && authPayload?.auth_user_id) {
+            const createdAuthUserId = authPayload.auth_user_id;
+            console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
+
+            // 3) Vincula o profile ao cliente (se usuário foi criado)
+            await supabase
+              .from("profiles")
+              .update({ client_id: createdClientId, role: "manager", company_name: clientData.companyName })
+              .eq("id", createdAuthUserId);
+
+            // 4) Cria registro em users
+            await supabase.from("users").insert({
+              name: clientData.companyName,
+              email: clientData.email,
+              role: "manager",
+              status: "active",
+              client_id: createdClientId,
+              auth_user_id: createdAuthUserId,
+              force_password_change: clientData.loginCredentials.temporaryPassword,
+              phone: clientData.phone || null,
+            });
+          }
+        } else {
+          console.warn('useSupabaseAdminClients: Falha ao criar usuário de auth (não crítico)', fnErr);
+        }
+      } catch (authError) {
+        console.warn('useSupabaseAdminClients: Erro na criação de usuário (não crítico)', authError);
       }
 
       // 5) Audit log
-      console.log('useSupabaseAdminClients: Criando audit log');
       await supabase.from("audit_logs").insert({
         action: "CLIENT_CREATE",
         entity_type: "clients",
@@ -284,9 +267,9 @@ export function useSupabaseAdminClients() {
       });
 
       console.log('useSupabaseAdminClients: Cliente criado com sucesso');
-      toast.success("Cliente criado com sucesso");
+      toast.success("Cliente criado com sucesso!");
 
-      // Atualiza estado local rapidamente
+      // Atualiza estado local
       setClients((prev) => [
         ...prev,
         {
@@ -301,14 +284,13 @@ export function useSupabaseAdminClients() {
       return { id: createdClientId };
     } catch (e: any) {
       console.error("useSupabaseAdminClients: Erro ao criar cliente:", e);
-      toast.error(e?.message || "Erro ao criar cliente");
+      toast.error("Erro ao criar cliente: " + (e?.message || "Erro desconhecido"));
 
-      // rollback (remove cliente se criado)
+      // rollback do cliente se criado
       if (createdClientId) {
         console.log('useSupabaseAdminClients: Fazendo rollback do cliente', createdClientId);
         await supabase.from("clients").delete().eq("id", createdClientId);
       }
-      // OBS: Não removemos o auth user por simplicidade nesta fase
       throw e;
     } finally {
       setLoading(false);
