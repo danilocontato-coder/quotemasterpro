@@ -313,16 +313,28 @@ export function useSupabaseAdminClients() {
   };
 
   const deleteClient = async (id: string) => {
+    console.log('deleteClient: iniciando exclusão do cliente', id);
     setLoading(true);
     try {
+      console.log('deleteClient: excluindo do Supabase');
       const { error } = await supabase.from("clients").delete().eq("id", id);
       if (error) throw error;
-      setClients((prev) => prev.filter((c) => c.id !== id));
+      
+      console.log('deleteClient: exclusão do Supabase bem-sucedida, atualizando estado local');
+      setClients((prev) => {
+        const newClients = prev.filter((c) => c.id !== id);
+        console.log('deleteClient: novo array de clientes:', newClients.length, 'clientes');
+        return newClients;
+      });
+      
+      console.log('deleteClient: mostrando toast de sucesso');
       toast.success("Cliente excluído");
+      console.log('deleteClient: operação concluída com sucesso');
     } catch (e: any) {
-      console.error(e);
+      console.error('deleteClient: erro:', e);
       toast.error("Falha ao excluir cliente");
     } finally {
+      console.log('deleteClient: finalizando loading');
       setLoading(false);
     }
   };
@@ -390,23 +402,35 @@ export function useSupabaseAdminClients() {
   };
 
   const stats = useMemo(() => {
+    console.log('stats: recalculando com', clients.length, 'clientes');
+    
     if (!clients.length) {
+      console.log('stats: sem clientes, retornando valores padrão');
       return { total: 0, active: 0, inactive: 0, pending: 0, totalRevenue: 0, avgQuotes: 0, byGroup: [] as any[] };
     }
+    
     const byGroup = clientGroups.map((group) => ({
       name: group.name,
       count: clients.filter((c) => c.groupId === group.id).length,
       color: group.color || "#64748b",
     }));
-    return {
+    
+    const totalRevenue = clients.reduce((s, c) => s + (c.revenue || 0), 0);
+    const totalQuotes = clients.reduce((s, c) => s + (c.quotesCount || 0), 0);
+    const avgQuotes = clients.length > 0 ? Math.round(totalQuotes / clients.length) : 0;
+    
+    const result = {
       total: clients.length,
       active: clients.filter((c) => c.status === "active").length,
       inactive: clients.filter((c) => c.status === "inactive").length,
       pending: clients.filter((c) => c.status === "pending").length,
-      totalRevenue: clients.reduce((s, c) => s + (c.revenue || 0), 0),
-      avgQuotes: Math.round(clients.reduce((s, c) => s + (c.quotesCount || 0), 0) / clients.length),
+      totalRevenue,
+      avgQuotes,
       byGroup,
     };
+    
+    console.log('stats: resultado calculado:', result);
+    return result;
   }, [clients, clientGroups]);
 
   return {
