@@ -35,14 +35,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirecionar para dashboard apropriado baseado no role
-    const dashboardMap = {
+    const dashboardMap: Record<string, string> = {
       admin: '/admin/superadmin',
       client: '/dashboard',
       supplier: '/supplier',
       support: '/support'
     };
     
-    return <Navigate to={dashboardMap[user.role]} replace />;
+    return <Navigate to={dashboardMap[user.role] || '/dashboard'} replace />;
   }
 
   return <>{children}</>;
