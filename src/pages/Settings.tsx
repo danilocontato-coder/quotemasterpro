@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -6,64 +6,87 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Lock, Bell, Palette, Globe, Shield } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { User, Lock, Bell, Palette } from "lucide-react";
+import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { AvatarUpload } from "@/components/settings/AvatarUpload";
+import { PasswordChange } from "@/components/settings/PasswordChange";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function Settings() {
-  const { toast } = useToast();
+  const { 
+    settings, 
+    currentUser, 
+    isLoading, 
+    updateProfile, 
+    updateNotifications, 
+    updatePreferences, 
+    updateAvatar,
+    toggleTwoFactor 
+  } = useSupabaseSettings();
+  
+  const { updateUserEmail } = useSupabaseAuth();
+
+  // Local state for form data
   const [profileData, setProfileData] = useState({
-    name: "João Silva",
-    email: "joao.silva@empresa.com",
-    phone: "+55 11 99999-0000",
-    role: "manager",
-    company: "Condomínio Azul"
+    name: '',
+    email: '',
+    phone: '',
+    company: ''
   });
 
-  const [notifications, setNotifications] = useState({
-    email: true,
-    whatsapp: true,
-    newQuotes: true,
-    approvals: true,
-    payments: true,
-    lowStock: false
-  });
+  // Sync with settings when loaded
+  useEffect(() => {
+    if (settings && currentUser) {
+      setProfileData({
+        name: settings.display_name || currentUser.user_metadata?.name || '',
+        email: currentUser.email || '',
+        phone: settings.phone || '',
+        company: settings.company_name || ''
+      });
+    }
+  }, [settings, currentUser]);
 
-  const [preferences, setPreferences] = useState({
-    language: "pt-BR",
-    timezone: "America/Sao_Paulo",
-    currency: "BRL",
-    theme: "light"
-  });
-
-  const handleSaveProfile = () => {
-    toast({
-      title: "Perfil atualizado",
-      description: "Suas informações foram salvas com sucesso.",
+  const handleSaveProfile = async () => {
+    const success = await updateProfile({
+      display_name: profileData.name,
+      phone: profileData.phone,
+      company_name: profileData.company
     });
+
+    // Update email if changed
+    if (profileData.email !== currentUser?.email && profileData.email) {
+      await updateUserEmail(profileData.email);
+    }
   };
 
-  const handleChangePassword = () => {
-    toast({
-      title: "Senha alterada",
-      description: "Sua senha foi alterada com sucesso.",
-    });
+  const handleSaveNotifications = async () => {
+    if (settings) {
+      await updateNotifications(settings.notifications);
+    }
   };
 
-  const handleSaveNotifications = () => {
-    toast({
-      title: "Notificações atualizadas",
-      description: "Suas preferências de notificação foram salvas.",
-    });
+  const handleSavePreferences = async () => {
+    if (settings) {
+      await updatePreferences(settings.preferences);
+    }
   };
 
-  const handleSavePreferences = () => {
-    toast({
-      title: "Preferências salvas",
-      description: "Suas configurações foram atualizadas.",
-    });
+  const handleAvatarChange = async (avatarUrl: string) => {
+    await updateAvatar(avatarUrl);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -103,20 +126,11 @@ export function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src="/placeholder-avatar.jpg" />
-                  <AvatarFallback className="text-lg">JS</AvatarFallback>
-                </Avatar>
-                <div>
-                  <Button variant="outline" size="sm">
-                    Alterar Foto
-                  </Button>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Formatos aceitos: JPG, PNG (máx. 2MB)
-                  </p>
-                </div>
-              </div>
+              <AvatarUpload
+                currentAvatarUrl={settings?.avatar_url}
+                userName={profileData.name}
+                onAvatarChange={handleAvatarChange}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -146,16 +160,15 @@ export function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Perfil</Label>
-                  <Select value={profileData.role} onValueChange={(value) => setProfileData({...profileData, role: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="manager">Gerente</SelectItem>
-                      <SelectItem value="collaborator">Colaborador</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="role"
+                    value={currentUser?.user_metadata?.role || 'Usuário'}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Entre em contato com o administrador para alterar seu perfil
+                  </p>
                 </div>
               </div>
 
@@ -176,35 +189,17 @@ export function Settings() {
         </TabsContent>
 
         <TabsContent value="security">
-          <Card>
-            <CardHeader>
-              <CardTitle>Segurança da Conta</CardTitle>
-              <CardDescription>
-                Gerencie sua senha e configurações de segurança
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Senha Atual</Label>
-                  <Input id="current-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">Nova Senha</Label>
-                  <Input id="new-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
-                  <Input id="confirm-password" type="password" />
-                </div>
-              </div>
-
-              <Button onClick={handleChangePassword}>
-                Alterar Senha
-              </Button>
-
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-medium mb-4">Autenticação de Dois Fatores</h3>
+          <div className="space-y-6">
+            <PasswordChange />
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Autenticação de Dois Fatores</CardTitle>
+                <CardDescription>
+                  Adicione uma camada extra de segurança à sua conta
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">SMS</p>
@@ -212,11 +207,14 @@ export function Settings() {
                       Receba códigos de verificação por SMS
                     </p>
                   </div>
-                  <Switch />
+                  <Switch
+                    checked={settings?.two_factor_enabled || false}
+                    onCheckedChange={(checked) => toggleTwoFactor(checked, 'sms')}
+                  />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="notifications">
@@ -239,8 +237,15 @@ export function Settings() {
                       </p>
                     </div>
                     <Switch
-                      checked={notifications.email}
-                      onCheckedChange={(checked) => setNotifications({...notifications, email: checked})}
+                      checked={settings?.notifications.email || false}
+                      onCheckedChange={(checked) => {
+                        if (settings) {
+                          updateNotifications({
+                            ...settings.notifications,
+                            email: checked
+                          });
+                        }
+                      }}
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -251,8 +256,15 @@ export function Settings() {
                       </p>
                     </div>
                     <Switch
-                      checked={notifications.whatsapp}
-                      onCheckedChange={(checked) => setNotifications({...notifications, whatsapp: checked})}
+                      checked={settings?.notifications.whatsapp || false}
+                      onCheckedChange={(checked) => {
+                        if (settings) {
+                          updateNotifications({
+                            ...settings.notifications,
+                            whatsapp: checked
+                          });
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -269,8 +281,15 @@ export function Settings() {
                       </p>
                     </div>
                     <Switch
-                      checked={notifications.newQuotes}
-                      onCheckedChange={(checked) => setNotifications({...notifications, newQuotes: checked})}
+                      checked={settings?.notifications.newQuotes || false}
+                      onCheckedChange={(checked) => {
+                        if (settings) {
+                          updateNotifications({
+                            ...settings.notifications,
+                            newQuotes: checked
+                          });
+                        }
+                      }}
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -281,8 +300,15 @@ export function Settings() {
                       </p>
                     </div>
                     <Switch
-                      checked={notifications.approvals}
-                      onCheckedChange={(checked) => setNotifications({...notifications, approvals: checked})}
+                      checked={settings?.notifications.approvals || false}
+                      onCheckedChange={(checked) => {
+                        if (settings) {
+                          updateNotifications({
+                            ...settings.notifications,
+                            approvals: checked
+                          });
+                        }
+                      }}
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -293,8 +319,15 @@ export function Settings() {
                       </p>
                     </div>
                     <Switch
-                      checked={notifications.payments}
-                      onCheckedChange={(checked) => setNotifications({...notifications, payments: checked})}
+                      checked={settings?.notifications.payments || false}
+                      onCheckedChange={(checked) => {
+                        if (settings) {
+                          updateNotifications({
+                            ...settings.notifications,
+                            payments: checked
+                          });
+                        }
+                      }}
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -305,16 +338,20 @@ export function Settings() {
                       </p>
                     </div>
                     <Switch
-                      checked={notifications.lowStock}
-                      onCheckedChange={(checked) => setNotifications({...notifications, lowStock: checked})}
+                      checked={settings?.notifications.lowStock || false}
+                      onCheckedChange={(checked) => {
+                        if (settings) {
+                          updateNotifications({
+                            ...settings.notifications,
+                            lowStock: checked
+                          });
+                        }
+                      }}
                     />
                   </div>
                 </div>
               </div>
 
-              <Button onClick={handleSaveNotifications}>
-                Salvar Preferências
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -331,7 +368,17 @@ export function Settings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="language">Idioma</Label>
-                  <Select value={preferences.language} onValueChange={(value) => setPreferences({...preferences, language: value})}>
+                  <Select 
+                    value={settings?.preferences.language || 'pt-BR'} 
+                    onValueChange={(value) => {
+                      if (settings) {
+                        updatePreferences({
+                          ...settings.preferences,
+                          language: value
+                        });
+                      }
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -344,7 +391,17 @@ export function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Fuso Horário</Label>
-                  <Select value={preferences.timezone} onValueChange={(value) => setPreferences({...preferences, timezone: value})}>
+                  <Select 
+                    value={settings?.preferences.timezone || 'America/Sao_Paulo'} 
+                    onValueChange={(value) => {
+                      if (settings) {
+                        updatePreferences({
+                          ...settings.preferences,
+                          timezone: value
+                        });
+                      }
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -357,7 +414,17 @@ export function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="currency">Moeda</Label>
-                  <Select value={preferences.currency} onValueChange={(value) => setPreferences({...preferences, currency: value})}>
+                  <Select 
+                    value={settings?.preferences.currency || 'BRL'} 
+                    onValueChange={(value) => {
+                      if (settings) {
+                        updatePreferences({
+                          ...settings.preferences,
+                          currency: value
+                        });
+                      }
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -370,7 +437,17 @@ export function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="theme">Tema</Label>
-                  <Select value={preferences.theme} onValueChange={(value) => setPreferences({...preferences, theme: value})}>
+                  <Select 
+                    value={settings?.preferences.theme || 'light'} 
+                    onValueChange={(value) => {
+                      if (settings) {
+                        updatePreferences({
+                          ...settings.preferences,
+                          theme: value
+                        });
+                      }
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -383,9 +460,6 @@ export function Settings() {
                 </div>
               </div>
 
-              <Button onClick={handleSavePreferences}>
-                Salvar Preferências
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>

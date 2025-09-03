@@ -924,6 +924,51 @@ export type Database = {
           },
         ]
       }
+      user_settings: {
+        Row: {
+          avatar_url: string | null
+          company_name: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          notifications: Json
+          phone: string | null
+          preferences: Json
+          two_factor_enabled: boolean | null
+          two_factor_method: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          notifications?: Json
+          phone?: string | null
+          preferences?: Json
+          two_factor_enabled?: boolean | null
+          two_factor_method?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          notifications?: Json
+          phone?: string | null
+          preferences?: Json
+          two_factor_enabled?: boolean | null
+          two_factor_method?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           auth_user_id: string | null
@@ -1008,6 +1053,23 @@ export type Database = {
       current_user_account_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_or_create_user_settings: {
+        Args: { user_uuid: string }
+        Returns: {
+          avatar_url: string | null
+          company_name: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          notifications: Json
+          phone: string | null
+          preferences: Json
+          two_factor_enabled: boolean | null
+          two_factor_method: string | null
+          updated_at: string | null
+          user_id: string
+        }
       }
       get_user_role: {
         Args: Record<PropertyKey, never>
