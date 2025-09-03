@@ -108,6 +108,9 @@ export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onO
             <Package className="h-5 w-5" />
             Cadastrar Novo Item
           </DialogTitle>
+          <div className="sr-only">
+            Formulário para cadastrar um novo produto ou serviço no sistema
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">

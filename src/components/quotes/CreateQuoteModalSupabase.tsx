@@ -473,6 +473,9 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
           <DialogTitle>
             {editingQuote ? 'Editar Cotação' : 'Nova Cotação'}
           </DialogTitle>
+          <div className="sr-only">
+            Formulário para criar ou editar uma cotação de produtos e serviços
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
