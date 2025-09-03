@@ -21,6 +21,7 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
 export const SuperAdminDashboard = () => {
+  console.log('SuperAdminDashboard component rendering');
   const { metrics, activities, systemHealth, isLoading } = useDashboardData();
 
 

@@ -45,6 +45,7 @@ import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { ClientGroupsManager } from '@/components/admin/ClientGroupsManager';
 
 export const ClientsManagement = () => {
+  console.log('ClientsManagement component rendering');
   const {
     clients,
     clientGroups,

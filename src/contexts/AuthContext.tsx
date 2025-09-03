@@ -17,16 +17,22 @@ export interface User {
 }
 
 export const getRoleBasedRoute = (role: UserRole): string => {
+  console.log('getRoleBasedRoute called with role:', role);
   switch (role) {
     case 'admin':
+      console.log('Redirecting admin to /admin/superadmin');
       return '/admin/superadmin';
     case 'client':
+      console.log('Redirecting client to /dashboard');
       return '/dashboard';
     case 'supplier':
+      console.log('Redirecting supplier to /supplier');
       return '/supplier';
     case 'support':
+      console.log('Redirecting support to /support');
       return '/support';
     default:
+      console.log('Unknown role, redirecting to /dashboard');
       return '/dashboard';
   }
 };

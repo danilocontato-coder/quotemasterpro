@@ -45,6 +45,7 @@ import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { CreateSupplierModal } from '@/components/suppliers/CreateSupplierModal';
 
 export const SuppliersManagement = () => {
+  console.log('SuppliersManagement component rendering');
   const {
     suppliers,
     isLoading,

@@ -177,74 +177,35 @@ function App() {
                   <Route index element={<Reports />} />
                 </Route>
 
-                {/* Admin routes */}
-                <Route path="/admin/superadmin" element={
+                {/* Admin routes - SuperAdmin Panel */}
+                <Route path="/admin" element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <SuperAdminLayout />
                   </ProtectedRoute>
-                } />
-                <Route path="/admin/clients" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <SuperAdminLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/suppliers" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <SuperAdminLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/plans" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <SuperAdminLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/integrations" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <SuperAdminLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/accounts" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <SuperAdminLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/audit" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <SuperAdminLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/settings" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <SuperAdminLayout />
-                  </ProtectedRoute>
-                } />
+                }>
+                  <Route path="superadmin" element={<SuperAdminDashboard />} />
+                  <Route path="clients" element={<ClientsManagement />} />
+                  <Route path="suppliers" element={<SuppliersManagement />} />
+                  <Route path="plans" element={<PlansManagement />} />
+                  <Route path="integrations" element={<IntegrationsManagement />} />
+                  <Route path="accounts" element={<AccountsManagement />} />
+                  <Route path="audit" element={<AuditLogs />} />
+                  <Route path="settings" element={<SystemSettings />} />
+                  <Route index element={<Navigate to="/admin/superadmin" replace />} />
+                </Route>
 
                 {/* Supplier routes */}
                 <Route path="/supplier" element={
                   <ProtectedRoute allowedRoles={['supplier']}>
                     <SupplierLayout />
                   </ProtectedRoute>
-                } />
-                <Route path="/supplier/quotes" element={
-                  <ProtectedRoute allowedRoles={['supplier']}>
-                    <SupplierLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/supplier/products" element={
-                  <ProtectedRoute allowedRoles={['supplier']}>
-                    <SupplierLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/supplier/history" element={
-                  <ProtectedRoute allowedRoles={['supplier']}>
-                    <SupplierLayout />
-                  </ProtectedRoute>
-                } />
-                <Route path="/supplier/financial" element={
-                  <ProtectedRoute allowedRoles={['supplier']}>
-                    <SupplierLayout />
-                  </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<SupplierDashboard />} />
+                  <Route path="quotes" element={<SupplierQuotes />} />
+                  <Route path="products" element={<SupplierProducts />} />
+                  <Route path="history" element={<SupplierHistory />} />
+                  <Route path="financial" element={<SupplierFinancial />} />
+                </Route>
 
                 {/* Support routes */}
                 <Route path="/support" element={

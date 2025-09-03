@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 
 export const SuperAdminLayout = () => {
+  console.log('SuperAdminLayout component rendering');
   // Mock quick stats for header
   const quickStats = {
     activeUsers: 1247,
