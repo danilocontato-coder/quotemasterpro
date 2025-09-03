@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Stepper } from '@/components/ui/stepper';
-import { UserPlus, MessageCircle, Building, CheckCircle, ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { UserPlus, MessageCircle, Building, CheckCircle, ArrowLeft, ArrowRight, X, MapPin } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
+import { brazilStates } from '@/data/brazilStates';
 
 interface ClientSupplierModalProps {
   open: boolean;
@@ -37,7 +38,7 @@ const commonSpecialties = [
   'Climatização'
 ];
 
-const regions = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'];
+
 
 const steps = [
   { id: 1, title: 'Dados Básicos', description: 'Nome e identificação' },
@@ -62,7 +63,8 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
     website: '',
     specialties: [] as string[],
     type: 'local' as const,
-    region: '',
+    state: '',
+    city: '',
     status: 'active' as const
   });
 
@@ -127,7 +129,8 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
       website: '',
       specialties: [],
       type: 'local',
-      region: '',
+      state: '',
+      city: '',
       status: 'active'
     });
     setErrors({});
@@ -221,21 +224,51 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="region">Região</Label>
-                  <Select value={formData.region} onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}>
+                  <Label htmlFor="state" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Estado
+                  </Label>
+                  <Select 
+                    value={formData.state} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, state: value, city: '' }))}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder="Selecione o estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      {regions.map(region => (
-                        <SelectItem key={region} value={region}>
-                          {region}
+                      {brazilStates.map(state => (
+                        <SelectItem key={state.code} value={state.code}>
+                          {state.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {formData.state && (
+                <div className="space-y-2">
+                  <Label htmlFor="city">Cidade</Label>
+                  <Select 
+                    value={formData.city} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, city: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a cidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {brazilStates
+                        .find(state => state.code === formData.state)
+                        ?.cities.map(city => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))
+                      }
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </CardContent>
           </Card>
         );
@@ -272,7 +305,7 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email * (Backup e documentos)</Label>
+                <Label htmlFor="email">Email * (Usado para cotações)</Label>
                 <Input
                   id="email"
                   type="email"
@@ -287,24 +320,26 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone Fixo (Opcional)</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="(11) 3333-4444"
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone Fixo (Opcional)</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="(11) 3333-4444"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="website">Website (Opcional)</Label>
-                <Input
-                  id="website"
-                  value={formData.website}
-                  onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                  placeholder="https://www.empresa.com"
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website (Opcional)</Label>
+                  <Input
+                    id="website"
+                    value={formData.website}
+                    onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                    placeholder="https://www.empresa.com"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -401,7 +436,14 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
                 <div>
                   <Label className="text-sm font-medium">Empresa</Label>
                   <p className="text-sm">{formData.name}</p>
-                  <p className="text-xs text-muted-foreground">CNPJ: {formData.cnpj}</p>
+                  <p className="text-xs text-muted-foreground">
+                    CNPJ: {formData.cnpj}
+                    {formData.state && formData.city && (
+                      <span className="ml-2">
+                        • {formData.city}/{formData.state}
+                      </span>
+                    )}
+                  </p>
                 </div>
 
                 <div>
