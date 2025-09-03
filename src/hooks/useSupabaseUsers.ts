@@ -299,6 +299,16 @@ export function useSupabaseUsers() {
   // Delete user
   const deleteUser = async (id: string) => {
     try {
+      // Remove group memberships first to avoid constraint/RLS issues
+      const { error: membershipsError } = await supabase
+        .from('user_group_memberships')
+        .delete()
+        .eq('user_id', id);
+      if (membershipsError) {
+        console.warn('Warning deleting memberships (continuing):', membershipsError);
+      }
+
+      // Delete the user
       const { error } = await supabase
         .from('users')
         .delete()
@@ -310,7 +320,10 @@ export function useSupabaseUsers() {
       await fetchUsers();
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      toast.error('Erro ao excluir usuário: ' + error.message);
+      const msg = error?.message?.includes('permission') || error?.code === '42501'
+        ? 'Permissão negada pelas políticas de acesso (RLS). Verifique suas permissões.'
+        : (error?.message || 'Tente novamente');
+      toast.error('Erro ao excluir usuário: ' + msg);
       throw error;
     }
   };
