@@ -22,7 +22,7 @@ export const AuthenticatedLayout: React.FC = () => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/auth/login" replace />;
   }
 
   // Determine which layout to use based on user role

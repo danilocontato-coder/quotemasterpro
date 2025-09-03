@@ -1,0 +1,434 @@
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export interface ClientGroup {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string; // hex color
+  clientCount?: number;
+  createdAt?: string;
+}
+
+export interface ClientContact {
+  name: string;
+  email: string;
+  phone: string;
+  position: string;
+  isPrimary: boolean;
+}
+
+export interface ClientDocument {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+  url: string;
+}
+
+export interface AdminClient {
+  id: string;
+  companyName: string;
+  cnpj: string;
+  email: string;
+  phone: string;
+  address: {
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  contacts: ClientContact[];
+  groupId?: string;
+  groupName?: string;
+  status: "active" | "inactive" | "pending";
+  plan: string;
+  createdAt: string;
+  lastAccess?: string;
+  loginCredentials: {
+    username: string;
+    password?: string; // when present and useTemporaryPassword=false, it's the manual password
+    temporaryPassword: boolean;
+    lastPasswordChange?: string;
+  };
+  documents: ClientDocument[];
+  revenue: number;
+  quotesCount: number;
+  notes?: string;
+}
+
+// Utilities
+const formatAddressToText = (addr: AdminClient["address"]) => {
+  const parts = [
+    addr.street && `${addr.street}, ${addr.number}`,
+    addr.complement,
+    addr.neighborhood,
+    addr.city && `${addr.city} - ${addr.state}`,
+    addr.zipCode,
+  ].filter(Boolean);
+  return parts.join(" | ");
+};
+
+const parseAddress = (text?: string): AdminClient["address"] => {
+  // As we stored as text, return an empty structured address for now
+  return {
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    zipCode: "",
+  };
+};
+
+export function useSupabaseAdminClients() {
+  const [clients, setClients] = useState<AdminClient[]>([]);
+  const [clientGroups, setClientGroups] = useState<ClientGroup[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [loading, setLoading] = useState(false);
+
+  // Fetch groups and clients
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [{ data: groupsData, error: groupsErr }, { data: clientsData, error: clientsErr }] = await Promise.all([
+          supabase.from("client_groups").select("id, name, description, color, client_count, created_at"),
+          supabase
+            .from("clients")
+            .select(
+              "id, name, cnpj, email, phone, address, status, subscription_plan_id, created_at, updated_at, username, group_id, last_access"
+            )
+        ]);
+
+        if (groupsErr) throw groupsErr;
+        if (clientsErr) throw clientsErr;
+
+        const groups: ClientGroup[] = (groupsData || []).map((g) => ({
+          id: g.id,
+          name: g.name,
+          description: g.description ?? undefined,
+          color: g.color ?? "#64748b",
+          clientCount: g.client_count ?? 0,
+          createdAt: g.created_at ?? undefined,
+        }));
+
+        const groupsMap = new Map(groups.map((g) => [g.id, g]));
+
+        const mapped: AdminClient[] = (clientsData || []).map((c) => ({
+          id: c.id,
+          companyName: c.name,
+          cnpj: c.cnpj,
+          email: c.email,
+          phone: c.phone ?? "",
+          address: parseAddress(c.address ?? undefined),
+          contacts: [],
+          groupId: c.group_id ?? undefined,
+          groupName: c.group_id ? groupsMap.get(c.group_id)?.name : undefined,
+          status: (c.status as AdminClient["status"]) || "active",
+          plan: c.subscription_plan_id || "basic",
+          createdAt: c.created_at || new Date().toISOString(),
+          lastAccess: c.last_access || undefined,
+          loginCredentials: {
+            username: c.username || "",
+            temporaryPassword: true,
+            lastPasswordChange: c.updated_at || undefined,
+          },
+          documents: [],
+          revenue: 0,
+          quotesCount: 0,
+          notes: undefined,
+        }));
+
+        setClientGroups(groups);
+        setClients(mapped);
+      } catch (e: any) {
+        console.error("Erro ao carregar clientes/grupos:", e);
+        toast.error("Falha ao carregar dados de clientes");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const filteredClients = useMemo(() => {
+    return clients.filter((client) => {
+      const matchesSearch =
+        client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.cnpj.includes(searchTerm) ||
+        client.email.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesGroup = filterGroup === "all" || client.groupId === filterGroup;
+      const matchesStatus = filterStatus === "all" || client.status === filterStatus;
+
+      return matchesSearch && matchesGroup && matchesStatus;
+    });
+  }, [clients, searchTerm, filterGroup, filterStatus]);
+
+  const createClient = async (
+    clientData: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">
+  ) => {
+    setLoading(true);
+    let createdClientId: string | null = null;
+    let createdAuthUserId: string | null = null;
+
+    try {
+      // 1) Cria o registro do cliente
+      const { data: insertData, error: insertErr } = await supabase
+        .from("clients")
+        .insert({
+          name: clientData.companyName,
+          cnpj: clientData.cnpj,
+          email: clientData.email,
+          phone: clientData.phone,
+          address: formatAddressToText(clientData.address),
+          status: clientData.status,
+          subscription_plan_id: clientData.plan,
+          username: clientData.loginCredentials.username,
+          group_id: clientData.groupId || null,
+        })
+        .select("id")
+        .single();
+
+      if (insertErr) throw insertErr;
+      createdClientId = insertData?.id as string;
+
+      // Valida senha (manual ou temporária deve existir)
+      const password = clientData.loginCredentials.password;
+      if (!password || password.length < 6) {
+        throw new Error("Senha inválida. Defina manualmente ou gere uma senha temporária.");
+      }
+
+      // 2) Cria usuário de autenticação (role manager) via Edge Function
+      const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
+        body: {
+          email: clientData.email,
+          password,
+          name: clientData.companyName,
+          role: "manager",
+        },
+      });
+      if (fnErr) throw fnErr;
+      createdAuthUserId = (authResp as any)?.auth_user_id as string | null;
+      if (!createdAuthUserId) throw new Error("Falha ao criar usuário de autenticação");
+
+      // 3) Vincula o profile ao cliente
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .update({ client_id: createdClientId, role: "manager", company_name: clientData.companyName })
+        .eq("id", createdAuthUserId);
+      if (profErr) throw profErr;
+
+      // 4) Cria um registro em users para RBAC detalhado
+      const { error: usersErr } = await supabase.from("users").insert({
+        name: clientData.companyName,
+        email: clientData.email,
+        role: "manager",
+        status: "active",
+        client_id: createdClientId,
+        auth_user_id: createdAuthUserId,
+        force_password_change: clientData.loginCredentials.temporaryPassword,
+        phone: clientData.phone || null,
+      });
+      if (usersErr) throw usersErr;
+
+      // 5) Audit log
+      await supabase.from("audit_logs").insert({
+        action: "CLIENT_CREATE",
+        entity_type: "clients",
+        entity_id: createdClientId,
+        panel_type: "admin",
+        details: {
+          companyName: clientData.companyName,
+          email: clientData.email,
+          plan: clientData.plan,
+        },
+      });
+
+      toast.success("Cliente criado com sucesso");
+
+      // Atualiza estado local rapidamente
+      setClients((prev) => [
+        ...prev,
+        {
+          ...(clientData as any),
+          id: createdClientId!,
+          createdAt: new Date().toISOString(),
+          revenue: 0,
+          quotesCount: 0,
+        },
+      ]);
+
+      return { id: createdClientId };
+    } catch (e: any) {
+      console.error("Erro ao criar cliente:", e);
+      toast.error(e?.message || "Erro ao criar cliente");
+
+      // rollback (remove cliente se criado)
+      if (createdClientId) {
+        await supabase.from("clients").delete().eq("id", createdClientId);
+      }
+      // OBS: Não removemos o auth user por simplicidade nesta fase
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateClient = async (id: string, clientData: Partial<AdminClient>) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          name: clientData.companyName,
+          email: clientData.email,
+          phone: clientData.phone,
+          cnpj: clientData.cnpj,
+          address: clientData.address ? formatAddressToText(clientData.address) : undefined,
+          status: clientData.status,
+          subscription_plan_id: clientData.plan,
+          username: clientData.loginCredentials?.username,
+          group_id: clientData.groupId,
+        })
+        .eq("id", id);
+      if (error) throw error;
+
+      setClients((prev) => prev.map((c) => (c.id === id ? { ...c, ...(clientData as any) } : c)));
+      toast.success("Cliente atualizado");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Falha ao atualizar cliente");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteClient = async (id: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.from("clients").delete().eq("id", id);
+      if (error) throw error;
+      setClients((prev) => prev.filter((c) => c.id !== id));
+      toast.success("Cliente excluído");
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Falha ao excluir cliente");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createGroup = async (
+    groupData: Omit<ClientGroup, "id" | "createdAt" | "clientCount">
+  ) => {
+    const { data, error } = await supabase
+      .from("client_groups")
+      .insert({ name: groupData.name, description: groupData.description, color: groupData.color })
+      .select("id, name, description, color, client_count, created_at")
+      .single();
+    if (error) {
+      toast.error("Erro ao criar grupo");
+      throw error;
+    }
+    const newGroup: ClientGroup = {
+      id: data.id,
+      name: data.name,
+      description: data.description ?? undefined,
+      color: data.color ?? "#64748b",
+      clientCount: data.client_count ?? 0,
+      createdAt: data.created_at ?? undefined,
+    };
+    setClientGroups((prev) => [...prev, newGroup]);
+    return newGroup;
+  };
+
+  const updateGroup = async (id: string, groupData: Partial<ClientGroup>) => {
+    const { error } = await supabase
+      .from("client_groups")
+      .update({ name: groupData.name, description: groupData.description, color: groupData.color })
+      .eq("id", id);
+    if (error) {
+      toast.error("Erro ao atualizar grupo");
+      throw error;
+    }
+    setClientGroups((prev) => prev.map((g) => (g.id === id ? { ...g, ...groupData } : g)));
+  };
+
+  const deleteGroup = async (id: string) => {
+    // Remover associação dos clientes antes (set group_id null)
+    await supabase.from("clients").update({ group_id: null }).eq("group_id", id);
+    const { error } = await supabase.from("client_groups").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir grupo");
+      throw error;
+    }
+    setClientGroups((prev) => prev.filter((g) => g.id !== id));
+    // Atualizar clientes locais
+    setClients((prev) => prev.map((c) => (c.groupId === id ? { ...c, groupId: undefined, groupName: undefined } : c)));
+  };
+
+  const generateTemporaryPassword = () => {
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    let password = "";
+    for (let i = 0; i < 10; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
+    return password;
+  };
+
+  const generateUsername = (companyName: string) => {
+    return (
+      companyName.toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 15) + Math.floor(Math.random() * 100)
+    );
+  };
+
+  const stats = useMemo(() => {
+    if (!clients.length) {
+      return { total: 0, active: 0, inactive: 0, pending: 0, totalRevenue: 0, avgQuotes: 0, byGroup: [] as any[] };
+    }
+    const byGroup = clientGroups.map((group) => ({
+      name: group.name,
+      count: clients.filter((c) => c.groupId === group.id).length,
+      color: group.color || "#64748b",
+    }));
+    return {
+      total: clients.length,
+      active: clients.filter((c) => c.status === "active").length,
+      inactive: clients.filter((c) => c.status === "inactive").length,
+      pending: clients.filter((c) => c.status === "pending").length,
+      totalRevenue: clients.reduce((s, c) => s + (c.revenue || 0), 0),
+      avgQuotes: Math.round(clients.reduce((s, c) => s + (c.quotesCount || 0), 0) / clients.length),
+      byGroup,
+    };
+  }, [clients, clientGroups]);
+
+  return {
+    clients: filteredClients,
+    clientGroups,
+    searchTerm,
+    setSearchTerm,
+    filterGroup,
+    setFilterGroup,
+    filterStatus,
+    setFilterStatus,
+    createClient,
+    updateClient,
+    deleteClient,
+    createGroup,
+    updateGroup,
+    deleteGroup,
+    generateTemporaryPassword,
+    generateUsername,
+    stats,
+    loading,
+  };
+}

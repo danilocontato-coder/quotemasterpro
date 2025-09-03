@@ -35,7 +35,7 @@ import { AdminClient, ClientGroup, ClientContact, ClientDocument } from '@/hooks
 interface CreateClientModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateClient: (client: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">) => void;
+  onCreateClient: (client: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">) => Promise<any>;
   clientGroups: ClientGroup[];
   generateUsername: (companyName: string) => string;
   generateTemporaryPassword: () => string;
