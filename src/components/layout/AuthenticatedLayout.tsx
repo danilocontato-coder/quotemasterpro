@@ -31,6 +31,8 @@ export const AuthenticatedLayout: React.FC = () => {
       return <SuperAdminLayout />;
     case 'supplier':
       return <SupplierLayout />;
+    case 'manager':
+    case 'collaborator':
     case 'client':
     case 'support':
     default:

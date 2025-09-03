@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-export type UserRole = 'admin' | 'client' | 'supplier' | 'support';
+export type UserRole = 'admin' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
 
 export interface User {
   id: string;
@@ -22,6 +22,9 @@ export const getRoleBasedRoute = (role: UserRole): string => {
     case 'admin':
       console.log('Redirecting admin to /admin/superadmin');
       return '/admin/superadmin';
+    case 'manager':
+      console.log('Redirecting manager to /dashboard');
+      return '/dashboard';
     case 'client':
       console.log('Redirecting client to /dashboard');
       return '/dashboard';
@@ -32,7 +35,7 @@ export const getRoleBasedRoute = (role: UserRole): string => {
       console.log('Redirecting support to /support');
       return '/support';
     default:
-      console.log('Unknown role, redirecting to /dashboard');
+      console.log('Unknown role', role, 'redirecting to /dashboard');
       return '/dashboard';
   }
 };
@@ -92,6 +95,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
+    console.log('fetchUserProfile: iniciando para usuário', supabaseUser.email);
+    setIsLoading(true);
+    
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -99,22 +105,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', supabaseUser.id)
         .maybeSingle();
 
+      console.log('fetchUserProfile: profile encontrado:', profile);
+      console.log('fetchUserProfile: erro:', error);
+
       if (error) {
         console.error('Error fetching profile:', error);
         // Create a basic user even if profile fetch fails
-        setUser({
+        const fallbackUser = {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
           name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-          role: 'client',
+          role: 'client' as UserRole,
           active: true,
-        });
+        };
+        console.log('fetchUserProfile: usando fallback user:', fallbackUser);
+        setUser(fallbackUser);
         setIsLoading(false);
         return;
       }
 
       if (profile) {
-        setUser({
+        const userProfile = {
           id: profile.id,
           email: profile.email,
           name: profile.name,
@@ -124,28 +135,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           active: profile.active,
           clientId: profile.client_id,
           supplierId: profile.supplier_id,
-        });
+        };
+        console.log('fetchUserProfile: definindo user a partir do profile:', userProfile);
+        setUser(userProfile);
       } else {
         // Profile doesn't exist, create a basic user
-        setUser({
+        const basicUser = {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
           name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-          role: 'client',
+          role: 'client' as UserRole,
           active: true,
-        });
+        };
+        console.log('fetchUserProfile: profile não existe, criando user básico:', basicUser);
+        setUser(basicUser);
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
       // Fallback user creation
-      setUser({
+      const errorFallbackUser = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
         name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-        role: 'client',
+        role: 'client' as UserRole,
         active: true,
-      });
+      };
+      console.log('fetchUserProfile: erro capturado, usando fallback:', errorFallbackUser);
+      setUser(errorFallbackUser);
     } finally {
+      console.log('fetchUserProfile: finalizando com isLoading = false');
       setIsLoading(false);
     }
   };
