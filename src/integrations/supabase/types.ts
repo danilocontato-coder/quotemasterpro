@@ -143,42 +143,93 @@ export type Database = {
         }
         Relationships: []
       }
+      client_groups: {
+        Row: {
+          client_count: number | null
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_count?: number | null
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_count?: number | null
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
           cnpj: string
+          company_name: string | null
+          contacts: Json | null
           created_at: string | null
+          documents: Json | null
           email: string
+          group_id: string | null
           id: string
+          last_access: string | null
           name: string
+          notes: string | null
           phone: string | null
           status: string | null
           subscription_plan_id: string | null
           updated_at: string | null
+          username: string | null
         }
         Insert: {
           address?: string | null
           cnpj: string
+          company_name?: string | null
+          contacts?: Json | null
           created_at?: string | null
+          documents?: Json | null
           email: string
+          group_id?: string | null
           id?: string
+          last_access?: string | null
           name: string
+          notes?: string | null
           phone?: string | null
           status?: string | null
           subscription_plan_id?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Update: {
           address?: string | null
           cnpj?: string
+          company_name?: string | null
+          contacts?: Json | null
           created_at?: string | null
+          documents?: Json | null
           email?: string
+          group_id?: string | null
           id?: string
+          last_access?: string | null
           name?: string
+          notes?: string | null
           phone?: string | null
           status?: string | null
           subscription_plan_id?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Relationships: [
           {
