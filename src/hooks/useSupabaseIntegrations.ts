@@ -153,22 +153,33 @@ export function useSupabaseIntegrations() {
   };
 
   const testIntegration = async (id: string): Promise<boolean> => {
+    const integration = integrations.find(int => int.id === id);
+    if (!integration) return false;
+
     try {
-      // Here you would implement actual integration testing
-      // For now, simulating a test
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const success = Math.random() > 0.2; // 80% success rate
-      
-      if (success) {
-        toast.success('Teste de conexão realizado com sucesso!');
-      } else {
-        toast.error('Falha no teste de conexão. Verifique as configurações.');
+      const { data, error } = await supabase.functions.invoke('test-integration', {
+        body: {
+          integration_id: integration.id,
+          integration_type: integration.integration_type,
+          configuration: integration.configuration
+        }
+      });
+
+      if (error) {
+        console.error('Error testing integration:', error);
+        toast.error(`Erro no teste: ${error.message}`);
+        return false;
       }
-      
-      return success;
-    } catch (error) {
-      console.error('Erro ao testar integração:', error);
+
+      if (data?.success) {
+        toast.success(data.message);
+        return true;
+      } else {
+        toast.error(data?.message || 'Falha no teste de conexão');
+        return false;
+      }
+    } catch (error: any) {
+      console.error('Error testing integration:', error);
       toast.error('Erro ao testar integração');
       return false;
     }

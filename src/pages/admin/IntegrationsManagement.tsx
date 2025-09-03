@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { IntegrationFormModal } from '@/components/admin/IntegrationFormModal';
+import { IntegrationDetailsModal } from '@/components/admin/IntegrationDetailsModal';
 import { useSupabaseIntegrations, Integration } from '@/hooks/useSupabaseIntegrations';
 import { toast } from 'sonner';
 
@@ -97,8 +98,11 @@ export const IntegrationsManagement = () => {
   } = useSupabaseIntegrations();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingIntegration, setEditingIntegration] = useState<Integration | null>(null);
+  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [editingIntegration, setEditingIntegration] = useState<Integration | null>(null);
 
   const handleCreateIntegration = async (data: any) => {
     await createIntegration(data);
@@ -124,6 +128,11 @@ export const IntegrationsManagement = () => {
     } finally {
       setTestingId(null);
     }
+  };
+
+  const handleViewDetails = (integration: Integration) => {
+    setSelectedIntegration(integration);
+    setShowDetailsModal(true);
   };
 
   return (
@@ -323,6 +332,10 @@ export const IntegrationsManagement = () => {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Editar
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewDetails(integration)}>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Ver Detalhes
+                              </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleTestIntegration(integration.id)}
                                 disabled={testingId === integration.id}
@@ -367,6 +380,13 @@ export const IntegrationsManagement = () => {
         onOpenChange={(open) => !open && setEditingIntegration(null)}
         onSubmit={handleEditIntegration}
         editingIntegration={editingIntegration}
+      />
+
+      {/* Modal de Detalhes */}
+      <IntegrationDetailsModal
+        open={showDetailsModal}
+        onOpenChange={setShowDetailsModal}
+        integration={selectedIntegration}
       />
     </div>
   );
