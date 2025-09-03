@@ -219,6 +219,8 @@ export function useSupabaseAdminClients() {
             password,
             name: clientData.companyName,
             role: "manager",
+            clientId: createdClientId,
+            temporaryPassword: clientData.loginCredentials.temporaryPassword,
           },
         });
 
@@ -228,23 +230,7 @@ export function useSupabaseAdminClients() {
             const createdAuthUserId = authPayload.auth_user_id;
             console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
 
-            // 3) Vincula o profile ao cliente (se usuário foi criado)
-            await supabase
-              .from("profiles")
-              .update({ client_id: createdClientId, role: "manager", company_name: clientData.companyName })
-              .eq("id", createdAuthUserId);
-
-            // 4) Cria registro em users
-            await supabase.from("users").insert({
-              name: clientData.companyName,
-              email: clientData.email,
-              role: "manager",
-              status: "active",
-              client_id: createdClientId,
-              auth_user_id: createdAuthUserId,
-              force_password_change: clientData.loginCredentials.temporaryPassword,
-              phone: clientData.phone || null,
-            });
+            // 3) A Edge Function já cria/atualiza profile e users vinculando ao clientId. Nada a fazer aqui.
           }
         } else {
           console.warn('useSupabaseAdminClients: Falha ao criar usuário de auth (não crítico)', fnErr);

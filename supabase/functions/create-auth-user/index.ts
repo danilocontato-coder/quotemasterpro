@@ -10,6 +10,8 @@ interface CreateUserRequest {
   password: string;
   name: string;
   role: string;
+  clientId?: string;
+  temporaryPassword?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -98,8 +100,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const requestBody: CreateUserRequest = await req.json();
-    const { email, password, name, role } = requestBody;
+const requestBody: CreateUserRequest = await req.json();
+const { email, password, name, role, clientId, temporaryPassword } = requestBody;
 
     console.log('Creating auth user for:', email);
 
@@ -134,17 +136,100 @@ Deno.serve(async (req) => {
       }
     });
 
-    if (authError) {
+if (authError) {
       console.error('Error creating auth user:', authError);
-      // Normalize errors to a success:false payload to avoid opaque client errors
+      const rawMsg = (authError as any).message || '';
+      const isEmailExists = rawMsg.includes('already registered') || (authError as any)?.code === 'email_exists';
+
+      if (isEmailExists) {
+        // Try to fetch existing auth user by email and link to client
+        let existingUserId: string | null = null;
+
+        // 1) Try profiles by email
+        const { data: existingProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+        if (existingProfile?.id) existingUserId = existingProfile.id as string;
+
+        // 2) Fallback: list users and match by email
+        if (!existingUserId) {
+          const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          if (!listErr && (usersList as any)?.users?.length) {
+            const match = (usersList as any).users.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase());
+            if (match?.id) existingUserId = match.id as string;
+          }
+        }
+
+        if (existingUserId) {
+          try {
+            if (clientId) {
+              // Ensure profile exists and is linked
+              await supabaseAdmin
+                .from('profiles')
+                .upsert({
+                  id: existingUserId,
+                  email,
+                  name,
+                  role,
+                  client_id: clientId,
+                  company_name: name,
+                }, { onConflict: 'id' });
+
+              // Upsert into public.users by auth_user_id
+              const { data: existingUserRow } = await supabaseAdmin
+                .from('users')
+                .select('id')
+                .eq('auth_user_id', existingUserId)
+                .maybeSingle();
+
+              if (existingUserRow?.id) {
+                await supabaseAdmin
+                  .from('users')
+                  .update({
+                    name,
+                    email,
+                    role,
+                    status: 'active',
+                    client_id: clientId,
+                    force_password_change: temporaryPassword ?? true,
+                  })
+                  .eq('id', existingUserRow.id);
+              } else {
+                await supabaseAdmin
+                  .from('users')
+                  .insert({
+                    name,
+                    email,
+                    role,
+                    status: 'active',
+                    client_id: clientId,
+                    auth_user_id: existingUserId,
+                    force_password_change: temporaryPassword ?? true,
+                  });
+              }
+            }
+          } catch (linkErr) {
+            console.error('Error linking existing user to client:', linkErr);
+          }
+
+          return new Response(
+            JSON.stringify({ success: true, auth_user_id: existingUserId, email, linked_existing: true }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: false, error: 'E-mail já existe e não foi possível vincular automaticamente', error_code: 'email_exists_unlinked', details: rawMsg }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+
+      // Other errors
       let errorMessage = 'Erro ao criar usuário no sistema de autenticação';
       let errorCode = 'unknown_error';
-      const rawMsg = authError.message || '';
-
-      if (rawMsg.includes('already registered')) {
-        errorMessage = 'Este e-mail já está registrado no sistema';
-        errorCode = 'email_exists';
-      } else if (rawMsg.toLowerCase().includes('password')) {
+      if (rawMsg.toLowerCase().includes('password')) {
         errorMessage = 'Senha não atende aos requisitos de segurança';
         errorCode = 'invalid_password';
       }
@@ -156,6 +241,35 @@ Deno.serve(async (req) => {
     }
 
     console.log('Auth user created successfully:', authData.user?.id);
+
+    // Link profile and users to client when provided
+    const newUserId = authData.user?.id as string | undefined;
+    if (clientId && newUserId) {
+      try {
+        await supabaseAdmin
+          .from('profiles')
+          .upsert({ id: newUserId, email, name, role, client_id: clientId, company_name: name }, { onConflict: 'id' });
+
+        const { data: existingUserRow } = await supabaseAdmin
+          .from('users')
+          .select('id')
+          .eq('auth_user_id', newUserId)
+          .maybeSingle();
+
+        if (existingUserRow?.id) {
+          await supabaseAdmin
+            .from('users')
+            .update({ name, email, role, status: 'active', client_id: clientId, force_password_change: temporaryPassword ?? true })
+            .eq('id', existingUserRow.id);
+        } else {
+          await supabaseAdmin
+            .from('users')
+            .insert({ name, email, role, status: 'active', client_id: clientId, auth_user_id: newUserId, force_password_change: temporaryPassword ?? true });
+        }
+      } catch (dbErr) {
+        console.error('Error linking new user to client:', dbErr);
+      }
+    }
 
     // Return the created user data
     return new Response(
