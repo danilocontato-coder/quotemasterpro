@@ -59,11 +59,12 @@ export const useSupabaseSuppliers = () => {
       if (profile?.role !== 'admin') {
         // Non-admin users should only see suppliers from their client context
         if (profile?.client_id) {
-          console.log('Filtering suppliers by client_id:', profile.client_id);
-          query = query.or(`client_id.eq.${profile.client_id},status.eq.active`);
+          console.log('Filtering suppliers by client_id + public active (certified)');
+          // Local suppliers for this client OR certified/public active suppliers (client_id IS NULL)
+          query = query.or(`client_id.eq.${profile.client_id},and(client_id.is.null,status.eq.active)`);
         } else {
-          // If user has no client_id context, only show active global suppliers
-          console.log('No client context, showing only active suppliers');
+          // If user has no client_id context, only show active public suppliers
+          console.log('No client context, showing only active public suppliers');
           query = query.eq('status', 'active').is('client_id', null);
         }
       }
