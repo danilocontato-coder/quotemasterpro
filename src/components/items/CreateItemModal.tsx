@@ -92,7 +92,7 @@ export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onO
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-      {trigger && (
+      {!externalOpen && (
         <DialogTrigger asChild>
           {trigger || (
             <Button className="btn-corporate">
