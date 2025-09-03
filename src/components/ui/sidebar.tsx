@@ -99,7 +99,9 @@ const SidebarProvider = React.forwardRef<
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
           event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-          (event.metaKey || event.ctrlKey)
+          (event.metaKey || event.ctrlKey) &&
+          !event.altKey && // Ensure Alt key is not pressed to avoid interfering with Alt+Tab
+          !event.shiftKey // Also avoid Shift combinations
         ) {
           event.preventDefault()
           toggleSidebar()
