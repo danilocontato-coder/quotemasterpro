@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    hmr: {
+      // Reduce aggressive hot reloading
+      overlay: false, // Disable error overlay that might interfere
+    },
   },
   plugins: [
     react(),

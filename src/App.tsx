@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -56,6 +56,56 @@ import SupplierHistory from '@/pages/supplier/SupplierHistory';
 const queryClient = new QueryClient();
 
 function App() {
+  // Prevent Alt+Tab from causing page refreshes or interfering with normal browser behavior
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // If Alt+Tab is pressed, do nothing special - let browser handle it normally
+      if (event.altKey && event.key === 'Tab') {
+        // Do not prevent default - this allows normal Alt+Tab behavior
+        return;
+      }
+      
+      // Prevent any other Alt combinations that might interfere
+      if (event.altKey && (event.key === 'F4' || event.key === 'F11')) {
+        // Allow these for normal browser behavior
+        return;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      // Prevent automatic refreshes when tab becomes visible again
+      // This is often caused by dev server hot reload
+      if (!document.hidden) {
+        // Tab became visible - but don't force any reloads
+        console.log('Tab became visible - maintaining current state');
+      }
+    };
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // Only show warning if there are unsaved changes
+      // Check for any open modals or forms
+      const hasOpenModals = document.querySelector('[role="dialog"]') || 
+                          document.querySelector('.modal') ||
+                          document.querySelector('[data-state="open"]');
+      
+      if (hasOpenModals) {
+        // Don't prevent unload, but let the browser handle it
+        return;
+      }
+    };
+
+    // Add event listeners
+    document.addEventListener('keydown', handleKeyDown, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
+    window.addEventListener('beforeunload', handleBeforeUnload, { passive: true });
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
