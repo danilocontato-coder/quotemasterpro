@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ProductSearchModalSupabase } from "./ProductSearchModalSupabase";
-import { NewProductFormSupabase } from "./NewProductFormSupabase";
+import { CreateItemModal } from "../items/CreateItemModal";
 import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
@@ -54,7 +54,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
   
   const [currentStep, setCurrentStep] = useState(1);
   const [showProductSearch, setShowProductSearch] = useState(false);
-  const [showNewProductForm, setShowNewProductForm] = useState(false);
+  const [showCreateItem, setShowCreateItem] = useState(false);
   
   const [formData, setFormData] = useState<QuoteFormData>({
     title: "",
@@ -123,16 +123,21 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     setShowProductSearch(false);
   };
 
-  const handleProductCreate = (product: any, quantity: number) => {
+  // Função para lidar com a criação de produto a partir do CreateItemModal
+  const handleProductCreate = (product: any) => {
+    const item = {
+      product_name: product.name,
+      product_id: product.id,
+      quantity: 1,  // Quantidade padrão, pode ser editada depois
+      unitPrice: product.unit_price || 0
+    };
+    
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, {
-        product_name: product.name,
-        product_id: product.id,
-        quantity: quantity
-      }]
+      items: [...prev.items, item]
     }));
-    setShowNewProductForm(false);
+    
+    // O CreateItemModal não precisa ser fechado manualmente pois ele se auto-gerencia
   };
 
   const handleRemoveItem = (index: number) => {
@@ -252,7 +257,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
               
               <Button 
                 className="h-12"
-                onClick={() => setShowNewProductForm(true)}
+                onClick={() => setShowCreateItem(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Novo
@@ -523,11 +528,14 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
           onProductSelect={handleProductSelect}
         />
 
-        {/* New Product Form Modal */}
-        <NewProductFormSupabase
-          open={showNewProductForm}
-          onClose={() => setShowNewProductForm(false)}
-          onProductCreate={handleProductCreate}
+        {/* Create Item Modal - Mesma tela do módulo Produtos */}
+        <CreateItemModal 
+          open={showCreateItem}
+          onOpenChange={setShowCreateItem}
+          onItemCreate={(item) => {
+            handleProductCreate(item);
+            setShowCreateItem(false);
+          }}
         />
       </DialogContent>
     </Dialog>

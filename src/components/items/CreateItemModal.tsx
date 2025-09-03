@@ -15,10 +15,12 @@ import { toast } from "sonner";
 interface CreateItemModalProps {
   trigger?: React.ReactNode;
   onItemCreate?: (item: any) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps) {
-  const [open, setOpen] = useState(false);
+export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onOpenChange: externalOnOpenChange }: CreateItemModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [itemType, setItemType] = useState<'product' | 'service'>('product');
   const [formData, setFormData] = useState({
     code: '',
@@ -39,6 +41,10 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
     // This effect will trigger when categories array changes
     console.log('Categories updated in CreateItemModal:', categories.length);
   }, [categories]);
+  
+  // Controle do estado do modal (interno ou externo)
+  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +81,7 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
         minStock: '',
       });
       setItemType('product');
+      setInternalOpen(false);
       setOpen(false);
     }
   };
@@ -84,15 +91,17 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button className="btn-corporate">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Item
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button className="btn-corporate">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Item
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
