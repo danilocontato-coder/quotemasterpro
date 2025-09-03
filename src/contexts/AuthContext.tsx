@@ -182,13 +182,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for the custom event we dispatch from useRealtimeDataSync
     const handleProfileReload = () => {
-      if (user?.id) {
-        // Instead of reloading, just refetch the profile data
-        supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
-          if (currentUser) {
-            fetchUserProfile(currentUser);
-          }
-        });
+      if (user?.id && session?.user) {
+        // Use existing session user instead of making another API call
+        fetchUserProfile(session.user);
       }
     };
 

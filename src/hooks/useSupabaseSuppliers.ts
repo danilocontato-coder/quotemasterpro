@@ -37,8 +37,8 @@ export const useSupabaseSuppliers = () => {
     try {
       setIsLoading(true);
       
-      // Get current user to determine filtering
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // Get current user to determine filtering - use context user first
+      const authUser = user?.id ? { id: user.id } : (await supabase.auth.getUser()).data.user;
       if (!authUser) {
         console.log('No authenticated user, skipping suppliers fetch');
         setSuppliers([]);

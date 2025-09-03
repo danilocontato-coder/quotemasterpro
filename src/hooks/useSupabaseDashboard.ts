@@ -213,43 +213,51 @@ export function useSupabaseDashboard() {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [user]);
+    if (user?.id) {
+      fetchDashboardData();
+    }
+  }, [user?.id]); // Only depend on user ID to prevent unnecessary refetches
 
-  // Subscribe to real-time updates
+  // Subscribe to real-time updates - with debouncing to prevent excessive refetches
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const debouncedRefetch = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(fetchDashboardData, 1000); // Debounce 1 second
+    };
 
     const channels = [
       supabase
-        .channel('dashboard-quotes')
+        .channel(`dashboard-quotes-${user.id}`) // Unique channel per user
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'quotes' },
-          () => fetchDashboardData()
+          debouncedRefetch
         )
         .subscribe(),
 
       supabase
-        .channel('dashboard-payments')
+        .channel(`dashboard-payments-${user.id}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'payments' },
-          () => fetchDashboardData()
+          debouncedRefetch
         )
         .subscribe(),
 
       supabase
-        .channel('dashboard-suppliers')
+        .channel(`dashboard-suppliers-${user.id}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'suppliers' },
-          () => fetchDashboardData()
+          debouncedRefetch
         )
         .subscribe(),
 
       supabase
-        .channel('dashboard-notifications')
+        .channel(`dashboard-notifications-${user.id}`)
         .on(
           'postgres_changes',
           {
@@ -258,15 +266,16 @@ export function useSupabaseDashboard() {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          () => fetchDashboardData()
+          debouncedRefetch
         )
         .subscribe(),
     ];
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       channels.forEach(channel => supabase.removeChannel(channel));
     };
-  }, [user]);
+  }, [user?.id]); // Only depend on user ID
 
   const getTimeAgo = (dateString: string): string => {
     const now = new Date();

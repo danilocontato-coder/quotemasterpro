@@ -40,21 +40,26 @@ export const useSupabaseSettings = () => {
     try {
       setIsLoading(true);
       
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      
-      if (!user) {
-        setCurrentUser(null);
-        setSettings(null);
-        return;
+      // Get current user - only if we don't have one yet
+      if (!currentUser) {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        
+        if (!user) {
+          setCurrentUser(null);
+          setSettings(null);
+          return;
+        }
+        
+        setCurrentUser(user);
       }
       
-      setCurrentUser(user);
+      // Get or create user settings - use current user if available
+      const userToUse = currentUser || (await supabase.auth.getUser()).data.user;
+      if (!userToUse) return;
       
-      // Get or create user settings
       const { data, error } = await supabase
-        .rpc('get_or_create_user_settings', { user_uuid: user.id });
+        .rpc('get_or_create_user_settings', { user_uuid: userToUse.id });
       
       if (error) {
         console.error('Settings fetch error:', error);
