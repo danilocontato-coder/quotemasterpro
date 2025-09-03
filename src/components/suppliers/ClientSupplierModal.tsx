@@ -45,7 +45,7 @@ const steps = [
 ];
 
 export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps) {
-  const { createSupplier } = useSupabaseSuppliers();
+  const { createSupplier, refetch } = useSupabaseSuppliers();
   const { toast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -142,15 +142,20 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
     
     setIsLoading(true);
     try {
-      await createSupplier(formData);
+      const result = await createSupplier(formData);
       
-      toast({
-        title: "Fornecedor cadastrado com sucesso!",
-        description: `${formData.name} foi adicionado e receberá cotações via WhatsApp.`
-      });
+      if (result) {
+        // Force immediate refetch to update the UI
+        await refetch();
+        
+        toast({
+          title: "Fornecedor cadastrado com sucesso!",
+          description: `${formData.name} foi adicionado e receberá cotações via WhatsApp.`
+        });
 
-      resetForm();
-      onClose();
+        resetForm();
+        onClose();
+      }
     } catch (error) {
       console.error('Error creating supplier:', error);
       toast({

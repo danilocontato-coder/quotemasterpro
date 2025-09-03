@@ -108,13 +108,17 @@ export const useSupabaseSuppliers = () => {
           schema: 'public',
           table: 'suppliers'
         },
-        () => {
-          fetchSuppliers();
+        (payload) => {
+          console.log('Real-time update received:', payload);
+          fetchSuppliers(); // Refetch data when changes occur
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up suppliers subscription');
       supabase.removeChannel(channel);
     };
   }, []);
@@ -238,10 +242,14 @@ export const useSupabaseSuppliers = () => {
     }
   };
 
+  const refetch = async () => {
+    await fetchSuppliers();
+  };
+
   return {
     suppliers,
     isLoading,
-    refetch: fetchSuppliers,
+    refetch,
     createSupplier,
     updateSupplier,
     deleteSupplier
