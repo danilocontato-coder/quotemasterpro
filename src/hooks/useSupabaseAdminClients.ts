@@ -232,9 +232,41 @@ export function useSupabaseAdminClients() {
 
             // 3) A Edge Function já cria/atualiza profile e users vinculando ao clientId. Nada a fazer aqui.
             
-            // Mostrar credenciais criadas
-            toast.success(`Cliente criado com sucesso!\n\nCredenciais de login:\nEmail: ${clientData.email}\nSenha: ${password}\n\n⚠️ Anote essas credenciais!`, {
-              duration: 10000
+            // Mostrar credenciais criadas com toast melhorado
+            const copyToClipboard = async (text: string) => {
+              try {
+                await navigator.clipboard.writeText(text);
+                return true;
+              } catch (error) {
+                console.error('Erro ao copiar:', error);
+                return false;
+              }
+            };
+
+            const credentialsMessage = `🎉 Cliente criado com sucesso!
+
+📧 Email: ${clientData.email}
+🔑 Senha: ${password}
+
+⚠️ IMPORTANTE: Anote essas credenciais!
+• O cliente usa o EMAIL para fazer login
+• Esta senha não será exibida novamente
+• Clique aqui para copiar as credenciais`;
+
+            toast.success(credentialsMessage, {
+              duration: 20000, // 20 segundos
+              action: {
+                label: "📋 Copiar",
+                onClick: async () => {
+                  const credentials = `Email: ${clientData.email}\nSenha: ${password}`;
+                  const copied = await copyToClipboard(credentials);
+                  if (copied) {
+                    toast.success("✅ Credenciais copiadas para a área de transferência!");
+                  } else {
+                    toast.error("❌ Erro ao copiar. Anote manualmente.");
+                  }
+                }
+              }
             });
           }
         } else {
@@ -427,9 +459,40 @@ export function useSupabaseAdminClients() {
 
       if (!fnErr && authResp?.success) {
         console.log('resetClientPassword: senha resetada com sucesso');
-        toast.success(`Senha resetada com sucesso!\n\nNovas credenciais:\nEmail: ${email}\nSenha: ${password}\n\n⚠️ Anote a nova senha!`, {
-          duration: 10000
+        
+        const copyToClipboard = async (text: string) => {
+          try {
+            await navigator.clipboard.writeText(text);
+            return true;
+          } catch (error) {
+            console.error('Erro ao copiar:', error);
+            return false;
+          }
+        };
+
+        const resetMessage = `🔄 Senha resetada com sucesso!
+
+📧 Email: ${email}
+🔑 Nova senha: ${password}
+
+⚠️ Anote a nova senha!`;
+
+        toast.success(resetMessage, {
+          duration: 15000,
+          action: {
+            label: "📋 Copiar",
+            onClick: async () => {
+              const credentials = `Email: ${email}\nNova senha: ${password}`;
+              const copied = await copyToClipboard(credentials);
+              if (copied) {
+                toast.success("✅ Credenciais copiadas!");
+              } else {
+                toast.error("❌ Erro ao copiar.");
+              }
+            }
+          }
         });
+        
         return password;
       } else {
         const errorMsg = authResp?.error || 'Erro desconhecido';

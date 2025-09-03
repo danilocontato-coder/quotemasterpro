@@ -28,7 +28,8 @@ import {
   EyeOff,
   RefreshCw,
   Send,
-  CreditCard
+  CreditCard,
+  Copy
 } from 'lucide-react';
 import { AdminClient, ClientGroup, ClientContact, ClientDocument } from '@/hooks/useSupabaseAdminClients';
 
@@ -119,6 +120,23 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       title: "Credenciais geradas",
       description: "Novas credenciais foram geradas automaticamente."
     });
+  };
+
+  const handleCopyToClipboard = async (text: string, type: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copiado!",
+        description: `${type} copiado para a área de transferência.`,
+      });
+    } catch (error) {
+      console.error('Erro ao copiar:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível copiar para a área de transferência.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAddContact = () => {
@@ -744,7 +762,18 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                         <Button
                           type="button"
                           variant="outline"
+                          size="icon"
+                          onClick={() => handleCopyToClipboard(credentials.username, 'Nome de usuário')}
+                          disabled={!credentials.username}
+                          title="Copiar nome de usuário"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
                           onClick={handleGenerateCredentials}
+                          title="Gerar novas credenciais"
                         >
                           <RefreshCw className="h-4 w-4" />
                         </Button>
@@ -760,7 +789,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                             type={showPassword ? "text" : "password"}
                             value={credentials.password}
                             onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
-                            placeholder="********"
+                            placeholder={credentials.useTemporaryPassword ? "Senha gerada automaticamente" : "Digite uma senha"}
                             disabled={credentials.useTemporaryPassword}
                           />
                           <Button
@@ -773,6 +802,16 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
                         </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleCopyToClipboard(credentials.password, 'Senha')}
+                          disabled={!credentials.password}
+                          title="Copiar senha"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -789,7 +828,15 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                         }));
                       }}
                     />
-                    <Label htmlFor="temporary-password">Gerar senha temporária automaticamente</Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="temporary-password">Gerar senha temporária automaticamente</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {credentials.useTemporaryPassword 
+                          ? "Senha será gerada automaticamente (10 caracteres com letras e números)"
+                          : "Digite uma senha personalizada (mínimo 6 caracteres)"
+                        }
+                      </p>
+                    </div>
                   </div>
 
                   <Separator />
