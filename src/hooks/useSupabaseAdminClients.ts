@@ -192,7 +192,33 @@ export function useSupabaseAdminClients() {
         throw new Error("Senha inválida. Defina manualmente ou gere uma senha temporária com pelo menos 6 caracteres.");
       }
 
-      // 1) Cria o registro do cliente
+      // 1) Cria usuário de autenticação (role manager) via Edge Function primeiro
+      console.log('useSupabaseAdminClients: Criando usuário de autenticação (primeiro passo)');
+      const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
+        body: {
+          email: clientData.email,
+          password,
+          name: clientData.companyName,
+          role: "manager",
+        },
+      });
+
+      if (fnErr) {
+        const msg = (fnErr as any).message || (fnErr as any).error || 'Falha ao criar usuário de autenticação';
+        console.error('useSupabaseAdminClients: Erro na Edge Function', fnErr);
+        if (String(msg).toLowerCase().includes('already')) {
+          throw new Error('Este e-mail já está registrado no sistema de autenticação. Use outro e-mail ou vincule um usuário existente.');
+        }
+        throw new Error(msg);
+      }
+
+      createdAuthUserId = (authResp as any)?.auth_user_id as string | null;
+      console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
+      if (!createdAuthUserId) {
+        throw new Error("Falha ao criar usuário de autenticação - ID não retornado");
+      }
+
+      // 2) Cria o registro do cliente após garantir o usuário de auth
       console.log('useSupabaseAdminClients: Criando registro do cliente');
       const { data: insertData, error: insertErr } = await supabase
         .from("clients")
@@ -216,29 +242,6 @@ export function useSupabaseAdminClients() {
       }
       createdClientId = insertData?.id as string;
       console.log('useSupabaseAdminClients: Cliente criado com ID', createdClientId);
-
-      // 2) Cria usuário de autenticação (role manager) via Edge Function
-      console.log('useSupabaseAdminClients: Criando usuário de autenticação');
-      const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
-        body: {
-          email: clientData.email,
-          password,
-          name: clientData.companyName,
-          role: "manager",
-        },
-      });
-      
-      if (fnErr) {
-        console.error('useSupabaseAdminClients: Erro na Edge Function', fnErr);
-        throw fnErr;
-      }
-      
-      createdAuthUserId = (authResp as any)?.auth_user_id as string | null;
-      console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
-      
-      if (!createdAuthUserId) {
-        throw new Error("Falha ao criar usuário de autenticação - ID não retornado");
-      }
 
       // 3) Vincula o profile ao cliente
       console.log('useSupabaseAdminClients: Vinculando profile ao cliente');
