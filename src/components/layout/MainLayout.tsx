@@ -5,14 +5,9 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
-import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
-import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
 import { useRealtimeDataSync } from "@/hooks/useRealtimeDataSync";
 
 export function MainLayout() {
-  const { clientName, subscriptionPlan, isLoading } = useSupabaseCurrentClient();
-  const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
-  
   // Sincronização em tempo real dos dados
   useRealtimeDataSync();
 
@@ -36,21 +31,6 @@ export function MainLayout() {
             </div>
             
             <div className="flex items-center gap-3">
-              {/* Company Name */}
-              <div className="text-right mr-4">
-                {isLoading ? (
-                  <div className="animate-pulse">
-                    <div className="h-3 bg-muted rounded w-32 mb-1"></div>
-                    <div className="h-2 bg-muted rounded w-16"></div>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-xs font-medium text-foreground">{clientName}</p>
-                    <p className="text-[10px] text-muted-foreground">{planDisplayName}</p>
-                  </>
-                )}
-              </div>
-              
               <NotificationDropdown />
               <UserDropdown />
             </div>

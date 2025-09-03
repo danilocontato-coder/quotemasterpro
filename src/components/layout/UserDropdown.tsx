@@ -12,11 +12,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
+import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
+import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
 import { toast } from "sonner";
 
 export function UserDropdown() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { settings } = useSupabaseSettings();
+  const { clientName, subscriptionPlan } = useSupabaseCurrentClient();
+  const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
@@ -62,6 +68,11 @@ export function UserDropdown() {
       .toUpperCase();
   };
 
+  // Get display name from settings or user
+  const displayName = settings?.display_name || user?.name || 'Usuário';
+  const displayCompany = settings?.company_name || user?.companyName || clientName || '';
+  const displayAvatar = settings?.avatar_url || user?.avatar;
+
   const handleEditProfile = () => {
     navigate("/profiles");
   };
@@ -99,55 +110,70 @@ export function UserDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="flex items-center gap-2 h-10 px-3">
+        <Button variant="ghost" className="flex items-center gap-3 h-10 px-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user?.avatar} />
+            <AvatarImage src={displayAvatar} />
             <AvatarFallback className="text-xs">
-              {getInitials(user?.name)}
+              {getInitials(displayName)}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col items-start min-w-0">
-            <span className="text-sm font-medium truncate max-w-[120px]">
-              {user?.name || 'Usuário'}
+            <span className="text-sm font-medium truncate max-w-[140px]">
+              {displayName}
             </span>
-            <span className="text-xs text-muted-foreground truncate max-w-[120px]">
-              {getRoleDisplayName(user?.role || '')}
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                {getRoleDisplayName(user?.role || '')}
+              </span>
+              {planDisplayName && (
+                <>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <span className="text-xs text-muted-foreground truncate max-w-[80px]">
+                    {planDisplayName}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-2">
+          <div className="flex flex-col space-y-3">
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={user?.avatar} />
+                <AvatarImage src={displayAvatar} />
                 <AvatarFallback>
-                  {getInitials(user?.name)}
+                  {getInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium leading-none truncate">
-                  {user?.name || 'Usuário'}
+                  {displayName}
                 </p>
                 <p className="text-xs leading-none text-muted-foreground mt-1 truncate">
                   {user?.email || 'usuario@empresa.com'}
                 </p>
-                {user?.companyName && (
+                {displayCompany && (
                   <p className="text-xs leading-none text-muted-foreground mt-1 truncate">
-                    {user.companyName}
+                    {displayCompany}
                   </p>
                 )}
               </div>
             </div>
-            <div className="flex justify-center">
+            <div className="flex items-center justify-between">
               <Badge 
                 variant="outline" 
                 className={`text-xs ${getRoleBadgeColor(user?.role || '')}`}
               >
                 {getRoleDisplayName(user?.role || '')}
               </Badge>
+              {planDisplayName && (
+                <Badge variant="secondary" className="text-xs">
+                  {planDisplayName}
+                </Badge>
+              )}
             </div>
           </div>
         </DropdownMenuLabel>
