@@ -30,8 +30,9 @@ interface ClientCredentialsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client: Client | null;
-  onGenerateUsername: (clientId: string) => string;
+  onGenerateUsername: (companyName: string) => string;
   onGeneratePassword: () => string;
+  onResetPassword: (clientId: string, email: string) => Promise<string>;
 }
 
 export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
@@ -39,7 +40,8 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   onOpenChange,
   client,
   onGenerateUsername,
-  onGeneratePassword
+  onGeneratePassword,
+  onResetPassword
 }) => {
   const [credentials, setCredentials] = useState({
     username: '',
@@ -71,20 +73,17 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   };
 
   const handleGenerateNewPassword = async () => {
+    if (!client) return;
+    
     setIsGenerating(true);
     try {
-      const newPassword = onGeneratePassword();
+      // Usar a função real de reset de senha
+      const newPassword = await onResetPassword(client.id, client.email);
       setCredentials(prev => ({ ...prev, password: newPassword }));
-      toast({
-        title: "Nova senha gerada",
-        description: "Uma nova senha temporária foi gerada com sucesso.",
-      });
+      // O toast já é mostrado pela função onResetPassword
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível gerar uma nova senha.",
-        variant: "destructive"
-      });
+      // Erro já tratado pela função onResetPassword  
+      console.error('Erro ao resetar senha:', error);
     } finally {
       setIsGenerating(false);
     }
@@ -212,6 +211,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
                     size="icon"
                     onClick={handleGenerateNewPassword}
                     disabled={isGenerating}
+                    title="Resetar senha no Supabase"
                   >
                     <RefreshCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
                   </Button>

@@ -12,6 +12,7 @@ interface CreateUserRequest {
   role: string;
   clientId?: string;
   temporaryPassword?: boolean;
+  action?: 'create' | 'reset_password';
 }
 
 Deno.serve(async (req) => {
@@ -100,10 +101,10 @@ Deno.serve(async (req) => {
       );
     }
 
-const requestBody: CreateUserRequest = await req.json();
-const { email, password, name, role, clientId, temporaryPassword } = requestBody;
+    const requestBody: CreateUserRequest = await req.json();
+    const { email, password, name, role, clientId, temporaryPassword, action = 'create' } = requestBody;
 
-    console.log('Creating auth user for:', email);
+    console.log('Action type:', action, 'for email:', email);
 
     // Validate input
     if (!email || !password || !name || !role) {
@@ -116,14 +117,72 @@ const { email, password, name, role, clientId, temporaryPassword } = requestBody
       );
     }
 
-    // Managers cannot create admin users
-    if (!isAdmin && role === 'admin') {
+    // Managers cannot create admin users (only applies to create action)
+    if (!isAdmin && role === 'admin' && action === 'create') {
       console.error('Only admins can create admin users');
       return new Response(
         JSON.stringify({ error: 'Forbidden - only admin can create admin users' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
+
+    // Handle password reset action
+    if (action === 'reset_password') {
+      try {
+        // Find existing user by email
+        const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        if (listErr) throw listErr;
+
+        const existingUser = (usersList as any)?.users?.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase());
+        if (!existingUser) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Usuário não encontrado', error_code: 'user_not_found' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+
+        // Update user password
+        const { data: updateData, error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
+          existingUser.id,
+          { password }
+        );
+
+        if (updateErr) {
+          console.error('Error updating password:', updateErr);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Erro ao redefinir senha', error_code: 'password_reset_failed' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+
+        // Update force_password_change in users table
+        if (clientId) {
+          await supabaseAdmin
+            .from('users')
+            .update({ force_password_change: temporaryPassword ?? true })
+            .eq('auth_user_id', existingUser.id);
+        }
+
+        console.log('Password reset successful for user:', existingUser.id);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            auth_user_id: existingUser.id,
+            email: existingUser.email,
+            password_reset: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Erro interno ao redefinir senha', error_code: 'internal_error' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+    }
+
+    // Original create user logic continues below...
 
     // Create the auth user using admin client
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({

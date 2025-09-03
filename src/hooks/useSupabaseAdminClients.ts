@@ -231,9 +231,15 @@ export function useSupabaseAdminClients() {
             console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
 
             // 3) A Edge Function já cria/atualiza profile e users vinculando ao clientId. Nada a fazer aqui.
+            
+            // Mostrar credenciais criadas
+            toast.success(`Cliente criado com sucesso!\n\nCredenciais de login:\nEmail: ${clientData.email}\nSenha: ${password}\n\n⚠️ Anote essas credenciais!`, {
+              duration: 10000
+            });
           }
         } else {
           console.warn('useSupabaseAdminClients: Falha ao criar usuário de auth (não crítico)', fnErr);
+          toast.success("Cliente criado com sucesso! (sem usuário de login - configure depois)");
         }
       } catch (authError) {
         console.warn('useSupabaseAdminClients: Erro na criação de usuário (não crítico)', authError);
@@ -253,8 +259,7 @@ export function useSupabaseAdminClients() {
       });
 
       console.log('useSupabaseAdminClients: Cliente criado com sucesso');
-      toast.success("Cliente criado com sucesso!");
-
+      
       // Atualiza estado local
       setClients((prev) => [
         ...prev,
@@ -401,6 +406,46 @@ export function useSupabaseAdminClients() {
     );
   };
 
+  const resetClientPassword = async (clientId: string, email: string) => {
+    console.log('resetClientPassword: resetando senha para cliente', clientId, email);
+    setLoading(true);
+    try {
+      const password = generateTemporaryPassword();
+      console.log('resetClientPassword: nova senha gerada');
+      
+      const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
+        body: {
+          email,
+          password,
+          name: "Reset Password", // não usado no reset
+          role: "manager", // não usado no reset
+          clientId,
+          temporaryPassword: true,
+          action: 'reset_password',
+        },
+      });
+
+      if (!fnErr && authResp?.success) {
+        console.log('resetClientPassword: senha resetada com sucesso');
+        toast.success(`Senha resetada com sucesso!\n\nNovas credenciais:\nEmail: ${email}\nSenha: ${password}\n\n⚠️ Anote a nova senha!`, {
+          duration: 10000
+        });
+        return password;
+      } else {
+        const errorMsg = authResp?.error || 'Erro desconhecido';
+        console.error('resetClientPassword: erro:', errorMsg);
+        toast.error(`Erro ao resetar senha: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+    } catch (e: any) {
+      console.error('resetClientPassword: erro:', e);
+      toast.error("Erro ao resetar senha: " + (e?.message || "Erro desconhecido"));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = useMemo(() => {
     console.log('stats: recalculando com', clients.length, 'clientes');
     
@@ -448,8 +493,9 @@ export function useSupabaseAdminClients() {
     createGroup,
     updateGroup,
     deleteGroup,
-    generateTemporaryPassword,
+    resetClientPassword,
     generateUsername,
+    generateTemporaryPassword,
     stats,
     loading,
   };

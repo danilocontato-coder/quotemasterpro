@@ -68,6 +68,7 @@ export const ClientsManagement = () => {
     createGroup,
     updateGroup,
     deleteGroup,
+    resetClientPassword,
     generateTemporaryPassword,
     generateUsername,
     stats
@@ -538,6 +539,7 @@ export const ClientsManagement = () => {
         client={selectedClient}
         onGenerateUsername={generateUsername}
         onGeneratePassword={generateTemporaryPassword}
+        onResetPassword={resetClientPassword}
       />
 
       <ClientDocumentsModal
