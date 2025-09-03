@@ -136,21 +136,22 @@ Deno.serve(async (req) => {
 
     if (authError) {
       console.error('Error creating auth user:', authError);
-      
-      // Handle specific auth errors
+      // Normalize errors to a success:false payload to avoid opaque client errors
       let errorMessage = 'Erro ao criar usuário no sistema de autenticação';
-      if (authError.message.includes('already registered')) {
-        errorMessage = 'Este email já está registrado no sistema';
-      } else if (authError.message.includes('password')) {
+      let errorCode = 'unknown_error';
+      const rawMsg = authError.message || '';
+
+      if (rawMsg.includes('already registered')) {
+        errorMessage = 'Este e-mail já está registrado no sistema';
+        errorCode = 'email_exists';
+      } else if (rawMsg.toLowerCase().includes('password')) {
         errorMessage = 'Senha não atende aos requisitos de segurança';
+        errorCode = 'invalid_password';
       }
-      
+
       return new Response(
-        JSON.stringify({ error: errorMessage, details: authError.message }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
-        }
+        JSON.stringify({ success: false, error: errorMessage, error_code: errorCode, details: rawMsg }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 

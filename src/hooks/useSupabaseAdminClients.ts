@@ -202,20 +202,15 @@ export function useSupabaseAdminClients() {
           role: "manager",
         },
       });
-
+      
       if (fnErr) {
-        const msg = (fnErr as any).message || (fnErr as any).error || 'Falha ao criar usuário de autenticação';
         console.error('useSupabaseAdminClients: Erro na Edge Function', fnErr);
-        if (String(msg).toLowerCase().includes('already')) {
-          throw new Error('Este e-mail já está registrado no sistema de autenticação. Use outro e-mail ou vincule um usuário existente.');
-        }
-        throw new Error(msg);
+        throw new Error('Falha ao criar usuário de autenticação. Verifique e-mail e requisitos de senha.');
       }
-
-      createdAuthUserId = (authResp as any)?.auth_user_id as string | null;
-      console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
-      if (!createdAuthUserId) {
-        throw new Error("Falha ao criar usuário de autenticação - ID não retornado");
+      
+      const authPayload = authResp as any;
+      if (authPayload && authPayload.success === false) {
+        throw new Error(authPayload.error || 'Falha ao criar usuário de autenticação');
       }
 
       // 2) Cria o registro do cliente após garantir o usuário de auth
