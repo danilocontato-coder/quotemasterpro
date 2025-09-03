@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Stepper } from '@/components/ui/stepper';
-import { UserPlus, MessageCircle, Building, CheckCircle, ArrowLeft, ArrowRight, X, MapPin } from 'lucide-react';
+import { UserPlus, MessageCircle, Building, CheckCircle, ArrowLeft, ArrowRight, X, MapPin, Check, ChevronsUpDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { brazilStates } from '@/data/brazilStates';
@@ -17,11 +19,6 @@ interface ClientSupplierModalProps {
   onClose: () => void;
 }
 
-const supplierTypes = [
-  { value: 'local', label: 'Local', description: 'Fornecedor da região' },
-  { value: 'national', label: 'Nacional', description: 'Atende todo o país' },
-  { value: 'international', label: 'Internacional', description: 'Fornecedor internacional' }
-];
 
 const commonSpecialties = [
   'Materiais de Construção',
@@ -78,6 +75,8 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
       case 1:
         if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
         if (!formData.cnpj.trim()) newErrors.cnpj = 'CNPJ é obrigatório';
+        if (!formData.state.trim()) newErrors.state = 'Estado é obrigatório';
+        if (!formData.city.trim()) newErrors.city = 'Cidade é obrigatória';
         break;
       case 2:
         if (!formData.email.trim()) newErrors.email = 'Email é obrigatório';
@@ -203,70 +202,93 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
                 {errors.cnpj && <p className="text-xs text-destructive">{errors.cnpj}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo de Fornecedor</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {supplierTypes.map(type => (
-                        <SelectItem key={type.value} value={type.value}>
-                          <div>
-                            <div className="font-medium">{type.label}</div>
-                            <div className="text-xs text-muted-foreground">{type.description}</div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="state" className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Estado
-                  </Label>
-                  <Select 
-                    value={formData.state} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, state: value, city: '' }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {brazilStates.map(state => (
-                        <SelectItem key={state.code} value={state.code}>
-                          {state.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="state" className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Estado *
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                    >
+                      {formData.state
+                        ? brazilStates.find(state => state.code === formData.state)?.name
+                        : "Selecione o estado..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Buscar estado..." />
+                      <CommandEmpty>Nenhum estado encontrado.</CommandEmpty>
+                      <CommandGroup className="max-h-[200px] overflow-auto">
+                        {brazilStates.map((state) => (
+                          <CommandItem
+                            key={state.code}
+                            value={state.name}
+                            onSelect={() => {
+                              setFormData(prev => ({ ...prev, state: state.code, city: '' }));
+                            }}
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${
+                                formData.state === state.code ? "opacity-100" : "opacity-0"
+                              }`}
+                            />
+                            {state.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {formData.state && (
                 <div className="space-y-2">
-                  <Label htmlFor="city">Cidade</Label>
-                  <Select 
-                    value={formData.city} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, city: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a cidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {brazilStates
-                        .find(state => state.code === formData.state)
-                        ?.cities.map(city => (
-                          <SelectItem key={city} value={city}>
-                            {city}
-                          </SelectItem>
-                        ))
-                      }
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="city">Cidade *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between"
+                      >
+                        {formData.city || "Selecione a cidade..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Buscar cidade..." />
+                        <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
+                        <CommandGroup className="max-h-[300px] overflow-auto">
+                          {brazilStates
+                            .find(state => state.code === formData.state)
+                            ?.cities.map(city => (
+                              <CommandItem
+                                key={city}
+                                value={city}
+                                onSelect={() => {
+                                  setFormData(prev => ({ ...prev, city }));
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    formData.city === city ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                {city}
+                              </CommandItem>
+                            ))
+                          }
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
             </CardContent>
