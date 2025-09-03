@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useSupabaseNotifications } from "@/hooks/useSupabaseNotifications";
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -25,7 +25,7 @@ const getNotificationIcon = (type: string) => {
 };
 
 export function NotificationDropdown() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useSupabaseNotifications();
 
   return (
     <DropdownMenu>
@@ -61,7 +61,14 @@ export function NotificationDropdown() {
         <DropdownMenuSeparator />
         
         <div className="max-h-96 overflow-y-auto">
-          {notifications.length === 0 ? (
+          {isLoading ? (
+            <div className="p-4 text-center text-muted-foreground">
+              <div className="animate-pulse space-y-2">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-3 bg-muted rounded w-1/2"></div>
+              </div>
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">
               Nenhuma notificação
             </div>

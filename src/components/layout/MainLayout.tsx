@@ -5,11 +5,11 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
-import { useCurrentClient } from "@/hooks/useCurrentClient";
+import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
 
 export function MainLayout() {
-  const { clientName, subscriptionPlan, isLoading } = useCurrentClient();
+  const { clientName, subscriptionPlan, isLoading } = useSupabaseCurrentClient();
   const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
 
   return (
