@@ -30,7 +30,7 @@ import {
   Send,
   CreditCard
 } from 'lucide-react';
-import { AdminClient, ClientGroup, ClientContact, ClientDocument } from '@/hooks/useAdminClients';
+import { AdminClient, ClientGroup, ClientContact, ClientDocument } from '@/hooks/useSupabaseAdminClients';
 
 interface CreateClientModalProps {
   open: boolean;
@@ -217,7 +217,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
         lastAccess: undefined
       };
 
-      onCreateClient(clientData);
+      await onCreateClient(clientData);
 
       // Simulate sending credentials
       if (credentials.sendByEmail) {

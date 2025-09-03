@@ -39,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAdminClients } from '@/hooks/useAdminClients';
+import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { ClientGroupsManager } from '@/components/admin/ClientGroupsManager';
@@ -63,7 +63,7 @@ export const ClientsManagement = () => {
     generateTemporaryPassword,
     generateUsername,
     stats
-  } = useAdminClients();
+  } = useSupabaseAdminClients();
   
   const { plans, getPlanById } = useSubscriptionPlans();
 

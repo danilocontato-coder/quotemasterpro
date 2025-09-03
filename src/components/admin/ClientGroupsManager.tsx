@@ -15,7 +15,7 @@ import {
   Tag,
   Palette
 } from 'lucide-react';
-import { ClientGroup } from '@/hooks/useAdminClients';
+import { ClientGroup } from '@/hooks/useSupabaseAdminClients';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,20 +27,20 @@ interface ClientGroupsManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groups: ClientGroup[];
-  onCreateGroup: (group: Omit<ClientGroup, "id" | "createdAt" | "clientCount">) => void;
-  onUpdateGroup: (id: string, group: Partial<ClientGroup>) => void;
-  onDeleteGroup: (id: string) => void;
+  onCreateGroup: (group: Omit<ClientGroup, "id" | "createdAt" | "clientCount">) => Promise<ClientGroup>;
+  onUpdateGroup: (id: string, group: Partial<ClientGroup>) => Promise<void>;
+  onDeleteGroup: (id: string) => Promise<void>;
 }
 
 const colorOptions = [
-  { name: 'Azul', value: 'blue', class: 'bg-blue-500' },
-  { name: 'Verde', value: 'green', class: 'bg-green-500' },
-  { name: 'Roxo', value: 'purple', class: 'bg-purple-500' },
-  { name: 'Laranja', value: 'orange', class: 'bg-orange-500' },
-  { name: 'Vermelho', value: 'red', class: 'bg-red-500' },
-  { name: 'Rosa', value: 'pink', class: 'bg-pink-500' },
-  { name: 'Amarelo', value: 'yellow', class: 'bg-yellow-500' },
-  { name: 'Cinza', value: 'gray', class: 'bg-gray-500' }
+  { name: 'Azul', value: '#3b82f6' },
+  { name: 'Verde', value: '#10b981' },
+  { name: 'Roxo', value: '#8b5cf6' },
+  { name: 'Laranja', value: '#f97316' },
+  { name: 'Vermelho', value: '#ef4444' },
+  { name: 'Rosa', value: '#ec4899' },
+  { name: 'Amarelo', value: '#eab308' },
+  { name: 'Cinza', value: '#64748b' }
 ];
 
 export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
@@ -59,14 +59,14 @@ export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    color: 'blue'
+    color: '#3b82f6'
   });
 
   const resetForm = () => {
     setFormData({
       name: '',
       description: '',
-      color: 'blue'
+      color: '#3b82f6'
     });
     setEditingGroup(null);
     setShowCreateForm(false);
@@ -86,13 +86,13 @@ export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
 
     try {
       if (editingGroup) {
-        onUpdateGroup(editingGroup.id, formData);
+        await onUpdateGroup(editingGroup.id, formData);
         toast({
           title: "Grupo atualizado",
           description: `${formData.name} foi atualizado com sucesso.`
         });
       } else {
-        onCreateGroup(formData);
+        await onCreateGroup(formData);
         toast({
           title: "Grupo criado",
           description: `${formData.name} foi criado com sucesso.`
@@ -114,25 +114,25 @@ export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
   const handleEdit = (group: ClientGroup) => {
     setFormData({
       name: group.name,
-      description: group.description,
-      color: group.color
+      description: group.description || '',
+      color: group.color || '#3b82f6'
     });
     setEditingGroup(group);
     setShowCreateForm(true);
   };
 
   const handleDelete = async (group: ClientGroup) => {
-    if (group.clientCount > 0) {
+    if ((group.clientCount || 0) > 0) {
       toast({
         title: "Não é possível excluir",
-        description: `O grupo "${group.name}" possui ${group.clientCount} cliente(s) vinculado(s).`,
+        description: `O grupo "${group.name}" possui ${group.clientCount || 0} cliente(s) vinculado(s).`,
         variant: "destructive"
       });
       return;
     }
 
     try {
-      onDeleteGroup(group.id);
+      await onDeleteGroup(group.id);
       toast({
         title: "Grupo excluído",
         description: `${group.name} foi excluído com sucesso.`
@@ -146,10 +146,6 @@ export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
     }
   };
 
-  const getColorClass = (color: string) => {
-    const colorOption = colorOptions.find(c => c.value === color);
-    return colorOption?.class || 'bg-gray-500';
-  };
 
   return (
     <Dialog open={open} onOpenChange={(open) => {
@@ -205,7 +201,7 @@ export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className={`w-4 h-4 rounded-full ${getColorClass(group.color)}`}></div>
+                              <div className={`w-4 h-4 rounded-full`} style={{ backgroundColor: group.color || '#64748b' }}></div>
                               <CardTitle className="text-lg">{group.name}</CardTitle>
                             </div>
                             <DropdownMenu>
@@ -230,7 +226,7 @@ export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
                             </DropdownMenu>
                           </div>
                           <CardDescription className="text-sm">
-                            {group.description}
+                            {group.description || "Sem descrição"}
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -238,11 +234,11 @@ export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
                             <div className="flex items-center gap-2">
                               <Users className="h-4 w-4 text-muted-foreground" />
                               <span className="text-sm text-muted-foreground">
-                                {group.clientCount} cliente{group.clientCount !== 1 ? 's' : ''}
+                                {group.clientCount || 0} cliente{(group.clientCount || 0) !== 1 ? 's' : ''}
                               </span>
                             </div>
                             <Badge variant="outline" className="text-xs">
-                              {new Date(group.createdAt).toLocaleDateString()}
+                              {group.createdAt ? new Date(group.createdAt).toLocaleDateString() : 'Data não disponível'}
                             </Badge>
                           </div>
                         </CardContent>
@@ -302,7 +298,7 @@ export const ClientGroupsManager: React.FC<ClientGroupsManagerProps> = ({
                         }`}
                         onClick={() => setFormData(prev => ({ ...prev, color: color.value }))}
                       >
-                        <div className={`w-4 h-4 rounded-full ${color.class}`}></div>
+                        <div className={`w-4 h-4 rounded-full`} style={{ backgroundColor: color.value }}></div>
                         <span className="text-sm font-medium">{color.name}</span>
                       </button>
                     ))}
