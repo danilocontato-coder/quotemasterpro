@@ -1,6 +1,7 @@
 import { User, Settings, Key, LogOut, UserCircle, Shield, Activity, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,16 @@ export function UserDropdown() {
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -88,18 +99,49 @@ export function UserDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <User className="h-5 w-5" />
+        <Button variant="ghost" className="flex items-center gap-2 h-10 px-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.avatar} />
+            <AvatarFallback className="text-xs">
+              {getInitials(user?.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-sm font-medium truncate max-w-[120px]">
+              {user?.name || 'Usuário'}
+            </span>
+            <span className="text-xs text-muted-foreground truncate max-w-[120px]">
+              {getRoleDisplayName(user?.role || '')}
+            </span>
+          </div>
         </Button>
       </DropdownMenuTrigger>
       
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium leading-none">
-                {user?.name || 'Usuário'}
-              </p>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={user?.avatar} />
+                <AvatarFallback>
+                  {getInitials(user?.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium leading-none truncate">
+                  {user?.name || 'Usuário'}
+                </p>
+                <p className="text-xs leading-none text-muted-foreground mt-1 truncate">
+                  {user?.email || 'usuario@empresa.com'}
+                </p>
+                {user?.companyName && (
+                  <p className="text-xs leading-none text-muted-foreground mt-1 truncate">
+                    {user.companyName}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-center">
               <Badge 
                 variant="outline" 
                 className={`text-xs ${getRoleBadgeColor(user?.role || '')}`}
@@ -107,14 +149,6 @@ export function UserDropdown() {
                 {getRoleDisplayName(user?.role || '')}
               </Badge>
             </div>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user?.email || 'usuario@empresa.com'}
-            </p>
-            {user?.role === 'supplier' && (
-              <p className="text-xs leading-none text-muted-foreground">
-                Empresa Fornecedora
-              </p>
-            )}
           </div>
         </DropdownMenuLabel>
         

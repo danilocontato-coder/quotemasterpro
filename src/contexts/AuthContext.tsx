@@ -159,6 +159,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Listen for profile updates from settings
+  useEffect(() => {
+    const handleProfileUpdate = (event: any) => {
+      if (user && event.detail) {
+        const updates: Partial<User> = {};
+        if (event.detail.name) updates.name = event.detail.name;
+        if (event.detail.company_name) updates.companyName = event.detail.company_name;
+        if (event.detail.avatar_url) updates.avatar = event.detail.avatar_url;
+        
+        setUser(prevUser => prevUser ? { ...prevUser, ...updates } : null);
+      }
+    };
+
+    const handleAvatarUpdate = (event: any) => {
+      if (user && event.detail?.avatar_url) {
+        setUser(prevUser => prevUser ? { ...prevUser, avatar: event.detail.avatar_url } : null);
+      }
+    };
+
+    window.addEventListener('userProfileUpdated', handleProfileUpdate);
+    window.addEventListener('userAvatarUpdated', handleAvatarUpdate);
+
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleProfileUpdate);
+      window.removeEventListener('userAvatarUpdated', handleAvatarUpdate);
+    };
+  }, [user]);
+
   const logout = async (): Promise<void> => {
     await supabase.auth.signOut();
   };

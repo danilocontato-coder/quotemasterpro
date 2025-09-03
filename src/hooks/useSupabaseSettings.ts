@@ -94,6 +94,7 @@ export const useSupabaseSettings = () => {
     try {
       if (!currentUser) throw new Error('Usuário não autenticado');
 
+      // Update user_settings table
       const { data, error } = await supabase
         .from('user_settings')
         .update(profileData)
@@ -102,6 +103,23 @@ export const useSupabaseSettings = () => {
         .single();
 
       if (error) throw error;
+
+      // Also update profiles table for AuthContext consistency
+      if (profileData.display_name || profileData.company_name) {
+        const profileUpdate: any = {};
+        if (profileData.display_name) profileUpdate.name = profileData.display_name;
+        if (profileData.company_name) profileUpdate.company_name = profileData.company_name;
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update(profileUpdate)
+          .eq('id', currentUser.id);
+
+        if (profileError) {
+          console.warn('Failed to update profiles table:', profileError);
+          // Don't throw error as main update succeeded
+        }
+      }
 
       // Transform the data to match our interface
       const transformedSettings: UserSettings = {
@@ -115,6 +133,15 @@ export const useSupabaseSettings = () => {
       };
 
       setSettings(transformedSettings);
+      
+      // Trigger a custom event to notify other components
+      window.dispatchEvent(new CustomEvent('userProfileUpdated', {
+        detail: {
+          name: profileData.display_name,
+          company_name: profileData.company_name
+        }
+      }));
+
       toast({
         title: "Perfil atualizado",
         description: "Suas informações foram salvas com sucesso.",
@@ -220,6 +247,7 @@ export const useSupabaseSettings = () => {
     try {
       if (!currentUser) throw new Error('Usuário não autenticado');
 
+      // Update user_settings table
       const { data, error } = await supabase
         .from('user_settings')
         .update({ avatar_url })
@@ -228,6 +256,17 @@ export const useSupabaseSettings = () => {
         .single();
 
       if (error) throw error;
+
+      // Also update profiles table for AuthContext consistency
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ avatar_url })
+        .eq('id', currentUser.id);
+
+      if (profileError) {
+        console.warn('Failed to update profiles table:', profileError);
+        // Don't throw error as main update succeeded
+      }
 
       // Transform the data to match our interface
       const transformedSettings: UserSettings = {
@@ -241,6 +280,12 @@ export const useSupabaseSettings = () => {
       };
 
       setSettings(transformedSettings);
+      
+      // Trigger a custom event to notify other components
+      window.dispatchEvent(new CustomEvent('userAvatarUpdated', {
+        detail: { avatar_url }
+      }));
+
       toast({
         title: "Avatar atualizado",
         description: "Sua foto de perfil foi alterada com sucesso.",
