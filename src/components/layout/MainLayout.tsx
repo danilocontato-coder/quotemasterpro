@@ -5,9 +5,13 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
+import { SystemStatusHeader } from "./SystemStatusHeader";
 import { useRealtimeDataSync } from "@/hooks/useRealtimeDataSync";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function MainLayout() {
+  const { user } = useAuth();
+  
   // Sincronização em tempo real dos dados
   useRealtimeDataSync();
 
@@ -17,6 +21,9 @@ export function MainLayout() {
         <AppSidebar />
         
         <div className="flex-1 flex flex-col">
+          {/* System Status Header - only for admin */}
+          {user?.role === 'admin' && <SystemStatusHeader />}
+          
           {/* Top Header */}
           <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
