@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ComprehensiveSupplierModal } from "@/components/suppliers/ComprehensiveSupplierModal";
+import { ClientSupplierModal } from "@/components/suppliers/ClientSupplierModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
@@ -452,14 +452,9 @@ export default function Suppliers() {
       )}
 
       {/* Modals */}
-      <ComprehensiveSupplierModal
+      <ClientSupplierModal
         open={showNewSupplierModal}
-        onOpenChange={handleCloseModal}
-        onSupplierCreate={handleSupplierCreate}
-        availableGroups={[]}
-        editingSupplier={editingSupplier}
-        onPasswordGenerate={() => Math.random().toString(36).slice(-8)}
-        onUsernameGenerate={(name) => name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15) + Math.floor(Math.random()*100)}
+        onClose={() => setShowNewSupplierModal(false)}
       />
 
       <NewGroupModal
