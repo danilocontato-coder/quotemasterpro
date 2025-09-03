@@ -39,7 +39,8 @@ export function useRealtimeDataSync() {
         () => {
           // Profile updates podem afetar os dados do cliente
           console.log('Profile update detected');
-          window.location.reload(); // Recarrega para garantir dados consistentes
+          // Dispara evento customizado em vez de reload forçado para evitar interferir com navegação
+          window.dispatchEvent(new CustomEvent('user-profile-updated'));
         }
       );
 
