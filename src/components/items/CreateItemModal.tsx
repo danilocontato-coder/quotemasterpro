@@ -49,7 +49,7 @@ export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onO
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.code || !formData.name || !formData.category) {
+    if (!formData.name || !formData.category) {
       toast.error("Preencha os campos obrigatórios");
       return;
     }
@@ -157,14 +157,16 @@ export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onO
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="code">Código *</Label>
+                  <Label htmlFor="code">Código</Label>
                   <Input
                     id="code"
-                    placeholder="Ex: PRD001"
+                    placeholder="Deixe vazio para gerar automaticamente"
                     value={formData.code}
                     onChange={(e) => handleInputChange('code', e.target.value)}
-                    required
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Se não informado, será gerado automaticamente
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category">Categoria *</Label>

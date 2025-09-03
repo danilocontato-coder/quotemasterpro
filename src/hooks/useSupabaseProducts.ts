@@ -102,6 +102,36 @@ export const useSupabaseProducts = () => {
     };
   }, []); // No dependencies to prevent loops
 
+  const generateUniqueCode = async (baseCode?: string): Promise<string> => {
+    const prefix = baseCode || 'PROD';
+    let counter = 1;
+    let code = `${prefix}${counter.toString().padStart(3, '0')}`;
+    
+    // Check if code exists
+    while (true) {
+      const { data: existing } = await supabase
+        .from('products')
+        .select('id')
+        .eq('code', code)
+        .single();
+      
+      if (!existing) {
+        return code;
+      }
+      
+      counter++;
+      code = `${prefix}${counter.toString().padStart(3, '0')}`;
+      
+      // Safety check to avoid infinite loop
+      if (counter > 9999) {
+        code = `${prefix}${Date.now()}`;
+        break;
+      }
+    }
+    
+    return code;
+  };
+
   const addProduct = async (productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data: user } = await supabase.auth.getUser();
@@ -122,6 +152,24 @@ export const useSupabaseProducts = () => {
       // For clients/managers/collaborators, require client_id
       // For suppliers, require supplier_id
       let productPayload = { ...productData };
+      
+      // Generate unique code if not provided or if code already exists
+      if (!productPayload.code) {
+        productPayload.code = await generateUniqueCode();
+      } else {
+        // Check if provided code already exists
+        const { data: existing } = await supabase
+          .from('products')
+          .select('id')
+          .eq('code', productPayload.code)
+          .single();
+        
+        if (existing) {
+          // Code already exists, generate a new one based on the provided code
+          const baseName = productPayload.code.replace(/\d+$/, '');
+          productPayload.code = await generateUniqueCode(baseName);
+        }
+      }
       
       if (profile.role === 'admin') {
         // Admin can create products without specific association
@@ -155,7 +203,7 @@ export const useSupabaseProducts = () => {
       
       toast({
         title: "Produto criado",
-        description: `O produto "${productData.name}" foi criado com sucesso.`,
+        description: `O produto "${data.name}" foi criado com sucesso. Código: ${data.code}`,
       });
       return data;
     } catch (error) {
@@ -280,6 +328,7 @@ export const useSupabaseProducts = () => {
     addProduct,
     updateProduct,
     deleteProduct,
-    updateStock
+    updateStock,
+    generateUniqueCode
   };
 };
