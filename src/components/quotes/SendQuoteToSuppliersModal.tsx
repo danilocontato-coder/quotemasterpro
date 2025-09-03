@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,6 +122,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
             <Send className="h-5 w-5" />
             Enviar Cotação para Fornecedores
           </DialogTitle>
+          <DialogDescription>
+            Seleciona fornecedores e canais. Usaremos o webhook configurado em Integrações (N8N) para o envio.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

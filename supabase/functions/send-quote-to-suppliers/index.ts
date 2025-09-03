@@ -125,8 +125,34 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Sending to N8N:', { quote_id, suppliers_count: suppliers.length });
 
-    // Send to N8N webhook
-    const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL');
+    // Resolve N8N webhook URL from DB integration (per client) or fallback to env
+    let n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || '';
+
+    const { data: n8nIntegration, error: n8nError } = await supabase
+      .from('integrations')
+      .select('configuration')
+      .eq('integration_type', 'n8n_webhook')
+      .eq('active', true)
+      .eq('client_id', quote.client_id)
+      .maybeSingle();
+
+    let configuredUrl = n8nIntegration?.configuration?.webhook_url;
+    if (!(configuredUrl && typeof configuredUrl === 'string' && configuredUrl.length > 0)) {
+      const { data: globalN8n, error: globalErr } = await supabase
+        .from('integrations')
+        .select('configuration')
+        .eq('integration_type', 'n8n_webhook')
+        .eq('active', true)
+        .is('client_id', null)
+        .maybeSingle();
+      if (globalErr) console.warn('Failed to load global n8n integration:', globalErr);
+      configuredUrl = globalN8n?.configuration?.webhook_url;
+    }
+
+    if (configuredUrl && typeof configuredUrl === 'string' && configuredUrl.length > 0) {
+      n8nWebhookUrl = configuredUrl;
+    }
+
     if (!n8nWebhookUrl) {
       console.error('N8N webhook URL not configured');
       return new Response(

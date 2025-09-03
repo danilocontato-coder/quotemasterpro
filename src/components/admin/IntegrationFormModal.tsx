@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -236,10 +236,13 @@ export function IntegrationFormModal({ open, onOpenChange, onSubmit, editingInte
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+    <DialogHeader>
           <DialogTitle>
             {editingIntegration ? 'Editar Integração' : 'Nova Integração'}
           </DialogTitle>
+          <DialogDescription>
+            Cadastre integrações por cliente/fornecedor. Segredos sensíveis serão usados via Edge Functions.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
