@@ -207,14 +207,59 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!n8nResponse.ok) {
       const respText = await n8nResponse.text();
-      console.error('N8N webhook failed:', n8nResponse.status, respText);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Falha ao enviar para N8N', 
-          details: { status: n8nResponse.status, response: respText, webhook_url_used: n8nWebhookUrl }
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+
+      // Attempt fallback: toggle between /webhook-test/ and /webhook/
+      let fallbackTried = false;
+      let fallbackOk = false;
+      let fallbackStatus = 0;
+      let fallbackRespText = '';
+      let fallbackUrl = n8nWebhookUrl;
+
+      if (n8nResponse.status === 404) {
+        if (n8nWebhookUrl.includes('/webhook-test/')) {
+          fallbackUrl = n8nWebhookUrl.replace('/webhook-test/', '/webhook/');
+          fallbackTried = true;
+        } else if (n8nWebhookUrl.includes('/webhook/')) {
+          fallbackUrl = n8nWebhookUrl.replace('/webhook/', '/webhook-test/');
+          fallbackTried = true;
+        }
+
+        if (fallbackTried && fallbackUrl !== n8nWebhookUrl) {
+          console.warn('N8N webhook 404, trying fallback URL:', fallbackUrl);
+          const fb = await fetch(fallbackUrl, {
+            method: 'POST',
+            headers: requestHeaders,
+            body: JSON.stringify(n8nPayload),
+          });
+          fallbackStatus = fb.status;
+          fallbackOk = fb.ok;
+          if (!fb.ok) fallbackRespText = await fb.text();
+
+          if (fb.ok) {
+            // Use fallback as the effective URL
+            n8nWebhookUrl = fallbackUrl;
+          }
+        }
+      }
+
+      if (!fallbackOk) {
+        console.error('N8N webhook failed:', n8nResponse.status, respText);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Falha ao enviar para N8N', 
+            details: { 
+              status: n8nResponse.status, 
+              response: respText, 
+              webhook_url_used: n8nWebhookUrl,
+              fallback_tried: fallbackTried,
+              fallback_url: fallbackTried ? fallbackUrl : undefined,
+              fallback_status: fallbackTried ? fallbackStatus : undefined,
+              fallback_response: fallbackTried ? fallbackRespText : undefined
+            }
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Log the activity
