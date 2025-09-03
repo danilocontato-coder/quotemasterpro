@@ -189,10 +189,7 @@ export default function Products() {
             <Upload className="h-4 w-4" />
             Importar NF
           </Button>
-          <CategoryManager onCategoryChange={() => {
-            // Force refresh of categories in CreateItemModal
-            console.log('Categories updated, forcing refresh');
-          }} />
+          <CategoryManager />
           <CreateItemModal onItemCreate={handleItemCreate} />
         </div>
       </div>

@@ -193,10 +193,8 @@ export const useSupabaseCategories = () => {
           table: 'categories'
         },
         () => {
-          // Debounce real-time updates
-          setTimeout(() => {
-            fetchCategories();
-          }, 500);
+          // Immediate update without debounce
+          fetchCategories();
         }
       )
       .subscribe();

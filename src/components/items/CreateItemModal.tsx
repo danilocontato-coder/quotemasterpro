@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,12 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
 
   const { categories, refetch: refetchCategories } = useSupabaseCategories();
   const { addProduct } = useSupabaseProducts();
+
+  // Force re-render when categories change
+  useEffect(() => {
+    // This effect will trigger when categories array changes
+    console.log('Categories updated in CreateItemModal:', categories.length);
+  }, [categories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,7 +157,7 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
                 <div className="space-y-2">
                   <Label htmlFor="category">Categoria *</Label>
                    <Select 
-                     key={categories.length} 
+                     key={`categories-${categories.length}-${Date.now()}`}
                      value={formData.category} 
                      onValueChange={(value) => handleInputChange('category', value)}
                    >
