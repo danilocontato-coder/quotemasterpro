@@ -124,7 +124,7 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     console.log('Sending to N8N:', { quote_id, suppliers_count: suppliers.length });
-
+    
     // Resolve N8N webhook URL from DB integration (per client) or fallback to env
     let n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || '';
 
@@ -137,6 +137,22 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     let configuredUrl = n8nIntegration?.configuration?.webhook_url;
+    let configuredHeaders: Record<string, string> | null = null;
+    let configuredSecret: string | null = null;
+    let configuredAuthHeader: string | null = null;
+
+    // Attempt to read optional headers and auth from configuration
+    try {
+      const cfg = n8nIntegration?.configuration || {};
+      configuredSecret = cfg.webhook_secret || null;
+      configuredAuthHeader = cfg.auth_header || null;
+      if (cfg.headers) {
+        configuredHeaders = typeof cfg.headers === 'string' ? JSON.parse(cfg.headers) : cfg.headers;
+      }
+    } catch (e) {
+      console.warn('Failed to parse N8N headers from configuration');
+    }
+
     if (!(configuredUrl && typeof configuredUrl === 'string' && configuredUrl.length > 0)) {
       const { data: globalN8n, error: globalErr } = await supabase
         .from('integrations')
@@ -146,7 +162,13 @@ const handler = async (req: Request): Promise<Response> => {
         .is('client_id', null)
         .maybeSingle();
       if (globalErr) console.warn('Failed to load global n8n integration:', globalErr);
-      configuredUrl = globalN8n?.configuration?.webhook_url;
+      const cfg = globalN8n?.configuration || {};
+      configuredUrl = cfg.webhook_url;
+      configuredSecret = configuredSecret || cfg.webhook_secret || null;
+      configuredAuthHeader = configuredAuthHeader || cfg.auth_header || null;
+      if (!configuredHeaders && cfg.headers) {
+        try { configuredHeaders = typeof cfg.headers === 'string' ? JSON.parse(cfg.headers) : cfg.headers; } catch {}
+      }
     }
 
     if (configuredUrl && typeof configuredUrl === 'string' && configuredUrl.length > 0) {
@@ -163,18 +185,34 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Build headers with optional configuration
+    const requestHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (configuredHeaders) {
+      try { Object.assign(requestHeaders, configuredHeaders); } catch {}
+    }
+    if (configuredSecret) {
+      requestHeaders['X-Webhook-Secret'] = String(configuredSecret);
+    }
+    if (configuredAuthHeader) {
+      requestHeaders['Authorization'] = String(configuredAuthHeader);
+    }
+
     const n8nResponse = await fetch(n8nWebhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: requestHeaders,
       body: JSON.stringify(n8nPayload),
     });
 
     if (!n8nResponse.ok) {
-      console.error('N8N webhook failed:', n8nResponse.status, await n8nResponse.text());
+      const respText = await n8nResponse.text();
+      console.error('N8N webhook failed:', n8nResponse.status, respText);
       return new Response(
-        JSON.stringify({ error: 'Falha ao enviar para N8N' }),
+        JSON.stringify({ 
+          error: 'Falha ao enviar para N8N', 
+          details: { status: n8nResponse.status, response: respText, webhook_url_used: n8nWebhookUrl }
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

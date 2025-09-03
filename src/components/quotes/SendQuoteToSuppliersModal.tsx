@@ -24,6 +24,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
   const [customMessage, setCustomMessage] = useState('');
+  const [resolvedWebhookUrl, setResolvedWebhookUrl] = useState<string | null>(null);
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
 
@@ -43,6 +44,45 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       setSelectedSuppliers(activeSuppliers.map(s => s.id));
     }
   }, [activeSuppliers]);
+
+  // Resolve configured webhook URL (client-specific or global)
+  useEffect(() => {
+    const resolveWebhook = async () => {
+      try {
+        setResolvedWebhookUrl(null);
+        // Try client-specific first
+        const { data: clientInt } = await supabase
+          .from('integrations')
+          .select('configuration')
+          .eq('integration_type', 'n8n_webhook')
+          .eq('active', true)
+          .eq('client_id', quote?.client_id || null)
+          .maybeSingle();
+
+        let url = (clientInt?.configuration as any)?.webhook_url || null;
+
+        if (!url) {
+          const { data: globalInt } = await supabase
+            .from('integrations')
+            .select('configuration')
+            .eq('integration_type', 'n8n_webhook')
+            .eq('active', true)
+            .is('client_id', null)
+            .maybeSingle();
+          url = (globalInt?.configuration as any)?.webhook_url || null;
+        }
+
+        setResolvedWebhookUrl(url);
+      } catch (e) {
+        console.warn('Falha ao resolver webhook N8N');
+        setResolvedWebhookUrl(null);
+      }
+    };
+
+    if (open && quote?.id) {
+      resolveWebhook();
+    }
+  }, [open, quote?.id, quote?.client_id]);
 
   const handleToggleSupplier = (supplierId: string) => {
     setSelectedSuppliers(prev => 
@@ -179,6 +219,17 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
                   <Mail className="h-4 w-4 text-blue-600" />
                   E-mail
                 </Label>
+              </div>
+              <div className="pt-2">
+                <p className="text-xs text-muted-foreground">
+                  Webhook configurado: {resolvedWebhookUrl ? (
+                    <a href={resolvedWebhookUrl} target="_blank" rel="noreferrer" className="underline">
+                      {resolvedWebhookUrl}
+                    </a>
+                  ) : (
+                    'não encontrado (configure em Admin > Integrações – N8N)'
+                  )}
+                </p>
               </div>
             </CardContent>
           </Card>
