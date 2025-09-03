@@ -54,6 +54,7 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
   const [formData, setFormData] = useState({
     name: '',
     cnpj: '',
+    address: '',
     email: '',
     phone: '',
     whatsapp: '',
@@ -122,6 +123,7 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
     setFormData({
       name: '',
       cnpj: '',
+      address: '',
       email: '',
       phone: '',
       whatsapp: '',
@@ -207,52 +209,53 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
                 {errors.cnpj && <p className="text-xs text-destructive">{errors.cnpj}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="state" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Estado *
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      className="w-full justify-between"
-                    >
-                      {formData.state
-                        ? brazilStates.find(state => state.code === formData.state)?.name
-                        : "Selecione o estado..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Buscar estado..." />
-                      <CommandEmpty>Nenhum estado encontrado.</CommandEmpty>
-                      <CommandGroup className="max-h-[200px] overflow-auto">
-                        {brazilStates.map((state) => (
-                          <CommandItem
-                            key={state.code}
-                            value={state.name}
-                            onSelect={() => {
-                              setFormData(prev => ({ ...prev, state: state.code, city: '' }));
-                            }}
-                          >
-                            <Check
-                              className={`mr-2 h-4 w-4 ${
-                                formData.state === state.code ? "opacity-100" : "opacity-0"
-                              }`}
-                            />
-                            {state.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="state" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Estado *
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={`w-full justify-between ${errors.state ? "border-destructive" : ""}`}
+                      >
+                        {formData.state
+                          ? brazilStates.find(state => state.code === formData.state)?.name
+                          : "Selecione o estado..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0 z-50">
+                      <Command>
+                        <CommandInput placeholder="Buscar estado..." />
+                        <CommandEmpty>Nenhum estado encontrado.</CommandEmpty>
+                        <CommandGroup className="max-h-[200px] overflow-auto">
+                          {brazilStates.map((state) => (
+                            <CommandItem
+                              key={state.code}
+                              value={state.name}
+                              onSelect={() => {
+                                setFormData(prev => ({ ...prev, state: state.code, city: '' }));
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  formData.state === state.code ? "opacity-100" : "opacity-0"
+                                }`}
+                              />
+                              {state.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  {errors.state && <p className="text-xs text-destructive">{errors.state}</p>}
+                </div>
 
-              {formData.state && (
                 <div className="space-y-2">
                   <Label htmlFor="city">Cidade *</Label>
                   <Popover>
@@ -260,18 +263,19 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
                       <Button
                         variant="outline"
                         role="combobox"
-                        className="w-full justify-between"
+                        className={`w-full justify-between ${errors.city ? "border-destructive" : ""} ${!formData.state ? "opacity-50 cursor-not-allowed" : ""}`}
+                        disabled={!formData.state}
                       >
-                        {formData.city || "Selecione a cidade..."}
+                        {formData.city || (formData.state ? "Selecione a cidade..." : "Selecione o estado primeiro")}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
+                    <PopoverContent className="w-full p-0 z-50">
                       <Command>
                         <CommandInput placeholder="Buscar cidade..." />
                         <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
                         <CommandGroup className="max-h-[300px] overflow-auto">
-                          {brazilStates
+                          {formData.state && brazilStates
                             .find(state => state.code === formData.state)
                             ?.cities.map(city => (
                               <CommandItem
@@ -294,8 +298,22 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
                       </Command>
                     </PopoverContent>
                   </Popover>
+                  {errors.city && <p className="text-xs text-destructive">{errors.city}</p>}
                 </div>
-              )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço Completo (Opcional)</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="Rua, número, bairro, CEP..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Rua, número, bairro e CEP para localização precisa
+                </p>
+              </div>
             </CardContent>
           </Card>
         );
@@ -514,7 +532,7 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
@@ -525,19 +543,19 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
           </p>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Stepper */}
           <div className="flex-shrink-0 py-4">
             <Stepper currentStep={currentStep} steps={steps} />
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto px-1">
             {renderStepContent()}
           </div>
 
           {/* Navigation */}
-          <div className="flex-shrink-0 flex justify-between items-center pt-4 border-t">
+          <div className="flex-shrink-0 flex justify-between items-center pt-4 border-t bg-background">
             <Button
               type="button"
               variant="outline"
