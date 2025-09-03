@@ -31,7 +31,7 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
     minStock: '',
   });
 
-  const { categories } = useSupabaseCategories();
+  const { categories, refetch: refetchCategories } = useSupabaseCategories();
   const { addProduct } = useSupabaseProducts();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -150,24 +150,28 @@ export function CreateItemModal({ trigger, onItemCreate }: CreateItemModalProps)
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category">Categoria *</Label>
-                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.name}>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: category.color }}
-                              />
-                              {category.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                  </Select>
+                   <Select 
+                     key={categories.length} 
+                     value={formData.category} 
+                     onValueChange={(value) => handleInputChange('category', value)}
+                   >
+                     <SelectTrigger>
+                       <SelectValue placeholder="Selecione uma categoria" />
+                     </SelectTrigger>
+                       <SelectContent>
+                         {categories.map((category) => (
+                           <SelectItem key={category.id} value={category.name}>
+                             <div className="flex items-center gap-2">
+                               <div 
+                                 className="w-3 h-3 rounded-full"
+                                 style={{ backgroundColor: category.color }}
+                               />
+                               {category.name}
+                             </div>
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                   </Select>
                 </div>
               </div>
 

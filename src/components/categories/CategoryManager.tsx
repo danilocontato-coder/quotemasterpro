@@ -10,9 +10,10 @@ import { toast } from "sonner";
 
 interface CategoryManagerProps {
   onCategoryAdd?: (category: string) => void;
+  onCategoryChange?: () => void;
 }
 
-export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
+export function CategoryManager({ onCategoryAdd, onCategoryChange }: CategoryManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -40,6 +41,7 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
       setNewDescription("");
       setNewColor("#3b82f6");
       onCategoryAdd?.(newCategory.trim());
+      onCategoryChange?.();
     }
   };
 
@@ -62,6 +64,7 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
 
     if (success) {
       handleCancelEdit();
+      onCategoryChange?.();
     }
   };
 
@@ -78,6 +81,7 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
       const newUsage = { ...categoryUsage };
       delete newUsage[category.name];
       setCategoryUsage(newUsage);
+      onCategoryChange?.();
     }
   };
 
