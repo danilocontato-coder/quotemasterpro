@@ -110,21 +110,39 @@ export const useSupabaseProducts = () => {
       // Get user profile to determine client_id
       const { data: profile } = await supabase
         .from('profiles')
-        .select('client_id, supplier_id')
+        .select('client_id, supplier_id, role')
         .eq('id', user.user.id)
         .single();
 
-      if (!profile?.client_id && !profile?.supplier_id) {
-        throw new Error('User profile not found or missing client/supplier association');
+      if (!profile) {
+        throw new Error('User profile not found');
+      }
+
+      // For admins, allow creating products without client/supplier association
+      // For clients/managers/collaborators, require client_id
+      // For suppliers, require supplier_id
+      let productPayload = { ...productData };
+      
+      if (profile.role === 'admin') {
+        // Admin can create products without specific association
+        // But we should still set one if available
+        if (profile.client_id) productPayload.client_id = profile.client_id;
+        if (profile.supplier_id) productPayload.supplier_id = profile.supplier_id;
+      } else if (['manager', 'collaborator'].includes(profile.role)) {
+        if (!profile.client_id) {
+          throw new Error('Perfil de usuário não está associado a um cliente');
+        }
+        productPayload.client_id = profile.client_id;
+      } else if (profile.role === 'supplier') {
+        if (!profile.supplier_id) {
+          throw new Error('Perfil de usuário não está associado a um fornecedor');
+        }
+        productPayload.supplier_id = profile.supplier_id;
       }
 
       const { data, error } = await supabase
         .from('products')
-        .insert([{
-          ...productData,
-          client_id: profile.client_id,
-          supplier_id: profile.supplier_id,
-        }])
+        .insert([productPayload])
         .select()
         .single();
 
