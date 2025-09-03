@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Copy, Eye, EyeOff, RefreshCw, UserPlus, X } from 'lucide-react';
+import { UserPlus, X, MessageCircle, Building, MapPin } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseAdminSuppliers } from '@/hooks/useSupabaseAdminSuppliers';
 import { Supplier } from '@/hooks/useSupabaseSuppliers';
@@ -29,21 +27,29 @@ const regions = [
 ];
 
 const supplierTypes = [
-  { value: 'local', label: 'Local' },
-  { value: 'national', label: 'Nacional' },
-  { value: 'international', label: 'Internacional' }
+  { value: 'local', label: 'Local', description: 'Fornecedor da região' },
+  { value: 'national', label: 'Nacional', description: 'Atende todo o país' },
+  { value: 'international', label: 'Internacional', description: 'Fornecedor internacional' }
 ];
 
-const subscriptionPlans = [
-  'plan-basic',
-  'plan-pro', 
-  'plan-enterprise'
+const commonSpecialties = [
+  'Materiais de Construção',
+  'Produtos de Limpeza', 
+  'Elétrica e Iluminação',
+  'Ferramentas',
+  'Jardinagem',
+  'Serviços',
+  'Manutenção',
+  'Segurança',
+  'Alimentação',
+  'Móveis e Decoração'
 ];
 
 export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateSupplierModalProps) {
   const { createSupplierWithUser } = useSupabaseAdminSuppliers();
   const { toast } = useToast();
 
+  const [activeTab, setActiveTab] = useState('contact');
   const [formData, setFormData] = useState({
     name: '',
     cnpj: '',
@@ -61,51 +67,21 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
     client_id: null
   });
 
-  const [credentials, setCredentials] = useState({
+  const [credentials] = useState({
     username: '',
     password: '',
-    generateCredentials: true,
-    forcePasswordChange: true
+    generateCredentials: false,
+    forcePasswordChange: false
   });
 
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [newSpecialty, setNewSpecialty] = useState('');
 
-  useEffect(() => {
-    if (credentials.generateCredentials && formData.email) {
-      const username = formData.email.split('@')[0] + Math.floor(Math.random() * 100);
-      const password = generatePassword();
-      setCredentials(prev => ({ ...prev, username, password }));
-    }
-  }, [credentials.generateCredentials, formData.email]);
-
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    let password = '';
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  };
-
-  const handleGenerateNewPassword = () => {
-    setCredentials(prev => ({ ...prev, password: generatePassword() }));
-  };
-
-  const handleCopyPassword = async () => {
-    await navigator.clipboard.writeText(credentials.password);
-    toast({
-      title: "Senha copiada",
-      description: "A senha foi copiada para a área de transferência."
-    });
-  };
-
-  const addSpecialty = () => {
-    if (newSpecialty.trim() && !formData.specialties.includes(newSpecialty.trim())) {
+  const addSpecialty = (specialty: string) => {
+    if (specialty.trim() && !formData.specialties.includes(specialty.trim())) {
       setFormData(prev => ({
         ...prev,
-        specialties: [...prev.specialties, newSpecialty.trim()]
+        specialties: [...prev.specialties, specialty.trim()]
       }));
       setNewSpecialty('');
     }
@@ -135,13 +111,8 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
       subscription_plan_id: 'plan-basic',
       client_id: null
     });
-    setCredentials({
-      username: '',
-      password: '',
-      generateCredentials: true,
-      forcePasswordChange: true
-    });
     setNewSpecialty('');
+    setActiveTab('contact');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,11 +130,20 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
         return;
       }
 
+      if (!formData.whatsapp) {
+        toast({
+          title: "WhatsApp obrigatório",
+          description: "O WhatsApp é necessário para envio de cotações.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       await createSupplierWithUser(formData, credentials);
       
       toast({
         title: "Fornecedor criado com sucesso",
-        description: `${formData.name} foi adicionado ao sistema.`
+        description: `${formData.name} foi adicionado ao sistema. As cotações serão enviadas via WhatsApp.`
       });
 
       resetForm();
@@ -180,291 +160,292 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
     }
   };
 
+  const isFormValid = formData.name && formData.email && formData.cnpj && formData.whatsapp;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
             Criar Novo Fornecedor
           </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Cadastre fornecedores para receber cotações via WhatsApp
+          </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
-              <TabsTrigger value="details">Detalhes</TabsTrigger>
-              <TabsTrigger value="credentials">Credenciais</TabsTrigger>
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+              <TabsTrigger value="contact" className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                Contato
+              </TabsTrigger>
+              <TabsTrigger value="business" className="flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                Empresa
+              </TabsTrigger>
+              <TabsTrigger value="location" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Localização
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="basic" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome da Empresa *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Nome da empresa fornecedora"
-                    required
-                  />
-                </div>
+            <div className="flex-1 overflow-y-auto">
+              <TabsContent value="contact" className="h-full">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Informações de Contato</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      O WhatsApp é essencial para o envio automático de cotações
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Nome da Empresa *</Label>
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Nome da empresa fornecedora"
+                          required
+                        />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj">CNPJ *</Label>
-                  <Input
-                    id="cnpj"
-                    value={formData.cnpj}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cnpj: e.target.value }))}
-                    placeholder="00.000.000/0000-00"
-                    required
-                  />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="cnpj">CNPJ *</Label>
+                        <Input
+                          id="cnpj"
+                          value={formData.cnpj}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cnpj: e.target.value }))}
+                          placeholder="00.000.000/0000-00"
+                          required
+                        />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="contato@empresa.com"
-                    required
-                  />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="contato@empresa.com"
+                          required
+                        />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Telefone</Label>
+                        <Input
+                          id="phone"
+                          value={formData.phone}
+                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="(11) 3333-4444"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp">WhatsApp</Label>
-                  <Input
-                    id="whatsapp"
-                    value={formData.whatsapp}
-                    onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp" className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4 text-green-600" />
+                        WhatsApp * (Para envio de cotações)
+                      </Label>
+                      <Input
+                        id="whatsapp"
+                        value={formData.whatsapp}
+                        onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                        placeholder="(11) 99999-9999"
+                        className="border-green-200 focus:border-green-400"
+                        required
+                      />
+                      <p className="text-xs text-green-600">
+                        ✓ As cotações serão enviadas automaticamente para este WhatsApp
+                      </p>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={formData.website}
-                    onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                    placeholder="https://www.empresa.com"
-                  />
-                </div>
-              </div>
-            </TabsContent>
+                    <div className="space-y-2">
+                      <Label htmlFor="website">Website</Label>
+                      <Input
+                        id="website"
+                        value={formData.website}
+                        onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                        placeholder="https://www.empresa.com"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-            <TabsContent value="details" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="type">Tipo</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {supplierTypes.map(type => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <TabsContent value="business" className="h-full">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Especialidades e Serviços</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Defina as áreas de atuação do fornecedor
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <Label>Especialidades</Label>
+                      
+                      {/* Especialidades comuns */}
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Selecione as especialidades mais comuns:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {commonSpecialties.map((specialty) => (
+                            <Badge
+                              key={specialty}
+                              variant={formData.specialties.includes(specialty) ? "default" : "outline"}
+                              className="cursor-pointer"
+                              onClick={() => 
+                                formData.specialties.includes(specialty) 
+                                  ? removeSpecialty(specialty)
+                                  : addSpecialty(specialty)
+                              }
+                            >
+                              {specialty}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="region">Região</Label>
-                  <Select value={formData.region} onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a região" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map(region => (
-                        <SelectItem key={region} value={region}>
-                          {region}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      {/* Adicionar especialidade customizada */}
+                      <div className="flex gap-2">
+                        <Input
+                          value={newSpecialty}
+                          onChange={(e) => setNewSpecialty(e.target.value)}
+                          placeholder="Adicionar especialidade personalizada"
+                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialty(newSpecialty))}
+                        />
+                        <Button 
+                          type="button" 
+                          onClick={() => addSpecialty(newSpecialty)} 
+                          variant="outline"
+                          disabled={!newSpecialty.trim()}
+                        >
+                          Adicionar
+                        </Button>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Ativo</SelectItem>
-                      <SelectItem value="inactive">Inativo</SelectItem>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="suspended">Suspenso</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                      {/* Especialidades selecionadas */}
+                      {formData.specialties.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Especialidades selecionadas:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {formData.specialties.map((specialty) => (
+                              <Badge key={specialty} variant="secondary" className="flex items-center gap-1">
+                                {specialty}
+                                <X 
+                                  className="h-3 w-3 cursor-pointer" 
+                                  onClick={() => removeSpecialty(specialty)}
+                                />
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                <div className="space-y-2">
-                  <Label htmlFor="plan">Plano de Assinatura</Label>
-                  <Select value={formData.subscription_plan_id} onValueChange={(value) => setFormData(prev => ({ ...prev, subscription_plan_id: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o plano" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subscriptionPlans.map(plan => (
-                        <SelectItem key={plan} value={plan}>
-                          {plan.replace('plan-', '').toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <TabsContent value="location" className="h-full">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Localização e Abrangência</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Configure a área de atuação do fornecedor
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="type">Tipo de Fornecedor</Label>
+                        <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any }))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {supplierTypes.map(type => (
+                              <SelectItem key={type.value} value={type.value}>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{type.label}</span>
+                                  <span className="text-xs text-muted-foreground">{type.description}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-              <div className="space-y-2">
-                <Label>Especialidades</Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="region">Região Principal</Label>
+                        <Select value={formData.region} onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a região" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {regions.map(region => (
+                              <SelectItem key={region} value={region}>
+                                {region}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status Inicial</Label>
+                      <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Ativo - Pode receber cotações</SelectItem>
+                          <SelectItem value="pending">Pendente - Aguardando verificação</SelectItem>
+                          <SelectItem value="inactive">Inativo - Não recebe cotações</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </div>
+
+            {/* Actions fixas no bottom */}
+            <div className="flex-shrink-0 border-t p-4 bg-background">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-muted-foreground">
+                  {!isFormValid && (
+                    <span className="text-destructive">
+                      * Preencha todos os campos obrigatórios
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-2">
-                  <Input
-                    value={newSpecialty}
-                    onChange={(e) => setNewSpecialty(e.target.value)}
-                    placeholder="Digite uma especialidade"
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialty())}
-                  />
-                  <Button type="button" onClick={addSpecialty} variant="outline">
-                    Adicionar
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onClose}
+                    disabled={isLoading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="btn-corporate"
+                    disabled={isLoading || !isFormValid}
+                  >
+                    {isLoading ? "Cadastrando..." : "Cadastrar Fornecedor"}
                   </Button>
                 </div>
-                {formData.specialties.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.specialties.map((specialty) => (
-                      <Badge key={specialty} variant="secondary" className="flex items-center gap-1">
-                        {specialty}
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
-                          onClick={() => removeSpecialty(specialty)}
-                        />
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </div>
-            </TabsContent>
-
-            <TabsContent value="credentials" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configurações de Acesso</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="generateCredentials"
-                      checked={credentials.generateCredentials}
-                      onCheckedChange={(checked) => setCredentials(prev => ({ ...prev, generateCredentials: checked }))}
-                    />
-                    <Label htmlFor="generateCredentials">Gerar credenciais automaticamente</Label>
-                  </div>
-
-                  {credentials.generateCredentials && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="username">Nome de usuário</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="username"
-                            value={credentials.username}
-                            onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
-                            placeholder="Nome de usuário"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setCredentials(prev => ({ 
-                              ...prev, 
-                              username: formData.email.split('@')[0] + Math.floor(Math.random() * 100) 
-                            }))}
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Senha temporária</Label>
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <Input
-                              id="password"
-                              type={showPassword ? "text" : "password"}
-                              value={credentials.password}
-                              onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
-                              placeholder="Senha temporária"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                              onClick={() => setShowPassword(!showPassword)}
-                            >
-                              {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                            </Button>
-                          </div>
-                          <Button type="button" variant="outline" onClick={handleGenerateNewPassword}>
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
-                          <Button type="button" variant="outline" onClick={handleCopyPassword}>
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="forcePasswordChange"
-                          checked={credentials.forcePasswordChange}
-                          onCheckedChange={(checked) => setCredentials(prev => ({ ...prev, forcePasswordChange: checked }))}
-                        />
-                        <Label htmlFor="forcePasswordChange">Forçar alteração de senha no primeiro login</Label>
-                      </div>
-
-                      <Card className="bg-muted">
-                        <CardHeader>
-                          <CardTitle className="text-sm">Resumo das Credenciais</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-sm">
-                          <p><strong>Email:</strong> {formData.email}</p>
-                          <p><strong>Usuário:</strong> {credentials.username}</p>
-                          <p><strong>Senha:</strong> {credentials.password}</p>
-                          <p><strong>Alterar senha:</strong> {credentials.forcePasswordChange ? 'Sim' : 'Não'}</p>
-                        </CardContent>
-                      </Card>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+            </div>
           </Tabs>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Criando...' : 'Criar Fornecedor'}
-            </Button>
-          </div>
         </form>
       </DialogContent>
     </Dialog>
