@@ -43,6 +43,11 @@ import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { ClientGroupsManager } from '@/components/admin/ClientGroupsManager';
+import { ViewClientModal } from '@/components/admin/ViewClientModal';
+import { EditClientModal } from '@/components/admin/EditClientModal';
+import { ClientCredentialsModal } from '@/components/admin/ClientCredentialsModal';
+import { ClientDocumentsModal } from '@/components/admin/ClientDocumentsModal';
+import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
 
 export const ClientsManagement = () => {
   console.log('ClientsManagement component rendering');
@@ -70,6 +75,12 @@ export const ClientsManagement = () => {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGroupsManager, setShowGroupsManager] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [showDocumentsModal, setShowDocumentsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -103,6 +114,41 @@ export const ClientsManagement = () => {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  // Ações do menu
+  const handleViewClient = (client: any) => {
+    setSelectedClient(client);
+    setShowViewModal(true);
+  };
+
+  const handleEditClient = (client: any) => {
+    setSelectedClient(client);
+    setShowEditModal(true);
+  };
+
+  const handleClientDocuments = (client: any) => {
+    setSelectedClient(client);
+    setShowDocumentsModal(true);
+  };
+
+  const handleClientCredentials = (client: any) => {
+    setSelectedClient(client);
+    setShowCredentialsModal(true);
+  };
+
+  const handleToggleClientStatus = async (client: any) => {
+    const newStatus = client.status === 'active' ? 'inactive' : 'active';
+    try {
+      await updateClient(client.id, { status: newStatus } as any);
+    } catch (error) {
+      console.error('Erro ao alterar status do cliente:', error);
+    }
+  };
+
+  const handleDeleteClient = (client: any) => {
+    setSelectedClient(client);
+    setShowDeleteModal(true);
   };
 
   return (
@@ -353,23 +399,23 @@ export const ClientsManagement = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-background border z-50">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewClient(client)}>
                             <Eye className="h-4 w-4 mr-2" />
                             Visualizar
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditClient(client)}>
                             <Edit className="h-4 w-4 mr-2" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleClientDocuments(client)}>
                             <FileText className="h-4 w-4 mr-2" />
                             Documentos
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleClientCredentials(client)}>
                             <Shield className="h-4 w-4 mr-2" />
                             Credenciais
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleClientStatus(client)}>
                             {client.status === 'active' ? (
                               <>
                                 <UserX className="h-4 w-4 mr-2" />
@@ -382,7 +428,10 @@ export const ClientsManagement = () => {
                               </>
                             )}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={() => handleDeleteClient(client)}
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Excluir
                           </DropdownMenuItem>
@@ -414,6 +463,41 @@ export const ClientsManagement = () => {
         onCreateGroup={createGroup}
         onUpdateGroup={updateGroup}
         onDeleteGroup={deleteGroup}
+      />
+
+      <ViewClientModal
+        open={showViewModal}
+        onOpenChange={setShowViewModal}
+        client={selectedClient}
+      />
+
+      <EditClientModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        client={selectedClient}
+        clientGroups={clientGroups}
+        onUpdateClient={(id, data) => updateClient(id, data as any)}
+      />
+
+      <ClientCredentialsModal
+        open={showCredentialsModal}
+        onOpenChange={setShowCredentialsModal}
+        client={selectedClient}
+        onGenerateUsername={generateUsername}
+        onGeneratePassword={generateTemporaryPassword}
+      />
+
+      <ClientDocumentsModal
+        open={showDocumentsModal}
+        onOpenChange={setShowDocumentsModal}
+        client={selectedClient}
+      />
+
+      <DeleteClientModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        client={selectedClient}
+        onDeleteClient={deleteClient}
       />
     </div>
   );
