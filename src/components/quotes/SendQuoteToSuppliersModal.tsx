@@ -91,10 +91,11 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       }
 
       if (data?.success) {
-        toast.success(data.message || "Cotação enviada com sucesso!");
+        console.log('Webhook usado:', data.webhook_url_used);
+        toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : ''));
         setOpen(false);
       } else {
-        toast.error(data?.error || "Erro ao enviar cotação");
+        toast.error(data?.error || 'Erro ao enviar cotação');
       }
 
     } catch (error: any) {

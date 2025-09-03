@@ -153,6 +153,8 @@ const handler = async (req: Request): Promise<Response> => {
       n8nWebhookUrl = configuredUrl;
     }
 
+    console.log('Resolved N8N webhook URL:', n8nWebhookUrl);
+
     if (!n8nWebhookUrl) {
       console.error('N8N webhook URL not configured');
       return new Response(
@@ -203,7 +205,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         message: `Cotação enviada para ${suppliers.length} fornecedor(es)`,
-        suppliers_contacted: suppliers.length
+        suppliers_contacted: suppliers.length,
+        webhook_url_used: n8nWebhookUrl
       }),
       {
         status: 200,
