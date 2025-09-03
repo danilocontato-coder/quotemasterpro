@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { Plus, FolderPlus, Edit, Trash2, Tag, Palette } from "lucide-react";
+import { Plus, FolderPlus, Edit, Trash2, Tag, Palette, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { useSupabaseCategories } from "@/hooks/useSupabaseCategories";
 import { toast } from "sonner";
 
@@ -119,21 +119,28 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
           Gerenciar Categorias
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Gerenciar Categorias de Produtos</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Gerenciar Categorias</DialogTitle>
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </div>
         </DialogHeader>
         
         <div className="space-y-6">
           {/* Add/Edit Category */}
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-4">
               <CardTitle className="text-base">
-                {editingCategory ? 'Editar Categoria' : 'Adicionar Nova Categoria'}
+                {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={editingCategory ? handleUpdateCategory : handleAddCategory} className="space-y-4">
+              <form onSubmit={editingCategory ? handleUpdateCategory : handleAddCategory} className="space-y-3">
                 <div className="flex gap-2">
                   <Input
                     value={newCategory}
@@ -142,13 +149,14 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
                     className="flex-1"
                     required
                   />
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Palette className="h-4 w-4 text-muted-foreground" />
                     <input
                       type="color"
                       value={newColor}
                       onChange={(e) => setNewColor(e.target.value)}
-                      className="w-10 h-10 rounded border"
+                      className="w-8 h-8 rounded border cursor-pointer"
+                      title="Escolher cor"
                     />
                   </div>
                 </div>
@@ -159,19 +167,19 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
                 />
                 <div className="flex gap-2">
                   {editingCategory && (
-                    <Button type="button" variant="outline" onClick={handleCancelEdit}>
+                    <Button type="button" variant="outline" onClick={handleCancelEdit} size="sm">
                       Cancelar
                     </Button>
                   )}
-                  <Button type="submit" disabled={!newCategory.trim()}>
+                  <Button type="submit" disabled={!newCategory.trim()} size="sm">
                     {editingCategory ? (
                       <>
-                        <Edit className="h-4 w-4 mr-2" />
+                        <Edit className="h-4 w-4 mr-1" />
                         Atualizar
                       </>
                     ) : (
                       <>
-                        <Plus className="h-4 w-4 mr-2" />
+                        <Plus className="h-4 w-4 mr-1" />
                         Adicionar
                       </>
                     )}
@@ -183,16 +191,16 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
 
           {/* Categories List */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Categorias Existentes</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Categorias ({categories.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-6 text-muted-foreground">
                   Carregando categorias...
                 </div>
               ) : categories.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto">
+                <div className="space-y-2 max-h-64 overflow-y-auto">
                   {categories.map((category) => {
                     const productCount = categoryUsage[category.name] || 0;
                     return (
@@ -200,7 +208,7 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
                         key={category.id}
                         className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-secondary/20 transition-colors"
                       >
-                        <div className="flex items-center gap-3 flex-1">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div 
                             className="w-4 h-4 rounded-full flex-shrink-0"
                             style={{ backgroundColor: category.color }}
@@ -212,20 +220,18 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
                                 {category.description}
                               </p>
                             )}
-                            <p className="text-xs text-muted-foreground">
-                              {productCount} produto{productCount !== 1 ? 's' : ''}
-                            </p>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">
-                            {productCount}
+                          <Badge variant="outline" className="text-xs flex-shrink-0">
+                            {productCount} item{productCount !== 1 ? 's' : ''}
                           </Badge>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEditCategory(category)}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 hover:bg-secondary"
+                            title="Editar categoria"
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
@@ -234,7 +240,8 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
                             size="sm"
                             onClick={() => handleRemoveCategory(category)}
                             disabled={productCount > 0}
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                            title={productCount > 0 ? "Não é possível excluir: categoria em uso" : "Excluir categoria"}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -244,30 +251,40 @@ export function CategoryManager({ onCategoryAdd }: CategoryManagerProps) {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Nenhuma categoria cadastrada
+                <div className="text-center py-6 text-muted-foreground">
+                  <Tag className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <p className="text-sm">Nenhuma categoria cadastrada</p>
+                  <p className="text-xs">Adicione uma categoria acima</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Category Usage Info */}
+          {/* Help Info */}
           <Card className="bg-secondary/10">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
+                <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
                 <div className="text-sm">
-                  <p className="font-medium text-foreground mb-1">Como usar as categorias:</p>
-                  <ul className="text-muted-foreground space-y-1">
+                  <p className="font-medium text-foreground mb-1">Dicas:</p>
+                  <ul className="text-muted-foreground space-y-1 text-xs">
                     <li>• Organize produtos por tipo para facilitar cotações</li>
-                    <li>• Envie solicitações para fornecedores especializados por categoria</li>
-                    <li>• Categorias com produtos não podem ser removidas</li>
-                    <li>• Use nomes descritivos e específicos</li>
+                    <li>• Categorias em uso não podem ser removidas</li>
+                    <li>• Use cores para identificar categorias rapidamente</li>
                   </ul>
                 </div>
               </div>
             </CardContent>
           </Card>
+          
+          {/* Close Button */}
+          <div className="flex justify-end pt-2">
+            <DialogClose asChild>
+              <Button variant="outline">
+                Fechar
+              </Button>
+            </DialogClose>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
