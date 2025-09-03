@@ -764,6 +764,7 @@ export type Database = {
         Row: {
           address: Json | null
           business_info: Json | null
+          city: string | null
           client_id: string | null
           cnpj: string
           completed_orders: number | null
@@ -775,6 +776,7 @@ export type Database = {
           rating: number | null
           region: string | null
           specialties: string[] | null
+          state: string | null
           status: string | null
           subscription_plan_id: string | null
           type: string | null
@@ -785,6 +787,7 @@ export type Database = {
         Insert: {
           address?: Json | null
           business_info?: Json | null
+          city?: string | null
           client_id?: string | null
           cnpj: string
           completed_orders?: number | null
@@ -796,6 +799,7 @@ export type Database = {
           rating?: number | null
           region?: string | null
           specialties?: string[] | null
+          state?: string | null
           status?: string | null
           subscription_plan_id?: string | null
           type?: string | null
@@ -806,6 +810,7 @@ export type Database = {
         Update: {
           address?: Json | null
           business_info?: Json | null
+          city?: string | null
           client_id?: string | null
           cnpj?: string
           completed_orders?: number | null
@@ -817,6 +822,7 @@ export type Database = {
           rating?: number | null
           region?: string | null
           specialties?: string[] | null
+          state?: string | null
           status?: string | null
           subscription_plan_id?: string | null
           type?: string | null

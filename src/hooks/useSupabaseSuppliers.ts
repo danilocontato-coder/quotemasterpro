@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Supplier {
   id: string;
@@ -15,6 +16,8 @@ export interface Supplier {
   specialties?: string[];
   type: 'local' | 'national' | 'international';
   region?: string;
+  state?: string;
+  city?: string;
   rating: number;
   completed_orders: number;
   status: 'pending' | 'active' | 'inactive' | 'suspended';
@@ -28,6 +31,7 @@ export const useSupabaseSuppliers = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchSuppliers = async () => {
     try {
@@ -117,10 +121,27 @@ export const useSupabaseSuppliers = () => {
 
   const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => {
     try {
+      // Get current user's profile to get client_id
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', authUser.id)
+        .single();
+
+      if (!profile?.client_id) {
+        throw new Error('Perfil de usuário não encontrado ou sem cliente associado');
+      }
+
       const { data, error } = await supabase
         .from('suppliers')
         .insert([{
           ...supplierData,
+          client_id: profile.client_id, // Incluir o client_id do usuário atual
           rating: 0,
           completed_orders: 0
         }])
