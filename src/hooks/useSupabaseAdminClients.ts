@@ -210,11 +210,14 @@ export function useSupabaseAdminClients() {
       
       const authPayload = authResp as any;
       if (authPayload && authPayload.success === false) {
-        throw new Error(authPayload.error || 'Falha ao criar usuário de autenticação');
+        throw { code: authPayload.error_code || 'auth_error', message: authPayload.error || 'Falha ao criar usuário de autenticação' };
       }
-
-      // 2) Cria o registro do cliente após garantir o usuário de auth
-      console.log('useSupabaseAdminClients: Criando registro do cliente');
+      
+      createdAuthUserId = authPayload?.auth_user_id as string | null;
+      console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
+      if (!createdAuthUserId) {
+        throw { code: 'auth_missing_id', message: 'Falha ao criar usuário de autenticação - ID não retornado' };
+      }
       const { data: insertData, error: insertErr } = await supabase
         .from("clients")
         .insert({

@@ -299,11 +299,12 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
 
     } catch (error: any) {
       console.error('CreateClientModal: Erro ao criar cliente', error);
-      toast({
-        title: "Erro",
-        description: error?.message || "Erro ao criar cliente. Tente novamente.",
-        variant: "destructive"
-      });
+      const code = error?.code || error?.error_code;
+      const msg = error?.message || error?.error || 'Erro ao criar cliente. Tente novamente.';
+      const friendly = code === 'email_exists'
+        ? 'Este e-mail já está registrado. Use outro e-mail ou vincule um usuário existente.'
+        : msg;
+      toast({ title: 'Erro', description: friendly, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
