@@ -7,10 +7,14 @@ import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
+import { useRealtimeDataSync } from "@/hooks/useRealtimeDataSync";
 
 export function MainLayout() {
   const { clientName, subscriptionPlan, isLoading } = useSupabaseCurrentClient();
   const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
+  
+  // Sincronização em tempo real dos dados
+  useRealtimeDataSync();
 
   return (
     <SidebarProvider>
