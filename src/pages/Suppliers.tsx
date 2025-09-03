@@ -104,6 +104,15 @@ export default function Suppliers() {
   };
 
   const handleDeleteSupplier = async (supplier: any) => {
+    const canDelete = (user?.role === 'admin') || (!!supplier.client_id && supplier.client_id === user?.clientId);
+    if (!canDelete) {
+      toast({
+        title: 'Ação não permitida',
+        description: 'Apenas Admin pode remover fornecedores certificados (globais). Você pode excluir apenas fornecedores locais do seu cliente.',
+        variant: 'destructive'
+      });
+      return;
+    }
     if (!window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) return;
     await deleteSupplier(supplier.id, supplier.name);
   };
@@ -306,8 +315,8 @@ export default function Suppliers() {
                       )}
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <Badge className="bg-success text-white">
-                        Ativo
+                      <Badge className={supplier.status === 'active' ? 'bg-success text-white' : 'bg-muted text-foreground'}>
+                        {supplier.status === 'active' ? 'Ativo' : 'Inativo'}
                       </Badge>
                       {supplier.rating && (
                         <div className="flex items-center gap-1 text-xs">

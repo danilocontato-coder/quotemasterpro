@@ -189,18 +189,30 @@ export const useSupabaseSuppliers = () => {
 
       setSuppliers(prev => prev.filter(supplier => supplier.id !== id));
       
+      // Ensure UI is in sync with DB (handles replication delays)
+      setTimeout(() => {
+        fetchSuppliers();
+      }, 150);
+      
       toast({
         title: "Fornecedor removido",
         description: `O fornecedor "${name}" foi removido com sucesso.`,
       });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting supplier:', error);
+      const message = (error?.message?.includes('permission') || error?.code === '42501')
+        ? 'Permissão negada pelas políticas de acesso (RLS). Você só pode excluir fornecedores locais do seu cliente. Fornecedores certificados (globais) só podem ser removidos pelo Superadmin.'
+        : 'Não foi possível remover o fornecedor.';
       toast({
         title: "Erro ao remover fornecedor",
-        description: "Não foi possível remover o fornecedor.",
+        description: message,
         variant: "destructive"
       });
+      // Re-sync state just in case local removal happened elsewhere
+      setTimeout(() => {
+        fetchSuppliers();
+      }, 150);
       return false;
     }
   };
