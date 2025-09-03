@@ -129,15 +129,22 @@ const Login: React.FC = () => {
     setError('');
 
     try {
+      // Detectar tipo de usuário baseado no email
+      const userType = detectedUserType;
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        // Traduzir erros comuns para português
+        // Handle specific error cases
         if (error.message.includes('Invalid login credentials')) {
-          setError('Email ou senha incorretos. Verifique suas credenciais.');
+          if (userType) {
+            setError(`Credenciais inválidas para ${userType === 'admin' ? 'administrador' : userType === 'supplier' ? 'fornecedor' : 'cliente'}.`);
+          } else {
+            setError('Email ou senha incorretos. Verifique se você está cadastrado no sistema.');
+          }
         } else if (error.message.includes('Email not confirmed')) {
           setError('Email não confirmado. Verifique sua caixa de entrada.');
         } else if (error.message.includes('Too many requests')) {

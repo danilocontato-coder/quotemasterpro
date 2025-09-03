@@ -41,31 +41,40 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAdminSuppliers } from '@/hooks/useAdminSuppliers';
-import { ComprehensiveSupplierModal } from '@/components/suppliers/ComprehensiveSupplierModal';
-import { EnhancedGroupModal } from '@/components/suppliers/EnhancedGroupModal';
+import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
+import { CreateSupplierModal } from '@/components/suppliers/CreateSupplierModal';
 
 export const SuppliersManagement = () => {
   const {
     suppliers,
-    supplierGroups,
-    searchTerm,
-    setSearchTerm,
-    filterGroup,
-    setFilterGroup,
-    filterStatus,
-    setFilterStatus,
+    isLoading,
     createSupplier,
-    updateGroup,
-    deleteGroup,
-    createGroup,
-    generateTemporaryPassword,
-    generateUsername,
-    stats
-  } = useAdminSuppliers();
+    updateSupplier,
+    deleteSupplier
+  } = useSupabaseSuppliers();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showGroupsManager, setShowGroupsManager] = useState(false);
+
+  const filteredSuppliers = suppliers.filter(supplier => {
+    const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         supplier.cnpj.includes(searchTerm) ||
+                         supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filterStatus === "all" || supplier.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const getSupplierStats = () => ({
+    total: suppliers.length,
+    active: suppliers.filter(s => s.status === "active").length,
+    totalRevenue: 0,
+    avgRating: suppliers.reduce((sum, s) => sum + s.rating, 0) / suppliers.length || 0,
+    avgResponseTime: 24
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -77,10 +86,6 @@ export const SuppliersManagement = () => {
     }
   };
 
-  const getGroupColor = (groupId?: string) => {
-    const group = supplierGroups.find(g => g.id === groupId);
-    return group?.color || 'gray';
-  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -123,13 +128,6 @@ export const SuppliersManagement = () => {
           </div>
           <div className="flex items-center gap-3">
             <Button 
-              variant="outline"
-              onClick={() => setShowGroupsManager(true)}
-            >
-              <Tag className="h-4 w-4 mr-2" />
-              Grupos
-            </Button>
-            <Button 
               className="bg-primary hover:bg-primary/90"
               onClick={() => setShowCreateModal(true)}
             >
@@ -142,11 +140,11 @@ export const SuppliersManagement = () => {
 
       <div className="p-6 space-y-6">
         {/* Estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <Truck className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-2xl font-bold">{getSupplierStats().total}</p>
               <p className="text-xs text-muted-foreground">Total Fornecedores</p>
             </CardContent>
           </Card>
@@ -154,23 +152,15 @@ export const SuppliersManagement = () => {
           <Card>
             <CardContent className="p-4 text-center">
               <UserCheck className="h-6 w-6 mx-auto mb-2 text-green-600" />
-              <p className="text-2xl font-bold">{stats.active}</p>
+              <p className="text-2xl font-bold">{getSupplierStats().active}</p>
               <p className="text-xs text-muted-foreground">Ativos</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-4 text-center">
-              <DollarSign className="h-6 w-6 mx-auto mb-2 text-emerald-600" />
-              <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
-              <p className="text-xs text-muted-foreground">Receita Total</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
               <Star className="h-6 w-6 mx-auto mb-2 text-yellow-500" />
-              <p className="text-2xl font-bold">{stats.avgRating.toFixed(1)}</p>
+              <p className="text-2xl font-bold">{getSupplierStats().avgRating.toFixed(1)}</p>
               <p className="text-xs text-muted-foreground">Avaliação Média</p>
             </CardContent>
           </Card>
@@ -178,60 +168,12 @@ export const SuppliersManagement = () => {
           <Card>
             <CardContent className="p-4 text-center">
               <Clock className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-              <p className="text-2xl font-bold">{formatResponseTime(stats.avgResponseTime)}</p>
+              <p className="text-2xl font-bold">{formatResponseTime(getSupplierStats().avgResponseTime)}</p>
               <p className="text-xs text-muted-foreground">Tempo Médio Resposta</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Top Rated Suppliers */}
-        {stats.topRated.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Award className="h-5 w-5 text-yellow-500" />
-                Fornecedores Melhor Avaliados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-3">
-                {stats.topRated.slice(0, 5).map((supplier) => (
-                  <div key={supplier.id} className="flex items-center gap-3 bg-muted rounded-lg p-3">
-                    <div className="p-2 bg-background rounded-full">
-                      <Truck className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{supplier.companyName}</p>
-                      {renderStars(supplier.avgRating)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Distribuição por Grupos */}
-        {stats.byGroup.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Distribuição por Grupos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-3">
-                {stats.byGroup.map((group) => (
-                  <div key={group.name} className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full bg-${group.color}-500`}></div>
-                    <span className="text-sm font-medium">{group.name}</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {group.count}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Filtros */}
         <Card>
@@ -252,22 +194,6 @@ export const SuppliersManagement = () => {
                 </div>
               </div>
               
-              <Select value={filterGroup} onValueChange={setFilterGroup}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Grupo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os grupos</SelectItem>
-                  {supplierGroups.map(group => (
-                    <SelectItem key={group.id} value={group.id}>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full bg-${group.color}-500`}></div>
-                        {group.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full md:w-48">
@@ -288,195 +214,162 @@ export const SuppliersManagement = () => {
         {/* Tabela de Fornecedores */}
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Fornecedores ({suppliers.length})</CardTitle>
+            <CardTitle>Lista de Fornecedores ({filteredSuppliers.length})</CardTitle>
             <CardDescription>Todos os fornecedores cadastrados na plataforma</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fornecedor</TableHead>
-                  <TableHead>Contato</TableHead>
-                  <TableHead>Grupo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Avaliação</TableHead>
-                  <TableHead>Performance</TableHead>
-                  <TableHead>Último Acesso</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {suppliers.map((supplier) => (
-                  <TableRow key={supplier.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-muted">
-                          <Truck className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{supplier.companyName}</p>
-                          <p className="text-sm text-muted-foreground">{supplier.cnpj}</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {supplier.businessInfo.categories.slice(0, 2).map((category) => (
-                              <Badge key={category} variant="outline" className="text-xs">
-                                {category}
-                              </Badge>
-                            ))}
-                            {supplier.businessInfo.categories.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{supplier.businessInfo.categories.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-sm">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          <span>{supplier.email}</span>
-                        </div>
-                        {supplier.phone && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            <span>{supplier.phone}</span>
-                          </div>
-                        )}
-                        {supplier.website && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            <span>Website</span>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      {supplier.groupName ? (
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full bg-${getGroupColor(supplier.groupId)}-500`}></div>
-                          <span className="text-sm">{supplier.groupName}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Sem grupo</span>
-                      )}
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Badge className={getStatusColor(supplier.status)}>
-                        {supplier.status === 'active' ? 'Ativo' :
-                         supplier.status === 'inactive' ? 'Inativo' : 
-                         supplier.status === 'suspended' ? 'Suspenso' : 'Pendente'}
-                      </Badge>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        {renderStars(supplier.avgRating)}
-                        <div className="text-xs text-muted-foreground">
-                          {supplier.ratings.length} avaliação{supplier.ratings.length !== 1 ? 'ões' : ''}
-                        </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-green-600">
-                          {formatCurrency(supplier.financialInfo.revenue)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {supplier.financialInfo.quotesAccepted}/{supplier.financialInfo.quotesReceived} cotações
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {supplier.financialInfo.completionRate.toFixed(1)}% conclusão
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          ⏱ {formatResponseTime(supplier.financialInfo.avgResponseTime)}
-                        </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {supplier.lastAccess || 'Nunca'}
-                      </span>
-                    </TableCell>
-                    
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-background border z-50">
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Documentos
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Shield className="h-4 w-4 mr-2" />
-                            Credenciais
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Star className="h-4 w-4 mr-2" />
-                            Avaliações
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            {supplier.status === 'active' ? (
-                              <>
-                                <UserX className="h-4 w-4 mr-2" />
-                                Desativar
-                              </>
-                            ) : (
-                              <>
-                                <UserCheck className="h-4 w-4 mr-2" />
-                                Ativar
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p>Carregando fornecedores...</p>
+              </div>
+            ) : filteredSuppliers.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Nenhum fornecedor encontrado.</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fornecedor</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Avaliação</TableHead>
+                    <TableHead>Região</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredSuppliers.map((supplier) => (
+                    <TableRow key={supplier.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-full bg-muted">
+                            <Truck className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{supplier.name}</p>
+                            <p className="text-sm text-muted-foreground">{supplier.cnpj}</p>
+                            {supplier.specialties && supplier.specialties.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {supplier.specialties.slice(0, 2).map((specialty) => (
+                                  <Badge key={specialty} variant="outline" className="text-xs">
+                                    {specialty}
+                                  </Badge>
+                                ))}
+                                {supplier.specialties.length > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{supplier.specialties.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-sm">
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            <span>{supplier.email}</span>
+                          </div>
+                          {supplier.phone && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              <span>{supplier.phone}</span>
+                            </div>
+                          )}
+                          {supplier.website && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <MapPin className="h-3 w-3" />
+                              <span>Website</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <Badge className={getStatusColor(supplier.status)}>
+                          {supplier.status === 'active' ? 'Ativo' :
+                           supplier.status === 'inactive' ? 'Inativo' : 
+                           supplier.status === 'suspended' ? 'Suspenso' : 'Pendente'}
+                        </Badge>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="space-y-1">
+                          {renderStars(supplier.rating)}
+                          <div className="text-xs text-muted-foreground">
+                            {supplier.completed_orders} pedidos
+                          </div>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <span className="text-sm">{supplier.region || 'Não informado'}</span>
+                      </TableCell>
+                      
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-background border z-50">
+                            <DropdownMenuItem>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Shield className="h-4 w-4 mr-2" />
+                              Credenciais
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => updateSupplier(supplier.id, { 
+                                status: supplier.status === 'active' ? 'inactive' : 'active' 
+                              })}
+                            >
+                              {supplier.status === 'active' ? (
+                                <>
+                                  <UserX className="h-4 w-4 mr-2" />
+                                  Desativar
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="h-4 w-4 mr-2" />
+                                  Ativar
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={() => deleteSupplier(supplier.id, supplier.name)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Modals */}
-      <ComprehensiveSupplierModal
+      {/* Modal */}
+      <CreateSupplierModal
         open={showCreateModal}
-        onOpenChange={setShowCreateModal}
-        onSupplierCreate={createSupplier}
-        availableGroups={supplierGroups}
-        onPasswordGenerate={generateTemporaryPassword}
-        onUsernameGenerate={generateUsername}
-      />
-      
-      <EnhancedGroupModal
-        open={showGroupsManager}
-        onOpenChange={setShowGroupsManager}
-        onGroupCreate={createGroup}
-        onGroupUpdate={updateGroup}
-        onGroupDelete={deleteGroup}
-        existingGroups={supplierGroups}
+        onClose={() => setShowCreateModal(false)}
+        onCreateSupplier={createSupplier}
       />
     </div>
   );
