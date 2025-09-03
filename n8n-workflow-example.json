@@ -1,0 +1,243 @@
+{
+  "name": "QuoteMaster Pro - Envio de Cotações",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "quote-sender",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-start",
+      "name": "Webhook Cotações",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-suppliers",
+      "name": "Split Fornecedores",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.settings.send_email }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-email",
+      "name": "Enviar E-mail?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const quote = $json.quote;\nconst client = $json.client;\nconst supplier = $json.suppliers[0];\nconst settings = $json.settings;\n\nconst emailContent = `\n<h2>Nova Cotação Disponível</h2>\n<p><strong>Fornecedor:</strong> ${supplier.name}</p>\n<p><strong>Cliente:</strong> ${client.name}</p>\n\n<h3>Detalhes da Cotação:</h3>\n<p><strong>Título:</strong> ${quote.title}</p>\n<p><strong>Descrição:</strong> ${quote.description}</p>\n<p><strong>Total Estimado:</strong> R$ ${quote.total?.toFixed(2) || 'A calcular'}</p>\n<p><strong>Prazo:</strong> ${quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'A definir'}</p>\n\n<h3>Itens da Cotação:</h3>\n<table border=\"1\" style=\"border-collapse: collapse; width: 100%;\">\n  <tr>\n    <th>Produto</th>\n    <th>Quantidade</th>\n    <th>Preço Unit.</th>\n    <th>Total</th>\n  </tr>\n  ${quote.items.map(item => `\n    <tr>\n      <td>${item.product_name}</td>\n      <td>${item.quantity}</td>\n      <td>R$ ${item.unit_price?.toFixed(2) || '0,00'}</td>\n      <td>R$ ${item.total?.toFixed(2) || '0,00'}</td>\n    </tr>\n  `).join('')}\n</table>\n\n<p><strong>Mensagem:</strong></p>\n<p>${settings.custom_message}</p>\n\n<hr>\n<p><em>Enviado via QuoteMaster Pro</em></p>\n`;\n\nreturn {\n  to: supplier.email,\n  subject: `Nova Cotação: ${quote.title}`,\n  html: emailContent,\n  supplier: supplier,\n  quote: quote\n};"
+      },
+      "id": "prepare-email",
+      "name": "Preparar E-mail",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@quotemaster.pro",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.html }}"
+      },
+      "id": "send-email",
+      "name": "Enviar E-mail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.settings.send_whatsapp }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-whatsapp",
+      "name": "Enviar WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "functionCode": "const quote = $json.quote;\nconst client = $json.client;\nconst supplier = $json.suppliers[0];\nconst settings = $json.settings;\n\nconst whatsappMessage = `🔔 *Nova Cotação Disponível*\n\n👋 Olá, ${supplier.name}!\n\n📋 *${quote.title}*\n${quote.description}\n\n💰 *Total Estimado:* R$ ${quote.total?.toFixed(2) || 'A calcular'}\n📅 *Prazo:* ${quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'A definir'}\n\n📦 *Itens:*\n${quote.items.map(item => \n  `• ${item.product_name} - Qtd: ${item.quantity}`\n).join('\\n')}\n\n💬 *Mensagem:*\n${settings.custom_message}\n\n👤 *Cliente:* ${client.name}\n📧 *Contato:* ${client.email}\n\n---\n_Cotação enviada via QuoteMaster Pro_`;\n\nreturn {\n  phone: supplier.whatsapp,\n  message: whatsappMessage,\n  supplier: supplier\n};"
+      },
+      "id": "prepare-whatsapp",
+      "name": "Preparar WhatsApp",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 420]
+    },
+    {
+      "parameters": {
+        "url": "https://sua-api-whatsapp.com/send",
+        "options": {
+          "headers": {
+            "apikey": "SUA_API_KEY_AQUI"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.message }}"
+            }
+          ]
+        }
+      },
+      "id": "send-whatsapp",
+      "name": "Enviar WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"success\": true, \"message\": \"Cotações enviadas com sucesso\" }"
+      },
+      "id": "response",
+      "name": "Resposta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Cotações": {
+      "main": [
+        [
+          {
+            "node": "Split Fornecedores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Fornecedores": {
+      "main": [
+        [
+          {
+            "node": "Enviar E-mail?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar WhatsApp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar E-mail?": {
+      "main": [
+        [
+          {
+            "node": "Preparar E-mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar E-mail": {
+      "main": [
+        [
+          {
+            "node": "Enviar E-mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar E-mail": {
+      "main": [
+        [
+          {
+            "node": "Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp?": {
+      "main": [
+        [
+          {
+            "node": "Preparar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "1",
+      "name": "QuoteMaster Pro"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}

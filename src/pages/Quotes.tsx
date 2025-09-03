@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { DecisionMatrixManager } from "@/components/quotes/DecisionMatrixManager
 import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
 import { StatusProgressIndicator } from "@/components/quotes/StatusProgressIndicator";
 import { EconomyNotification, useEconomyAlerts } from "@/components/quotes/EconomyNotification";
+import { SendQuoteToSuppliersModal } from "@/components/quotes/SendQuoteToSuppliersModal";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { toast } from "sonner";
@@ -394,9 +395,25 @@ export default function Quotes() {
                          >
                            <Edit className="h-4 w-4" />
                          </Button>
-                         
-                         {/* Comparator button - only show for quotes with multiple proposals */}
-                         {(quote.status === 'sent' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
+                          {/* Send to Suppliers button - only for draft and sent quotes */}
+                          {(quote.status === 'draft' || quote.status === 'sent') && (
+                            <SendQuoteToSuppliersModal
+                              quote={quote}
+                              trigger={
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                                  title="Enviar para Fornecedores"
+                                >
+                                  <Send className="h-4 w-4" />
+                                </Button>
+                              }
+                            />
+                          )}
+                          
+                          {/* Comparator button - only show for quotes with multiple proposals */}
+                          {(quote.status === 'sent' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
                           <QuoteComparisonButton
                             quoteId={quote.id}
                             quoteTitle={quote.title}
