@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,8 @@ import {
 } from '@/components/ui/table';
 import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
+import { usePagination } from '@/hooks/usePagination';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { ClientGroupsManager } from '@/components/admin/ClientGroupsManager';
 import { ViewClientModal } from '@/components/admin/ViewClientModal';
@@ -81,6 +83,27 @@ export const ClientsManagement = () => {
   const [showDocumentsModal, setShowDocumentsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+
+  // Filtered clients based on search and filters
+  const filteredClients = useMemo(() => {
+    return clients.filter(client => {
+      const matchesSearch = !searchTerm || 
+        client.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.cnpj?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesGroup = filterGroup === 'all' || client.groupId === filterGroup;
+      const matchesStatus = filterStatus === 'all' || client.status === filterStatus;
+      
+      return matchesSearch && matchesGroup && matchesStatus;
+    });
+  }, [clients, searchTerm, filterGroup, filterStatus]);
+
+  // Pagination
+  const pagination = usePagination(filteredClients, {
+    initialPageSize: 10,
+    pageSizeOptions: [5, 10, 20, 50]
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -290,8 +313,13 @@ export const ClientsManagement = () => {
         {/* Tabela de Clientes */}
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Clientes ({clients.length})</CardTitle>
-            <CardDescription>Todos os clientes cadastrados na plataforma</CardDescription>
+            <CardTitle>Lista de Clientes ({filteredClients.length})</CardTitle>
+            <CardDescription>
+              {filteredClients.length === clients.length 
+                ? 'Todos os clientes cadastrados na plataforma'
+                : `${filteredClients.length} de ${clients.length} clientes`
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -308,7 +336,7 @@ export const ClientsManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clients.map((client) => (
+                {pagination.paginatedData.map((client) => (
                   <TableRow key={client.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -442,8 +470,29 @@ export const ClientsManagement = () => {
                 ))}
               </TableBody>
             </Table>
+
+            {/* Empty state */}
+            {pagination.paginatedData.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  {filteredClients.length === 0 ? 'Nenhum cliente encontrado' : 'Nenhum cliente nesta página'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {filteredClients.length === 0 
+                    ? 'Tente ajustar os filtros ou criar um novo cliente'
+                    : 'Navegue para outra página ou ajuste os filtros'
+                  }
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {filteredClients.length > 0 && (
+          <DataTablePagination {...pagination} />
+        )}
       </div>
 
       {/* Modals */}

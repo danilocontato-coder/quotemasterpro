@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,8 @@ import { EditUserModal } from "@/components/users/EditUserModalSupabase";
 import { DeleteUserModal } from "@/components/users/DeleteUserModal";
 import { useSupabaseUsers } from "@/hooks/useSupabaseUsers";
 import { GroupManager } from "@/components/users/GroupManagerSupabase";
+import { usePagination } from "@/hooks/usePagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 
 export default function Users() {
@@ -48,27 +50,21 @@ export default function Users() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
-  // Paginação
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8; // 8 usuários por página na tabela
+  // Filtered users based on search
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm) return users;
+    return users.filter(user => 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.role && getRoleLabel(user.role).toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [users, searchTerm]);
 
-  const filteredUsers = users;
-
-  // Cálculos de paginação
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentUsers = filteredUsers.slice(startIndex, endIndex);
-
-  // Reset da página quando filtros mudam
-  const resetPage = () => {
-    setCurrentPage(1);
-  };
-
-  // Resetar página quando filtros mudam
-  useEffect(() => {
-    resetPage();
-  }, [searchTerm]);
+  // Pagination
+  const pagination = usePagination(filteredUsers, {
+    initialPageSize: 10,
+    pageSizeOptions: [5, 10, 20, 50]
+  });
 
   const getRoleLabel = (role: string) => {
     const roles = {
@@ -217,7 +213,7 @@ export default function Users() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentUsers.map((user) => (
+                  {pagination.paginatedData.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -325,53 +321,29 @@ export default function Users() {
               </Table>
             )}
 
-              {/* Paginação */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between p-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Mostrando {startIndex + 1} a {Math.min(endIndex, filteredUsers.length)} de {filteredUsers.length} usuários
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Anterior
-                    </Button>
-                    
-                    <div className="flex items-center space-x-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                          className="w-10"
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Próxima
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Empty state */}
+            {!loading && pagination.paginatedData.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <UsersIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  {filteredUsers.length === 0 ? 'Nenhum usuário encontrado' : 'Nenhum usuário nesta página'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {filteredUsers.length === 0 
+                    ? 'Tente ajustar os filtros ou criar um novo usuário'
+                    : 'Navegue para outra página ou ajuste os filtros'
+                  }
+                </p>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {!loading && filteredUsers.length > 0 && (
+        <DataTablePagination {...pagination} />
+      )}
 
       <CreateUserModal 
         open={createModalOpen} 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { usePagination } from '@/hooks/usePagination';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 
 interface Account {
   id: string;
@@ -132,13 +134,22 @@ export const AccountsManagement = () => {
     }
   };
 
-  const filteredAccounts = mockAccounts.filter(account => {
-    const matchesSearch = account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         account.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = selectedType === 'all' || account.type === selectedType;
-    const matchesStatus = selectedStatus === 'all' || account.status === selectedStatus;
-    
-    return matchesSearch && matchesType && matchesStatus;
+  const filteredAccounts = useMemo(() => {
+    return mockAccounts.filter(account => {
+      const matchesSearch = !searchTerm || 
+        account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        account.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = selectedType === 'all' || account.type === selectedType;
+      const matchesStatus = selectedStatus === 'all' || account.status === selectedStatus;
+      
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [mockAccounts, searchTerm, selectedType, selectedStatus]);
+
+  // Pagination
+  const pagination = usePagination(filteredAccounts, {
+    initialPageSize: 15,
+    pageSizeOptions: [10, 15, 25, 50]
   });
 
   const stats = {
@@ -277,7 +288,12 @@ export const AccountsManagement = () => {
         <Card>
           <CardHeader>
             <CardTitle>Lista de Contas ({filteredAccounts.length})</CardTitle>
-            <CardDescription>Gerenciar todas as contas da plataforma</CardDescription>
+            <CardDescription>
+              {filteredAccounts.length === mockAccounts.length 
+                ? 'Gerenciar todas as contas da plataforma'
+                : `${filteredAccounts.length} de ${mockAccounts.length} contas`
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -293,7 +309,7 @@ export const AccountsManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAccounts.map((account) => (
+                {pagination.paginatedData.map((account) => (
                   <TableRow key={account.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -352,7 +368,7 @@ export const AccountsManagement = () => {
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="bg-background border z-50">
                           <DropdownMenuItem>
                             <Eye className="h-4 w-4 mr-2" />
                             Visualizar
@@ -376,8 +392,29 @@ export const AccountsManagement = () => {
                 ))}
               </TableBody>
             </Table>
+
+            {/* Empty state */}
+            {pagination.paginatedData.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  {filteredAccounts.length === 0 ? 'Nenhuma conta encontrada' : 'Nenhuma conta nesta página'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {filteredAccounts.length === 0 
+                    ? 'Tente ajustar os filtros ou criar uma nova conta'
+                    : 'Navegue para outra página ou ajuste os filtros'
+                  }
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {filteredAccounts.length > 0 && (
+          <DataTablePagination {...pagination} />
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
+import { usePagination } from '@/hooks/usePagination';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { CreateSupplierModal } from '@/components/suppliers/CreateSupplierModal';
 
 export const SuppliersManagement = () => {
@@ -59,14 +61,27 @@ export const SuppliersManagement = () => {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const filteredSuppliers = suppliers.filter(supplier => {
-    const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.cnpj.includes(searchTerm) ||
-                         supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = filterStatus === "all" || supplier.status === filterStatus;
-    
-    return matchesSearch && matchesStatus;
+  // Filtered suppliers based on search and filters
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter(supplier => {
+      const matchesSearch = !searchTerm || 
+        supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        supplier.cnpj.includes(searchTerm) ||
+        supplier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (supplier.specialties && supplier.specialties.some(spec => 
+          spec.toLowerCase().includes(searchTerm.toLowerCase())
+        ));
+      
+      const matchesStatus = filterStatus === "all" || supplier.status === filterStatus;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [suppliers, searchTerm, filterStatus]);
+
+  // Pagination
+  const pagination = usePagination(filteredSuppliers, {
+    initialPageSize: 10,
+    pageSizeOptions: [5, 10, 20, 50]
   });
 
   const getSupplierStats = () => ({
@@ -216,16 +231,17 @@ export const SuppliersManagement = () => {
         <Card>
           <CardHeader>
             <CardTitle>Lista de Fornecedores ({filteredSuppliers.length})</CardTitle>
-            <CardDescription>Todos os fornecedores cadastrados na plataforma</CardDescription>
+            <CardDescription>
+              {filteredSuppliers.length === suppliers.length 
+                ? 'Todos os fornecedores cadastrados na plataforma'
+                : `${filteredSuppliers.length} de ${suppliers.length} fornecedores`
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-8">
                 <p>Carregando fornecedores...</p>
-              </div>
-            ) : filteredSuppliers.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">Nenhum fornecedor encontrado.</p>
               </div>
             ) : (
               <Table>
@@ -240,7 +256,7 @@ export const SuppliersManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSuppliers.map((supplier) => (
+                  {pagination.paginatedData.map((supplier) => (
                     <TableRow key={supplier.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -362,8 +378,29 @@ export const SuppliersManagement = () => {
                 </TableBody>
               </Table>
             )}
+
+            {/* Empty state */}
+            {!isLoading && pagination.paginatedData.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Truck className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  {filteredSuppliers.length === 0 ? 'Nenhum fornecedor encontrado' : 'Nenhum fornecedor nesta página'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {filteredSuppliers.length === 0 
+                    ? 'Tente ajustar os filtros ou criar um novo fornecedor'
+                    : 'Navegue para outra página ou ajuste os filtros'
+                  }
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        {!isLoading && filteredSuppliers.length > 0 && (
+          <DataTablePagination {...pagination} />
+        )}
       </div>
 
       {/* Modal */}
