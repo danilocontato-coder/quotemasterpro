@@ -245,8 +245,8 @@ export const ClientsManagement = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
-                {stats.byGroup.map((group) => (
-                  <div key={group.name} className="flex items-center gap-2">
+                {stats.byGroup.map((group, index) => (
+                  <div key={`${group.name}-${index}`} className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full bg-${group.color}-500`}></div>
                     <span className="text-sm font-medium">{group.name}</span>
                     <Badge variant="secondary" className="text-xs">

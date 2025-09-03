@@ -170,6 +170,8 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
   };
 
   const handleSubmit = async () => {
+    console.log('CreateClientModal: handleSubmit iniciado', { formData, credentials });
+    
     // Validations
     if (!formData.companyName || !formData.cnpj || !formData.email) {
       toast({
@@ -184,6 +186,22 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       toast({
         title: "Erro", 
         description: "Defina as credenciais de acesso.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Generate password if needed
+    let finalPassword = credentials.password;
+    if (credentials.useTemporaryPassword && !finalPassword) {
+      finalPassword = generateTemporaryPassword();
+      console.log('CreateClientModal: Senha temporária gerada');
+    }
+
+    if (!finalPassword || finalPassword.length < 6) {
+      toast({
+        title: "Erro",
+        description: "Senha deve ter pelo menos 6 caracteres.",
         variant: "destructive"
       });
       return;
@@ -210,13 +228,14 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
         documents,
         loginCredentials: {
           username: credentials.username,
-          password: credentials.useTemporaryPassword ? credentials.password : undefined,
+          password: finalPassword,
           temporaryPassword: credentials.useTemporaryPassword,
           lastPasswordChange: new Date().toISOString()
         },
         lastAccess: undefined
       };
 
+      console.log('CreateClientModal: Chamando onCreateClient', { clientData });
       await onCreateClient(clientData);
 
       // Simulate sending credentials
@@ -278,10 +297,11 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       });
       setCurrentTab('basic');
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error('CreateClientModal: Erro ao criar cliente', error);
       toast({
         title: "Erro",
-        description: "Erro ao criar cliente. Tente novamente.",
+        description: error?.message || "Erro ao criar cliente. Tente novamente.",
         variant: "destructive"
       });
     } finally {
