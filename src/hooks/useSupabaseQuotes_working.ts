@@ -97,7 +97,11 @@ export const useSupabaseQuotes = () => {
         throw new Error('User not authenticated or no client associated');
       }
 
+      // Generate unique quote ID
+      const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
+
       const newQuoteData = {
+        id: quoteId,
         title: quoteData.title,
         description: quoteData.description,
         client_id: user.clientId,
@@ -110,7 +114,7 @@ export const useSupabaseQuotes = () => {
 
       const { data, error } = await supabase
         .from('quotes')
-        .insert([newQuoteData])
+        .insert(newQuoteData)
         .select()
         .single();
 
