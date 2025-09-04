@@ -137,6 +137,8 @@ export default function Quotes() {
       matchesFilter = quote.status === "draft";
     } else if (activeFilter === "sent") {
       matchesFilter = quote.status === "sent";
+    } else if (activeFilter === "receiving") {
+      matchesFilter = quote.status === "receiving";
     } else if (activeFilter === "under_review") {
       matchesFilter = quote.status === "under_review";
     } else if (activeFilter === "approved") {
@@ -152,12 +154,13 @@ export default function Quotes() {
   const totalActive = quotes.length;
   const draftQuotes = quotes.filter(q => q.status === 'draft').length;
   const sentQuotes = quotes.filter(q => q.status === 'sent').length;
+  const receivingQuotes = quotes.filter(q => q.status === 'receiving').length;
   const underReviewQuotes = quotes.filter(q => q.status === 'under_review').length;
   const approvedQuotes = quotes.filter(q => q.status === 'approved').length;
 
   // Additional metrics
   const totalRFQs = quotes.length;
-  const inProgress = sentQuotes + underReviewQuotes;
+  const inProgress = sentQuotes + receivingQuotes + underReviewQuotes;
   const dueSoon = quotes.filter(q => {
     if (!q.deadline) return false;
     const deadline = new Date(q.deadline);
@@ -456,8 +459,8 @@ export default function Quotes() {
                             />
                           )}
                           
-                          {/* Comparator button - only show for quotes with multiple proposals */}
-                          {(quote.status === 'sent' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
+                          {/* Comparator button - only show for quotes with proposals */}
+                          {(quote.status === 'sent' || quote.status === 'receiving' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
                           <QuoteComparisonButton
                             quoteId={quote.id}
                             quoteTitle={quote.title}
