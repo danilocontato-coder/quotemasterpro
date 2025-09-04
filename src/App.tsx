@@ -278,15 +278,51 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route path="superadmin" element={<SuperAdminDashboard />} />
-                  <Route path="clients" element={<ClientsManagement />} />
-                  <Route path="suppliers" element={<SuppliersManagement />} />
-                  <Route path="plans" element={<PlansManagement />} />
-                  <Route path="integrations" element={<IntegrationsManagement />} />
-                  <Route path="whatsapp-templates" element={<WhatsAppTemplates />} />
-                  <Route path="accounts" element={<AccountsManagement />} />
-                  <Route path="audit" element={<AuditLogs />} />
-                  <Route path="settings" element={<SystemSettings />} />
+                  <Route path="superadmin" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SuperAdminDashboard />
+                    </Suspense>
+                  } />
+                  <Route path="clients" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <ClientsManagement />
+                    </Suspense>
+                  } />
+                  <Route path="suppliers" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SuppliersManagement />
+                    </Suspense>
+                  } />
+                  <Route path="plans" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <PlansManagement />
+                    </Suspense>
+                  } />
+                  <Route path="integrations" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <IntegrationsManagement />
+                    </Suspense>
+                  } />
+                  <Route path="whatsapp-templates" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <WhatsAppTemplates />
+                    </Suspense>
+                  } />
+                  <Route path="accounts" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <AccountsManagement />
+                    </Suspense>
+                  } />
+                  <Route path="audit" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <AuditLogs />
+                    </Suspense>
+                  } />
+                  <Route path="settings" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SystemSettings />
+                    </Suspense>
+                  } />
                   <Route index element={<Navigate to="/admin/superadmin" replace />} />
                 </Route>
 
