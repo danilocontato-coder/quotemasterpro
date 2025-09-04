@@ -38,11 +38,19 @@ export default function Quotes() {
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
   const handleQuoteCreate = async (quoteData: any) => {
+    console.log('handleQuoteCreate called with:', quoteData);
     try {
       const newQuote = await createQuote(quoteData);
-      toast.success(`Cotação criada com sucesso!`);
-      setIsCreateModalOpen(false);
+      console.log('New quote created:', newQuote);
+      if (newQuote) {
+        toast.success(`Cotação criada com sucesso!`);
+        setIsCreateModalOpen(false);
+        setEditingQuote(null);
+      } else {
+        throw new Error('Failed to create quote');
+      }
     } catch (error) {
+      console.error('Error creating quote:', error);
       toast.error("Erro ao criar cotação");
     }
   };
