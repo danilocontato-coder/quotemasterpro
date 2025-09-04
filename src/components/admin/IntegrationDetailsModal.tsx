@@ -28,17 +28,21 @@ export function IntegrationDetailsModal({ open, onOpenChange, integration }: Int
   };
 
   const getConfigurationPreview = (config: any) => {
-    const safeConfig = { ...config };
-    
-    // Ocultar campos sensíveis
-    const sensitiveFields = ['api_key', 'secret_key', 'auth_token', 'password', 'webhook_secret'];
-    sensitiveFields.forEach(field => {
-      if (safeConfig[field]) {
-        safeConfig[field] = '****' + safeConfig[field].slice(-4);
-      }
-    });
+    try {
+      const safeConfig = { ...config };
+      
+      // Ocultar campos sensíveis
+      const sensitiveFields = ['api_key', 'secret_key', 'auth_token', 'password', 'webhook_secret'];
+      sensitiveFields.forEach(field => {
+        if (safeConfig[field]) {
+          safeConfig[field] = '****' + safeConfig[field].slice(-4);
+        }
+      });
 
-    return safeConfig;
+      return safeConfig;
+    } catch (error) {
+      return { erro: 'Não foi possível carregar a configuração' };
+    }
   };
 
   return (
@@ -99,7 +103,13 @@ export function IntegrationDetailsModal({ open, onOpenChange, integration }: Int
             </CardHeader>
             <CardContent>
               <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto">
-                {JSON.stringify(getConfigurationPreview(integration.configuration), null, 2)}
+                {(() => {
+                  try {
+                    return JSON.stringify(getConfigurationPreview(integration.configuration), null, 2);
+                  } catch (error) {
+                    return 'Erro ao exibir configuração';
+                  }
+                })()}
               </pre>
             </CardContent>
           </Card>
