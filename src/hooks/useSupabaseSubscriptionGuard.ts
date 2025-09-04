@@ -206,7 +206,8 @@ export function useSupabaseSubscriptionGuard() {
           allowed: currentQuotes < maxQuotes,
           reason: currentQuotes >= maxQuotes ? `Limite de ${maxQuotes} cotações por mês atingido` : undefined,
           currentUsage: currentQuotes,
-          limit: maxQuotes
+          limit: maxQuotes,
+          upgradeRequired: currentQuotes >= maxQuotes
         };
 
       case 'CREATE_USER':
@@ -223,7 +224,8 @@ export function useSupabaseSubscriptionGuard() {
           allowed: currentUsers < maxUsers,
           reason: currentUsers >= maxUsers ? `Limite de ${maxUsers} usuários por cliente atingido` : undefined,
           currentUsage: currentUsers,
-          limit: maxUsers
+          limit: maxUsers,
+          upgradeRequired: currentUsers >= maxUsers
         };
 
       default:
