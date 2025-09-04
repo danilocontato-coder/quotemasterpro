@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -78,36 +78,6 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Optimized system performance and prevent unwanted refreshes
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Only log visibility changes, don't force reloads
-      if (!document.hidden) {
-        console.debug('Tab became visible - maintaining state');
-      }
-    };
-
-    // Optimized beforeunload handler
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      const hasUnsavedForms = document.querySelector('form:not([data-saved="true"])') ||
-                             document.querySelector('[data-dirty="true"]');
-      
-      if (hasUnsavedForms) {
-        event.preventDefault();
-        return 'Você tem alterações não salvas. Deseja realmente sair?';
-      }
-    };
-
-    // Use passive listeners for better performance
-    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
