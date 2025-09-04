@@ -25,6 +25,7 @@ interface QuoteFormData {
     product_name: string;
     quantity: number;
     product_id?: string;
+    unit_price?: number;
   }>;
   supplier_ids: string[];
   communicationMethods: {
@@ -170,7 +171,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       product_name: product.name,
       product_id: product.id,
       quantity: 1,  // Quantidade padrão, pode ser editada depois
-      unitPrice: product.unit_price || 0
+      unit_price: product.unit_price || 0
     };
     
     setFormData(prev => ({
@@ -189,10 +190,20 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
   };
 
   const handleSubmit = async () => {
+    console.log('handleSubmit called');
+    console.log('Form data:', formData);
+    console.log('Is editing:', !!editingQuote);
+    
     // Verificar limites antes de criar cotação (apenas para novas cotações)
     if (!editingQuote && !enforceLimit('CREATE_QUOTE')) {
       return;
     }
+    
+    // Calcular total dos itens
+    const calculatedTotal = formData.items.reduce((sum, item) => {
+      const itemTotal = (item.quantity || 0) * (item.unit_price || 0);
+      return sum + itemTotal;
+    }, 0);
     
     // Convert form data to quote format
     const quoteData: any = {
@@ -200,21 +211,32 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       description: formData.description,
       deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
       status: editingQuote ? editingQuote.status : 'draft', // Preserve status when editing
-      client_id: editingQuote?.client_id || '', // Will be set by the hook
-      client_name: editingQuote?.client_name || '', // Will be set by the hook
-      supplier_id: formData.supplier_ids[0] || undefined,
-      supplier_name: formData.supplier_ids[0] ? suppliers.find(s => s.id === formData.supplier_ids[0])?.name : undefined,
-      total: editingQuote?.total || 0,
+      total: calculatedTotal,
       items_count: formData.items.length,
       responses_count: editingQuote?.responses_count || 0,
-      suppliers_sent_count: editingQuote?.suppliers_sent_count || 0,
-      // Include items for update
-      items: formData.items
+      suppliers_sent_count: formData.supplier_ids.length,
+      // Include items for create/update
+      items: formData.items.map(item => ({
+        product_name: item.product_name,
+        quantity: item.quantity || 0,
+        unit_price: item.unit_price || 0,
+        product_id: item.product_id || null,
+        total: (item.quantity || 0) * (item.unit_price || 0)
+      }))
     };
     
+    // Adicionar dados específicos para edição ou criação
+    if (editingQuote) {
+      quoteData.client_id = editingQuote.client_id;
+      quoteData.client_name = editingQuote.client_name;
+    }
+    
+    if (formData.supplier_ids.length > 0) {
+      quoteData.supplier_id = formData.supplier_ids[0];
+      quoteData.supplier_name = suppliers.find(s => s.id === formData.supplier_ids[0])?.name;
+    }
+    
     console.log('Submitting quote data:', quoteData);
-    console.log('Is editing:', !!editingQuote);
-    console.log('Form data items:', formData.items);
     
     onQuoteCreate(quoteData);
     
