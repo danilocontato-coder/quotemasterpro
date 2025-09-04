@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
 import { supabase } from '@/integrations/supabase/client';
-import { getPlanById } from '@/data/subscriptionPlans';
+import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
 import { toast } from 'sonner';
 
 interface ClientUsage {
@@ -30,6 +30,7 @@ interface LimitCheckResult {
 export function useSupabaseSubscriptionGuard() {
   const { user } = useAuth();
   const { client: currentClient } = useSupabaseCurrentClient();
+  const { getPlanById } = useSupabaseSubscriptionPlans();
   const [clientUsage, setClientUsage] = useState<ClientUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -110,7 +111,7 @@ export function useSupabaseSubscriptionGuard() {
     }
 
     // Obter plano do cliente (fallback para basic se não especificado)
-    const planId = currentClient.subscription_plan_id || 'basic';
+    const planId = currentClient.subscription_plan_id || 'plan-basic';
     const userPlan = getPlanById(planId);
     
     if (!userPlan) {
@@ -119,7 +120,7 @@ export function useSupabaseSubscriptionGuard() {
 
     switch (action) {
       case 'CREATE_QUOTE':
-        const quotesLimit = userPlan.limits.maxQuotesPerMonth;
+        const quotesLimit = userPlan.max_quotes_per_month || userPlan.max_quotes;
         const newQuotesCount = clientUsage.quotes_this_month + additionalCount;
         
         if (quotesLimit !== -1 && newQuotesCount > quotesLimit) {
@@ -139,7 +140,7 @@ export function useSupabaseSubscriptionGuard() {
         };
 
       case 'ADD_USER':
-        const usersLimit = userPlan.limits.maxUsersPerClient;
+        const usersLimit = userPlan.max_users_per_client || userPlan.max_users;
         const newUsersCount = clientUsage.users_count + additionalCount;
         
         if (usersLimit !== -1 && newUsersCount > usersLimit) {
@@ -159,7 +160,7 @@ export function useSupabaseSubscriptionGuard() {
         };
 
       case 'ADD_SUPPLIER_TO_QUOTE':
-        const suppliersLimit = userPlan.limits.maxSuppliersPerQuote;
+        const suppliersLimit = userPlan.max_suppliers_per_quote || 5;
         
         if (suppliersLimit !== -1 && additionalCount > suppliersLimit) {
           return {
@@ -178,7 +179,7 @@ export function useSupabaseSubscriptionGuard() {
         };
 
       case 'UPLOAD_FILE':
-        const storageLimit = userPlan.limits.maxStorageGB;
+        const storageLimit = userPlan.max_storage_gb;
         const additionalStorageGB = additionalCount / 1024; // Convert MB to GB
         const newStorageUsage = clientUsage.storage_used_gb + additionalStorageGB;
         
@@ -199,7 +200,7 @@ export function useSupabaseSubscriptionGuard() {
         };
 
       case 'RESPOND_TO_QUOTE':
-        const responsesLimit = userPlan.limits.maxQuoteResponsesPerMonth;
+        const responsesLimit = userPlan.max_quote_responses_per_month || 50;
         const newResponsesCount = clientUsage.quote_responses_this_month + additionalCount;
         
         if (responsesLimit !== -1 && newResponsesCount > responsesLimit) {
@@ -219,7 +220,7 @@ export function useSupabaseSubscriptionGuard() {
         };
 
       case 'ADD_PRODUCT':
-        const productsLimit = userPlan.limits.maxProductsInCatalog;
+        const productsLimit = userPlan.max_products_in_catalog || 100;
         const newProductsCount = clientUsage.products_in_catalog + additionalCount;
         
         if (productsLimit !== -1 && newProductsCount > productsLimit) {
@@ -239,7 +240,7 @@ export function useSupabaseSubscriptionGuard() {
         };
 
       case 'ADD_CATEGORY':
-        const categoriesLimit = userPlan.limits.maxCategoriesPerSupplier;
+        const categoriesLimit = userPlan.max_categories_per_supplier || 10;
         const newCategoriesCount = clientUsage.categories_count + additionalCount;
         
         if (categoriesLimit !== -1 && newCategoriesCount > categoriesLimit) {
@@ -354,7 +355,7 @@ export function useSupabaseSubscriptionGuard() {
 
   const userPlan = currentClient?.subscription_plan_id 
     ? getPlanById(currentClient.subscription_plan_id) 
-    : getPlanById('basic');
+    : getPlanById('plan-basic');
 
   return {
     currentUsage: getCurrentUsage(),

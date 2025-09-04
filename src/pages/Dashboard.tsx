@@ -1,6 +1,7 @@
 import { FileText, Users, CheckCircle, DollarSign, Clock, TrendingUp, AlertTriangle } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { QuoteLimitsMetric } from "@/components/dashboard/QuoteLimitsMetric";
 import { RatingPrompts } from "@/components/ratings/RatingPrompts";
 import { UsageLimitsCard } from "@/components/limits/UsageLimitsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -181,12 +182,13 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Usage Limits Card */}
+      {/* Usage Limits and Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <QuickActions />
         </div>
-        <div>
+        <div className="space-y-4">
+          <QuoteLimitsMetric compact />
           <UsageLimitsCard compact />
         </div>
       </div>
