@@ -60,6 +60,7 @@ const SupplierQuotes = lazy(() => import('@/pages/supplier/SupplierQuotes'));
 const SupplierProducts = lazy(() => import('@/pages/supplier/SupplierProducts'));
 const SupplierFinancial = lazy(() => import('@/pages/supplier/SupplierFinancial'));
 const SupplierHistory = lazy(() => import('@/pages/supplier/SupplierHistory'));
+const SupplierDeliveries = lazy(() => import('@/pages/supplier/SupplierDeliveries'));
 const SupplierAuth = lazy(() => import('@/pages/supplier/SupplierAuth'));
 const SupplierQuoteResponse = lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierResponseSuccess = lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
@@ -409,6 +410,11 @@ function App() {
                   <Route path="financial" element={
                     <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
                       <SupplierFinancial />
+                    </Suspense>
+                  } />
+                  <Route path="deliveries" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SupplierDeliveries />
                     </Suspense>
                   } />
                 </Route>
