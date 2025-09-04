@@ -16,9 +16,9 @@ export const performanceConfig = {
   INTERSECTION_THRESHOLD: 0.1,
   ROOT_MARGIN: '50px',
   
-  // Memory thresholds
-  MEMORY_WARNING_THRESHOLD: 50, // MB
-  MEMORY_CRITICAL_THRESHOLD: 100, // MB
+  // Memory thresholds - ajustado para reduzir ruído
+  MEMORY_WARNING_THRESHOLD: 150, // MB
+  MEMORY_CRITICAL_THRESHOLD: 200, // MB
 };
 
 // HOC para otimização automática de componentes
@@ -144,7 +144,7 @@ export const LazyQuotes = lazy(() => import('@/pages/Quotes'));
 export const LazySuppliers = lazy(() => import('@/pages/Suppliers'));
 export const LazyProducts = lazy(() => import('@/pages/Products'));
 
-// Monitor de performance em tempo real
+// Monitor de performance em tempo real - otimizado
 export function usePerformanceMonitor() {
   const [metrics, setMetrics] = useState({
     memory: 0,
@@ -164,6 +164,7 @@ export function usePerformanceMonitor() {
           lastUpdate: Date.now()
         }));
         
+        // Thresholds ajustados para reduzir ruído
         if (usedMB > performanceConfig.MEMORY_WARNING_THRESHOLD) {
           console.warn(`⚠️ Alto uso de memória: ${usedMB.toFixed(2)}MB`);
         }
@@ -175,7 +176,8 @@ export function usePerformanceMonitor() {
     };
     
     checkPerformance();
-    const interval = setInterval(checkPerformance, 5000);
+    // Aumentar intervalo para reduzir verificações
+    const interval = setInterval(checkPerformance, 10000);
     
     return () => clearInterval(interval);
   }, []);

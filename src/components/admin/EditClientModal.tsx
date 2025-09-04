@@ -61,6 +61,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
     notes: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSubmitTime, setLastSubmitTime] = useState(0);
   const { toast } = useToast();
   const { plans } = useSupabaseSubscriptionPlans();
   const { trackAsyncOperation } = usePerformanceDebug('EditClientModal');
@@ -87,10 +88,20 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double-submission
+    const now = Date.now();
+    if (now - lastSubmitTime < 2000) {
+      console.log('🚫 EditClientModal: Submissão ignorada (muito recente)');
+      return;
+    }
+    
     if (!client || isLoading) {
       console.log('🚫 EditClientModal: Submissão cancelada', { client: !!client, isLoading });
       return;
     }
+
+    setLastSubmitTime(now);
 
     await trackAsyncOperation('updateClient', async () => {
       setIsLoading(true);
@@ -110,7 +121,11 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
         await onUpdateClient(client.id, dataToUpdate);
         
         console.log('✅ EditClientModal: Cliente atualizado com sucesso, fechando modal...');
-        onOpenChange(false);
+        
+        // Close modal after a small delay to prevent conflicts
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 100);
         
       } catch (error) {
         console.error('❌ EditClientModal: Erro ao atualizar cliente:', error);

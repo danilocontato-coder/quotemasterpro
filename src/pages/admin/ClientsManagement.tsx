@@ -87,6 +87,37 @@ export const ClientsManagement = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
 
+  // Memoized callbacks to prevent unnecessary re-renders
+  const handleUpdateClient = useCallback(async (id: string, data: any) => {
+    await trackAsyncOperation(`updateClientFromModal-${id}`, async () => {
+      await updateClient(id, data);
+    });
+  }, [updateClient, trackAsyncOperation]);
+
+  const handleCreateClient = useCallback(async (clientData: any) => {
+    await createClient(clientData);
+  }, [createClient]);
+
+  const handleCreateGroup = useCallback(async (groupData: any) => {
+    return await createGroup(groupData);
+  }, [createGroup]);
+
+  const handleUpdateGroup = useCallback(async (id: string, groupData: any) => {
+    return await updateGroup(id, groupData);
+  }, [updateGroup]);
+
+  const handleDeleteGroup = useCallback(async (id: string) => {
+    await deleteGroup(id);
+  }, [deleteGroup]);
+
+  const handleDeleteFromModal = useCallback(async (id: string) => {
+    await deleteClient(id);
+  }, [deleteClient]);
+
+  const handleResetPassword = useCallback(async (clientId: string, email: string) => {
+    return await resetClientPassword(clientId, email);
+  }, [resetClientPassword]);
+
   // Filtered clients based on search and filters
   const filteredClients = useMemo(() => {
     return clients.filter(client => {
@@ -192,7 +223,7 @@ export const ClientsManagement = () => {
     }
   }, [updateClient, statusUpdating]);
 
-  const handleDeleteClient = useCallback((client: any) => {
+  const handleDeleteModalClient = useCallback((client: any) => {
     console.log('Abrindo exclusão do cliente:', client.id);
     setSelectedClient(client);
     setShowDeleteModal(true);
@@ -522,7 +553,7 @@ export const ClientsManagement = () => {
                              onClick={(e) => {
                                e.preventDefault();
                                e.stopPropagation();
-                               handleDeleteClient(client);
+                                handleDeleteModalClient(client);
                              }}
                            >
                              <Trash2 className="h-4 w-4 mr-2" />
@@ -567,7 +598,7 @@ export const ClientsManagement = () => {
       <CreateClientModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
-        onCreateClient={createClient}
+        onCreateClient={handleCreateClient}
         clientGroups={clientGroups}
         generateUsername={generateUsername}
         generateTemporaryPassword={generateTemporaryPassword}
@@ -577,9 +608,9 @@ export const ClientsManagement = () => {
         open={showGroupsManager}
         onOpenChange={setShowGroupsManager}
         groups={clientGroups}
-        onCreateGroup={createGroup}
-        onUpdateGroup={updateGroup}
-        onDeleteGroup={deleteGroup}
+        onCreateGroup={handleCreateGroup}
+        onUpdateGroup={handleUpdateGroup}
+        onDeleteGroup={handleDeleteGroup}
       />
 
       <ViewClientModal
@@ -593,11 +624,7 @@ export const ClientsManagement = () => {
         onOpenChange={setShowEditModal}
         client={selectedClient}
         clientGroups={clientGroups}
-        onUpdateClient={async (id, data) => {
-          await trackAsyncOperation(`updateClientFromModal-${id}`, async () => {
-            await updateClient(id, data as any);
-          });
-        }}
+        onUpdateClient={handleUpdateClient}
       />
 
       <ClientCredentialsModal
@@ -606,7 +633,7 @@ export const ClientsManagement = () => {
         client={selectedClient}
         onGenerateUsername={generateUsername}
         onGeneratePassword={generateTemporaryPassword}
-        onResetPassword={resetClientPassword}
+        onResetPassword={handleResetPassword}
       />
 
       <ClientDocumentsModal
@@ -619,7 +646,7 @@ export const ClientsManagement = () => {
         open={showDeleteModal}
         onOpenChange={setShowDeleteModal}
         client={selectedClient}
-        onDeleteClient={deleteClient}
+        onDeleteClient={handleDeleteFromModal}
       />
     </div>
   );
