@@ -35,7 +35,7 @@ export const SuppliersManagement = () => {
   const { toast } = useToast();
 
   // Filter suppliers based on search and filters
-  const filteredSuppliers = suppliers.filter(supplier => {
+  const filteredSuppliers = (suppliers || []).filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          supplier.cnpj.includes(searchTerm) ||
                          supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -55,12 +55,13 @@ export const SuppliersManagement = () => {
 
   // Statistics
   const getSupplierStats = (): SupplierStats => {
-    const total = suppliers.length;
-    const active = suppliers.filter(s => s.status === 'active').length;
-    const inactive = suppliers.filter(s => s.status !== 'active').length;
-    const certified = suppliers.filter(s => s.type === 'certified').length;
-    const local = suppliers.filter(s => s.type === 'local').length;
-    const totalRating = suppliers.reduce((sum, s) => sum + (s.rating || 0), 0);
+    const suppliersList = suppliers || [];
+    const total = suppliersList.length;
+    const active = suppliersList.filter(s => s.status === 'active').length;
+    const inactive = suppliersList.filter(s => s.status !== 'active').length;
+    const certified = suppliersList.filter(s => s.type === 'certified').length;
+    const local = suppliersList.filter(s => s.type === 'local').length;
+    const totalRating = suppliersList.reduce((sum, s) => sum + (s.rating || 0), 0);
     const avgRating = total > 0 ? totalRating / total : 0;
 
     return { total, active, inactive, certified, local, avgRating };
