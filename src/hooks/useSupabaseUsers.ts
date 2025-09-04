@@ -153,56 +153,81 @@ export function useSupabaseUsers() {
         console.log('Auth user created with ID:', authUserId);
       }
 
-      // Validar os dados antes de criar
-      const validationResult = await supabase.rpc('validate_user_creation', {
-        user_email: userData.email,
-        user_role: userData.role
-      });
-
-      if (validationResult.error) {
-        console.error('Validation error:', validationResult.error);
-        throw new Error(validationResult.error.message || 'Erro na validação dos dados do usuário');
-      }
-
-      if (!validationResult.data) {
-        throw new Error('Erro na validação dos dados do usuário');
-      }
-
-      const { data, error } = await supabase
+      // Evitar duplicidade: se já existir usuário com este e-mail, reutilize
+      const { data: existingUser, error: existingLookupError } = await supabase
         .from('users')
-        .insert([{
-          name: userData.name,
-          email: userData.email,
-          phone: userData.phone,
-          role: userData.role,
-          status: userData.status,
-          client_id: effectiveClientId,
-          supplier_id: userData.supplier_id,
-          force_password_change: userData.force_password_change,
-          auth_user_id: authUserId
-        }])
-        .select()
-        .single();
+        .select('*')
+        .eq('email', userData.email)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error creating user in database:', error);
-        
-        // Se deu erro na criação da tabela users mas o auth foi criado, tentar limpar o auth
-        if (authUserId) {
-          console.log('Attempting to cleanup auth user due to database error');
-          // Note: Cleanup seria ideal mas requer outra function admin
-          // Por ora, apenas logamos o problema
+      if (existingLookupError) {
+        console.warn('Erro ao verificar usuário existente:', existingLookupError);
+      }
+
+      let data: any;
+
+      if (existingUser) {
+        // Atualiza dados essenciais e vincula ao cliente quando aplicável
+        const { data: updated, error: updateErr } = await supabase
+          .from('users')
+          .update({
+            name: userData.name,
+            email: userData.email,
+            phone: userData.phone,
+            role: userData.role,
+            status: userData.status,
+            client_id: effectiveClientId ?? existingUser.client_id,
+            supplier_id: userData.supplier_id ?? existingUser.supplier_id,
+            force_password_change: userData.force_password_change,
+            auth_user_id: authUserId ?? existingUser.auth_user_id,
+          })
+          .eq('id', existingUser.id)
+          .select()
+          .single();
+
+        if (updateErr) {
+          console.error('Erro ao atualizar usuário existente:', updateErr);
+          throw new Error('Falha ao atualizar usuário existente');
         }
-        
-        // Traduzir erros comuns
-        let errorMessage = 'Erro ao criar usuário: ' + error.message;
-        if (error.message.includes('duplicate key')) {
-          errorMessage = 'Este email já está em uso por outro usuário';
-        } else if (error.code === '42501') {
-          errorMessage = 'Permissão negada pelas políticas de acesso (RLS). Verifique o cliente selecionado e suas permissões.';
+
+        data = updated;
+      } else {
+        const { data: inserted, error: insertError } = await supabase
+          .from('users')
+          .insert([{
+            name: userData.name,
+            email: userData.email,
+            phone: userData.phone,
+            role: userData.role,
+            status: userData.status,
+            client_id: effectiveClientId,
+            supplier_id: userData.supplier_id,
+            force_password_change: userData.force_password_change,
+            auth_user_id: authUserId
+          }])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Error creating user in database:', insertError);
+          
+          // Se deu erro na criação da tabela users mas o auth foi criado, tentar limpar o auth (log apenas)
+          if (authUserId) {
+            console.log('Attempting to cleanup auth user due to database error');
+          }
+          
+          // Traduzir erros comuns
+          let errorMessage = 'Erro ao criar usuário: ' + insertError.message;
+          if ((insertError.message || '').includes('duplicate key')) {
+            errorMessage = 'Este email já está em uso por outro usuário';
+          } else if ((insertError as any).code === '42501') {
+            errorMessage = 'Permissão negada pelas políticas de acesso (RLS). Verifique o cliente selecionado e suas permissões.';
+          }
+          
+          throw new Error(errorMessage);
         }
-        
-        throw new Error(errorMessage);
+
+        data = inserted;
       }
 
       // Add to groups if specified

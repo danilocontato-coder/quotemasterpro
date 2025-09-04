@@ -1204,6 +1204,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_user_email_exists: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
       current_user_account_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1260,10 +1264,6 @@ export type Database = {
       reset_monthly_usage: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      validate_user_creation: {
-        Args: { user_email: string; user_role: string }
-        Returns: boolean
       }
     }
     Enums: {

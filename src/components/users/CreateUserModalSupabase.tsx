@@ -451,7 +451,7 @@ const normalizePhone = (phone: string) => {
                         <div className="text-sm">
                           <div className="font-medium text-blue-900">Credenciais Geradas</div>
                           <div className="text-blue-700 mt-1">
-                            <strong>Usuário:</strong> {formData.username}<br />
+                            <strong>Usuário:</strong> {formData.email}<br />
                             <strong>Senha:</strong> {formData.password}
                           </div>
                           <div className="text-xs text-blue-600 mt-2">
