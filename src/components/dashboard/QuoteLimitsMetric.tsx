@@ -171,11 +171,15 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
           </div>
         )}
 
-        {!nearLimit && !isUnlimited && (
+        {!nearLimit && !isUnlimited && quotesResult.currentUsage > 0 && remaining > 0 && (
           <div className="text-sm text-muted-foreground text-center pt-2 border-t">
-            {canCreateOneMore
-              ? `Você ainda tem ${remaining} cotações disponíveis este mês`
-              : 'Limite de cotações do plano atingido neste mês'}
+            Você ainda tem {remaining} cotações disponíveis este mês
+          </div>
+        )}
+
+        {!isUnlimited && remaining === 0 && (
+          <div className="text-sm text-red-600 text-center pt-2 border-t font-medium">
+            Limite de cotações do plano atingido neste mês
           </div>
         )}
       </CardContent>

@@ -107,9 +107,18 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
     );
   }
 
-  const nearLimitCount = limits.filter(limit => 
-    limit.limit !== -1 && getUsagePercentage(limit.key) >= 80
-  ).length;
+  const nearLimitCount = limits.filter(limit => {
+    if (limit.limit === -1) return false;
+    const percentage = getUsagePercentage(limit.key);
+    const remaining = Math.max(0, limit.limit - limit.current);
+    return percentage >= 80 && remaining > 0; // Só considera "próximo do limite" se ainda tiver restantes
+  }).length;
+
+  const atLimitCount = limits.filter(limit => {
+    if (limit.limit === -1) return false;
+    const remaining = Math.max(0, limit.limit - limit.current);
+    return remaining === 0; // Limite completamente atingido
+  }).length;
 
   const formatLimit = (limit: number) => {
     return limit === -1 ? 'Ilimitado' : limit.toString();
@@ -130,11 +139,15 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
             <Badge variant="outline">{userPlan.display_name}</Badge>
           </div>
           
-          {nearLimitCount > 0 && (
+          {(nearLimitCount > 0 || atLimitCount > 0) && (
             <Alert className="mb-3">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                {nearLimitCount} limite(s) próximo(s) do máximo
+                {atLimitCount > 0 && nearLimitCount > 0 
+                  ? `${atLimitCount} limite(s) atingido(s), ${nearLimitCount} próximo(s) do máximo`
+                  : atLimitCount > 0 
+                    ? `${atLimitCount} limite(s) atingido(s)`
+                    : `${nearLimitCount} limite(s) próximo(s) do máximo`}
               </AlertDescription>
             </Alert>
           )}
@@ -182,12 +195,15 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       )}
       
       <CardContent className="space-y-4">
-        {nearLimitCount > 0 && (
+        {(nearLimitCount > 0 || atLimitCount > 0) && (
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Você está próximo do limite em {nearLimitCount} recurso(s). 
-              Considere fazer upgrade do seu plano.
+              {atLimitCount > 0 && nearLimitCount > 0
+                ? `${atLimitCount} limite(s) atingido(s) e ${nearLimitCount} próximo(s) do máximo. Considere fazer upgrade do seu plano.`
+                : atLimitCount > 0 
+                  ? `${atLimitCount} limite(s) atingido(s). Faça upgrade do seu plano para continuar.`
+                  : `Você está próximo do limite em ${nearLimitCount} recurso(s). Considere fazer upgrade do seu plano.`}
             </AlertDescription>
           </Alert>
         )}
@@ -216,27 +232,31 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
                 </div>
                 
                 {!isUnlimited && (
-                  <div className="space-y-1">
-                    <Progress 
-                      value={percentage} 
-                      className="h-2"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{percentage}% usado</span>
-                      {percentage >= 80 && (
-                        <span className="text-yellow-600 font-medium">
-                          Próximo do limite
-                        </span>
-                      )}
+                    <div className="space-y-1">
+                      <Progress 
+                        value={percentage} 
+                        className="h-2"
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{percentage}% usado</span>
+                        {Math.max(0, item.limit - item.current) === 0 ? (
+                          <span className="text-red-600 font-medium">
+                            Limite atingido
+                          </span>
+                        ) : percentage >= 80 ? (
+                          <span className="text-yellow-600 font-medium">
+                            Próximo do limite
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
                 )}
               </div>
             );
           })}
         </div>
 
-        {nearLimitCount > 0 && (
+        {(nearLimitCount > 0 || atLimitCount > 0) && (
           <div className="pt-4 border-t">
             <Button 
               variant="outline" 

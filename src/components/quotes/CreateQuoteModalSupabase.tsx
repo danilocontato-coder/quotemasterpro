@@ -193,6 +193,12 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     console.log('=== INICIO handleSubmit ===');
     
     try {
+      // Verificar limites apenas para novas cotações (não edições)
+      if (!editingQuote && !enforceLimit('CREATE_QUOTE')) {
+        console.log('=== LIMITE ATINGIDO ===');
+        return;
+      }
+      
       // Convert form data to quote format
       const quoteData: any = {
         title: formData.title,
