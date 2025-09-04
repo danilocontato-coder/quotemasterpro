@@ -581,8 +581,8 @@ export const useSupabaseQuotes = () => {
     console.log('📞 Calling fetchQuotes from useEffect');
     fetchQuotes();
 
-    // Set up real-time subscription
-    const subscription = supabase
+    // Set up real-time subscription for quotes
+    const quotesSubscription = supabase
       .channel('quotes_changes')
       .on(
         'postgres_changes',
@@ -592,7 +592,7 @@ export const useSupabaseQuotes = () => {
           table: 'quotes'
         },
         (payload) => {
-          console.log('Quote change received:', payload);
+          console.log('📨 Quote change received:', payload);
           
           if (payload.eventType === 'INSERT') {
             const newQuote = payload.new as Quote;
@@ -604,6 +604,7 @@ export const useSupabaseQuotes = () => {
             }
           } else if (payload.eventType === 'UPDATE') {
             const updatedQuote = payload.new as Quote;
+            console.log('📝 Updating quote in real-time:', updatedQuote.id, 'new status:', updatedQuote.status);
             setQuotes(prev => 
               prev.map(quote => quote.id === updatedQuote.id ? updatedQuote : quote)
             );
@@ -614,8 +615,79 @@ export const useSupabaseQuotes = () => {
       )
       .subscribe();
 
+    // Set up real-time subscription for quote responses to update responses_count
+    const responsesSubscription = supabase
+      .channel('quote_responses_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quote_responses'
+        },
+        async (payload) => {
+          console.log('📨 Quote response change received:', payload);
+          
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const response = payload.new as any;
+            const quoteId = response.quote_id;
+            
+            // Recount responses for this quote
+            const { count } = await supabase
+              .from('quote_responses')
+              .select('*', { count: 'exact', head: true })
+              .eq('quote_id', quoteId);
+            
+            console.log('📊 Updating responses count for quote', quoteId, 'new count:', count);
+            
+            // Update the local state with new count
+            setQuotes(prev => 
+              prev.map(quote => 
+                quote.id === quoteId 
+                  ? { ...quote, responses_count: count || 0 }
+                  : quote
+              )
+            );
+            
+            // If this is a new response and quote status allows, update to receiving
+            if (payload.eventType === 'INSERT') {
+              const currentQuote = quotes.find(q => q.id === quoteId);
+              if (currentQuote && currentQuote.status === 'sent') {
+                console.log('🔄 Auto-updating quote status to receiving');
+                // This will trigger the quotes subscription above
+                await supabase
+                  .from('quotes')
+                  .update({ status: 'receiving' })
+                  .eq('id', quoteId);
+              }
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const response = payload.old as any;
+            const quoteId = response.quote_id;
+            
+            // Recount responses for this quote
+            const { count } = await supabase
+              .from('quote_responses')
+              .select('*', { count: 'exact', head: true })
+              .eq('quote_id', quoteId);
+            
+            console.log('📊 Updating responses count after deletion for quote', quoteId, 'new count:', count);
+            
+            setQuotes(prev => 
+              prev.map(quote => 
+                quote.id === quoteId 
+                  ? { ...quote, responses_count: count || 0 }
+                  : quote
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
-      subscription.unsubscribe();
+      quotesSubscription.unsubscribe();
+      responsesSubscription.unsubscribe();
     };
   }, [user]);
 
