@@ -35,13 +35,22 @@ export const useSupabaseSupplierProducts = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Fetch products for supplier
   const fetchProducts = useCallback(async () => {
-    if (!user || !user.supplierId) return;
+    if (!user) return;
+
+    // Early return if user doesn't have supplierId yet
+    if (!user.supplierId) {
+      console.log('User does not have supplierId yet, waiting...');
+      setIsLoading(false);
+      setProducts([]);
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
+
+      console.log('Fetching products for supplier:', user.supplierId);
 
       const { data, error } = await supabase
         .from('products')
@@ -344,11 +353,11 @@ export const useSupabaseSupplierProducts = () => {
 
   // Fetch data on mount
   useEffect(() => {
-    if (user?.supplierId) {
+    if (user?.role === 'supplier') {
       fetchProducts();
       fetchStockMovements();
     }
-  }, [fetchProducts, fetchStockMovements, user?.supplierId]);
+  }, [fetchProducts, fetchStockMovements, user?.role, user?.supplierId]);
 
   return {
     products,

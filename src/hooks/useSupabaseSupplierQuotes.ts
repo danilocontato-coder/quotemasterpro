@@ -91,11 +91,21 @@ export const useSupabaseSupplierQuotes = () => {
 
   // Fetch quotes for supplier
   const fetchSupplierQuotes = useCallback(async () => {
-    if (!user || !user.supplierId) return;
+    if (!user) return;
+
+    // Early return if user doesn't have supplierId yet
+    if (!user.supplierId) {
+      console.log('User does not have supplierId yet, waiting...');
+      setIsLoading(false);
+      setSupplierQuotes([]);
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
+
+      console.log('Fetching quotes for supplier:', user.supplierId);
 
       // Fetch quotes that were sent to suppliers (status 'sent' or more advanced)
       const { data: quotesData, error: quotesError } = await supabase
@@ -519,8 +529,10 @@ export const useSupabaseSupplierQuotes = () => {
 
   // Fetch data on mount and when user changes
   useEffect(() => {
-    fetchSupplierQuotes();
-  }, [fetchSupplierQuotes]);
+    if (user?.role === 'supplier') {
+      fetchSupplierQuotes();
+    }
+  }, [fetchSupplierQuotes, user?.role, user?.supplierId]);
 
   return {
     supplierQuotes,

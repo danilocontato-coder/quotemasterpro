@@ -37,11 +37,29 @@ export const useSupabaseSupplierDashboard = () => {
   const { toast } = useToast();
 
   const fetchDashboardData = useCallback(async () => {
-    if (!user || !user.supplierId) return;
+    if (!user) return;
+
+    // Early return if user doesn't have supplierId yet  
+    if (!user.supplierId) {
+      console.log('User does not have supplierId yet, waiting...');
+      setIsLoading(false);
+      setMetrics({
+        activeQuotes: 0,
+        pendingProposals: 0,
+        monthlyRevenue: 0,
+        approvalRate: 0,
+        revenueGrowth: 0,
+        approvalGrowth: 0,
+      });
+      setRecentQuotes([]);
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
+
+      console.log('Fetching dashboard data for supplier:', user.supplierId);
 
       // Fetch active quotes (quotes where supplier has responded or been assigned)
       const { data: quotesData, error: quotesError } = await supabase
@@ -193,8 +211,10 @@ export const useSupabaseSupplierDashboard = () => {
 
   // Fetch data on mount and when user changes
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    if (user?.role === 'supplier') {
+      fetchDashboardData();
+    }
+  }, [fetchDashboardData, user?.role, user?.supplierId]);
 
   return {
     metrics,

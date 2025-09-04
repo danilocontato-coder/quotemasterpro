@@ -28,6 +28,7 @@ import {
   FileCheck 
 } from "lucide-react";
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
+import { useAuth } from "@/contexts/AuthContext";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
 
 export default function SupplierQuotes() {
@@ -39,6 +40,7 @@ export default function SupplierQuotes() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const { supplierQuotes, isLoading } = useSupabaseSupplierQuotes();
+  const { user } = useAuth();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -202,6 +204,14 @@ export default function SupplierQuotes() {
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="h-16 bg-muted animate-pulse rounded" />
               ))}
+            </div>
+          ) : filteredQuotes.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                {!user?.supplierId 
+                  ? "Configurando dados do fornecedor..." 
+                  : "Nenhuma cotação encontrada"}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
