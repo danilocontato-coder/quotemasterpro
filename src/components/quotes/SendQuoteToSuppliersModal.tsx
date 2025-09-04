@@ -218,26 +218,12 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         // Atualizar status da cotação para 'sent'
         await markQuoteAsSent(quote.id, selectedSuppliers.length);
         
-        // Generate and log unique links for suppliers (for testing/development)
-        const supplierLinks = selectedSuppliers.map(supplierId => {
-          const supplier = deduplicatedSuppliers.find(s => s.id === supplierId);
-          const token = generateQuoteToken();
-          const link = createSupplierResponseLink(quote?.id, token);
-          
-          return {
-            supplierId,
-            supplierName: supplier?.name || 'Fornecedor',
-            supplierEmail: supplier?.email || '',
-            supplierType: supplier?.type || 'local',
-            link
-          };
-        });
-
-        // Log dos links gerados (em produção, estes seriam enviados por email/WhatsApp)
-        console.log('Links únicos gerados para fornecedores (dedupe ativo):');
-        supplierLinks.forEach(({ supplierName, supplierType, link }) => {
-          const badge = supplierType === 'certified' ? '🏆 CERTIFICADO' : '📍 LOCAL';
-          console.log(`${badge} ${supplierName}: ${link}`);
+        // Log dos links dos fornecedores selecionados
+        console.log('Fornecedores selecionados e links enviados:');
+        supplierLinks.forEach(({ supplier_id, link }) => {
+          const supplier = deduplicatedSuppliers.find(s => s.id === supplier_id);
+          const badge = supplier?.type === 'certified' ? '🏆 CERTIFICADO' : '📍 LOCAL';
+          console.log(`${badge} ${supplier?.name || 'Fornecedor'}: ${link}`);
         });
         
         setOpen(false);
