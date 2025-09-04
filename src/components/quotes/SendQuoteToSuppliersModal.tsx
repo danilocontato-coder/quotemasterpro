@@ -87,12 +87,21 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     }
   }, [quote]);
 
-  // Select all suppliers by default
+  // Select suppliers that were chosen during quote creation
   useEffect(() => {
     if (deduplicatedSuppliers.length > 0 && selectedSuppliers.length === 0) {
-      setSelectedSuppliers(deduplicatedSuppliers.map(s => s.id));
+      // If quote has pre-selected suppliers (from creation), use only those
+      if (quote?.supplier_ids && quote.supplier_ids.length > 0) {
+        const validSupplierIds = quote.supplier_ids.filter(id => 
+          deduplicatedSuppliers.some(s => s.id === id)
+        );
+        setSelectedSuppliers(validSupplierIds);
+      } else {
+        // Fallback: select all available suppliers
+        setSelectedSuppliers(deduplicatedSuppliers.map(s => s.id));
+      }
     }
-  }, [deduplicatedSuppliers]);
+  }, [deduplicatedSuppliers, quote?.supplier_ids]);
 
   // Resolve configured webhook URL and Evolution API
   useEffect(() => {
