@@ -8,7 +8,7 @@ import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
-import { OptimizedSkeleton, LazyWrapper } from '@/components/ui/optimized-components';
+import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
 
 // Lazy loading de layouts principais
@@ -120,13 +120,19 @@ function App() {
               <Routes>
                 {/* Auth routes com lazy loading */}
                 <Route path="/auth/login" element={
-                  <LazyWrapper><Login /></LazyWrapper>
+                  <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                    <Login />
+                  </Suspense>
                 } />
                 <Route path="/auth/register" element={
-                  <LazyWrapper><Register /></LazyWrapper>
+                  <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                    <Register />
+                  </Suspense>
                 } />
                 <Route path="/auth/forgot-password" element={
-                  <LazyWrapper><ForgotPassword /></LazyWrapper>
+                  <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                    <ForgotPassword />
+                  </Suspense>
                 } />
                 
                 {/* Public routes */}
@@ -250,15 +256,15 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route path="superadmin" element={<LazyWrapper><SuperAdminDashboard /></LazyWrapper>} />
-                  <Route path="clients" element={<LazyWrapper><ClientsManagement /></LazyWrapper>} />
-                  <Route path="suppliers" element={<LazyWrapper><SuppliersManagement /></LazyWrapper>} />
-                  <Route path="plans" element={<LazyWrapper><PlansManagement /></LazyWrapper>} />
-                  <Route path="integrations" element={<LazyWrapper><IntegrationsManagement /></LazyWrapper>} />
-                  <Route path="whatsapp-templates" element={<LazyWrapper><WhatsAppTemplates /></LazyWrapper>} />
-                  <Route path="accounts" element={<LazyWrapper><AccountsManagement /></LazyWrapper>} />
-                  <Route path="audit" element={<LazyWrapper><AuditLogs /></LazyWrapper>} />
-                  <Route path="settings" element={<LazyWrapper><SystemSettings /></LazyWrapper>} />
+                  <Route path="superadmin" element={<SuperAdminDashboard />} />
+                  <Route path="clients" element={<ClientsManagement />} />
+                  <Route path="suppliers" element={<SuppliersManagement />} />
+                  <Route path="plans" element={<PlansManagement />} />
+                  <Route path="integrations" element={<IntegrationsManagement />} />
+                  <Route path="whatsapp-templates" element={<WhatsAppTemplates />} />
+                  <Route path="accounts" element={<AccountsManagement />} />
+                  <Route path="audit" element={<AuditLogs />} />
+                  <Route path="settings" element={<SystemSettings />} />
                   <Route index element={<Navigate to="/admin/superadmin" replace />} />
                 </Route>
 
