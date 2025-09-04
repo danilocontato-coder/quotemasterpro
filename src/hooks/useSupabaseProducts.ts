@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Product {
   id: string;
@@ -21,7 +22,7 @@ export const useSupabaseProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-
+  const { user } = useAuth();
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
@@ -113,7 +114,7 @@ export const useSupabaseProducts = () => {
         .from('products')
         .select('id')
         .eq('code', code)
-        .single();
+        .maybeSingle();
       
       if (!existing) {
         return code;
@@ -134,14 +135,14 @@ export const useSupabaseProducts = () => {
 
   const addProduct = async (productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user?.user) throw new Error('User not authenticated');
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) throw new Error('User not authenticated');
 
       // Get user profile to determine client_id
       const { data: profile } = await supabase
         .from('profiles')
         .select('client_id, supplier_id, role')
-        .eq('id', user.user.id)
+        .eq('id', authData.user.id)
         .single();
 
       if (!profile) {
@@ -162,7 +163,7 @@ export const useSupabaseProducts = () => {
           .from('products')
           .select('id')
           .eq('code', productPayload.code)
-          .single();
+          .maybeSingle();
         
         if (existing) {
           // Code already exists, generate a new one based on the provided code
@@ -172,20 +173,27 @@ export const useSupabaseProducts = () => {
       }
       
       if (profile.role === 'admin') {
-        // Admin can create products without specific association
-        // But we should still set one if available
+        // Admin must still be associated to some scope due to RLS no-orphans policy
         if (profile.client_id) productPayload.client_id = profile.client_id;
         if (profile.supplier_id) productPayload.supplier_id = profile.supplier_id;
+        // Fallback to AuthContext if profile has no association
+        if (!productPayload.client_id && !productPayload.supplier_id) {
+          if (user?.clientId) productPayload.client_id = user.clientId;
+          if (!productPayload.client_id && user?.supplierId) productPayload.supplier_id = user.supplierId;
+        }
+        if (!productPayload.client_id && !productPayload.supplier_id) {
+          throw new Error('Usuário administrador sem associação a cliente/fornecedor. Vincule um cliente ou fornecedor para cadastrar produtos.');
+        }
       } else if (['manager', 'collaborator'].includes(profile.role)) {
-        if (!profile.client_id) {
+        productPayload.client_id = profile.client_id || user?.clientId || null;
+        if (!productPayload.client_id) {
           throw new Error('Perfil de usuário não está associado a um cliente');
         }
-        productPayload.client_id = profile.client_id;
       } else if (profile.role === 'supplier') {
-        if (!profile.supplier_id) {
+        productPayload.supplier_id = profile.supplier_id || user?.supplierId || null;
+        if (!productPayload.supplier_id) {
           throw new Error('Perfil de usuário não está associado a um fornecedor');
         }
-        productPayload.supplier_id = profile.supplier_id;
       }
 
       const { data, error } = await supabase
@@ -210,7 +218,7 @@ export const useSupabaseProducts = () => {
       console.error('Error adding product:', error);
       toast({
         title: "Erro ao criar produto",
-        description: "Não foi possível criar o produto.",
+        description: (error as any)?.message ? String((error as any).message) : "Não foi possível criar o produto.",
         variant: "destructive"
       });
       return null;
