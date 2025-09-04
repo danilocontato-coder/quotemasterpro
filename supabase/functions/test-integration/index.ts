@@ -42,6 +42,9 @@ const handler = async (req: Request): Promise<Response> => {
       case 'whatsapp_twilio':
         testResult = await testTwilioWhatsApp(configuration);
         break;
+      case 'whatsapp_evolution':
+        testResult = await testEvolutionWhatsApp(configuration);
+        break;
       
       case 'email_sendgrid':
         testResult = await testSendGrid(configuration);
@@ -320,6 +323,62 @@ async function testStripe(config: any) {
     message: 'Chaves do Stripe validadas com sucesso!',
     details: { simulated: true, currency: config.currency || 'BRL' }
   };
+}
+
+async function testEvolutionWhatsApp(config: any) {
+  // Tenta validar presença da instância e opcionalmente checa conexão via EVOLUTION_API_URL
+  const instance = config.instance || config['evolution_instance'];
+  if (!instance) {
+    return {
+      success: false,
+      message: 'Instância da Evolution API não configurada',
+      details: { missing: ['instance'] }
+    };
+  }
+
+  const apiUrl = config.api_url || Deno.env.get('EVOLUTION_API_URL');
+  const apiKey = Deno.env.get('EVOLUTION_API_TOKEN');
+
+  if (!apiUrl || !apiKey) {
+    return {
+      success: true,
+      message: 'Instância válida. URL/token globais não definidos — teste superficial OK',
+      details: { instance, apiUrlDefined: !!apiUrl, tokenDefined: !!apiKey }
+    };
+  }
+
+  try {
+    // Tentativa de verificar estado/conectividade (endpoints variam por provedor)
+    const url = `${apiUrl.replace(/\/$/, '')}/instance/connectionState/${instance}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': apiKey,
+      },
+    });
+    const text = await res.text();
+
+    if (res.ok) {
+      return {
+        success: true,
+        message: 'Evolution API acessível e instância informada! (verifique estado no provedor)',
+        details: { status: res.status, response: text.slice(0, 300), instance }
+      };
+    } else {
+      return {
+        success: false,
+        message: `Evolution API respondeu com status ${res.status}`,
+        details: { status: res.status, response: text.slice(0, 300), instance, url }
+      };
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: `Falha ao contatar Evolution API: ${error.message}`,
+      details: { error: error.toString(), instance }
+    };
+  }
 }
 
 serve(handler);

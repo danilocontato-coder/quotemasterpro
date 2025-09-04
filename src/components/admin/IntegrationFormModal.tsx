@@ -33,6 +33,16 @@ const integrationTypes = [
     ]
   },
   {
+    id: 'whatsapp_evolution',
+    name: 'WhatsApp (Evolution API)',
+    description: 'Envio de mensagens via Evolution API (usa segredos nas Edge Functions)',
+    icon: MessageSquare,
+    fields: [
+      { key: 'instance', label: 'Instância', type: 'text', required: true },
+      { key: 'api_url', label: 'API URL (opcional, usa segredo se vazio)', type: 'url', required: false }
+    ]
+  },
+  {
     id: 'email_sendgrid',
     name: 'E-mail (SendGrid)',
     description: 'Envio de e-mails transacionais via SendGrid',
@@ -88,6 +98,7 @@ const integrationTypes = [
     fields: [
       { key: 'webhook_url', label: 'URL do Webhook N8N', type: 'url', required: true },
       { key: 'auth_header', label: 'Header de Autenticação', type: 'text', required: false },
+      { key: 'headers', label: 'Headers Personalizados (JSON)', type: 'textarea', required: false, placeholder: '{"X-Webhook-Secret":"..."}' },
       { key: 'trigger_events', label: 'Eventos que Disparam', type: 'textarea', required: false }
     ]
   },

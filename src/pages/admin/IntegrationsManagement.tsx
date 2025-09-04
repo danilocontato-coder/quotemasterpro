@@ -57,6 +57,7 @@ import { toast } from 'sonner';
 const getIntegrationIcon = (type: string) => {
   switch (type) {
     case 'whatsapp_twilio': return MessageSquare;
+    case 'whatsapp_evolution': return MessageSquare;
     case 'email_sendgrid': 
     case 'email_smtp': return Mail;
     case 'payment_stripe':
@@ -216,7 +217,8 @@ export const IntegrationsManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os tipos</SelectItem>
-                    <SelectItem value="whatsapp_twilio">WhatsApp</SelectItem>
+                    <SelectItem value="whatsapp_twilio">WhatsApp (Twilio)</SelectItem>
+                    <SelectItem value="whatsapp_evolution">WhatsApp (Evolution API)</SelectItem>
                     <SelectItem value="email_sendgrid">E-mail SendGrid</SelectItem>
                     <SelectItem value="email_smtp">E-mail SMTP</SelectItem>
                     <SelectItem value="payment_stripe">Stripe</SelectItem>
