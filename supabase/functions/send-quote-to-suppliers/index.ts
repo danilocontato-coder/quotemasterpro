@@ -54,6 +54,13 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Load quote items explicitly (no FK required)
+    const { data: quoteItems } = await supabase
+      .from('quote_items')
+      .select('*')
+      .eq('quote_id', quote_id);
+    const items = Array.isArray(quoteItems) ? quoteItems : [];
+
     // Get suppliers - filter by selected IDs or by client/global active suppliers
     let suppliersQuery = supabase
       .from('suppliers')
@@ -191,7 +198,7 @@ const handler = async (req: Request): Promise<Response> => {
     }).format(quote.total || 0);
 
     // Format items list
-    const itemsList = quote.quote_items?.map((item: any) => {
+    const itemsList = items.map((item: any) => {
       const itemTotal = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL'
@@ -213,7 +220,7 @@ const handler = async (req: Request): Promise<Response> => {
       deadline_formatted: deadlineFormatted,
       total_formatted: totalFormatted,
       items_list: itemsList,
-      items_count: String(quote.quote_items?.length || 0),
+      items_count: String(items.length || 0),
       proposal_link: proposalLink,
     };
 
@@ -234,12 +241,12 @@ const handler = async (req: Request): Promise<Response> => {
         total: quote.total,
         deadline: quote.deadline,
         created_at: quote.created_at,
-        items: quote.quote_items?.map((item: any) => ({
+        items: items.map((item: any) => ({
           product_name: item.product_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
           total: item.total
-        })) || []
+        }))
       },
       client: {
         name: client.name,
@@ -264,12 +271,12 @@ const handler = async (req: Request): Promise<Response> => {
         subject: whatsappTemplate.subject,
         message: whatsappTemplate.message_content,
         variables: templateVariables,
-        items: quote.quote_items?.map((item: any) => ({
+        items: items.map((item: any) => ({
           product_name: item.product_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
           total: item.total
-        })) || []
+        }))
       } : null,
       timestamp: new Date().toISOString(),
       platform: 'QuoteMaster Pro'
