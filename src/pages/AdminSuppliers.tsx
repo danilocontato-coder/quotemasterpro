@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GlobalSuppliersManager } from "@/components/suppliers/GlobalSuppliersManager";
 import { useSupabaseAdminSuppliers } from "@/hooks/useSupabaseAdminSuppliers";
-import { Shield, Globe, Users } from "lucide-react";
+import { SupplierLimitsSettings } from "@/components/admin/SupplierLimitsSettings";
+import { Shield, Globe, Users, Award } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminSuppliers() {
@@ -10,15 +11,17 @@ export default function AdminSuppliers() {
 
   // Estatísticas otimizadas com useMemo
   const stats = useMemo(() => {
-    const globalSuppliers = suppliers.filter(s => s.type === 'certified');
-    const localSuppliers = suppliers.filter(s => s.type === 'local');
-    const activeGlobalSuppliers = globalSuppliers.filter(s => s.status === 'active');
+    const allSuppliers = suppliers || [];
+    const certifiedSuppliers = allSuppliers.filter(s => s.type === 'certified');
+    const localSuppliers = allSuppliers.filter(s => s.type === 'local');
+    const activeSuppliers = allSuppliers.filter(s => s.status === 'active');
     
     return {
-      globalSuppliers,
+      certifiedSuppliers,
       localSuppliers,
-      activeGlobalSuppliers,
-      activationRate: globalSuppliers.length > 0 ? Math.round((activeGlobalSuppliers.length / globalSuppliers.length) * 100) : 0
+      activeSuppliers,
+      totalSuppliers: allSuppliers.length,
+      activationRate: allSuppliers.length > 0 ? Math.round((activeSuppliers.length / allSuppliers.length) * 100) : 0
     };
   }, [suppliers]);
 
@@ -59,8 +62,8 @@ export default function AdminSuppliers() {
         <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm">Fornecedores Globais</p>
-              <p className="text-3xl font-bold">{stats.globalSuppliers.length}</p>
+              <p className="text-purple-100 text-sm">Fornecedores Certificados</p>
+              <p className="text-3xl font-bold">{stats.certifiedSuppliers.length}</p>
             </div>
             <Globe className="h-8 w-8 text-purple-200" />
           </div>
@@ -79,10 +82,10 @@ export default function AdminSuppliers() {
         <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm">Globais Ativos</p>
-              <p className="text-3xl font-bold">{stats.activeGlobalSuppliers.length}</p>
+              <p className="text-green-100 text-sm">Fornecedores Ativos</p>
+              <p className="text-3xl font-bold">{stats.activeSuppliers.length}</p>
             </div>
-            <div className="text-green-200">✓</div>
+            <Award className="h-8 w-8 text-green-200" />
           </div>
         </div>
         
@@ -114,9 +117,9 @@ export default function AdminSuppliers() {
             <div className="bg-card p-6 rounded-lg border">
               <h3 className="text-lg font-semibold mb-4">Distribuição por Região</h3>
               <div className="space-y-3">
-                {Array.from(new Set(stats.globalSuppliers.map(s => s.region).filter(Boolean))).map(region => {
-                  const count = stats.globalSuppliers.filter(s => s.region === region).length;
-                  const percentage = stats.globalSuppliers.length > 0 ? (count / stats.globalSuppliers.length) * 100 : 0;
+                 {Array.from(new Set(stats.certifiedSuppliers.map(s => s.region).filter(Boolean))).map(region => {
+                   const count = stats.certifiedSuppliers.filter(s => s.region === region).length;
+                   const percentage = stats.certifiedSuppliers.length > 0 ? (count / stats.certifiedSuppliers.length) * 100 : 0;
                   
                   return (
                     <div key={region} className="flex items-center justify-between">
@@ -139,7 +142,7 @@ export default function AdminSuppliers() {
             <div className="bg-card p-6 rounded-lg border">
               <h3 className="text-lg font-semibold mb-4">Top Fornecedores por Rating</h3>
               <div className="space-y-3">
-                {stats.globalSuppliers
+                {stats.certifiedSuppliers
                   .filter(s => s.rating && s.rating > 0)
                   .sort((a, b) => (b.rating || 0) - (a.rating || 0))
                   .slice(0, 5)
@@ -161,8 +164,10 @@ export default function AdminSuppliers() {
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">
+          <SupplierLimitsSettings />
+          
           <div className="bg-card p-6 rounded-lg border">
-            <h3 className="text-lg font-semibold mb-4">Configurações do Sistema</h3>
+            <h3 className="text-lg font-semibold mb-4">Configurações Gerais</h3>
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Aprovação automática de fornecedores globais</label>

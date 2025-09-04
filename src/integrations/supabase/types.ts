@@ -862,6 +862,8 @@ export type Database = {
         Row: {
           address: Json | null
           business_info: Json | null
+          certification_date: string | null
+          certification_expires_at: string | null
           city: string | null
           client_id: string | null
           cnpj: string
@@ -869,6 +871,7 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
+          is_certified: boolean | null
           name: string
           phone: string | null
           rating: number | null
@@ -879,12 +882,15 @@ export type Database = {
           subscription_plan_id: string | null
           type: string | null
           updated_at: string | null
+          visibility_scope: string | null
           website: string | null
           whatsapp: string | null
         }
         Insert: {
           address?: Json | null
           business_info?: Json | null
+          certification_date?: string | null
+          certification_expires_at?: string | null
           city?: string | null
           client_id?: string | null
           cnpj: string
@@ -892,6 +898,7 @@ export type Database = {
           created_at?: string | null
           email: string
           id?: string
+          is_certified?: boolean | null
           name: string
           phone?: string | null
           rating?: number | null
@@ -902,12 +909,15 @@ export type Database = {
           subscription_plan_id?: string | null
           type?: string | null
           updated_at?: string | null
+          visibility_scope?: string | null
           website?: string | null
           whatsapp?: string | null
         }
         Update: {
           address?: Json | null
           business_info?: Json | null
+          certification_date?: string | null
+          certification_expires_at?: string | null
           city?: string | null
           client_id?: string | null
           cnpj?: string
@@ -915,6 +925,7 @@ export type Database = {
           created_at?: string | null
           email?: string
           id?: string
+          is_certified?: boolean | null
           name?: string
           phone?: string | null
           rating?: number | null
@@ -925,6 +936,7 @@ export type Database = {
           subscription_plan_id?: string | null
           type?: string | null
           updated_at?: string | null
+          visibility_scope?: string | null
           website?: string | null
           whatsapp?: string | null
         }
@@ -944,6 +956,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       user_group_memberships: {
         Row: {
@@ -1264,6 +1303,27 @@ export type Database = {
       reset_monthly_usage: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      suggest_suppliers_for_quote: {
+        Args: {
+          _categories: string[]
+          _client_city: string
+          _client_region: string
+          _client_state: string
+          _max_suppliers?: number
+        }
+        Returns: {
+          city: string
+          is_certified: boolean
+          match_score: number
+          name: string
+          rating: number
+          region: string
+          specialties: string[]
+          state: string
+          supplier_id: string
+          visibility_scope: string
+        }[]
       }
     }
     Enums: {
