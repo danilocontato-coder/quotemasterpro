@@ -282,7 +282,18 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('Chosen sending method:', { chosenMethod, client_hint: send_via, hasEvolution, send_whatsapp, quote_id, suppliers_count: suppliers.length });
 
     if (chosenMethod === 'direct') {
-      return await handleDirectEvolutionSending();
+      return await handleDirectEvolutionSending(supabase, {
+        suppliers,
+        customMessage: custom_message || null,
+        evolutionApiUrl: evolutionApiUrl as string,
+        evolutionInstance: evolutionInstance as string,
+        evolutionToken: evolutionToken as string,
+        templateVariables,
+        whatsappTemplate,
+        quoteId: quote_id,
+        createdBy: quote.created_by,
+        resolvedEvolution
+      });
     }
     
     // Fallback to N8N integration
@@ -509,7 +520,21 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // Handle direct Evolution API sending
-  async function handleDirectEvolutionSending() {
+  async function handleDirectEvolutionSending(
+    supabase: any,
+    {
+      suppliers,
+      customMessage,
+      evolutionApiUrl,
+      evolutionInstance,
+      evolutionToken,
+      templateVariables,
+      whatsappTemplate,
+      quoteId,
+      createdBy,
+      resolvedEvolution: resolvedEvo
+    }: any
+  ) {
     console.log('Sending directly via Evolution API');
     
     try {
@@ -521,13 +546,13 @@ const handler = async (req: Request): Promise<Response> => {
       let finalMessage = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
       
       // Replace template variables
-      Object.entries(templateVariables).forEach(([key, value]) => {
+      Object.entries(templateVariables || {}).forEach(([key, value]) => {
         finalMessage = finalMessage.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
       });
 
       // Add custom message if provided
-      if (custom_message?.trim()) {
-        finalMessage = `${custom_message.trim()}\n\n${finalMessage}`;
+      if (customMessage?.trim()) {
+        finalMessage = `${customMessage.trim()}\n\n${finalMessage}`;
       }
 
       console.log('Template rendered:', finalMessage.substring(0, 100) + '...');
@@ -540,13 +565,13 @@ const handler = async (req: Request): Promise<Response> => {
         if (!cs.ok) {
           const txt = await cs.text();
           return new Response(
-            JSON.stringify({ success: false, error: 'Evolution API indisponível para a instância', details: { status: cs.status, response: txt }, resolved_evolution: resolvedEvolution }),
+            JSON.stringify({ success: false, error: 'Evolution API indisponível para a instância', details: { status: cs.status, response: txt }, resolved_evolution: resolvedEvo }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
       } catch (e: any) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Falha ao conectar à Evolution API', details: e.message, resolved_evolution: resolvedEvolution }),
+          JSON.stringify({ success: false, error: 'Falha ao conectar à Evolution API', details: e.message, resolved_evolution: resolvedEvo }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -617,12 +642,12 @@ const handler = async (req: Request): Promise<Response> => {
               suppliers_sent_count: successCount,
               updated_at: new Date().toISOString()
             })
-            .eq('id', quote_id);
+            .eq('id', quoteId);
 
           if (statusError) {
             console.error('Failed to update quote status:', statusError);
           } else {
-            console.log(`Quote ${quote_id} status updated to 'sent'`);
+            console.log(`Quote ${quoteId} status updated to 'sent'`);
           }
         } catch (error) {
           console.error('Error updating quote status:', error);
@@ -635,10 +660,10 @@ const handler = async (req: Request): Promise<Response> => {
           const { error: logError } = await supabase
             .from('audit_logs')
             .insert({
-              user_id: quote.created_by,
+              user_id: createdBy,
               action: 'QUOTE_SENT_TO_SUPPLIERS_DIRECT',
               entity_type: 'quotes',
-              entity_id: quote_id,
+              entity_id: quoteId,
               details: {
                 suppliers_total: suppliers.length,
                 suppliers_success: successCount,
@@ -670,7 +695,7 @@ const handler = async (req: Request): Promise<Response> => {
           errors: errorCount > 0 ? errors : undefined,
           send_method: 'evolution_direct',
           quote_status_updated: true,
-          resolved_evolution: resolvedEvolution
+          resolved_evolution: resolvedEvo
         }),
         {
           status: 200,
@@ -685,7 +710,7 @@ const handler = async (req: Request): Promise<Response> => {
           success: false,
           error: 'Erro ao enviar via Evolution API', 
           details: error.message,
-          resolved_evolution: resolvedEvolution
+          resolved_evolution: resolvedEvo
         }),
         {
           status: 200,
