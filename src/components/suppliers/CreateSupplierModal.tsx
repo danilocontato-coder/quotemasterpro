@@ -7,10 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserPlus, X, MessageCircle, Building, MapPin } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { UserPlus, X, MessageCircle, Building, MapPin, Key, Shield } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseAdminSuppliers } from '@/hooks/useSupabaseAdminSuppliers';
 import { Supplier } from '@/hooks/useSupabaseSuppliers';
+import { brazilStates } from '@/data/brazilStates';
 
 interface CreateSupplierModalProps {
   open: boolean;
@@ -29,6 +31,11 @@ const regions = [
 const supplierTypes = [
   { value: 'local', label: 'Local', description: 'Fornecedor vinculado a um cliente' },
   { value: 'certified', label: 'Certificado', description: 'Fornecedor certificado pela plataforma (global)' }
+];
+
+const visibilityScopes = [
+  { value: 'region', label: 'Região', description: 'Visível apenas para clientes da mesma região' },
+  { value: 'global', label: 'Global', description: 'Visível para todos os clientes certificados' }
 ];
 
 const commonSpecialties = [
@@ -56,22 +63,39 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
     phone: '',
     whatsapp: '',
     website: '',
-    address: null as any,
+    address: {
+      street: '',
+      number: '',
+      complement: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      zipCode: ''
+    },
     business_info: {},
     specialties: [] as string[],
     type: 'local' as const,
     region: '',
+    state: '',
+    city: '',
+    visibility_scope: 'region' as const,
     status: 'active' as const,
     subscription_plan_id: 'plan-basic',
-    client_id: null
+    client_id: null,
+    is_certified: false,
+    certification_date: null,
+    certification_expires_at: null
   });
 
-  const [credentials] = useState({
+  const [credentials, setCredentials] = useState({
     username: '',
     password: '',
     generateCredentials: false,
-    forcePasswordChange: false
+    forcePasswordChange: true
   });
+
+  const [selectedState, setSelectedState] = useState('');
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [newSpecialty, setNewSpecialty] = useState('');
@@ -93,6 +117,42 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
     }));
   };
 
+  const generateCredentials = () => {
+    const username = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15) + Math.floor(Math.random() * 100);
+    const password = Math.random().toString(36).slice(-8) + Math.floor(Math.random() * 100);
+    
+    setCredentials(prev => ({
+      ...prev,
+      username,
+      password
+    }));
+  };
+
+  const handleStateChange = (stateCode: string) => {
+    setSelectedState(stateCode);
+    const state = brazilStates.find(s => s.code === stateCode);
+    if (state) {
+      setAvailableCities(state.cities);
+      setFormData(prev => ({
+        ...prev,
+        state: state.name,
+        city: '',
+        region: getRegionByState(stateCode)
+      }));
+    }
+  };
+
+  const getRegionByState = (stateCode: string): string => {
+    const regions: Record<string, string> = {
+      'AC': 'Norte', 'AP': 'Norte', 'AM': 'Norte', 'PA': 'Norte', 'RO': 'Norte', 'RR': 'Norte', 'TO': 'Norte',
+      'AL': 'Nordeste', 'BA': 'Nordeste', 'CE': 'Nordeste', 'MA': 'Nordeste', 'PB': 'Nordeste', 'PE': 'Nordeste', 'PI': 'Nordeste', 'RN': 'Nordeste', 'SE': 'Nordeste',
+      'GO': 'Centro-Oeste', 'MT': 'Centro-Oeste', 'MS': 'Centro-Oeste', 'DF': 'Centro-Oeste',
+      'ES': 'Sudeste', 'MG': 'Sudeste', 'RJ': 'Sudeste', 'SP': 'Sudeste',
+      'PR': 'Sul', 'RS': 'Sul', 'SC': 'Sul'
+    };
+    return regions[stateCode] || '';
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -101,15 +161,37 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
       phone: '',
       whatsapp: '',
       website: '',
-      address: null,
+      address: {
+        street: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+        zipCode: ''
+      },
       business_info: {},
       specialties: [],
       type: 'local',
       region: '',
+      state: '',
+      city: '',
+      visibility_scope: 'region',
       status: 'active',
       subscription_plan_id: 'plan-basic',
-      client_id: null
+      client_id: null,
+      is_certified: false,
+      certification_date: null,
+      certification_expires_at: null
     });
+    setCredentials({
+      username: '',
+      password: '',
+      generateCredentials: false,
+      forcePasswordChange: true
+    });
+    setSelectedState('');
+    setAvailableCities([]);
     setNewSpecialty('');
     setActiveTab('contact');
   };
@@ -138,7 +220,13 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
         return;
       }
 
-      await createSupplierWithUser(formData, credentials);
+      // Ensure address is properly structured
+      const supplierData = {
+        ...formData,
+        address: formData.address
+      };
+      
+      await createSupplierWithUser(supplierData, credentials);
       
       toast({
         title: "Fornecedor criado com sucesso",
@@ -159,7 +247,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
     }
   };
 
-  const isFormValid = formData.name && formData.email && formData.cnpj && formData.whatsapp;
+  const isFormValid = formData.name && formData.email && formData.cnpj && formData.whatsapp && formData.state && formData.city;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -176,7 +264,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
               <TabsTrigger value="contact" className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
                 Contato
@@ -188,6 +276,10 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
               <TabsTrigger value="location" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
                 Localização
+              </TabsTrigger>
+              <TabsTrigger value="credentials" className="flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                Acesso
               </TabsTrigger>
             </TabsList>
 
@@ -354,26 +446,24 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
               <TabsContent value="location" className="h-full">
                 <Card className="h-full">
                   <CardHeader>
-                    <CardTitle className="text-lg">Localização e Abrangência</CardTitle>
+                    <CardTitle className="text-lg">Localização e Endereço Completo</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Configure a área de atuação do fornecedor
+                      Configure a localização detalhada para melhor sugestão aos clientes
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Estado e Cidade */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="type">Tipo de Fornecedor</Label>
-                        <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any }))}>
+                        <Label htmlFor="state">Estado *</Label>
+                        <Select value={selectedState} onValueChange={handleStateChange}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
+                            <SelectValue placeholder="Selecione o estado" />
                           </SelectTrigger>
                           <SelectContent>
-                            {supplierTypes.map(type => (
-                              <SelectItem key={type.value} value={type.value}>
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{type.label}</span>
-                                  <span className="text-xs text-muted-foreground">{type.description}</span>
-                                </div>
+                            {brazilStates.map(state => (
+                              <SelectItem key={state.code} value={state.code}>
+                                {state.name} ({state.code})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -381,35 +471,246 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="region">Região Principal</Label>
-                        <Select value={formData.region} onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}>
+                        <Label htmlFor="city">Cidade *</Label>
+                        <Select value={formData.city} onValueChange={(value) => setFormData(prev => ({ ...prev, city: value }))}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione a região" />
+                            <SelectValue placeholder="Selecione a cidade" />
                           </SelectTrigger>
                           <SelectContent>
-                            {regions.map(region => (
-                              <SelectItem key={region} value={region}>
-                                {region}
+                            {availableCities.map(city => (
+                              <SelectItem key={city} value={city}>
+                                {city}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+
+                    {/* Endereço detalhado */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="street">Rua/Avenida</Label>
+                        <Input
+                          id="street"
+                          value={formData.address.street}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            address: { ...prev.address, street: e.target.value }
+                          }))}
+                          placeholder="Nome da rua ou avenida"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="number">Número</Label>
+                        <Input
+                          id="number"
+                          value={formData.address.number}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            address: { ...prev.address, number: e.target.value }
+                          }))}
+                          placeholder="123"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="complement">Complemento</Label>
+                        <Input
+                          id="complement"
+                          value={formData.address.complement}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            address: { ...prev.address, complement: e.target.value }
+                          }))}
+                          placeholder="Sala, andar, etc."
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="neighborhood">Bairro</Label>
+                        <Input
+                          id="neighborhood"
+                          value={formData.address.neighborhood}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            address: { ...prev.address, neighborhood: e.target.value }
+                          }))}
+                          placeholder="Nome do bairro"
+                        />
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="status">Status Inicial</Label>
-                      <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Ativo - Pode receber cotações</SelectItem>
-                          <SelectItem value="pending">Pendente - Aguardando verificação</SelectItem>
-                          <SelectItem value="inactive">Inativo - Não recebe cotações</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="zipCode">CEP</Label>
+                      <Input
+                        id="zipCode"
+                        value={formData.address.zipCode}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          address: { ...prev.address, zipCode: e.target.value }
+                        }))}
+                        placeholder="00000-000"
+                        className="w-40"
+                      />
                     </div>
+
+                    {/* Tipo e Configurações */}
+                    <div className="border-t pt-6 space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="type">Tipo de Fornecedor</Label>
+                          <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any, is_certified: value === 'certified' }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {supplierTypes.map(type => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{type.label}</span>
+                                    <span className="text-xs text-muted-foreground">{type.description}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="visibility">Visibilidade</Label>
+                          <Select value={formData.visibility_scope} onValueChange={(value) => setFormData(prev => ({ ...prev, visibility_scope: value as any }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a visibilidade" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {visibilityScopes.map(scope => (
+                                <SelectItem key={scope.value} value={scope.value}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{scope.label}</span>
+                                    <span className="text-xs text-muted-foreground">{scope.description}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="status">Status Inicial</Label>
+                        <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Ativo - Pode receber cotações</SelectItem>
+                            <SelectItem value="pending">Pendente - Aguardando verificação</SelectItem>
+                            <SelectItem value="inactive">Inativo - Não recebe cotações</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="credentials" className="h-full">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Key className="h-5 w-5" />
+                      Credenciais de Acesso
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Configure o acesso do fornecedor ao sistema
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="generateCredentials"
+                        checked={credentials.generateCredentials}
+                        onCheckedChange={(checked) => {
+                          setCredentials(prev => ({ ...prev, generateCredentials: !!checked }));
+                          if (checked) {
+                            generateCredentials();
+                          }
+                        }}
+                      />
+                      <Label htmlFor="generateCredentials" className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Criar login e senha para o fornecedor
+                      </Label>
+                    </div>
+
+                    {credentials.generateCredentials && (
+                      <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="username">Usuário</Label>
+                            <Input
+                              id="username"
+                              value={credentials.username}
+                              onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
+                              placeholder="Nome de usuário"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="password">Senha Temporária</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                id="password"
+                                value={credentials.password}
+                                onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                                placeholder="Senha"
+                                type="text"
+                              />
+                              <Button type="button" variant="outline" onClick={generateCredentials}>
+                                Gerar
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="forcePasswordChange"
+                            checked={credentials.forcePasswordChange}
+                            onCheckedChange={(checked) => setCredentials(prev => ({ ...prev, forcePasswordChange: !!checked }))}
+                          />
+                          <Label htmlFor="forcePasswordChange" className="text-sm">
+                            Forçar mudança de senha no primeiro login
+                          </Label>
+                        </div>
+
+                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <MessageCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                                Envio Automático via WhatsApp
+                              </p>
+                              <p className="text-xs text-green-600 dark:text-green-300 mt-1">
+                                As credenciais serão enviadas automaticamente para o WhatsApp do fornecedor após o cadastro.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!credentials.generateCredentials && (
+                      <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                          O fornecedor receberá apenas as cotações via WhatsApp, sem acesso ao sistema.
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

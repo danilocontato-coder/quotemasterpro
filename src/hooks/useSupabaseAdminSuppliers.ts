@@ -16,9 +16,15 @@ interface SupplierWithUserData {
   specialties?: string[];
   type: 'local' | 'certified';
   region?: string;
+  state?: string;
+  city?: string;
+  visibility_scope?: 'region' | 'global';
   status: 'pending' | 'active' | 'inactive' | 'suspended';
   subscription_plan_id?: string;
   client_id?: string;
+  is_certified?: boolean;
+  certification_date?: string | null;
+  certification_expires_at?: string | null;
 }
 
 interface CredentialsData {
@@ -184,9 +190,35 @@ export const useSupabaseAdminSuppliers = () => {
         if (userError) {
           console.error('Error creating user record:', userError);
         }
+
+        // 4. Send credentials via WhatsApp if supplier has WhatsApp
+        if (supplierData.whatsapp) {
+          try {
+            console.log('[SUPPLIER CREATION] Sending credentials via WhatsApp...');
+            await supabase.functions.invoke('notify', {
+              body: {
+                type: 'whatsapp_user_credentials',
+                to: supplierData.whatsapp,
+                user_email: supplierData.email,
+                user_name: supplierData.name,
+                temp_password: credentials.password,
+                app_url: window.location.origin
+              }
+            });
+            console.log('[SUPPLIER CREATION] Credentials sent via WhatsApp');
+          } catch (whatsappError) {
+            console.warn('[SUPPLIER CREATION] Failed to send WhatsApp credentials:', whatsappError);
+            // Continue with supplier creation even if WhatsApp fails
+            toast({
+              title: "Fornecedor criado com aviso",
+              description: "Fornecedor criado com sucesso, mas não foi possível enviar as credenciais via WhatsApp.",
+              variant: "default"
+            });
+          }
+        }
       }
 
-      // 4. Create audit log
+      // 5. Create audit log
       await supabase
         .from('audit_logs')
         .insert([{
@@ -197,7 +229,8 @@ export const useSupabaseAdminSuppliers = () => {
           details: {
             supplier_name: supplierData.name,
             cnpj: supplierData.cnpj,
-            with_user: !!authUserId
+            with_user: !!authUserId,
+            credentials_sent: !!authUserId && !!supplierData.whatsapp
           }
         }]);
 
@@ -205,7 +238,7 @@ export const useSupabaseAdminSuppliers = () => {
       
       toast({
         title: "Fornecedor criado com sucesso",
-        description: `${supplierData.name} foi adicionado ao sistema${authUserId ? ' com acesso de usuário' : ''}.`
+        description: `${supplierData.name} foi adicionado${authUserId ? ' com acesso ao sistema' : ''}${authUserId && supplierData.whatsapp ? ' e credenciais enviadas via WhatsApp' : ''}.`
       });
 
       return supplier;
