@@ -133,7 +133,9 @@ export function useSupabaseUsers() {
             email: userData.email,
             password: userData.password,
             name: userData.name,
-            role: userData.role
+            role: userData.role,
+            clientId: effectiveClientId || undefined,
+            temporaryPassword: userData.force_password_change
           }
         });
 
@@ -303,6 +305,27 @@ export function useSupabaseUsers() {
       }
 
       console.log('=== USER UPDATED SUCCESSFULLY ===');
+
+      // Sincronizar profile.client_id quando alterar o cliente do usuário
+      if (userData.client_id !== undefined) {
+        try {
+          const { data: authRef } = await supabase
+            .from('users')
+            .select('auth_user_id')
+            .eq('id', id)
+            .maybeSingle();
+
+          const authId = authRef?.auth_user_id as string | undefined;
+          if (authId) {
+            await supabase
+              .from('profiles')
+              .update({ client_id: userData.client_id })
+              .eq('id', authId);
+          }
+        } catch (syncErr) {
+          console.warn('Falha ao sincronizar profile.client_id:', syncErr);
+        }
+      }
 
       // Update group memberships in a single transaction if needed
       if (shouldUpdateGroups) {
