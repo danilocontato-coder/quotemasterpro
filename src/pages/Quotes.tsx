@@ -38,6 +38,13 @@ export default function Quotes() {
   const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
+  // Debug: verificar se o hook está sendo chamado
+  console.log('🎯 Quotes page - Hook results:', {
+    quotes: quotes?.length || 0,
+    isLoading,
+    hookCalled: true
+  });
+
   const handleQuoteCreate = async (quoteData: any) => {
     console.log('=== HANDLE QUOTE CREATE INICIADO ===');
     console.log('handleQuoteCreate called with:', quoteData);

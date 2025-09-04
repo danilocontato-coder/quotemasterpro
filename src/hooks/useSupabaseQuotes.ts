@@ -25,11 +25,15 @@ export interface Quote {
 }
 
 export const useSupabaseQuotes = () => {
+  console.log('🎯 useSupabaseQuotes hook initialized');
+  
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  console.log('👤 useSupabaseQuotes - user from useAuth:', user?.id, user?.role);
 
   // Fetch quotes based on user role
   const fetchQuotes = async () => {
