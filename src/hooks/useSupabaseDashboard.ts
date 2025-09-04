@@ -57,55 +57,88 @@ export function useSupabaseDashboard() {
       
       console.log('🎯 Dashboard: Starting data fetch for user:', user.id, 'role:', user.role);
 
-      // 1. Buscar métricas de cotações
-      console.log('📊 Dashboard: Fetching quotes...');
-      const { data: quotes, error: quotesError } = await supabase
-        .from('quotes')
-        .select('*');
+      // Consultas específicas por role para evitar problemas com RLS
+      let quotes: any[] = [];
+      let payments: any[] = [];
+      let suppliers: any[] = [];
+      let notifications: any[] = [];
 
-      if (quotesError) {
-        console.error('❌ Dashboard: Quotes error:', quotesError);
-        throw quotesError;
+      if (user.role === 'admin') {
+        // Admin pode ver todos os dados
+        console.log('👑 Dashboard: Admin user - fetching all data');
+        
+        const [quotesRes, paymentsRes, suppliersRes, notificationsRes] = await Promise.all([
+          supabase.from('quotes').select('*'),
+          supabase.from('payments').select('*'),
+          supabase.from('suppliers').select('*').eq('status', 'active'),
+          supabase.from('notifications').select('*').eq('user_id', user.id)
+        ]);
+
+        if (quotesRes.error) throw quotesRes.error;
+        if (paymentsRes.error) throw paymentsRes.error;
+        if (suppliersRes.error) throw suppliersRes.error;
+        if (notificationsRes.error) throw notificationsRes.error;
+
+        quotes = quotesRes.data || [];
+        payments = paymentsRes.data || [];
+        suppliers = suppliersRes.data || [];
+        notifications = notificationsRes.data || [];
+
+      } else if (user.role === 'supplier') {
+        // Fornecedor vê apenas seus próprios dados
+        console.log('🏪 Dashboard: Supplier user - fetching supplier-specific data');
+        
+        // Para fornecedor, buscar cotações através das políticas RLS
+        const [quotesRes, notificationsRes] = await Promise.all([
+          supabase.from('quotes').select('*'),
+          supabase.from('notifications').select('*').eq('user_id', user.id)
+        ]);
+
+        if (quotesRes.error) throw quotesRes.error;
+        if (notificationsRes.error) throw notificationsRes.error;
+
+        quotes = quotesRes.data || [];
+        payments = []; // Fornecedor não vê pagamentos no dashboard
+        suppliers = []; // Fornecedor não vê outros fornecedores
+        notifications = notificationsRes.data || [];
+
+      } else {
+        // Cliente ou outros roles
+        console.log('🏢 Dashboard: Client user - fetching client-specific data');
+        
+        const clientId = user.clientId;
+        if (!clientId) {
+          console.log('⚠️ Dashboard: User has no clientId, showing empty dashboard');
+          quotes = [];
+          payments = [];
+          suppliers = [];
+          notifications = [];
+        } else {
+          const [quotesRes, paymentsRes, suppliersRes, notificationsRes] = await Promise.all([
+            supabase.from('quotes').select('*').eq('client_id', clientId),
+            supabase.from('payments').select('*').eq('client_id', clientId),
+            supabase.from('suppliers').select('*').eq('status', 'active').or(`client_id.eq.${clientId},client_id.is.null`),
+            supabase.from('notifications').select('*').eq('user_id', user.id)
+          ]);
+
+          if (quotesRes.error) throw quotesRes.error;
+          if (paymentsRes.error) throw paymentsRes.error;
+          if (suppliersRes.error) throw suppliersRes.error;
+          if (notificationsRes.error) throw notificationsRes.error;
+
+          quotes = quotesRes.data || [];
+          payments = paymentsRes.data || [];
+          suppliers = suppliersRes.data || [];
+          notifications = notificationsRes.data || [];
+        }
       }
-      console.log('✅ Dashboard: Quotes fetched:', quotes?.length || 0);
 
-      // 2. Buscar métricas de pagamentos  
-      console.log('💰 Dashboard: Fetching payments...');
-      const { data: payments, error: paymentsError } = await supabase
-        .from('payments')
-        .select('*');
-
-      if (paymentsError) {
-        console.error('❌ Dashboard: Payments error:', paymentsError);
-        throw paymentsError;
-      }
-      console.log('✅ Dashboard: Payments fetched:', payments?.length || 0);
-
-      // 3. Buscar fornecedores ativos
-      console.log('🏪 Dashboard: Fetching suppliers...');
-      const { data: suppliers, error: suppliersError } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('status', 'active');
-
-      if (suppliersError) {
-        console.error('❌ Dashboard: Suppliers error:', suppliersError);
-        throw suppliersError;
-      }
-      console.log('✅ Dashboard: Suppliers fetched:', suppliers?.length || 0);
-
-      // 4. Buscar notificações
-      console.log('🔔 Dashboard: Fetching notifications...');
-      const { data: notifications, error: notificationsError } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (notificationsError) {
-        console.error('❌ Dashboard: Notifications error:', notificationsError);
-        throw notificationsError;
-      }
-      console.log('✅ Dashboard: Notifications fetched:', notifications?.length || 0);
+      console.log('✅ Dashboard: Data fetched successfully', {
+        quotes: quotes.length,
+        payments: payments.length,
+        suppliers: suppliers.length,
+        notifications: notifications.length
+      });
 
       // Calcular métricas
       console.log('📈 Dashboard: Calculating metrics...');
