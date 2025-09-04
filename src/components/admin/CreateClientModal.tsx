@@ -241,6 +241,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
     try {
       const clientData: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount"> = {
         ...formData,
+        groupId: formData.groupId === 'none' ? undefined : formData.groupId,
         groupName: clientGroups.find(g => g.id === formData.groupId)?.name,
         contacts: contacts.filter(c => c.name), // Only include contacts with names
         documents,
@@ -408,7 +409,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhum grupo</SelectItem>
-                          {clientGroups.map(group => (
+                          {clientGroups.filter(group => group.id && group.id.trim() !== '').map(group => (
                             <SelectItem key={group.id} value={group.id}>
                               <div className="flex items-center gap-2">
                                 <div className={`w-3 h-3 rounded-full bg-${group.color}-500`}></div>

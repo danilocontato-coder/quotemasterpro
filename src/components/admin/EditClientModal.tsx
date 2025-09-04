@@ -72,7 +72,7 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
         address: client.address || '',
         status: client.status || 'active',
         plan: client.plan || 'basic',
-        groupId: client.groupId || '',
+        groupId: client.groupId || 'none',
         notes: client.notes || ''
       });
     }
@@ -84,7 +84,12 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
 
     setIsLoading(true);
     try {
-      await onUpdateClient(client.id, formData);
+      // Convert "none" back to null/empty for the API
+      const dataToUpdate = {
+        ...formData,
+        groupId: formData.groupId === 'none' ? null : formData.groupId
+      };
+      await onUpdateClient(client.id, dataToUpdate);
       toast({
         title: "Cliente atualizado",
         description: "As informações do cliente foram atualizadas com sucesso.",
@@ -241,8 +246,8 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <SelectValue placeholder="Selecione um grupo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem grupo</SelectItem>
-                      {clientGroups.map(group => (
+                      <SelectItem value="none">Sem grupo</SelectItem>
+                      {clientGroups.filter(group => group.id && group.id.trim() !== '').map(group => (
                         <SelectItem key={group.id} value={group.id}>
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full bg-${group.color || 'blue'}-500`}></div>
