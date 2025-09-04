@@ -99,9 +99,11 @@ export const ClientDocumentsModal: React.FC<ClientDocumentsModalProps> = ({
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || isUploading) return;
 
+    console.log('Iniciando upload do arquivo:', file.name);
     setIsUploading(true);
+    
     try {
       // Simulação de upload
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -117,11 +119,14 @@ export const ClientDocumentsModal: React.FC<ClientDocumentsModalProps> = ({
       };
 
       setDocuments(prev => [...prev, newDocument]);
+      console.log('Documento enviado com sucesso:', newDocument.id);
+      
       toast({
         title: "Documento enviado",
         description: "O documento foi enviado com sucesso e está aguardando aprovação.",
       });
     } catch (error) {
+      console.error('Erro ao enviar documento:', error);
       toast({
         title: "Erro",
         description: "Não foi possível enviar o documento.",

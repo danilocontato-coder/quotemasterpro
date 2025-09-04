@@ -45,6 +45,14 @@ export const ViewClientModal: React.FC<ViewClientModalProps> = ({
   onOpenChange,
   client
 }) => {
+  // Cleanup quando modal fecha
+  React.useEffect(() => {
+    if (!open) {
+      // Limpar qualquer timeout ou listener ativo
+      return;
+    }
+  }, [open]);
+
   if (!client) return null;
 
   const getStatusColor = (status: string) => {

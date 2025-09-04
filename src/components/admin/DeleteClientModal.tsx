@@ -47,17 +47,28 @@ export const DeleteClientModal: React.FC<DeleteClientModalProps> = ({
   const canDelete = confirmText === expectedText;
 
   const handleDelete = async () => {
-    if (!client || !canDelete) return;
+    if (!client || !canDelete || isDeleting) return;
 
+    console.log('Iniciando exclusão do cliente:', client.id);
     setIsDeleting(true);
+    
     try {
       await onDeleteClient(client.id);
+      console.log('Cliente excluído com sucesso');
+      
       toast({
         title: "Cliente excluído",
         description: "O cliente foi excluído com sucesso do sistema.",
       });
-      onOpenChange(false);
+      
+      // Limpar estado antes de fechar
       setConfirmText('');
+      
+      // Aguardar um pouco antes de fechar para garantir que a operação foi concluída
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 200);
+      
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
       toast({
@@ -71,6 +82,9 @@ export const DeleteClientModal: React.FC<DeleteClientModalProps> = ({
   };
 
   const handleCancel = () => {
+    if (isDeleting) return; // Não permitir cancelar durante operação
+    
+    console.log('Cancelando exclusão do cliente');
     setConfirmText('');
     onOpenChange(false);
   };

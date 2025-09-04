@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -140,40 +140,61 @@ export const ClientsManagement = () => {
     }).format(value);
   };
 
-  // Ações do menu
-  const handleViewClient = (client: any) => {
+  // Ações do menu com prevenção de travamentos
+  const handleViewClient = useCallback((client: any) => {
+    console.log('Abrindo visualização do cliente:', client.id);
     setSelectedClient(client);
     setShowViewModal(true);
-  };
+  }, []);
 
-  const handleEditClient = (client: any) => {
+  const handleEditClient = useCallback((client: any) => {
+    console.log('Abrindo edição do cliente:', client.id);
     setSelectedClient(client);
     setShowEditModal(true);
-  };
+  }, []);
 
-  const handleClientDocuments = (client: any) => {
+  const handleClientDocuments = useCallback((client: any) => {
+    console.log('Abrindo documentos do cliente:', client.id);
     setSelectedClient(client);
     setShowDocumentsModal(true);
-  };
+  }, []);
 
-  const handleClientCredentials = (client: any) => {
+  const handleClientCredentials = useCallback((client: any) => {
+    console.log('Abrindo credenciais do cliente:', client.id);
     setSelectedClient(client);
     setShowCredentialsModal(true);
-  };
+  }, []);
 
-  const handleToggleClientStatus = async (client: any) => {
+  const [statusUpdating, setStatusUpdating] = useState<Set<string>>(new Set());
+  
+  const handleToggleClientStatus = useCallback(async (client: any) => {
+    if (statusUpdating.has(client.id)) {
+      console.log('Status já sendo atualizado para cliente:', client.id);
+      return;
+    }
+
     const newStatus = client.status === 'active' ? 'inactive' : 'active';
+    setStatusUpdating(prev => new Set([...prev, client.id]));
+    
     try {
+      console.log('Alterando status do cliente:', client.id, 'para:', newStatus);
       await updateClient(client.id, { status: newStatus } as any);
     } catch (error) {
       console.error('Erro ao alterar status do cliente:', error);
+    } finally {
+      setStatusUpdating(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(client.id);
+        return newSet;
+      });
     }
-  };
+  }, [updateClient, statusUpdating]);
 
-  const handleDeleteClient = (client: any) => {
+  const handleDeleteClient = useCallback((client: any) => {
+    console.log('Abrindo exclusão do cliente:', client.id);
     setSelectedClient(client);
     setShowDeleteModal(true);
-  };
+  }, []);
 
   return (
     <div className="h-full flex flex-col">
@@ -428,44 +449,84 @@ export const ClientsManagement = () => {
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-background border z-50">
-                          <DropdownMenuItem onClick={() => handleViewClient(client)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Visualizar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditClient(client)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleClientDocuments(client)}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Documentos
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleClientCredentials(client)}>
-                            <Shield className="h-4 w-4 mr-2" />
-                            Credenciais
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleClientStatus(client)}>
-                            {client.status === 'active' ? (
-                              <>
-                                <UserX className="h-4 w-4 mr-2" />
-                                Desativar
-                              </>
-                            ) : (
-                              <>
-                                <UserCheck className="h-4 w-4 mr-2" />
-                                Ativar
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-red-600"
-                            onClick={() => handleDeleteClient(client)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
+                         <DropdownMenuContent align="end" className="bg-background border z-50">
+                           <DropdownMenuItem 
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
+                               handleViewClient(client);
+                             }}
+                           >
+                             <Eye className="h-4 w-4 mr-2" />
+                             Visualizar
+                           </DropdownMenuItem>
+                           <DropdownMenuItem 
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
+                               handleEditClient(client);
+                             }}
+                           >
+                             <Edit className="h-4 w-4 mr-2" />
+                             Editar
+                           </DropdownMenuItem>
+                           <DropdownMenuItem 
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
+                               handleClientDocuments(client);
+                             }}
+                           >
+                             <FileText className="h-4 w-4 mr-2" />
+                             Documentos
+                           </DropdownMenuItem>
+                           <DropdownMenuItem 
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
+                               handleClientCredentials(client);
+                             }}
+                           >
+                             <Shield className="h-4 w-4 mr-2" />
+                             Credenciais
+                           </DropdownMenuItem>
+                           <DropdownMenuItem 
+                             disabled={statusUpdating.has(client.id)}
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
+                               handleToggleClientStatus(client);
+                             }}
+                           >
+                             {statusUpdating.has(client.id) ? (
+                               <>
+                                 <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
+                                 Atualizando...
+                               </>
+                             ) : client.status === 'active' ? (
+                               <>
+                                 <UserX className="h-4 w-4 mr-2" />
+                                 Desativar
+                               </>
+                             ) : (
+                               <>
+                                 <UserCheck className="h-4 w-4 mr-2" />
+                                 Ativar
+                               </>
+                             )}
+                           </DropdownMenuItem>
+                           <DropdownMenuItem 
+                             className="text-red-600"
+                             onClick={(e) => {
+                               e.preventDefault();
+                               e.stopPropagation();
+                               handleDeleteClient(client);
+                             }}
+                           >
+                             <Trash2 className="h-4 w-4 mr-2" />
+                             Excluir
+                           </DropdownMenuItem>
+                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
                      </TableRow>

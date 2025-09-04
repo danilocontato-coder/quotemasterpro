@@ -73,13 +73,16 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   };
 
   const handleGenerateNewPassword = async () => {
-    if (!client) return;
+    if (!client || isGenerating) return;
     
+    console.log('Gerando nova senha para cliente:', client.id);
     setIsGenerating(true);
+    
     try {
       // Usar a função real de reset de senha
       const newPassword = await onResetPassword(client.id, client.email);
       setCredentials(prev => ({ ...prev, password: newPassword }));
+      console.log('Nova senha gerada com sucesso');
       // O toast já é mostrado pela função onResetPassword
     } catch (error) {
       // Erro já tratado pela função onResetPassword  
