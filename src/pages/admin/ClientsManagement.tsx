@@ -43,6 +43,7 @@ import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
 import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { usePagination } from '@/hooks/usePagination';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { usePerformanceDebug } from '@/hooks/usePerformanceDebug';
 import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { ClientGroupsManager } from '@/components/admin/ClientGroupsManager';
 import { ViewClientModal } from '@/components/admin/ViewClientModal';
@@ -52,6 +53,7 @@ import { ClientDocumentsModal } from '@/components/admin/ClientDocumentsModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
 
 export const ClientsManagement = () => {
+  const { trackAsyncOperation } = usePerformanceDebug('ClientsManagement');
   console.log('ClientsManagement component rendering');
   const {
     clients,
@@ -591,7 +593,11 @@ export const ClientsManagement = () => {
         onOpenChange={setShowEditModal}
         client={selectedClient}
         clientGroups={clientGroups}
-        onUpdateClient={(id, data) => updateClient(id, data as any)}
+        onUpdateClient={async (id, data) => {
+          await trackAsyncOperation(`updateClientFromModal-${id}`, async () => {
+            await updateClient(id, data as any);
+          });
+        }}
       />
 
       <ClientCredentialsModal
@@ -618,3 +624,5 @@ export const ClientsManagement = () => {
     </div>
   );
 };
+
+export default ClientsManagement;

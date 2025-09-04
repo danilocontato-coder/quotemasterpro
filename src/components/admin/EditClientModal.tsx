@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
+import { usePerformanceDebug, useMemoryDebug } from '@/hooks/usePerformanceDebug';
 
 interface Client {
   id: string;
@@ -62,9 +63,12 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { plans } = useSupabaseSubscriptionPlans();
+  const { trackAsyncOperation } = usePerformanceDebug('EditClientModal');
+  const { checkMemory } = useMemoryDebug('EditClientModal');
 
   useEffect(() => {
     if (client) {
+      console.log('🔄 EditClientModal: Carregando dados do cliente', client.id);
       setFormData({
         name: client.name || '',
         companyName: client.companyName || '',
@@ -77,41 +81,53 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
         groupId: client.groupId || 'none',
         notes: client.notes || ''
       });
+      console.log('✅ EditClientModal: Dados carregados no formulário');
     }
   }, [client]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!client || isLoading) return;
-
-    setIsLoading(true);
-    try {
-      console.log('Iniciando atualização do cliente:', client.id);
-      
-      // Convert "none" back to null/empty for the API
-      const dataToUpdate = {
-        ...formData,
-        groupId: formData.groupId === 'none' ? null : formData.groupId
-      };
-      
-      await onUpdateClient(client.id, dataToUpdate);
-      
-      console.log('Cliente atualizado com sucesso, fechando modal...');
-      onOpenChange(false);
-      
-    } catch (error) {
-      console.error('Erro ao atualizar cliente:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o cliente. Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+    if (!client || isLoading) {
+      console.log('🚫 EditClientModal: Submissão cancelada', { client: !!client, isLoading });
+      return;
     }
+
+    await trackAsyncOperation('updateClient', async () => {
+      setIsLoading(true);
+      checkMemory();
+      
+      try {
+        console.log('🚀 EditClientModal: Iniciando atualização do cliente:', client.id);
+        
+        // Convert "none" back to null/empty for the API
+        const dataToUpdate = {
+          ...formData,
+          groupId: formData.groupId === 'none' ? null : formData.groupId
+        };
+        
+        console.log('📤 EditClientModal: Dados sendo enviados:', dataToUpdate);
+        
+        await onUpdateClient(client.id, dataToUpdate);
+        
+        console.log('✅ EditClientModal: Cliente atualizado com sucesso, fechando modal...');
+        onOpenChange(false);
+        
+      } catch (error) {
+        console.error('❌ EditClientModal: Erro ao atualizar cliente:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível atualizar o cliente. Tente novamente.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+        checkMemory();
+      }
+    });
   };
 
   const handleChange = (field: string, value: string) => {
+    console.log(`🔄 EditClientModal: Campo alterado - ${field}:`, value);
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
