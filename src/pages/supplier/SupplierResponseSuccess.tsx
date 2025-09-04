@@ -45,7 +45,7 @@ const SupplierResponseSuccess = () => {
               </Button>
               <Button 
                 variant="outline"
-                onClick={() => window.location.href = 'mailto:contato@quotemaster.com'}
+                onClick={() => window.open('mailto:contato@quotemaster.com', '_blank')}
                 className="flex items-center gap-2"
               >
                 <Mail className="w-4 h-4" />

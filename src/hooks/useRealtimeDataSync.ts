@@ -10,11 +10,18 @@ export function useRealtimeDataSync() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
-    // Canal principal para atualizações de dados do usuário
+    // Debounce para evitar múltiplas atualizações
+    let updateTimeout: NodeJS.Timeout;
+    const debounceUpdate = (callback: () => void) => {
+      clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(callback, 300);
+    };
+
+    // Canal otimizado para atualizações seletivas
     const channel = supabase
-      .channel('user-data-sync')
+      .channel(`user-data-sync-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -24,94 +31,62 @@ export function useRealtimeDataSync() {
           filter: `user_id=eq.${user.id}`,
         },
         () => {
-          // Notificações são atualizadas automaticamente pelo hook useSupabaseNotifications
-          console.log('Notification update detected');
+          debounceUpdate(() => {
+            console.debug('Notification update detected');
+          });
         }
       )
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'profiles',
           filter: `id=eq.${user.id}`,
         },
         () => {
-          // Profile updates podem afetar os dados do cliente
-          console.log('Profile update detected');
-          // Dispara evento customizado em vez de reload forçado para evitar interferir com navegação
-          window.dispatchEvent(new CustomEvent('user-profile-updated'));
+          debounceUpdate(() => {
+            console.debug('Profile update detected');
+            window.dispatchEvent(new CustomEvent('user-profile-updated'));
+          });
         }
       );
 
-    // Se o usuário tem client_id, monitora mudanças nos dados do cliente
+    // Monitora mudanças críticas apenas (otimizado)
     if (user.clientId) {
       channel
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'UPDATE',
             schema: 'public',
             table: 'clients',
             filter: `id=eq.${user.clientId}`,
           },
           () => {
-            console.log('Client data update detected');
-            // Força recarregamento dos dados do cliente
-            window.dispatchEvent(new CustomEvent('client-data-updated'));
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'quotes',
-            filter: `client_id=eq.${user.clientId}`,
-          },
-          () => {
-            console.log('Quote update detected for client');
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'products',
-            filter: `client_id=eq.${user.clientId}`,
-          },
-          () => {
-            console.log('Product update detected for client');
+            debounceUpdate(() => {
+              console.debug('Client data update detected');
+              window.dispatchEvent(new CustomEvent('client-data-updated'));
+            });
           }
         );
     }
 
-    // Se o usuário tem supplier_id, monitora mudanças nos dados do fornecedor
+    // Monitora fornecedores (otimizado)
     if (user.supplierId) {
       channel
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'UPDATE',
             schema: 'public',
             table: 'suppliers',
             filter: `id=eq.${user.supplierId}`,
           },
           () => {
-            console.log('Supplier data update detected');
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'products',
-            filter: `supplier_id=eq.${user.supplierId}`,
-          },
-          () => {
-            console.log('Product update detected for supplier');
+            debounceUpdate(() => {
+              console.debug('Supplier data update detected');
+            });
           }
         );
     }
@@ -119,9 +94,10 @@ export function useRealtimeDataSync() {
     channel.subscribe();
 
     return () => {
+      clearTimeout(updateTimeout);
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id, user?.clientId, user?.supplierId]);
 
   return null; // Hook apenas para efeitos colaterais
 }

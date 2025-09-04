@@ -60,51 +60,31 @@ import SupplierResponseSuccess from '@/pages/supplier/SupplierResponseSuccess';
 const queryClient = new QueryClient();
 
 function App() {
-  // Prevent Alt+Tab from causing page refreshes or interfering with normal browser behavior
+  // Optimized system performance and prevent unwanted refreshes
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // If Alt+Tab is pressed, do nothing special - let browser handle it normally
-      if (event.altKey && event.key === 'Tab') {
-        // Do not prevent default - this allows normal Alt+Tab behavior
-        return;
-      }
-      
-      // Prevent any other Alt combinations that might interfere
-      if (event.altKey && (event.key === 'F4' || event.key === 'F11')) {
-        // Allow these for normal browser behavior
-        return;
-      }
-    };
-
     const handleVisibilityChange = () => {
-      // Prevent automatic refreshes when tab becomes visible again
-      // This is often caused by dev server hot reload
+      // Only log visibility changes, don't force reloads
       if (!document.hidden) {
-        // Tab became visible - but don't force any reloads
-        console.log('Tab became visible - maintaining current state');
+        console.debug('Tab became visible - maintaining state');
       }
     };
 
+    // Optimized beforeunload handler
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Only show warning if there are unsaved changes
-      // Check for any open modals or forms
-      const hasOpenModals = document.querySelector('[role="dialog"]') || 
-                          document.querySelector('.modal') ||
-                          document.querySelector('[data-state="open"]');
+      const hasUnsavedForms = document.querySelector('form:not([data-saved="true"])') ||
+                             document.querySelector('[data-dirty="true"]');
       
-      if (hasOpenModals) {
-        // Don't prevent unload, but let the browser handle it
-        return;
+      if (hasUnsavedForms) {
+        event.preventDefault();
+        return 'Você tem alterações não salvas. Deseja realmente sair?';
       }
     };
 
-    // Add event listeners
-    document.addEventListener('keydown', handleKeyDown, { passive: true });
+    // Use passive listeners for better performance
     document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
-    window.addEventListener('beforeunload', handleBeforeUnload, { passive: true });
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };

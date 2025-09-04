@@ -241,7 +241,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => window.location.href = '/admin/plans'}
+              onClick={() => window.open('/admin/plans', '_self')}
             >
               <TrendingUp className="h-4 w-4 mr-2" />
               Ver Planos e Fazer Upgrade
