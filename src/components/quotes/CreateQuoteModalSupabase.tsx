@@ -690,7 +690,10 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
 
             {currentStep === steps.length ? (
               <Button
-                onClick={handleSubmit}
+                onClick={() => {
+                  console.log('=== BOTAO CLICADO ===');
+                  handleSubmit();
+                }}
                 disabled={!canProceed()}
                 className="flex items-center gap-2"
               >
