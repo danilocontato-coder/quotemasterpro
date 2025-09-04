@@ -259,6 +259,7 @@ export const useSupabaseQuotes = () => {
 
   // Mark quote as sent to suppliers
   const markQuoteAsSent = async (quoteId: string, suppliersCount: number) => {
+    console.log(`Atualizando cotação ${quoteId} para 'sent' com ${suppliersCount} fornecedores`);
     return updateQuoteStatus(quoteId, 'sent', {
       suppliers_sent_count: suppliersCount
     });

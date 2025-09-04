@@ -202,7 +202,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
         total: 0,
         items_count: formData.items.length,
         responses_count: 0,
-        suppliers_sent_count: formData.supplier_ids.length,
+        suppliers_sent_count: 0, // Será atualizado quando a cotação for enviada
         supplier_scope: formData.supplierScope, // Incluir o escopo de fornecedores
         items: formData.items.map(item => ({
           product_name: item.product_name,
