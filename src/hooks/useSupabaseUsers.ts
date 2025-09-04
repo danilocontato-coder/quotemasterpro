@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
 
 export interface SupabaseUser {
   id: string;
@@ -34,6 +35,7 @@ export interface UserGroup {
 }
 
 export function useSupabaseUsers() {
+  const { client: currentClient } = useSupabaseCurrentClient();
   const [users, setUsers] = useState<SupabaseUser[]>([]);
   const [groups, setGroups] = useState<UserGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -536,6 +538,52 @@ export function useSupabaseUsers() {
         .single();
 
       if (error) throw error;
+
+      // Criar automaticamente perfil de permissões para o novo grupo
+      const createPermissionProfile = async () => {
+        try {
+          if (!currentClient?.id) return;
+
+          // Template padrão com tudo desativado (exceto admin)
+          const isAdmin = groupData.name.toLowerCase().includes('admin');
+          const permissions = {
+            quotes: { view: isAdmin, create: isAdmin, edit: isAdmin, delete: isAdmin },
+            products: { view: isAdmin, create: isAdmin, edit: isAdmin, delete: isAdmin },
+            suppliers: { view: isAdmin, create: isAdmin, edit: isAdmin, delete: isAdmin },
+            payments: { view: isAdmin, create: isAdmin, edit: isAdmin, delete: isAdmin },
+            communication: { view: isAdmin, create: isAdmin, edit: isAdmin, delete: isAdmin },
+            reports: { view: isAdmin, create: isAdmin, edit: isAdmin, delete: isAdmin },
+            users: { view: isAdmin, create: isAdmin, edit: isAdmin, delete: isAdmin },
+            settings: { view: isAdmin, create: isAdmin, edit: isAdmin, delete: isAdmin }
+          };
+
+          const { data: profileData, error: profileError } = await supabase
+            .from('permission_profiles')
+            .insert({
+              name: data.name,
+              description: data.description || `Permissões para ${data.name}`,
+              permissions,
+              client_id: currentClient.id,
+              active: true
+            })
+            .select()
+            .single();
+
+          if (profileError) throw profileError;
+
+          // Vincular perfil ao grupo
+          await supabase
+            .from('user_groups')
+            .update({ permission_profile_id: profileData.id })
+            .eq('id', data.id);
+
+          console.log('✅ Perfil de permissões criado automaticamente para:', data.name);
+        } catch (error) {
+          console.error('Erro ao criar perfil de permissões:', error);
+        }
+      };
+
+      await createPermissionProfile();
 
       toast.success('Grupo criado com sucesso');
       await fetchGroups();

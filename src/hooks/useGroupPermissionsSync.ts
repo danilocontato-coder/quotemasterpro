@@ -69,46 +69,33 @@ export function useGroupPermissionsSync() {
         return false;
       }
 
-      // Definir permissões padrão baseadas no nome do grupo
-      const permissions: Record<string, any> = {};
+      // Template padrão de permissões (todas desativadas para facilitar configuração)
+      const getDefaultPermissionsTemplate = (isAdmin = false) => {
+        const basePermissions = {
+          quotes: { view: false, create: false, edit: false, delete: false },
+          products: { view: false, create: false, edit: false, delete: false },
+          suppliers: { view: false, create: false, edit: false, delete: false },
+          payments: { view: false, create: false, edit: false, delete: false },
+          communication: { view: false, create: false, edit: false, delete: false },
+          reports: { view: false, create: false, edit: false, delete: false },
+          users: { view: false, create: false, edit: false, delete: false },
+          settings: { view: false, create: false, edit: false, delete: false }
+        };
+
+        // Apenas admin tem tudo ativado por padrão
+        if (isAdmin) {
+          Object.keys(basePermissions).forEach(module => {
+            basePermissions[module] = { view: true, create: true, edit: true, delete: true };
+          });
+        }
+
+        return basePermissions;
+      };
+
+      // Definir permissões baseadas no tipo de grupo
       const groupName = group.name.toLowerCase();
-      
-      if (groupName.includes('admin')) {
-        // Admin tem todas as permissões
-        ['quotes', 'products', 'suppliers', 'payments', 'communication', 'users', 'settings', 'reports'].forEach(module => {
-          permissions[module] = { view: true, create: true, edit: true, delete: true };
-        });
-      } else if (groupName.includes('gestor') || groupName.includes('manager')) {
-        // Gestores têm permissões amplas
-        permissions['quotes'] = { view: true, create: true, edit: true, delete: true };
-        permissions['products'] = { view: true, create: true, edit: true, delete: true };
-        permissions['suppliers'] = { view: true, create: true, edit: true, delete: false };
-        permissions['payments'] = { view: true, create: true, edit: true, delete: false };
-        permissions['communication'] = { view: true, create: true, edit: true, delete: false };
-        permissions['reports'] = { view: true, create: true, edit: false, delete: false };
-        permissions['users'] = { view: true, create: true, edit: true, delete: false };
-        permissions['settings'] = { view: true, create: false, edit: true, delete: false };
-      } else if (groupName.includes('colaborador') || groupName.includes('collaborator')) {
-        // Colaboradores têm permissões básicas
-        permissions['quotes'] = { view: true, create: true, edit: true, delete: false };
-        permissions['products'] = { view: true, create: true, edit: true, delete: false };
-        permissions['suppliers'] = { view: true, create: false, edit: false, delete: false };
-        permissions['communication'] = { view: true, create: true, edit: false, delete: false };
-        permissions['payments'] = { view: true, create: false, edit: false, delete: false };
-        permissions['reports'] = { view: true, create: false, edit: false, delete: false };
-        permissions['users'] = { view: false, create: false, edit: false, delete: false };
-        permissions['settings'] = { view: false, create: false, edit: false, delete: false };
-      } else {
-        // Grupo customizado - permissões mínimas
-        permissions['quotes'] = { view: true, create: false, edit: false, delete: false };
-        permissions['products'] = { view: true, create: false, edit: false, delete: false };
-        permissions['suppliers'] = { view: true, create: false, edit: false, delete: false };
-        permissions['communication'] = { view: true, create: false, edit: false, delete: false };
-        permissions['payments'] = { view: false, create: false, edit: false, delete: false };
-        permissions['reports'] = { view: false, create: false, delete: false };
-        permissions['users'] = { view: false, create: false, edit: false, delete: false };
-        permissions['settings'] = { view: false, create: false, edit: false, delete: false };
-      }
+      const isAdmin = groupName.includes('admin');
+      const permissions = getDefaultPermissionsTemplate(isAdmin);
 
       console.log('🎯 Permissões definidas:', permissions);
 
