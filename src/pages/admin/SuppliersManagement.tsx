@@ -469,6 +469,7 @@ export const SuppliersManagement = () => {
       {/* Create/Edit Modal */}
       <CreateSupplierModal
         open={showCreateModal}
+        editingSupplier={editingSupplier}
         onClose={() => {
           setShowCreateModal(false);
           setEditingSupplier(null);

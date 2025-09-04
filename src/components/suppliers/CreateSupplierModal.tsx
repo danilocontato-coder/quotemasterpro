@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ interface CreateSupplierModalProps {
   open: boolean;
   onClose: () => void;
   onCreateSupplier: (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => Promise<any>;
+  editingSupplier?: any;
 }
 
 const regions = [
@@ -51,7 +52,7 @@ const commonSpecialties = [
   'Móveis e Decoração'
 ];
 
-export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateSupplierModalProps) {
+export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSupplier }: CreateSupplierModalProps) {
   const { createSupplierWithUser } = useSupabaseAdminSuppliers();
   const { toast } = useToast();
 
@@ -99,6 +100,54 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
 
   const [isLoading, setIsLoading] = useState(false);
   const [newSpecialty, setNewSpecialty] = useState('');
+
+  // Load editing supplier data when modal opens
+  useEffect(() => {
+    if (open && editingSupplier) {
+      const addressData = editingSupplier.address || {};
+      setFormData({
+        name: editingSupplier.name || '',
+        cnpj: editingSupplier.cnpj || '',
+        email: editingSupplier.email || '',
+        phone: editingSupplier.phone || '',
+        whatsapp: editingSupplier.whatsapp || '',
+        website: editingSupplier.website || '',
+        address: {
+          street: addressData.street || '',
+          number: addressData.number || '',
+          complement: addressData.complement || '',
+          neighborhood: addressData.neighborhood || '',
+          city: addressData.city || '',
+          state: addressData.state || '',
+          zipCode: addressData.zipCode || ''
+        },
+        business_info: editingSupplier.business_info || {},
+        specialties: editingSupplier.specialties || [],
+        type: editingSupplier.type || 'local',
+        region: editingSupplier.region || '',
+        state: editingSupplier.state || '',
+        city: editingSupplier.city || '',
+        visibility_scope: editingSupplier.visibility_scope || 'region',
+        status: editingSupplier.status || 'active',
+        subscription_plan_id: editingSupplier.subscription_plan_id || 'plan-basic',
+        client_id: editingSupplier.client_id || null,
+        is_certified: editingSupplier.is_certified || false,
+        certification_date: editingSupplier.certification_date || null,
+        certification_expires_at: editingSupplier.certification_expires_at || null
+      });
+      
+      // Set state and city for proper form behavior
+      if (editingSupplier.state) {
+        const state = brazilStates.find(s => s.name === editingSupplier.state);
+        if (state) {
+          setSelectedState(state.code);
+          setAvailableCities(state.cities);
+        }
+      }
+    } else if (open && !editingSupplier) {
+      resetForm();
+    }
+  }, [open, editingSupplier]);
 
   const addSpecialty = (specialty: string) => {
     if (specialty.trim() && !formData.specialties.includes(specialty.trim())) {
@@ -226,11 +275,11 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
         address: formData.address
       };
       
-      await createSupplierWithUser(supplierData, credentials);
+      await onCreateSupplier(supplierData);
       
       toast({
-        title: "Fornecedor criado com sucesso",
-        description: `${formData.name} foi adicionado ao sistema. As cotações serão enviadas via WhatsApp.`
+        title: editingSupplier ? "Fornecedor atualizado com sucesso" : "Fornecedor criado com sucesso",
+        description: `${formData.name} foi ${editingSupplier ? 'atualizado' : 'adicionado ao sistema'}. As cotações serão enviadas via WhatsApp.`
       });
 
       resetForm();
@@ -255,10 +304,13 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Criar Novo Fornecedor
+            {editingSupplier ? 'Editar Fornecedor' : 'Criar Novo Fornecedor'}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Cadastre fornecedores para receber cotações via WhatsApp
+            {editingSupplier 
+              ? 'Edite as informações do fornecedor'
+              : 'Cadastre fornecedores para receber cotações via WhatsApp'
+            }
           </p>
         </DialogHeader>
 
@@ -277,10 +329,12 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
                 <MapPin className="h-4 w-4" />
                 Localização
               </TabsTrigger>
-              <TabsTrigger value="credentials" className="flex items-center gap-2">
-                <Key className="h-4 w-4" />
-                Acesso
-              </TabsTrigger>
+              {!editingSupplier && (
+                <TabsTrigger value="credentials" className="flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  Acesso
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <div className="flex-1 overflow-y-auto">
@@ -618,102 +672,104 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
                 </Card>
               </TabsContent>
 
-              <TabsContent value="credentials" className="h-full">
-                <Card className="h-full">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Key className="h-5 w-5" />
-                      Credenciais de Acesso
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Configure o acesso do fornecedor ao sistema
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="generateCredentials"
-                        checked={credentials.generateCredentials}
-                        onCheckedChange={(checked) => {
-                          setCredentials(prev => ({ ...prev, generateCredentials: !!checked }));
-                          if (checked) {
-                            generateCredentials();
-                          }
-                        }}
-                      />
-                      <Label htmlFor="generateCredentials" className="flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        Criar login e senha para o fornecedor
-                      </Label>
-                    </div>
+              {!editingSupplier && (
+                <TabsContent value="credentials" className="h-full">
+                  <Card className="h-full">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Key className="h-5 w-5" />
+                        Credenciais de Acesso
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Configure o acesso do fornecedor ao sistema
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="generateCredentials"
+                          checked={credentials.generateCredentials}
+                          onCheckedChange={(checked) => {
+                            setCredentials(prev => ({ ...prev, generateCredentials: !!checked }));
+                            if (checked) {
+                              generateCredentials();
+                            }
+                          }}
+                        />
+                        <Label htmlFor="generateCredentials" className="flex items-center gap-2">
+                          <Shield className="h-4 w-4" />
+                          Criar login e senha para o fornecedor
+                        </Label>
+                      </div>
 
-                    {credentials.generateCredentials && (
-                      <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="username">Usuário</Label>
-                            <Input
-                              id="username"
-                              value={credentials.username}
-                              onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
-                              placeholder="Nome de usuário"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="password">Senha Temporária</Label>
-                            <div className="flex gap-2">
+                      {credentials.generateCredentials && (
+                        <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="username">Usuário</Label>
                               <Input
-                                id="password"
-                                value={credentials.password}
-                                onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
-                                placeholder="Senha"
-                                type="text"
+                                id="username"
+                                value={credentials.username}
+                                onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
+                                placeholder="Nome de usuário"
                               />
-                              <Button type="button" variant="outline" onClick={generateCredentials}>
-                                Gerar
-                              </Button>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="password">Senha Temporária</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  id="password"
+                                  value={credentials.password}
+                                  onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                                  placeholder="Senha"
+                                  type="text"
+                                />
+                                <Button type="button" variant="outline" onClick={generateCredentials}>
+                                  Gerar
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="forcePasswordChange"
+                              checked={credentials.forcePasswordChange}
+                              onCheckedChange={(checked) => setCredentials(prev => ({ ...prev, forcePasswordChange: !!checked }))}
+                            />
+                            <Label htmlFor="forcePasswordChange" className="text-sm">
+                              Forçar mudança de senha no primeiro login
+                            </Label>
+                          </div>
+
+                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                            <div className="flex items-start gap-2">
+                              <MessageCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                              <div>
+                                <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                                  Envio Automático via WhatsApp
+                                </p>
+                                <p className="text-xs text-green-600 dark:text-green-300 mt-1">
+                                  As credenciais serão enviadas automaticamente para o WhatsApp do fornecedor após o cadastro.
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
+                      )}
 
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="forcePasswordChange"
-                            checked={credentials.forcePasswordChange}
-                            onCheckedChange={(checked) => setCredentials(prev => ({ ...prev, forcePasswordChange: !!checked }))}
-                          />
-                          <Label htmlFor="forcePasswordChange" className="text-sm">
-                            Forçar mudança de senha no primeiro login
-                          </Label>
+                      {!credentials.generateCredentials && (
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+                          <p className="text-sm text-muted-foreground">
+                            O fornecedor receberá apenas as cotações via WhatsApp, sem acesso ao sistema.
+                          </p>
                         </div>
-
-                        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <MessageCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                                Envio Automático via WhatsApp
-                              </p>
-                              <p className="text-xs text-green-600 dark:text-green-300 mt-1">
-                                As credenciais serão enviadas automaticamente para o WhatsApp do fornecedor após o cadastro.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {!credentials.generateCredentials && (
-                      <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
-                        <p className="text-sm text-muted-foreground">
-                          O fornecedor receberá apenas as cotações via WhatsApp, sem acesso ao sistema.
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
             </div>
 
             {/* Actions fixas no bottom */}
@@ -740,7 +796,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier }: CreateS
                     className="btn-corporate"
                     disabled={isLoading || !isFormValid}
                   >
-                    {isLoading ? "Cadastrando..." : "Cadastrar Fornecedor"}
+                    {isLoading ? (editingSupplier ? "Atualizando..." : "Cadastrando...") : (editingSupplier ? "Atualizar Fornecedor" : "Cadastrar Fornecedor")}
                   </Button>
                 </div>
               </div>
