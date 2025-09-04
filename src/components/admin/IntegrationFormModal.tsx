@@ -39,8 +39,8 @@ const integrationTypes = [
     icon: MessageSquare,
     fields: [
       { key: 'instance', label: 'Instância', type: 'text', required: true },
-      { key: 'token', label: 'Token da Instância', type: 'password', required: false },
-      { key: 'api_url', label: 'API URL (opcional, usa segredo se vazio)', type: 'url', required: false }
+      { key: 'token', label: 'Token da Instância', type: 'password', required: false, help: 'Deixe vazio para usar token global' },
+      { key: 'api_url', label: 'API URL', type: 'url', required: false, help: 'Deixe vazio para usar URL global' }
     ]
   },
   {
@@ -49,7 +49,7 @@ const integrationTypes = [
     description: 'Envio de e-mails transacionais via SendGrid',
     icon: Mail,
     fields: [
-      { key: 'api_key', label: 'API Key', type: 'password', required: true },
+      { key: 'api_key', label: 'API Key', type: 'password', required: false, help: 'Deixe vazio para usar chave global' },
       { key: 'from_email', label: 'E-mail Remetente', type: 'email', required: true },
       { key: 'from_name', label: 'Nome Remetente', type: 'text', required: true },
       { key: 'reply_to', label: 'E-mail para Respostas', type: 'email', required: false }
@@ -75,8 +75,8 @@ const integrationTypes = [
     description: 'Processamento de pagamentos via Stripe',
     icon: CreditCard,
     fields: [
-      { key: 'public_key', label: 'Chave Pública', type: 'text', required: true },
-      { key: 'secret_key', label: 'Chave Secreta', type: 'password', required: true },
+      { key: 'public_key', label: 'Chave Pública', type: 'text', required: false, help: 'Deixe vazio para usar chave global' },
+      { key: 'secret_key', label: 'Chave Secreta', type: 'password', required: false, help: 'Deixe vazio para usar chave global' },
       { key: 'webhook_secret', label: 'Webhook Secret', type: 'password', required: false },
       { key: 'currency', label: 'Moeda', type: 'select', options: ['BRL', 'USD', 'EUR'], required: true }
     ]
@@ -88,6 +88,7 @@ const integrationTypes = [
     icon: Zap,
     fields: [
       { key: 'webhook_url', label: 'URL do Webhook', type: 'url', required: true },
+      { key: 'api_key', label: 'API Key (opcional)', type: 'password', required: false },
       { key: 'trigger_events', label: 'Eventos que Disparam', type: 'textarea', required: false, placeholder: 'quote_created, quote_approved, payment_received' }
     ]
   },
@@ -99,6 +100,7 @@ const integrationTypes = [
     fields: [
       { key: 'webhook_url', label: 'URL do Webhook N8N', type: 'url', required: true },
       { key: 'auth_header', label: 'Header de Autenticação', type: 'text', required: false },
+      { key: 'api_key', label: 'API Key (opcional)', type: 'password', required: false },
       { key: 'headers', label: 'Headers Personalizados (JSON)', type: 'textarea', required: false, placeholder: '{"X-Webhook-Secret":"..."}' },
       { key: 'trigger_events', label: 'Eventos que Disparam', type: 'textarea', required: false }
     ]
@@ -111,6 +113,7 @@ const integrationTypes = [
     fields: [
       { key: 'webhook_url', label: 'URL do Webhook', type: 'url', required: true },
       { key: 'method', label: 'Método HTTP', type: 'select', options: ['POST', 'PUT', 'PATCH'], required: true },
+      { key: 'api_key', label: 'API Key (opcional)', type: 'password', required: false },
       { key: 'headers', label: 'Headers Personalizados', type: 'textarea', required: false, placeholder: '{"Content-Type": "application/json"}' },
       { key: 'auth_type', label: 'Tipo de Autenticação', type: 'select', options: ['none', 'bearer', 'basic', 'api_key'], required: true }
     ]
@@ -310,6 +313,9 @@ export function IntegrationFormModal({ open, onOpenChange, onSubmit, editingInte
                       {field.required && <span className="text-red-500 ml-1">*</span>}
                     </Label>
                     {renderField(field)}
+                    {field.help && (
+                      <p className="text-xs text-muted-foreground">{field.help}</p>
+                    )}
                   </div>
                 ))}
               </div>
