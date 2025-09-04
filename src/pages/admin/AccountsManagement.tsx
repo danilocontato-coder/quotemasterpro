@@ -1,13 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Search, 
-  Filter, 
   Plus, 
   Users, 
   Building2, 
@@ -20,7 +18,8 @@ import {
   UserCheck,
   UserX,
   Crown,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,74 +35,47 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { usePagination } from '@/hooks/usePagination';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
-
-interface Account {
-  id: string;
-  name: string;
-  email: string;
-  type: 'client' | 'supplier' | 'support' | 'admin';
-  status: 'active' | 'inactive' | 'pending';
-  plan: string;
-  createdAt: string;
-  lastAccess: string;
-  revenue?: number;
-  quotesCount?: number;
-  rating?: number;
-}
+import { useSupabaseAccounts } from '@/hooks/useSupabaseAccounts';
 
 export const AccountsManagement = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const {
+    accounts,
+    loading,
+    searchTerm,
+    setSearchTerm,
+    selectedType,
+    setSelectedType,
+    selectedStatus,
+    setSelectedStatus,
+    stats,
+    toggleAccountStatus,
+    deleteAccount
+  } = useSupabaseAccounts();
 
-  const mockAccounts: Account[] = [
-    {
-      id: '1',
-      name: 'Condomínio Vista Verde',
-      email: 'admin@vistaverde.com.br',
-      type: 'client',
-      status: 'active',
-      plan: 'Premium',
-      createdAt: '2024-01-15',
-      lastAccess: 'Hoje às 14:30',
-      revenue: 15750.00,
-      quotesCount: 45
-    },
-    {
-      id: '2',
-      name: 'TechFlow Solutions',
-      email: 'contato@techflow.com',
-      type: 'supplier',
-      status: 'active',
-      plan: 'Pro',
-      createdAt: '2024-02-10',
-      lastAccess: '2 horas atrás',
-      quotesCount: 128,
-      rating: 4.8
-    },
-    {
-      id: '3',
-      name: 'Maria Silva',
-      email: 'maria@suporte.com',
-      type: 'support',
-      status: 'active',
-      plan: 'Standard',
-      createdAt: '2024-01-20',
-      lastAccess: '1 hora atrás'
-    },
-    {
-      id: '4',
-      name: 'João Santos',
-      email: 'joao@quotemaster.com',
-      type: 'admin',
-      status: 'active',
-      plan: 'SuperAdmin',
-      createdAt: '2024-01-01',
-      lastAccess: '30 min atrás'
-    }
-  ];
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleToggleStatus = async (accountId: string, currentStatus: string) => {
+    await toggleAccountStatus(accountId, currentStatus);
+  };
+
+  const handleDeleteAccount = async (accountId: string) => {
+    setDeletingId(accountId);
+    await deleteAccount(accountId);
+    setDeletingId(null);
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -134,17 +106,7 @@ export const AccountsManagement = () => {
     }
   };
 
-  const filteredAccounts = useMemo(() => {
-    return mockAccounts.filter(account => {
-      const matchesSearch = !searchTerm || 
-        account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        account.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = selectedType === 'all' || account.type === selectedType;
-      const matchesStatus = selectedStatus === 'all' || account.status === selectedStatus;
-      
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [mockAccounts, searchTerm, selectedType, selectedStatus]);
+  const filteredAccounts = accounts;
 
   // Pagination
   const pagination = usePagination(filteredAccounts, {
@@ -152,15 +114,24 @@ export const AccountsManagement = () => {
     pageSizeOptions: [10, 15, 25, 50]
   });
 
-  const stats = {
-    total: mockAccounts.length,
-    clients: mockAccounts.filter(a => a.type === 'client').length,
-    suppliers: mockAccounts.filter(a => a.type === 'supplier').length,
-    support: mockAccounts.filter(a => a.type === 'support').length,
-    admins: mockAccounts.filter(a => a.type === 'admin').length,
-    active: mockAccounts.filter(a => a.status === 'active').length,
-    pending: mockAccounts.filter(a => a.status === 'pending').length
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b bg-card px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Contas</h1>
+              <p className="text-muted-foreground">Controle todas as contas da plataforma</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Carregando contas...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -289,11 +260,10 @@ export const AccountsManagement = () => {
           <CardHeader>
             <CardTitle>Lista de Contas ({filteredAccounts.length})</CardTitle>
             <CardDescription>
-              {filteredAccounts.length === mockAccounts.length 
+              {filteredAccounts.length === accounts.length 
                 ? 'Gerenciar todas as contas da plataforma'
-                : `${filteredAccounts.length} de ${mockAccounts.length} contas`
-              }
-            </CardDescription>
+                : `${filteredAccounts.length} de ${accounts.length} contas`
+              }</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -339,7 +309,7 @@ export const AccountsManagement = () => {
                       <Badge variant="outline">{account.plan}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {account.lastAccess}
+                      {account.lastAccess || 'Nunca'}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
@@ -377,14 +347,43 @@ export const AccountsManagement = () => {
                             <Edit className="h-4 w-4 mr-2" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleStatus(account.id, account.status)}>
                             <UserCheck className="h-4 w-4 mr-2" />
                             {account.status === 'active' ? 'Desativar' : 'Ativar'}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem 
+                                className="text-red-600"
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir a conta "{account.name}"? 
+                                  Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteAccount(account.id)}
+                                  disabled={deletingId === account.id}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  {deletingId === account.id && (
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  )}
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
