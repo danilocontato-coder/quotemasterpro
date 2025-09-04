@@ -180,7 +180,7 @@ export const useSupabaseSupplierQuotes = () => {
         .in('status', ['sent', 'receiving'])
         .order('created_at', { ascending: false });
 
-      // 2. Local quotes specifically assigned to this supplier
+      // 2. Local quotes available to this supplier (sent but without specific assignment)
       const { data: localQuotes, error: localQuotesError } = await supabase
         .from('quotes')
         .select(`
@@ -188,9 +188,16 @@ export const useSupabaseSupplierQuotes = () => {
           quote_items (*)
         `)
         .eq('supplier_scope', 'local')
-        .eq('supplier_id', user.supplierId)
+        .is('supplier_id', null)
         .in('status', ['sent', 'receiving'])
         .order('created_at', { ascending: false });
+
+      if (globalQuotesError) {
+        console.error('❌ Error fetching global quotes:', globalQuotesError);
+        // Don't throw here - this is optional data
+      } else {
+        console.log('📋 Global quotes found:', globalQuotes?.length || 0);
+      }
 
       if (localQuotesError) {
         console.error('❌ Error fetching local quotes:', localQuotesError);
