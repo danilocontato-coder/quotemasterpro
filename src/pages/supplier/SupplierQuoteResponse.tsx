@@ -83,21 +83,30 @@ const SupplierQuoteResponse = () => {
       const { data: quote, error } = await supabase
         .from('quotes')
         .select(`
-          *,
-          quote_items (*)
+          *
         `)
         .eq('id', quoteId)
         .single();
 
       if (error) throw error;
 
+      // Buscar itens separadamente para evitar recursão RLS
+      const { data: items, error: itemsError } = await supabase
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quoteId);
+
+      if (itemsError) {
+        console.error('Error fetching quote items:', itemsError);
+      }
+
       setQuote({
         ...quote,
-        items: quote.quote_items || []
+        items: items || []
       });
       
       // Inicializar itens da proposta baseado nos itens da cotação
-      const initialItems = quote.quote_items.map((item: any) => ({
+      const initialItems = (items || []).map((item: any) => ({
         description: item.product_name,
         brand: '',
         quantity: item.quantity,

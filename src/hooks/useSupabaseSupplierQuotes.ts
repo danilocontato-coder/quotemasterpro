@@ -151,10 +151,7 @@ export const useSupabaseSupplierQuotes = () => {
       if (quotesWithResponsesIds.length > 0) {
         const { data: quotesWithResponses, error: quotesWithResponsesError } = await supabase
           .from('quotes')
-          .select(`
-            *,
-            quote_items (*)
-          `)
+          .select('*')
           .in('id', quotesWithResponsesIds)
           .order('created_at', { ascending: false });
 
@@ -172,10 +169,7 @@ export const useSupabaseSupplierQuotes = () => {
       // 1. Global quotes available to all suppliers
       const { data: globalQuotes, error: globalQuotesError } = await supabase
         .from('quotes')
-        .select(`
-          *,
-          quote_items (*)
-        `)
+        .select('*')
         .eq('supplier_scope', 'global')
         .in('status', ['sent', 'receiving'])
         .order('created_at', { ascending: false });
@@ -183,10 +177,7 @@ export const useSupabaseSupplierQuotes = () => {
       // 2. Local quotes available to this supplier (sent but without specific assignment)
       const { data: localQuotes, error: localQuotesError } = await supabase
         .from('quotes')
-        .select(`
-          *,
-          quote_items (*)
-        `)
+        .select('*')
         .eq('supplier_scope', 'local')
         .is('supplier_id', null)
         .in('status', ['sent', 'receiving'])
@@ -221,10 +212,7 @@ export const useSupabaseSupplierQuotes = () => {
       if (assignedIds.length > 0) {
         const { data: assignedQuotesData, error: assignedQuotesError } = await supabase
           .from('quotes')
-          .select(`
-            *,
-            quote_items (*)
-          `)
+          .select('*')
           .in('id', assignedIds)
           .order('created_at', { ascending: false });
 
@@ -245,6 +233,28 @@ export const useSupabaseSupplierQuotes = () => {
         return acc;
       }, [] as any[]);
 
+      // Fetch items separately to avoid RLS recursion via embedded selects
+      let itemsByQuoteId: Record<string, any[]> = {};
+      try {
+        const quoteIds = uniqueQuotes.map((q: any) => q.id);
+        if (quoteIds.length > 0) {
+          const { data: itemsData, error: itemsError } = await supabase
+            .from('quote_items')
+            .select('*')
+            .in('quote_id', quoteIds);
+          if (!itemsError && itemsData) {
+            itemsByQuoteId = itemsData.reduce((acc: Record<string, any[]>, item: any) => {
+              (acc[item.quote_id] ||= []).push(item);
+              return acc;
+            }, {});
+          } else if (itemsError) {
+            console.error('❌ Error fetching quote items:', itemsError);
+          }
+        }
+      } catch (itemsErr) {
+        console.error('❌ Unexpected error fetching quote items:', itemsErr);
+      }
+
       console.log('📋 Total unique quotes found:', uniqueQuotes.length);
 
       // Transform quotes to supplier format
@@ -262,7 +272,7 @@ export const useSupabaseSupplierQuotes = () => {
           estimatedValue: quote.total > 0 ? quote.total : undefined,
           sentAt: existingResponse?.created_at,
           createdAt: quote.created_at,
-          items: (quote.quote_items || []).map((item: any) => ({
+          items: (itemsByQuoteId[quote.id] || []).map((item: any) => ({
             id: item.id,
             productName: item.product_name,
             description: item.product_name,
