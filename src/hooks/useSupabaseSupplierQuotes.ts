@@ -128,33 +128,48 @@ export const useSupabaseSupplierQuotes = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('Fetching quotes for supplier:', user.supplierId);
+      console.log('📋 Fetching quotes for supplier:', user.supplierId);
 
-      // Fetch quotes that were sent to suppliers (status 'sent' or more advanced)
-      const { data: quotesData, error: quotesError } = await supabase
-        .from('quotes')
-        .select(`
-          *,
-          quote_items (*),
-          quote_responses!inner (
-            id,
-            supplier_id,
-            supplier_name,
-            total_amount,
-            delivery_time,
-            notes,
-            status,
-            created_at
-          )
-        `)
-        .or(`supplier_id.eq.${user.supplierId},quote_responses.supplier_id.eq.${user.supplierId}`)
-        .in('status', ['sent', 'receiving', 'under_review', 'approved', 'rejected', 'expired'])
-        .order('created_at', { ascending: false });
+      // First, get all quote responses for this supplier
+      const { data: supplierResponses, error: responsesError } = await supabase
+        .from('quote_responses')
+        .select('*')
+        .eq('supplier_id', user.supplierId);
 
-      if (quotesError) throw quotesError;
+      if (responsesError) {
+        console.error('❌ Error fetching supplier responses:', responsesError);
+        throw responsesError;
+      }
 
-      // Also fetch quotes without responses but that might have been sent to this supplier
-      const { data: quotesWithoutResponses, error: quotesWithoutResponsesError } = await supabase
+      console.log('📋 Supplier responses found:', supplierResponses?.length || 0);
+
+      // Get quote IDs from responses
+      const quotesWithResponsesIds = supplierResponses?.map(r => r.quote_id) || [];
+
+      // Fetch quotes that have responses from this supplier
+      let quotesData: any[] = [];
+      if (quotesWithResponsesIds.length > 0) {
+        const { data: quotesWithResponses, error: quotesWithResponsesError } = await supabase
+          .from('quotes')
+          .select(`
+            *,
+            quote_items (*)
+          `)
+          .in('id', quotesWithResponsesIds)
+          .order('created_at', { ascending: false });
+
+        if (quotesWithResponsesError) {
+          console.error('❌ Error fetching quotes with responses:', quotesWithResponsesError);
+          throw quotesWithResponsesError;
+        }
+
+        quotesData = quotesWithResponses || [];
+      }
+
+      console.log('📋 Quotes with responses found:', quotesData.length);
+
+      // Also fetch quotes that are globally available for suppliers
+      const { data: globalQuotes, error: globalQuotesError } = await supabase
         .from('quotes')
         .select(`
           *,
@@ -164,10 +179,15 @@ export const useSupabaseSupplierQuotes = () => {
         .in('status', ['sent', 'receiving'])
         .order('created_at', { ascending: false });
 
-      if (quotesWithoutResponsesError) throw quotesWithoutResponsesError;
+      if (globalQuotesError) {
+        console.error('❌ Error fetching global quotes:', globalQuotesError);
+        // Don't throw here - this is optional data
+      } else {
+        console.log('📋 Global quotes found:', globalQuotes?.length || 0);
+      }
 
       // Combine and deduplicate quotes
-      const allQuotes = [...(quotesData || []), ...(quotesWithoutResponses || [])];
+      const allQuotes = [...quotesData, ...(globalQuotes || [])];
       const uniqueQuotes = allQuotes.reduce((acc, quote) => {
         if (!acc.find(q => q.id === quote.id)) {
           acc.push(quote);
@@ -175,9 +195,11 @@ export const useSupabaseSupplierQuotes = () => {
         return acc;
       }, [] as any[]);
 
+      console.log('📋 Total unique quotes found:', uniqueQuotes.length);
+
       // Transform quotes to supplier format
       const transformedQuotes: SupplierQuote[] = uniqueQuotes.map(quote => {
-        const existingResponse = quote.quote_responses?.find((r: any) => r.supplier_id === user.supplierId);
+        const existingResponse = supplierResponses?.find(r => r.quote_id === quote.id);
         
         return {
           id: quote.id,
@@ -216,9 +238,17 @@ export const useSupabaseSupplierQuotes = () => {
         };
       });
 
+      console.log('📋 Transformed quotes:', transformedQuotes.length);
       setSupplierQuotes(transformedQuotes);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar cotações';
+      console.error('❌ Complete error in fetchSupplierQuotes:', err);
+      console.error('❌ Error details:', {
+        message: errorMessage,
+        code: (err as any)?.code,
+        details: (err as any)?.details,
+        hint: (err as any)?.hint
+      });
       setError(errorMessage);
       toast({
         title: 'Erro',
