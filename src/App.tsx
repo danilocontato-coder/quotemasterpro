@@ -146,7 +146,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Dashboard />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Dashboard />
+                    </Suspense>
+                  } />
                   <Route path="quotes" element={<Navigate to="/quotes" replace />} />
                   <Route path="suppliers" element={<Navigate to="/suppliers" replace />} />
                   <Route path="products" element={<Navigate to="/products" replace />} />
@@ -168,7 +172,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Quotes />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Quotes />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/suppliers" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -177,7 +185,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Suppliers />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Suppliers />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/products" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -186,7 +198,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Products />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Products />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/approvals" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -195,7 +211,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Approvals />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Approvals />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/approval-levels" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -204,7 +224,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<ApprovalLevels />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <ApprovalLevels />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/payments" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -213,7 +237,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Payments />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Payments />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/users" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager']}>
@@ -222,7 +250,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Users />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Users />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/communication" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -231,7 +263,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Communication />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Communication />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/notifications" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -240,7 +276,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Notifications />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Notifications />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/settings" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -249,7 +289,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Settings />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Settings />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/permissions" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager']}>
@@ -258,7 +302,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Permissions />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Permissions />
+                    </Suspense>
+                  } />
                 </Route>
                 <Route path="/reports" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager']}>
@@ -267,7 +315,11 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Reports />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <Reports />
+                    </Suspense>
+                  } />
                 </Route>
 
                 {/* Admin routes - SuperAdmin Panel com lazy loading */}
@@ -334,11 +386,31 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<SupplierDashboard />} />
-                  <Route path="quotes" element={<SupplierQuotes />} />
-                  <Route path="products" element={<SupplierProducts />} />
-                  <Route path="history" element={<SupplierHistory />} />
-                  <Route path="financial" element={<SupplierFinancial />} />
+                  <Route index element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SupplierDashboard />
+                    </Suspense>
+                  } />
+                  <Route path="quotes" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SupplierQuotes />
+                    </Suspense>
+                  } />
+                  <Route path="products" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SupplierProducts />
+                    </Suspense>
+                  } />
+                  <Route path="history" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SupplierHistory />
+                    </Suspense>
+                  } />
+                  <Route path="financial" element={
+                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                      <SupplierFinancial />
+                    </Suspense>
+                  } />
                 </Route>
 
                 {/* Support routes */}
