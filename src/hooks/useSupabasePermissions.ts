@@ -36,10 +36,19 @@ export function useSupabasePermissions() {
   const fetchPermissionProfiles = async () => {
     try {
       setLoading(true);
+      
+      // Get current user's client_id to filter profiles
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
       const { data, error } = await supabase
         .from('permission_profiles')
         .select('*')
         .eq('active', true)
+        .eq('client_id', profile?.client_id)
         .order('name');
 
       if (error) throw error;
