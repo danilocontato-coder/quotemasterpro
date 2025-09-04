@@ -53,6 +53,9 @@ import SupplierQuotes from '@/pages/supplier/SupplierQuotes';
 import SupplierProducts from '@/pages/supplier/SupplierProducts';
 import SupplierFinancial from '@/pages/supplier/SupplierFinancial';
 import SupplierHistory from '@/pages/supplier/SupplierHistory';
+import SupplierAuth from '@/pages/supplier/SupplierAuth';
+import SupplierQuoteResponse from '@/pages/supplier/SupplierQuoteResponse';
+import SupplierResponseSuccess from '@/pages/supplier/SupplierResponseSuccess';
 
 const queryClient = new QueryClient();
 
@@ -265,6 +268,11 @@ function App() {
                     <SupportDashboard />
                   </ProtectedRoute>
                 } />
+
+                {/* Supplier Public Routes */}
+                <Route path="/supplier/auth/:quoteId/:token" element={<SupplierAuth />} />
+                <Route path="/supplier/quote/:quoteId/response/:token" element={<SupplierQuoteResponse />} />
+                <Route path="/supplier/response-success" element={<SupplierResponseSuccess />} />
 
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />

@@ -179,6 +179,26 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         // Atualizar status da cotação para 'sent'
         await markQuoteAsSent(quote.id, selectedSuppliers.length);
         
+        // Gerar e logar links únicos para fornecedores (para teste/desenvolvimento)
+        const quoteToken = crypto.randomUUID();
+        const supplierLinks = selectedSuppliers.map(supplierId => {
+          const supplier = activeSuppliers.find(s => s.id === supplierId);
+          const link = `${window.location.origin}/supplier/auth/${quote?.id}/${quoteToken}`;
+          
+          return {
+            supplierId,
+            supplierName: supplier?.name || 'Fornecedor',
+            supplierEmail: supplier?.email || '',
+            link
+          };
+        });
+
+        // Log dos links gerados (em produção, estes seriam enviados por email/WhatsApp)
+        console.log('Links únicos gerados para fornecedores:');
+        supplierLinks.forEach(({ supplierName, link }) => {
+          console.log(`${supplierName}: ${link}`);
+        });
+        
         setOpen(false);
       } else {
         const evo = data?.resolved_evolution;
