@@ -30,6 +30,7 @@ export interface UserGroup {
   created_at: string;
   updated_at: string;
   is_system_group: boolean;
+  permission_profile_id?: string;
 }
 
 export function useSupabaseUsers() {
