@@ -143,6 +143,13 @@ Deno.serve(async (req) => {
         throw new Error('Campos obrigatórios ausentes: to, user_email, temp_password')
       }
 
+      // Normalize number to digits only and ensure country code 55
+      const normalize = (input: string) => (input || '').replace(/\D/g, '')
+      let number = normalize(to)
+      if (number && !number.startsWith('55')) {
+        number = `55${number}`
+      }
+
       const message =
         `👋 Olá${user_name ? ' ' + user_name : ''}!\n\n` +
         `Seu acesso ao *QuoteMaster Pro* foi criado. Seguem suas credenciais:\n\n` +
@@ -152,32 +159,53 @@ Deno.serve(async (req) => {
         `Por segurança, você deverá alterar a senha no primeiro login.\n\n` +
         `Se não reconhece esta mensagem, ignore este aviso.`
 
-      const whatsappResponse = await fetch(`${evolutionApiUrl}/message/sendText`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': evolutionApiToken
-        },
-        body: JSON.stringify({
-          number: to,
-          text: message
-        })
-      })
+      const base = evolutionApiUrl.replace(/\/+$/, '')
+      const candidates = [
+        `${base}/message/sendText`,
+        `${base}/messages/sendText`,
+        `${base}/message/send`,
+      ]
 
-      if (whatsappResponse.ok) {
-        const whatsappData = await whatsappResponse.json()
-        result = {
-          success: true,
-          messageId: whatsappData.messageId || `whatsapp_${Date.now()}`,
-          provider: 'evolution-api'
+      let lastErrorText = ''
+      for (const endpoint of candidates) {
+        try {
+          const whatsappResponse = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': evolutionApiToken,
+            },
+            body: JSON.stringify({ number, text: message })
+          })
+
+          if (whatsappResponse.ok) {
+            const whatsappData = await whatsappResponse.json().catch(() => ({}))
+            result = {
+              success: true,
+              messageId: whatsappData.messageId || `whatsapp_${Date.now()}`,
+              provider: 'evolution-api',
+              endpoint,
+              number
+            }
+            console.log(`[WHATSAPP CREDENTIALS] Enviado com sucesso para ${number} via ${endpoint}`)
+            break
+          } else {
+            const txt = await whatsappResponse.text()
+            lastErrorText = `HTTP ${whatsappResponse.status} ${whatsappResponse.statusText} - ${txt}`
+            console.warn(`[WHATSAPP CREDENTIALS] Falha em ${endpoint}:`, lastErrorText)
+          }
+        } catch (err) {
+          lastErrorText = (err as Error).message
+          console.warn(`[WHATSAPP CREDENTIALS] Erro de rede em ${endpoint}:`, lastErrorText)
         }
-        console.log(`[WHATSAPP CREDENTIALS] Enviado com sucesso para ${to}`)
-      } else {
-        const error = await whatsappResponse.text()
-        console.error(`[WHATSAPP CREDENTIALS] Erro ao enviar para ${to}:`, error)
+      }
+
+      if (!result.success) {
         result = {
           success: false,
-          error: `Falha na Evolution API: ${error}`
+          error: `Falha na Evolution API. Verifique EVOLUTION_API_URL/TOKEN e endpoint. Último erro: ${lastErrorText}`,
+          tried_endpoints: candidates,
+          number
         }
       }
 
@@ -189,10 +217,11 @@ Deno.serve(async (req) => {
           entity_type: 'users',
           entity_id: user_id || user_email || 'unknown',
           details: {
-            to,
+            to: number,
             success: result.success,
-            messageId: result.messageId,
-            provider: result.provider
+            messageId: (result as any).messageId,
+            provider: (result as any).provider,
+            endpoints_tried: (result as any).tried_endpoints,
           }
         })
       } catch (logErr) {
