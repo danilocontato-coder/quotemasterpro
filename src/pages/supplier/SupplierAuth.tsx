@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,18 @@ const SupplierAuth = () => {
     confirmPassword: ''
   });
 
+  // Validar token e guardar contexto do link
+  useEffect(() => {
+    if (!quoteId || !token) {
+      toast({ title: 'Link inválido', description: 'Parâmetros ausentes no link.', variant: 'destructive' });
+      navigate('/');
+      return;
+    }
+    try {
+      localStorage.setItem('supplier_quote_context', JSON.stringify({ quoteId, token, ts: Date.now() }));
+    } catch {}
+  }, [quoteId, token]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -55,22 +67,22 @@ const SupplierAuth = () => {
 
       if (error) throw error;
 
-      // Verificar se é fornecedor
+      // Tentar identificar perfil, mas não bloquear o fluxo por papel
       const { data: profile } = await supabase
         .from('profiles')
         .select('role, supplier_id')
         .eq('id', data.user.id)
-        .single();
+        .maybeSingle();
 
-      if (profile?.role !== 'supplier') {
+      if (!profile || profile.role !== 'supplier') {
         toast({
-          title: "Erro",
-          description: "Esta conta não é de fornecedor",
-          variant: "destructive"
+          title: 'Acesso via link',
+          description: 'Conta não marcada como fornecedor. Prosseguiremos pelo link recebido.',
         });
-        await supabase.auth.signOut();
-        return;
       }
+
+      try { localStorage.setItem('supplier_quote_context', JSON.stringify({ quoteId, token, email: loginData.email, ts: Date.now() })); } catch {}
+
 
       toast({
         title: "Sucesso",
@@ -141,40 +153,42 @@ const SupplierAuth = () => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Criar fornecedor
-        const { data: supplier, error: supplierError } = await supabase
-          .from('suppliers')
-          .insert({
-            name: registerData.name,
-            cnpj: registerData.cnpj,
-            email: registerData.email,
-            phone: registerData.phone,
-            city: registerData.city,
-            state: registerData.state,
-            status: 'active'
-          })
-          .select('id')
-          .single();
+        // Guardar contexto do link para uso após confirmação de e-mail
+        try { localStorage.setItem('supplier_quote_context', JSON.stringify({ quoteId, token, email: registerData.email, ts: Date.now() })); } catch {}
 
-        if (supplierError) throw supplierError;
+        if (authData.session) {
+          // Usuário já autenticado (email auto-confirmado). Criar fornecedor e vincular perfil.
+          const { data: supplier, error: supplierError } = await supabase
+            .from('suppliers')
+            .insert({
+              name: registerData.name,
+              cnpj: registerData.cnpj,
+              email: registerData.email,
+              phone: registerData.phone,
+              city: registerData.city,
+              state: registerData.state,
+              status: 'active',
+              type: 'local'
+            })
+            .select('id')
+            .single();
+          if (supplierError) throw supplierError;
 
-        // Atualizar perfil do usuário
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            supplier_id: supplier.id
-          })
-          .eq('id', authData.user.id);
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ supplier_id: supplier.id, role: 'supplier' })
+            .eq('id', authData.user.id);
+          if (profileError) throw profileError;
 
-        if (profileError) throw profileError;
-
-        toast({
-          title: "Sucesso",
-          description: "Cadastro realizado com sucesso! Verifique seu email.",
-        });
-
-        // Redirecionar para resposta da cotação
-        navigate(`/supplier/quote/${quoteId}/response/${token}`);
+          toast({ title: 'Sucesso', description: 'Cadastro realizado e sessão criada.' });
+          navigate(`/supplier/quote/${quoteId}/response/${token}`);
+        } else {
+          // Sem sessão (confirmação de e-mail exigida): orientar próximo passo
+          toast({
+            title: 'Verifique seu e-mail',
+            description: 'Enviamos um link de confirmação. Após confirmar, volte a este link para responder a cotação.',
+          });
+        }
       }
       
     } catch (error: any) {
