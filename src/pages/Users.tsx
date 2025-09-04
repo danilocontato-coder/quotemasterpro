@@ -22,8 +22,9 @@ import {
   Plus, 
   Search, 
   MoreHorizontal, 
-  Edit, 
-  Trash2, 
+  Edit,
+  Trash2,
+  MessageSquare,
   UserPlus,
   Shield,
   Mail,
@@ -36,6 +37,7 @@ import {
 import { CreateUserModal } from "@/components/users/CreateUserModalSupabase";
 import { EditUserModal } from "@/components/users/EditUserModalSupabase";
 import { DeleteUserModal } from "@/components/users/DeleteUserModal";
+import { ResendCredentialsModal } from "@/components/users/ResendCredentialsModal";
 import { useSupabaseUsers } from "@/hooks/useSupabaseUsers";
 import { GroupManager } from "@/components/users/GroupManagerSupabase";
 import { usePagination } from "@/hooks/usePagination";
@@ -48,6 +50,7 @@ export default function Users() {
   const [groupManagerOpen, setGroupManagerOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [resendModalOpen, setResendModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Filtered users based on search
@@ -98,6 +101,11 @@ export default function Users() {
   const handleDelete = (user: any) => {
     setSelectedUser(user);
     setDeleteModalOpen(true);
+  };
+
+  const handleResendCredentials = (user: any) => {
+    setSelectedUser(user);
+    setResendModalOpen(true);
   };
 
   return (
@@ -305,6 +313,10 @@ export default function Users() {
                               <Edit className="mr-2 h-4 w-4" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleResendCredentials(user)}>
+                              <MessageSquare className="mr-2 h-4 w-4" />
+                              Reenviar Credenciais
+                            </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => handleDelete(user)}
                               className="text-destructive"
@@ -366,6 +378,11 @@ export default function Users() {
           <DeleteUserModal 
             open={deleteModalOpen} 
             onClose={() => setDeleteModalOpen(false)}
+            user={selectedUser}
+          />
+          <ResendCredentialsModal 
+            open={resendModalOpen} 
+            onClose={() => setResendModalOpen(false)}
             user={selectedUser}
           />
         </>
