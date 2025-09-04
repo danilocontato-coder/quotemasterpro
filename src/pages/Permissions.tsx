@@ -31,7 +31,7 @@ import { toast } from "sonner";
 export function Permissions() {
   const { groups } = useSupabaseUsers();
   const { permissionProfiles } = useSupabasePermissions();
-  const { updateGroupPermissions } = useGroupPermissionsSync();
+  const { updateGroupPermissions, createPermissionProfileForGroup } = useGroupPermissionsSync();
   const [activeGroupId, setActiveGroupId] = useState("");
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
@@ -304,13 +304,22 @@ export function Permissions() {
       {!activeProfile && activeGroup && (
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                Este grupo ainda não possui um perfil de permissão vinculado.
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                As permissões serão criadas automaticamente em alguns instantes.
-              </p>
+            <div className="text-center py-8 space-y-4">
+              <div>
+                <p className="text-muted-foreground">
+                  O grupo "{activeGroup.name}" ainda não possui permissões configuradas.
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Clique no botão abaixo para criar as permissões padrão para este grupo.
+                </p>
+              </div>
+              <Button 
+                onClick={() => createPermissionProfileForGroup(activeGroup.id)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Criar Permissões para {activeGroup.name}
+              </Button>
             </div>
           </CardContent>
         </Card>

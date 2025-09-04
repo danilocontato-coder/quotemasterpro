@@ -76,90 +76,83 @@ export function useGroupPermissionsSync() {
     'proposals.view': 'quotes'
   }), []);
 
-  // Garantir que todos os grupos tenham perfis de permissão (sincronização automática)
-  useEffect(() => {
-    const ensurePermissionProfiles = async () => {
-      if (!client?.id || groups.length === 0) return;
-
-      for (const group of groups) {
-        try {
-          // Pular se já tem perfil vinculado
-          if (group.permission_profile_id) {
-            // Verificar se o perfil existe mesmo
-            const profileExists = permissionProfiles.find(p => p.id === group.permission_profile_id);
-            if (profileExists) continue;
-          }
-
-          // Converter permissões do grupo para formato do perfil
-          const permissions: Record<string, any> = {};
-          
-          // Permissões padrão baseadas no nome do grupo
-          if (group.name === 'Administradores' || group.name === 'admin') {
-            // Admin tem todas as permissões
-            ['quotes', 'products', 'suppliers', 'payments', 'communication', 'users', 'settings', 'reports'].forEach(module => {
-              permissions[module] = { view: true, create: true, edit: true, delete: true };
-            });
-          } else if (group.name === 'Gestores' || group.name === 'manager') {
-            // Gestores têm permissões amplas exceto usuários/configurações
-            ['quotes', 'products', 'suppliers', 'payments', 'communication', 'reports'].forEach(module => {
-              permissions[module] = { view: true, create: true, edit: true, delete: true };
-            });
-            permissions['users'] = { view: true, create: true, edit: true, delete: false };
-            permissions['settings'] = { view: true, create: false, edit: true, delete: false };
-          } else if (group.name === 'Colaboradores' || group.name === 'collaborator') {
-            // Colaboradores têm permissões básicas
-            permissions['quotes'] = { view: true, create: true, edit: true, delete: false };
-            permissions['products'] = { view: true, create: true, edit: true, delete: false };
-            permissions['suppliers'] = { view: true, create: false, edit: false, delete: false };
-            permissions['communication'] = { view: true, create: true, edit: false, delete: false };
-            permissions['reports'] = { view: true, create: false, edit: false, delete: false };
-          } else {
-            // Grupo customizado - permissões baseadas na lista de permissões do grupo
-            group.permissions?.forEach((permission: string) => {
-              const moduleKey = permissionMapping[permission as keyof typeof permissionMapping];
-              if (moduleKey) {
-                if (!permissions[moduleKey]) {
-                  permissions[moduleKey] = { view: false, create: false, edit: false, delete: false };
-                }
-
-                if (permission === '*' || permission.endsWith('.*')) {
-                  permissions[moduleKey] = { view: true, create: true, edit: true, delete: true };
-                } else if (permission.includes('.')) {
-                  const [, action] = permission.split('.');
-                  const actionKey = ['approve', 'respond', 'manage'].includes(action) ? 'edit' : action;
-                  if (['view', 'create', 'edit', 'delete'].includes(actionKey)) {
-                    permissions[moduleKey][actionKey] = true;
-                  }
-                } else {
-                  permissions[moduleKey].view = true;
-                }
-              }
-            });
-          }
-
-          // Criar perfil de permissão para o grupo
-          const newProfile = await createPermissionProfile({
-            name: group.name, // Usar nome direto do grupo, sem prefixo "Grupo:"
-            description: group.description || `Permissões para ${group.name}`,
-            permissions,
-            client_id: client.id
-          });
-
-          // Vincular o perfil ao grupo
-          if (newProfile) {
-            await supabase
-              .from('user_groups')
-              .update({ permission_profile_id: newProfile.id })
-              .eq('id', group.id);
-          }
-        } catch (error) {
-          console.error(`Erro ao criar perfil para grupo ${group.name}:`, error);
-        }
+  /**
+   * Criar perfil de permissão para um grupo específico (chamada manual)
+   */
+  const createPermissionProfileForGroup = useCallback(async (groupId: string) => {
+    try {
+      if (!client?.id) {
+        toast.error('Cliente não identificado');
+        return;
       }
-    };
 
-    ensurePermissionProfiles();
-  }, [groups, permissionProfiles, createPermissionProfile, client, permissionMapping]);
+      const group = groups.find(g => g.id === groupId);
+      if (!group) {
+        toast.error('Grupo não encontrado');
+        return;
+      }
+
+      if (group.permission_profile_id) {
+        toast.error('Este grupo já possui um perfil de permissão');
+        return;
+      }
+
+      // Definir permissões padrão baseadas no nome do grupo
+      const permissions: Record<string, any> = {};
+      
+      if (group.name === 'Administradores' || group.name.toLowerCase().includes('admin')) {
+        // Admin tem todas as permissões
+        ['quotes', 'products', 'suppliers', 'payments', 'communication', 'users', 'settings', 'reports'].forEach(module => {
+          permissions[module] = { view: true, create: true, edit: true, delete: true };
+        });
+      } else if (group.name === 'Gestores' || group.name.toLowerCase().includes('gestor') || group.name.toLowerCase().includes('manager')) {
+        // Gestores têm permissões amplas
+        ['quotes', 'products', 'suppliers', 'payments', 'communication', 'reports'].forEach(module => {
+          permissions[module] = { view: true, create: true, edit: true, delete: true };
+        });
+        permissions['users'] = { view: true, create: true, edit: true, delete: false };
+        permissions['settings'] = { view: true, create: false, edit: true, delete: false };
+      } else if (group.name === 'Colaboradores' || group.name.toLowerCase().includes('colaborador') || group.name.toLowerCase().includes('collaborator')) {
+        // Colaboradores têm permissões básicas
+        permissions['quotes'] = { view: true, create: true, edit: true, delete: false };
+        permissions['products'] = { view: true, create: true, edit: true, delete: false };
+        permissions['suppliers'] = { view: true, create: false, edit: false, delete: false };
+        permissions['communication'] = { view: true, create: true, edit: false, delete: false };
+        permissions['reports'] = { view: true, create: false, edit: false, delete: false };
+      } else {
+        // Grupo customizado - permissões mínimas (apenas visualizar)
+        ['quotes', 'products', 'suppliers', 'payments', 'communication', 'users', 'settings', 'reports'].forEach(module => {
+          permissions[module] = { view: true, create: false, edit: false, delete: false };
+        });
+      }
+
+      // Criar perfil de permissão
+      const newProfile = await createPermissionProfile({
+        name: group.name,
+        description: group.description || `Permissões para ${group.name}`,
+        permissions,
+        client_id: client.id
+      });
+
+      // Vincular o perfil ao grupo
+      if (newProfile) {
+        await supabase
+          .from('user_groups')
+          .update({ permission_profile_id: newProfile.id })
+          .eq('id', group.id);
+        
+        toast.success(`Perfil de permissão criado para ${group.name}`);
+        
+        // Forçar atualização da página após um pequeno delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Erro ao criar perfil de permissão:', error);
+      toast.error('Erro ao criar perfil de permissão');
+    }
+  }, [groups, createPermissionProfile, client]);
 
   /**
    * Obter permissões efetivas para um usuário baseado em seus grupos
@@ -256,6 +249,7 @@ export function useGroupPermissionsSync() {
     getUserEffectivePermissions,
     userHasPermission,
     updateGroupPermissions,
+    createPermissionProfileForGroup,
     permissionMapping
   };
 }
