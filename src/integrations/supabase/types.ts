@@ -1298,6 +1298,10 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
+      initialize_client_data: {
+        Args: { client_uuid: string }
+        Returns: undefined
+      }
       next_product_code: {
         Args: { prefix?: string }
         Returns: string
