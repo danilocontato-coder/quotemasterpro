@@ -379,32 +379,27 @@ export function useSupabaseAdminClients() {
 
       console.log('Cliente atualizado com sucesso no banco');
 
-      // Atualizar estado local de forma otimizada
+      // Atualizar estado local de forma otimizada - EVITAR RE-RENDER CUSTOSO
       setClients((prev) => {
+        console.log('🔄 Atualizando estado local do cliente', id);
         const updated = prev.map((c) => {
           if (c.id === id) {
-            const updatedClient = { ...c };
-            
-            // Mapear campos de volta
-            if (clientData.companyName !== undefined) updatedClient.companyName = clientData.companyName;
-            if (clientData.email !== undefined) updatedClient.email = clientData.email;
-            if (clientData.phone !== undefined) updatedClient.phone = clientData.phone || "";
-            if (clientData.cnpj !== undefined) updatedClient.cnpj = clientData.cnpj;
-            if (clientData.address !== undefined) updatedClient.address = typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address || parseAddress());
-            if (clientData.status !== undefined) updatedClient.status = clientData.status;
-            if (clientData.plan !== undefined) updatedClient.plan = clientData.plan;
-            if (clientData.groupId !== undefined) {
-              updatedClient.groupId = clientData.groupId;
-              // Atualizar nome do grupo
-              const group = clientGroups.find(g => g.id === clientData.groupId);
-              updatedClient.groupName = group?.name;
-            }
-            
-            return updatedClient;
+            // Usar Object.assign para otimizar a atualização
+            return Object.assign({}, c, {
+              companyName: clientData.companyName !== undefined ? clientData.companyName : c.companyName,
+              email: clientData.email !== undefined ? clientData.email : c.email,
+              phone: clientData.phone !== undefined ? (clientData.phone || "") : c.phone,
+              cnpj: clientData.cnpj !== undefined ? clientData.cnpj : c.cnpj,
+              address: clientData.address !== undefined ? (typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address || parseAddress())) : c.address,
+              status: clientData.status !== undefined ? clientData.status : c.status,
+              plan: clientData.plan !== undefined ? clientData.plan : c.plan,
+              groupId: clientData.groupId !== undefined ? clientData.groupId : c.groupId,
+              groupName: clientData.groupId !== undefined ? (clientGroups.find(g => g.id === clientData.groupId)?.name) : c.groupName
+            });
           }
           return c;
         });
-        console.log('Estado local atualizado');
+        console.log('✅ Estado local atualizado');
         return updated;
       });
 
@@ -578,35 +573,54 @@ export function useSupabaseAdminClients() {
     }
   };
 
+  // Memoizar stats para evitar recálculos desnecessários
   const stats = useMemo(() => {
-    console.log('stats: recalculando com', clients.length, 'clientes');
+    console.log('📊 stats: recalculando com', clients.length, 'clientes');
     
     if (!clients.length) {
-      console.log('stats: sem clientes, retornando valores padrão');
+      console.log('📊 stats: sem clientes, retornando valores padrão');
       return { total: 0, active: 0, inactive: 0, pending: 0, totalRevenue: 0, avgQuotes: 0, byGroup: [] as any[] };
+    }
+    
+    // Usar Set para otimizar as contagens
+    const statusCounts = { active: 0, inactive: 0, pending: 0 };
+    let totalRevenue = 0;
+    let totalQuotes = 0;
+    
+    // Uma única passagem pelos clientes
+    for (const client of clients) {
+      statusCounts[client.status]++;
+      totalRevenue += client.revenue || 0;
+      totalQuotes += client.quotesCount || 0;
+    }
+    
+    // Mapear grupos de forma otimizada
+    const groupMap = new Map<string, number>();
+    for (const client of clients) {
+      if (client.groupId) {
+        groupMap.set(client.groupId, (groupMap.get(client.groupId) || 0) + 1);
+      }
     }
     
     const byGroup = clientGroups.map((group) => ({
       name: group.name,
-      count: clients.filter((c) => c.groupId === group.id).length,
+      count: groupMap.get(group.id) || 0,
       color: group.color || "#64748b",
     }));
     
-    const totalRevenue = clients.reduce((s, c) => s + (c.revenue || 0), 0);
-    const totalQuotes = clients.reduce((s, c) => s + (c.quotesCount || 0), 0);
     const avgQuotes = clients.length > 0 ? Math.round(totalQuotes / clients.length) : 0;
     
     const result = {
       total: clients.length,
-      active: clients.filter((c) => c.status === "active").length,
-      inactive: clients.filter((c) => c.status === "inactive").length,
-      pending: clients.filter((c) => c.status === "pending").length,
+      active: statusCounts.active,
+      inactive: statusCounts.inactive,
+      pending: statusCounts.pending,
       totalRevenue,
       avgQuotes,
       byGroup,
     };
     
-    console.log('stats: resultado calculado:', result);
+    console.log('📊 stats: resultado calculado (otimizado):', result);
     return result;
   }, [clients, clientGroups]);
 

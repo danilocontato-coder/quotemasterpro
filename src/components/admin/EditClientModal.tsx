@@ -133,6 +133,8 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
 
   if (!client) return null;
 
+  console.log('🔄 EditClientModal: Renderizando para cliente', client.id);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
