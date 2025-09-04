@@ -290,6 +290,7 @@ const handler = async (req: Request): Promise<Response> => {
         evolutionToken: evolutionToken as string,
         templateVariables,
         whatsappTemplate,
+        templateContent: (whatsappTemplate?.message_content as string) || '',
         quoteId: quote_id,
         createdBy: quote.created_by,
         resolvedEvolution
@@ -530,6 +531,7 @@ const handler = async (req: Request): Promise<Response> => {
       evolutionToken,
       templateVariables,
       whatsappTemplate,
+      templateContent,
       quoteId,
       createdBy,
       resolvedEvolution: resolvedEvo
@@ -544,11 +546,17 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Render template message
       let finalMessage = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
+      const hasItemsPlaceholder = typeof templateContent === 'string' && templateContent.includes('{{items_list}}');
       
       // Replace template variables
       Object.entries(templateVariables || {}).forEach(([key, value]) => {
         finalMessage = finalMessage.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
       });
+
+      // Ensure items breakdown is present even if template doesn't include it
+      if (!hasItemsPlaceholder && templateVariables?.items_list) {
+        finalMessage = `${finalMessage}\n\nItens da cotação (${templateVariables.items_count || '0'}):\n${templateVariables.items_list}`;
+      }
 
       // Add custom message if provided
       if (customMessage?.trim()) {
