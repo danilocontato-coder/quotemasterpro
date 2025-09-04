@@ -27,8 +27,41 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
     isLoading: usageLoading
   } = useSupabaseSubscriptionGuard();
 
-  if (!user || !userPlan || usageLoading) {
+  if (!user) {
     return null;
+  }
+
+  if (usageLoading) {
+    return (
+      <Card className="w-full">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-4 w-4 text-blue-600" />
+            <span className="font-medium text-sm">Carregando limites...</span>
+          </div>
+          <div className="space-y-2">
+            <div className="h-2 bg-muted rounded animate-pulse" />
+            <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!userPlan) {
+    return (
+      <Card className="w-full">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="h-4 w-4 text-blue-600" />
+            <span className="font-medium text-sm">Cotações</span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Plano não encontrado. Verifique sua assinatura.
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const quotesResult = checkLimit('CREATE_QUOTE', 0);
