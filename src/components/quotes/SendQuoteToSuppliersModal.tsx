@@ -154,6 +154,15 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       // Determina automaticamente o método de envio baseado na configuração do SuperAdmin
       const sendVia = evolutionConfigured ? 'direct' : 'n8n';
       
+      const supplierLinks = selectedSuppliers.map((supplierId) => {
+        const token = crypto.randomUUID();
+        return {
+          supplier_id: supplierId,
+          link: `${window.location.origin}/supplier/auth/${quote?.id}/${token}`,
+          token
+        };
+      });
+
       const { data, error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: {
           quote_id: quote.id,
@@ -161,7 +170,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           send_whatsapp: sendWhatsApp,
           send_email: sendEmail,
           custom_message: customMessage.trim(),
-          send_via: sendVia
+          send_via: sendVia,
+          supplier_links: supplierLinks,
+          frontend_base_url: window.location.origin
         }
       });
 

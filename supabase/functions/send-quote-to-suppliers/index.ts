@@ -13,6 +13,8 @@ interface SendQuoteRequest {
   send_email: boolean;
   custom_message?: string;
   send_via?: 'n8n' | 'direct';
+  supplier_links?: { supplier_id: string; link: string; token?: string }[];
+  frontend_base_url?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -32,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via }: SendQuoteRequest = await req.json();
+    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via, supplier_links, frontend_base_url }: SendQuoteRequest = await req.json();
 
     console.log('Processing quote:', quote_id);
 
@@ -279,7 +281,9 @@ const handler = async (req: Request): Promise<Response> => {
         }))
       } : null,
       timestamp: new Date().toISOString(),
-      platform: 'QuoteMaster Pro'
+      platform: 'QuoteMaster Pro',
+      supplier_links: supplier_links || [],
+      frontend_base_url: frontend_base_url || null
     };
 
     const hasEvolution = Boolean(evolutionInstance && evolutionApiUrl && evolutionToken);
@@ -300,7 +304,9 @@ const handler = async (req: Request): Promise<Response> => {
         templateContent: (whatsappTemplate?.message_content as string) || '',
         quoteId: quote_id,
         createdBy: quote.created_by,
-        resolvedEvolution
+        resolvedEvolution,
+        supplierLinks: supplier_links || [],
+        frontendBaseUrl: frontend_base_url || null
       });
     }
     
@@ -541,7 +547,9 @@ const handler = async (req: Request): Promise<Response> => {
       templateContent,
       quoteId,
       createdBy,
-      resolvedEvolution: resolvedEvo
+      resolvedEvolution: resolvedEvo,
+      supplierLinks,
+      frontendBaseUrl
     }: any
   ) {
     console.log('Sending directly via Evolution API');
@@ -613,6 +621,14 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         try {
+          // Compose message with per-supplier link when available
+          const linkEntry = Array.isArray(supplierLinks)
+            ? (supplierLinks as any[]).find((l: any) => l.supplier_id === supplier.id)
+            : null;
+          const textForSupplier = linkEntry?.link
+            ? `${finalMessage}\n\nResponda sua proposta aqui: ${linkEntry.link}`
+            : finalMessage;
+
           // Send via Evolution API
           const evolutionResponse = await fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
             method: 'POST',
@@ -622,7 +638,7 @@ const handler = async (req: Request): Promise<Response> => {
             },
             body: JSON.stringify({
               number: finalPhone,
-              text: finalMessage,
+              text: textForSupplier,
             }),
           });
 
