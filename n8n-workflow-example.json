@@ -113,7 +113,7 @@
           }
         },
         "sendBody": true,
-        "bodyParametersJson": "={ \n  \"number\": $json.phone,\n  \"text\": $json.text\n}"
+        "bodyParametersJson": "={{ ({ number: String($json.phone || '').replace(/[^0-9]+/g, ''), text: String($json.text || '') }) }}"
       },
       "id": "send-whatsapp",
       "name": "Enviar WhatsApp (Evolution)",
