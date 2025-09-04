@@ -215,7 +215,24 @@ ${proposalLink}
 _Esta é uma solicitação automática do sistema QuoteMaster Pro_`;
     }
 
-    // Prepare data for N8N
+    // Prepare data for N8N (build per-supplier pre-rendered message when available)
+    const suppliersWithMessages = suppliers.map((supplier: any) => {
+      let msg = whatsappMessage || null;
+      if (msg) {
+        try {
+          msg = msg.replace(/{{supplier_name}}/g, supplier.name || 'Fornecedor');
+        } catch {}
+      }
+      return {
+        id: supplier.id,
+        name: supplier.name,
+        email: supplier.email,
+        phone: supplier.phone,
+        whatsapp: supplier.whatsapp,
+        pre_rendered_message: msg,
+      };
+    });
+
     const n8nPayload: any = {
       quote: {
         id: quote.id,
@@ -237,13 +254,7 @@ _Esta é uma solicitação automática do sistema QuoteMaster Pro_`;
         phone: client.phone,
         cnpj: client.cnpj
       },
-      suppliers: suppliers.map(supplier => ({
-        id: supplier.id,
-        name: supplier.name,
-        email: supplier.email,
-        phone: supplier.phone,
-        whatsapp: supplier.whatsapp
-      })),
+      suppliers: suppliersWithMessages,
       settings: {
         send_whatsapp,
         send_email,
