@@ -15,9 +15,17 @@ export function normalizePhone(input: string, defaultCountry = '55'): string {
 }
 
 export function buildEndpoints(cfg: EvolutionConfig): string[] {
-  const base = cfg.apiUrl.replace(/\/+$/, '')
+  const base = cfg.apiUrl?.replace(/\/+$/, '') // Remove trailing slashes
+  if (!base) {
+    console.error('❌ Evolution API URL is empty or invalid:', cfg.apiUrl)
+    return []
+  }
+  
+  console.log('🔗 Building Evolution endpoints with base:', base)
+  
   const endpoints: string[] = []
   if (cfg.instance) {
+    console.log('📱 Using instance:', cfg.instance)
     endpoints.push(
       `${base}/message/sendText/${cfg.instance}`,
       `${base}/messages/sendText/${cfg.instance}`,
@@ -29,6 +37,8 @@ export function buildEndpoints(cfg: EvolutionConfig): string[] {
     `${base}/messages/sendText`,
     `${base}/message/send`,
   )
+  
+  console.log('🎯 Generated endpoints:', endpoints)
   return endpoints
 }
 
