@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, startTransition } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -118,7 +118,9 @@ export function useSupabaseSubscriptionPlans() {
   }, [searchTerm, filterAudience, filterStatus]);
 
   useEffect(() => {
-    loadPlans();
+    startTransition(() => {
+      loadPlans();
+    });
   }, [loadPlans]);
 
   // Criar novo plano

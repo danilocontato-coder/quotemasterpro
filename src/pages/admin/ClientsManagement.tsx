@@ -197,11 +197,19 @@ export const ClientsManagement = () => {
   };
   
   const getPlanInfo = (planId: string) => {
+    if (!planId) {
+      return {
+        name: 'Sem plano',
+        color: '#6b7280',
+        price: 0
+      };
+    }
+    
     const plan = getPlanById(planId);
     return plan ? {
-      name: plan.display_name,
+      name: plan.display_name || 'Plano sem nome',
       color: plan.custom_color || '#3b82f6',
-      price: plan.monthly_price
+      price: plan.monthly_price || 0
     } : {
       name: 'Plano não encontrado',
       color: '#6b7280',
@@ -483,22 +491,22 @@ export const ClientsManagement = () => {
                     </TableCell>
                     
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="h-3 w-3 text-muted-foreground" />
-                           <span className="text-sm font-medium">
-                             {getPlanInfo(client.plan).name}
-                           </span>
-                           {getPlanById(client.plan)?.is_popular && (
-                             <Badge variant="secondary" className="text-xs">
-                               Popular
-                             </Badge>
-                           )}
+                         <div className="space-y-1">
+                           <div className="flex items-center gap-2">
+                             <CreditCard className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm font-medium">
+                                {getPlanInfo(client.plan || '').name}
+                              </span>
+                              {getPlanById(client.plan || '')?.is_popular && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Popular
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatCurrency(getPlanInfo(client.plan || '').price)}/mês
+                           </div>
                          </div>
-                         <div className="text-xs text-muted-foreground">
-                           {formatCurrency(getPlanInfo(client.plan).price)}/mês
-                        </div>
-                      </div>
                     </TableCell>
                     
                     <TableCell>
