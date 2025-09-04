@@ -1338,6 +1338,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      current_user_can_see_quote: {
+        Args: { quote_id_param: string }
+        Returns: boolean
+      }
       get_current_user_supplier_id: {
         Args: Record<PropertyKey, never>
         Returns: string
