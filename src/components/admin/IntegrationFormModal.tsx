@@ -35,10 +35,11 @@ const integrationTypes = [
   {
     id: 'whatsapp_evolution',
     name: 'WhatsApp (Evolution API)',
-    description: 'Envio de mensagens via Evolution API (usa segredos nas Edge Functions)',
+    description: 'Envio de mensagens via Evolution API',
     icon: MessageSquare,
     fields: [
       { key: 'instance', label: 'Instância', type: 'text', required: true },
+      { key: 'token', label: 'Token da Instância', type: 'password', required: false },
       { key: 'api_url', label: 'API URL (opcional, usa segredo se vazio)', type: 'url', required: false }
     ]
   },

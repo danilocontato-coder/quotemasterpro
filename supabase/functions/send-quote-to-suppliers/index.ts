@@ -88,6 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Load Evolution API integration (client-specific, fallback to global)
     let evolutionInstance: string | null = null;
     let evolutionApiUrl: string | null = null;
+    let evolutionToken: string | null = null;
 
     const { data: evoClientInt } = await supabase
       .from('integrations')
@@ -113,11 +114,15 @@ const handler = async (req: Request): Promise<Response> => {
       if (evoCfg) {
         evolutionInstance = (evoCfg.instance ?? evoCfg['evolution_instance']) || null;
         evolutionApiUrl = (evoCfg.api_url ?? evoCfg['evolution_api_url']) || null;
+        evolutionToken = (evoCfg.token ?? evoCfg['evolution_token']) || null;
       }
     } catch {}
 
     if (!evolutionApiUrl) {
       evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL') || null;
+    }
+    if (!evolutionToken) {
+      evolutionToken = Deno.env.get('EVOLUTION_API_TOKEN') || null;
     }
 
     // Prepare data for N8N
@@ -154,7 +159,11 @@ const handler = async (req: Request): Promise<Response> => {
         send_email,
         custom_message: custom_message || `Nova cotação disponível: ${quote.title}`,
         whatsapp_provider: evolutionInstance ? 'evolution_api' : 'default',
-        evolution: evolutionInstance ? { instance: evolutionInstance, api_url: evolutionApiUrl } : null
+        evolution: evolutionInstance ? { 
+          instance: evolutionInstance, 
+          api_url: evolutionApiUrl,
+          token: evolutionToken
+        } : null
       },
       timestamp: new Date().toISOString(),
       platform: 'QuoteMaster Pro'

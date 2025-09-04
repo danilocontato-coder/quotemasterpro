@@ -326,8 +326,10 @@ async function testStripe(config: any) {
 }
 
 async function testEvolutionWhatsApp(config: any) {
-  // Tenta validar presença da instância e opcionalmente checa conexão via EVOLUTION_API_URL
-  const instance = config.instance || config['evolution_instance'];
+  const instance = config.instance;
+  const configApiUrl = config.api_url;
+  const configToken = config.token;
+  
   if (!instance) {
     return {
       success: false,
@@ -336,47 +338,54 @@ async function testEvolutionWhatsApp(config: any) {
     };
   }
 
-  const apiUrl = config.api_url || Deno.env.get('EVOLUTION_API_URL');
-  const apiKey = Deno.env.get('EVOLUTION_API_TOKEN');
-
-  if (!apiUrl || !apiKey) {
+  // Usar token da configuração ou segredo global
+  const token = configToken || Deno.env.get('EVOLUTION_API_TOKEN');
+  // Usar URL da configuração ou segredo global
+  const apiUrl = configApiUrl || Deno.env.get('EVOLUTION_API_URL');
+  
+  if (!token || !apiUrl) {
     return {
       success: true,
-      message: 'Instância válida. URL/token globais não definidos — teste superficial OK',
-      details: { instance, apiUrlDefined: !!apiUrl, tokenDefined: !!apiKey }
+      message: `Instância válida. ${!token ? 'Token' : ''} ${(!token && !apiUrl) ? 'e ' : ''}${!apiUrl ? 'URL' : ''} não definido(s) — teste superficial OK`,
+      details: { 
+        instance, 
+        apiUrlDefined: !!apiUrl, 
+        tokenDefined: !!token,
+        source: {
+          token: configToken ? 'config' : 'global',
+          apiUrl: configApiUrl ? 'config' : 'global'
+        }
+      }
     };
   }
 
+  // Teste real da conexão se tiver token e URL
   try {
-    // Tentativa de verificar estado/conectividade (endpoints variam por provedor)
-    const url = `${apiUrl.replace(/\/$/, '')}/instance/connectionState/${instance}`;
-    const res = await fetch(url, {
-      method: 'GET',
+    const response = await fetch(`${apiUrl}/instance/connectionState/${instance}`, {
       headers: {
-        'Content-Type': 'application/json',
-        'apikey': apiKey,
-      },
+        'apikey': token
+      }
     });
-    const text = await res.text();
 
-    if (res.ok) {
+    if (response.ok) {
+      const data = await response.json();
       return {
         success: true,
-        message: 'Evolution API acessível e instância informada! (verifique estado no provedor)',
-        details: { status: res.status, response: text.slice(0, 300), instance }
+        message: 'Conexão com Evolution API testada com sucesso',
+        details: { instance, connectionState: data }
       };
     } else {
       return {
         success: false,
-        message: `Evolution API respondeu com status ${res.status}`,
-        details: { status: res.status, response: text.slice(0, 300), instance, url }
+        message: 'Falha na conexão com Evolution API',
+        details: { instance, status: response.status }
       };
     }
   } catch (error: any) {
     return {
       success: false,
-      message: `Falha ao contatar Evolution API: ${error.message}`,
-      details: { error: error.toString(), instance }
+      message: 'Erro ao testar conexão com Evolution API',
+      details: { instance, error: error.message }
     };
   }
 }
