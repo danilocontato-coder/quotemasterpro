@@ -33,8 +33,9 @@ export function QuoteComparisonButton({
           *,
           suppliers!inner(name, cnpj, email, phone)
         `)
-        .eq('quote_id', quoteId)
-        .eq('status', 'sent');
+        .eq('quote_id', quoteId);
+
+      console.log('📊 Proposals fetched for quote', quoteId, ':', responses?.length || 0);
 
       if (error) {
         console.error('Error fetching proposals:', error);

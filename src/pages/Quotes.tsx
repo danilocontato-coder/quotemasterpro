@@ -42,7 +42,8 @@ export default function Quotes() {
   console.log('🎯 Quotes page - Hook results:', {
     quotes: quotes?.length || 0,
     isLoading,
-    hookCalled: true
+    hookCalled: true,
+    quotesData: quotes?.map(q => ({ id: q.id, status: q.status, responses_count: q.responses_count }))
   });
 
   const handleQuoteCreate = async (quoteData: any) => {

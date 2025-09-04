@@ -10,6 +10,7 @@ interface StatusProgressIndicatorProps {
 const statusSteps = [
   { key: 'draft', label: 'Rascunho', icon: FileText },
   { key: 'sent', label: 'Enviada', icon: Send },
+  { key: 'receiving', label: 'Recebendo', icon: Package },
   { key: 'under_review', label: 'Em Análise', icon: Eye },
   { key: 'approved', label: 'Aprovada', icon: CheckCircle2 },
   { key: 'rejected', label: 'Rejeitada', icon: X },
@@ -21,6 +22,8 @@ const getStatusVariant = (status: string) => {
       return 'secondary';
     case 'sent':
       return 'default';
+    case 'receiving':
+      return 'secondary';
     case 'under_review':
       return 'secondary';
     case 'approved':
@@ -69,6 +72,9 @@ export function StatusProgressIndicator({ status, showProgress = false }: Status
               break;
             case 'sent':
               stepClasses = 'bg-blue-100 text-blue-800';
+              break;
+            case 'receiving':
+              stepClasses = 'bg-purple-100 text-purple-800';
               break;
             case 'under_review':
               stepClasses = 'bg-orange-100 text-orange-800';
