@@ -24,7 +24,6 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
   const [customMessage, setCustomMessage] = useState('');
-  const [sendDirect, setSendDirect] = useState(false);
   const [resolvedWebhookUrl, setResolvedWebhookUrl] = useState<string | null>(null);
   const [evolutionConfigured, setEvolutionConfigured] = useState(false);
   
@@ -150,6 +149,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     setIsLoading(true);
 
     try {
+      // Determina automaticamente o método de envio baseado na configuração do SuperAdmin
+      const sendVia = evolutionConfigured ? 'direct' : 'n8n';
+      
       const { data, error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: {
           quote_id: quote.id,
@@ -157,7 +159,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           send_whatsapp: sendWhatsApp,
           send_email: sendEmail,
           custom_message: customMessage.trim(),
-          send_via: sendDirect ? 'direct' : 'n8n'
+          send_via: sendVia
         }
       });
 
@@ -201,7 +203,11 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
             Enviar Cotação para Fornecedores
           </DialogTitle>
           <DialogDescription>
-            Seleciona fornecedores e canais. Usaremos o webhook configurado em Integrações (N8N) para o envio.
+            Selecione fornecedores e canais para envio da cotação.
+            {evolutionConfigured ? 
+              ' Envio via Evolution API configurada.' : 
+              ' Envio via webhook N8N configurado.'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -257,37 +263,19 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
                   E-mail
                 </Label>
               </div>
-              <div className="flex items-center space-x-2 pt-2">
-                <Checkbox
-                  id="direct"
-                  checked={sendDirect}
-                  onCheckedChange={(checked) => setSendDirect(checked === true)}
-                  disabled={!evolutionConfigured}
-                />
-                <Label htmlFor="direct" className="flex items-center gap-2">
-                  <span className="text-sm">Enviar diretamente (Evolution API)</span>
-                  {!evolutionConfigured && (
-                    <span className="text-xs text-red-500">(não configurado)</span>
-                  )}
-                </Label>
-              </div>
               <div className="pt-2">
                 <p className="text-xs text-muted-foreground">
-                  {sendDirect ? (
-                    evolutionConfigured ? (
-                      'Enviando diretamente via Evolution API configurada no SuperAdmin'
-                    ) : (
-                      'Evolution API não configurada. Configure em Admin > Integrações'
-                    )
+                  {evolutionConfigured ? (
+                    'Método configurado: Evolution API (envio direto)'
                   ) : (
                     <>
-                      N8N Webhook: {resolvedWebhookUrl ? (
-                        <a href={resolvedWebhookUrl} target="_blank" rel="noreferrer" className="underline">
+                      Método configurado: N8N Webhook
+                      {resolvedWebhookUrl && (
+                        <> - <a href={resolvedWebhookUrl} target="_blank" rel="noreferrer" className="underline">
                           {resolvedWebhookUrl}
-                        </a>
-                      ) : (
-                        'não encontrado (configure em Admin > Integrações – N8N)'
+                        </a></>
                       )}
+                      {!resolvedWebhookUrl && ' (não configurado)'}
                     </>
                   )}
                 </p>
