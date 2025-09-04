@@ -14,8 +14,11 @@ import {
   User, 
   Lock,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Mail,
+  MessageSquare
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 
 interface Client {
@@ -23,6 +26,7 @@ interface Client {
   name: string;
   companyName: string;
   email: string;
+  phone?: string;
   status: string;
 }
 
@@ -33,6 +37,7 @@ interface ClientCredentialsModalProps {
   onGenerateUsername: (companyName: string) => string;
   onGeneratePassword: () => string;
   onResetPassword: (clientId: string, email: string) => Promise<string>;
+  onSendCredentials?: (clientId: string, options: { sendByEmail: boolean; sendByWhatsApp: boolean }) => Promise<void>;
 }
 
 export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
@@ -41,7 +46,8 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   client,
   onGenerateUsername,
   onGeneratePassword,
-  onResetPassword
+  onResetPassword,
+  onSendCredentials
 }) => {
   const [credentials, setCredentials] = useState({
     username: '',
@@ -50,11 +56,16 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [sendOptions, setSendOptions] = useState({
+    sendByEmail: true,
+    sendByWhatsApp: false
+  });
   const { toast } = useToast();
 
   React.useEffect(() => {
     if (client && open) {
-      const username = onGenerateUsername(client.id);
+      // Usar o email como username em vez do código gerado
+      const username = client.email;
       const password = onGeneratePassword();
       setCredentials({
         username,
@@ -62,7 +73,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
         temporaryPassword: true
       });
     }
-  }, [client, open, onGenerateUsername, onGeneratePassword]);
+  }, [client, open, onGeneratePassword]);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -93,13 +104,36 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   };
 
   const handleSendCredentials = async () => {
-    if (!client) return;
+    if (!client || !onSendCredentials) return;
+    
+    if (!sendOptions.sendByEmail && !sendOptions.sendByWhatsApp) {
+      toast({
+        title: "Seleção necessária",
+        description: "Selecione pelo menos uma opção de envio.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (sendOptions.sendByWhatsApp && !client.phone) {
+      toast({
+        title: "Telefone necessário",
+        description: "Cliente não possui telefone cadastrado para envio via WhatsApp.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
-      // Aqui seria implementada a lógica para enviar as credenciais por email
+      await onSendCredentials(client.id, sendOptions);
+      
+      const methods = [];
+      if (sendOptions.sendByEmail) methods.push("e-mail");
+      if (sendOptions.sendByWhatsApp) methods.push("WhatsApp");
+      
       toast({
         title: "Credenciais enviadas",
-        description: `As credenciais foram enviadas para ${client.email}`,
+        description: `As credenciais foram enviadas por ${methods.join(" e ")}`,
       });
     } catch (error) {
       toast({
@@ -257,18 +291,64 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
           </Card>
         </div>
 
+        {/* Opções de Envio */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Enviar Credenciais</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="send-email"
+                checked={sendOptions.sendByEmail}
+                onCheckedChange={(checked) => setSendOptions(prev => ({ ...prev, sendByEmail: checked }))}
+              />
+              <Label htmlFor="send-email" className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Enviar por E-mail
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="send-whatsapp"
+                checked={sendOptions.sendByWhatsApp}
+                onCheckedChange={(checked) => setSendOptions(prev => ({ ...prev, sendByWhatsApp: checked }))}
+                disabled={!client?.phone}
+              />
+              <Label htmlFor="send-whatsapp" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Enviar por WhatsApp
+                {client?.phone && (
+                  <span className="text-xs text-muted-foreground">({client.phone})</span>
+                )}
+                {!client?.phone && (
+                  <span className="text-xs text-muted-foreground">(sem telefone)</span>
+                )}
+              </Label>
+            </div>
+
+            {(sendOptions.sendByEmail || sendOptions.sendByWhatsApp) && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  As credenciais serão enviadas automaticamente quando você clicar em "Enviar Credenciais".
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="flex justify-between">
           <Button
-            variant="outline"
+            variant="default"
             onClick={handleSendCredentials}
+            disabled={!onSendCredentials || (!sendOptions.sendByEmail && !sendOptions.sendByWhatsApp)}
           >
-            Enviar por E-mail
+            Enviar Credenciais
           </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Fechar
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

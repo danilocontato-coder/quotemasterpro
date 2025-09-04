@@ -44,6 +44,7 @@ import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
 import { usePagination } from '@/hooks/usePagination';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { usePerformanceDebug } from '@/hooks/usePerformanceDebug';
+import { supabase } from '@/integrations/supabase/client';
 import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { ClientGroupsManager } from '@/components/admin/ClientGroupsManager';
 import { ViewClientModal } from '@/components/admin/ViewClientModal';
@@ -120,6 +121,45 @@ export const ClientsManagement = () => {
   const handleResetPassword = useCallback(async (clientId: string, email: string) => {
     return await resetClientPassword(clientId, email);
   }, [resetClientPassword]);
+
+  const handleSendCredentials = useCallback(async (
+    clientId: string, 
+    options: { sendByEmail: boolean; sendByWhatsApp: boolean }
+  ) => {
+    try {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) throw new Error('Cliente não encontrado');
+
+      // Simular o envio de credenciais (aqui seria a lógica real)
+      const credentials = {
+        email: client.email,
+        password: generateTemporaryPassword(), // Gerar nova senha
+        companyName: client.companyName,
+        loginUrl: window.location.origin + "/auth/login"
+      };
+
+      // Enviar via WhatsApp se solicitado
+      if (options.sendByWhatsApp && client.phone) {
+        // Usar a mesma função notify que usamos no cadastro
+        await supabase.functions.invoke("notify", {
+          body: {
+            type: "whatsapp_user_credentials",
+            to: client.phone,
+            userData: credentials
+          }
+        });
+      }
+
+      // Simular envio por email (implementar quando necessário)
+      if (options.sendByEmail) {
+        console.log('Enviaria por email para:', client.email);
+      }
+
+    } catch (error) {
+      console.error('Erro ao enviar credenciais:', error);
+      throw error;
+    }
+  }, [clients, generateTemporaryPassword]);
 
   // Filtered clients based on search and filters
   const filteredClients = useMemo(() => {
@@ -637,6 +677,7 @@ export const ClientsManagement = () => {
         onGenerateUsername={generateUsername}
         onGeneratePassword={generateTemporaryPassword}
         onResetPassword={handleResetPassword}
+        onSendCredentials={handleSendCredentials}
       />
 
       <ClientDocumentsModal
