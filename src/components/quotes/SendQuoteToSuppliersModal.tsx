@@ -32,8 +32,15 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
   const { markQuoteAsSent } = useSupabaseQuotes();
   
-  // Filter active suppliers and prioritize certified ones
-  const activeSuppliers = suppliers.filter(s => s.status === 'active');
+  // Filter suppliers based on quote's supplier_scope preference
+  const activeSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
+    // If quote has supplier_scope set to 'local', only show local suppliers
+    if (quote?.supplier_scope === 'local') {
+      return supplier.client_id !== null; // Local suppliers only
+    }
+    // If supplier_scope is 'all' or not set, show all suppliers
+    return true;
+  });
   
   // Group suppliers by CNPJ to handle potential duplicates
   const supplierGroups = activeSuppliers.reduce((groups, supplier) => {
@@ -268,6 +275,11 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           </DialogTitle>
           <DialogDescription>
             Selecione fornecedores e canais para envio da cotação.
+            {quote?.supplier_scope === 'local' && (
+              <span className="block mt-1 text-sm text-amber-600">
+                ⚠️ Mostrando apenas fornecedores locais conforme configuração da cotação.
+              </span>
+            )}
             {evolutionConfigured ? 
               ' Envio via Evolution API configurada.' : 
               ' Envio via webhook N8N configurado.'
@@ -417,7 +429,12 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Nenhum fornecedor ativo encontrado</p>
+                  <p className="text-sm">
+                    {quote?.supplier_scope === 'local' 
+                      ? 'Nenhum fornecedor local encontrado para esta cotação'
+                      : 'Nenhum fornecedor ativo encontrado'
+                    }
+                  </p>
                 </div>
               )}
             </CardContent>

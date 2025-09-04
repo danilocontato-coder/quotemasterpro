@@ -701,6 +701,7 @@ export type Database = {
           status: string | null
           supplier_id: string | null
           supplier_name: string | null
+          supplier_scope: string | null
           suppliers_sent_count: number | null
           title: string
           total: number | null
@@ -719,6 +720,7 @@ export type Database = {
           status?: string | null
           supplier_id?: string | null
           supplier_name?: string | null
+          supplier_scope?: string | null
           suppliers_sent_count?: number | null
           title: string
           total?: number | null
@@ -737,6 +739,7 @@ export type Database = {
           status?: string | null
           supplier_id?: string | null
           supplier_name?: string | null
+          supplier_scope?: string | null
           suppliers_sent_count?: number | null
           title?: string
           total?: number | null
