@@ -566,7 +566,7 @@ const handler = async (req: Request): Promise<Response> => {
         let lastStatus = 0
         for (const b of bases) {
           for (const headers of headerVariants) {
-            const cs = await fetch(`${b}/instance/connectionState/${evolutionInstance}`, { headers })
+            const cs = await fetch(`${b}/instance/connectionState/${encodeURIComponent(evolutionInstance)}`, { headers })
             lastStatus = cs.status
             if (cs.ok) { preflightOk = true; break }
             lastTxt = await cs.text().catch(() => '')
