@@ -692,7 +692,15 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
               <Button
                 onClick={() => {
                   console.log('=== BOTAO CLICADO ===');
-                  handleSubmit();
+                  console.log('canProceed():', canProceed());
+                  console.log('currentStep:', currentStep);
+                  console.log('formData:', formData);
+                  if (canProceed()) {
+                    console.log('=== CHAMANDO handleSubmit ===');
+                    handleSubmit();
+                  } else {
+                    console.log('=== BOTAO DESABILITADO - não pode prosseguir ===');
+                  }
                 }}
                 disabled={!canProceed()}
                 className="flex items-center gap-2"
