@@ -81,10 +81,10 @@ Deno.serve(async (req) => {
     if (userError || !user) {
       console.error('Error getting user:', userError);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - invalid user' }),
+        JSON.stringify({ success: false, error: 'Unauthorized - invalid user', error_code: 'unauthorized' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401 
+          status: 200 
         }
       );
     }
@@ -105,8 +105,8 @@ Deno.serve(async (req) => {
     if (!isAdmin && !isManager) {
       console.error('User does not have permissions to create auth users');
       return new Response(
-        JSON.stringify({ error: 'Forbidden - admin or manager permissions required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+        JSON.stringify({ success: false, error: 'Forbidden - admin or manager permissions required', error_code: 'forbidden' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
@@ -126,10 +126,10 @@ Deno.serve(async (req) => {
     // Validate input
     if (!email || !password || !name || !role) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: email, password, name, role' }),
+        JSON.stringify({ success: false, error: 'Missing required fields: email, password, name, role', error_code: 'bad_request' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
+          status: 200 
         }
       );
     }
@@ -138,8 +138,8 @@ Deno.serve(async (req) => {
     if (!isAdmin && role === 'admin' && action === 'create') {
       console.error('Only admins can create admin users');
       return new Response(
-        JSON.stringify({ error: 'Forbidden - only admin can create admin users' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+        JSON.stringify({ success: false, error: 'Forbidden - only admin can create admin users', error_code: 'admin_required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
