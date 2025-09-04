@@ -144,7 +144,7 @@ const normalizePhone = (phone: string) => {
       if (formData.generateCredentials && formData.password && formData.phone) {
         const to = normalizePhone(formData.phone);
         try {
-          const { error } = await supabase.functions.invoke('notify', {
+          const { data: notifyRes, error } = await supabase.functions.invoke('notify', {
             body: {
               type: 'whatsapp_user_credentials',
               to,
@@ -158,6 +158,9 @@ const normalizePhone = (phone: string) => {
           if (error) {
             console.error('WhatsApp error:', error);
             throw error;
+          }
+          if (!notifyRes?.success) {
+            throw new Error(notifyRes?.error || 'Falha ao enviar WhatsApp');
           }
           toast.success(`Credenciais enviadas via WhatsApp para ${formData.phone}`);
         } catch (err) {
