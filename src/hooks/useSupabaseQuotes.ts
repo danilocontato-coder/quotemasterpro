@@ -57,7 +57,22 @@ export const useSupabaseQuotes = () => {
 
       if (error) throw error;
 
-      setQuotes(data || []);
+      // Count responses for each quote and update the data
+      const quotesWithCounts = await Promise.all(
+        (data || []).map(async (quote) => {
+          const { count } = await supabase
+            .from('quote_responses')
+            .select('*', { count: 'exact', head: true })
+            .eq('quote_id', quote.id);
+          
+          return {
+            ...quote,
+            responses_count: count || 0
+          };
+        })
+      );
+
+      setQuotes(quotesWithCounts);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar cotações';
       setError(errorMessage);
@@ -137,19 +152,80 @@ export const useSupabaseQuotes = () => {
   };
 
   // Update quote
-  const updateQuote = async (id: string, updates: Partial<Quote>) => {
+  const updateQuote = async (id: string, updates: Partial<Quote> & { items?: Array<{ product_name: string; quantity: number; product_id?: string; }> }) => {
     try {
-      const { data, error } = await supabase
+      console.log('updateQuote called with id:', id, 'updates:', updates);
+      
+      // Separate items from other updates
+      const { items, ...quoteUpdates } = updates;
+      
+      // Update quote basic data
+      const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
-        .update(updates)
+        .update(quoteUpdates)
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (quoteError) {
+        console.error('Quote update error:', quoteError);
+        throw quoteError;
+      }
 
+      console.log('Quote updated successfully:', quoteData);
+
+      // If items are provided, update them
+      if (items && Array.isArray(items)) {
+        console.log('Updating quote items:', items);
+        
+        // Delete existing items for this quote
+        const { error: deleteError } = await supabase
+          .from('quote_items')
+          .delete()
+          .eq('quote_id', id);
+
+        if (deleteError) {
+          console.error('Error deleting existing quote items:', deleteError);
+          throw deleteError;
+        }
+
+        // Insert new items if any
+        if (items.length > 0) {
+          const quoteItems = items.map(item => ({
+            quote_id: id,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            product_id: item.product_id || null,
+            unit_price: 0, // Default value
+            total: 0 // Default value
+          }));
+
+          const { error: insertError } = await supabase
+            .from('quote_items')
+            .insert(quoteItems);
+
+          if (insertError) {
+            console.error('Error inserting quote items:', insertError);
+            throw insertError;
+          }
+
+          console.log('Quote items updated successfully');
+        }
+
+        // Update items_count in quote
+        const { error: countError } = await supabase
+          .from('quotes')
+          .update({ items_count: items.length })
+          .eq('id', id);
+
+        if (countError) {
+          console.error('Error updating items count:', countError);
+        }
+      }
+
+      // Update local state
       setQuotes(prev => 
-        prev.map(quote => quote.id === id ? { ...quote, ...data } : quote)
+        prev.map(quote => quote.id === id ? { ...quote, ...quoteData, items_count: items?.length || quote.items_count } : quote)
       );
 
       // Create audit log
@@ -160,7 +236,7 @@ export const useSupabaseQuotes = () => {
           entity_type: 'quotes',
           entity_id: id,
           panel_type: user.role === 'admin' ? 'admin' : 'client',
-          details: updates
+          details: { ...quoteUpdates, items_updated: !!items }
         });
       }
 
@@ -169,8 +245,9 @@ export const useSupabaseQuotes = () => {
         description: 'Cotação atualizada com sucesso',
       });
 
-      return data;
+      return quoteData;
     } catch (err) {
+      console.error('Error in updateQuote:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar cotação';
       toast({
         title: 'Erro',

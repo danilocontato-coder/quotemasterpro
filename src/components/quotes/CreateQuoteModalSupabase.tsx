@@ -15,6 +15,7 @@ import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { Quote } from '@/hooks/useSupabaseQuotes';
+import { supabase } from "@/integrations/supabase/client";
 
 interface QuoteFormData {
   title: string;
@@ -70,36 +71,72 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     supplierScope: 'local'
   });
 
+  // Load existing quote items when editing
+  const loadQuoteItems = async (quoteId: string) => {
+    try {
+      const { data: items, error } = await supabase
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quoteId);
+
+      if (error) {
+        console.error('Error loading quote items:', error);
+        return [];
+      }
+
+      return items.map(item => ({
+        product_name: item.product_name,
+        quantity: item.quantity,
+        product_id: item.product_id || undefined
+      }));
+    } catch (error) {
+      console.error('Error loading quote items:', error);
+      return [];
+    }
+  };
+
   // Initialize form with editing data
   useEffect(() => {
-    if (editingQuote && open) {
-      setFormData({
-        title: editingQuote.title,
-        description: editingQuote.description || "",
-        deadline: editingQuote.deadline ? editingQuote.deadline.split('T')[0] : '',
-        items: [], // Will be loaded from quote_items
-        supplier_ids: editingQuote.supplier_id ? [editingQuote.supplier_id] : [],
-        communicationMethods: {
-          email: true,
-          whatsapp: false,
-        },
-        supplierScope: 'local'
-      });
-    } else if (!editingQuote && open) {
-      // Reset form for new quote
-      setFormData({
-        title: "",
-        description: "",
-        deadline: "",
-        items: [],
-        supplier_ids: [],
-        communicationMethods: {
-          email: true,
-          whatsapp: false
-        },
-        supplierScope: 'local'
-      });
-      setCurrentStep(1);
+    const initializeForm = async () => {
+      if (editingQuote && open) {
+        console.log('Initializing form with editing quote:', editingQuote);
+        
+        // Load items if editing
+        const items = await loadQuoteItems(editingQuote.id);
+        console.log('Loaded items for editing:', items);
+        
+        setFormData({
+          title: editingQuote.title,
+          description: editingQuote.description || "",
+          deadline: editingQuote.deadline ? editingQuote.deadline.split('T')[0] : '',
+          items: items,
+          supplier_ids: editingQuote.supplier_id ? [editingQuote.supplier_id] : [],
+          communicationMethods: {
+            email: true,
+            whatsapp: false,
+          },
+          supplierScope: 'local'
+        });
+      } else if (!editingQuote && open) {
+        // Reset form for new quote
+        setFormData({
+          title: "",
+          description: "",
+          deadline: "",
+          items: [],
+          supplier_ids: [],
+          communicationMethods: {
+            email: true,
+            whatsapp: false
+          },
+          supplierScope: 'local'
+        });
+        setCurrentStep(1);
+      }
+    };
+
+    if (open) {
+      initializeForm();
     }
   }, [editingQuote, open]);
 
@@ -158,7 +195,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     }
     
     // Convert form data to quote format
-    const quoteData: Omit<Quote, 'id' | 'created_at' | 'updated_at' | 'created_by'> = {
+    const quoteData: any = {
       title: formData.title,
       description: formData.description,
       deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
@@ -170,11 +207,14 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       total: editingQuote?.total || 0,
       items_count: formData.items.length,
       responses_count: editingQuote?.responses_count || 0,
-      suppliers_sent_count: editingQuote?.suppliers_sent_count || 0
+      suppliers_sent_count: editingQuote?.suppliers_sent_count || 0,
+      // Include items for update
+      items: formData.items
     };
     
     console.log('Submitting quote data:', quoteData);
     console.log('Is editing:', !!editingQuote);
+    console.log('Form data items:', formData.items);
     
     onQuoteCreate(quoteData);
     
