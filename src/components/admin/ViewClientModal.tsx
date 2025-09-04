@@ -23,7 +23,7 @@ interface Client {
   cnpj: string;
   email: string;
   phone?: string;
-  address?: string;
+  address?: string; // Should always be a string for rendering
   status: string;
   plan: string;
   groupName?: string;

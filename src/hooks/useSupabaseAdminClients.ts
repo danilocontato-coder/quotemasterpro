@@ -34,7 +34,7 @@ export interface AdminClient {
   cnpj: string;
   email: string;
   phone: string;
-  address: {
+  address: string | {
     street: string;
     number: string;
     complement?: string;
@@ -64,6 +64,8 @@ export interface AdminClient {
 
 // Utilities
 const formatAddressToText = (addr: AdminClient["address"]) => {
+  if (typeof addr === 'string') return addr;
+  
   const parts = [
     addr.street && `${addr.street}, ${addr.number}`,
     addr.complement,
@@ -142,7 +144,7 @@ export function useSupabaseAdminClients() {
           cnpj: c.cnpj,
           email: c.email,
           phone: c.phone ?? "",
-          address: parseAddress(c.address ?? undefined),
+          address: typeof c.address === 'string' ? c.address : formatAddressToText(parseAddress(c.address ?? undefined)),
           contacts: [],
           groupId: c.group_id ?? undefined,
           groupName: c.group_id ? groupsMap.get(c.group_id)?.name : undefined,
@@ -206,7 +208,7 @@ export function useSupabaseAdminClients() {
           cnpj: clientData.cnpj,
           email: clientData.email,
           phone: clientData.phone,
-          address: formatAddressToText(clientData.address),
+          address: typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address),
           status: clientData.status,
           subscription_plan_id: clientData.plan,
           username: clientData.loginCredentials.username,
@@ -347,7 +349,9 @@ export function useSupabaseAdminClients() {
       if (clientData.phone !== undefined) updateData.phone = clientData.phone || null;
       if (clientData.cnpj !== undefined) updateData.cnpj = clientData.cnpj;
       if (clientData.address !== undefined) {
-        updateData.address = clientData.address ? formatAddressToText(clientData.address) : null;
+        updateData.address = typeof clientData.address === 'string' 
+          ? clientData.address 
+          : formatAddressToText(clientData.address);
       }
       if (clientData.status !== undefined) updateData.status = clientData.status;
       if (clientData.plan !== undefined) updateData.subscription_plan_id = clientData.plan;
@@ -383,7 +387,7 @@ export function useSupabaseAdminClients() {
             if (clientData.email !== undefined) updatedClient.email = clientData.email;
             if (clientData.phone !== undefined) updatedClient.phone = clientData.phone || "";
             if (clientData.cnpj !== undefined) updatedClient.cnpj = clientData.cnpj;
-            if (clientData.address !== undefined) updatedClient.address = clientData.address || parseAddress();
+            if (clientData.address !== undefined) updatedClient.address = typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address || parseAddress());
             if (clientData.status !== undefined) updatedClient.status = clientData.status;
             if (clientData.plan !== undefined) updatedClient.plan = clientData.plan;
             if (clientData.groupId !== undefined) {
