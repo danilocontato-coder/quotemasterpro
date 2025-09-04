@@ -73,6 +73,8 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
       return;
     }
 
+    console.log('=== MODAL: Iniciando handleSubmit ===', formData);
+
     try {
       await updateUser(user.id, {
         name: formData.name,
@@ -86,8 +88,10 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
         force_password_change: formData.force_password_change
       });
 
+      console.log('=== MODAL: Update concluído, fechando modal ===');
       onClose();
     } catch (error) {
+      console.error('=== MODAL: Erro no handleSubmit ===', error);
       // Error is handled in the hook
     }
   };

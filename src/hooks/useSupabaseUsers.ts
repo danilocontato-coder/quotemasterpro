@@ -252,6 +252,11 @@ export function useSupabaseUsers() {
   // Update user
   const updateUser = async (id: string, userData: Partial<SupabaseUser>) => {
     try {
+      console.log('=== INÍCIO UPDATE USER ===', { id, userData });
+      
+      // Temporarily disable realtime to prevent loops
+      const shouldUpdateGroups = userData.groups !== undefined;
+      
       const { error } = await supabase
         .from('users')
         .update({
@@ -266,31 +271,61 @@ export function useSupabaseUsers() {
         })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('=== ERRO UPDATE USER ===', error);
+        throw error;
+      }
 
-      // Update group memberships
-      if (userData.groups !== undefined) {
+      console.log('=== USER UPDATED SUCCESSFULLY ===');
+
+      // Update group memberships in a single transaction if needed
+      if (shouldUpdateGroups) {
+        console.log('=== UPDATING GROUP MEMBERSHIPS ===', userData.groups);
+        
         // Remove existing memberships
-        await supabase
+        const { error: deleteError } = await supabase
           .from('user_group_memberships')
           .delete()
           .eq('user_id', id);
 
+        if (deleteError) {
+          console.error('=== ERRO DELETE MEMBERSHIPS ===', deleteError);
+        }
+
         // Add new memberships
-        if (userData.groups.length > 0) {
+        if (userData.groups && userData.groups.length > 0) {
           const groupsToAdd = groups.filter(g => userData.groups?.includes(g.name));
-          for (const group of groupsToAdd) {
-            await supabase
+          const membershipInserts = groupsToAdd.map(group => ({
+            user_id: id,
+            group_id: group.id
+          }));
+          
+          if (membershipInserts.length > 0) {
+            const { error: insertError } = await supabase
               .from('user_group_memberships')
-              .insert({ user_id: id, group_id: group.id });
+              .insert(membershipInserts);
+              
+            if (insertError) {
+              console.error('=== ERRO INSERT MEMBERSHIPS ===', insertError);
+            }
           }
         }
+        
+        console.log('=== GROUP MEMBERSHIPS UPDATED ===');
       }
 
+      console.log('=== CHAMANDO TOAST SUCCESS ===');
       toast.success('Usuário atualizado com sucesso');
-      await fetchUsers();
+      
+      console.log('=== CHAMANDO FETCH USERS ===');
+      // Use a timeout to prevent immediate re-fetch conflicts
+      setTimeout(() => {
+        fetchUsers();
+      }, 500);
+      
+      console.log('=== FIM UPDATE USER ===');
     } catch (error: any) {
-      console.error('Error updating user:', error);
+      console.error('=== ERRO FINAL UPDATE USER ===', error);
       toast.error('Erro ao atualizar usuário: ' + error.message);
       throw error;
     }
@@ -412,35 +447,56 @@ export function useSupabaseUsers() {
     (user.phone && user.phone.includes(searchTerm))
   );
 
-  // Set up realtime subscriptions
+  // Set up realtime subscriptions with debouncing
   useEffect(() => {
+    let fetchTimeout: NodeJS.Timeout;
+    
+    const debouncedFetch = () => {
+      clearTimeout(fetchTimeout);
+      fetchTimeout = setTimeout(() => {
+        console.log('=== REALTIME: Fetching users due to DB change ===');
+        fetchUsers();
+      }, 1000); // Debounce for 1 second
+    };
+    
+    const debouncedFetchGroups = () => {
+      clearTimeout(fetchTimeout);
+      fetchTimeout = setTimeout(() => {
+        console.log('=== REALTIME: Fetching groups due to DB change ===');
+        fetchGroups();
+      }, 1000);
+    };
+
     const channel = supabase
       .channel('users-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'users' },
-        () => {
-          fetchUsers();
+        (payload) => {
+          console.log('=== REALTIME: Users table change ===', payload.eventType);
+          debouncedFetch();
         }
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'user_groups' },
-        () => {
-          fetchGroups();
+        (payload) => {
+          console.log('=== REALTIME: User groups table change ===', payload.eventType);
+          debouncedFetchGroups();
         }
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'user_group_memberships' },
-        () => {
-          fetchUsers();
-          fetchGroups();
+        (payload) => {
+          console.log('=== REALTIME: Memberships table change ===', payload.eventType);
+          debouncedFetch();
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(fetchTimeout);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, []); // Empty dependency array to prevent subscription recreation
 
   // Initial load
   useEffect(() => {
