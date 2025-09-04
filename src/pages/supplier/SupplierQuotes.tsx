@@ -39,8 +39,25 @@ export default function SupplierQuotes() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { supplierQuotes, isLoading } = useSupabaseSupplierQuotes();
-  const { user } = useAuth();
+
+  // Early return if auth is still loading or user is not available
+  if (isAuthLoading || !user) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Minhas Cotações</h1>
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
