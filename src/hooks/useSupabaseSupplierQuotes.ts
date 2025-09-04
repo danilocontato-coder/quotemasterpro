@@ -532,7 +532,7 @@ export const useSupabaseSupplierQuotes = () => {
     if (user?.role === 'supplier') {
       fetchSupplierQuotes();
     }
-  }, [fetchSupplierQuotes, user?.role, user?.supplierId]);
+  }, [user?.role, user?.supplierId]); // Only depend on primitive values to prevent infinite loops
 
   return {
     supplierQuotes,

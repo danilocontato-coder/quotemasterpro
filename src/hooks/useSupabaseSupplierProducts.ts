@@ -357,7 +357,7 @@ export const useSupabaseSupplierProducts = () => {
       fetchProducts();
       fetchStockMovements();
     }
-  }, [fetchProducts, fetchStockMovements, user?.role, user?.supplierId]);
+  }, [user?.role, user?.supplierId]); // Removed callback functions to prevent infinite loops
 
   return {
     products,

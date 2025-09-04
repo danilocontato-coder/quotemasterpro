@@ -214,7 +214,7 @@ export const useSupabaseSupplierDashboard = () => {
     if (user?.role === 'supplier') {
       fetchDashboardData();
     }
-  }, [fetchDashboardData, user?.role, user?.supplierId]);
+  }, [user?.role, user?.supplierId]); // Removed fetchDashboardData to prevent infinite loops
 
   return {
     metrics,
