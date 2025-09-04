@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
+import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
 import {
   Building2,
   User,
@@ -54,7 +54,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
   generateTemporaryPassword
 }) => {
   const { toast } = useToast();
-  const { plans } = useSubscriptionPlans();
+  const { plans } = useSupabaseSubscriptionPlans();
   const [currentTab, setCurrentTab] = useState('basic');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -425,10 +425,10 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                               <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-2">
                                   <CreditCard className="h-4 w-4" />
-                                  <span>{plan.displayName}</span>
+                                  <span>{plan.display_name}</span>
                                 </div>
                                 <span className="text-sm text-muted-foreground ml-2">
-                                  R$ {plan.pricing.monthly.toFixed(2)}/mês
+                                  R$ {plan.monthly_price.toFixed(2)}/mês
                                 </span>
                               </div>
                             </SelectItem>

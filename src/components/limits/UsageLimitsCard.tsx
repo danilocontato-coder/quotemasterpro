@@ -80,7 +80,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       icon: FileText,
       label: 'Cotações/Mês',
       current: currentUsage.quotesThisMonth,
-      limit: userPlan.max_quotes_per_month || 0,
+      limit: userPlan?.max_quotes_per_month || userPlan?.max_quotes || 0,
       color: 'text-blue-600'
     },
     {
@@ -88,7 +88,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       icon: Users,
       label: 'Usuários',
       current: currentUsage.usersCount,
-      limit: userPlan.max_users_per_client || 0,
+      limit: userPlan?.max_users_per_client || userPlan?.max_users || 0,
       color: 'text-green-600'
     },
     {
@@ -96,7 +96,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       icon: Building2,
       label: 'Fornecedores/Cotação',
       current: currentUsage.suppliersPerQuote,
-      limit: userPlan.max_suppliers_per_quote || 0,
+      limit: userPlan?.max_suppliers_per_quote || 0,
       color: 'text-purple-600'
     },
     {
@@ -104,7 +104,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       icon: Database,
       label: 'Armazenamento (GB)',
       current: currentUsage.storageUsedGB,
-      limit: userPlan.max_storage_gb || 0,
+      limit: userPlan?.max_storage_gb || 0,
       color: 'text-orange-600'
     }
   ];
@@ -117,7 +117,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
         icon: Truck,
         label: 'Respostas/Mês',
         current: currentUsage.quoteResponsesThisMonth,
-        limit: userPlan.max_quote_responses_per_month || 0,
+        limit: userPlan?.max_quote_responses_per_month || 0,
         color: 'text-red-600'
       },
       {
@@ -125,7 +125,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
         icon: Package,
         label: 'Produtos',
         current: currentUsage.productsInCatalog,
-        limit: userPlan.max_products_in_catalog || 0,
+        limit: userPlan?.max_products_in_catalog || 0,
         color: 'text-cyan-600'
       },
       {
@@ -133,7 +133,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
         icon: Tag,
         label: 'Categorias',
         current: currentUsage.categoriesCount,
-        limit: userPlan.max_categories_per_supplier || 0,
+        limit: userPlan?.max_categories_per_supplier || 0,
         color: 'text-yellow-600'
       }
     );
@@ -162,7 +162,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
     return 'bg-blue-500';
   };
 
-  const planDisplayName = userPlan.display_name || userPlan.name || 'Plano Desconhecido';
+  const planDisplayName = userPlan?.display_name || userPlan?.name || 'Plano Desconhecido';
 
   if (compact) {
     return (

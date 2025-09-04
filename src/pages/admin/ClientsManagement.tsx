@@ -40,7 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
-import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
+import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
 import { usePagination } from '@/hooks/usePagination';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { usePerformanceDebug } from '@/hooks/usePerformanceDebug';
@@ -77,7 +77,7 @@ export const ClientsManagement = () => {
     stats
   } = useSupabaseAdminClients();
   
-  const { plans, getPlanById } = useSubscriptionPlans();
+  const { plans, getPlanById } = useSupabaseSubscriptionPlans();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGroupsManager, setShowGroupsManager] = useState(false);
@@ -199,13 +199,13 @@ export const ClientsManagement = () => {
   const getPlanInfo = (planId: string) => {
     const plan = getPlanById(planId);
     return plan ? {
-      displayName: plan.displayName,
-      price: plan.pricing.monthly,
-      isPopular: plan.isPopular
+      name: plan.display_name,
+      color: plan.custom_color || '#3b82f6',
+      price: plan.monthly_price
     } : {
-      displayName: planId,
-      price: 0,
-      isPopular: false
+      name: 'Plano não encontrado',
+      color: '#6b7280',
+      price: 0
     };
   };
 
@@ -486,17 +486,17 @@ export const ClientsManagement = () => {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <CreditCard className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm font-medium">
-                            {getPlanInfo(client.plan).displayName}
-                          </span>
-                          {getPlanInfo(client.plan).isPopular && (
-                            <Badge variant="secondary" className="text-xs">
-                              Popular
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatCurrency(getPlanInfo(client.plan).price)}/mês
+                           <span className="text-sm font-medium">
+                             {getPlanInfo(client.plan).name}
+                           </span>
+                           {getPlanById(client.plan)?.is_popular && (
+                             <Badge variant="secondary" className="text-xs">
+                               Popular
+                             </Badge>
+                           )}
+                         </div>
+                         <div className="text-xs text-muted-foreground">
+                           {formatCurrency(getPlanInfo(client.plan).price)}/mês
                         </div>
                       </div>
                     </TableCell>

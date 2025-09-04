@@ -11,12 +11,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useSupabaseDashboard } from "@/hooks/useSupabaseDashboard";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
-import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
+import { useSupabasePlanDetails } from '@/hooks/useSupabaseSubscriptionPlans';
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
   const { clientName, subscriptionPlan, isLoading: clientLoading } = useSupabaseCurrentClient();
-  const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
+  const { displayName: planDisplayName } = useSupabasePlanDetails(subscriptionPlan);
   const { metrics, activities, isLoading, error, refetch } = useSupabaseDashboard();
 
   const getStatusColor = (status: string) => {
