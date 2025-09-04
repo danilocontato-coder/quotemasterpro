@@ -68,7 +68,8 @@ const handler = async (req: Request): Promise<Response> => {
       .from('suppliers')
       .select('*')
       .eq('status', 'active')
-      .or(`client_id.eq.${quote.client_id},client_id.is.null`);
+      .or(`client_id.eq.${quote.client_id},client_id.is.null`)
+      .order('type', { ascending: false }); // Certified suppliers first
 
     if (supplier_ids && supplier_ids.length > 0) {
       suppliersQuery = suppliersQuery.in('id', supplier_ids);

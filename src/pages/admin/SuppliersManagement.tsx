@@ -1,107 +1,82 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Search, 
-  Plus, 
-  Truck, 
-  Users, 
-  TrendingUp,
-  DollarSign,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Trash2,
-  UserCheck,
-  UserX,
-  Phone,
-  Mail,
-  MapPin,
-  Tag,
-  FileText,
-  Shield,
-  Star,
-  Clock,
-  Award
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
-import { usePagination } from '@/hooks/usePagination';
-import { DataTablePagination } from '@/components/ui/data-table-pagination';
-import { CreateSupplierModal } from '@/components/suppliers/CreateSupplierModal';
+import { useState, useEffect } from "react";
+import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CreateSupplierModal } from "@/components/suppliers/CreateSupplierModal";
+import { useSupabaseAdminSuppliers } from "@/hooks/useSupabaseAdminSuppliers";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface SupplierStats {
+  total: number;
+  active: number;
+  inactive: number;
+  certified: number;
+  local: number;
+  avgRating: number;
+}
 
 export const SuppliersManagement = () => {
-  console.log('SuppliersManagement component rendering');
-  const {
-    suppliers,
-    isLoading,
-    createSupplier,
-    updateSupplier,
-    deleteSupplier
-  } = useSupabaseSuppliers();
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-
+  const { suppliers, isLoading, refetch, createSupplierWithUser, updateSupplier, deleteSupplier } = useSupabaseAdminSuppliers();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<any>(null);
+  const [deletingSupplier, setDeletingSupplier] = useState<any>(null);
+  const [certifyingSupplier, setCertifyingSupplier] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { toast } = useToast();
 
-  // Filtered suppliers based on search and filters
-  const filteredSuppliers = useMemo(() => {
-    return suppliers.filter(supplier => {
-      const matchesSearch = !searchTerm || 
-        supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        supplier.cnpj.includes(searchTerm) ||
-        supplier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (supplier.specialties && supplier.specialties.some(spec => 
-          spec.toLowerCase().includes(searchTerm.toLowerCase())
-        ));
-      
-      const matchesStatus = filterStatus === "all" || supplier.status === filterStatus;
-      
-      return matchesSearch && matchesStatus;
-    });
-  }, [suppliers, searchTerm, filterStatus]);
-
-  // Pagination
-  const pagination = usePagination(filteredSuppliers, {
-    initialPageSize: 10,
-    pageSizeOptions: [5, 10, 20, 50]
+  // Filter suppliers based on search and filters
+  const filteredSuppliers = suppliers.filter(supplier => {
+    const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         supplier.cnpj.includes(searchTerm) ||
+                         supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === "all" || supplier.status === statusFilter;
+    const matchesType = typeFilter === "all" || supplier.type === typeFilter;
+    
+    return matchesSearch && matchesStatus && matchesType;
   });
 
-  const getSupplierStats = () => ({
-    total: suppliers.length,
-    active: suppliers.filter(s => s.status === "active").length,
-    totalRevenue: 0,
-    avgRating: suppliers.reduce((sum, s) => sum + s.rating, 0) / suppliers.length || 0,
-    avgResponseTime: 24
-  });
+  // Simple pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedSuppliers = filteredSuppliers.slice(startIndex, startIndex + itemsPerPage);
+
+  // Statistics
+  const getSupplierStats = (): SupplierStats => {
+    const total = suppliers.length;
+    const active = suppliers.filter(s => s.status === 'active').length;
+    const inactive = suppliers.filter(s => s.status !== 'active').length;
+    const certified = suppliers.filter(s => s.type === 'certified').length;
+    const local = suppliers.filter(s => s.type === 'local').length;
+    const totalRating = suppliers.reduce((sum, s) => sum + (s.rating || 0), 0);
+    const avgRating = total > 0 ? totalRating / total : 0;
+
+    return { total, active, inactive, certified, local, avgRating };
+  };
+
+  const stats = getSupplierStats();
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800 border-green-200';
-      case 'inactive': return 'bg-red-100 text-red-800 border-red-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'suspended': return 'bg-orange-100 text-orange-800 border-orange-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'inactive': return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'suspended': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
-
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -111,144 +86,226 @@ export const SuppliersManagement = () => {
   };
 
   const formatResponseTime = (hours: number) => {
-    if (hours < 1) return `${Math.round(hours * 60)}min`;
-    if (hours < 24) return `${Math.round(hours)}h`;
-    return `${Math.round(hours / 24)}d`;
+    if (hours < 1) return `${Math.round(hours * 60)} min`;
+    if (hours < 24) return `${Math.round(hours)} h`;
+    return `${Math.round(hours / 24)} dias`;
   };
 
   const renderStars = (rating: number) => {
     return (
       <div className="flex items-center gap-1">
-        {[...Array(5)].map((_, i) => (
+        {[1, 2, 3, 4, 5].map((star) => (
           <Star
-            key={i}
+            key={star}
             className={`h-3 w-3 ${
-              i < Math.floor(rating) 
-                ? 'fill-yellow-400 text-yellow-400' 
-                : 'text-gray-300'
+              star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
             }`}
           />
         ))}
-        <span className="text-xs text-muted-foreground ml-1">{rating.toFixed(1)}</span>
+        <span className="text-sm text-muted-foreground ml-1">
+          ({rating.toFixed(1)})
+        </span>
       </div>
     );
   };
 
+  const handleCertifySupplier = async (supplier: any, certify: boolean) => {
+    setIsProcessing(true);
+    try {
+      // Update supplier type
+      await updateSupplier(supplier.id, {
+        type: certify ? 'certified' : 'local',
+        client_id: certify ? null : supplier.client_id // Certified suppliers are global (no client_id)
+      });
+
+      if (certify) {
+        // Send notification to supplier about certification
+        try {
+          await supabase.functions.invoke('notify', {
+            body: {
+              type: 'certification',
+              supplier_id: supplier.id,
+              supplier_name: supplier.name,
+              supplier_email: supplier.email,
+              supplier_whatsapp: supplier.whatsapp
+            }
+          });
+        } catch (notifyError) {
+          console.error('Erro ao enviar notificação:', notifyError);
+          // Don't fail the whole operation if notification fails
+        }
+      }
+
+      toast({
+        title: certify ? "Fornecedor Certificado" : "Certificação Removida",
+        description: certify 
+          ? `${supplier.name} foi certificado e está disponível globalmente. Notificação enviada.`
+          : `${supplier.name} voltou a ser um fornecedor local.`
+      });
+
+      setCertifyingSupplier(null);
+    } catch (error) {
+      console.error('Erro ao certificar fornecedor:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar o status do fornecedor.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Gerenciamento de Fornecedores</h1>
-            <p className="text-muted-foreground">Gerencie todos os fornecedores da plataforma</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              className="bg-primary hover:bg-primary/90"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Fornecedor
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Gestão de Fornecedores</h1>
+          <p className="text-muted-foreground">
+            Gerencie todos os fornecedores da plataforma
+          </p>
         </div>
+        <Button onClick={() => setShowCreateModal(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Fornecedor
+        </Button>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Truck className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">{getSupplierStats().total}</p>
-              <p className="text-xs text-muted-foreground">Total Fornecedores</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <UserCheck className="h-6 w-6 mx-auto mb-2 text-green-600" />
-              <p className="text-2xl font-bold">{getSupplierStats().active}</p>
-              <p className="text-xs text-muted-foreground">Ativos</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Star className="h-6 w-6 mx-auto mb-2 text-yellow-500" />
-              <p className="text-2xl font-bold">{getSupplierStats().avgRating.toFixed(1)}</p>
-              <p className="text-xs text-muted-foreground">Avaliação Média</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Clock className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-              <p className="text-2xl font-bold">{formatResponseTime(getSupplierStats().avgResponseTime)}</p>
-              <p className="text-xs text-muted-foreground">Tempo Médio Resposta</p>
-            </CardContent>
-          </Card>
-        </div>
-
-
-        {/* Filtros */}
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Filtros e Pesquisa</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Pesquisar por nome, CNPJ, email ou categoria..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              
-              
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="active">Ativo</SelectItem>
-                  <SelectItem value="inactive">Inativo</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="suspended">Suspenso</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardContent>
         </Card>
-
-        {/* Tabela de Fornecedores */}
+        
         <Card>
-          <CardHeader>
-            <CardTitle>Lista de Fornecedores ({filteredSuppliers.length})</CardTitle>
-            <CardDescription>
-              {filteredSuppliers.length === suppliers.length 
-                ? 'Todos os fornecedores cadastrados na plataforma'
-                : `${filteredSuppliers.length} de ${suppliers.length} fornecedores`
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8">
-                <p>Carregando fornecedores...</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Ativos</p>
+                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
               </div>
-            ) : (
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Inativos</p>
+                <p className="text-2xl font-bold text-red-600">{stats.inactive}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Certificados</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.certified}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Locais</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.local}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Avaliação Média</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.avgRating.toFixed(1)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Buscar por nome, CNPJ ou email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-input rounded-md bg-background"
+            >
+              <option value="all">Todos os status</option>
+              <option value="active">Ativo</option>
+              <option value="inactive">Inativo</option>
+              <option value="pending">Pendente</option>
+              <option value="suspended">Suspenso</option>
+            </select>
+            
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="px-3 py-2 border border-input rounded-md bg-background"
+            >
+              <option value="all">Todos os tipos</option>
+              <option value="certified">Certificados</option>
+              <option value="local">Locais</option>
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Suppliers Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fornecedores ({filteredSuppliers.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center space-x-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-4 w-[150px]" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Contato</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Avaliação</TableHead>
                     <TableHead>Região</TableHead>
@@ -256,116 +313,115 @@ export const SuppliersManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pagination.paginatedData.map((supplier) => (
+                  {paginatedSuppliers.map((supplier) => (
                     <TableRow key={supplier.id}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-full bg-muted">
-                            <Truck className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{supplier.name}</p>
-                            <p className="text-sm text-muted-foreground">{supplier.cnpj}</p>
-                            {supplier.specialties && supplier.specialties.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {supplier.specialties.slice(0, 2).map((specialty) => (
-                                  <Badge key={specialty} variant="outline" className="text-xs">
-                                    {specialty}
-                                  </Badge>
-                                ))}
-                                {supplier.specialties.length > 2 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{supplier.specialties.length - 2}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
+                        <div>
+                          <div className="font-medium">{supplier.name}</div>
+                          <div className="text-sm text-muted-foreground font-mono">
+                            {supplier.cnpj}
                           </div>
                         </div>
                       </TableCell>
                       
                       <TableCell>
                         <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-sm">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            <span>{supplier.email}</span>
-                          </div>
+                          <div className="text-sm">{supplier.email}</div>
                           {supplier.phone && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              <span>{supplier.phone}</span>
-                            </div>
-                          )}
-                          {supplier.website && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <MapPin className="h-3 w-3" />
-                              <span>Website</span>
-                            </div>
+                            <div className="text-sm text-muted-foreground">{supplier.phone}</div>
                           )}
                         </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        {supplier.type === 'certified' ? (
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                            <Shield className="h-3 w-3 mr-1" />
+                            Certificado
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            Local
+                          </Badge>
+                        )}
                       </TableCell>
                       
                       <TableCell>
                         <Badge className={getStatusColor(supplier.status)}>
-                          {supplier.status === 'active' ? 'Ativo' :
-                           supplier.status === 'inactive' ? 'Inativo' : 
-                           supplier.status === 'suspended' ? 'Suspenso' : 'Pendente'}
+                          {supplier.status === 'active' ? 'Ativo' : 
+                           supplier.status === 'inactive' ? 'Inativo' :
+                           supplier.status === 'pending' ? 'Pendente' : 'Suspenso'}
                         </Badge>
                       </TableCell>
                       
                       <TableCell>
-                        <div className="space-y-1">
-                          {renderStars(supplier.rating)}
-                          <div className="text-xs text-muted-foreground">
-                            {supplier.completed_orders} pedidos
-                          </div>
-                        </div>
+                        {supplier.rating ? (
+                          renderStars(supplier.rating)
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Sem avaliação</span>
+                        )}
                       </TableCell>
                       
                       <TableCell>
-                        <span className="text-sm">{supplier.region || 'Não informado'}</span>
+                        <span className="text-sm">{supplier.region || 'Não definida'}</span>
                       </TableCell>
                       
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menu</span>
+                              <Filter className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-background border z-50">
-                            <DropdownMenuItem>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Visualizar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => {
+                              setEditingSupplier(supplier);
+                              setShowCreateModal(true);
+                            }}>
                               <Edit className="h-4 w-4 mr-2" />
                               Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Shield className="h-4 w-4 mr-2" />
-                              Credenciais
+                            
+                            <DropdownMenuItem 
+                              onClick={() => setCertifyingSupplier({ supplier, action: supplier.type === 'certified' ? 'remove' : 'certify' })}
+                              className={supplier.type === 'certified' ? 'text-yellow-600' : 'text-purple-600'}
+                            >
+                              {supplier.type === 'certified' ? (
+                                <>
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Remover Certificação
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Certificar
+                                </>
+                              )}
                             </DropdownMenuItem>
+                            
                             <DropdownMenuItem 
                               onClick={() => updateSupplier(supplier.id, { 
                                 status: supplier.status === 'active' ? 'inactive' : 'active' 
                               })}
+                              className={supplier.status === 'active' ? 'text-red-600' : 'text-green-600'}
                             >
                               {supplier.status === 'active' ? (
                                 <>
-                                  <UserX className="h-4 w-4 mr-2" />
+                                  <XCircle className="h-4 w-4 mr-2" />
                                   Desativar
                                 </>
                               ) : (
                                 <>
-                                  <UserCheck className="h-4 w-4 mr-2" />
+                                  <CheckCircle className="h-4 w-4 mr-2" />
                                   Ativar
                                 </>
                               )}
                             </DropdownMenuItem>
+                            
                             <DropdownMenuItem 
+                              onClick={() => setDeletingSupplier(supplier)}
                               className="text-red-600"
-                              onClick={() => deleteSupplier(supplier.id, supplier.name)}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Excluir
@@ -377,38 +433,141 @@ export const SuppliersManagement = () => {
                   ))}
                 </TableBody>
               </Table>
-            )}
 
-            {/* Empty state */}
-            {!isLoading && pagination.paginatedData.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                  {filteredSuppliers.length === 0 ? 'Nenhum fornecedor encontrado' : 'Nenhum fornecedor nesta página'}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {filteredSuppliers.length === 0 
-                    ? 'Tente ajustar os filtros ou criar um novo fornecedor'
-                    : 'Navegue para outra página ou ajuste os filtros'
-                  }
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              {/* Simple Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredSuppliers.length)} de {filteredSuppliers.length} fornecedores
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Pagination */}
-        {!isLoading && filteredSuppliers.length > 0 && (
-          <DataTablePagination {...pagination} />
-        )}
-      </div>
-
-      {/* Modal */}
+      {/* Create/Edit Modal */}
       <CreateSupplierModal
         open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreateSupplier={createSupplier}
+        onClose={() => {
+          setShowCreateModal(false);
+          setEditingSupplier(null);
+        }}
+        onCreateSupplier={async (supplierData) => {
+          try {
+            if (editingSupplier) {
+              await updateSupplier(editingSupplier.id, supplierData);
+            } else {
+              const credentials = {
+                username: '',
+                password: '',
+                generateCredentials: false,
+                forcePasswordChange: false
+              };
+              await createSupplierWithUser(supplierData, credentials);
+            }
+            setShowCreateModal(false);
+            setEditingSupplier(null);
+          } catch (error) {
+            console.error('Error saving supplier:', error);
+          }
+        }}
       />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingSupplier} onOpenChange={() => setDeletingSupplier(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Fornecedor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o fornecedor "{deletingSupplier?.name}"? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (deletingSupplier) {
+                  await deleteSupplier(deletingSupplier.id, deletingSupplier.name);
+                  setDeletingSupplier(null);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Certification Confirmation */}
+      <AlertDialog open={!!certifyingSupplier} onOpenChange={() => setCertifyingSupplier(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {certifyingSupplier?.action === 'certify' ? 'Certificar Fornecedor' : 'Remover Certificação'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {certifyingSupplier?.action === 'certify' ? (
+                <>
+                  Tem certeza que deseja certificar o fornecedor "{certifyingSupplier?.supplier?.name}"?
+                  <br /><br />
+                  Fornecedores certificados:
+                  <br />• Ficam disponíveis para todos os clientes
+                  <br />• Recebem prioridade no envio de cotações
+                  <br />• Podem ter maior visibilidade na plataforma
+                  <br />• Receberão uma notificação sobre a certificação
+                </>
+              ) : (
+                <>
+                  Tem certeza que deseja remover a certificação do fornecedor "{certifyingSupplier?.supplier?.name}"?
+                  <br /><br />
+                  O fornecedor voltará a ser local e perderá os benefícios da certificação.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (certifyingSupplier) {
+                  handleCertifySupplier(
+                    certifyingSupplier.supplier, 
+                    certifyingSupplier.action === 'certify'
+                  );
+                }
+              }}
+              disabled={isProcessing}
+              className={certifyingSupplier?.action === 'certify' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-yellow-600 hover:bg-yellow-700'}
+            >
+              {isProcessing ? 'Processando...' : (
+                certifyingSupplier?.action === 'certify' ? 'Certificar' : 'Remover Certificação'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

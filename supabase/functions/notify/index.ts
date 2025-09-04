@@ -7,10 +7,13 @@ const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL')!
 const evolutionApiToken = Deno.env.get('EVOLUTION_API_TOKEN')!
 
 interface NotificationRequest {
-  type: 'email' | 'whatsapp'
-  to: string
-  supplierName: string
-  quoteData: {
+  type: 'email' | 'whatsapp' | 'certification'
+  to?: string
+  supplier_id?: string
+  supplier_name?: string
+  supplier_email?: string
+  supplier_whatsapp?: string
+  quoteData?: {
     quoteId: string
     quoteTitle: string
     deadline: string
@@ -30,13 +33,107 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { type, to, supplierName, quoteData }: NotificationRequest = await req.json()
+    const { type, to, supplier_id, supplier_name, supplier_email, supplier_whatsapp, quoteData }: NotificationRequest = await req.json()
 
-    console.log(`[NOTIFY] Enviando ${type} para ${supplierName} (${to})`)
+    console.log(`[NOTIFY] Processando notificação tipo ${type}`)
 
     let result: any = { success: false }
 
-    if (type === 'whatsapp') {
+    if (type === 'certification') {
+      // Handle supplier certification notification
+      if (!supplier_id || !supplier_name) {
+        throw new Error('supplier_id e supplier_name são obrigatórios para certificação')
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+      // Get supplier details
+      const { data: supplier, error: supplierError } = await supabase
+        .from('suppliers')
+        .select('*')
+        .eq('id', supplier_id)
+        .single()
+
+      if (supplierError || !supplier) {
+        throw new Error('Fornecedor não encontrado')
+      }
+
+      // Create notification record in database
+      await supabase.from('notifications').insert({
+        user_id: null, // Will be set if we have a user account for the supplier
+        title: 'Parabéns! Você foi certificado',
+        message: `Seu fornecedor "${supplier.name}" foi certificado pela plataforma QuoteMaster Pro. Agora você tem acesso a mais oportunidades de negócio e maior visibilidade para todos os clientes.`,
+        type: 'certification',
+        priority: 'high',
+        metadata: {
+          supplier_id: supplier_id,
+          certification_date: new Date().toISOString()
+        }
+      })
+
+      // Send WhatsApp notification if available
+      if (supplier.whatsapp && evolutionApiUrl && evolutionApiToken) {
+        const message = `🎉 *Parabéns! Fornecedor Certificado* 🎉\n\n` +
+          `Olá ${supplier.name}!\n\n` +
+          `É com grande prazer que informamos que sua empresa foi **CERTIFICADA** pela plataforma QuoteMaster Pro! 🏆\n\n` +
+          `✅ *Benefícios da Certificação:*\n` +
+          `• Visibilidade para TODOS os clientes da plataforma\n` +
+          `• Prioridade no recebimento de cotações\n` +
+          `• Selo de qualidade e confiabilidade\n` +
+          `• Maior oportunidade de negócios\n\n` +
+          `🚀 A partir de agora, você pode receber cotações de qualquer cliente da plataforma.\n\n` +
+          `Obrigado por fazer parte da nossa rede de fornecedores certificados!\n\n` +
+          `*QuoteMaster Pro - Conectando negócios*`
+
+        try {
+          const whatsappResponse = await fetch(`${evolutionApiUrl}/message/sendText`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': evolutionApiToken
+            },
+            body: JSON.stringify({
+              number: supplier.whatsapp,
+              text: message
+            })
+          })
+
+          if (whatsappResponse.ok) {
+            result = { success: true, method: 'whatsapp', messageId: `cert_${Date.now()}` }
+            console.log(`[CERTIFICATION] WhatsApp enviado para ${supplier.whatsapp}`)
+          } else {
+            console.error('[CERTIFICATION] Erro no WhatsApp:', await whatsappResponse.text())
+          }
+        } catch (whatsappError) {
+          console.error('[CERTIFICATION] Erro ao enviar WhatsApp:', whatsappError)
+        }
+      }
+
+      // Send email notification if available (placeholder)
+      if (supplier.email) {
+        console.log(`[CERTIFICATION] Email de certificação seria enviado para ${supplier.email}`)
+        // TODO: Implement email sending via Resend
+      }
+
+      if (!result.success) {
+        result = { success: true, method: 'database', note: 'Notificação salva no banco' }
+      }
+
+      // Log the certification
+      await supabase.from('audit_logs').insert({
+        action: 'SUPPLIER_CERTIFIED',
+        entity_type: 'suppliers',
+        entity_id: supplier_id,
+        details: {
+          supplier_name: supplier.name,
+          certification_date: new Date().toISOString(),
+          notification_sent: result.success
+        }
+      })
+
+    } else if (type === 'whatsapp' && quoteData) {
+      // Original quote notification logic
+      const supplierName = supplier_name || 'Fornecedor'
       // Enviar via Evolution API
       const message = `🏢 *Nova Cotação - ${quoteData.clientName}*\n\n` +
         `Olá ${supplierName}!\n\n` +
@@ -79,7 +176,7 @@ Deno.serve(async (req) => {
         }
       }
 
-    } else if (type === 'email') {
+    } else if (type === 'email' && quoteData) {
       // TODO: Implementar envio de email (SendGrid/Resend)
       console.log(`[EMAIL] Simulando envio para ${to}`)
       
@@ -94,21 +191,23 @@ Deno.serve(async (req) => {
     }
 
     // Log da notificação
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    
-    await supabase.from('audit_logs').insert({
-      action_type: 'NOTIFICATION_SENT',
-      entity_type: 'quotes',
-      entity_id: quoteData.quoteId,
-      details: {
-        type,
-        to,
-        supplierName,
-        success: result.success,
-        messageId: result.messageId,
-        provider: result.provider
-      }
-    })
+    if (quoteData) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey)
+      
+      await supabase.from('audit_logs').insert({
+        action: 'NOTIFICATION_SENT',
+        entity_type: 'quotes',
+        entity_id: quoteData.quoteId,
+        details: {
+          type,
+          to,
+          supplier_name: supplier_name,
+          success: result.success,
+          messageId: result.messageId,
+          provider: result.provider
+        }
+      })
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
