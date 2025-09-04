@@ -35,6 +35,8 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
   const percentage = getUsagePercentage('CREATE_QUOTE');
   const isUnlimited = quotesResult.limit === -1;
   const nearLimit = isNearLimit('CREATE_QUOTE', 80);
+  const canCreateOneMore = checkLimit('CREATE_QUOTE', 1).allowed;
+  const remaining = isUnlimited ? Number.POSITIVE_INFINITY : Math.max(0, quotesResult.limit - quotesResult.currentUsage);
 
   const getProgressColor = (percentage: number) => {
     if (percentage >= 90) return 'bg-red-500';
@@ -150,7 +152,7 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
               />
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>{percentage}% do limite utilizado</span>
-                <span>{quotesResult.limit - quotesResult.currentUsage} restantes</span>
+                <span>{remaining} restantes</span>
               </div>
             </div>
           )}
@@ -169,9 +171,11 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
           </div>
         )}
 
-        {!nearLimit && quotesResult.currentUsage > 0 && (
+        {!nearLimit && !isUnlimited && (
           <div className="text-sm text-muted-foreground text-center pt-2 border-t">
-            Você ainda tem {quotesResult.limit - quotesResult.currentUsage} cotações disponíveis este mês
+            {canCreateOneMore
+              ? `Você ainda tem ${remaining} cotações disponíveis este mês`
+              : 'Limite de cotações do plano atingido neste mês'}
           </div>
         )}
       </CardContent>
