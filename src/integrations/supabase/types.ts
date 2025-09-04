@@ -785,6 +785,7 @@ export type Database = {
           id: string
           items_count: number | null
           responses_count: number | null
+          selected_supplier_ids: string[] | null
           status: string | null
           supplier_id: string | null
           supplier_name: string | null
@@ -804,6 +805,7 @@ export type Database = {
           id: string
           items_count?: number | null
           responses_count?: number | null
+          selected_supplier_ids?: string[] | null
           status?: string | null
           supplier_id?: string | null
           supplier_name?: string | null
@@ -823,6 +825,7 @@ export type Database = {
           id?: string
           items_count?: number | null
           responses_count?: number | null
+          selected_supplier_ids?: string[] | null
           status?: string | null
           supplier_id?: string | null
           supplier_name?: string | null

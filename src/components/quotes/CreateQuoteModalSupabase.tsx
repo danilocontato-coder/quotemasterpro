@@ -210,6 +210,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
         responses_count: 0,
         suppliers_sent_count: 0, // Será atualizado quando a cotação for enviada
         supplier_scope: formData.supplierScope, // Incluir o escopo de fornecedores
+        supplier_ids: formData.supplier_ids, // Incluir os fornecedores selecionados
         items: formData.items.map(item => ({
           product_name: item.product_name,
           quantity: item.quantity || 1,
@@ -341,12 +342,6 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
 
       case 3:
         const filteredSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
-          console.log('🎯 Modal Criação - Fornecedor:', supplier.name, {
-            client_id: supplier.client_id,
-            type: supplier.type,
-            scope: formData.supplierScope
-          });
-          
           if (formData.supplierScope === 'local') {
             return supplier.client_id !== null; // Fornecedores locais (cadastrados pelo cliente)
           } else {

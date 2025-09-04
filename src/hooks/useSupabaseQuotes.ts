@@ -22,6 +22,8 @@ export interface Quote {
   created_by: string;
   created_at: string;
   updated_at: string;
+  supplier_scope?: string;
+  selected_supplier_ids?: string[];
 }
 
 export const useSupabaseQuotes = () => {
@@ -155,7 +157,9 @@ export const useSupabaseQuotes = () => {
         created_by: user.id,
         items_count: items?.length || 0,
         responses_count: 0,
-        suppliers_sent_count: 0
+        suppliers_sent_count: 0,
+        supplier_scope: quoteFields.supplier_scope || 'local',
+        selected_supplier_ids: quoteFields.supplier_ids || []
       } as const;
 
       console.log('=== INSERINDO QUOTE ===', newQuote);
