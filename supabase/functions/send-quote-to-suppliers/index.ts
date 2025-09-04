@@ -12,6 +12,7 @@ interface SendQuoteRequest {
   send_whatsapp: boolean;
   send_email: boolean;
   custom_message?: string;
+  send_via?: 'n8n' | 'direct';
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -28,7 +29,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message }: SendQuoteRequest = await req.json();
+    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via = 'n8n' }: SendQuoteRequest = await req.json();
 
     console.log('Processing quote:', quote_id);
 
@@ -254,6 +255,14 @@ const handler = async (req: Request): Promise<Response> => {
       platform: 'QuoteMaster Pro'
     };
 
+    console.log(`Processing via ${send_via}:`, { quote_id, suppliers_count: suppliers.length });
+
+    // Check if sending directly via Evolution API
+    if (send_via === 'direct' && send_whatsapp && evolutionApiUrl && evolutionToken) {
+      return await handleDirectEvolutionSending();
+    }
+    
+    // Fallback to N8N integration
     console.log('Sending to N8N:', { quote_id, suppliers_count: suppliers.length });
     
     // Resolve N8N webhook URL from DB integration (per client) or fallback to env
@@ -471,6 +480,171 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
+  }
+
+  // Handle direct Evolution API sending
+  async function handleDirectEvolutionSending() {
+    console.log('Sending directly via Evolution API');
+    
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      // Render template message
+      let finalMessage = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
+      
+      // Replace template variables
+      Object.entries(templateVariables).forEach(([key, value]) => {
+        finalMessage = finalMessage.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
+      });
+
+      // Add custom message if provided
+      if (custom_message?.trim()) {
+        finalMessage = `${custom_message.trim()}\n\n${finalMessage}`;
+      }
+
+      console.log('Template rendered:', finalMessage.substring(0, 100) + '...');
+
+      // Send to each supplier
+      for (const supplier of suppliers) {
+        if (!supplier.whatsapp && !supplier.phone) {
+          console.warn(`Supplier ${supplier.name} has no WhatsApp/phone number`);
+          errorCount++;
+          errors.push(`${supplier.name}: sem WhatsApp/telefone`);
+          continue;
+        }
+
+        // Normalize phone number (remove non-digits, ensure country code)
+        const phone = supplier.whatsapp || supplier.phone || '';
+        const normalizedPhone = phone.replace(/[^0-9]/g, '');
+        const finalPhone = normalizedPhone.startsWith('55') ? normalizedPhone : `55${normalizedPhone}`;
+
+        if (finalPhone.length < 12) {
+          console.warn(`Invalid phone number for supplier ${supplier.name}: ${phone}`);
+          errorCount++;
+          errors.push(`${supplier.name}: número inválido (${phone})`);
+          continue;
+        }
+
+        try {
+          // Send via Evolution API
+          const evolutionResponse = await fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': evolutionToken,
+            },
+            body: JSON.stringify({
+              number: finalPhone,
+              text: finalMessage,
+            }),
+          });
+
+          if (!evolutionResponse.ok) {
+            const errorText = await evolutionResponse.text();
+            console.error(`Evolution API error for ${supplier.name}:`, evolutionResponse.status, errorText);
+            errorCount++;
+            errors.push(`${supplier.name}: ${evolutionResponse.status} - ${errorText.substring(0, 100)}`);
+            continue;
+          }
+
+          const responseData = await evolutionResponse.json();
+          console.log(`Message sent to ${supplier.name} (${finalPhone}):`, responseData);
+          successCount++;
+
+        } catch (error: any) {
+          console.error(`Error sending to ${supplier.name}:`, error);
+          errorCount++;
+          errors.push(`${supplier.name}: ${error.message}`);
+        }
+      }
+
+      console.log(`Direct Evolution sending completed: ${successCount} success, ${errorCount} errors`);
+
+      // Update quote status in background
+      EdgeRuntime.waitUntil((async () => {
+        try {
+          const { error: statusError } = await supabase
+            .from('quotes')
+            .update({ 
+              status: 'sent',
+              suppliers_sent_count: successCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', quote_id);
+
+          if (statusError) {
+            console.error('Failed to update quote status:', statusError);
+          } else {
+            console.log(`Quote ${quote_id} status updated to 'sent'`);
+          }
+        } catch (error) {
+          console.error('Error updating quote status:', error);
+        }
+      })());
+
+      // Log the activity in background
+      EdgeRuntime.waitUntil((async () => {
+        try {
+          const { error: logError } = await supabase
+            .from('audit_logs')
+            .insert({
+              user_id: quote.created_by,
+              action: 'QUOTE_SENT_TO_SUPPLIERS_DIRECT',
+              entity_type: 'quotes',
+              entity_id: quote_id,
+              details: {
+                suppliers_total: suppliers.length,
+                suppliers_success: successCount,
+                suppliers_errors: errorCount,
+                send_method: 'evolution_direct',
+                evolution_instance: evolutionInstance,
+                errors: errors.length > 0 ? errors : undefined
+              }
+            });
+
+          if (logError) {
+            console.warn('Failed to log activity:', logError);
+          }
+        } catch (error) {
+          console.error('Error logging activity:', error);
+        }
+      })());
+
+      const responseMessage = successCount > 0 
+        ? `Cotação enviada com sucesso para ${successCount} fornecedor(es)${errorCount > 0 ? `. ${errorCount} erro(s) encontrado(s)` : ''}`
+        : `Falha ao enviar para todos os fornecedores (${errorCount} erro(s))`;
+
+      return new Response(
+        JSON.stringify({ 
+          success: successCount > 0, 
+          message: responseMessage,
+          suppliers_contacted: successCount,
+          suppliers_total: suppliers.length,
+          errors: errorCount > 0 ? errors : undefined,
+          send_method: 'evolution_direct',
+          quote_status_updated: true
+        }),
+        {
+          status: successCount > 0 ? 200 : 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+
+    } catch (error: any) {
+      console.error('Error in direct Evolution sending:', error);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Erro ao enviar via Evolution API', 
+          details: error.message 
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
   }
 };
 

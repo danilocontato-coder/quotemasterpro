@@ -24,7 +24,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
   const [customMessage, setCustomMessage] = useState('');
+  const [sendDirect, setSendDirect] = useState(false);
   const [resolvedWebhookUrl, setResolvedWebhookUrl] = useState<string | null>(null);
+  const [evolutionConfigured, setEvolutionConfigured] = useState(false);
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
 
@@ -45,12 +47,14 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     }
   }, [activeSuppliers]);
 
-  // Resolve configured webhook URL (client-specific or global)
+  // Resolve configured webhook URL and Evolution API
   useEffect(() => {
-    const resolveWebhook = async () => {
+    const resolveIntegrations = async () => {
       try {
         setResolvedWebhookUrl(null);
-        // Try client-specific first
+        setEvolutionConfigured(false);
+
+        // Check N8N webhook (client-specific first)
         const { data: clientInt } = await supabase
           .from('integrations')
           .select('configuration')
@@ -59,9 +63,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           .eq('client_id', quote?.client_id || null)
           .maybeSingle();
 
-        let url = (clientInt?.configuration as any)?.webhook_url || null;
+        let webhookUrl = (clientInt?.configuration as any)?.webhook_url || null;
 
-        if (!url) {
+        if (!webhookUrl) {
           const { data: globalInt } = await supabase
             .from('integrations')
             .select('configuration')
@@ -69,18 +73,50 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
             .eq('active', true)
             .is('client_id', null)
             .maybeSingle();
-          url = (globalInt?.configuration as any)?.webhook_url || null;
+          webhookUrl = (globalInt?.configuration as any)?.webhook_url || null;
         }
 
-        setResolvedWebhookUrl(url);
+        setResolvedWebhookUrl(webhookUrl);
+
+        // Check Evolution API configuration
+        const { data: evoClientInt } = await supabase
+          .from('integrations')
+          .select('configuration')
+          .eq('integration_type', 'whatsapp_evolution')
+          .eq('active', true)
+          .eq('client_id', quote?.client_id || null)
+          .maybeSingle();
+
+        let evoCfg = evoClientInt?.configuration;
+        if (!evoCfg) {
+          const { data: evoGlobalInt } = await supabase
+            .from('integrations')
+            .select('configuration')
+            .eq('integration_type', 'whatsapp_evolution')
+            .eq('active', true)
+            .is('client_id', null)
+            .maybeSingle();
+          evoCfg = evoGlobalInt?.configuration;
+        }
+
+        // Check if Evolution is properly configured
+        if (evoCfg && typeof evoCfg === 'object') {
+          const cfg = evoCfg as any;
+          const hasInstance = cfg.instance || cfg.evolution_instance;
+          const hasApiUrl = cfg.api_url || cfg.evolution_api_url;
+          const hasToken = cfg.token || cfg.evolution_token;
+          setEvolutionConfigured(!!(hasInstance && hasApiUrl && hasToken));
+        }
+
       } catch (e) {
-        console.warn('Falha ao resolver webhook N8N');
+        console.warn('Falha ao resolver integrações');
         setResolvedWebhookUrl(null);
+        setEvolutionConfigured(false);
       }
     };
 
     if (open && quote?.id) {
-      resolveWebhook();
+      resolveIntegrations();
     }
   }, [open, quote?.id, quote?.client_id]);
 
@@ -120,7 +156,8 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           supplier_ids: selectedSuppliers,
           send_whatsapp: sendWhatsApp,
           send_email: sendEmail,
-          custom_message: customMessage.trim()
+          custom_message: customMessage.trim(),
+          send_via: sendDirect ? 'direct' : 'n8n'
         }
       });
 
@@ -220,14 +257,38 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
                   E-mail
                 </Label>
               </div>
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox
+                  id="direct"
+                  checked={sendDirect}
+                  onCheckedChange={(checked) => setSendDirect(checked === true)}
+                  disabled={!evolutionConfigured}
+                />
+                <Label htmlFor="direct" className="flex items-center gap-2">
+                  <span className="text-sm">Enviar diretamente (Evolution API)</span>
+                  {!evolutionConfigured && (
+                    <span className="text-xs text-red-500">(não configurado)</span>
+                  )}
+                </Label>
+              </div>
               <div className="pt-2">
                 <p className="text-xs text-muted-foreground">
-                  Webhook configurado: {resolvedWebhookUrl ? (
-                    <a href={resolvedWebhookUrl} target="_blank" rel="noreferrer" className="underline">
-                      {resolvedWebhookUrl}
-                    </a>
+                  {sendDirect ? (
+                    evolutionConfigured ? (
+                      'Enviando diretamente via Evolution API configurada no SuperAdmin'
+                    ) : (
+                      'Evolution API não configurada. Configure em Admin > Integrações'
+                    )
                   ) : (
-                    'não encontrado (configure em Admin > Integrações – N8N)'
+                    <>
+                      N8N Webhook: {resolvedWebhookUrl ? (
+                        <a href={resolvedWebhookUrl} target="_blank" rel="noreferrer" className="underline">
+                          {resolvedWebhookUrl}
+                        </a>
+                      ) : (
+                        'não encontrado (configure em Admin > Integrações – N8N)'
+                      )}
+                    </>
                   )}
                 </p>
               </div>
