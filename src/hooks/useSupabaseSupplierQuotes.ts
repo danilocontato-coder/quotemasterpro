@@ -632,10 +632,20 @@ export const useSupabaseSupplierQuotes = () => {
 
   // Fetch data on mount and when user changes
   useEffect(() => {
+    console.log('🔍 useSupabaseSupplierQuotes useEffect triggered:', {
+      userRole: user?.role,
+      supplierId: user?.supplierId,
+      userId: user?.id,
+      userEmail: user?.email,
+    });
+    
     if (user?.role === 'supplier') {
+      console.log('📋 User is supplier, calling fetchSupplierQuotes...');
       fetchSupplierQuotes();
+    } else {
+      console.log('⚠️ User is not supplier, role:', user?.role);
     }
-  }, [user?.role, user?.supplierId]); // Only depend on primitive values to prevent infinite loops
+  }, [user?.role, user?.supplierId]); // Don't include fetchSupplierQuotes to avoid infinite loops
 
   return {
     supplierQuotes,
