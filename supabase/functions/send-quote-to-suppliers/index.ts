@@ -257,13 +257,10 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     const hasEvolution = Boolean(evolutionInstance && evolutionApiUrl && evolutionToken);
-    const chosenMethod: 'direct' | 'n8n' = (send_via === 'direct' && hasEvolution && send_whatsapp)
-      ? 'direct'
-      : (send_via === 'n8n')
-        ? 'n8n'
-        : (hasEvolution && send_whatsapp ? 'direct' : 'n8n');
+    // Always prioritize direct Evolution when available and WhatsApp is selected, regardless of client hint
+    const chosenMethod: 'direct' | 'n8n' = (hasEvolution && send_whatsapp) ? 'direct' : 'n8n';
 
-    console.log('Chosen sending method:', { chosenMethod, send_via_provided: send_via, hasEvolution, send_whatsapp, quote_id, suppliers_count: suppliers.length });
+    console.log('Chosen sending method:', { chosenMethod, client_hint: send_via, hasEvolution, send_whatsapp, quote_id, suppliers_count: suppliers.length });
 
     if (chosenMethod === 'direct') {
       return await handleDirectEvolutionSending();
