@@ -9,7 +9,6 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { OptimizedSkeleton } from '@/components/ui/optimized-components';
-import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
 
 // Lazy loading de layouts principais
 const MainLayout = lazy(() => import('@/components/layout/MainLayout'));
@@ -79,9 +78,6 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Monitor de performance global
-  usePerformanceMonitor();
-  
   // Optimized system performance and prevent unwanted refreshes
   useEffect(() => {
     const handleVisibilityChange = () => {
