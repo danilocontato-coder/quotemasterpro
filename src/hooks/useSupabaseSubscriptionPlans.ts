@@ -126,9 +126,16 @@ export function useSupabaseSubscriptionPlans() {
     try {
       console.log('Criando novo plano:', planData);
       
+      const generatedId = (planData.name || 'plan')
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9\-]/g, '') + '-' + Date.now();
+
       const { data, error } = await supabase
         .from('subscription_plans')
         .insert({
+          id: generatedId,
           ...planData,
           active_clients: 0,
           total_revenue: 0,
@@ -228,9 +235,11 @@ export function useSupabaseSubscriptionPlans() {
       }
 
       // Criar cópia
+      const { id: _oldId, created_at: _ca, updated_at: _ua, ...rest } = originalPlan;
+      const newId = `${originalPlan.id}-copy-${Date.now()}`;
       const duplicatedPlan = {
-        ...originalPlan,
-        id: undefined, // Será gerado automaticamente
+        ...rest,
+        id: newId,
         name: `${originalPlan.name}_copy_${Date.now()}`,
         display_name: `${originalPlan.display_name} (Cópia)`,
         status: 'inactive' as const,
@@ -238,9 +247,7 @@ export function useSupabaseSubscriptionPlans() {
         active_clients: 0,
         total_revenue: 0,
         clients_subscribed: 0,
-        suppliers_subscribed: 0,
-        created_at: undefined,
-        updated_at: undefined
+        suppliers_subscribed: 0
       };
 
       const { data, error } = await supabase
@@ -368,7 +375,7 @@ export function useSupabasePlanDetails(planId: string) {
         }
 
         console.log('Plano carregado:', data);
-        setPlan(data);
+        setPlan(data as SupabaseSubscriptionPlan);
       } catch (error) {
         console.error('Erro ao carregar plano:', error);
         setPlan(null);
