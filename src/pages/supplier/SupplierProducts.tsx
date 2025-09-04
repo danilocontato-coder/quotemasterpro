@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/pagination";
 import { Plus, Search, Edit, Package, AlertTriangle, MoreHorizontal, Eye, Power, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { useSupplierProducts, SupplierProduct } from "@/hooks/useSupplierProducts";
+import { useSupabaseSupplierProducts, SupplierProduct } from "@/hooks/useSupabaseSupplierProducts";
 import { CreateProductModal } from "@/components/supplier/CreateProductModal";
 import { EditProductModal } from "@/components/supplier/EditProductModal";
 import { StockManagementModal } from "@/components/supplier/StockManagementModal";
@@ -38,12 +38,23 @@ export default function SupplierProducts() {
   const { 
     products, 
     deleteProduct, 
-    toggleProductStatus, 
-    categories,
-    lowStockProducts,
-    outOfStockProducts,
+    updateProduct,
+    getLowStockProducts,
+    getCategories,
     isLoading 
-  } = useSupplierProducts();
+  } = useSupabaseSupplierProducts();
+
+  const categories = getCategories();
+  const lowStockProducts = getLowStockProducts(10);
+  const outOfStockProducts = products.filter(p => p.stock_quantity === 0);
+
+  const toggleProductStatus = async (id: string) => {
+    const product = products.find(p => p.id === id);
+    if (product) {
+      const newStatus = product.status === 'active' ? 'inactive' : 'active';
+      await updateProduct(id, { status: newStatus });
+    }
+  };
 
   const getStockStatus = (quantity: number, minLevel: number) => {
     if (quantity === 0) {
@@ -271,13 +282,13 @@ export default function SupplierProducts() {
                     <TableCell>{product.category}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{product.stockQuantity}</span>
-                        {getStockStatus(product.stockQuantity, product.minStockLevel)}
+                        <span className="font-medium">{product.stock_quantity}</span>
+                        {getStockStatus(product.stock_quantity, 10)}
                       </div>
                     </TableCell>
                     <TableCell>
                       <span className="font-medium">
-                        R$ {product.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {product.unit_price ? `R$ ${product.unit_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'N/A'}
                       </span>
                     </TableCell>
                     <TableCell>{getStatusBadge(product.status)}</TableCell>
@@ -383,13 +394,13 @@ export default function SupplierProducts() {
       />
       
       <EditProductModal 
-        product={selectedProduct}
+        product={selectedProduct as any}
         open={isEditModalOpen} 
         onOpenChange={setIsEditModalOpen} 
       />
 
       <StockManagementModal
-        product={selectedProduct}
+        product={selectedProduct as any}
         open={isStockModalOpen}
         onOpenChange={setIsStockModalOpen}
       />

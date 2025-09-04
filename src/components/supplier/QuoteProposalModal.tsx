@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Trash2, Upload, FileText, X, Send, Save } from 'lucide-react';
-import { SupplierQuote, ProposalItem, useSupplierQuotes } from '@/hooks/useSupplierQuotes';
+import { SupplierQuote, ProposalItem, useSupabaseSupplierQuotes } from '@/hooks/useSupabaseSupplierQuotes';
 
 interface QuoteProposalModalProps {
   quote: SupplierQuote | null;
@@ -20,7 +20,7 @@ interface QuoteProposalModalProps {
 }
 
 export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalModalProps) {
-  const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment } = useSupplierQuotes();
+  const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment } = useSupabaseSupplierQuotes();
   const [proposalItems, setProposalItems] = useState<ProposalItem[]>(
     quote?.proposal?.items || quote?.items.map(item => ({
       id: item.id,

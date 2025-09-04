@@ -1,3 +1,4 @@
+// DEPRECATED: Use useSupabaseSupplierQuotes instead
 import { useState, useCallback } from 'react';
 import { mockQuotes, Quote } from '@/data/mockData';
 

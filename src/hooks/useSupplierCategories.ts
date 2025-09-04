@@ -1,3 +1,4 @@
+// DEPRECATED: Use useSupabaseSupplierCategories instead  
 import { useState, useCallback } from 'react';
 
 export interface SupplierCategory {

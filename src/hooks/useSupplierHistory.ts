@@ -1,3 +1,4 @@
+// DEPRECATED: Use useSupabaseSupplierHistory instead
 import { useState, useCallback } from 'react';
 
 export interface SupplierHistoryLog {

@@ -12,6 +12,7 @@ import {
   Eye
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useSupabaseSupplierDashboard } from "@/hooks/useSupabaseSupplierDashboard";
 
 interface MetricCardProps {
   title: string;
@@ -46,33 +47,7 @@ function MetricCard({ title, value, icon: Icon, trend, color = "text-primary" }:
 }
 
 export default function SupplierDashboard() {
-  // Mock data - In production this would come from hooks/API
-  const recentQuotes = [
-    {
-      id: 'RFQ009',
-      title: 'Manutenção Elétrica',
-      client: 'Condomínio Jardim das Flores',
-      status: 'pending' as const,
-      deadline: '2025-08-28',
-      estimatedValue: 3500.00
-    },
-    {
-      id: 'RFQ008',
-      title: 'Materiais de Construção',
-      client: 'Residencial Vista Alegre',
-      status: 'approved' as const,
-      deadline: '2025-08-25',
-      estimatedValue: 8200.00
-    },
-    {
-      id: 'RFQ007',
-      title: 'Equipamentos de Limpeza',
-      client: 'Condomínio Jardim das Flores',
-      status: 'proposal_sent' as const,
-      deadline: '2025-08-30',
-      estimatedValue: 1200.00
-    }
-  ];
+  const { metrics, recentQuotes, isLoading } = useSupabaseSupplierDashboard();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -98,35 +73,43 @@ export default function SupplierDashboard() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard
-          title="Cotações Ativas"
-          value={12}
-          icon={FileText}
-          trend="+2 esta semana"
-        />
-        <MetricCard
-          title="Propostas Pendentes"
-          value={5}
-          icon={Clock}
-          color="text-orange-600"
-          trend="2 vencem hoje"
-        />
-        <MetricCard
-          title="Vendas no Mês"
-          value="R$ 45.200"
-          icon={DollarSign}
-          color="text-green-600"
-          trend="+15% vs mês anterior"
-        />
-        <MetricCard
-          title="Taxa de Aprovação"
-          value="78%"
-          icon={CheckCircle}
-          color="text-blue-600"
-          trend="+5% vs mês anterior"
-        />
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <MetricCard
+            title="Cotações Ativas"
+            value={metrics.activeQuotes}
+            icon={FileText}
+            trend={`${metrics.activeQuotes > 0 ? '+' : ''}${metrics.activeQuotes} ativas`}
+          />
+          <MetricCard
+            title="Propostas Pendentes"
+            value={metrics.pendingProposals}
+            icon={Clock}
+            color="text-orange-600"
+            trend={`${metrics.pendingProposals} aguardando`}
+          />
+          <MetricCard
+            title="Vendas no Mês"
+            value={`R$ ${metrics.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            icon={DollarSign}
+            color="text-green-600"
+            trend={`${metrics.revenueGrowth > 0 ? '+' : ''}${metrics.revenueGrowth.toFixed(1)}% vs mês anterior`}
+          />
+          <MetricCard
+            title="Taxa de Aprovação"
+            value={`${metrics.approvalRate.toFixed(0)}%`}
+            icon={CheckCircle}
+            color="text-blue-600"
+            trend={`${metrics.approvalGrowth > 0 ? '+' : ''}${metrics.approvalGrowth.toFixed(1)}% vs anterior`}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Quotes */}
@@ -139,8 +122,15 @@ export default function SupplierDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentQuotes.map((quote) => (
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                  ))}
+                </div>
+              ) : recentQuotes.length > 0 ? (
+                <div className="space-y-4">
+                  {recentQuotes.map((quote) => (
                   <div key={quote.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
@@ -164,9 +154,14 @@ export default function SupplierDashboard() {
                         </Link>
                       </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Nenhuma cotação recente encontrada</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

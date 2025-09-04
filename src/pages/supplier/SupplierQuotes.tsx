@@ -27,7 +27,7 @@ import {
   AlertTriangle,
   FileCheck 
 } from "lucide-react";
-import { useSupplierQuotes } from "@/hooks/useSupplierQuotes";
+import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
 
 export default function SupplierQuotes() {
@@ -38,7 +38,7 @@ export default function SupplierQuotes() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
-  const { supplierQuotes } = useSupplierQuotes();
+  const { supplierQuotes, isLoading } = useSupabaseSupplierQuotes();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -109,7 +109,14 @@ export default function SupplierQuotes() {
       </div>
 
       {/* Status Overview Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <FilterMetricCard
           title="Todos"
           value={supplierQuotes.length}
@@ -149,6 +156,7 @@ export default function SupplierQuotes() {
           variant="destructive"
         />
       </div>
+      )}
 
       {/* Search */}
       <Card className="card-corporate">
@@ -189,8 +197,15 @@ export default function SupplierQuotes() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-16 bg-muted animate-pulse rounded" />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
@@ -279,7 +294,8 @@ export default function SupplierQuotes() {
                 <p className="text-muted-foreground">Nenhuma cotação encontrada</p>
               </div>
             )}
-          </div>
+            </div>
+          )}
           
           {/* Pagination */}
           {totalPages > 1 && (
