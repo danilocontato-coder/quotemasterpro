@@ -28,6 +28,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [customMessage, setCustomMessage] = useState('');
   const [resolvedWebhookUrl, setResolvedWebhookUrl] = useState<string | null>(null);
   const [evolutionConfigured, setEvolutionConfigured] = useState(false);
+  const [evoConfig, setEvoConfig] = useState<any | null>(null);
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
   const { markQuoteAsSent } = useSupabaseQuotes();
@@ -146,6 +147,11 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           const hasApiUrl = cfg.api_url || cfg.evolution_api_url;
           const hasToken = cfg.token || cfg.evolution_token;
           setEvolutionConfigured(!!(hasInstance && hasApiUrl && hasToken));
+          setEvoConfig({
+            instance: hasInstance ? (cfg.instance || cfg.evolution_instance) : undefined,
+            api_url: hasApiUrl ? (cfg.api_url || cfg.evolution_api_url) : undefined,
+            token: hasToken ? (cfg.token || cfg.evolution_token) : undefined,
+          });
         }
 
       } catch (e) {
@@ -192,6 +198,23 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     try {
       // Determina automaticamente o método de envio baseado na configuração Evolution (SuperAdmin)
       const sendVia = evolutionConfigured ? 'direct' : 'n8n';
+
+      // Preflight: testar Evolution quando envio direto estiver ativo
+      if (sendVia === 'direct') {
+        const { data: evoTest, error: evoTestError } = await supabase.functions.invoke('test-integration', {
+          body: {
+            integration_id: 'evolution-preflight',
+            integration_type: 'whatsapp_evolution',
+            configuration: evoConfig || {}
+          }
+        });
+        if (evoTestError || !evoTest?.success) {
+          const msg = evoTestError?.message || evoTest?.message || 'Falha ao testar Evolution';
+          toast.error(`Erro na Evolution: ${msg}`);
+          setIsLoading(false);
+          return;
+        }
+      }
 
       // Garantir que só enviamos para fornecedores com contato compatível
       const selectedEntities = deduplicatedSuppliers.filter(s => selectedSuppliers.includes(s.id));
