@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-
+import { resolveEvolutionConfig, normalizePhone, sendEvolutionWhatsApp } from '../_shared/evolution.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -100,60 +100,17 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Load Evolution API integration (client-specific, fallback to global)
-    let evolutionInstance: string | null = null;
-    let evolutionApiUrl: string | null = null;
-    let evolutionToken: string | null = null;
-    let tokenSource: 'config' | 'global' | null = null;
-    let apiUrlSource: 'config' | 'global' | null = null;
-    let evoScope: 'client' | 'global' | 'none' = 'none';
-
-    const { data: evoClientInt } = await supabase
-      .from('integrations')
-      .select('configuration')
-      .eq('integration_type', 'whatsapp_evolution')
-      .eq('active', true)
-      .eq('client_id', quote.client_id)
-      .maybeSingle();
-
-    let evoCfg: any = evoClientInt?.configuration || null;
-    if (evoCfg) evoScope = 'client';
-    if (!evoCfg) {
-      const { data: evoGlobalInt } = await supabase
-        .from('integrations')
-        .select('configuration')
-        .eq('integration_type', 'whatsapp_evolution')
-        .eq('active', true)
-        .is('client_id', null)
-        .maybeSingle();
-      evoCfg = evoGlobalInt?.configuration || null;
-      if (evoCfg) evoScope = 'global';
-    }
-
-    try {
-      if (evoCfg) {
-        evolutionInstance = (evoCfg.instance ?? evoCfg['evolution_instance']) || null;
-        const cfgApiUrl = (evoCfg.api_url ?? evoCfg['evolution_api_url']) || null;
-        const cfgToken = (evoCfg.token ?? evoCfg['evolution_token']) || null;
-        if (cfgApiUrl) { evolutionApiUrl = cfgApiUrl; apiUrlSource = 'config'; }
-        if (cfgToken) { evolutionToken = cfgToken; tokenSource = 'config'; }
-      }
-    } catch {}
-
-    if (!evolutionApiUrl) {
-      const envUrl = Deno.env.get('EVOLUTION_API_URL') || null;
-      if (envUrl) { evolutionApiUrl = envUrl; apiUrlSource = 'global'; }
-    }
-    if (!evolutionToken) {
-      const envToken = Deno.env.get('EVOLUTION_API_TOKEN') || null;
-      if (envToken) { evolutionToken = envToken; tokenSource = 'global'; }
-    }
+    // Load Evolution API integration using shared resolver (client -> global -> env)
+    const evo = await resolveEvolutionConfig(supabase, quote.client_id)
+    const evolutionInstance: string | null = evo.instance || null;
+    const evolutionApiUrl: string | null = evo.apiUrl || null;
+    const evolutionToken: string | null = evo.token || null;
 
     resolvedEvolution = {
       instance: evolutionInstance,
       api_url_defined: Boolean(evolutionApiUrl),
       token_defined: Boolean(evolutionToken),
-      source: { token: tokenSource, api_url: apiUrlSource, scope: evoScope }
+      source: { scope: evo.scope }
     };
 
     // Load WhatsApp template
@@ -609,12 +566,11 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
-        // Normalize phone number (remove non-digits, ensure country code)
+        // Normalize phone number and validate
         const phone = supplier.whatsapp || supplier.phone || '';
-        const normalizedPhone = phone.replace(/[^0-9]/g, '');
-        const finalPhone = normalizedPhone.startsWith('55') ? normalizedPhone : `55${normalizedPhone}`;
+        const finalPhone = normalizePhone(phone);
 
-        if (finalPhone.length < 12) {
+        if (!finalPhone || finalPhone.length < 12) {
           console.warn(`Invalid phone number for supplier ${supplier.name}: ${phone}`);
           errorCount++;
           errors.push(`${supplier.name}: número inválido (${phone})`);
@@ -630,29 +586,17 @@ const handler = async (req: Request): Promise<Response> => {
             ? `${finalMessage}\n\nResponda sua proposta aqui: ${linkEntry.link}`
             : finalMessage;
 
-          // Send via Evolution API
-          const evolutionResponse = await fetch(`${evolutionApiUrl}/message/sendText/${evolutionInstance}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': evolutionToken,
-            },
-            body: JSON.stringify({
-              number: finalPhone,
-              text: textForSupplier,
-            }),
-          });
+          // Send via Evolution API using shared helper
+          const sent = await sendEvolutionWhatsApp({ apiUrl: evolutionApiUrl, token: evolutionToken, instance: evolutionInstance, scope: 'client' }, finalPhone, textForSupplier);
 
-          if (!evolutionResponse.ok) {
-            const errorText = await evolutionResponse.text();
-            console.error(`Evolution API error for ${supplier.name}:`, evolutionResponse.status, errorText);
+          if (!sent.success) {
+            console.error(`Evolution API error for ${supplier.name}:`, sent.error);
             errorCount++;
-            errors.push(`${supplier.name}: ${evolutionResponse.status} - ${errorText.substring(0, 100)}`);
+            errors.push(`${supplier.name}: ${String(sent.error).substring(0, 100)}`);
             continue;
           }
 
-          const responseData = await evolutionResponse.json();
-          console.log(`Message sent to ${supplier.name} (${finalPhone}):`, responseData);
+          console.log(`Message sent to ${supplier.name} (${finalPhone}) via ${sent.endpoint}`);
           successCount++;
 
         } catch (error: any) {
