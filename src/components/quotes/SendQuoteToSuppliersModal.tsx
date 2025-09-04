@@ -28,7 +28,6 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [customMessage, setCustomMessage] = useState('');
   const [resolvedWebhookUrl, setResolvedWebhookUrl] = useState<string | null>(null);
   const [evolutionConfigured, setEvolutionConfigured] = useState(false);
-  const [evoConfig, setEvoConfig] = useState<any | null>(null);
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
   const { markQuoteAsSent } = useSupabaseQuotes();
@@ -147,11 +146,6 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           const hasApiUrl = cfg.api_url || cfg.evolution_api_url;
           const hasToken = cfg.token || cfg.evolution_token;
           setEvolutionConfigured(!!(hasInstance && hasApiUrl && hasToken));
-          setEvoConfig({
-            instance: hasInstance ? (cfg.instance || cfg.evolution_instance) : undefined,
-            api_url: hasApiUrl ? (cfg.api_url || cfg.evolution_api_url) : undefined,
-            token: hasToken ? (cfg.token || cfg.evolution_token) : undefined,
-          });
         }
 
       } catch (e) {
@@ -198,43 +192,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     try {
       // Determina automaticamente o método de envio baseado na configuração Evolution (SuperAdmin)
       const sendVia = evolutionConfigured ? 'direct' : 'n8n';
-
-      // Preflight: testar Evolution quando envio direto estiver ativo
-      if (sendVia === 'direct') {
-        const { data: evoTest, error: evoTestError } = await supabase.functions.invoke('test-integration', {
-          body: {
-            integration_id: 'evolution-preflight',
-            integration_type: 'whatsapp_evolution',
-            configuration: evoConfig || {}
-          }
-        });
-        if (evoTestError || !evoTest?.success) {
-          const msg = evoTestError?.message || evoTest?.message || 'Falha ao testar Evolution';
-          toast.error(`Erro na Evolution: ${msg}`);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Garantir que só enviamos para fornecedores com contato compatível
-      const selectedEntities = deduplicatedSuppliers.filter(s => selectedSuppliers.includes(s.id));
-      const validEntities = selectedEntities.filter(s => (
-        (sendWhatsApp && Boolean(s.whatsapp && s.whatsapp.trim())) ||
-        (sendEmail && Boolean(s.email && s.email.trim()))
-      ));
-      const ignoredEntities = selectedEntities.filter(s => !validEntities.includes(s));
-
-      if (ignoredEntities.length > 0) {
-        toast.warning(`${ignoredEntities.length} fornecedor(es) sem contato compatível foi(ram) ignorado(s).`);
-      }
-      if (validEntities.length === 0) {
-        toast.error('Nenhum fornecedor selecionado possui WhatsApp/E-mail para os canais escolhidos.');
-        return;
-      }
-
-      // Generate unique response links only for fornecedores válidos
-      const supplierIds = validEntities.map(s => s.id);
-      const supplierLinks = supplierIds.map((supplierId) => {
+      
+      // Generate unique response links for each selected supplier
+      const supplierLinks = selectedSuppliers.map((supplierId) => {
         const token = generateQuoteToken();
         return {
           supplier_id: supplierId,
@@ -246,7 +206,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       const { data, error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: {
           quote_id: quote.id,
-          supplier_ids: supplierIds,
+          supplier_ids: selectedSuppliers,
           send_whatsapp: sendWhatsApp,
           send_email: sendEmail,
           custom_message: customMessage.trim(),
@@ -268,7 +228,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : '') + method);
         
         // Atualizar status da cotação para 'sent'
-        await markQuoteAsSent(quote.id, supplierIds.length);
+        await markQuoteAsSent(quote.id, selectedSuppliers.length);
         
         // Log dos links dos fornecedores selecionados
         console.log('Fornecedores selecionados e links enviados:');
