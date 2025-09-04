@@ -20,11 +20,7 @@ export const OptimizedSkeleton = memo(({
 ));
 
 // Wrapper para lazy components
-export const LazyWrapper = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<OptimizedSkeleton lines={8} className="p-6" />}>
-    {children}
-  </Suspense>
-);
+// Removed LazyWrapper - causing React 18 suspension issues
 
 // Componente de lista virtualizada otimizada
 export const VirtualizedList = memo(<T,>({ 
