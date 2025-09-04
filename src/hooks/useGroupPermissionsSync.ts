@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useSupabasePermissions } from './useSupabasePermissions';
 import { useSupabaseUsers } from './useSupabaseUsers';
+import { useSupabaseCurrentClient } from './useSupabaseCurrentClient';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -16,6 +17,7 @@ export function useGroupPermissionsSync() {
     deletePermissionProfile 
   } = useSupabasePermissions();
   const { groups, updateGroup } = useSupabaseUsers();
+  const { client } = useSupabaseCurrentClient();
 
   // Mapeamento de permissões de grupo para módulos do sistema de permissões
   const permissionMapping = useMemo(() => ({
@@ -130,10 +132,15 @@ export function useGroupPermissionsSync() {
         });
       } else {
         // Criar novo perfil de permissão
+        if (!client?.id) {
+          console.warn('Sem client_id disponível para criar permission_profile; pulando criação');
+          return;
+        }
         const newProfile = await createPermissionProfile({
           name: `Grupo: ${group.name}`,
           description: `Perfil de permissões do grupo ${group.name}`,
-          permissions
+          permissions,
+          client_id: client.id
         });
 
         // Associar o perfil ao grupo via update direto do Supabase
