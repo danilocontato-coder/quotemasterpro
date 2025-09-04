@@ -54,44 +54,72 @@ export function useSupabaseDashboard() {
     try {
       setIsLoading(true);
       setError(null);
+      
+      console.log('🎯 Dashboard: Starting data fetch for user:', user.id, 'role:', user.role);
 
       // 1. Buscar métricas de cotações
+      console.log('📊 Dashboard: Fetching quotes...');
       const { data: quotes, error: quotesError } = await supabase
         .from('quotes')
         .select('*');
 
-      if (quotesError) throw quotesError;
+      if (quotesError) {
+        console.error('❌ Dashboard: Quotes error:', quotesError);
+        throw quotesError;
+      }
+      console.log('✅ Dashboard: Quotes fetched:', quotes?.length || 0);
 
-      // 2. Buscar métricas de pagamentos
+      // 2. Buscar métricas de pagamentos  
+      console.log('💰 Dashboard: Fetching payments...');
       const { data: payments, error: paymentsError } = await supabase
         .from('payments')
         .select('*');
 
-      if (paymentsError) throw paymentsError;
+      if (paymentsError) {
+        console.error('❌ Dashboard: Payments error:', paymentsError);
+        throw paymentsError;
+      }
+      console.log('✅ Dashboard: Payments fetched:', payments?.length || 0);
 
       // 3. Buscar fornecedores ativos
+      console.log('🏪 Dashboard: Fetching suppliers...');
       const { data: suppliers, error: suppliersError } = await supabase
         .from('suppliers')
         .select('*')
         .eq('status', 'active');
 
-      if (suppliersError) throw suppliersError;
+      if (suppliersError) {
+        console.error('❌ Dashboard: Suppliers error:', suppliersError);
+        throw suppliersError;
+      }
+      console.log('✅ Dashboard: Suppliers fetched:', suppliers?.length || 0);
 
       // 4. Buscar notificações
+      console.log('🔔 Dashboard: Fetching notifications...');
       const { data: notifications, error: notificationsError } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id);
 
-      if (notificationsError) throw notificationsError;
+      if (notificationsError) {
+        console.error('❌ Dashboard: Notifications error:', notificationsError);
+        throw notificationsError;
+      }
+      console.log('✅ Dashboard: Notifications fetched:', notifications?.length || 0);
 
       // Calcular métricas
+      console.log('📈 Dashboard: Calculating metrics...');
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
 
       const totalQuotes = quotes?.length || 0;
+      console.log('📊 Dashboard: Total quotes calculated:', totalQuotes);
+      
       const pendingApprovals = quotes?.filter(q => q.status === 'under_review').length || 0;
+      console.log('⏳ Dashboard: Pending approvals calculated:', pendingApprovals);
+      
       const activeSuppliers = suppliers?.length || 0;
+      console.log('🏪 Dashboard: Active suppliers calculated:', activeSuppliers);
       
       const monthlyPayments = payments?.filter(p => {
         const paymentDate = new Date(p.created_at);
@@ -101,6 +129,7 @@ export function useSupabaseDashboard() {
       }) || [];
       
       const monthlySpending = monthlyPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      console.log('💰 Dashboard: Monthly spending calculated:', monthlySpending);
       
       const completedThisMonth = quotes?.filter(q => {
         const quoteDate = new Date(q.created_at);
@@ -108,6 +137,7 @@ export function useSupabaseDashboard() {
                quoteDate.getMonth() === currentMonth && 
                quoteDate.getFullYear() === currentYear;
       }).length || 0;
+      console.log('✅ Dashboard: Completed this month calculated:', completedThisMonth);
 
       // Calcular tempo médio de resposta (simplificado)
       const completedQuotes = quotes?.filter(q => q.status === 'approved') || [];
@@ -204,8 +234,28 @@ export function useSupabaseDashboard() {
 
       setActivities(recentActivities.slice(0, 5));
 
+      console.log('✅ Dashboard: All data loaded successfully!');
+      console.log('📊 Dashboard: Final metrics:', {
+        totalQuotes,
+        pendingApprovals,
+        activeSuppliers,
+        monthlySpending,
+        completedThisMonth,
+        avgResponseTime: `${avgDays} dias`,
+        economyEstimated,
+        totalPayments,
+        pendingPayments,
+        totalNotifications,
+        unreadNotifications,
+      });
+
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
+      console.error('❌ Dashboard: Complete error details:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : 'No stack trace',
+        user: user ? { id: user.id, role: user.role, clientId: user.clientId } : 'No user'
+      });
       setError(err instanceof Error ? err.message : 'Erro ao carregar dados do dashboard');
     } finally {
       setIsLoading(false);
