@@ -25,7 +25,6 @@ import {
   Zap,
   Shield,
   CheckCircle2,
-  XCircle,
   Percent
 } from 'lucide-react';
 import {
@@ -34,8 +33,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useSubscriptionPlans } from '@/hooks/useSubscriptionPlans';
-import { CreatePlanModal } from '@/components/admin/CreatePlanModal';
+import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
+import { CreatePlanModalSupabase } from '@/components/admin/CreatePlanModalSupabase';
 
 export const PlansManagement = () => {
   const {
@@ -50,8 +49,9 @@ export const PlansManagement = () => {
     updatePlan,
     deletePlan,
     duplicatePlan,
-    stats
-  } = useSubscriptionPlans();
+    stats,
+    isLoading
+  } = useSupabaseSubscriptionPlans();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -64,24 +64,6 @@ export const PlansManagement = () => {
     }
   };
 
-  const getAudienceIcon = (audience: string) => {
-    switch (audience) {
-      case 'client': return <Building2 className="h-4 w-4" />;
-      case 'supplier': return <Truck className="h-4 w-4" />;
-      case 'both': return <Users className="h-4 w-4" />;
-      default: return <Users className="h-4 w-4" />;
-    }
-  };
-
-  const getAudienceColor = (audience: string) => {
-    switch (audience) {
-      case 'client': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'supplier': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'both': return 'bg-purple-100 text-purple-800 border-purple-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -90,18 +72,41 @@ export const PlansManagement = () => {
   };
 
   const calculateYearlyDiscount = (monthly: number, yearly: number) => {
+    if (!monthly || monthly === 0) return 0;
     const yearlyExpected = monthly * 12;
+    if (yearly >= yearlyExpected) return 0;
     return Math.round(((yearlyExpected - yearly) / yearlyExpected) * 100);
   };
 
-  const togglePlanStatus = (planId: string, currentStatus: string) => {
+  const togglePlanStatus = async (planId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    updatePlan(planId, { status: newStatus });
+    try {
+      await updatePlan(planId, { status: newStatus });
+    } catch (error) {
+      console.error('Erro ao alterar status do plano:', error);
+    }
   };
 
-  const handleDuplicate = (planId: string) => {
-    duplicatePlan(planId);
+  const handleDuplicate = async (planId: string) => {
+    try {
+      await duplicatePlan(planId);
+    } catch (error) {
+      console.error('Erro ao duplicar plano:', error);
+    }
   };
+
+  const handleDelete = async (planId: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este plano?')) {
+      try {
+        await deletePlan(planId);
+      } catch (error) {
+        console.error('Erro ao excluir plano:', error);
+      }
+    }
+  };
+
+  const clientPlans = plans.filter(p => p.target_audience === 'clients' || p.target_audience === 'both');
+  const supplierPlans = plans.filter(p => p.target_audience === 'suppliers' || p.target_audience === 'both');
 
   return (
     <div className="min-h-screen bg-background">
@@ -231,7 +236,6 @@ export const PlansManagement = () => {
           </TabsContent>
 
           <TabsContent value="client-plans" className="space-y-6">
-            {/* Filtros para Planos de Cliente */}
             <Card>
               <CardHeader>
                 <CardTitle>Planos para Clientes</CardTitle>
@@ -259,172 +263,188 @@ export const PlansManagement = () => {
                       <SelectItem value="all">Todos os status</SelectItem>
                       <SelectItem value="active">Ativo</SelectItem>
                       <SelectItem value="inactive">Inativo</SelectItem>
-                      <SelectItem value="draft">Rascunho</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {plans.filter(p => p.targetAudience === 'clients' || p.targetAudience === 'both').map((plan) => (
-                    <Card key={plan.id} className={`relative ${plan.isPopular ? 'ring-2 ring-primary' : ''}`}>
-                      {plan.isPopular && (
-                        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                          <Badge className="bg-primary text-primary-foreground px-3 py-1">
-                            <Star className="h-3 w-3 mr-1" />
-                            Popular
-                          </Badge>
-                        </div>
-                      )}
-                      
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 rounded-lg bg-blue-100">
-                              <Building2 className="h-4 w-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{plan.name}</CardTitle>
-                              <Badge className={getStatusColor(plan.status)}>
-                                {plan.status === 'active' ? 'Ativo' : 
-                                 plan.status === 'inactive' ? 'Inativo' : 'Rascunho'}
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-background border z-50">
-                              <DropdownMenuItem>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Visualizar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDuplicate(plan.id)}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Duplicar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => togglePlanStatus(plan.id, plan.status)}>
-                                {plan.status === 'active' ? (
-                                  <>
-                                    <ToggleLeft className="h-4 w-4 mr-2" />
-                                    Desativar
-                                  </>
-                                ) : (
-                                  <>
-                                    <ToggleRight className="h-4 w-4 mr-2" />
-                                    Ativar
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <CardDescription className="text-sm mt-2">
-                          {plan.description}
-                        </CardDescription>
-                      </CardHeader>
-                      
-                      <CardContent className="space-y-4">
-                        {/* Preços */}
-                        <div className="text-center border-b pb-4">
-                          <div className="flex items-baseline justify-center gap-2">
-                            <span className="text-3xl font-bold text-primary">
-                              {formatCurrency(plan.pricing.monthly)}
-                            </span>
-                            <span className="text-muted-foreground">/mês</span>
-                          </div>
-                          <div className="flex items-center justify-center gap-2 mt-2">
-                            <span className="text-sm text-muted-foreground">
-                              {formatCurrency(plan.pricing.yearly)}/ano
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              <Percent className="h-3 w-3 mr-1" />
-                              {plan.pricing.discount || 15}% desconto
+                  {isLoading ? (
+                    <div className="col-span-full flex justify-center py-8">
+                      <div className="text-center">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-2"></div>
+                        <p className="text-sm text-muted-foreground">Carregando planos...</p>
+                      </div>
+                    </div>
+                  ) : clientPlans.length === 0 ? (
+                    <div className="col-span-full text-center py-8">
+                      <Crown className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                        Nenhum plano encontrado
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Crie seu primeiro plano para clientes
+                      </p>
+                    </div>
+                  ) : (
+                    clientPlans.map((plan) => (
+                      <Card key={plan.id} className={`relative ${plan.is_popular ? 'ring-2 ring-primary' : ''}`}>
+                        {plan.is_popular && (
+                          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                            <Badge className="bg-primary text-primary-foreground px-3 py-1">
+                              <Star className="h-3 w-3 mr-1" />
+                              Popular
                             </Badge>
                           </div>
-                        </div>
-
-                        {/* Limites */}
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-sm">Limites:</h4>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="flex justify-between">
-                              <span>Cotações/mês:</span>
-                              <span className="font-medium">{plan.limits.maxQuotesPerMonth}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Usuários:</span>
-                              <span className="font-medium">{plan.limits.maxUsersPerClient}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Fornecedores/cotação:</span>
-                              <span className="font-medium">{plan.limits.maxSuppliersPerQuote}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Armazenamento:</span>
-                              <span className="font-medium">{plan.limits.maxStorageGB}GB</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Features */}
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-sm">Recursos:</h4>
-                          <div className="space-y-1">
-                            {plan.features.slice(0, 4).map((feature) => (
-                              <div key={feature.id} className="flex items-center gap-2 text-xs">
-                                {feature.included ? (
-                                  <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                ) : (
-                                  <XCircle className="h-3 w-3 text-red-500" />
-                                )}
-                                <span className={feature.included ? '' : 'text-muted-foreground line-through'}>
-                                  {feature.name}
-                                </span>
+                        )}
+                        
+                        <CardHeader className="pb-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 rounded-lg bg-blue-100">
+                                <Building2 className="h-4 w-4 text-blue-600" />
                               </div>
-                            ))}
-                            {plan.features.length > 4 && (
-                              <p className="text-xs text-muted-foreground">
-                                +{plan.features.length - 4} recursos adicionais
-                              </p>
-                            )}
+                              <div>
+                                <CardTitle className="text-lg">{plan.display_name}</CardTitle>
+                                <Badge className={getStatusColor(plan.status)}>
+                                  {plan.status === 'active' ? 'Ativo' : 'Inativo'}
+                                </Badge>
+                              </div>
+                            </div>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-background border z-50">
+                                <DropdownMenuItem>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Visualizar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(plan.id)}>
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Duplicar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => togglePlanStatus(plan.id, plan.status)}>
+                                  {plan.status === 'active' ? (
+                                    <>
+                                      <ToggleLeft className="h-4 w-4 mr-2" />
+                                      Desativar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ToggleRight className="h-4 w-4 mr-2" />
+                                      Ativar
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={() => handleDelete(plan.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        </div>
+                          <CardDescription className="text-sm mt-2">
+                            {plan.description}
+                          </CardDescription>
+                        </CardHeader>
+                        
+                        <CardContent className="space-y-4">
+                          {/* Preços */}
+                          <div className="text-center border-b pb-4">
+                            <div className="flex items-baseline justify-center gap-2">
+                              <span className="text-3xl font-bold text-primary">
+                                {formatCurrency(plan.monthly_price)}
+                              </span>
+                              <span className="text-muted-foreground">/mês</span>
+                            </div>
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                              <span className="text-sm text-muted-foreground">
+                                {formatCurrency(plan.yearly_price)}/ano
+                              </span>
+                              {calculateYearlyDiscount(plan.monthly_price, plan.yearly_price) > 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Percent className="h-3 w-3 mr-1" />
+                                  {calculateYearlyDiscount(plan.monthly_price, plan.yearly_price)}% desconto
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
 
-                        {/* Estatísticas */}
-                        <div className="pt-2 border-t">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Assinantes:</span>
-                            <span className="font-medium">{plan.usageStats.clientsSubscribed || 0}</span>
+                          {/* Limites */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm">Limites:</h4>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex justify-between">
+                                <span>Cotações/mês:</span>
+                                <span className="font-medium">{plan.max_quotes === -1 ? '∞' : plan.max_quotes}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Usuários:</span>
+                                <span className="font-medium">{plan.max_users === -1 ? '∞' : plan.max_users}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Fornecedores:</span>
+                                <span className="font-medium">{plan.max_suppliers === -1 ? '∞' : plan.max_suppliers}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Armazenamento:</span>
+                                <span className="font-medium">{plan.max_storage_gb}GB</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Receita:</span>
-                            <span className="font-medium text-green-600">
-                              {formatCurrency(plan.usageStats.totalRevenue)}
-                            </span>
+
+                          {/* Features */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm">Recursos:</h4>
+                            <div className="space-y-1">
+                              {plan.features.slice(0, 4).map((feature, index) => (
+                                <div key={index} className="flex items-center gap-2 text-xs">
+                                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                  <span>{feature}</span>
+                                </div>
+                              ))}
+                              {plan.features.length > 4 && (
+                                <div className="text-xs text-muted-foreground">
+                                  +{plan.features.length - 4} mais recursos
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+
+                          {/* Estatísticas */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm">Estatísticas:</h4>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex justify-between">
+                                <span>Clientes:</span>
+                                <span className="font-medium text-blue-600">{plan.active_clients || 0}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Receita:</span>
+                                <span className="font-medium text-green-600">{formatCurrency(plan.total_revenue || 0)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="supplier-plans" className="space-y-6">
-            {/* Similar structure for supplier plans */}
             <Card>
               <CardHeader>
                 <CardTitle>Planos para Fornecedores</CardTitle>
@@ -432,126 +452,166 @@ export const PlansManagement = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {plans.filter(p => p.targetAudience === 'suppliers' || p.targetAudience === 'both').map((plan) => (
-                    <Card key={plan.id} className={`relative ${plan.isPopular ? 'ring-2 ring-primary' : ''}`}>
-                      {plan.isPopular && (
-                        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                          <Badge className="bg-primary text-primary-foreground px-3 py-1">
-                            <Star className="h-3 w-3 mr-1" />
-                            Popular
-                          </Badge>
-                        </div>
-                      )}
-                      
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 rounded-lg bg-orange-100">
-                              <Truck className="h-4 w-4 text-orange-600" />
+                  {isLoading ? (
+                    <div className="col-span-full flex justify-center py-8">
+                      <div className="text-center">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mx-auto mb-2"></div>
+                        <p className="text-sm text-muted-foreground">Carregando planos...</p>
+                      </div>
+                    </div>
+                  ) : supplierPlans.length === 0 ? (
+                    <div className="col-span-full text-center py-8">
+                      <Crown className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                        Nenhum plano encontrado
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Crie seu primeiro plano para fornecedores
+                      </p>
+                    </div>
+                  ) : (
+                    supplierPlans.map((plan) => (
+                      <Card key={plan.id} className={`relative ${plan.is_popular ? 'ring-2 ring-primary' : ''}`}>
+                        {plan.is_popular && (
+                          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                            <Badge className="bg-primary text-primary-foreground px-3 py-1">
+                              <Star className="h-3 w-3 mr-1" />
+                              Popular
+                            </Badge>
+                          </div>
+                        )}
+                        
+                        <CardHeader className="pb-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 rounded-lg bg-orange-100">
+                                <Truck className="h-4 w-4 text-orange-600" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg">{plan.display_name}</CardTitle>
+                                <Badge className={getStatusColor(plan.status)}>
+                                  {plan.status === 'active' ? 'Ativo' : 'Inativo'}
+                                </Badge>
+                              </div>
                             </div>
-                            <div>
-                              <CardTitle className="text-lg">{plan.name}</CardTitle>
-                              <Badge className={getStatusColor(plan.status)}>
-                                {plan.status === 'active' ? 'Ativo' : 
-                                 plan.status === 'inactive' ? 'Inativo' : 'Rascunho'}
-                              </Badge>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-background border z-50">
+                                <DropdownMenuItem>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Visualizar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(plan.id)}>
+                                  <Copy className="h-4 w-4 mr-2" />
+                                  Duplicar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => togglePlanStatus(plan.id, plan.status)}>
+                                  {plan.status === 'active' ? (
+                                    <>
+                                      <ToggleLeft className="h-4 w-4 mr-2" />
+                                      Desativar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ToggleRight className="h-4 w-4 mr-2" />
+                                      Ativar
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={() => handleDelete(plan.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          <CardDescription className="text-sm mt-2">
+                            {plan.description}
+                          </CardDescription>
+                        </CardHeader>
+                        
+                        <CardContent className="space-y-4">
+                          {/* Preços */}
+                          <div className="text-center border-b pb-4">
+                            <div className="flex items-baseline justify-center gap-2">
+                              <span className="text-3xl font-bold text-primary">
+                                {formatCurrency(plan.monthly_price)}
+                              </span>
+                              <span className="text-muted-foreground">/mês</span>
                             </div>
                           </div>
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-background border z-50">
-                              <DropdownMenuItem>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Visualizar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDuplicate(plan.id)}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Duplicar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => togglePlanStatus(plan.id, plan.status)}>
-                                {plan.status === 'active' ? (
-                                  <>
-                                    <ToggleLeft className="h-4 w-4 mr-2" />
-                                    Desativar
-                                  </>
-                                ) : (
-                                  <>
-                                    <ToggleRight className="h-4 w-4 mr-2" />
-                                    Ativar
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <CardDescription className="text-sm mt-2">
-                          {plan.description}
-                        </CardDescription>
-                      </CardHeader>
-                      
-                      <CardContent className="space-y-4">
-                        {/* Preços */}
-                        <div className="text-center border-b pb-4">
-                          <div className="flex items-baseline justify-center gap-2">
-                            <span className="text-3xl font-bold text-primary">
-                              {formatCurrency(plan.pricing.monthly)}
-                            </span>
-                            <span className="text-muted-foreground">/mês</span>
-                          </div>
-                        </div>
 
-                        {/* Limites específicos para fornecedores */}
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-sm">Limites:</h4>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="flex justify-between">
-                              <span>Respostas/mês:</span>
-                              <span className="font-medium">{plan.limits.maxQuoteResponsesPerMonth}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Produtos:</span>
-                              <span className="font-medium">{plan.limits.maxProductsInCatalog}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Categorias:</span>
-                              <span className="font-medium">{plan.limits.maxCategoriesPerSupplier}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Armazenamento:</span>
-                              <span className="font-medium">{plan.limits.maxStorageGB}GB</span>
+                          {/* Limites específicos para fornecedores */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm">Limites:</h4>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex justify-between">
+                                <span>Respostas/mês:</span>
+                                <span className="font-medium">{plan.max_quote_responses_per_month === -1 ? '∞' : plan.max_quote_responses_per_month || 50}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Produtos:</span>
+                                <span className="font-medium">{plan.max_products_in_catalog === -1 ? '∞' : plan.max_products_in_catalog || 100}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Categorias:</span>
+                                <span className="font-medium">{plan.max_categories_per_supplier === -1 ? '∞' : plan.max_categories_per_supplier || 10}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Armazenamento:</span>
+                                <span className="font-medium">{plan.max_storage_gb}GB</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Estatísticas */}
-                        <div className="pt-2 border-t">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Assinantes:</span>
-                            <span className="font-medium">{plan.usageStats.suppliersSubscribed || 0}</span>
+                          {/* Features */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm">Recursos:</h4>
+                            <div className="space-y-1">
+                              {plan.features.slice(0, 4).map((feature, index) => (
+                                <div key={index} className="flex items-center gap-2 text-xs">
+                                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                  <span>{feature}</span>
+                                </div>
+                              ))}
+                              {plan.features.length > 4 && (
+                                <div className="text-xs text-muted-foreground">
+                                  +{plan.features.length - 4} mais recursos
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Receita:</span>
-                            <span className="font-medium text-green-600">
-                              {formatCurrency(plan.usageStats.totalRevenue)}
-                            </span>
+
+                          {/* Estatísticas */}
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm">Estatísticas:</h4>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex justify-between">
+                                <span>Fornecedores:</span>
+                                <span className="font-medium text-orange-600">{plan.suppliers_subscribed || 0}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Receita:</span>
+                                <span className="font-medium text-green-600">{formatCurrency(plan.total_revenue || 0)}</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -569,7 +629,7 @@ export const PlansManagement = () => {
       </div>
 
       {/* Modal de Criação de Plano */}
-      <CreatePlanModal
+      <CreatePlanModalSupabase
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
         onCreatePlan={createPlan}
