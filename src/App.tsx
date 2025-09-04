@@ -172,77 +172,99 @@ function App() {
                 </Route>
                 <Route path="/suppliers" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Suppliers />} />
                 </Route>
                 <Route path="/products" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Products />} />
                 </Route>
                 <Route path="/approvals" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Approvals />} />
                 </Route>
                 <Route path="/approval-levels" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<ApprovalLevels />} />
                 </Route>
                 <Route path="/payments" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Payments />} />
                 </Route>
                 <Route path="/users" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Users />} />
                 </Route>
                 <Route path="/communication" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Communication />} />
                 </Route>
                 <Route path="/notifications" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Notifications />} />
                 </Route>
                 <Route path="/settings" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Settings />} />
                 </Route>
                 <Route path="/permissions" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Permissions />} />
                 </Route>
                 <Route path="/reports" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<Reports />} />
@@ -271,7 +293,9 @@ function App() {
                 {/* Supplier routes */}
                 <Route path="/supplier" element={
                   <ProtectedRoute allowedRoles={['supplier']}>
-                    <SupplierLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <SupplierLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
                   <Route index element={<SupplierDashboard />} />
