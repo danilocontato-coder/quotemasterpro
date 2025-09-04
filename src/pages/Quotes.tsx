@@ -14,6 +14,7 @@ import { StatusProgressIndicator } from "@/components/quotes/StatusProgressIndic
 import { EconomyNotification, useEconomyAlerts } from "@/components/quotes/EconomyNotification";
 import { SendQuoteToSuppliersModal } from "@/components/quotes/SendQuoteToSuppliersModal";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
+import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { toast } from "sonner";
 
@@ -34,6 +35,7 @@ export default function Quotes() {
   const itemsPerPage = 6; // 6 cotações por página para visualização confortável
   
   const { quotes, createQuote, updateQuote, deleteQuote, isLoading, markQuoteAsReceived } = useSupabaseQuotes();
+  const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
   const handleQuoteCreate = async (quoteData: any) => {
@@ -205,7 +207,12 @@ export default function Quotes() {
           </Button>
           <Button 
             className="btn-corporate flex items-center gap-2"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => {
+              const canCreate = enforceLimit('CREATE_QUOTE');
+              if (canCreate) {
+                setIsCreateModalOpen(true);
+              }
+            }}
           >
             <Plus className="h-4 w-4" />
             Nova Cotação
@@ -583,7 +590,12 @@ export default function Quotes() {
             {!searchTerm && statusFilter === "all" && (
               <Button 
                 className="btn-corporate"
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={() => {
+                  const canCreate = enforceLimit('CREATE_QUOTE');
+                  if (canCreate) {
+                    setIsCreateModalOpen(true);
+                  }
+                }}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Primeira Cotação

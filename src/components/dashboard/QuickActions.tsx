@@ -2,17 +2,26 @@ import { Plus, FileText, Users, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
+import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
 import { toast } from "sonner";
 
 export function QuickActions() {
   const navigate = useNavigate();
+  const { checkLimit, enforceLimit } = useSupabaseSubscriptionGuard();
+  
+  const handleCreateQuote = () => {
+    const canCreate = enforceLimit('CREATE_QUOTE');
+    if (canCreate) {
+      navigate("/quotes");
+    }
+  };
   
   const actions = [
     {
       title: "Nova Cotação",
       description: "Criar uma nova solicitação de cotação",
       icon: Plus,
-      action: () => navigate("/quotes"),
+      action: handleCreateQuote,
     },
     {
       title: "Cadastrar Fornecedor",
