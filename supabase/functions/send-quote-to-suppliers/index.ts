@@ -553,23 +553,37 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log('Template rendered:', finalMessage.substring(0, 100) + '...');
 
-      // Preflight: check Evolution instance connection state
+      // Preflight: check Evolution instance connection state with multiple variants
       try {
-        const cs = await fetch(`${evolutionApiUrl}/instance/connectionState/${evolutionInstance}`, {
-          headers: { 'apikey': evolutionToken }
-        });
-        if (!cs.ok) {
-          const txt = await cs.text();
+        const base = evolutionApiUrl.replace(/\/+$/, '')
+        const bases = Array.from(new Set([base, `${base}/api`]))
+        const headerVariants: Record<string, string>[] = [
+          { apikey: evolutionToken },
+          { Authorization: `Bearer ${evolutionToken}` },
+        ]
+        let preflightOk = false
+        let lastTxt = ''
+        let lastStatus = 0
+        for (const b of bases) {
+          for (const headers of headerVariants) {
+            const cs = await fetch(`${b}/instance/connectionState/${evolutionInstance}`, { headers })
+            lastStatus = cs.status
+            if (cs.ok) { preflightOk = true; break }
+            lastTxt = await cs.text().catch(() => '')
+          }
+          if (preflightOk) break
+        }
+        if (!preflightOk) {
           return new Response(
-            JSON.stringify({ success: false, error: 'Evolution API indisponível para a instância', details: { status: cs.status, response: txt }, resolved_evolution: resolvedEvo }),
+            JSON.stringify({ success: false, error: 'Evolution API indisponível para a instância', details: { status: lastStatus, response: lastTxt }, resolved_evolution: resolvedEvo }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+          )
         }
       } catch (e: any) {
         return new Response(
           JSON.stringify({ success: false, error: 'Falha ao conectar à Evolution API', details: e.message, resolved_evolution: resolvedEvo }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        )
       }
 
       // Send to each supplier
