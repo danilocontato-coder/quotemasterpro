@@ -1204,6 +1204,10 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
+      normalize_cnpj: {
+        Args: { cnpj_in: string }
+        Returns: string
+      }
       reset_monthly_usage: {
         Args: Record<PropertyKey, never>
         Returns: undefined
