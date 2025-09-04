@@ -153,14 +153,19 @@ export function useSupabaseIntegrations() {
         console.error('Erro na exclusão:', error);
         // Rollback on error
         setIntegrations(originalIntegrations);
+        toast.error(`Erro ao excluir integração: ${error.message || 'desconhecido'}`);
         throw error;
       }
 
       console.log('Integração excluída com sucesso:', id);
       toast.success('Integração excluída com sucesso!');
-    } catch (error) {
+      // Garantir sincronização com o backend
+      await loadIntegrations();
+    } catch (error: any) {
       console.error('Erro ao excluir integração:', error);
-      toast.error('Erro ao excluir integração');
+      if (!error?.message) {
+        toast.error('Erro ao excluir integração');
+      }
       throw error;
     }
   };
