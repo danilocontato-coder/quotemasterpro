@@ -495,7 +495,7 @@ export type Database = {
         Insert: {
           category?: string | null
           client_id?: string | null
-          code: string
+          code?: string
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1297,6 +1297,10 @@ export type Database = {
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
+      }
+      next_product_code: {
+        Args: { prefix?: string }
+        Returns: string
       }
       next_quote_id: {
         Args: { prefix?: string }

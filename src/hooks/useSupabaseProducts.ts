@@ -154,21 +154,20 @@ export const useSupabaseProducts = () => {
       // For suppliers, require supplier_id
       let productPayload = { ...productData };
       
-      // Generate unique code if not provided or if code already exists
-      if (!productPayload.code) {
-        productPayload.code = await generateUniqueCode();
+      // Se o código foi fornecido em branco ou vazio, removê-lo para usar o default do DB
+      if (!productPayload.code || productPayload.code.trim() === '') {
+        delete productPayload.code;
       } else {
-        // Check if provided code already exists
+        // Se foi fornecido um código, verificar se já existe
         const { data: existing } = await supabase
           .from('products')
           .select('id')
-          .eq('code', productPayload.code)
+          .eq('code', productPayload.code.trim())
           .maybeSingle();
         
         if (existing) {
-          // Code already exists, generate a new one based on the provided code
-          const baseName = productPayload.code.replace(/\d+$/, '');
-          productPayload.code = await generateUniqueCode(baseName);
+          // Código já existe, vamos removê-lo para usar o default do DB
+          delete productPayload.code;
         }
       }
       
