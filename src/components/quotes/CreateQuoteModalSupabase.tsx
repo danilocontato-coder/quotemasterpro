@@ -341,6 +341,12 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
 
       case 3:
         const filteredSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
+          console.log('🎯 Modal Criação - Fornecedor:', supplier.name, {
+            client_id: supplier.client_id,
+            type: supplier.type,
+            scope: formData.supplierScope
+          });
+          
           if (formData.supplierScope === 'local') {
             return supplier.client_id !== null; // Fornecedores locais (cadastrados pelo cliente)
           } else {

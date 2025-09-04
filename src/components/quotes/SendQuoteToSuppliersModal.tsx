@@ -33,13 +33,32 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const { markQuoteAsSent } = useSupabaseQuotes();
   
   // Filter suppliers based on quote's supplier_scope preference
+  console.log('🔍 Filtro de Fornecedores:', {
+    quote_id: quote?.id,
+    quote_supplier_scope: quote?.supplier_scope,
+    total_suppliers: suppliers.length,
+    active_suppliers: suppliers.filter(s => s.status === 'active').length
+  });
+
   const activeSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
-    // If quote has supplier_scope set to 'local', only show local suppliers
+    // Se quote tem supplier_scope definido, usar essa configuração
     if (quote?.supplier_scope === 'local') {
-      return supplier.client_id !== null; // Local suppliers only
+      const isLocal = supplier.client_id !== null;
+      console.log(`📍 Fornecedor ${supplier.name}: local=${isLocal} (client_id: ${supplier.client_id})`);
+      return isLocal; // Apenas fornecedores locais
+    } else if (quote?.supplier_scope === 'all') {
+      console.log(`🌐 Fornecedor ${supplier.name}: incluído (escopo 'all')`);
+      return true; // Todos os fornecedores (locais + certificados)
+    } else {
+      console.log(`🤷 Fornecedor ${supplier.name}: incluído (sem supplier_scope definido)`);
+      // Fallback para compatibilidade: se não tem supplier_scope, mostrar todos
+      return true;
     }
-    // If supplier_scope is 'all' or not set, show all suppliers
-    return true;
+  });
+
+  console.log('📊 Resultado do filtro:', {
+    active_suppliers_count: activeSuppliers.length,
+    supplier_names: activeSuppliers.map(s => s.name)
   });
   
   // Group suppliers by CNPJ to handle potential duplicates
