@@ -94,8 +94,11 @@ export const ClientsManagement = () => {
     });
   }, [updateClient, trackAsyncOperation]);
 
-  const handleCreateClient = useCallback(async (clientData: any) => {
-    await createClient(clientData);
+  const handleCreateClient = useCallback(async (
+    clientData: any,
+    notificationOptions?: { sendByEmail?: boolean; sendByWhatsApp?: boolean }
+  ) => {
+    await createClient(clientData, notificationOptions);
   }, [createClient]);
 
   const handleCreateGroup = useCallback(async (groupData: any) => {

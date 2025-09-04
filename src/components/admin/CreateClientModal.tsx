@@ -863,10 +863,17 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                     </div>
 
                     {(credentials.sendByEmail || credentials.sendByWhatsApp) && (
-                      <div className="p-4 bg-muted rounded-lg">
+                      <div className="p-4 bg-muted rounded-lg space-y-1">
                         <p className="text-sm text-muted-foreground">
                           As credenciais serão enviadas automaticamente após o cadastro ser concluído.
                         </p>
+                        {credentials.sendByWhatsApp && (
+                          <p className="text-xs text-muted-foreground">
+                            WhatsApp: será enviado para {(
+                              contacts.find(c => c.isPrimary)?.phone || formData.phone || 'número não informado'
+                            )}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
