@@ -48,7 +48,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       icon: FileText,
       label: 'Cotações/Mês',
       current: currentUsage.quotesThisMonth,
-      limit: userPlan.max_quotes_per_month || userPlan.max_quotes,
+      limit: userPlan.limits.maxQuotesPerMonth,
       color: 'text-blue-600'
     },
     {
@@ -56,7 +56,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       icon: Users,
       label: 'Usuários',
       current: currentUsage.usersCount,
-      limit: userPlan.max_users_per_client || userPlan.max_users,
+      limit: userPlan.limits.maxUsersPerClient,
       color: 'text-green-600'
     },
     {
@@ -64,7 +64,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       icon: Building2,
       label: 'Fornecedores/Cotação',
       current: currentUsage.suppliersPerQuote,
-      limit: userPlan.max_suppliers_per_quote || 5,
+      limit: userPlan.limits.maxSuppliersPerQuote,
       color: 'text-purple-600'
     },
     {
@@ -72,7 +72,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
       icon: Database,
       label: 'Armazenamento (GB)',
       current: currentUsage.storageUsedGB,
-      limit: userPlan.max_storage_gb,
+      limit: userPlan.limits.maxStorageGB,
       color: 'text-orange-600'
     }
   ];
@@ -85,7 +85,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
         icon: Truck,
         label: 'Respostas/Mês',
         current: currentUsage.quoteResponsesThisMonth,
-        limit: userPlan.max_quote_responses_per_month || 50,
+        limit: userPlan.limits.maxQuoteResponsesPerMonth,
         color: 'text-red-600'
       },
       {
@@ -93,7 +93,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
         icon: Package,
         label: 'Produtos',
         current: currentUsage.productsInCatalog,
-        limit: userPlan.max_products_in_catalog || 100,
+        limit: userPlan.limits.maxProductsInCatalog,
         color: 'text-cyan-600'
       },
       {
@@ -101,7 +101,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
         icon: Tag,
         label: 'Categorias',
         current: currentUsage.categoriesCount,
-        limit: userPlan.max_categories_per_supplier || 10,
+        limit: userPlan.limits.maxCategoriesPerSupplier,
         color: 'text-yellow-600'
       }
     );
@@ -136,7 +136,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium">Limites do Plano</h4>
-            <Badge variant="outline">{userPlan.display_name}</Badge>
+            <Badge variant="outline">{userPlan.displayName}</Badge>
           </div>
           
           {(nearLimitCount > 0 || atLimitCount > 0) && (
@@ -185,7 +185,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
               Uso e Limites do Plano
             </div>
             <Badge variant="outline" className="ml-2">
-              {userPlan.display_name}
+              {userPlan.displayName}
             </Badge>
           </CardTitle>
           <CardDescription>

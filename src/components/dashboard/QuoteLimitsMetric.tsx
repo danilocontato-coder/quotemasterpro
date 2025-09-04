@@ -58,7 +58,7 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
               <span className="font-medium text-sm">Cotações</span>
             </div>
             <Badge variant="outline" className="text-xs">
-              {userPlan.display_name}
+              {userPlan.displayName}
             </Badge>
           </div>
           
@@ -112,7 +112,7 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
             Uso de Cotações Mensais
           </div>
           <Badge variant="outline">
-            {userPlan.display_name}
+            {userPlan.displayName}
           </Badge>
         </CardTitle>
       </CardHeader>

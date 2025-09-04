@@ -235,6 +235,32 @@ export function useSupabaseUsers() {
         });
       }
 
+      // Update client usage count if user has client_id
+      if (effectiveClientId) {
+        try {
+          // Get current users count for the client
+          const { count } = await supabase
+            .from('users')
+            .select('id', { count: 'exact' })
+            .eq('client_id', effectiveClientId)
+            .eq('status', 'active');
+
+          // Update or insert client usage
+          await supabase
+            .from('client_usage')
+            .upsert({
+              client_id: effectiveClientId,
+              users_count: count || 0,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'client_id'
+            });
+        } catch (usageError) {
+          console.error('Error updating client usage:', usageError);
+          // Don't fail user creation if usage update fails
+        }
+      }
+
       toast.success('Usuário criado com sucesso');
       await fetchUsers();
       return data;
@@ -317,6 +343,37 @@ export function useSupabaseUsers() {
       console.log('=== CHAMANDO TOAST SUCCESS ===');
       toast.success('Usuário atualizado com sucesso');
       
+      // Update client usage count if client_id changed
+      const oldUser = users.find(u => u.id === id);
+      const affectedClientIds = new Set([
+        oldUser?.client_id,
+        userData.client_id
+      ].filter(Boolean));
+
+      for (const clientId of affectedClientIds) {
+        if (clientId) {
+          try {
+            const { count } = await supabase
+              .from('users')
+              .select('id', { count: 'exact' })
+              .eq('client_id', clientId)
+              .eq('status', 'active');
+
+            await supabase
+              .from('client_usage')
+              .upsert({
+                client_id: clientId,
+                users_count: count || 0,
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'client_id'
+              });
+          } catch (usageError) {
+            console.error('Error updating client usage:', usageError);
+          }
+        }
+      }
+      
       console.log('=== CHAMANDO FETCH USERS ===');
       // Use a timeout to prevent immediate re-fetch conflicts
       setTimeout(() => {
@@ -334,6 +391,9 @@ export function useSupabaseUsers() {
   // Delete user
   const deleteUser = async (id: string) => {
     try {
+      // Get user info before deletion to update client usage
+      const userToDelete = users.find(u => u.id === id);
+      
       // Remove group memberships first to avoid constraint/RLS issues
       const { error: membershipsError } = await supabase
         .from('user_group_memberships')
@@ -350,6 +410,29 @@ export function useSupabaseUsers() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Update client usage count if user had client_id
+      if (userToDelete?.client_id) {
+        try {
+          const { count } = await supabase
+            .from('users')
+            .select('id', { count: 'exact' })
+            .eq('client_id', userToDelete.client_id)
+            .eq('status', 'active');
+
+          await supabase
+            .from('client_usage')
+            .upsert({
+              client_id: userToDelete.client_id,
+              users_count: count || 0,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'client_id'
+            });
+        } catch (usageError) {
+          console.error('Error updating client usage after deletion:', usageError);
+        }
+      }
 
       toast.success('Usuário excluído com sucesso');
       await fetchUsers();
