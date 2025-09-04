@@ -191,7 +191,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
 
     try {
       // Determina automaticamente o método de envio baseado na configuração do SuperAdmin
-      const sendVia = evolutionConfigured ? 'direct' : 'n8n';
+      const sendVia = resolvedWebhookUrl ? 'n8n' : (evolutionConfigured ? 'direct' : 'n8n');
       
       // Generate unique response links for each selected supplier
       const supplierLinks = selectedSuppliers.map((supplierId) => {
