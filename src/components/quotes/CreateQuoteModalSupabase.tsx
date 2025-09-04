@@ -25,7 +25,6 @@ interface QuoteFormData {
     product_name: string;
     quantity: number;
     product_id?: string;
-    unit_price?: number;
   }>;
   supplier_ids: string[];
   communicationMethods: {
@@ -170,8 +169,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     const item = {
       product_name: product.name,
       product_id: product.id,
-      quantity: 1,  // Quantidade padrão, pode ser editada depois
-      unit_price: product.unit_price || 0
+      quantity: 1  // Quantidade padrão, pode ser editada depois
     };
     
     setFormData(prev => ({
@@ -199,19 +197,13 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       return;
     }
     
-    // Calcular total dos itens
-    const calculatedTotal = formData.items.reduce((sum, item) => {
-      const itemTotal = (item.quantity || 0) * (item.unit_price || 0);
-      return sum + itemTotal;
-    }, 0);
-    
     // Convert form data to quote format
     const quoteData: any = {
       title: formData.title,
       description: formData.description,
       deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
       status: editingQuote ? editingQuote.status : 'draft', // Preserve status when editing
-      total: calculatedTotal,
+      total: 0, // Sem valor inicial - será preenchido pelos fornecedores
       items_count: formData.items.length,
       responses_count: editingQuote?.responses_count || 0,
       suppliers_sent_count: formData.supplier_ids.length,
@@ -219,9 +211,9 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       items: formData.items.map(item => ({
         product_name: item.product_name,
         quantity: item.quantity || 0,
-        unit_price: item.unit_price || 0,
         product_id: item.product_id || null,
-        total: (item.quantity || 0) * (item.unit_price || 0)
+        unit_price: 0, // Sem preço inicial - será preenchido pelos fornecedores
+        total: 0 // Sem total inicial - será calculado pelos fornecedores
       }))
     };
     
