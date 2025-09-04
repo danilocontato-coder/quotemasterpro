@@ -13,7 +13,7 @@ import { ProductSearchModalSupabase } from "./ProductSearchModalSupabase";
 import { CreateItemModal } from "../items/CreateItemModal";
 import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
-import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
+import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 
 interface QuoteFormData {
@@ -49,7 +49,7 @@ const steps = [
 ];
 
 export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, editingQuote }: CreateQuoteModalSupabaseProps) {
-  const { enforceLimit } = useSubscriptionGuard();
+  const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { products, addProduct, isLoading: productsLoading } = useSupabaseProducts();
   const { suppliers, isLoading: suppliersLoading } = useSupabaseSuppliers();
   

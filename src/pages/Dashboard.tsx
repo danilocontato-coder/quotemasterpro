@@ -2,6 +2,7 @@ import { FileText, Users, CheckCircle, DollarSign, Clock, TrendingUp, AlertTrian
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RatingPrompts } from "@/components/ratings/RatingPrompts";
+import { UsageLimitsCard } from "@/components/limits/UsageLimitsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { VisualCard } from "@/components/ui/visual-card";
 import { Badge } from "@/components/ui/badge";
@@ -180,11 +181,18 @@ export default function Dashboard() {
         )}
       </div>
 
-          {/* Quick Actions */}
+      {/* Usage Limits Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
           <QuickActions />
+        </div>
+        <div>
+          <UsageLimitsCard compact />
+        </div>
+      </div>
 
-          {/* Rating Prompts */}
-          <RatingPrompts />
+      {/* Rating Prompts */}
+      <RatingPrompts />
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

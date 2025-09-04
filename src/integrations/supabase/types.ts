@@ -173,6 +173,56 @@ export type Database = {
         }
         Relationships: []
       }
+      client_usage: {
+        Row: {
+          categories_count: number
+          client_id: string
+          created_at: string
+          id: string
+          last_reset_date: string
+          products_in_catalog: number
+          quote_responses_this_month: number
+          quotes_this_month: number
+          storage_used_gb: number
+          updated_at: string
+          users_count: number
+        }
+        Insert: {
+          categories_count?: number
+          client_id: string
+          created_at?: string
+          id?: string
+          last_reset_date?: string
+          products_in_catalog?: number
+          quote_responses_this_month?: number
+          quotes_this_month?: number
+          storage_used_gb?: number
+          updated_at?: string
+          users_count?: number
+        }
+        Update: {
+          categories_count?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          last_reset_date?: string
+          products_in_catalog?: number
+          quote_responses_this_month?: number
+          quotes_this_month?: number
+          storage_used_gb?: number
+          updated_at?: string
+          users_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_usage_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -1113,6 +1163,22 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_or_create_client_usage: {
+        Args: { client_uuid: string }
+        Returns: {
+          categories_count: number
+          client_id: string
+          created_at: string
+          id: string
+          last_reset_date: string
+          products_in_catalog: number
+          quote_responses_this_month: number
+          quotes_this_month: number
+          storage_used_gb: number
+          updated_at: string
+          users_count: number
+        }
+      }
       get_or_create_user_settings: {
         Args: { user_uuid: string }
         Returns: {
@@ -1137,6 +1203,10 @@ export type Database = {
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
+      }
+      reset_monthly_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       validate_user_creation: {
         Args: { user_email: string; user_role: string }

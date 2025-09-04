@@ -16,7 +16,7 @@ import {
   TrendingUp,
   Infinity
 } from 'lucide-react';
-import { useSubscriptionGuard } from '@/hooks/useSubscriptionGuard';
+import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface UsageLimitsCardProps {
@@ -34,10 +34,11 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
     getUsagePercentage, 
     isNearLimit, 
     userPlan,
-    checkLimit
-  } = useSubscriptionGuard();
+    checkLimit,
+    isLoading: usageLoading
+  } = useSupabaseSubscriptionGuard();
 
-  if (!user || !userPlan) {
+  if (!user || !userPlan || usageLoading) {
     return null;
   }
 

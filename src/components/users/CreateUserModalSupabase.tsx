@@ -34,6 +34,7 @@ import {
   Check
 } from 'lucide-react';
 import { useSupabaseUsers, SupabaseUser } from '@/hooks/useSupabaseUsers';
+import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { toast } from 'sonner';
 
 interface CreateUserModalProps {
@@ -43,6 +44,7 @@ interface CreateUserModalProps {
 
 export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const { createUser, generateTemporaryPassword, groups } = useSupabaseUsers();
+  const { enforceLimit } = useSupabaseSubscriptionGuard();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -95,6 +97,11 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.email.trim() || !formData.role) {
       toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    // Verificar limite de usuários antes de criar
+    if (!enforceLimit('ADD_USER')) {
       return;
     }
 
