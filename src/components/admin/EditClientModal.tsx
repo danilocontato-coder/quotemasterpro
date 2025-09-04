@@ -81,20 +81,31 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!client) return;
+    
+    if (isLoading) {
+      console.log('Operação já em andamento, ignorando...');
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log('Iniciando atualização do cliente:', client.id);
+      
       // Convert "none" back to null/empty for the API
       const dataToUpdate = {
         ...formData,
         groupId: formData.groupId === 'none' ? null : formData.groupId
       };
+      
       await onUpdateClient(client.id, dataToUpdate);
-      toast({
-        title: "Cliente atualizado",
-        description: "As informações do cliente foram atualizadas com sucesso.",
-      });
-      onOpenChange(false);
+      
+      console.log('Cliente atualizado com sucesso, fechando modal...');
+      
+      // Aguardar um pouco antes de fechar para garantir que a operação foi concluída
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 300);
+      
     } catch (error) {
       console.error('Erro ao atualizar cliente:', error);
       toast({

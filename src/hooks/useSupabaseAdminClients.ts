@@ -94,25 +94,38 @@ export function useSupabaseAdminClients() {
   const [filterGroup, setFilterGroup] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  // Fetch groups and clients
+  // Otimizada: Fetch único com controle de inicialização
   useEffect(() => {
-    const load = async () => {
+    if (initialized) return; // Evita chamadas duplicadas
+
+    const loadData = async () => {
       setLoading(true);
       try {
-        const [{ data: groupsData, error: groupsErr }, { data: clientsData, error: clientsErr }] = await Promise.all([
-          supabase.from("client_groups").select("id, name, description, color, client_count, created_at"),
+        // Uma única chamada Promise.all otimizada
+        const [groupsResult, clientsResult] = await Promise.all([
+          supabase
+            .from("client_groups")
+            .select("id, name, description, color, client_count, created_at")
+            .order('name'),
           supabase
             .from("clients")
-            .select(
-              "id, name, cnpj, email, phone, address, status, subscription_plan_id, created_at, updated_at, username, group_id, last_access"
-            )
+            .select("id, name, cnpj, email, phone, address, status, subscription_plan_id, created_at, updated_at, username, group_id, last_access")
+            .order('name')
         ]);
 
-        if (groupsErr) throw groupsErr;
-        if (clientsErr) throw clientsErr;
+        if (groupsResult.error) {
+          console.error("Erro ao carregar grupos:", groupsResult.error);
+          throw groupsResult.error;
+        }
+        if (clientsResult.error) {
+          console.error("Erro ao carregar clientes:", clientsResult.error);
+          throw clientsResult.error;
+        }
 
-        const groups: ClientGroup[] = (groupsData || []).map((g) => ({
+        // Processamento otimizado
+        const groups: ClientGroup[] = (groupsResult.data || []).map((g) => ({
           id: g.id,
           name: g.name,
           description: g.description ?? undefined,
@@ -123,7 +136,7 @@ export function useSupabaseAdminClients() {
 
         const groupsMap = new Map(groups.map((g) => [g.id, g]));
 
-        const mapped: AdminClient[] = (clientsData || []).map((c) => ({
+        const mapped: AdminClient[] = (clientsResult.data || []).map((c) => ({
           id: c.id,
           companyName: c.name,
           cnpj: c.cnpj,
@@ -150,16 +163,17 @@ export function useSupabaseAdminClients() {
 
         setClientGroups(groups);
         setClients(mapped);
-      } catch (e: any) {
-        console.error("Erro ao carregar clientes/grupos:", e);
+        setInitialized(true);
+      } catch (error: any) {
+        console.error("Erro ao carregar dados:", error);
         toast.error("Falha ao carregar dados de clientes");
       } finally {
         setLoading(false);
       }
     };
 
-    load();
-  }, []);
+    loadData();
+  }, [initialized]);
 
   const filteredClients = useMemo(() => {
     return clients.filter((client) => {
@@ -323,27 +337,75 @@ export function useSupabaseAdminClients() {
   const updateClient = async (id: string, clientData: Partial<AdminClient>) => {
     setLoading(true);
     try {
+      console.log('Atualizando cliente:', id, clientData);
+      
+      // Preparar dados para a atualização
+      const updateData: any = {};
+      
+      if (clientData.companyName !== undefined) updateData.name = clientData.companyName;
+      if (clientData.email !== undefined) updateData.email = clientData.email;
+      if (clientData.phone !== undefined) updateData.phone = clientData.phone || null;
+      if (clientData.cnpj !== undefined) updateData.cnpj = clientData.cnpj;
+      if (clientData.address !== undefined) {
+        updateData.address = clientData.address ? formatAddressToText(clientData.address) : null;
+      }
+      if (clientData.status !== undefined) updateData.status = clientData.status;
+      if (clientData.plan !== undefined) updateData.subscription_plan_id = clientData.plan;
+      if (clientData.loginCredentials?.username !== undefined) {
+        updateData.username = clientData.loginCredentials.username || null;
+      }
+      if (clientData.groupId !== undefined) {
+        updateData.group_id = clientData.groupId || null;
+      }
+
+      console.log('Dados sendo enviados para o Supabase:', updateData);
+
       const { error } = await supabase
         .from("clients")
-        .update({
-          name: clientData.companyName,
-          email: clientData.email,
-          phone: clientData.phone,
-          cnpj: clientData.cnpj,
-          address: clientData.address ? formatAddressToText(clientData.address) : undefined,
-          status: clientData.status,
-          subscription_plan_id: clientData.plan,
-          username: clientData.loginCredentials?.username,
-          group_id: clientData.groupId,
-        })
+        .update(updateData)
         .eq("id", id);
-      if (error) throw error;
 
-      setClients((prev) => prev.map((c) => (c.id === id ? { ...c, ...(clientData as any) } : c)));
-      toast.success("Cliente atualizado");
-    } catch (e: any) {
-      console.error(e);
-      toast.error("Falha ao atualizar cliente");
+      if (error) {
+        console.error('Erro do Supabase:', error);
+        throw error;
+      }
+
+      console.log('Cliente atualizado com sucesso no banco');
+
+      // Atualizar estado local de forma otimizada
+      setClients((prev) => {
+        const updated = prev.map((c) => {
+          if (c.id === id) {
+            const updatedClient = { ...c };
+            
+            // Mapear campos de volta
+            if (clientData.companyName !== undefined) updatedClient.companyName = clientData.companyName;
+            if (clientData.email !== undefined) updatedClient.email = clientData.email;
+            if (clientData.phone !== undefined) updatedClient.phone = clientData.phone || "";
+            if (clientData.cnpj !== undefined) updatedClient.cnpj = clientData.cnpj;
+            if (clientData.address !== undefined) updatedClient.address = clientData.address || parseAddress();
+            if (clientData.status !== undefined) updatedClient.status = clientData.status;
+            if (clientData.plan !== undefined) updatedClient.plan = clientData.plan;
+            if (clientData.groupId !== undefined) {
+              updatedClient.groupId = clientData.groupId;
+              // Atualizar nome do grupo
+              const group = clientGroups.find(g => g.id === clientData.groupId);
+              updatedClient.groupName = group?.name;
+            }
+            
+            return updatedClient;
+          }
+          return c;
+        });
+        console.log('Estado local atualizado');
+        return updated;
+      });
+
+      toast.success("Cliente atualizado com sucesso!");
+    } catch (error: any) {
+      console.error('Erro ao atualizar cliente:', error);
+      toast.error("Falha ao atualizar cliente: " + (error?.message || "Erro desconhecido"));
+      throw error;
     } finally {
       setLoading(false);
     }
