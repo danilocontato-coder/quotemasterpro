@@ -16,94 +16,99 @@ export function normalizePhone(input: string, defaultCountry = '55'): string {
 
 export function buildEndpoints(cfg: EvolutionConfig): string[] {
   const baseRaw = cfg.apiUrl.replace(/\/+$/, '')
-  const bases: string[] = [baseRaw]
-  // Try with optional /api suffix as many deployments mount under /api
-  if (!/\/(api|api\/?)$/.test(baseRaw)) {
-    bases.push(`${baseRaw}/api`)
-  }
-
   const endpoints: string[] = []
+  const instance = cfg.instance ? encodeURIComponent(cfg.instance) : null
 
-  for (const base of bases) {
-    const endsWithMessage = /\/(message|messages)$/.test(base)
-    const withMsgBase = base
-    const withoutMsgBase = base.replace(/\/(messages?)$/, '')
-    const instance = cfg.instance ? encodeURIComponent(cfg.instance) : null
-
-    if (instance) {
-      if (endsWithMessage) {
-        endpoints.push(
-          `${withMsgBase}/sendText/${instance}`,
-          `${withMsgBase}/send/${instance}`
-        )
-      }
-      endpoints.push(
-        `${base}/message/sendText/${instance}`,
-        `${base}/messages/sendText/${instance}`,
-        `${base}/message/send/${instance}`,
-        `${withoutMsgBase}/message/sendText/${instance}`,
-        `${withoutMsgBase}/messages/sendText/${instance}`,
-        `${withoutMsgBase}/message/send/${instance}`,
-      )
-    }
-
-    if (endsWithMessage) {
-      endpoints.push(
-        `${withMsgBase}/sendText`,
-        `${withMsgBase}/send`
-      )
-    }
-
+  // Based on https://evolution.iadc.cloud, try these specific patterns:
+  if (instance) {
+    // Most common Evolution API patterns
     endpoints.push(
-      `${base}/message/sendText`,
-      `${base}/messages/sendText`,
-      `${base}/message/send`,
-      `${withoutMsgBase}/message/sendText`,
-      `${withoutMsgBase}/messages/sendText`,
-      `${withoutMsgBase}/message/send`
+      `${baseRaw}/message/sendText/${instance}`,
+      `${baseRaw}/message/send/${instance}`,
+      `${baseRaw}/messages/sendText/${instance}`,
+      `${baseRaw}/chat/sendText/${instance}`,
+      `${baseRaw}/sendMessage/${instance}`,
+      `${baseRaw}/api/message/sendText/${instance}`,
+      `${baseRaw}/api/message/send/${instance}`,
+      `${baseRaw}/api/sendMessage/${instance}`,
+      `${baseRaw}/v1/message/sendText/${instance}`,
+      `${baseRaw}/v1/sendMessage/${instance}`,
+      `${baseRaw}/${instance}/sendMessage`,
+      `${baseRaw}/${instance}/message/sendText`,
+      `${baseRaw}/${instance}/message/send`
     )
   }
 
-  // Deduplicate while preserving order
-  return Array.from(new Set(endpoints))
+  // Fallback without instance
+  endpoints.push(
+    `${baseRaw}/message/sendText`,
+    `${baseRaw}/message/send`,
+    `${baseRaw}/messages/sendText`,
+    `${baseRaw}/chat/sendText`,
+    `${baseRaw}/sendMessage`,
+    `${baseRaw}/api/message/sendText`,
+    `${baseRaw}/api/sendMessage`,
+    `${baseRaw}/v1/sendMessage`
+  )
+
+  return endpoints
 }
 
 export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string, text: string) {
   const endpoints = buildEndpoints(cfg)
+  
+  // Try different header combinations
   const headersVariants: Record<string, string>[] = [
-    { 'Content-Type': 'application/json', apikey: cfg.token },
-    { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.token}` },
+    { 'Content-Type': 'application/json', 'apikey': cfg.token },
+    { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.token}` },
+    { 'Content-Type': 'application/json', 'api-key': cfg.token },
+    { 'Content-Type': 'application/json', 'x-api-key': cfg.token },
   ]
+  
+  // Try different payload formats
   const payloads: any[] = [
     { number, text },
+    { number, textMessage: { text } },
     { phone: number, message: text },
+    { to: number, message: text },
+    { chatId: number, message: text },
+    { recipient: number, body: text }
   ]
+
   let lastError = ''
   let lastEndpoint = ''
+  
   for (const endpoint of endpoints) {
     for (const headers of headersVariants) {
       for (const body of payloads) {
         try {
+          console.log(`Trying endpoint: ${endpoint} with headers: ${JSON.stringify(Object.keys(headers))} and payload keys: ${JSON.stringify(Object.keys(body))}`)
+          
           const res = await fetch(endpoint, {
             method: 'POST',
             headers,
             body: JSON.stringify(body)
           })
+          
           if (res.ok) {
             const data = await res.json().catch(() => ({}))
-            return { success: true, endpoint, messageId: data.messageId || `whatsapp_${Date.now()}` }
+            console.log(`Success on endpoint: ${endpoint}`)
+            return { success: true, endpoint, messageId: data.messageId || data.id || `whatsapp_${Date.now()}` }
           } else {
             const txt = await res.text()
             lastError = `HTTP ${res.status} ${res.statusText} - ${txt}`
             lastEndpoint = endpoint
+            console.log(`Failed ${endpoint}: ${res.status} ${txt.substring(0, 100)}`)
           }
         } catch (e: any) {
           lastError = e?.message || String(e)
           lastEndpoint = endpoint
+          console.log(`Error on ${endpoint}: ${lastError}`)
         }
       }
     }
   }
+  
   return { success: false, error: `${lastError} (last: ${lastEndpoint})`, tried_endpoints: endpoints }
 }
 
