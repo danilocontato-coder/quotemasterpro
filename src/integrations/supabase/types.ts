@@ -300,51 +300,6 @@ export type Database = {
           },
         ]
       }
-      deliveries: {
-        Row: {
-          actual_delivery_date: string | null
-          client_id: string
-          created_at: string
-          delivery_address: string
-          id: string
-          notes: string | null
-          quote_id: string
-          scheduled_date: string
-          status: string
-          supplier_id: string
-          tracking_code: string | null
-          updated_at: string
-        }
-        Insert: {
-          actual_delivery_date?: string | null
-          client_id: string
-          created_at?: string
-          delivery_address: string
-          id?: string
-          notes?: string | null
-          quote_id: string
-          scheduled_date: string
-          status?: string
-          supplier_id: string
-          tracking_code?: string | null
-          updated_at?: string
-        }
-        Update: {
-          actual_delivery_date?: string | null
-          client_id?: string
-          created_at?: string
-          delivery_address?: string
-          id?: string
-          notes?: string | null
-          quote_id?: string
-          scheduled_date?: string
-          status?: string
-          supplier_id?: string
-          tracking_code?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       integrations: {
         Row: {
           active: boolean
