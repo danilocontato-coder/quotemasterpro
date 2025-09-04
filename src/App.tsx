@@ -140,9 +140,7 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={
-                    <LazyWrapper><Dashboard /></LazyWrapper>
-                  } />
+                  <Route index element={<Dashboard />} />
                   <Route path="quotes" element={<Navigate to="/quotes" replace />} />
                   <Route path="suppliers" element={<Navigate to="/suppliers" replace />} />
                   <Route path="products" element={<Navigate to="/products" replace />} />
@@ -164,7 +162,7 @@ function App() {
                     </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<LazyWrapper><Quotes /></LazyWrapper>} />
+                  <Route index element={<Quotes />} />
                 </Route>
                 <Route path="/suppliers" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
