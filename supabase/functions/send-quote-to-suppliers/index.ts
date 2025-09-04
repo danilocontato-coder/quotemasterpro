@@ -182,56 +182,28 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate proposal link (placeholder for now)
     const proposalLink = `${Deno.env.get('SUPABASE_URL')}/supplier/quotes/${quote.id}/proposal`;
 
-    // Build enhanced WhatsApp message
-    let whatsappMessage = custom_message;
-    
-    if (whatsappTemplate && !custom_message) {
-      whatsappMessage = whatsappTemplate.message_content
-        .replace(/{{client_name}}/g, client.name)
-        .replace(/{{quote_title}}/g, quote.title)
-        .replace(/{{quote_id}}/g, quote.id)
-        .replace(/{{deadline_formatted}}/g, deadlineFormatted)
-        .replace(/{{total_formatted}}/g, totalFormatted)
-        .replace(/{{items_list}}/g, itemsList)
-        .replace(/{{items_count}}/g, String(quote.quote_items?.length || 0))
-        .replace(/{{proposal_link}}/g, proposalLink)
-        .replace(/{{client_email}}/g, client.email || 'Não informado')
-        .replace(/{{client_phone}}/g, client.phone || 'Não informado');
-    } else if (!whatsappMessage) {
-      // Fallback message if no template found
-      whatsappMessage = `🏢 *${client.name}* solicita uma cotação
+    // Build variables for template rendering on n8n side
+    const templateVariables = {
+      client_name: client.name,
+      client_email: client.email || 'Não informado',
+      client_phone: client.phone || '',
+      quote_title: quote.title,
+      quote_id: quote.id,
+      deadline_formatted: deadlineFormatted,
+      total_formatted: totalFormatted,
+      items_list: itemsList,
+      items_count: String(quote.quote_items?.length || 0),
+      proposal_link: proposalLink,
+    };
 
-📋 *Cotação:* ${quote.title}
-🆔 *ID:* ${quote.id}
-📅 *Prazo:* ${deadlineFormatted}
-💰 *Valor Total:* ${totalFormatted}
-
-📦 *ITENS SOLICITADOS:*
-${itemsList}
-
-🔗 *Para enviar sua proposta:*
-${proposalLink}
-
-_Esta é uma solicitação automática do sistema QuoteMaster Pro_`;
-    }
-
-    // Prepare data for N8N (build per-supplier pre-rendered message when available)
-    const suppliersWithMessages = suppliers.map((supplier: any) => {
-      let msg = whatsappMessage || null;
-      if (msg) {
-        try {
-          msg = msg.replace(/{{supplier_name}}/g, supplier.name || 'Fornecedor');
-        } catch {}
-      }
-      return {
-        id: supplier.id,
-        name: supplier.name,
-        email: supplier.email,
-        phone: supplier.phone,
-        whatsapp: supplier.whatsapp,
-        pre_rendered_message: msg,
-      };
-    });
+    // Prepare suppliers (no pre-rendered message; rendering will happen in n8n)
+    const suppliersClean = suppliers.map((supplier: any) => ({
+      id: supplier.id,
+      name: supplier.name,
+      email: supplier.email,
+      phone: supplier.phone,
+      whatsapp: supplier.whatsapp,
+    }));
 
     const n8nPayload: any = {
       quote: {
@@ -254,11 +226,11 @@ _Esta é uma solicitação automática do sistema QuoteMaster Pro_`;
         phone: client.phone,
         cnpj: client.cnpj
       },
-      suppliers: suppliersWithMessages,
+      suppliers: suppliersClean,
       settings: {
         send_whatsapp,
         send_email,
-        custom_message: whatsappMessage,
+        custom_message: custom_message || null,
         whatsapp_provider: evolutionInstance ? 'evolution_api' : 'default',
         evolution: evolutionInstance ? { 
           instance: evolutionInstance, 
@@ -268,7 +240,15 @@ _Esta é uma solicitação automática do sistema QuoteMaster Pro_`;
       },
       template_data: whatsappTemplate ? {
         template_name: whatsappTemplate.name,
-        subject: whatsappTemplate.subject
+        subject: whatsappTemplate.subject,
+        message: whatsappTemplate.message_content,
+        variables: templateVariables,
+        items: quote.quote_items?.map((item: any) => ({
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total: item.total
+        })) || []
       } : null,
       timestamp: new Date().toISOString(),
       platform: 'QuoteMaster Pro'
