@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Supplier } from '@/hooks/useSupabaseSuppliers';
@@ -37,22 +37,14 @@ interface CredentialsData {
 export const useSupabaseAdminSuppliers = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
-  
-  // Usar useRef para evitar re-criação de funções
-  const isLoadingRef = useRef(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
 
+  // Função de fetch SIMPLES sem debounce ou real-time
   const fetchSuppliers = useCallback(async () => {
-    if (isLoadingRef.current) {
-      console.log('fetchSuppliers já está em execução, ignorando...');
-      return;
-    }
+    if (isLoading) return;
     
+    setIsLoading(true);
     try {
-      isLoadingRef.current = true;
-      setIsLoading(true);
       console.log('Carregando fornecedores...');
       
       const { data, error } = await supabase
@@ -60,14 +52,10 @@ export const useSupabaseAdminSuppliers = () => {
         .select('*')
         .order('name', { ascending: true });
 
-      if (error) {
-        console.error('Erro do Supabase:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       console.log('Fornecedores carregados:', data?.length || 0);
       setSuppliers((data as Supplier[]) || []);
-      setInitialized(true);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       toast({
@@ -77,60 +65,21 @@ export const useSupabaseAdminSuppliers = () => {
       });
     } finally {
       setIsLoading(false);
-      isLoadingRef.current = false;
     }
-  }, [toast]);
+  }, [isLoading, toast]);
 
-  // Fetch inicial controlado
+  // Fetch inicial APENAS uma vez
   useEffect(() => {
-    if (!initialized && !isLoadingRef.current) {
-      fetchSuppliers();
-    }
-  }, [initialized, fetchSuppliers]);
-
-  // Real-time subscription otimizada
-  useEffect(() => {
-    if (!initialized) return;
-
-    const channel = supabase
-      .channel('admin-suppliers-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'suppliers'
-        },
-        (payload) => {
-          console.log('Supplier change detected:', payload.eventType);
-          
-          // Debounce com ref
-          if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-          }
-          
-          timeoutRef.current = setTimeout(() => {
-            if (!isLoadingRef.current) {
-              console.log('Executando refresh após mudança...');
-              fetchSuppliers();
-            }
-          }, 1500);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      supabase.removeChannel(channel);
-    };
-  }, [initialized, fetchSuppliers]);
+    fetchSuppliers();
+  }, []); // Dependências vazias intencionalmente
 
   const createSupplierWithUser = async (
     supplierData: SupplierWithUserData,
     credentials: CredentialsData
   ) => {
+    if (isLoading) return null;
+    
+    setIsLoading(true);
     try {
       // Check for duplicates before creating
       const duplicateCheck = await checkSupplierDuplicate(
@@ -149,7 +98,6 @@ export const useSupabaseAdminSuppliers = () => {
           variant: "destructive"
         });
         
-        // For admin, return the existing supplier instead of creating duplicate
         return existing;
       }
 
@@ -176,8 +124,7 @@ export const useSupabaseAdminSuppliers = () => {
       // 2. Create supplier record
       const supplierPayload = {
         ...supplierData,
-        cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
-        // For certified suppliers, set client_id to null (global)
+        cnpj: normalizeCNPJ(supplierData.cnpj || ''),
         client_id: supplierData.type === 'certified' ? null : supplierData.client_id
       };
       
@@ -224,7 +171,6 @@ export const useSupabaseAdminSuppliers = () => {
             console.log('[SUPPLIER CREATION] Credentials sent via WhatsApp');
           } catch (whatsappError) {
             console.warn('[SUPPLIER CREATION] Failed to send WhatsApp credentials:', whatsappError);
-            // Continue with supplier creation even if WhatsApp fails
             toast({
               title: "Fornecedor criado com aviso",
               description: "Fornecedor criado com sucesso, mas não foi possível enviar as credenciais via WhatsApp.",
@@ -250,6 +196,7 @@ export const useSupabaseAdminSuppliers = () => {
           }
         }]);
 
+      // 6. Update local state
       setSuppliers(prev => [...prev, supplier as Supplier].sort((a, b) => a.name.localeCompare(b.name)));
       
       toast({
@@ -266,18 +213,16 @@ export const useSupabaseAdminSuppliers = () => {
         variant: "destructive"
       });
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const updateSupplier = useCallback(async (id: string, updates: Partial<Supplier>) => {
-    if (isLoadingRef.current) {
-      console.log('Update já em andamento, ignorando...');
-      return false;
-    }
+  const updateSupplier = async (id: string, updates: Partial<Supplier>) => {
+    if (isLoading) return false;
     
+    setIsLoading(true);
     try {
-      isLoadingRef.current = true;
-      setIsLoading(true);
       console.log('Atualizando fornecedor:', id, updates);
       
       const { data, error } = await supabase
@@ -287,14 +232,11 @@ export const useSupabaseAdminSuppliers = () => {
         .select()
         .single();
 
-      if (error) {
-        console.error('Erro do Supabase:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       console.log('Fornecedor atualizado com sucesso');
       
-      // Atualizar estado local de forma otimizada
+      // Update local state immediately
       setSuppliers(prev => 
         prev.map(supplier => supplier.id === id ? { ...supplier, ...data as Supplier } : supplier)
       );
@@ -315,15 +257,14 @@ export const useSupabaseAdminSuppliers = () => {
       return false;
     } finally {
       setIsLoading(false);
-      isLoadingRef.current = false;
     }
-  }, [toast]);
+  };
 
   const deleteSupplier = async (id: string, name: string) => {
     if (isLoading) return false;
     
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       console.log('Removendo fornecedor:', id, name);
       
       const { error } = await supabase
@@ -331,10 +272,7 @@ export const useSupabaseAdminSuppliers = () => {
         .delete()
         .eq('id', id);
 
-      if (error) {
-        console.error('Erro do Supabase:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       console.log('Fornecedor removido com sucesso');
       

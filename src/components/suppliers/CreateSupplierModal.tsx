@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
-import { UserPlus, X, MessageCircle, Building, MapPin, Key, Shield } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { useSupabaseAdminSuppliers } from '@/hooks/useSupabaseAdminSuppliers';
-import { Supplier } from '@/hooks/useSupabaseSuppliers';
+import { useState, useEffect, useCallback } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Plus, X, UserPlus, Building, MapPin, MessageCircle, Key } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useSupabaseAdminSuppliers } from "@/hooks/useSupabaseAdminSuppliers";
+import { Supplier } from "@/hooks/useSupabaseSuppliers";
 import { brazilStates } from '@/data/brazilStates';
 
 interface CreateSupplierModalProps {
@@ -21,42 +23,28 @@ interface CreateSupplierModalProps {
   editingSupplier?: any;
 }
 
-const regions = [
-  'Norte',
-  'Nordeste', 
-  'Centro-Oeste',
-  'Sudeste',
-  'Sul'
-];
-
-const supplierTypes = [
-  { value: 'local', label: 'Local', description: 'Fornecedor vinculado a um cliente' },
-  { value: 'certified', label: 'Certificado', description: 'Fornecedor certificado pela plataforma (global)' }
-];
-
-const visibilityScopes = [
-  { value: 'region', label: 'Região', description: 'Visível apenas para clientes da mesma região' },
-  { value: 'global', label: 'Global', description: 'Visível para todos os clientes certificados' }
-];
-
-const commonSpecialties = [
+const specialtyOptions = [
   'Materiais de Construção',
-  'Produtos de Limpeza', 
-  'Elétrica e Iluminação',
-  'Ferramentas',
+  'Limpeza e Higiene',
   'Jardinagem',
-  'Serviços',
   'Manutenção',
+  'Ferramentas',
+  'Equipamentos',
+  'Pinturas',
+  'Elétrica',
+  'Hidráulica',
   'Segurança',
   'Alimentação',
   'Móveis e Decoração'
 ];
 
 export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSupplier }: CreateSupplierModalProps) {
-  const { createSupplierWithUser } = useSupabaseAdminSuppliers();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState('contact');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Form state
   const [formData, setFormData] = useState({
     name: '',
     cnpj: '',
@@ -75,12 +63,12 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
     },
     business_info: {},
     specialties: [] as string[],
-    type: 'local' as const,
+    type: 'local' as 'local' | 'certified',
     region: '',
     state: '',
     city: '',
-    visibility_scope: 'region' as const,
-    status: 'active' as const,
+    visibility_scope: 'region' as 'region' | 'global',
+    status: 'active' as 'pending' | 'active' | 'inactive' | 'suspended',
     subscription_plan_id: 'plan-basic',
     client_id: null,
     is_certified: false,
@@ -97,123 +85,61 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
 
   const [selectedState, setSelectedState] = useState('');
   const [availableCities, setAvailableCities] = useState<string[]>([]);
-
-  const [isLoading, setIsLoading] = useState(false);
   const [newSpecialty, setNewSpecialty] = useState('');
 
-  // Load editing supplier data when modal opens
-  useEffect(() => {
-    console.log('🔧 CreateSupplierModal useEffect:', { open, hasEditingSupplier: !!editingSupplier });
+  // Load data when editing - SIMPLIFIED
+  const loadEditingData = useCallback(() => {
+    if (!editingSupplier) return;
     
-    if (open && editingSupplier) {
-      console.log('📝 Carregando dados para edição:', editingSupplier.name);
-      
-      const addressData = editingSupplier.address || {};
-      
-      // Batch all state updates to prevent multiple re-renders
-      const newFormData = {
-        name: editingSupplier.name || '',
-        cnpj: editingSupplier.cnpj || '',
-        email: editingSupplier.email || '',
-        phone: editingSupplier.phone || '',
-        whatsapp: editingSupplier.whatsapp || '',
-        website: editingSupplier.website || '',
-        address: {
-          street: addressData.street || '',
-          number: addressData.number || '',
-          complement: addressData.complement || '',
-          neighborhood: addressData.neighborhood || '',
-          city: addressData.city || '',
-          state: addressData.state || '',
-          zipCode: addressData.zipCode || ''
-        },
-        business_info: editingSupplier.business_info || {},
-        specialties: editingSupplier.specialties || [],
-        type: editingSupplier.type || 'local',
-        region: editingSupplier.region || '',
-        state: editingSupplier.state || '',
-        city: editingSupplier.city || '',
-        visibility_scope: editingSupplier.visibility_scope || 'region',
-        status: editingSupplier.status || 'active',
-        subscription_plan_id: editingSupplier.subscription_plan_id || 'plan-basic',
-        client_id: editingSupplier.client_id || null,
-        is_certified: editingSupplier.is_certified || false,
-        certification_date: editingSupplier.certification_date || null,
-        certification_expires_at: editingSupplier.certification_expires_at || null
-      };
-      
-      setFormData(newFormData);
-      
-      // Set state and city for proper form behavior
-      if (editingSupplier.state) {
-        const state = brazilStates.find(s => s.name === editingSupplier.state);
-        if (state) {
-          setSelectedState(state.code);
-          setAvailableCities(state.cities);
-        }
+    console.log('📝 Carregando dados para edição:', editingSupplier.name);
+    
+    const addressData = editingSupplier.address || {};
+    
+    setFormData({
+      name: editingSupplier.name || '',
+      cnpj: editingSupplier.cnpj || '',
+      email: editingSupplier.email || '',
+      phone: editingSupplier.phone || '',
+      whatsapp: editingSupplier.whatsapp || '',
+      website: editingSupplier.website || '',
+      address: {
+        street: addressData.street || '',
+        number: addressData.number || '',
+        complement: addressData.complement || '',
+        neighborhood: addressData.neighborhood || '',
+        city: addressData.city || '',
+        state: addressData.state || '',
+        zipCode: addressData.zipCode || ''
+      },
+      business_info: editingSupplier.business_info || {},
+      specialties: editingSupplier.specialties || [],
+      type: editingSupplier.type || 'local',
+      region: editingSupplier.region || '',
+      state: editingSupplier.state || '',
+      city: editingSupplier.city || '',
+      visibility_scope: editingSupplier.visibility_scope || 'region',
+      status: editingSupplier.status || 'active',
+      subscription_plan_id: editingSupplier.subscription_plan_id || 'plan-basic',
+      client_id: editingSupplier.client_id || null,
+      is_certified: editingSupplier.is_certified || false,
+      certification_date: editingSupplier.certification_date || null,
+      certification_expires_at: editingSupplier.certification_expires_at || null
+    });
+    
+    // Set state and city for proper form behavior
+    if (editingSupplier.state) {
+      const state = brazilStates.find(s => s.name === editingSupplier.state);
+      if (state) {
+        setSelectedState(state.code);
+        setAvailableCities(state.cities);
       }
-      
-      console.log('✅ Dados carregados para edição');
-    } else if (open && !editingSupplier) {
-      console.log('🆕 Modal aberto para novo fornecedor');
-      resetForm();
     }
-  }, [open, editingSupplier]);
-
-  const addSpecialty = (specialty: string) => {
-    if (specialty.trim() && !formData.specialties.includes(specialty.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        specialties: [...prev.specialties, specialty.trim()]
-      }));
-      setNewSpecialty('');
-    }
-  };
-
-  const removeSpecialty = (specialty: string) => {
-    setFormData(prev => ({
-      ...prev,
-      specialties: prev.specialties.filter(s => s !== specialty)
-    }));
-  };
-
-  const generateCredentials = () => {
-    const username = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 15) + Math.floor(Math.random() * 100);
-    const password = Math.random().toString(36).slice(-8) + Math.floor(Math.random() * 100);
     
-    setCredentials(prev => ({
-      ...prev,
-      username,
-      password
-    }));
-  };
+    console.log('✅ Dados carregados para edição');
+  }, [editingSupplier]);
 
-  const handleStateChange = (stateCode: string) => {
-    setSelectedState(stateCode);
-    const state = brazilStates.find(s => s.code === stateCode);
-    if (state) {
-      setAvailableCities(state.cities);
-      setFormData(prev => ({
-        ...prev,
-        state: state.name,
-        city: '',
-        region: getRegionByState(stateCode)
-      }));
-    }
-  };
-
-  const getRegionByState = (stateCode: string): string => {
-    const regions: Record<string, string> = {
-      'AC': 'Norte', 'AP': 'Norte', 'AM': 'Norte', 'PA': 'Norte', 'RO': 'Norte', 'RR': 'Norte', 'TO': 'Norte',
-      'AL': 'Nordeste', 'BA': 'Nordeste', 'CE': 'Nordeste', 'MA': 'Nordeste', 'PB': 'Nordeste', 'PE': 'Nordeste', 'PI': 'Nordeste', 'RN': 'Nordeste', 'SE': 'Nordeste',
-      'GO': 'Centro-Oeste', 'MT': 'Centro-Oeste', 'MS': 'Centro-Oeste', 'DF': 'Centro-Oeste',
-      'ES': 'Sudeste', 'MG': 'Sudeste', 'RJ': 'Sudeste', 'SP': 'Sudeste',
-      'PR': 'Sul', 'RS': 'Sul', 'SC': 'Sul'
-    };
-    return regions[stateCode] || '';
-  };
-
-  const resetForm = () => {
+  // Reset form
+  const resetForm = useCallback(() => {
     setFormData({
       name: '',
       cnpj: '',
@@ -254,8 +180,77 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
     setAvailableCities([]);
     setNewSpecialty('');
     setActiveTab('contact');
+  }, []);
+
+  // Effect for loading data - CONTROLLED
+  useEffect(() => {
+    if (!open) return;
+    
+    if (editingSupplier) {
+      loadEditingData();
+    } else {
+      resetForm();
+    }
+  }, [open, editingSupplier, loadEditingData, resetForm]);
+
+  // Handle state change
+  const handleStateChange = (stateCode: string) => {
+    const state = brazilStates.find(s => s.code === stateCode);
+    if (state) {
+      setSelectedState(stateCode);
+      setAvailableCities(state.cities);
+      setFormData(prev => ({
+        ...prev,
+        state: state.name,
+        region: getRegionFromState(stateCode),
+        city: '' // Reset city when state changes
+      }));
+    }
   };
 
+  const getRegionFromState = (stateCode: string) => {
+    const regions: { [key: string]: string } = {
+      // Norte
+      'AC': 'Norte', 'AP': 'Norte', 'AM': 'Norte', 'PA': 'Norte', 'RO': 'Norte', 'RR': 'Norte', 'TO': 'Norte',
+      // Nordeste  
+      'AL': 'Nordeste', 'BA': 'Nordeste', 'CE': 'Nordeste', 'MA': 'Nordeste', 'PB': 'Nordeste', 'PE': 'Nordeste', 'PI': 'Nordeste', 'RN': 'Nordeste', 'SE': 'Nordeste',
+      // Centro-Oeste
+      'GO': 'Centro-Oeste', 'MT': 'Centro-Oeste', 'MS': 'Centro-Oeste', 'DF': 'Centro-Oeste',
+      // Sudeste
+      'ES': 'Sudeste', 'MG': 'Sudeste', 'RJ': 'Sudeste', 'SP': 'Sudeste',
+      // Sul
+      'PR': 'Sul', 'RS': 'Sul', 'SC': 'Sul'
+    };
+    return regions[stateCode] || '';
+  };
+
+  const handleSpecialtyToggle = (specialty: string) => {
+    setFormData(prev => ({
+      ...prev,
+      specialties: prev.specialties.includes(specialty)
+        ? prev.specialties.filter(s => s !== specialty)
+        : [...prev.specialties, specialty]
+    }));
+  };
+
+  const handleAddCustomSpecialty = () => {
+    if (newSpecialty.trim() && !formData.specialties.includes(newSpecialty.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        specialties: [...prev.specialties, newSpecialty.trim()]
+      }));
+      setNewSpecialty('');
+    }
+  };
+
+  const handleRemoveSpecialty = (specialty: string) => {
+    setFormData(prev => ({
+      ...prev,
+      specialties: prev.specialties.filter(s => s !== specialty)
+    }));
+  };
+
+  // Handle submit - SIMPLIFIED AND PROTECTED
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -275,7 +270,6 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
           description: "Nome, email e CNPJ são obrigatórios.",
           variant: "destructive"
         });
-        setIsLoading(false);
         return;
       }
 
@@ -285,11 +279,10 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
           description: "O WhatsApp é necessário para envio de cotações.",
           variant: "destructive"
         });
-        setIsLoading(false);
         return;
       }
 
-      // Ensure address is properly structured
+      // Prepare supplier data
       const supplierData = {
         ...formData,
         address: formData.address
@@ -304,7 +297,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
         description: `${formData.name} foi ${editingSupplier ? 'atualizado' : 'adicionado ao sistema'}. As cotações serão enviadas via WhatsApp.`
       });
 
-      console.log('🔄 Resetando form e fechando modal...');
+      // Reset and close
       resetForm();
       onClose();
       console.log('✅ Modal fechado com sucesso');
@@ -378,7 +371,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                           id="name"
                           value={formData.name}
                           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="Nome da empresa fornecedora"
+                          placeholder="Ex: Fornecedor Alpha Ltda"
                           required
                         />
                       </div>
@@ -401,7 +394,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                           type="email"
                           value={formData.email}
                           onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                          placeholder="contato@empresa.com"
+                          placeholder="contato@fornecedor.com"
                           required
                         />
                       </div>
@@ -412,37 +405,33 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                           id="phone"
                           value={formData.phone}
                           onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                          placeholder="(11) 3333-4444"
+                          placeholder="+55 11 99999-0000"
                         />
                       </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="whatsapp" className="flex items-center gap-2">
-                        <MessageCircle className="h-4 w-4 text-green-600" />
-                        WhatsApp * (Para envio de cotações)
-                      </Label>
-                      <Input
-                        id="whatsapp"
-                        value={formData.whatsapp}
-                        onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
-                        placeholder="(11) 99999-9999"
-                        className="border-green-200 focus:border-green-400"
-                        required
-                      />
-                      <p className="text-xs text-green-600">
-                        ✓ As cotações serão enviadas automaticamente para este WhatsApp
-                      </p>
-                    </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="whatsapp">WhatsApp * <span className="text-green-600">(Obrigatório)</span></Label>
+                        <Input
+                          id="whatsapp"
+                          value={formData.whatsapp}
+                          onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                          placeholder="+55 11 99999-0000"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Cotações serão enviadas automaticamente para este número
+                        </p>
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="website">Website</Label>
-                      <Input
-                        id="website"
-                        value={formData.website}
-                        onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                        placeholder="https://www.empresa.com"
-                      />
+                      <div className="space-y-2">
+                        <Label htmlFor="website">Website</Label>
+                        <Input
+                          id="website"
+                          value={formData.website}
+                          onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                          placeholder="https://www.fornecedor.com"
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -451,71 +440,110 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
               <TabsContent value="business" className="h-full">
                 <Card className="h-full">
                   <CardHeader>
-                    <CardTitle className="text-lg">Especialidades e Serviços</CardTitle>
+                    <CardTitle className="text-lg">Informações da Empresa</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Defina as áreas de atuação do fornecedor
+                      Defina as especialidades e tipo do fornecedor
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-4">
                       <Label>Especialidades</Label>
-                      
-                      {/* Especialidades comuns */}
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">Selecione as especialidades mais comuns:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {commonSpecialties.map((specialty) => (
-                            <Badge
-                              key={specialty}
-                              variant={formData.specialties.includes(specialty) ? "default" : "outline"}
-                              className="cursor-pointer"
-                              onClick={() => 
-                                formData.specialties.includes(specialty) 
-                                  ? removeSpecialty(specialty)
-                                  : addSpecialty(specialty)
-                              }
-                            >
-                              {specialty}
-                            </Badge>
-                          ))}
-                        </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {specialtyOptions.map((specialty) => (
+                          <div key={specialty} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={specialty}
+                              checked={formData.specialties.includes(specialty)}
+                              onCheckedChange={() => handleSpecialtyToggle(specialty)}
+                            />
+                            <Label htmlFor={specialty} className="text-sm">{specialty}</Label>
+                          </div>
+                        ))}
                       </div>
 
-                      {/* Adicionar especialidade customizada */}
+                      {/* Custom specialty input */}
                       <div className="flex gap-2">
                         <Input
                           value={newSpecialty}
                           onChange={(e) => setNewSpecialty(e.target.value)}
                           placeholder="Adicionar especialidade personalizada"
-                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialty(newSpecialty))}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCustomSpecialty();
+                            }
+                          }}
                         />
-                        <Button 
-                          type="button" 
-                          onClick={() => addSpecialty(newSpecialty)} 
+                        <Button
+                          type="button"
                           variant="outline"
+                          size="sm"
+                          onClick={handleAddCustomSpecialty}
                           disabled={!newSpecialty.trim()}
                         >
-                          Adicionar
+                          <Plus className="h-4 w-4" />
                         </Button>
                       </div>
 
-                      {/* Especialidades selecionadas */}
+                      {/* Selected specialties */}
                       {formData.specialties.length > 0 && (
                         <div className="space-y-2">
-                          <p className="text-sm font-medium">Especialidades selecionadas:</p>
+                          <Label className="text-sm font-medium">Especialidades Selecionadas:</Label>
                           <div className="flex flex-wrap gap-2">
                             {formData.specialties.map((specialty) => (
                               <Badge key={specialty} variant="secondary" className="flex items-center gap-1">
                                 {specialty}
-                                <X 
-                                  className="h-3 w-3 cursor-pointer" 
-                                  onClick={() => removeSpecialty(specialty)}
-                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSpecialty(specialty)}
+                                  className="ml-1 text-muted-foreground hover:text-destructive"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
                               </Badge>
                             ))}
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <Label>Tipo de Fornecedor</Label>
+                      <Select
+                        value={formData.type}
+                        onValueChange={(value: 'local' | 'certified') => 
+                          setFormData(prev => ({ ...prev, type: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="local">Local</SelectItem>
+                          <SelectItem value="certified">Certificado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Fornecedores certificados ficam disponíveis para todos os clientes
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Label>Escopo de Visibilidade</Label>
+                      <Select
+                        value={formData.visibility_scope}
+                        onValueChange={(value: 'region' | 'global') => 
+                          setFormData(prev => ({ ...prev, visibility_scope: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="region">Regional</SelectItem>
+                          <SelectItem value="global">Global</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </CardContent>
                 </Card>
@@ -524,24 +552,23 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
               <TabsContent value="location" className="h-full">
                 <Card className="h-full">
                   <CardHeader>
-                    <CardTitle className="text-lg">Localização e Endereço Completo</CardTitle>
+                    <CardTitle className="text-lg">Localização</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Configure a localização detalhada para melhor sugestão aos clientes
+                      Defina a localização para melhor direcionamento de cotações
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Estado e Cidade */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="state">Estado *</Label>
+                        <Label>Estado *</Label>
                         <Select value={selectedState} onValueChange={handleStateChange}>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione o estado" />
                           </SelectTrigger>
                           <SelectContent>
-                            {brazilStates.map(state => (
+                            {brazilStates.map((state) => (
                               <SelectItem key={state.code} value={state.code}>
-                                {state.name} ({state.code})
+                                {state.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -549,13 +576,17 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="city">Cidade *</Label>
-                        <Select value={formData.city} onValueChange={(value) => setFormData(prev => ({ ...prev, city: value }))}>
+                        <Label>Cidade *</Label>
+                        <Select
+                          value={formData.city}
+                          onValueChange={(value) => setFormData(prev => ({ ...prev, city: value }))}
+                          disabled={!selectedState}
+                        >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione a cidade" />
+                            <SelectValue placeholder={selectedState ? "Selecione a cidade" : "Selecione primeiro o estado"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableCities.map(city => (
+                            {availableCities.map((city) => (
                               <SelectItem key={city} value={city}>
                                 {city}
                               </SelectItem>
@@ -563,133 +594,85 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-
-                    {/* Endereço detalhado */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="street">Rua/Avenida</Label>
-                        <Input
-                          id="street"
-                          value={formData.address.street}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            address: { ...prev.address, street: e.target.value }
-                          }))}
-                          placeholder="Nome da rua ou avenida"
-                        />
-                      </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="number">Número</Label>
+                        <Label>Região</Label>
                         <Input
-                          id="number"
-                          value={formData.address.number}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            address: { ...prev.address, number: e.target.value }
-                          }))}
-                          placeholder="123"
+                          value={formData.region}
+                          readOnly
+                          className="bg-muted"
+                          placeholder="Será preenchida automaticamente"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="complement">Complemento</Label>
-                        <Input
-                          id="complement"
-                          value={formData.address.complement}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            address: { ...prev.address, complement: e.target.value }
-                          }))}
-                          placeholder="Sala, andar, etc."
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="neighborhood">Bairro</Label>
-                        <Input
-                          id="neighborhood"
-                          value={formData.address.neighborhood}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            address: { ...prev.address, neighborhood: e.target.value }
-                          }))}
-                          placeholder="Nome do bairro"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="zipCode">CEP</Label>
-                      <Input
-                        id="zipCode"
-                        value={formData.address.zipCode}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          address: { ...prev.address, zipCode: e.target.value }
-                        }))}
-                        placeholder="00000-000"
-                        className="w-40"
-                      />
-                    </div>
-
-                    {/* Tipo e Configurações */}
-                    <div className="border-t pt-6 space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <Label className="text-base font-semibold">Endereço Completo (Opcional)</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="type">Tipo de Fornecedor</Label>
-                          <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any, is_certified: value === 'certified' }))}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {supplierTypes.map(type => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{type.label}</span>
-                                    <span className="text-xs text-muted-foreground">{type.description}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label htmlFor="street">Rua</Label>
+                          <Input
+                            id="street"
+                            value={formData.address.street}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              address: { ...prev.address, street: e.target.value }
+                            }))}
+                            placeholder="Nome da rua"
+                          />
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="visibility">Visibilidade</Label>
-                          <Select value={formData.visibility_scope} onValueChange={(value) => setFormData(prev => ({ ...prev, visibility_scope: value as any }))}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a visibilidade" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {visibilityScopes.map(scope => (
-                                <SelectItem key={scope.value} value={scope.value}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{scope.label}</span>
-                                    <span className="text-xs text-muted-foreground">{scope.description}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label htmlFor="number">Número</Label>
+                          <Input
+                            id="number"
+                            value={formData.address.number}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              address: { ...prev.address, number: e.target.value }
+                            }))}
+                            placeholder="123"
+                          />
                         </div>
-                      </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="status">Status Inicial</Label>
-                        <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Ativo - Pode receber cotações</SelectItem>
-                            <SelectItem value="pending">Pendente - Aguardando verificação</SelectItem>
-                            <SelectItem value="inactive">Inativo - Não recebe cotações</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="space-y-2">
+                          <Label htmlFor="complement">Complemento</Label>
+                          <Input
+                            id="complement"
+                            value={formData.address.complement}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              address: { ...prev.address, complement: e.target.value }
+                            }))}
+                            placeholder="Sala, andar, etc."
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="neighborhood">Bairro</Label>
+                          <Input
+                            id="neighborhood"
+                            value={formData.address.neighborhood}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              address: { ...prev.address, neighborhood: e.target.value }
+                            }))}
+                            placeholder="Nome do bairro"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="zipCode">CEP</Label>
+                          <Input
+                            id="zipCode"
+                            value={formData.address.zipCode}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              address: { ...prev.address, zipCode: e.target.value }
+                            }))}
+                            placeholder="00000-000"
+                          />
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -700,94 +683,52 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                 <TabsContent value="credentials" className="h-full">
                   <Card className="h-full">
                     <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Key className="h-5 w-5" />
-                        Credenciais de Acesso
-                      </CardTitle>
+                      <CardTitle className="text-lg">Acesso ao Sistema</CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        Configure o acesso do fornecedor ao sistema
+                        Configure o acesso do fornecedor ao sistema (opcional)
                       </p>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="flex items-center space-x-2">
-                        <Checkbox
+                        <Switch
                           id="generateCredentials"
                           checked={credentials.generateCredentials}
-                          onCheckedChange={(checked) => {
-                            setCredentials(prev => ({ ...prev, generateCredentials: !!checked }));
-                            if (checked) {
-                              generateCredentials();
-                            }
-                          }}
+                          onCheckedChange={(checked) => setCredentials(prev => ({ ...prev, generateCredentials: checked }))}
                         />
-                        <Label htmlFor="generateCredentials" className="flex items-center gap-2">
-                          <Shield className="h-4 w-4" />
-                          Criar login e senha para o fornecedor
-                        </Label>
+                        <Label htmlFor="generateCredentials">Criar acesso ao sistema para este fornecedor</Label>
                       </div>
 
                       {credentials.generateCredentials && (
-                        <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="username">Usuário</Label>
-                              <Input
-                                id="username"
-                                value={credentials.username}
-                                onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
-                                placeholder="Nome de usuário"
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="password">Senha Temporária</Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  id="password"
-                                  value={credentials.password}
-                                  onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
-                                  placeholder="Senha"
-                                  type="text"
-                                />
-                                <Button type="button" variant="outline" onClick={generateCredentials}>
-                                  Gerar
-                                </Button>
-                              </div>
-                            </div>
+                        <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                          <div className="space-y-2">
+                            <Label htmlFor="password">Senha Temporária</Label>
+                            <Input
+                              id="password"
+                              type="password"
+                              value={credentials.password}
+                              onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                              placeholder="Digite uma senha temporária"
+                            />
                           </div>
 
                           <div className="flex items-center space-x-2">
                             <Checkbox
                               id="forcePasswordChange"
                               checked={credentials.forcePasswordChange}
-                              onCheckedChange={(checked) => setCredentials(prev => ({ ...prev, forcePasswordChange: !!checked }))}
+                              onCheckedChange={(checked) => setCredentials(prev => ({ 
+                                ...prev, 
+                                forcePasswordChange: checked === true 
+                              }))}
                             />
-                            <Label htmlFor="forcePasswordChange" className="text-sm">
-                              Forçar mudança de senha no primeiro login
-                            </Label>
+                            <Label htmlFor="forcePasswordChange">Forçar alteração de senha no primeiro acesso</Label>
                           </div>
 
-                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                            <div className="flex items-start gap-2">
-                              <MessageCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                              <div>
-                                <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                                  Envio Automático via WhatsApp
-                                </p>
-                                <p className="text-xs text-green-600 dark:text-green-300 mt-1">
-                                  As credenciais serão enviadas automaticamente para o WhatsApp do fornecedor após o cadastro.
-                                </p>
-                              </div>
-                            </div>
+                          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                            <p className="text-sm text-blue-800">
+                              <strong>📱 Envio Automático:</strong> Se o fornecedor tiver WhatsApp cadastrado, 
+                              as credenciais de acesso serão enviadas automaticamente via mensagem.
+                            </p>
                           </div>
-                        </div>
-                      )}
-
-                      {!credentials.generateCredentials && (
-                        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
-                          <p className="text-sm text-muted-foreground">
-                            O fornecedor receberá apenas as cotações via WhatsApp, sem acesso ao sistema.
-                          </p>
                         </div>
                       )}
                     </CardContent>
@@ -795,37 +736,23 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                 </TabsContent>
               )}
             </div>
-
-            {/* Actions fixas no bottom */}
-            <div className="flex-shrink-0 border-t p-4 bg-background">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-muted-foreground">
-                  {!isFormValid && (
-                    <span className="text-destructive">
-                      * Preencha todos os campos obrigatórios
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onClose}
-                    disabled={isLoading}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    className="btn-corporate"
-                    disabled={isLoading || !isFormValid}
-                  >
-                    {isLoading ? (editingSupplier ? "Atualizando..." : "Cadastrando...") : (editingSupplier ? "Atualizar Fornecedor" : "Cadastrar Fornecedor")}
-                  </Button>
-                </div>
-              </div>
-            </div>
           </Tabs>
+
+          <div className="flex-shrink-0 flex justify-between items-center gap-4 pt-6 border-t">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {!isFormValid && (
+                <span className="text-amber-600">* Preencha todos os campos obrigatórios</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={!isFormValid || isLoading}>
+                {isLoading ? 'Salvando...' : (editingSupplier ? 'Atualizar' : 'Criar Fornecedor')}
+              </Button>
+            </div>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
