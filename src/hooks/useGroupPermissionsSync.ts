@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSupabasePermissions } from './useSupabasePermissions';
 import { useSupabaseUsers } from './useSupabaseUsers';
 import { useSupabaseCurrentClient } from './useSupabaseCurrentClient';
@@ -18,6 +18,40 @@ export function useGroupPermissionsSync() {
   } = useSupabasePermissions();
   const { groups, updateGroup } = useSupabaseUsers();
   const { client } = useSupabaseCurrentClient();
+
+  // Evita loops de sincronização e atualizações redundantes
+  const SYNC_COOLDOWN_MS = 5000;
+  const recentlySyncedGroups = useRef<Record<string, number>>({});
+
+  const shouldSkipGroupSync = (groupId: string) => {
+    const now = Date.now();
+    const last = recentlySyncedGroups.current[groupId] || 0;
+    if (now - last < SYNC_COOLDOWN_MS) return true;
+    recentlySyncedGroups.current[groupId] = now;
+    return false;
+  };
+
+  const arePermissionsEqual = (a: Record<string, any>, b: Record<string, any>) => {
+    try {
+      const normalize = (obj: Record<string, any>) => {
+        const sortedKeys = Object.keys(obj || {}).sort();
+        const out: Record<string, any> = {};
+        for (const k of sortedKeys) {
+          const v = obj[k] || {};
+          out[k] = {
+            view: !!v.view,
+            create: !!v.create,
+            edit: !!v.edit,
+            delete: !!v.delete,
+          };
+        }
+        return out;
+      };
+      return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+    } catch {
+      return false;
+    }
+  };
 
   // Mapeamento de permissões de grupo para módulos do sistema de permissões
   const permissionMapping = useMemo(() => ({
@@ -82,10 +116,12 @@ export function useGroupPermissionsSync() {
    */
   const syncGroupWithPermissionProfile = useCallback(async (group: any) => {
     try {
+      if (!group || group.is_system_group) return;
+      if (shouldSkipGroupSync(group.id)) return;
+
       // Converter permissões do grupo para formato do perfil de permissão
       const permissions: Record<string, any> = {};
-      
-      group.permissions.forEach((permission: string) => {
+      group.permissions?.forEach((permission: string) => {
         const moduleKey = permissionMapping[permission as keyof typeof permissionMapping];
         if (moduleKey) {
           if (!permissions[moduleKey]) {
@@ -98,7 +134,6 @@ export function useGroupPermissionsSync() {
             const [, action] = permission.split('.');
             const actionKey = action === 'approve' || action === 'respond' || action === 'manage' 
               ? 'edit' : action;
-            
             if (['view', 'create', 'edit', 'delete'].includes(actionKey)) {
               permissions[moduleKey][actionKey] = true;
             }
@@ -122,9 +157,11 @@ export function useGroupPermissionsSync() {
 
       // Verificar se já existe um perfil de permissão para este grupo
       const existingProfile = permissionProfiles.find(p => p.name === `Grupo: ${group.name}`);
-      
       if (existingProfile) {
-        // Atualizar o perfil existente
+        // Evitar update redundante
+        if (arePermissionsEqual(existingProfile.permissions, permissions)) {
+          return;
+        }
         await updatePermissionProfile(existingProfile.id, {
           name: `Grupo: ${group.name}`,
           description: `Perfil de permissões do grupo ${group.name}`,
@@ -149,7 +186,6 @@ export function useGroupPermissionsSync() {
             .from('user_groups')
             .update({ permission_profile_id: newProfile.id })
             .eq('id', group.id);
-          
           if (error) {
             console.error('Erro ao associar perfil ao grupo:', error);
           }
@@ -158,7 +194,8 @@ export function useGroupPermissionsSync() {
     } catch (error) {
       console.error('Erro ao sincronizar grupo com perfil de permissão:', error);
     }
-  }, [permissionProfiles, createPermissionProfile, updatePermissionProfile, updateGroup, permissionMapping]);
+  }, [permissionProfiles, createPermissionProfile, updatePermissionProfile, permissionMapping, client]);
+
 
   /**
    * Sincronizar perfil de permissão com grupo
@@ -210,14 +247,11 @@ export function useGroupPermissionsSync() {
     });
   }, [groups, syncGroupWithPermissionProfile]);
 
-  // Sincronizar quando perfis de permissão mudarem
+  // Sincronização automática do perfil -> grupo desativada para evitar loops.
+  // Use forceSyncPermissionProfile quando realmente desejar propagar alterações do perfil para o grupo.
   useEffect(() => {
-    permissionProfiles.forEach(profile => {
-      if (profile.name.startsWith('Grupo:')) {
-        syncPermissionProfileWithGroup(profile);
-      }
-    });
-  }, [permissionProfiles, syncPermissionProfileWithGroup]);
+    // noop
+  }, [permissionProfiles]);
 
   /**
    * Obter permissões efetivas para um usuário baseado em seus grupos
