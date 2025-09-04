@@ -46,12 +46,14 @@ export default function Quotes() {
         toast.success(`Cotação criada com sucesso!`);
         setIsCreateModalOpen(false);
         setEditingQuote(null);
+        return newQuote;
       } else {
         throw new Error('Failed to create quote');
       }
     } catch (error) {
       console.error('Error creating quote:', error);
       toast.error("Erro ao criar cotação");
+      throw error;
     }
   };
 

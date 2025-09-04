@@ -9,6 +9,7 @@ import { Stepper } from '@/components/ui/stepper';
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
 import { ProductSearchModalSupabase } from "./ProductSearchModalSupabase";
 import { CreateItemModal } from "../items/CreateItemModal";
 import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
@@ -53,6 +54,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
   const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { products, addProduct, isLoading: productsLoading } = useSupabaseProducts();
   const { suppliers, isLoading: suppliersLoading } = useSupabaseSuppliers();
+  const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [showProductSearch, setShowProductSearch] = useState(false);
@@ -192,6 +194,26 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     console.log('Form data:', formData);
     console.log('Is editing:', !!editingQuote);
     
+    // Verificar se há pelo menos um item
+    if (formData.items.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Adicione pelo menos um item à cotação",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Verificar campos obrigatórios
+    if (!formData.title.trim()) {
+      toast({
+        title: "Erro",
+        description: "Título é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Verificar limites antes de criar cotação (apenas para novas cotações)
     if (!editingQuote && !enforceLimit('CREATE_QUOTE')) {
       return;
@@ -202,7 +224,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       title: formData.title,
       description: formData.description,
       deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
-      status: editingQuote ? editingQuote.status : 'draft', // Preserve status when editing
+      status: editingQuote ? editingQuote.status : 'draft',
       total: 0, // Sem valor inicial - será preenchido pelos fornecedores
       items_count: formData.items.length,
       responses_count: editingQuote?.responses_count || 0,
@@ -217,12 +239,13 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       }))
     };
     
-    // Adicionar dados específicos para edição ou criação
+    // Adicionar dados específicos para edição
     if (editingQuote) {
       quoteData.client_id = editingQuote.client_id;
       quoteData.client_name = editingQuote.client_name;
     }
     
+    // Adicionar fornecedor se selecionado
     if (formData.supplier_ids.length > 0) {
       quoteData.supplier_id = formData.supplier_ids[0];
       quoteData.supplier_name = suppliers.find(s => s.id === formData.supplier_ids[0])?.name;
@@ -230,22 +253,24 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     
     console.log('Submitting quote data:', quoteData);
     
-    onQuoteCreate(quoteData);
+    await onQuoteCreate(quoteData);
     
-    // Reset form
-    setFormData({
-      title: "",
-      description: "",
-      deadline: "",
-      items: [],
-      supplier_ids: [],
-      communicationMethods: {
-        email: true,
-        whatsapp: false
-      },
-      supplierScope: 'local'
-    });
-    setCurrentStep(1);
+    // Reset form apenas se não estiver editando
+    if (!editingQuote) {
+      setCurrentStep(1);
+      setFormData({
+        title: "",
+        description: "",
+        deadline: "",
+        items: [],
+        supplier_ids: [],
+        communicationMethods: {
+          email: true,
+          whatsapp: false
+        },
+        supplierScope: 'local'
+      });
+    }
   };
 
   const canProceed = () => {

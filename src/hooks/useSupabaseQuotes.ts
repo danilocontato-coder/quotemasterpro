@@ -87,19 +87,34 @@ export const useSupabaseQuotes = () => {
   };
 
   // Create new quote
-  const createQuote = async (quoteData: Omit<Quote, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
+  const createQuote = async (quoteData: any) => {
     if (!user || !user.clientId) return null;
 
     try {
+      console.log('createQuote called with:', quoteData);
+      
       // Generate unique ID (since quotes table uses TEXT id)
       const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
       
+      // Separate items from quote data
+      const { items, ...quoteFields } = quoteData;
+      
+      // Get client data for client_name
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('name')
+        .eq('id', user.clientId)
+        .single();
+      
       const newQuote = {
         id: quoteId,
-        ...quoteData,
+        ...quoteFields,
         client_id: user.clientId,
+        client_name: clientData?.name || '',
         created_by: user.id,
       };
+
+      console.log('Inserting quote:', newQuote);
 
       const { data, error } = await supabase
         .from('quotes')
@@ -107,7 +122,37 @@ export const useSupabaseQuotes = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting quote:', error);
+        throw error;
+      }
+
+      console.log('Quote inserted successfully:', data);
+
+      // Insert quote items if any
+      if (items && Array.isArray(items) && items.length > 0) {
+        console.log('Inserting quote items:', items);
+        
+        const quoteItems = items.map((item: any) => ({
+          quote_id: data.id,
+          product_name: item.product_name,
+          quantity: item.quantity || 0,
+          product_id: item.product_id || null,
+          unit_price: item.unit_price || 0,
+          total: item.total || 0
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('quote_items')
+          .insert(quoteItems);
+
+        if (itemsError) {
+          console.error('Error inserting quote items:', itemsError);
+          // Don't throw error for items, just log it
+        } else {
+          console.log('Quote items inserted successfully');
+        }
+      }
 
       setQuotes(prev => [data, ...prev]);
       
@@ -118,7 +163,11 @@ export const useSupabaseQuotes = () => {
         entity_type: 'quotes',
         entity_id: data.id,
         panel_type: 'client',
-        details: { title: data.title, status: data.status }
+        details: { 
+          title: data.title, 
+          status: data.status,
+          items_count: items?.length || 0 
+        }
       });
 
       toast({
@@ -141,6 +190,7 @@ export const useSupabaseQuotes = () => {
 
       return data;
     } catch (err) {
+      console.error('Error in createQuote:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao criar cotação';
       toast({
         title: 'Erro',
