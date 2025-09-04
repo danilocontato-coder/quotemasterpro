@@ -155,7 +155,22 @@ export function useGroupPermissionsSync() {
         }
       });
 
-      // Verificar se já existe um perfil de permissão para este grupo
+      // Se o grupo já estiver vinculado a um perfil por ID, atualizar esse perfil e retornar
+      if (group.permission_profile_id) {
+        const linkedProfile = permissionProfiles.find(p => p.id === group.permission_profile_id);
+        if (linkedProfile) {
+          if (!arePermissionsEqual(linkedProfile.permissions, permissions)) {
+            await updatePermissionProfile(linkedProfile.id, {
+              name: linkedProfile.name,
+              description: linkedProfile.description ?? `Perfil de permissões do grupo ${group.name}`,
+              permissions
+            });
+          }
+          return;
+        }
+      }
+
+      // Verificar se já existe um perfil de permissão para este grupo (por nome)
       const existingProfile = permissionProfiles.find(p => p.name === `Grupo: ${group.name}`);
       if (existingProfile) {
         // Evitar update redundante
@@ -247,11 +262,61 @@ export function useGroupPermissionsSync() {
     });
   }, [groups, syncGroupWithPermissionProfile]);
 
-  // Sincronização automática do perfil -> grupo desativada para evitar loops.
-  // Use forceSyncPermissionProfile quando realmente desejar propagar alterações do perfil para o grupo.
+  // Garantir que todo perfil de permissão tenha um grupo correspondente automaticamente
   useEffect(() => {
-    // noop
-  }, [permissionProfiles]);
+    const ensureGroups = async () => {
+      for (const profile of permissionProfiles) {
+        try {
+          if (!profile?.id) continue;
+          if (shouldSkipGroupSync(profile.id)) continue;
+
+          // Já existe grupo vinculado por ID?
+          const linked = groups.find(g => g.permission_profile_id === profile.id);
+          if (linked) continue;
+
+          // Tentar vincular por nome existente
+          const targetName = (profile.name || '').replace(/^Grupo:\s*/, '').trim();
+          const existingByName = groups.find(g => g.name === targetName || g.name === profile.name);
+          if (existingByName && !existingByName.permission_profile_id) {
+            await supabase
+              .from('user_groups')
+              .update({ permission_profile_id: profile.id })
+              .eq('id', existingByName.id);
+            continue;
+          }
+
+          // Converter permissões do perfil para lista de strings do grupo
+          const groupPermissions: string[] = [];
+          Object.entries(profile.permissions || {}).forEach(([module, perms]: [string, any]) => {
+            const v = (perms || {}) as { view?: boolean; create?: boolean; edit?: boolean; delete?: boolean };
+            if (v.view && v.create && v.edit && v.delete) {
+              groupPermissions.push(`${module}.*`);
+            } else {
+              if (v.view) groupPermissions.push(`${module}.view`);
+              if (v.create) groupPermissions.push(`${module}.create`);
+              if (v.edit) groupPermissions.push(`${module}.edit`);
+              if (v.delete) groupPermissions.push(`${module}.delete`);
+            }
+          });
+
+          // Criar grupo automático vinculado ao perfil
+          await supabase.from('user_groups').insert({
+            name: targetName || profile.name,
+            description: `Grupo automático para perfil ${profile.name}`,
+            permission_profile_id: profile.id,
+            permissions: groupPermissions,
+            is_system_group: false,
+          });
+        } catch (e) {
+          console.error('Erro ao garantir grupo para perfil', profile?.name, e);
+        }
+      }
+    };
+
+    if (permissionProfiles?.length) {
+      ensureGroups();
+    }
+  }, [permissionProfiles, groups]);
 
   /**
    * Obter permissões efetivas para um usuário baseado em seus grupos
