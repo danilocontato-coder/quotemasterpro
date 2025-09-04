@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
-import { useSupplierProducts, SupplierProduct } from '@/hooks/useSupplierProducts';
+import { useSupabaseSupplierProducts, SupplierProduct } from '@/hooks/useSupabaseSupplierProducts';
 
 interface CreateProductModalProps {
   open: boolean;
@@ -30,7 +30,7 @@ const defaultCategories = [
 ];
 
 export function CreateProductModal({ open, onOpenChange }: CreateProductModalProps) {
-  const { addProduct, categories, isLoading } = useSupplierProducts();
+  const { createProduct, getCategories, isLoading } = useSupabaseSupplierProducts();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -47,7 +47,7 @@ export function CreateProductModal({ open, onOpenChange }: CreateProductModalPro
   const [customCategory, setCustomCategory] = useState('');
   const [isCustomCategory, setIsCustomCategory] = useState(false);
 
-  const existingCategories = categories;
+  const existingCategories = getCategories();
   const allCategories = [...new Set([...defaultCategories, ...existingCategories])];
 
   const handleInputChange = (field: string, value: any) => {
@@ -101,13 +101,17 @@ export function CreateProductModal({ open, onOpenChange }: CreateProductModalPro
     try {
       const categoryToUse = isCustomCategory ? customCategory : formData.category;
       
-      const productData: Omit<SupplierProduct, 'id' | 'code' | 'createdAt' | 'lastUpdated'> = {
-        ...formData,
+      const productData: Omit<SupplierProduct, 'id' | 'created_at' | 'updated_at'> = {
+        code: '', // Will be auto-generated
+        name: formData.name,
+        description: formData.description,
         category: categoryToUse,
-        images: [], // Images will be added after product creation
+        unit_price: formData.unitPrice,
+        stock_quantity: formData.stockQuantity,
+        status: formData.status,
       };
 
-      const newProduct = await addProduct(productData);
+      const newProduct = await createProduct(productData);
       
       // TODO: In real app, upload images to Supabase Storage here
       // For now, we'll skip image upload in the mock
