@@ -159,6 +159,11 @@ export function useSupabaseUsers() {
         user_role: userData.role
       });
 
+      if (validationResult.error) {
+        console.error('Validation error:', validationResult.error);
+        throw new Error(validationResult.error.message || 'Erro na validação dos dados do usuário');
+      }
+
       if (!validationResult.data) {
         throw new Error('Erro na validação dos dados do usuário');
       }
