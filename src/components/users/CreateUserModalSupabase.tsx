@@ -134,6 +134,11 @@ const normalizePhone = (phone: string) => {
       };
 
       const created = await createUser(userData);
+      
+      if (!created) {
+        // Se a criação falhou, não continue com o fluxo
+        return;
+      }
 
       // Enviar credenciais via WhatsApp, se houver telefone e credenciais geradas
       if (formData.generateCredentials && formData.password && formData.phone) {
@@ -150,7 +155,10 @@ const normalizePhone = (phone: string) => {
               app_url: window.location.origin
             }
           });
-          if (error) throw error;
+          if (error) {
+            console.error('WhatsApp error:', error);
+            throw error;
+          }
           toast.success(`Credenciais enviadas via WhatsApp para ${formData.phone}`);
         } catch (err) {
           console.error('Erro ao enviar WhatsApp:', err);

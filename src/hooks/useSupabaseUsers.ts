@@ -252,19 +252,23 @@ export function useSupabaseUsers() {
 
       // Create audit log - must use current auth user id due to RLS policy
       if (currentAuthUserId) {
-        await supabase.from('audit_logs').insert({
-          user_id: currentAuthUserId,
-          action: 'CREATE',
-          entity_type: 'users',
-          entity_id: data.id,
-          panel_type: isAdmin ? 'admin' : 'client',
-          details: { 
-            name: data.name, 
-            email: data.email, 
-            role: data.role,
-            groups: userData.groups || []
-          }
-        });
+        try {
+          await supabase.from('audit_logs').insert({
+            user_id: currentAuthUserId,
+            action: 'CREATE',
+            entity_type: 'users',
+            entity_id: data.id,
+            panel_type: isAdmin ? 'admin' : 'client',
+            details: { 
+              name: data.name, 
+              email: data.email, 
+              role: data.role,
+              groups: userData.groups || []
+            }
+          });
+        } catch (auditError) {
+          console.warn('Error creating audit log:', auditError);
+        }
       }
 
       // Update client usage count if user has client_id
@@ -462,7 +466,10 @@ export function useSupabaseUsers() {
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting user:', error);
+        throw error;
+      }
 
       // Update client usage count if user had client_id
       if (userToDelete?.client_id) {
@@ -484,6 +491,25 @@ export function useSupabaseUsers() {
             });
         } catch (usageError) {
           console.error('Error updating client usage after deletion:', usageError);
+        }
+      }
+
+      // Create audit log if current user exists
+      if (currentAuthUserId) {
+        try {
+          await supabase.from('audit_logs').insert({
+            user_id: currentAuthUserId,
+            action: 'DELETE',
+            entity_type: 'users',
+            entity_id: id,
+            panel_type: currentProfile?.role === 'admin' ? 'admin' : 'client',
+            details: { 
+              name: userToDelete?.name,
+              email: userToDelete?.email
+            }
+          });
+        } catch (auditError) {
+          console.warn('Error creating audit log:', auditError);
         }
       }
 
