@@ -168,7 +168,8 @@ export const useSupabaseSupplierQuotes = () => {
 
       console.log('📋 Quotes with responses found:', quotesData.length);
 
-      // Also fetch quotes that are globally available for suppliers
+      // Also fetch quotes that are available for suppliers
+      // 1. Global quotes available to all suppliers
       const { data: globalQuotes, error: globalQuotesError } = await supabase
         .from('quotes')
         .select(`
@@ -179,15 +180,27 @@ export const useSupabaseSupplierQuotes = () => {
         .in('status', ['sent', 'receiving'])
         .order('created_at', { ascending: false });
 
-      if (globalQuotesError) {
-        console.error('❌ Error fetching global quotes:', globalQuotesError);
+      // 2. Local quotes specifically assigned to this supplier
+      const { data: localQuotes, error: localQuotesError } = await supabase
+        .from('quotes')
+        .select(`
+          *,
+          quote_items (*)
+        `)
+        .eq('supplier_scope', 'local')
+        .eq('supplier_id', user.supplierId)
+        .in('status', ['sent', 'receiving'])
+        .order('created_at', { ascending: false });
+
+      if (localQuotesError) {
+        console.error('❌ Error fetching local quotes:', localQuotesError);
         // Don't throw here - this is optional data
       } else {
-        console.log('📋 Global quotes found:', globalQuotes?.length || 0);
+        console.log('📋 Local quotes found:', localQuotes?.length || 0);
       }
 
       // Combine and deduplicate quotes
-      const allQuotes = [...quotesData, ...(globalQuotes || [])];
+      const allQuotes = [...quotesData, ...(globalQuotes || []), ...(localQuotes || [])];
       const uniqueQuotes = allQuotes.reduce((acc, quote) => {
         if (!acc.find(q => q.id === quote.id)) {
           acc.push(quote);
