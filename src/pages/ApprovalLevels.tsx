@@ -25,30 +25,26 @@ import { CreateApprovalLevelModal } from "@/components/approvals/CreateApprovalL
 import { EditApprovalLevelModal } from "@/components/approvals/EditApprovalLevelModal";
 import { DeleteApprovalLevelModal } from "@/components/approvals/DeleteApprovalLevelModal";
 import { useSupabaseApprovalLevels, type ApprovalLevel } from "@/hooks/useSupabaseApprovalLevels";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export function ApprovalLevels() {
-  const { 
-    approvalLevels, 
-    searchTerm, 
-    setSearchTerm, 
-    isLoading,
-    updateApprovalLevel,
-    deleteApprovalLevel 
-  } = useSupabaseApprovalLevels();
-  
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [selectedLevel, setSelectedLevel] = useState<ApprovalLevel | null>(null);
-  
-  const filteredLevels = approvalLevels || [];
-  
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+const { 
+  approvalLevels, 
+  searchTerm, 
+  setSearchTerm, 
+  isLoading,
+  updateApprovalLevel,
+  deleteApprovalLevel 
+} = useSupabaseApprovalLevels();
+
+const { formatCurrency } = useCurrency();
+
+const [createModalOpen, setCreateModalOpen] = useState(false);
+const [editModalOpen, setEditModalOpen] = useState(false);
+const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+const [selectedLevel, setSelectedLevel] = useState<ApprovalLevel | null>(null);
+
+const filteredLevels = approvalLevels || [];
 
   const handleEdit = (level: ApprovalLevel) => {
     setSelectedLevel(level);
@@ -60,12 +56,12 @@ export function ApprovalLevels() {
     setDeleteModalOpen(true);
   };
 
-  const stats = {
-    total: filteredLevels.length,
-    active: filteredLevels.filter(l => l.active).length,
-    approvers: [...new Set(filteredLevels.flatMap(l => l.approvers))].length,
-    maxThreshold: Math.max(...filteredLevels.map(l => l.amount_threshold), 0)
-  };
+const stats = {
+  total: filteredLevels.length,
+  active: filteredLevels.filter(l => l.active).length,
+  approvers: [...new Set(filteredLevels.flatMap(l => l.approvers))].length,
+  maxThreshold: Math.max(...filteredLevels.map(l => (l as any).max_amount_threshold || l.amount_threshold), 0)
+};
 
   return (
     <div className="space-y-6">
@@ -153,7 +149,7 @@ export function ApprovalLevels() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nível</TableHead>
-                  <TableHead>Limite de Valor</TableHead>
+                  <TableHead>Faixa de Valores</TableHead>
                   <TableHead>Aprovadores</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado em</TableHead>
@@ -196,7 +192,18 @@ export function ApprovalLevels() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">A partir de {formatCurrency(level.amount_threshold)}</div>
+                          <div className="font-medium">
+                            {formatCurrency(level.amount_threshold)} 
+                            {(level as any).max_amount_threshold && (level as any).max_amount_threshold !== level.amount_threshold && 
+                              ` - ${formatCurrency((level as any).max_amount_threshold)}`
+                            }
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {(level as any).max_amount_threshold && (level as any).max_amount_threshold !== level.amount_threshold 
+                              ? `Faixa de valores` 
+                              : `A partir de ${formatCurrency(level.amount_threshold)}`
+                            }
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>

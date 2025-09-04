@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { X } from "lucide-react";
 import { useSupabaseApprovalLevels } from "@/hooks/useSupabaseApprovalLevels";
 import { useSupabaseUsers } from "@/hooks/useSupabaseUsers";
@@ -108,39 +109,33 @@ setFormData({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="amount_threshold">Valor Mínimo (R$) *</Label>
-              <Input
-                id="amount_threshold"
-                type="number"
-                step="0.01"
-                value={formData.amount_threshold}
-                onChange={(e) => setFormData({...formData, amount_threshold: Number(e.target.value)})}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="order_level">Ordem do Nível *</Label>
-              <Input
-                id="order_level"
-                type="number"
-                value={formData.order_level}
-                onChange={(e) => setFormData({...formData, order_level: Number(e.target.value)})}
-                placeholder="1"
-                min="1"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="max_amount_threshold">Valor Máximo (R$) *</Label>
-            <Input
-              id="max_amount_threshold"
-              type="number"
-              step="0.01"
+            <CurrencyInput
+              label="Valor Mínimo"
+              value={formData.amount_threshold}
+              onChange={(value) => setFormData({...formData, amount_threshold: value})}
+              placeholder="0,00"
+              required
+              id="amount_threshold"
+            />
+            <CurrencyInput
+              label="Valor Máximo"
               value={formData.max_amount_threshold}
-              onChange={(e) => setFormData({...formData, max_amount_threshold: Number(e.target.value)})}
-              placeholder="0.00"
+              onChange={(value) => setFormData({...formData, max_amount_threshold: value})}
+              placeholder="0,00"
+              required
+              id="max_amount_threshold"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="order_level">Ordem do Nível *</Label>
+            <Input
+              id="order_level"
+              type="number"
+              value={formData.order_level}
+              onChange={(e) => setFormData({...formData, order_level: Number(e.target.value)})}
+              placeholder="1"
+              min="1"
             />
           </div>
 

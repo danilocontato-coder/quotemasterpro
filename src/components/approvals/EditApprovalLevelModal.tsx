@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useSupabaseApprovalLevels, type ApprovalLevel } from "@/hooks/useSupabaseApprovalLevels";
 import { useToast } from "@/hooks/use-toast";
 
@@ -76,24 +77,20 @@ const handleSubmit = async () => {
             />
           </div>
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div className="space-y-2">
-    <Label>Valor Mínimo (R$)</Label>
-    <Input
-      type="number"
-      value={formData.amount_threshold}
-      onChange={(e) => setFormData({...formData, amount_threshold: parseFloat(e.target.value)})}
-      placeholder="0.00"
-    />
-  </div>
-  <div className="space-y-2">
-    <Label>Valor Máximo (R$)</Label>
-    <Input
-      type="number"
-      value={formData.max_amount_threshold}
-      onChange={(e) => setFormData({...formData, max_amount_threshold: parseFloat(e.target.value)})}
-      placeholder="0.00"
-    />
-  </div>
+  <CurrencyInput
+    label="Valor Mínimo"
+    value={formData.amount_threshold}
+    onChange={(value) => setFormData({...formData, amount_threshold: value})}
+    placeholder="0,00"
+    id="amount_threshold"
+  />
+  <CurrencyInput
+    label="Valor Máximo"
+    value={formData.max_amount_threshold}
+    onChange={(value) => setFormData({...formData, max_amount_threshold: value})}
+    placeholder="0,00"
+    id="max_amount_threshold"
+  />
 </div>
         </div>
         <div className="flex justify-end gap-2 pt-4">
