@@ -219,8 +219,22 @@ export function useGroupPermissionsSync() {
    */
   const getGroupPermissionProfile = useCallback((groupId: string) => {
     const group = groups.find(g => g.id === groupId);
-    if (!group?.permission_profile_id) return null;
-    return permissionProfiles.find(p => p.id === group.permission_profile_id) || null;
+    if (!group?.permission_profile_id) {
+      console.log('❌ Grupo sem permission_profile_id:', groupId, group?.name);
+      return null;
+    }
+    
+    const profile = permissionProfiles.find(p => p.id === group.permission_profile_id);
+    console.log('🔍 Buscando perfil para grupo:', {
+      groupId,
+      groupName: group?.name,
+      permissionProfileId: group.permission_profile_id,
+      profileFound: !!profile,
+      totalProfiles: permissionProfiles.length,
+      profileIds: permissionProfiles.map(p => p.id)
+    });
+    
+    return profile || null;
   }, [groups, permissionProfiles]);
 
   return {
