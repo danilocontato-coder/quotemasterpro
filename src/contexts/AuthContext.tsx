@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { ForcePasswordChangeModal } from '@/components/auth/ForcePasswordChangeModal';
 
 export type UserRole = 'admin' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
 
@@ -62,6 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -86,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }, 0);
         } else {
           setUser(null);
+          setForcePasswordChange(false);
           setIsLoading(false);
         }
       }
@@ -98,14 +101,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .maybeSingle();
+      // Fetch both profile and user record to check force_password_change
+      const [profileResult, userResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', supabaseUser.id)
+          .maybeSingle(),
+        supabase
+          .from('users')
+          .select('force_password_change')
+          .eq('auth_user_id', supabaseUser.id)
+          .maybeSingle()
+      ]);
 
-      if (error) {
-        console.error('Error fetching profile:', error);
+      const { data: profile, error: profileError } = profileResult;
+      const { data: userRecord } = userResult;
+
+      // Check if password change is required
+      if (userRecord?.force_password_change === true) {
+        setForcePasswordChange(true);
+      } else {
+        setForcePasswordChange(false);
+      }
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
         // Create a basic user even if profile fetch fails
         const fallbackUser = {
           id: supabaseUser.id,
@@ -157,6 +178,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePasswordChanged = () => {
+    setForcePasswordChange(false);
   };
 
   // Listen for profile updates from settings - only if user exists and hasn't changed
@@ -240,6 +265,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={value}>
       {children}
+      
+      {/* Modal obrigatório de troca de senha */}
+      {forcePasswordChange && user && (
+        <ForcePasswordChangeModal
+          open={forcePasswordChange}
+          userEmail={user.email}
+          onPasswordChanged={handlePasswordChanged}
+        />
+      )}
     </AuthContext.Provider>
   );
 };
