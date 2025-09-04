@@ -17,19 +17,49 @@ export function normalizePhone(input: string, defaultCountry = '55'): string {
 export function buildEndpoints(cfg: EvolutionConfig): string[] {
   const base = cfg.apiUrl.replace(/\/+$/, '')
   const endpoints: string[] = []
-  if (cfg.instance) {
+
+  const endsWithMessage = /\/messages?$/.test(base)
+  const withMsgBase = base
+  const withoutMsgBase = base.replace(/\/(messages?)$/, '')
+  const instance = cfg.instance ? encodeURIComponent(cfg.instance) : null
+
+  if (instance) {
+    // When base already ends with /message or /messages
+    if (endsWithMessage) {
+      endpoints.push(
+        `${withMsgBase}/sendText/${instance}`,
+        `${withMsgBase}/send/${instance}`
+      )
+    }
+    // Generic variants (provider-dependent)
     endpoints.push(
-      `${base}/message/sendText/${cfg.instance}`,
-      `${base}/messages/sendText/${cfg.instance}`,
-      `${base}/message/send/${cfg.instance}`,
+      `${base}/message/sendText/${instance}`,
+      `${base}/messages/sendText/${instance}`,
+      `${base}/message/send/${instance}`,
+      `${withoutMsgBase}/message/sendText/${instance}`,
+      `${withoutMsgBase}/messages/sendText/${instance}`,
+      `${withoutMsgBase}/message/send/${instance}`,
     )
   }
+
+  if (endsWithMessage) {
+    endpoints.push(
+      `${withMsgBase}/sendText`,
+      `${withMsgBase}/send`
+    )
+  }
+
   endpoints.push(
     `${base}/message/sendText`,
     `${base}/messages/sendText`,
     `${base}/message/send`,
+    `${withoutMsgBase}/message/sendText`,
+    `${withoutMsgBase}/messages/sendText`,
+    `${withoutMsgBase}/message/send`
   )
-  return endpoints
+
+  // Deduplicate while preserving order
+  return Array.from(new Set(endpoints))
 }
 
 export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string, text: string) {
