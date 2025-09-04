@@ -85,6 +85,21 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Persist supplier assignments for this quote
+    try {
+      const mappings = suppliers.map((s: any) => ({ quote_id: quote.id, supplier_id: s.id }));
+      const { error: mapErr } = await supabase
+        .from('quote_suppliers')
+        .upsert(mappings, { onConflict: 'quote_id,supplier_id' });
+      if (mapErr) {
+        console.warn('Failed to upsert quote_suppliers mapping:', mapErr);
+      } else {
+        console.log(`Mapped quote ${quote.id} to ${mappings.length} supplier(s)`);
+      }
+    } catch (e) {
+      console.warn('Error while mapping suppliers to quote:', e);
+    }
+
     // Get client info
     const { data: client, error: clientError } = await supabase
       .from('clients')

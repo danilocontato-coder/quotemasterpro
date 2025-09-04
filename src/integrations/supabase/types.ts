@@ -738,6 +738,42 @@ export type Database = {
           },
         ]
       }
+      quote_suppliers: {
+        Row: {
+          created_at: string | null
+          id: string
+          quote_id: string
+          supplier_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          quote_id: string
+          supplier_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          quote_id?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_suppliers_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_suppliers_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           client_id: string

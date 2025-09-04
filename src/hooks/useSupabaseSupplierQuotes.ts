@@ -206,8 +206,38 @@ export const useSupabaseSupplierQuotes = () => {
         console.log('📋 Local quotes found:', localQuotes?.length || 0);
       }
 
+      // 3. Quotes explicitly assigned to this supplier via quote_suppliers
+      const { data: assignedMappings, error: assignedMapError } = await supabase
+        .from('quote_suppliers')
+        .select('quote_id')
+        .eq('supplier_id', user.supplierId);
+
+      if (assignedMapError) {
+        console.error('❌ Error fetching assigned mappings:', assignedMapError);
+      }
+
+      let assignedQuotes: any[] = [];
+      const assignedIds = (assignedMappings || []).map(m => m.quote_id).filter(Boolean);
+      if (assignedIds.length > 0) {
+        const { data: assignedQuotesData, error: assignedQuotesError } = await supabase
+          .from('quotes')
+          .select(`
+            *,
+            quote_items (*)
+          `)
+          .in('id', assignedIds)
+          .order('created_at', { ascending: false });
+
+        if (assignedQuotesError) {
+          console.error('❌ Error fetching assigned quotes:', assignedQuotesError);
+        } else {
+          assignedQuotes = assignedQuotesData || [];
+          console.log('📋 Assigned quotes found:', assignedQuotes.length);
+        }
+      }
+
       // Combine and deduplicate quotes
-      const allQuotes = [...quotesData, ...(globalQuotes || []), ...(localQuotes || [])];
+      const allQuotes = [...quotesData, ...assignedQuotes, ...(globalQuotes || []), ...(localQuotes || [])];
       const uniqueQuotes = allQuotes.reduce((acc, quote) => {
         if (!acc.find(q => q.id === quote.id)) {
           acc.push(quote);
