@@ -85,8 +85,43 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Load Evolution API integration (client-specific, fallback to global)
+    let evolutionInstance: string | null = null;
+    let evolutionApiUrl: string | null = null;
+
+    const { data: evoClientInt } = await supabase
+      .from('integrations')
+      .select('configuration')
+      .eq('integration_type', 'whatsapp_evolution')
+      .eq('active', true)
+      .eq('client_id', quote.client_id)
+      .maybeSingle();
+
+    let evoCfg: any = evoClientInt?.configuration || null;
+    if (!evoCfg) {
+      const { data: evoGlobalInt } = await supabase
+        .from('integrations')
+        .select('configuration')
+        .eq('integration_type', 'whatsapp_evolution')
+        .eq('active', true)
+        .is('client_id', null)
+        .maybeSingle();
+      evoCfg = evoGlobalInt?.configuration || null;
+    }
+
+    try {
+      if (evoCfg) {
+        evolutionInstance = (evoCfg.instance ?? evoCfg['evolution_instance']) || null;
+        evolutionApiUrl = (evoCfg.api_url ?? evoCfg['evolution_api_url']) || null;
+      }
+    } catch {}
+
+    if (!evolutionApiUrl) {
+      evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL') || null;
+    }
+
     // Prepare data for N8N
-    const n8nPayload = {
+    const n8nPayload: any = {
       quote: {
         id: quote.id,
         title: quote.title,
@@ -117,7 +152,9 @@ const handler = async (req: Request): Promise<Response> => {
       settings: {
         send_whatsapp,
         send_email,
-        custom_message: custom_message || `Nova cotação disponível: ${quote.title}`
+        custom_message: custom_message || `Nova cotação disponível: ${quote.title}`,
+        whatsapp_provider: evolutionInstance ? 'evolution_api' : 'default',
+        evolution: evolutionInstance ? { instance: evolutionInstance, api_url: evolutionApiUrl } : null
       },
       timestamp: new Date().toISOString(),
       platform: 'QuoteMaster Pro'
@@ -197,6 +234,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
     if (configuredAuthHeader) {
       requestHeaders['Authorization'] = String(configuredAuthHeader);
+    }
+    if (evolutionInstance) {
+      requestHeaders['X-Evolution-Instance'] = String(evolutionInstance);
     }
 
     const n8nResponse = await fetch(n8nWebhookUrl, {
