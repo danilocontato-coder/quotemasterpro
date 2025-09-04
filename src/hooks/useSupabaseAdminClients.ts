@@ -296,7 +296,10 @@ export function useSupabaseAdminClients() {
         console.warn('useSupabaseAdminClients: Erro na criação de usuário (não crítico)', authError);
       }
 
-      // 5) Audit log
+      // 5) Aplicar características do plano ao cliente recém-criado
+      await applyPlanCharacteristicsToClient(createdClientId, clientData.plan);
+
+      // 6) Audit log
       await supabase.from("audit_logs").insert({
         action: "CLIENT_CREATE",
         entity_type: "clients",
@@ -378,6 +381,11 @@ export function useSupabaseAdminClients() {
       }
 
       console.log('Cliente atualizado com sucesso no banco');
+
+      // Se o plano foi alterado, aplicar as características do plano ao cliente
+      if (clientData.plan !== undefined) {
+        await applyPlanCharacteristicsToClient(id, clientData.plan);
+      }
 
       // Usar batch update para otimizar re-renders
       const clientUpdateBatch = {
@@ -491,6 +499,82 @@ export function useSupabaseAdminClients() {
     let password = "";
     for (let i = 0; i < 10; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
     return password;
+  };
+
+  // Aplicar características do plano ao cliente
+  const applyPlanCharacteristicsToClient = async (clientId: string, planId: string) => {
+    try {
+      console.log('Aplicando características do plano ao cliente:', { clientId, planId });
+      
+      // Buscar dados completos do plano no Supabase
+      const { data: planData, error: planError } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
+
+      if (planError || !planData) {
+        console.error('Erro ao buscar dados do plano:', planError);
+        return;
+      }
+
+      console.log('Dados do plano encontrados:', planData);
+
+      // Aplicar limites do plano na tabela client_usage
+      const { error: usageError } = await supabase
+        .from('client_usage')
+        .upsert({
+          client_id: clientId,
+          // Resetar contadores mensais se mudou de plano
+          quotes_this_month: 0,
+          quote_responses_this_month: 0,
+          // Manter contadores atuais se já existem
+          users_count: 0, // Será recalculado pelos triggers
+          storage_used_gb: 0, // Manter o valor atual
+          products_in_catalog: 0, // Manter o valor atual
+          categories_count: 0, // Manter o valor atual
+          updated_at: new Date().toISOString(),
+          last_reset_date: new Date().toISOString().split('T')[0]
+        }, {
+          onConflict: 'client_id',
+          ignoreDuplicates: false
+        });
+
+      if (usageError) {
+        console.error('Erro ao aplicar limites do plano:', usageError);
+      } else {
+        console.log('Características do plano aplicadas com sucesso ao cliente');
+        toast.success(`Plano ${planData.display_name} aplicado com todas suas características!`);
+      }
+
+      // Criar log de auditoria
+      await supabase.from('audit_logs').insert({
+        action: 'PLAN_APPLIED',
+        entity_type: 'clients',
+        entity_id: clientId,
+        panel_type: 'admin',
+        details: {
+          planId,
+          planName: planData.display_name,
+          planLimits: {
+            maxQuotes: planData.max_quotes,
+            maxUsers: planData.max_users,
+            maxSuppliers: planData.max_suppliers,
+            maxStorageGB: planData.max_storage_gb,
+            maxQuotesPerMonth: planData.max_quotes_per_month || planData.max_quotes,
+            maxUsersPerClient: planData.max_users_per_client || planData.max_users,
+            maxSuppliersPerQuote: planData.max_suppliers_per_quote || 5,
+            maxQuoteResponsesPerMonth: planData.max_quote_responses_per_month || 50,
+            maxProductsInCatalog: planData.max_products_in_catalog || 100,
+            maxCategoriesPerSupplier: planData.max_categories_per_supplier || 10
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Erro ao aplicar características do plano:', error);
+      toast.error('Erro ao aplicar características do plano');
+    }
   };
 
   const generateUsername = (companyName: string) => {
