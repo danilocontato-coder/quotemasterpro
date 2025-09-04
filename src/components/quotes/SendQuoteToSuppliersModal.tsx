@@ -171,10 +171,14 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
 
       if (data?.success) {
         console.log('Webhook usado:', data.webhook_url_used);
-        toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : ''));
+        const method = data?.send_method ? `\nMétodo: ${data.send_method}` : '';
+        toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : '') + method);
         setOpen(false);
       } else {
-        toast.error(data?.error || 'Erro ao enviar cotação');
+        const evo = data?.resolved_evolution;
+        const evoInfo = evo ? `\nInstância: ${evo.instance || '—'}\nAPI URL: ${evo.api_url_defined ? 'OK' : 'faltando'} (${evo.source?.api_url || '-'})\nToken: ${evo.token_defined ? 'OK' : 'faltando'} (${evo.source?.token || '-'})` : '';
+        const details = data?.details ? `\nDetalhes: ${typeof data.details === 'string' ? data.details : JSON.stringify(data.details).slice(0,200)}` : '';
+        toast.error((data?.error || 'Erro ao enviar cotação') + evoInfo + details);
       }
 
     } catch (error: any) {

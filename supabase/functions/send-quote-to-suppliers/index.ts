@@ -139,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (envToken) { evolutionToken = envToken; tokenSource = 'global'; }
     }
 
-    const resolvedEvolution = {
+    resolvedEvolution = {
       instance: evolutionInstance,
       api_url_defined: Boolean(evolutionApiUrl),
       token_defined: Boolean(evolutionToken),
@@ -531,6 +531,25 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       console.log('Template rendered:', finalMessage.substring(0, 100) + '...');
+
+      // Preflight: check Evolution instance connection state
+      try {
+        const cs = await fetch(`${evolutionApiUrl}/instance/connectionState/${evolutionInstance}`, {
+          headers: { 'apikey': evolutionToken }
+        });
+        if (!cs.ok) {
+          const txt = await cs.text();
+          return new Response(
+            JSON.stringify({ success: false, error: 'Evolution API indisponível para a instância', details: { status: cs.status, response: txt }, resolved_evolution: resolvedEvolution }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (e: any) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Falha ao conectar à Evolution API', details: e.message, resolved_evolution: resolvedEvolution }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       // Send to each supplier
       for (const supplier of suppliers) {
