@@ -13,7 +13,7 @@ interface SupplierWithUserData {
   address?: any;
   business_info?: any;
   specialties?: string[];
-  type: 'local' | 'national' | 'international';
+  type: 'local' | 'certified';
   region?: string;
   status: 'pending' | 'active' | 'inactive' | 'suspended';
   subscription_plan_id?: string;

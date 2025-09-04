@@ -65,7 +65,7 @@ export default function Suppliers() {
   const totalSuppliers = availableSuppliers.length;
   const activeSuppliers = availableSuppliers.filter(s => s.status === 'active').length;
   const localSuppliers = availableSuppliers.filter(s => s.type === 'local').length;
-  const globalSuppliers = availableSuppliers.filter(s => s.type === 'national' || s.type === 'international').length;
+  const globalSuppliers = availableSuppliers.filter(s => s.type === 'certified').length;
   const prioritySuppliers = availableSuppliers.filter(s => s.rating > 4).length;
 
   const handleSupplierCreate = async (data: any) => {
@@ -290,7 +290,7 @@ export default function Suppliers() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <CardTitle className="text-lg">{supplier.name}</CardTitle>
-                        {supplier.type === 'national' || supplier.type === 'international' ? (
+                        {supplier.type === 'certified' ? (
                           <Tooltip>
                             <TooltipTrigger>
                               <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 cursor-help">

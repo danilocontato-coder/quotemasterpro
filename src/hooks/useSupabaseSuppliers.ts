@@ -14,7 +14,7 @@ export interface Supplier {
   address?: any;
   business_info?: any;
   specialties?: string[];
-  type: 'local' | 'national' | 'international';
+  type: 'local' | 'certified';
   region?: string;
   state?: string;
   city?: string;

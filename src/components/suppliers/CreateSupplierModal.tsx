@@ -27,9 +27,8 @@ const regions = [
 ];
 
 const supplierTypes = [
-  { value: 'local', label: 'Local', description: 'Fornecedor da região' },
-  { value: 'national', label: 'Nacional', description: 'Atende todo o país' },
-  { value: 'international', label: 'Internacional', description: 'Fornecedor internacional' }
+  { value: 'local', label: 'Local', description: 'Fornecedor vinculado a um cliente' },
+  { value: 'certified', label: 'Certificado', description: 'Fornecedor certificado pela plataforma (global)' }
 ];
 
 const commonSpecialties = [
