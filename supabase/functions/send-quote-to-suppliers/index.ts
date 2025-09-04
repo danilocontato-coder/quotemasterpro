@@ -46,8 +46,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (quoteError || !quote) {
       console.error('Quote not found:', quoteError);
       return new Response(
-        JSON.stringify({ error: 'Cotação não encontrada' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Cotação não encontrada' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -67,8 +67,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (suppliersError || !suppliers || suppliers.length === 0) {
       console.error('No suppliers found:', suppliersError);
       return new Response(
-        JSON.stringify({ error: 'Nenhum fornecedor encontrado' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Nenhum fornecedor encontrado' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -82,8 +82,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (clientError || !client) {
       console.error('Client not found:', clientError);
       return new Response(
-        JSON.stringify({ error: 'Cliente não encontrado' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Cliente não encontrado' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -324,8 +324,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (!n8nWebhookUrl) {
       console.error('N8N webhook URL not configured');
       return new Response(
-        JSON.stringify({ error: 'Webhook N8N não configurado' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Webhook N8N não configurado' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -393,6 +393,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.error('N8N webhook failed:', n8nResponse.status, respText);
         return new Response(
           JSON.stringify({ 
+            success: false,
             error: 'Falha ao enviar para N8N', 
             details: { 
               status: n8nResponse.status, 
@@ -404,7 +405,7 @@ const handler = async (req: Request): Promise<Response> => {
               fallback_response: fallbackTried ? fallbackRespText : undefined
             }
           }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
@@ -478,9 +479,9 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error('Error in send-quote-to-suppliers function:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Erro interno do servidor' }),
+      JSON.stringify({ success: false, error: error.message || 'Erro interno do servidor' }),
       {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
@@ -631,7 +632,7 @@ const handler = async (req: Request): Promise<Response> => {
           quote_status_updated: true
         }),
         {
-          status: successCount > 0 ? 200 : 500,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -640,11 +641,12 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Error in direct Evolution sending:', error);
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: 'Erro ao enviar via Evolution API', 
           details: error.message 
         }),
         {
-          status: 500,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
