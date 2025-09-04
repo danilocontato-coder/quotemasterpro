@@ -196,7 +196,7 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => window.open('/admin/plans', '_self')}
+              onClick={() => window.location.href = '/admin/plans'}
             >
               <TrendingUp className="h-4 w-4 mr-2" />
               Ver Planos e Fazer Upgrade
