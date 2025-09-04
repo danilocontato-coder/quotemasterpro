@@ -54,13 +54,8 @@ export function Permissions() {
   useEffect(() => {
     if (activeGroup) {
       console.log('👀 Grupo ativo mudou:', activeGroup.name, 'Profile ID:', activeGroup.permission_profile_id);
-      // Forçar refresh dos perfis se o grupo tem permission_profile_id mas não encontramos o perfil
-      if (activeGroup.permission_profile_id && !activeProfile) {
-        console.log('🔄 Perfil não encontrado, forçando refresh...');
-        window.location.reload();
-      }
     }
-  }, [activeGroup?.permission_profile_id, activeProfile]);
+  }, [activeGroup?.permission_profile_id]);
 
   const handlePermissionChange = async (module: string, action: 'view' | 'create' | 'edit' | 'delete', value: boolean) => {
     if (!activeGroupId) return;
