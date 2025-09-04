@@ -165,11 +165,11 @@ export const useSupabaseSupplierQuotes = () => {
       console.log('📋 Quotes with responses found:', quotesData.length);
 
       // Also fetch quotes that are available for suppliers
-      // 1. Global quotes available to all suppliers
+      // 1. Global/all quotes available to all suppliers
       const { data: globalQuotes, error: globalQuotesError } = await supabase
         .from('quotes')
         .select('*')
-        .eq('supplier_scope', 'global')
+        .in('supplier_scope', ['global', 'all'])
         .in('status', ['sent', 'receiving'])
         .order('created_at', { ascending: false });
 
