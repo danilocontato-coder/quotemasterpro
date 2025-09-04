@@ -454,7 +454,8 @@ export default function Suppliers() {
       {/* Modals */}
       <ClientSupplierModal
         open={showNewSupplierModal}
-        onClose={() => setShowNewSupplierModal(false)}
+        onClose={handleCloseModal}
+        editingSupplier={editingSupplier}
       />
 
       <NewGroupModal

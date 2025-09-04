@@ -16,7 +16,8 @@ import { brazilStates } from '@/data/brazilStates';
 
 interface ClientSupplierModalProps {
   open: boolean;
-  onClose: () => void;
+  onClose: (open: boolean) => void;
+  editingSupplier?: any;
 }
 
 
@@ -44,8 +45,8 @@ const steps = [
   { id: 4, title: 'Confirmação', description: 'Revisar e finalizar' }
 ];
 
-export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps) {
-  const { createSupplier, refetch } = useSupabaseSuppliers();
+export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSupplierModalProps) {
+  const { createSupplier, updateSupplier, refetch } = useSupabaseSuppliers();
   const { toast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -139,30 +140,69 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
     setNewSpecialty('');
   };
 
+  // Load editing supplier data when modal opens
+  React.useEffect(() => {
+    if (open && editingSupplier) {
+      const addressData = editingSupplier.address || {};
+      setFormData({
+        name: editingSupplier.name || '',
+        cnpj: editingSupplier.cnpj || '',
+        address: typeof addressData === 'string' ? addressData : (addressData.street || ''),
+        email: editingSupplier.email || '',
+        phone: editingSupplier.phone || '',
+        whatsapp: editingSupplier.whatsapp || '',
+        website: editingSupplier.website || '',
+        specialties: editingSupplier.specialties || [],
+        type: editingSupplier.type || 'local',
+        state: editingSupplier.state || '',
+        city: editingSupplier.city || '',
+        status: editingSupplier.status || 'active'
+      });
+      setCurrentStep(1);
+      setErrors({});
+    } else if (open && !editingSupplier) {
+      resetForm();
+    }
+  }, [open, editingSupplier]);
+
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return;
     
     setIsLoading(true);
     try {
-      const result = await createSupplier(formData);
+      let result;
+      
+      if (editingSupplier) {
+        // Update existing supplier
+        result = await updateSupplier(editingSupplier.id, formData);
+        if (result) {
+          toast({
+            title: "Fornecedor atualizado com sucesso!",
+            description: `${formData.name} foi atualizado.`
+          });
+        }
+      } else {
+        // Create new supplier
+        result = await createSupplier(formData);
+        if (result) {
+          toast({
+            title: "Fornecedor cadastrado com sucesso!",
+            description: `${formData.name} foi adicionado e receberá cotações via WhatsApp.`
+          });
+        }
+      }
       
       if (result) {
         // Force immediate refetch to update the UI
         await refetch();
-        
-        toast({
-          title: "Fornecedor cadastrado com sucesso!",
-          description: `${formData.name} foi adicionado e receberá cotações via WhatsApp.`
-        });
-
         resetForm();
-        onClose();
+        onClose(false);
       }
     } catch (error) {
-      console.error('Error creating supplier:', error);
+      console.error('Error saving supplier:', error);
       toast({
-        title: "Erro ao cadastrar fornecedor",
-        description: "Não foi possível cadastrar o fornecedor. Tente novamente.",
+        title: editingSupplier ? "Erro ao atualizar fornecedor" : "Erro ao cadastrar fornecedor",
+        description: "Não foi possível salvar o fornecedor. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -531,15 +571,18 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(open) => onClose(open)}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Cadastrar Novo Fornecedor
+            {editingSupplier ? 'Editar Fornecedor' : 'Cadastrar Novo Fornecedor'}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Cadastre fornecedores para receber cotações automaticamente
+            {editingSupplier 
+              ? 'Atualize as informações do fornecedor'
+              : 'Cadastre fornecedores para receber cotações automaticamente'
+            }
           </p>
         </DialogHeader>
 
@@ -559,7 +602,7 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
             <Button
               type="button"
               variant="outline"
-              onClick={currentStep === 1 ? onClose : prevStep}
+              onClick={currentStep === 1 ? () => onClose(false) : prevStep}
               disabled={isLoading}
             >
               {currentStep === 1 ? (
@@ -582,9 +625,9 @@ export function ClientSupplierModal({ open, onClose }: ClientSupplierModalProps)
               className="btn-corporate"
             >
               {isLoading ? (
-                "Cadastrando..."
+                editingSupplier ? "Atualizando..." : "Cadastrando..."
               ) : currentStep === steps.length ? (
-                "Finalizar Cadastro"
+                editingSupplier ? "Atualizar Fornecedor" : "Finalizar Cadastro"
               ) : (
                 <>
                   Próximo
