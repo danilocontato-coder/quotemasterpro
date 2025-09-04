@@ -261,28 +261,86 @@ export const useSupabaseQuotes = () => {
   // Delete quote
   const deleteQuote = async (id: string, reason?: string) => {
     try {
+      console.log('deleteQuote called with id:', id, 'reason:', reason);
+      console.log('Current user:', user);
+      
       const quote = quotes.find(q => q.id === id);
-      if (!quote) return false;
+      console.log('Found quote for deletion:', quote);
+      
+      if (!quote) {
+        console.error('Quote not found for deletion');
+        return false;
+      }
+
+      // Check permissions before attempting deletion
+      const canDelete = user?.role === 'admin' || 
+                       (quote.status === 'draft' && 
+                        quote.client_id === user?.clientId && 
+                        quote.created_by === user?.id);
+      
+      console.log('Permission check:', {
+        isAdmin: user?.role === 'admin',
+        isDraft: quote.status === 'draft',
+        clientMatch: quote.client_id === user?.clientId,
+        createdByMatch: quote.created_by === user?.id,
+        canDelete
+      });
+
+      if (!canDelete) {
+        toast({
+          title: 'Erro',
+          description: 'Você não tem permissão para excluir esta cotação',
+          variant: 'destructive',
+        });
+        return false;
+      }
 
       // If quote is draft, delete permanently, otherwise update status to cancelled
       if (quote.status === 'draft') {
-        const { error } = await supabase
+        console.log('Deleting draft quote permanently');
+        
+        // First delete related quote_items to avoid foreign key constraints
+        const { error: itemsError } = await supabase
+          .from('quote_items')
+          .delete()
+          .eq('quote_id', id);
+
+        if (itemsError) {
+          console.error('Error deleting quote items:', itemsError);
+          throw itemsError;
+        }
+
+        console.log('Quote items deleted successfully');
+
+        // Then delete the quote
+        const { error: quoteError } = await supabase
           .from('quotes')
           .delete()
           .eq('id', id);
 
-        if (error) throw error;
+        if (quoteError) {
+          console.error('Error deleting quote:', quoteError);
+          throw quoteError;
+        }
+
+        console.log('Quote deleted successfully');
         
         // Force immediate local state update
         setQuotes(prev => prev.filter(q => q.id !== id));
       } else {
-        // Update status to cancelled instead of trash
+        console.log('Updating quote status to cancelled');
+        // Update status to cancelled instead of delete
         const { error } = await supabase
           .from('quotes')
           .update({ status: 'cancelled' })
           .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error updating quote status to cancelled:', error);
+          throw error;
+        }
+
+        console.log('Quote status updated to cancelled');
         
         // Force immediate local state update
         setQuotes(prev => 
@@ -292,7 +350,8 @@ export const useSupabaseQuotes = () => {
 
       // Create audit log
       if (user) {
-        await supabase.from('audit_logs').insert({
+        console.log('Creating audit log for quote deletion');
+        const { error: auditError } = await supabase.from('audit_logs').insert({
           user_id: user.id,
           action: 'DELETE',
           entity_type: 'quotes',
@@ -305,10 +364,15 @@ export const useSupabaseQuotes = () => {
             permanently: quote.status === 'draft'
           }
         });
+
+        if (auditError) {
+          console.warn('Error creating audit log:', auditError);
+        }
       }
 
       // Force refetch to ensure sync
       setTimeout(() => {
+        console.log('Refetching quotes after deletion');
         fetchQuotes();
       }, 100);
 
@@ -319,6 +383,7 @@ export const useSupabaseQuotes = () => {
 
       return true;
     } catch (err) {
+      console.error('Error in deleteQuote:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir cotação';
       toast({
         title: 'Erro',
