@@ -1,29 +1,45 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GlobalSuppliersManager } from "@/components/suppliers/GlobalSuppliersManager";
-import { Supplier, SupplierGroup } from "@/data/mockData";
+import { useSupabaseAdminSuppliers } from "@/hooks/useSupabaseAdminSuppliers";
 import { Shield, Globe, Users } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminSuppliers() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [supplierGroups, setSupplierGroups] = useState<SupplierGroup[]>([]);
+  const { suppliers, isLoading } = useSupabaseAdminSuppliers();
 
-  const handleSupplierUpdate = (updatedSupplier: Supplier) => {
-    setSuppliers(prev => prev.map(s => s.id === updatedSupplier.id ? updatedSupplier : s));
-  };
+  // Estatísticas otimizadas com useMemo
+  const stats = useMemo(() => {
+    const globalSuppliers = suppliers.filter(s => s.type === 'certified');
+    const localSuppliers = suppliers.filter(s => s.type === 'local');
+    const activeGlobalSuppliers = globalSuppliers.filter(s => s.status === 'active');
+    
+    return {
+      globalSuppliers,
+      localSuppliers,
+      activeGlobalSuppliers,
+      activationRate: globalSuppliers.length > 0 ? Math.round((activeGlobalSuppliers.length / globalSuppliers.length) * 100) : 0
+    };
+  }, [suppliers]);
 
-  const handleSupplierCreate = (newSupplier: Supplier) => {
-    setSuppliers(prev => [...prev, newSupplier]);
-  };
-
-  const handleSupplierDelete = (supplierId: string) => {
-    setSuppliers(prev => prev.filter(s => s.id !== supplierId));
-  };
-
-  // Estatísticas
-  const globalSuppliers = suppliers.filter(s => s.type === 'global');
-  const localSuppliers = suppliers.filter(s => s.type === 'local');
-  const activeGlobalSuppliers = globalSuppliers.filter(s => s.status === 'active');
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Shield className="h-8 w-8 text-primary" />
+          <div>
+            <Skeleton className="h-8 w-80" />
+            <Skeleton className="h-4 w-96 mt-2" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -44,7 +60,7 @@ export default function AdminSuppliers() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-sm">Fornecedores Globais</p>
-              <p className="text-3xl font-bold">{globalSuppliers.length}</p>
+              <p className="text-3xl font-bold">{stats.globalSuppliers.length}</p>
             </div>
             <Globe className="h-8 w-8 text-purple-200" />
           </div>
@@ -54,7 +70,7 @@ export default function AdminSuppliers() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm">Fornecedores Locais</p>
-              <p className="text-3xl font-bold">{localSuppliers.length}</p>
+              <p className="text-3xl font-bold">{stats.localSuppliers.length}</p>
             </div>
             <Users className="h-8 w-8 text-blue-200" />
           </div>
@@ -64,7 +80,7 @@ export default function AdminSuppliers() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm">Globais Ativos</p>
-              <p className="text-3xl font-bold">{activeGlobalSuppliers.length}</p>
+              <p className="text-3xl font-bold">{stats.activeGlobalSuppliers.length}</p>
             </div>
             <div className="text-green-200">✓</div>
           </div>
@@ -74,9 +90,7 @@ export default function AdminSuppliers() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-orange-100 text-sm">Taxa de Ativação</p>
-              <p className="text-3xl font-bold">
-                {globalSuppliers.length > 0 ? Math.round((activeGlobalSuppliers.length / globalSuppliers.length) * 100) : 0}%
-              </p>
+              <p className="text-3xl font-bold">{stats.activationRate}%</p>
             </div>
             <div className="text-orange-200">📊</div>
           </div>
@@ -92,13 +106,7 @@ export default function AdminSuppliers() {
         </TabsList>
 
         <TabsContent value="global" className="space-y-4">
-          <GlobalSuppliersManager
-            suppliers={suppliers}
-            supplierGroups={supplierGroups}
-            onSupplierUpdate={handleSupplierUpdate}
-            onSupplierCreate={handleSupplierCreate}
-            onSupplierDelete={handleSupplierDelete}
-          />
+          <GlobalSuppliersManager suppliers={suppliers} />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
@@ -106,9 +114,9 @@ export default function AdminSuppliers() {
             <div className="bg-card p-6 rounded-lg border">
               <h3 className="text-lg font-semibold mb-4">Distribuição por Região</h3>
               <div className="space-y-3">
-                {Array.from(new Set(globalSuppliers.map(s => s.region).filter(Boolean))).map(region => {
-                  const count = globalSuppliers.filter(s => s.region === region).length;
-                  const percentage = globalSuppliers.length > 0 ? (count / globalSuppliers.length) * 100 : 0;
+                {Array.from(new Set(stats.globalSuppliers.map(s => s.region).filter(Boolean))).map(region => {
+                  const count = stats.globalSuppliers.filter(s => s.region === region).length;
+                  const percentage = stats.globalSuppliers.length > 0 ? (count / stats.globalSuppliers.length) * 100 : 0;
                   
                   return (
                     <div key={region} className="flex items-center justify-between">
@@ -131,7 +139,7 @@ export default function AdminSuppliers() {
             <div className="bg-card p-6 rounded-lg border">
               <h3 className="text-lg font-semibold mb-4">Top Fornecedores por Rating</h3>
               <div className="space-y-3">
-                {globalSuppliers
+                {stats.globalSuppliers
                   .filter(s => s.rating && s.rating > 0)
                   .sort((a, b) => (b.rating || 0) - (a.rating || 0))
                   .slice(0, 5)

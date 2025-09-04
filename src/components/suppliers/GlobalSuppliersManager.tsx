@@ -11,11 +11,7 @@ import { Supplier, SupplierGroup } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
 
 interface GlobalSuppliersManagerProps {
-  suppliers: Supplier[];
-  supplierGroups: SupplierGroup[];
-  onSupplierUpdate: (supplier: Supplier) => void;
-  onSupplierCreate: (supplier: Supplier) => void;
-  onSupplierDelete: (supplierId: string) => void;
+  suppliers: any[];
 }
 
 const regions = [
@@ -35,22 +31,16 @@ const regions = [
   'Nacional'
 ];
 
-export function GlobalSuppliersManager({ 
-  suppliers, 
-  supplierGroups, 
-  onSupplierUpdate, 
-  onSupplierCreate,
-  onSupplierDelete 
-}: GlobalSuppliersManagerProps) {
+export function GlobalSuppliersManager({ suppliers }: GlobalSuppliersManagerProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
   const { toast } = useToast();
 
-  // Filtrar apenas fornecedores globais
-  const globalSuppliers = suppliers.filter(s => s.type === 'global');
+  // Filtrar apenas fornecedores certificados (globais)
+  const globalSuppliers = suppliers.filter(s => s.type === 'certified');
 
   const filteredSuppliers = globalSuppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -77,22 +67,12 @@ export function GlobalSuppliersManager({
   });
 
   const handleCreateSupplier = () => {
-    const newSupplier: Supplier = {
-      id: `global-${Date.now()}`,
-      ...formData,
-      status: 'active',
-      type: 'global',
-      rating: 0,
-      completedOrders: 0,
-      createdAt: new Date().toISOString()
-    };
-
-    onSupplierCreate(newSupplier);
     toast({
-      title: "Fornecedor Global Criado",
-      description: `${formData.name} foi adicionado como fornecedor global.`
+      title: "Funcionalidade não implementada",
+      description: "Criação de fornecedores globais será implementada em breve.",
+      variant: "default"
     });
-
+    
     resetForm();
     setShowCreateModal(false);
   };
@@ -100,32 +80,27 @@ export function GlobalSuppliersManager({
   const handleUpdateSupplier = () => {
     if (!editingSupplier) return;
 
-    const updatedSupplier: Supplier = {
-      ...editingSupplier,
-      ...formData
-    };
-
-    onSupplierUpdate(updatedSupplier);
     toast({
-      title: "Fornecedor Atualizado",
-      description: `${formData.name} foi atualizado com sucesso.`
+      title: "Funcionalidade não implementada",
+      description: "Edição de fornecedores globais será implementada em breve.",
+      variant: "default"
     });
 
     resetForm();
     setEditingSupplier(null);
   };
 
-  const handleDeleteSupplier = (supplier: Supplier) => {
+  const handleDeleteSupplier = (supplier: any) => {
     if (window.confirm(`Tem certeza que deseja remover ${supplier.name} dos fornecedores globais?`)) {
-      onSupplierDelete(supplier.id);
       toast({
-        title: "Fornecedor Removido",
-        description: `${supplier.name} foi removido dos fornecedores globais.`
+        title: "Funcionalidade não implementada",
+        description: "Remoção de fornecedores globais será implementada em breve.",
+        variant: "default"
       });
     }
   };
 
-  const handleEditSupplier = (supplier: Supplier) => {
+  const handleEditSupplier = (supplier: any) => {
     setFormData({
       name: supplier.name,
       cnpj: supplier.cnpj,
@@ -136,7 +111,7 @@ export function GlobalSuppliersManager({
       region: supplier.region || '',
       groupId: supplier.groupId || '',
       specialties: supplier.specialties || [],
-      subscriptionPlan: supplier.subscriptionPlan
+      subscriptionPlan: supplier.subscription_plan_id || 'basic'
     });
     setEditingSupplier(supplier);
     setShowCreateModal(true);
@@ -157,16 +132,11 @@ export function GlobalSuppliersManager({
     });
   };
 
-  const toggleSupplierStatus = (supplier: Supplier) => {
-    const updatedSupplier = {
-      ...supplier,
-      status: supplier.status === 'active' ? 'inactive' as const : 'active' as const
-    };
-    onSupplierUpdate(updatedSupplier);
-    
+  const toggleSupplierStatus = (supplier: any) => {
     toast({
-      title: `Fornecedor ${updatedSupplier.status === 'active' ? 'Ativado' : 'Desativado'}`,
-      description: `${supplier.name} está agora ${updatedSupplier.status === 'active' ? 'disponível' : 'indisponível'} para todos os clientes.`
+      title: "Funcionalidade não implementada",
+      description: "Alteração de status de fornecedores globais será implementada em breve.",
+      variant: "default"
     });
   };
 
@@ -425,9 +395,6 @@ export function GlobalSuppliersManager({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum grupo</SelectItem>
-                    {supplierGroups.map(group => (
-                      <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
-                    ))}
                   </SelectContent>
                 </Select>
               </div>

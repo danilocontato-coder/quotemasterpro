@@ -30,19 +30,30 @@ interface CredentialsData {
 
 export const useSupabaseAdminSuppliers = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
 
   const fetchSuppliers = async () => {
+    if (isLoading) return; // Previne chamadas concorrentes
+    
     try {
       setIsLoading(true);
+      console.log('Carregando fornecedores...');
+      
       const { data, error } = await supabase
         .from('suppliers')
         .select('*')
         .order('name', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro do Supabase:', error);
+        throw error;
+      }
+      
+      console.log('Fornecedores carregados:', data?.length || 0);
       setSuppliers((data as Supplier[]) || []);
+      setInitialized(true);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       toast({
@@ -55,8 +66,18 @@ export const useSupabaseAdminSuppliers = () => {
     }
   };
 
+  // Fetch inicial controlado
   useEffect(() => {
-    fetchSuppliers();
+    if (!initialized) {
+      fetchSuppliers();
+    }
+  }, [initialized]);
+
+  // Real-time otimizado com debounce
+  useEffect(() => {
+    if (!initialized) return;
+
+    let timeoutId: NodeJS.Timeout;
     
     const channel = supabase
       .channel('admin-suppliers-changes')
@@ -68,15 +89,21 @@ export const useSupabaseAdminSuppliers = () => {
           table: 'suppliers'
         },
         () => {
-          fetchSuppliers();
+          console.log('Supplier change detected, scheduling refresh...');
+          // Debounce para evitar múltiplas chamadas
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            fetchSuppliers();
+          }, 1000);
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [initialized]);
 
   const createSupplierWithUser = async (
     supplierData: SupplierWithUserData,
@@ -194,7 +221,12 @@ export const useSupabaseAdminSuppliers = () => {
   };
 
   const updateSupplier = async (id: string, updates: Partial<Supplier>) => {
+    if (isLoading) return false;
+    
     try {
+      setIsLoading(true);
+      console.log('Atualizando fornecedor:', id, updates);
+      
       const { data, error } = await supabase
         .from('suppliers')
         .update(updates)
@@ -202,8 +234,14 @@ export const useSupabaseAdminSuppliers = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro do Supabase:', error);
+        throw error;
+      }
 
+      console.log('Fornecedor atualizado com sucesso');
+      
+      // Atualizar estado local
       setSuppliers(prev => 
         prev.map(supplier => supplier.id === id ? { ...supplier, ...data as Supplier } : supplier)
       );
@@ -222,18 +260,30 @@ export const useSupabaseAdminSuppliers = () => {
         variant: "destructive"
       });
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const deleteSupplier = async (id: string, name: string) => {
+    if (isLoading) return false;
+    
     try {
+      setIsLoading(true);
+      console.log('Removendo fornecedor:', id, name);
+      
       const { error } = await supabase
         .from('suppliers')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro do Supabase:', error);
+        throw error;
+      }
 
+      console.log('Fornecedor removido com sucesso');
+      
       setSuppliers(prev => prev.filter(supplier => supplier.id !== id));
       
       toast({
@@ -250,6 +300,8 @@ export const useSupabaseAdminSuppliers = () => {
         variant: "destructive"
       });
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
