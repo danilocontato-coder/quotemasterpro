@@ -18,7 +18,6 @@ import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { toast } from "sonner";
 
 export default function Quotes() {
-  console.log('Quotes component rendering, CreateQuoteModalSupabase available:', typeof CreateQuoteModalSupabase);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
