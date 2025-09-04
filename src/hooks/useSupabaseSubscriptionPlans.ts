@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, startTransition } from 'react';
+import { useState, useEffect, useCallback, startTransition, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -68,7 +68,7 @@ export function useSupabaseSubscriptionPlans() {
   const [filterAudience, setFilterAudience] = useState<'all' | 'clients' | 'suppliers' | 'both'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
-  // Carregar planos do Supabase
+  // Carregar planos do Supabase - VERSÃO ESTÁVEL
   const loadPlans = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -79,15 +79,6 @@ export function useSupabaseSubscriptionPlans() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Aplicar filtros
-      if (filterAudience !== 'all') {
-        query = query.eq('target_audience', filterAudience);
-      }
-      
-      if (filterStatus !== 'all') {
-        query = query.eq('status', filterStatus);
-      }
-
       const { data, error } = await query;
 
       if (error) {
@@ -96,32 +87,46 @@ export function useSupabaseSubscriptionPlans() {
         return;
       }
 
-      let filteredPlans = data || [];
-
-      // Filtro por termo de busca
-      if (searchTerm) {
-        filteredPlans = filteredPlans.filter(plan => 
-          plan.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          plan.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          plan.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-
-      console.log('Planos carregados:', filteredPlans.length);
-      setPlans(filteredPlans as SupabaseSubscriptionPlan[]);
+      console.log('Planos carregados:', (data || []).length);
+      setPlans((data as SupabaseSubscriptionPlan[]) || []);
     } catch (error) {
       console.error('Erro ao carregar planos:', error);
       toast.error('Erro ao carregar planos');
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, filterAudience, filterStatus]);
+  }, []); // Dependências vazias para evitar loops
 
+  // Fetch inicial APENAS uma vez
   useEffect(() => {
-    startTransition(() => {
-      loadPlans();
-    });
-  }, [loadPlans]);
+    loadPlans();
+  }, []); // Dependências vazias intencionalmente
+
+  // Aplicar filtros no frontend após carregar
+  const filteredPlans = useMemo(() => {
+    let filtered = plans;
+
+    // Filtro por audiência
+    if (filterAudience !== 'all') {
+      filtered = filtered.filter(plan => plan.target_audience === filterAudience);
+    }
+    
+    // Filtro por status
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(plan => plan.status === filterStatus);
+    }
+
+    // Filtro por termo de busca
+    if (searchTerm) {
+      filtered = filtered.filter(plan => 
+        plan.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        plan.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        plan.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return filtered;
+  }, [plans, searchTerm, filterAudience, filterStatus]);
 
   // Criar novo plano
   const createPlan = async (planData: PlanFormData): Promise<void> => {
@@ -286,29 +291,29 @@ export function useSupabaseSubscriptionPlans() {
     return plan ? plan.display_name : 'Plano não encontrado';
   };
 
-  // Calcular estatísticas
-  const stats = {
-    totalPlans: plans.length,
-    activePlans: plans.filter(plan => plan.status === 'active').length,
-    clientPlans: plans.filter(plan => plan.target_audience === 'clients').length,
-    supplierPlans: plans.filter(plan => plan.target_audience === 'suppliers').length,
-    totalRevenue: plans.reduce((sum, plan) => sum + (plan.total_revenue || 0), 0),
-    totalActiveUsers: plans.reduce((sum, plan) => sum + (plan.active_clients || 0), 0),
-    totalClients: plans.reduce((sum, plan) => sum + (plan.clients_subscribed || 0), 0),
-    totalSuppliers: plans.reduce((sum, plan) => sum + (plan.suppliers_subscribed || 0), 0),
+  // Calcular estatísticas com planos filtrados
+  const stats = useMemo(() => ({
+    totalPlans: filteredPlans.length,
+    activePlans: filteredPlans.filter(plan => plan.status === 'active').length,
+    clientPlans: filteredPlans.filter(plan => plan.target_audience === 'clients').length,
+    supplierPlans: filteredPlans.filter(plan => plan.target_audience === 'suppliers').length,
+    totalRevenue: filteredPlans.reduce((sum, plan) => sum + (plan.total_revenue || 0), 0),
+    totalActiveUsers: filteredPlans.reduce((sum, plan) => sum + (plan.active_clients || 0), 0),
+    totalClients: filteredPlans.reduce((sum, plan) => sum + (plan.clients_subscribed || 0), 0),
+    totalSuppliers: filteredPlans.reduce((sum, plan) => sum + (plan.suppliers_subscribed || 0), 0),
     avgChurnRate: 12.5, // Fixo por enquanto
     revenueByAudience: {
-      clients: plans
+      clients: filteredPlans
         .filter(plan => plan.target_audience === 'clients')
         .reduce((sum, plan) => sum + (plan.total_revenue || 0), 0),
-      suppliers: plans
+      suppliers: filteredPlans
         .filter(plan => plan.target_audience === 'suppliers')
         .reduce((sum, plan) => sum + (plan.total_revenue || 0), 0),
-      both: plans
+      both: filteredPlans
         .filter(plan => plan.target_audience === 'both')
         .reduce((sum, plan) => sum + (plan.total_revenue || 0), 0)
     },
-    popularPlans: plans
+    popularPlans: filteredPlans
       .filter(plan => plan.is_popular && plan.status === 'active')
       .sort((a, b) => (b.active_clients || 0) - (a.active_clients || 0))
       .slice(0, 3)
@@ -325,10 +330,10 @@ export function useSupabaseSubscriptionPlans() {
           suppliersSubscribed: plan.suppliers_subscribed || 0
         }
       }))
-  };
+  }), [filteredPlans]);
 
   return {
-    plans,
+    plans: filteredPlans, // Retorna planos filtrados
     isLoading,
     searchTerm,
     setSearchTerm,
@@ -341,8 +346,11 @@ export function useSupabaseSubscriptionPlans() {
     deletePlan,
     duplicatePlan,
     stats,
-    getPlanById,
-    getPlanDisplayName,
+    getPlanById: (planId: string) => plans.find(plan => plan.id === planId), // Busca nos planos originais
+    getPlanDisplayName: (planId: string) => {
+      const plan = plans.find(plan => plan.id === planId);
+      return plan ? plan.display_name : 'Plano não encontrado';
+    },
     loadPlans
   };
 }
