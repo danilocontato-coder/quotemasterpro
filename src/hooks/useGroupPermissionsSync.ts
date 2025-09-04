@@ -77,7 +77,7 @@ export function useGroupPermissionsSync() {
   }), []);
 
   /**
-   * Criar perfil de permissão para um grupo específico (chamada manual)
+   * Criar perfil de permissão para um grupo específico
    */
   const createPermissionProfileForGroup = useCallback(async (groupId: string) => {
     try {
@@ -93,8 +93,11 @@ export function useGroupPermissionsSync() {
       }
 
       if (group.permission_profile_id) {
-        toast.error('Este grupo já possui um perfil de permissão');
-        return;
+        const existingProfile = permissionProfiles.find(p => p.id === group.permission_profile_id);
+        if (existingProfile) {
+          toast.error('Este grupo já possui um perfil de permissão');
+          return;
+        }
       }
 
       // Definir permissões padrão baseadas no nome do grupo
@@ -106,10 +109,13 @@ export function useGroupPermissionsSync() {
           permissions[module] = { view: true, create: true, edit: true, delete: true };
         });
       } else if (group.name === 'Gestores' || group.name.toLowerCase().includes('gestor') || group.name.toLowerCase().includes('manager')) {
-        // Gestores têm permissões amplas
-        ['quotes', 'products', 'suppliers', 'payments', 'communication', 'reports'].forEach(module => {
-          permissions[module] = { view: true, create: true, edit: true, delete: true };
-        });
+        // Gestores têm permissões amplas - CONFIGURAÇÃO PADRÃO COMPLETA
+        permissions['quotes'] = { view: true, create: true, edit: true, delete: true };
+        permissions['products'] = { view: true, create: true, edit: true, delete: true };
+        permissions['suppliers'] = { view: true, create: true, edit: true, delete: false };
+        permissions['payments'] = { view: true, create: true, edit: true, delete: false };
+        permissions['communication'] = { view: true, create: true, edit: true, delete: false };
+        permissions['reports'] = { view: true, create: true, edit: false, delete: false };
         permissions['users'] = { view: true, create: true, edit: true, delete: false };
         permissions['settings'] = { view: true, create: false, edit: true, delete: false };
       } else if (group.name === 'Colaboradores' || group.name.toLowerCase().includes('colaborador') || group.name.toLowerCase().includes('collaborator')) {
@@ -118,12 +124,20 @@ export function useGroupPermissionsSync() {
         permissions['products'] = { view: true, create: true, edit: true, delete: false };
         permissions['suppliers'] = { view: true, create: false, edit: false, delete: false };
         permissions['communication'] = { view: true, create: true, edit: false, delete: false };
+        permissions['payments'] = { view: true, create: false, edit: false, delete: false };
         permissions['reports'] = { view: true, create: false, edit: false, delete: false };
+        permissions['users'] = { view: false, create: false, edit: false, delete: false };
+        permissions['settings'] = { view: false, create: false, edit: false, delete: false };
       } else {
-        // Grupo customizado - permissões mínimas (apenas visualizar)
-        ['quotes', 'products', 'suppliers', 'payments', 'communication', 'users', 'settings', 'reports'].forEach(module => {
-          permissions[module] = { view: true, create: false, edit: false, delete: false };
-        });
+        // Grupo customizado - permissões básicas de visualização
+        permissions['quotes'] = { view: true, create: false, edit: false, delete: false };
+        permissions['products'] = { view: true, create: false, edit: false, delete: false };
+        permissions['suppliers'] = { view: true, create: false, edit: false, delete: false };
+        permissions['communication'] = { view: true, create: false, edit: false, delete: false };
+        permissions['payments'] = { view: false, create: false, edit: false, delete: false };
+        permissions['reports'] = { view: false, create: false, edit: false, delete: false };
+        permissions['users'] = { view: false, create: false, edit: false, delete: false };
+        permissions['settings'] = { view: false, create: false, edit: false, delete: false };
       }
 
       // Criar perfil de permissão
@@ -141,18 +155,46 @@ export function useGroupPermissionsSync() {
           .update({ permission_profile_id: newProfile.id })
           .eq('id', group.id);
         
-        toast.success(`Perfil de permissão criado para ${group.name}`);
-        
-        // Forçar atualização da página após um pequeno delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        toast.success(`Permissões padrão criadas para ${group.name}!`);
       }
+      
+      return newProfile;
     } catch (error) {
       console.error('Erro ao criar perfil de permissão:', error);
       toast.error('Erro ao criar perfil de permissão');
     }
-  }, [groups, createPermissionProfile, client]);
+  }, [groups, createPermissionProfile, client, permissionProfiles]);
+
+  // Garantir que grupos tenham perfis de permissão criados automaticamente
+  useEffect(() => {
+    const ensureDefaultPermissions = async () => {
+      if (!client?.id || groups.length === 0) return;
+
+      for (const group of groups) {
+        // Pular se já tem perfil vinculado e o perfil existe
+        if (group.permission_profile_id) {
+          const profileExists = permissionProfiles.find(p => p.id === group.permission_profile_id);
+          if (profileExists) continue;
+        }
+
+        try {
+          await createPermissionProfileForGroup(group.id);
+        } catch (error) {
+          console.error(`Erro ao criar permissões padrão para ${group.name}:`, error);
+        }
+      }
+    };
+
+    // Executar apenas quando há novos grupos sem permissão
+    const groupsWithoutPermissions = groups.filter(g => {
+      if (!g.permission_profile_id) return true;
+      return !permissionProfiles.find(p => p.id === g.permission_profile_id);
+    });
+    
+    if (groupsWithoutPermissions.length > 0) {
+      ensureDefaultPermissions();
+    }
+  }, [groups, permissionProfiles, client?.id, createPermissionProfileForGroup]);
 
   /**
    * Obter permissões efetivas para um usuário baseado em seus grupos
@@ -238,7 +280,7 @@ export function useGroupPermissionsSync() {
         permissions: updatedPermissions
       });
 
-      toast.success('Permissões atualizadas com sucesso!');
+      toast.success('Permissões atualizadas!');
     } catch (error) {
       console.error('Erro ao atualizar permissões do grupo:', error);
       toast.error('Erro ao atualizar permissões');
