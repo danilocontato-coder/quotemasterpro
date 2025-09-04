@@ -1,5 +1,5 @@
 {
-  "name": "QuoteMaster Pro - Envio de Cotações",
+  "name": "QuoteMaster Pro - Envio de Cotações (v2)",
   "nodes": [
     {
       "parameters": {
@@ -11,19 +11,27 @@
       "name": "Webhook Cotações",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [240, 300]
+      "position": [200, 300]
     },
     {
       "parameters": {
-        "batchSize": 1,
-        "options": {}
+        "functionCode": "// Este nó clona o item de entrada para garantir estrutura consistente\nreturn items;"
       },
-      "id": "split-suppliers",
-      "name": "Split Fornecedores",
-      "type": "n8n-nodes-base.splitInBatches",
+      "id": "normalize",
+      "name": "Normalizar Entrada",
+      "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [460, 300],
-      "description": "Processa cada fornecedor individualmente para envio paralelo"
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Expande os fornecedores para múltiplos itens para processamento paralelo\n// Entrada esperada do Webhook: { quote, client, suppliers: [...], settings, template_data }\nconst inItem = items[0].json;\n\nif (!inItem.suppliers || !Array.isArray(inItem.suppliers) || inItem.suppliers.length === 0) {\n  return items;\n}\n\nconst out = inItem.suppliers.map((supplier) => ({\n  json: {\n    supplier,\n    quote: inItem.quote,\n    client: inItem.client,\n    settings: inItem.settings || {},\n    template_data: inItem.template_data || null\n  }\n}));\n\nreturn out;"
+      },
+      "id": "expand-suppliers",
+      "name": "Expandir Fornecedores",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [640, 300]
     },
     {
       "parameters": {
@@ -36,21 +44,21 @@
           ]
         }
       },
-      "id": "check-email",
+      "id": "if-email",
       "name": "Enviar E-mail?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [680, 200]
+      "position": [860, 180]
     },
     {
       "parameters": {
-        "functionCode": "// Processar dados dos suppliers para email\nconst quote = $json.quote;\nconst client = $json.client;\nconst suppliers = $json.suppliers;\nconst settings = $json.settings;\n\n// Para cada supplier, criar dados do email\nconst results = [];\n\nsuppliers.forEach(supplier => {\n  const emailContent = `\n<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <h2 style=\"color: #003366;\">🏢 Nova Cotação Disponível</h2>\n  \n  <div style=\"background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;\">\n    <p><strong>📋 Cotação:</strong> ${quote.title}</p>\n    <p><strong>🆔 ID:</strong> ${quote.id}</p>\n    <p><strong>💰 Total Estimado:</strong> R$ ${quote.total?.toFixed(2) || 'A calcular'}</p>\n    <p><strong>📅 Prazo:</strong> ${quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'A definir'}</p>\n    <p><strong>👤 Cliente:</strong> ${client.name}</p>\n    <p><strong>📧 Email:</strong> ${client.email}</p>\n    ${client.phone ? `<p><strong>📱 Telefone:</strong> ${client.phone}</p>` : ''}\n  </div>\n\n  <h3 style=\"color: #003366;\">📦 Itens da Cotação (${quote.items.length})</h3>\n  <table style=\"width: 100%; border-collapse: collapse; margin: 20px 0;\">\n    <thead>\n      <tr style=\"background-color: #003366; color: white;\">\n        <th style=\"padding: 10px; border: 1px solid #ddd;\">Produto</th>\n        <th style=\"padding: 10px; border: 1px solid #ddd;\">Quantidade</th>\n        <th style=\"padding: 10px; border: 1px solid #ddd;\">Valor Unit.</th>\n        <th style=\"padding: 10px; border: 1px solid #ddd;\">Total</th>\n      </tr>\n    </thead>\n    <tbody>\n      ${quote.items.map(item => `\n        <tr>\n          <td style=\"padding: 10px; border: 1px solid #ddd;\">${item.product_name}</td>\n          <td style=\"padding: 10px; border: 1px solid #ddd; text-align: center;\">${item.quantity}</td>\n          <td style=\"padding: 10px; border: 1px solid #ddd; text-align: right;\">R$ ${item.unit_price?.toFixed(2) || '0,00'}</td>\n          <td style=\"padding: 10px; border: 1px solid #ddd; text-align: right;\"><strong>R$ ${item.total?.toFixed(2) || '0,00'}</strong></td>\n        </tr>\n      `).join('')}\n    </tbody>\n  </table>\n\n  ${settings.custom_message ? `\n  <div style=\"background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin: 20px 0;\">\n    <h4 style=\"color: #003366; margin-top: 0;\">💬 Mensagem do Cliente:</h4>\n    <p style=\"margin-bottom: 0;\">${settings.custom_message}</p>\n  </div>\n  ` : ''}\n\n  <div style=\"background-color: #f1f1f1; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center;\">\n    <p style=\"margin: 0; color: #666;\"><em>📱 Enviado automaticamente via QuoteMaster Pro</em></p>\n  </div>\n</div>\n`;\n\n  results.push({\n    to: supplier.email,\n    subject: `📋 Nova Cotação: ${quote.title} (ID: ${quote.id})`,\n    html: emailContent,\n    supplier: supplier,\n    quote: quote\n  });\n});\n\nreturn results;"
+        "functionCode": "const { quote, client, supplier, settings } = $json;\n\nconst money = (v) => { try { return (new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })).format(Number(v||0)); } catch { return `R$ ${(Number(v||0)).toFixed(2)}`; } };\nconst dateBr = (d) => { return d ? new Date(d).toLocaleString('pt-BR') : 'A definir'; };\n\nconst html = `\n<div style=\"font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;\">\n  <h2 style=\"color:#003366;\">🏢 Nova Cotação Disponível</h2>\n  <div style=\"background:#f6f8fa; padding:16px; border-radius:8px; margin:12px 0;\">\n    <p><strong>📋 Cotação:</strong> ${quote.title}</p>\n    <p><strong>🆔 ID:</strong> ${quote.id}</p>\n    <p><strong>💰 Total Estimado:</strong> ${money(quote.total)}</p>\n    <p><strong>📅 Prazo:</strong> ${dateBr(quote.deadline)}</p>\n    <p><strong>👤 Cliente:</strong> ${client.name}</p>\n    <p><strong>📧 E-mail:</strong> ${client.email || '—'}</p>\n    ${client.phone ? `<p><strong>📱 Telefone:</strong> ${client.phone}</p>` : ''}\n  </div>\n  <h3 style=\"color:#003366;\">📦 Itens (${(quote.items||[]).length})</h3>\n  <table style=\"width:100%; border-collapse: collapse;\">\n    <thead>\n      <tr style=\"background:#003366; color:#fff;\">\n        <th style=\"padding:8px; border:1px solid #ddd; text-align:left;\">Produto</th>\n        <th style=\"padding:8px; border:1px solid #ddd; text-align:center;\">Qtd</th>\n        <th style=\"padding:8px; border:1px solid #ddd; text-align:right;\">Unit.</th>\n        <th style=\"padding:8px; border:1px solid #ddd; text-align:right;\">Total</th>\n      </tr>\n    </thead>\n    <tbody>\n      ${(quote.items||[]).map(i => `\n        <tr>\n          <td style=\"padding:8px; border:1px solid #ddd;\">${i.product_name}</td>\n          <td style=\"padding:8px; border:1px solid #ddd; text-align:center;\">${i.quantity}</td>\n          <td style=\"padding:8px; border:1px solid #ddd; text-align:right;\">${money(i.unit_price)}</td>\n          <td style=\"padding:8px; border:1px solid #ddd; text-align:right;\"><strong>${money(i.total)}</strong></td>\n        </tr>`).join('')}\n    </tbody>\n  </table>\n  ${settings.custom_message ? `<div style=\"background:#e8f4f8; padding:12px; border-radius:6px; margin:16px 0;\"><strong>💬 Mensagem:</strong><br/>${settings.custom_message}</div>` : ''}\n  <div style=\"color:#6b7280; font-size:12px; text-align:center; margin-top:16px;\"><em>Enviado automaticamente via QuoteMaster Pro</em></div>\n</div>`;\n\nreturn { to: supplier.email, subject: `📋 Nova Cotação: ${quote.title} (ID: ${quote.id})`, html };"
       },
       "id": "prepare-email",
       "name": "Preparar E-mail",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [900, 180]
+      "position": [1100, 180]
     },
     {
       "parameters": {
@@ -64,7 +72,7 @@
       "name": "Enviar E-mail",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
-      "position": [1120, 180]
+      "position": [1340, 180]
     },
     {
       "parameters": {
@@ -77,63 +85,52 @@
           ]
         }
       },
-      "id": "check-whatsapp",
+      "id": "if-whatsapp",
       "name": "Enviar WhatsApp?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [680, 400]
+      "position": [860, 420]
     },
     {
       "parameters": {
-        "functionCode": "// Processar dados do supplier atual do batch\nconst quote = $json.quote;\nconst client = $json.client;\nconst suppliers = $json.suppliers;\nconst settings = $json.settings;\nconst templateData = $json.template_data;\n\n// Para cada supplier no batch\nconst results = [];\n\nsuppliers.forEach(supplier => {\n  let whatsappMessage = settings.custom_message;\n  \n  // Se temos template, usar formatação do template\n  if (templateData && templateData.template_name) {\n    whatsappMessage = settings.custom_message; // Já formatado no Edge Function\n  }\n  \n  // Formato final da mensagem\n  const finalMessage = whatsappMessage || `🔔 *Nova Cotação Disponível*\\n\\n👋 Olá, ${supplier.name}!\\n\\n📋 *${quote.title}*\\n${quote.description || ''}\\n\\n💰 *Total Estimado:* R$ ${quote.total?.toFixed(2) || 'A calcular'}\\n📅 *Prazo:* ${quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'A definir'}\\n\\n📦 *Itens (${quote.items.length}):*\\n${quote.items.map(item => \\n    `• ${item.product_name} - Qtd: ${item.quantity} - R$ ${item.total?.toFixed(2) || '0,00'}`\\n  ).join('\\\\n')}\\n\\n👤 *Cliente:* ${client.name}\\n📧 *Contato:* ${client.email}\\n${client.phone ? `📱 *Telefone:* ${client.phone}` : ''}\\n\\n---\\n_Cotação enviada via QuoteMaster Pro_`;\n  \n  results.push({\n    phone: supplier.whatsapp || supplier.phone,\n    message: finalMessage,\n    supplier: supplier,\n    quote_id: quote.id,\n    evolution: settings.evolution\n  });\n});\n\nreturn results;"
+        "functionCode": "const { quote, client, supplier, settings } = $json;\n\nconst money = (v) => { try { return (new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })).format(Number(v||0)); } catch { return `R$ ${(Number(v||0)).toFixed(2)}`; } };\nconst dateBr = (d) => { return d ? new Date(d).toLocaleString('pt-BR') : 'A definir'; };\n\n// A Edge Function já pode enviar settings.custom_message com conteúdo completo do template\nconst itens = (quote.items||[]).map(i => `• ${i.product_name} - Qtd: ${i.quantity} - Valor: ${money(i.total)}`).join('\\n');\n\nconst baseMessage = `🔔 *Nova Cotação Disponível*\\n\\n👋 Olá, ${supplier.name}!\\n\\n📋 *${quote.title}*\\n${quote.description || ''}\\n\\n💰 *Total Estimado:* ${money(quote.total)}\\n📅 *Prazo:* ${dateBr(quote.deadline)}\\n\\n📦 *Itens:*\\n${itens}\\n`;\n\nconst message = `${settings.custom_message || baseMessage}\n👤 *Cliente:* ${client.name}\n📧 *E-mail:* ${client.email || '—'}\n${client.phone ? `📱 *Telefone:* ${client.phone}` : ''}\n\n—\n_Cotação enviada via QuoteMaster Pro_`;\n\nreturn {\n  phone: supplier.whatsapp || supplier.phone,\n  text: message,\n  evolution: settings.evolution || null\n};"
       },
       "id": "prepare-whatsapp",
       "name": "Preparar WhatsApp",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [900, 420]
+      "position": [1100, 420]
     },
     {
       "parameters": {
-        "url": "={{ $json.evolution && $json.evolution.api_url ? $json.evolution.api_url + '/message/sendText/' + $json.evolution.instance : 'https://api.whatsapp.local/send' }}",
+        "requestMethod": "POST",
+        "url": "={{ $json.evolution && $json.evolution.api_url && $json.evolution.instance ? $json.evolution.api_url + '/message/sendText/' + $json.evolution.instance : 'https://example.invalid/send' }}",
+        "jsonParameters": true,
         "options": {
           "headers": {
-            "apikey": "={{ $json.evolution && $json.evolution.token ? $json.evolution.token : 'SUA_API_KEY_AQUI' }}",
+            "apikey": "={{ $json.evolution && $json.evolution.token ? $json.evolution.token : '' }}",
             "Content-Type": "application/json"
           }
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "number",
-              "value": "={{ $json.phone }}"
-            },
-            {
-              "name": "text",
-              "value": "={{ $json.message }}"
-            }
-          ]
-        }
+        "bodyParametersJson": "={ \n  \"number\": $json.phone,\n  \"text\": $json.text\n}"
       },
       "id": "send-whatsapp",
-      "name": "Enviar WhatsApp",
+      "name": "Enviar WhatsApp (Evolution)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1120, 420],
-      "description": "Envia mensagem via Evolution API ou provider padrão"
+      "position": [1340, 420]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "{ \"success\": true, \"message\": \"Cotações enviadas com sucesso para {{ $('Split Fornecedores').params.suppliers.length }} fornecedor(es)\", \"processed_suppliers\": {{ $('Split Fornecedores').params.suppliers.length }}, \"timestamp\": \"{{ new Date().toISOString() }}\" }"
+        "responseBody": "={ \n  \"success\": true, \n  \"message\": \"Cotações processadas\", \n  \"processed_suppliers\": {{ $items().length }},\n  \"timestamp\": \"{{ new Date().toISOString() }}\" \n}"
       },
-      "id": "response",
-      "name": "Resposta",
+      "id": "respond",
+      "name": "Responder",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1340, 300],
-      "description": "Resposta final com contagem de fornecedores processados"
+      "position": [1580, 300]
     }
   ],
   "connections": {
@@ -141,14 +138,25 @@
       "main": [
         [
           {
-            "node": "Split Fornecedores",
+            "node": "Normalizar Entrada",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Split Fornecedores": {
+    "Normalizar Entrada": {
+      "main": [
+        [
+          {
+            "node": "Expandir Fornecedores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expandir Fornecedores": {
       "main": [
         [
           {
@@ -158,6 +166,11 @@
           },
           {
             "node": "Enviar WhatsApp?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Responder",
             "type": "main",
             "index": 0
           }
@@ -186,17 +199,6 @@
         ]
       ]
     },
-    "Enviar E-mail": {
-      "main": [
-        [
-          {
-            "node": "Resposta",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Enviar WhatsApp?": {
       "main": [
         [
@@ -212,18 +214,7 @@
       "main": [
         [
           {
-            "node": "Enviar WhatsApp",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Enviar WhatsApp": {
-      "main": [
-        [
-          {
-            "node": "Resposta",
+            "node": "Enviar WhatsApp (Evolution)",
             "type": "main",
             "index": 0
           }
@@ -231,17 +222,13 @@
       ]
     }
   },
-  "settings": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "staticData": null,
   "tags": [
-    {
-      "createdAt": "2024-01-15T10:00:00.000Z",
-      "updatedAt": "2024-01-15T10:00:00.000Z",
-      "id": "1",
-      "name": "QuoteMaster Pro"
-    }
+    { "id": "qmp", "name": "QuoteMaster Pro" }
   ],
   "triggerCount": 1,
-  "updatedAt": "2024-01-15T10:00:00.000Z",
-  "versionId": "1"
+  "versionId": "2"
 }
