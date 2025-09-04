@@ -143,20 +143,8 @@ export const useSupabaseSupplierProducts = () => {
 
       if (error) throw error;
 
-      setProducts(prev => [{
-        id: data.id,
-        code: data.code,
-        name: data.name,
-        description: data.description || undefined,
-        category: data.category || undefined,
-        unit_price: data.unit_price || undefined,
-        stock_quantity: data.stock_quantity || 0,
-        status: (data.status === 'active' || data.status === 'inactive') 
-          ? data.status as 'active' | 'inactive' 
-          : 'active',
-        created_at: data.created_at || new Date().toISOString(),
-        updated_at: data.updated_at || new Date().toISOString(),
-      }, ...prev]);
+      // Don't update local state here - realtime subscription will handle it
+      // This prevents duplicate entries
 
       // Create audit log
       await supabase.from('audit_logs').insert({
@@ -204,13 +192,7 @@ export const useSupabaseSupplierProducts = () => {
 
       if (error) throw error;
 
-      setProducts(prev => prev.map(product => 
-        product.id === id ? {
-          ...product,
-          ...updates,
-          updated_at: data.updated_at || new Date().toISOString(),
-        } : product
-      ));
+      // Don't update local state here - realtime subscription will handle it
 
       // Create audit log
       await supabase.from('audit_logs').insert({
@@ -254,7 +236,7 @@ export const useSupabaseSupplierProducts = () => {
 
       if (error) throw error;
 
-      setProducts(prev => prev.filter(product => product.id !== id));
+      // Don't update local state here - realtime subscription will handle it
 
       // Create audit log
       await supabase.from('audit_logs').insert({
@@ -310,10 +292,7 @@ export const useSupabaseSupplierProducts = () => {
 
       if (error) throw error;
 
-      // Update local state
-      setProducts(prev => prev.map(p => 
-        p.id === productId ? { ...p, stock_quantity: newQuantity } : p
-      ));
+      // Don't update local state here - realtime subscription will handle it
 
       // Create stock movement record (simplified)
       const movement: StockMovement = {
@@ -374,13 +353,78 @@ export const useSupabaseSupplierProducts = () => {
     return Array.from(categories) as string[];
   }, [products]);
 
-  // Fetch data on mount
+  // Set up realtime subscription for products
   useEffect(() => {
-    if (user?.role === 'supplier') {
-      fetchProducts();
-      fetchStockMovements();
-    }
-  }, [user?.role, user?.supplierId]); // Removed callback functions to prevent infinite loops
+    if (!user?.role || user.role !== 'supplier' || !user.supplierId) return;
+
+    fetchProducts();
+    fetchStockMovements();
+
+    // Subscribe to realtime changes for this supplier's products
+    const channel = supabase
+      .channel('supplier-products-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'products',
+          filter: `supplier_id=eq.${user.supplierId}`,
+        },
+        (payload) => {
+          console.log('📦 Product realtime update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newProduct = payload.new as any;
+            const transformedProduct: SupplierProduct = {
+              id: newProduct.id,
+              code: newProduct.code,
+              name: newProduct.name,
+              description: newProduct.description || undefined,
+              category: newProduct.category || undefined,
+              unit_price: newProduct.unit_price || undefined,
+              stock_quantity: newProduct.stock_quantity || 0,
+              status: (newProduct.status === 'active' || newProduct.status === 'inactive') 
+                ? newProduct.status as 'active' | 'inactive' 
+                : 'active',
+              created_at: newProduct.created_at || new Date().toISOString(),
+              updated_at: newProduct.updated_at || new Date().toISOString(),
+            };
+
+            setProducts(prev => {
+              // Check if product already exists to avoid duplicates
+              const exists = prev.find(p => p.id === transformedProduct.id);
+              if (exists) return prev;
+              return [transformedProduct, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedProduct = payload.new as any;
+            setProducts(prev => prev.map(product => 
+              product.id === updatedProduct.id 
+                ? {
+                    ...product,
+                    name: updatedProduct.name,
+                    description: updatedProduct.description || undefined,
+                    category: updatedProduct.category || undefined,
+                    unit_price: updatedProduct.unit_price || undefined,
+                    stock_quantity: updatedProduct.stock_quantity || 0,
+                    status: updatedProduct.status as 'active' | 'inactive',
+                    updated_at: updatedProduct.updated_at || new Date().toISOString(),
+                  }
+                : product
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedProduct = payload.old as any;
+            setProducts(prev => prev.filter(product => product.id !== deletedProduct.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.role, user?.supplierId]);
 
   return {
     products,
