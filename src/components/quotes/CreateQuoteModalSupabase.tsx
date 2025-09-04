@@ -30,6 +30,7 @@ interface QuoteFormData {
     email: boolean;
     whatsapp: boolean;
   };
+  supplierScope: 'local' | 'all';
 }
 
 interface CreateQuoteModalSupabaseProps {
@@ -65,7 +66,8 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     communicationMethods: {
       email: true,
       whatsapp: false
-    }
+    },
+    supplierScope: 'local'
   });
 
   // Initialize form with editing data
@@ -81,6 +83,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
           email: true,
           whatsapp: false,
         },
+        supplierScope: 'local'
       });
     } else if (!editingQuote && open) {
       // Reset form for new quote
@@ -93,7 +96,8 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
         communicationMethods: {
           email: true,
           whatsapp: false
-        }
+        },
+        supplierScope: 'local'
       });
       setCurrentStep(1);
     }
@@ -180,7 +184,8 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       communicationMethods: {
         email: true,
         whatsapp: false
-      }
+      },
+      supplierScope: 'local'
     });
     setCurrentStep(1);
   };
@@ -292,6 +297,14 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
         );
 
       case 3:
+        const filteredSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
+          if (formData.supplierScope === 'local') {
+            return supplier.client_id !== null; // Fornecedores locais (cadastrados pelo cliente)
+          } else {
+            return true; // Todos os fornecedores (locais + certificados)
+          }
+        });
+
         return (
           <div className="space-y-6">
             <div>
@@ -299,18 +312,80 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
               <p className="text-sm text-muted-foreground">Escolha os fornecedores para enviar a cotação</p>
             </div>
 
+            {/* Seleção de escopo de fornecedores */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Tipo de Fornecedores</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="local"
+                    checked={formData.supplierScope === 'local'}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setFormData(prev => ({ ...prev, supplierScope: 'local', supplier_ids: [] }));
+                      }
+                    }}
+                  />
+                  <label htmlFor="local" className="text-sm">
+                    Apenas Locais
+                    <span className="block text-xs text-muted-foreground">Fornecedores cadastrados por você</span>
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="all"
+                    checked={formData.supplierScope === 'all'}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setFormData(prev => ({ ...prev, supplierScope: 'all', supplier_ids: [] }));
+                      }
+                    }}
+                  />
+                  <label htmlFor="all" className="text-sm">
+                    Locais + Certificados
+                    <span className="block text-xs text-muted-foreground">Inclui fornecedores verificados pelo sistema</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
             {suppliersLoading ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">Carregando fornecedores...</p>
               </div>
-            ) : suppliers.length === 0 ? (
+            ) : filteredSuppliers.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Nenhum fornecedor cadastrado</p>
+                <p className="text-muted-foreground">
+                  {formData.supplierScope === 'local' 
+                    ? 'Nenhum fornecedor local cadastrado'
+                    : 'Nenhum fornecedor disponível'
+                  }
+                </p>
               </div>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {suppliers.filter(s => s.status === 'active').map((supplier) => (
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-muted-foreground">
+                    {filteredSuppliers.length} fornecedor(es) disponível(is)
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const allSelected = filteredSuppliers.every(s => formData.supplier_ids.includes(s.id));
+                      setFormData(prev => ({
+                        ...prev,
+                        supplier_ids: allSelected ? [] : filteredSuppliers.map(s => s.id)
+                      }));
+                    }}
+                  >
+                    {filteredSuppliers.every(s => formData.supplier_ids.includes(s.id)) ? 'Desmarcar' : 'Selecionar'} Todos
+                  </Button>
+                </div>
+                
+                {filteredSuppliers.map((supplier) => (
                   <div key={supplier.id} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -330,7 +405,12 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
                         }}
                       />
                       <div>
-                        <p className="font-medium">{supplier.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{supplier.name}</p>
+                          {!supplier.client_id && (
+                            <Badge variant="outline" className="text-xs">Certificado</Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">{supplier.email}</p>
                       </div>
                     </div>
