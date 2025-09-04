@@ -192,9 +192,26 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     try {
       // Determina automaticamente o método de envio baseado na configuração Evolution (SuperAdmin)
       const sendVia = evolutionConfigured ? 'direct' : 'n8n';
-      
-      // Generate unique response links for each selected supplier
-      const supplierLinks = selectedSuppliers.map((supplierId) => {
+
+      // Garantir que só enviamos para fornecedores com contato compatível
+      const selectedEntities = deduplicatedSuppliers.filter(s => selectedSuppliers.includes(s.id));
+      const validEntities = selectedEntities.filter(s => (
+        (sendWhatsApp && Boolean(s.whatsapp && s.whatsapp.trim())) ||
+        (sendEmail && Boolean(s.email && s.email.trim()))
+      ));
+      const ignoredEntities = selectedEntities.filter(s => !validEntities.includes(s));
+
+      if (ignoredEntities.length > 0) {
+        toast.warning(`${ignoredEntities.length} fornecedor(es) sem contato compatível foi(ram) ignorado(s).`);
+      }
+      if (validEntities.length === 0) {
+        toast.error('Nenhum fornecedor selecionado possui WhatsApp/E-mail para os canais escolhidos.');
+        return;
+      }
+
+      // Generate unique response links only for fornecedores válidos
+      const supplierIds = validEntities.map(s => s.id);
+      const supplierLinks = supplierIds.map((supplierId) => {
         const token = generateQuoteToken();
         return {
           supplier_id: supplierId,
@@ -206,7 +223,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       const { data, error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: {
           quote_id: quote.id,
-          supplier_ids: selectedSuppliers,
+          supplier_ids: supplierIds,
           send_whatsapp: sendWhatsApp,
           send_email: sendEmail,
           custom_message: customMessage.trim(),
@@ -228,7 +245,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : '') + method);
         
         // Atualizar status da cotação para 'sent'
-        await markQuoteAsSent(quote.id, selectedSuppliers.length);
+        await markQuoteAsSent(quote.id, supplierIds.length);
         
         // Log dos links dos fornecedores selecionados
         console.log('Fornecedores selecionados e links enviados:');
