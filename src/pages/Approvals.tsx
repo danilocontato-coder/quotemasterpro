@@ -347,3 +347,5 @@ export function Approvals() {
     </div>
   );
 }
+
+export default Approvals;

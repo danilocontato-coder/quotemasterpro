@@ -308,3 +308,5 @@ const stats = {
     </div>
   );
 }
+
+export default ApprovalLevels;

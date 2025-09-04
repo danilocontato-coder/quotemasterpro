@@ -195,3 +195,5 @@ export function Profiles() {
     </div>
   );
 }
+
+export default Profiles;
