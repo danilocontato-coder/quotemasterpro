@@ -103,9 +103,15 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
 
   // Load editing supplier data when modal opens
   useEffect(() => {
+    console.log('🔧 CreateSupplierModal useEffect:', { open, hasEditingSupplier: !!editingSupplier });
+    
     if (open && editingSupplier) {
+      console.log('📝 Carregando dados para edição:', editingSupplier.name);
+      
       const addressData = editingSupplier.address || {};
-      setFormData({
+      
+      // Batch all state updates to prevent multiple re-renders
+      const newFormData = {
         name: editingSupplier.name || '',
         cnpj: editingSupplier.cnpj || '',
         email: editingSupplier.email || '',
@@ -134,7 +140,9 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
         is_certified: editingSupplier.is_certified || false,
         certification_date: editingSupplier.certification_date || null,
         certification_expires_at: editingSupplier.certification_expires_at || null
-      });
+      };
+      
+      setFormData(newFormData);
       
       // Set state and city for proper form behavior
       if (editingSupplier.state) {
@@ -144,7 +152,10 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
           setAvailableCities(state.cities);
         }
       }
+      
+      console.log('✅ Dados carregados para edição');
     } else if (open && !editingSupplier) {
+      console.log('🆕 Modal aberto para novo fornecedor');
       resetForm();
     }
   }, [open, editingSupplier]);
@@ -247,7 +258,14 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading) {
+      console.log('Submit já em andamento, ignorando...');
+      return;
+    }
+    
     setIsLoading(true);
+    console.log('🔄 handleSubmit iniciado', { editingSupplier: !!editingSupplier, formData: formData.name });
 
     try {
       // Validate required fields
@@ -257,6 +275,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
           description: "Nome, email e CNPJ são obrigatórios.",
           variant: "destructive"
         });
+        setIsLoading(false);
         return;
       }
 
@@ -266,6 +285,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
           description: "O WhatsApp é necessário para envio de cotações.",
           variant: "destructive"
         });
+        setIsLoading(false);
         return;
       }
 
@@ -275,17 +295,21 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
         address: formData.address
       };
       
+      console.log('📤 Chamando onCreateSupplier...');
       await onCreateSupplier(supplierData);
+      console.log('✅ onCreateSupplier concluído');
       
       toast({
         title: editingSupplier ? "Fornecedor atualizado com sucesso" : "Fornecedor criado com sucesso",
         description: `${formData.name} foi ${editingSupplier ? 'atualizado' : 'adicionado ao sistema'}. As cotações serão enviadas via WhatsApp.`
       });
 
+      console.log('🔄 Resetando form e fechando modal...');
       resetForm();
       onClose();
+      console.log('✅ Modal fechado com sucesso');
     } catch (error) {
-      console.error('Error creating supplier:', error);
+      console.error('❌ Error creating supplier:', error);
       toast({
         title: "Erro ao criar fornecedor",
         description: "Não foi possível criar o fornecedor. Tente novamente.",

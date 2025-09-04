@@ -111,18 +111,10 @@ export const SuppliersManagement = () => {
     );
   };
 
-  const handleEditSupplier = async (supplier: any) => {
-    try {
-      setEditingSupplier(supplier);
-      setShowCreateModal(true);
-    } catch (error) {
-      console.error('Erro ao abrir editor:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados do fornecedor",
-        variant: "destructive"
-      });
-    }
+  const handleEditSupplier = (supplier: any) => {
+    console.log('🔧 Abrindo editor para fornecedor:', supplier.name);
+    setEditingSupplier(supplier);
+    setShowCreateModal(true);
   };
 
   const handleToggleStatus = async (supplier: any) => {
