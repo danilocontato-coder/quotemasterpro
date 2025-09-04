@@ -67,9 +67,7 @@ export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onO
     const result = await addProduct(productData);
     
     if (result) {
-      onItemCreate?.(result);
-      
-      // Reset form
+      // Reset form primeiro
       setFormData({
         code: '',
         name: '',
@@ -81,8 +79,16 @@ export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onO
         minStock: '',
       });
       setItemType('product');
-      setInternalOpen(false);
-      setOpen(false);
+      
+      // Fechar modal
+      if (externalOnOpenChange) {
+        externalOnOpenChange(false);
+      } else {
+        setInternalOpen(false);
+      }
+      
+      // Callback depois que tudo foi resetado
+      onItemCreate?.(result);
     }
   };
 

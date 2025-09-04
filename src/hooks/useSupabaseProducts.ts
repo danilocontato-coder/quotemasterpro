@@ -67,7 +67,11 @@ export const useSupabaseProducts = () => {
         },
         (payload) => {
           console.log('Real-time INSERT:', payload.new);
-          setProducts(prev => [...prev, payload.new as Product].sort((a, b) => a.name.localeCompare(b.name)));
+          setProducts(prev => {
+            const exists = prev.find(p => p.id === payload.new.id);
+            if (exists) return prev; // Evita duplicação do real-time
+            return [...prev, payload.new as Product].sort((a, b) => a.name.localeCompare(b.name));
+          });
         }
       )
       .on(
@@ -205,8 +209,12 @@ export const useSupabaseProducts = () => {
 
       console.log('Product created successfully:', data);
       
-      // Update local state immediately for better UX
-      setProducts(prev => [...prev, data as Product].sort((a, b) => a.name.localeCompare(b.name)));
+      // Update local state immediately for better UX - mais robusta
+      setProducts(prev => {
+        const exists = prev.find(p => p.id === data.id);
+        if (exists) return prev; // Evita duplicação
+        return [...prev, data as Product].sort((a, b) => a.name.localeCompare(b.name));
+      });
       
       toast({
         title: "Produto criado",
