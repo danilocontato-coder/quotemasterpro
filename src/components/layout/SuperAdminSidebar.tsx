@@ -137,10 +137,10 @@ const navigation = [
         description: 'Campanhas de e-mail'
       },
       {
-        name: 'WhatsApp',
-        href: '/admin/whatsapp',
+        name: 'Templates WhatsApp',
+        href: '/admin/whatsapp-templates',
         icon: MessageSquare,
-        description: 'Mensagens WhatsApp'
+        description: 'Modelos de mensagem'
       }
     ]
   },

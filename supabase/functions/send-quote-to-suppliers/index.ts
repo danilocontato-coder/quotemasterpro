@@ -125,6 +125,96 @@ const handler = async (req: Request): Promise<Response> => {
       evolutionToken = Deno.env.get('EVOLUTION_API_TOKEN') || null;
     }
 
+    // Load WhatsApp template
+    let whatsappTemplate = null;
+    
+    // Try to find client-specific template first
+    const { data: clientTemplate } = await supabase
+      .from('whatsapp_templates')
+      .select('*')
+      .eq('template_type', 'quote_request')
+      .eq('active', true)
+      .eq('client_id', quote.client_id)
+      .maybeSingle();
+
+    if (clientTemplate) {
+      whatsappTemplate = clientTemplate;
+    } else {
+      // Fallback to global template
+      const { data: globalTemplate } = await supabase
+        .from('whatsapp_templates')
+        .select('*')
+        .eq('template_type', 'quote_request')
+        .eq('active', true)
+        .eq('is_global', true)
+        .maybeSingle();
+      
+      whatsappTemplate = globalTemplate;
+    }
+
+    // Format deadline
+    const deadlineFormatted = quote.deadline 
+      ? new Date(quote.deadline).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : 'Não definido';
+
+    // Format total
+    const totalFormatted = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(quote.total || 0);
+
+    // Format items list
+    const itemsList = quote.quote_items?.map((item: any) => {
+      const itemTotal = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(item.total || 0);
+      
+      return `• ${item.product_name} - Qtd: ${item.quantity} - Valor: ${itemTotal}`;
+    }).join('\n') || 'Nenhum item especificado';
+
+    // Generate proposal link (placeholder for now)
+    const proposalLink = `${Deno.env.get('SUPABASE_URL')}/supplier/quotes/${quote.id}/proposal`;
+
+    // Build enhanced WhatsApp message
+    let whatsappMessage = custom_message;
+    
+    if (whatsappTemplate && !custom_message) {
+      whatsappMessage = whatsappTemplate.message_content
+        .replace(/{{client_name}}/g, client.name)
+        .replace(/{{quote_title}}/g, quote.title)
+        .replace(/{{quote_id}}/g, quote.id)
+        .replace(/{{deadline_formatted}}/g, deadlineFormatted)
+        .replace(/{{total_formatted}}/g, totalFormatted)
+        .replace(/{{items_list}}/g, itemsList)
+        .replace(/{{items_count}}/g, String(quote.quote_items?.length || 0))
+        .replace(/{{proposal_link}}/g, proposalLink)
+        .replace(/{{client_email}}/g, client.email || 'Não informado')
+        .replace(/{{client_phone}}/g, client.phone || 'Não informado');
+    } else if (!whatsappMessage) {
+      // Fallback message if no template found
+      whatsappMessage = `🏢 *${client.name}* solicita uma cotação
+
+📋 *Cotação:* ${quote.title}
+🆔 *ID:* ${quote.id}
+📅 *Prazo:* ${deadlineFormatted}
+💰 *Valor Total:* ${totalFormatted}
+
+📦 *ITENS SOLICITADOS:*
+${itemsList}
+
+🔗 *Para enviar sua proposta:*
+${proposalLink}
+
+_Esta é uma solicitação automática do sistema QuoteMaster Pro_`;
+    }
+
     // Prepare data for N8N
     const n8nPayload: any = {
       quote: {
@@ -157,7 +247,7 @@ const handler = async (req: Request): Promise<Response> => {
       settings: {
         send_whatsapp,
         send_email,
-        custom_message: custom_message || `Nova cotação disponível: ${quote.title}`,
+        custom_message: whatsappMessage,
         whatsapp_provider: evolutionInstance ? 'evolution_api' : 'default',
         evolution: evolutionInstance ? { 
           instance: evolutionInstance, 
@@ -165,6 +255,10 @@ const handler = async (req: Request): Promise<Response> => {
           token: evolutionToken
         } : null
       },
+      template_data: whatsappTemplate ? {
+        template_name: whatsappTemplate.name,
+        subject: whatsappTemplate.subject
+      } : null,
       timestamp: new Date().toISOString(),
       platform: 'QuoteMaster Pro'
     };

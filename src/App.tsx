@@ -27,6 +27,7 @@ import { ClientsManagement } from '@/pages/admin/ClientsManagement';
 import { SuppliersManagement } from '@/pages/admin/SuppliersManagement';
 import { PlansManagement } from '@/pages/admin/PlansManagement';
 import { IntegrationsManagement } from '@/pages/admin/IntegrationsManagement';
+import WhatsAppTemplates from '@/pages/admin/WhatsAppTemplates';
 import { AuditLogs } from '@/pages/admin/AuditLogs';
 
 // Existing pages
@@ -238,6 +239,7 @@ function App() {
                   <Route path="suppliers" element={<SuppliersManagement />} />
                   <Route path="plans" element={<PlansManagement />} />
                   <Route path="integrations" element={<IntegrationsManagement />} />
+                  <Route path="whatsapp-templates" element={<WhatsAppTemplates />} />
                   <Route path="accounts" element={<AccountsManagement />} />
                   <Route path="audit" element={<AuditLogs />} />
                   <Route path="settings" element={<SystemSettings />} />

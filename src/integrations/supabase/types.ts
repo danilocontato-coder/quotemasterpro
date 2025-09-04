@@ -1051,6 +1051,56 @@ export type Database = {
           },
         ]
       }
+      whatsapp_templates: {
+        Row: {
+          active: boolean
+          client_id: string | null
+          created_at: string
+          id: string
+          is_global: boolean
+          message_content: string
+          name: string
+          subject: string | null
+          template_type: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          active?: boolean
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          message_content: string
+          name: string
+          subject?: string | null
+          template_type?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          active?: boolean
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          message_content?: string
+          name?: string
+          subject?: string | null
+          template_type?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
