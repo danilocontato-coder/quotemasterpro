@@ -88,18 +88,21 @@ export const useSupabaseQuotes = () => {
 
   // Create new quote
   const createQuote = async (quoteData: any) => {
-    if (!user || !user.clientId) return null;
+    if (!user || !user.clientId) {
+      console.error('No user or clientId');
+      return null;
+    }
 
     try {
-      console.log('createQuote called with:', quoteData);
+      console.log('=== INICIANDO createQuote ===', quoteData);
       
-      // Generate unique ID (since quotes table uses TEXT id)
+      // Generate unique ID
       const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
       
       // Separate items from quote data
       const { items, ...quoteFields } = quoteData;
       
-      // Get client data for client_name
+      // Get client data
       const { data: clientData } = await supabase
         .from('clients')
         .select('name')
@@ -108,13 +111,20 @@ export const useSupabaseQuotes = () => {
       
       const newQuote = {
         id: quoteId,
-        ...quoteFields,
+        title: quoteFields.title,
+        description: quoteFields.description || '',
+        deadline: quoteFields.deadline,
+        status: 'draft',
+        total: 0,
         client_id: user.clientId,
         client_name: clientData?.name || '',
         created_by: user.id,
+        items_count: items?.length || 0,
+        responses_count: 0,
+        suppliers_sent_count: 0
       };
 
-      console.log('Inserting quote:', newQuote);
+      console.log('=== INSERINDO QUOTE ===', newQuote);
 
       const { data, error } = await supabase
         .from('quotes')
@@ -127,19 +137,19 @@ export const useSupabaseQuotes = () => {
         throw error;
       }
 
-      console.log('Quote inserted successfully:', data);
+      console.log('=== QUOTE INSERIDO COM SUCESSO ===', data);
 
       // Insert quote items if any
       if (items && Array.isArray(items) && items.length > 0) {
-        console.log('Inserting quote items:', items);
+        console.log('=== INSERINDO ITEMS ===', items);
         
         const quoteItems = items.map((item: any) => ({
           quote_id: data.id,
           product_name: item.product_name,
-          quantity: item.quantity || 0,
+          quantity: item.quantity || 1,
           product_id: item.product_id || null,
-          unit_price: item.unit_price || 0,
-          total: item.total || 0
+          unit_price: 0,
+          total: 0
         }));
 
         const { error: itemsError } = await supabase
@@ -148,9 +158,8 @@ export const useSupabaseQuotes = () => {
 
         if (itemsError) {
           console.error('Error inserting quote items:', itemsError);
-          // Don't throw error for items, just log it
         } else {
-          console.log('Quote items inserted successfully');
+          console.log('=== ITEMS INSERIDOS COM SUCESSO ===');
         }
       }
 
@@ -169,24 +178,6 @@ export const useSupabaseQuotes = () => {
           items_count: items?.length || 0 
         }
       });
-
-      toast({
-        title: 'Sucesso',
-        description: 'Cotação criada com sucesso',
-      });
-
-      // Verificar se precisa de aprovação e criar se necessário
-      if (data.status === 'sent' && data.total > 0) {
-        try {
-          await ApprovalService.createApprovalForQuote({
-            quoteId: data.id,
-            clientId: data.client_id,
-            amount: data.total
-          });
-        } catch (error) {
-          console.log('No approval required or error creating approval');
-        }
-      }
 
       return data;
     } catch (err) {

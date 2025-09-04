@@ -191,111 +191,42 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
 
   const handleSubmit = async () => {
     console.log('=== INICIO handleSubmit ===');
-    console.log('Form data:', formData);
-    console.log('Is editing:', !!editingQuote);
-    
-    // Verificar se há pelo menos um item
-    if (formData.items.length === 0) {
-      console.log('ERROR: No items in quote');
-      toast({
-        title: "Erro",
-        description: "Adicione pelo menos um item à cotação",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Verificar campos obrigatórios
-    if (!formData.title.trim()) {
-      console.log('ERROR: No title provided');
-      toast({
-        title: "Erro",
-        description: "Título é obrigatório",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    console.log('=== VALIDACOES OK ===');
-    
-    // Verificar limites antes de criar cotação (apenas para novas cotações)
-    if (!editingQuote && !enforceLimit('CREATE_QUOTE')) {
-      console.log('ERROR: Subscription limit reached');
-      return;
-    }
-    
-    console.log('=== LIMITE OK ===');
-    
-    // Convert form data to quote format
-    const quoteData: any = {
-      title: formData.title,
-      description: formData.description,
-      deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
-      status: editingQuote ? editingQuote.status : 'draft',
-      total: 0, // Sem valor inicial - será preenchido pelos fornecedores
-      items_count: formData.items.length,
-      responses_count: editingQuote?.responses_count || 0,
-      suppliers_sent_count: formData.supplier_ids.length,
-      // Include items for create/update
-      items: formData.items.map(item => ({
-        product_name: item.product_name,
-        quantity: item.quantity || 0,
-        product_id: item.product_id || null,
-        unit_price: 0, // Sem preço inicial - será preenchido pelos fornecedores
-        total: 0 // Sem total inicial - será calculado pelos fornecedores
-      }))
-    };
-    
-    // Adicionar dados específicos para edição
-    if (editingQuote) {
-      quoteData.client_id = editingQuote.client_id;
-      quoteData.client_name = editingQuote.client_name;
-    }
-    
-    // Adicionar fornecedor se selecionado
-    if (formData.supplier_ids.length > 0) {
-      quoteData.supplier_id = formData.supplier_ids[0];
-      quoteData.supplier_name = suppliers.find(s => s.id === formData.supplier_ids[0])?.name;
-    }
-    
-    console.log('=== DADOS PREPARADOS ===');
-    console.log('Quote data to submit:', quoteData);
     
     try {
+      // Convert form data to quote format
+      const quoteData: any = {
+        title: formData.title,
+        description: formData.description,
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
+        status: 'draft',
+        total: 0,
+        items_count: formData.items.length,
+        responses_count: 0,
+        suppliers_sent_count: formData.supplier_ids.length,
+        items: formData.items.map(item => ({
+          product_name: item.product_name,
+          quantity: item.quantity || 1,
+          product_id: item.product_id || null,
+          unit_price: 0,
+          total: 0
+        }))
+      };
+      
       console.log('=== CHAMANDO onQuoteCreate ===');
       await onQuoteCreate(quoteData);
-      console.log('=== onQuoteCreate CONCLUIDO ===');
+      console.log('=== SUCESSO ===');
       
-      // Reset form apenas se não estiver editando
-      if (!editingQuote) {
-        console.log('=== RESETANDO FORM ===');
-        setCurrentStep(1);
-        setFormData({
-          title: "",
-          description: "",
-          deadline: "",
-          items: [],
-          supplier_ids: [],
-          communicationMethods: {
-            email: true,
-            whatsapp: false
-          },
-          supplierScope: 'local'
-        });
-      }
-      
-      console.log('=== HANDLESUBMIT FINALIZADO COM SUCESSO ===');
     } catch (error) {
-      console.error('=== ERRO NO HANDLESUBMIT ===', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao processar cotação",
-        variant: "destructive",
-      });
+      console.error('=== ERRO ===', error);
     }
   };
 
   const canProceed = () => {
+    // Sempre permitir se estivermos na última etapa
+    if (currentStep === steps.length) {
+      return formData.title.trim() !== "" && formData.items.length > 0;
+    }
+    
     switch (currentStep) {
       case 1:
         return formData.title.trim() !== "";
@@ -690,18 +621,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
 
             {currentStep === steps.length ? (
               <Button
-                onClick={() => {
-                  console.log('=== BOTAO CLICADO ===');
-                  console.log('canProceed():', canProceed());
-                  console.log('currentStep:', currentStep);
-                  console.log('formData:', formData);
-                  if (canProceed()) {
-                    console.log('=== CHAMANDO handleSubmit ===');
-                    handleSubmit();
-                  } else {
-                    console.log('=== BOTAO DESABILITADO - não pode prosseguir ===');
-                  }
-                }}
+                onClick={handleSubmit}
                 disabled={!canProceed()}
                 className="flex items-center gap-2"
               >
