@@ -48,7 +48,7 @@ const ApprovalLevels = lazy(() => import('@/pages/ApprovalLevels').then(m => ({ 
 const Users = lazy(() => import('@/pages/Users'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
 const Profiles = lazy(() => import('@/pages/Profiles').then(m => ({ default: m.Profiles })));
-const Permissions = lazy(() => import('@/pages/Permissions').then(m => ({ default: m.Permissions })));
+const Permissions = lazy(() => import('@/pages/Permissions'));
 const Communication = lazy(() => import('@/pages/Communication'));
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
 const AdminSuppliers = lazy(() => import('@/pages/AdminSuppliers'));

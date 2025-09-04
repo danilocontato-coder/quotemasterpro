@@ -327,3 +327,5 @@ export function Permissions() {
     </div>
   );
 }
+
+export default Permissions;
