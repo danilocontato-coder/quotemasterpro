@@ -22,6 +22,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          max_amount_threshold: number | null
           name: string
           order_level: number
           updated_at: string
@@ -33,6 +34,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          max_amount_threshold?: number | null
           name: string
           order_level?: number
           updated_at?: string
@@ -44,6 +46,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          max_amount_threshold?: number | null
           name?: string
           order_level?: number
           updated_at?: string

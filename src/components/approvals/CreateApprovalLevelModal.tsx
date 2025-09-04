@@ -19,13 +19,14 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
   const { createApprovalLevel } = useSupabaseApprovalLevels();
   const { users } = useSupabaseUsers();
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    name: "",
-    active: true,
-    amount_threshold: 0,
-    order_level: 1,
-    approvers: [] as string[]
-  });
+const [formData, setFormData] = useState({
+  name: "",
+  active: true,
+  amount_threshold: 0,
+  max_amount_threshold: 0,
+  order_level: 1,
+  approvers: [] as string[]
+});
 
   const handleUserChange = (userId: string, checked: boolean) => {
     setFormData(prev => ({
@@ -36,15 +37,28 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
     }));
   };
 
-  const handleSubmit = async () => {
-    if (!formData.name || formData.approvers.length === 0) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
-      return;
-    }
+const handleSubmit = async () => {
+  if (!formData.name || formData.approvers.length === 0) {
+    toast({
+      title: "Campos obrigatórios",
+      description: "Preencha todos os campos obrigatórios.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (
+    formData.max_amount_threshold <= 0 ||
+    formData.amount_threshold < 0 ||
+    formData.max_amount_threshold < formData.amount_threshold
+  ) {
+    toast({
+      title: "Valores inválidos",
+      description: "O valor máximo deve ser maior ou igual ao mínimo.",
+      variant: "destructive",
+    });
+    return;
+  }
 
     const success = await createApprovalLevel(formData);
     if (success) {
@@ -52,13 +66,14 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
         title: "Nível criado",
         description: "Novo nível de aprovação criado com sucesso.",
       });
-      setFormData({
-        name: "",
-        active: true,
-        amount_threshold: 0,
-        order_level: 1,
-        approvers: []
-      });
+setFormData({
+  name: "",
+  active: true,
+  amount_threshold: 0,
+  max_amount_threshold: 0,
+  order_level: 1,
+  approvers: []
+});
       onClose();
     }
   };
@@ -115,6 +130,18 @@ export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelM
                 min="1"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="max_amount_threshold">Valor Máximo (R$) *</Label>
+            <Input
+              id="max_amount_threshold"
+              type="number"
+              step="0.01"
+              value={formData.max_amount_threshold}
+              onChange={(e) => setFormData({...formData, max_amount_threshold: Number(e.target.value)})}
+              placeholder="0.00"
+            />
           </div>
 
           <div className="space-y-4">

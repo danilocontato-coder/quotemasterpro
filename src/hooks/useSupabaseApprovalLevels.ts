@@ -12,6 +12,7 @@ export interface ApprovalLevel {
   updated_at: string;
   client_id: string;
   amount_threshold: number;
+  max_amount_threshold: number;
   order_level: number;
 }
 
@@ -73,15 +74,15 @@ export const useSupabaseApprovalLevels = () => {
 
       setApprovalLevels(prev => [...prev, data].sort((a, b) => a.order_level - b.order_level));
       
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        user_id: user.id,
-        action: 'CREATE',
-        entity_type: 'approval_levels',
-        entity_id: data.id,
-        panel_type: 'client',
-        details: { name: data.name, amount_threshold: data.amount_threshold }
-      });
+// Create audit log
+await supabase.from('audit_logs').insert({
+  user_id: user.id,
+  action: 'CREATE',
+  entity_type: 'approval_levels',
+  entity_id: data.id,
+  panel_type: 'client',
+  details: { name: data.name, amount_threshold: data.amount_threshold, max_amount_threshold: data.max_amount_threshold }
+});
 
       toast({
         title: "Nível criado",
@@ -185,11 +186,15 @@ export const useSupabaseApprovalLevels = () => {
     }
   };
 
-  const getApprovalLevelForAmount = (amount: number) => {
-    return approvalLevels
-      .filter(level => level.active && amount >= level.amount_threshold)
-      .sort((a, b) => b.amount_threshold - a.amount_threshold)[0] || null;
-  };
+const getApprovalLevelForAmount = (amount: number) => {
+  return approvalLevels
+    .filter(level => 
+      level.active &&
+      amount >= level.amount_threshold &&
+      (typeof level.max_amount_threshold === 'number' ? amount <= level.max_amount_threshold : true)
+    )
+    .sort((a, b) => a.order_level - b.order_level)[0] || null;
+};
 
   // Real-time subscription
   useEffect(() => {
