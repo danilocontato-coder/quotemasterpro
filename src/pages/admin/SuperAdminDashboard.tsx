@@ -286,3 +286,5 @@ export const SuperAdminDashboard = () => {
     </div>
   );
 };
+
+export default SuperAdminDashboard;

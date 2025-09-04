@@ -500,3 +500,5 @@ export const SystemSettings = () => {
     </div>
   );
 };
+
+export default SystemSettings;

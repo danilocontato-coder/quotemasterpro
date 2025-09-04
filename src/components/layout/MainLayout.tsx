@@ -54,3 +54,5 @@ export function MainLayout() {
     </SidebarProvider>
   );
 }
+
+export default MainLayout;

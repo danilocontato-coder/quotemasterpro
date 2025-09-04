@@ -417,3 +417,5 @@ export const IntegrationsManagement = () => {
     </div>
   );
 };
+
+export default IntegrationsManagement;

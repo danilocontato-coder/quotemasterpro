@@ -572,3 +572,5 @@ export const SuppliersManagement = () => {
     </div>
   );
 };
+
+export default SuppliersManagement;

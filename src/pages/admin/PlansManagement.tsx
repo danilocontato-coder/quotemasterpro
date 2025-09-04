@@ -637,3 +637,5 @@ export const PlansManagement = () => {
     </div>
   );
 };
+
+export default PlansManagement;

@@ -12,9 +12,9 @@ import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
 
 // Lazy loading de layouts principais
-const MainLayout = lazy(() => import('@/components/layout/MainLayout').then(m => ({ default: m.MainLayout })));
+const MainLayout = lazy(() => import('@/components/layout/MainLayout'));
 const SuperAdminLayout = lazy(() => import('@/components/layout/SuperAdminLayout'));
-const SupplierLayout = lazy(() => import('@/components/layout/SupplierLayout').then(m => ({ default: m.SupplierLayout })));
+const SupplierLayout = lazy(() => import('@/components/layout/SupplierLayout'));
 
 // Auth pages com lazy loading
 const Login = lazy(() => import('@/pages/auth/Login'));
@@ -27,15 +27,15 @@ const SupportDashboard = lazy(() => import('@/pages/dashboards/SupportDashboard'
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 
 // Admin pages com lazy loading
-const SuperAdminDashboard = lazy(() => import('@/pages/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
-const AccountsManagement = lazy(() => import('@/pages/admin/AccountsManagement').then(m => ({ default: m.AccountsManagement })));
-const SystemSettings = lazy(() => import('@/pages/admin/SystemSettings').then(m => ({ default: m.SystemSettings })));
-const ClientsManagement = lazy(() => import('@/pages/admin/ClientsManagement').then(m => ({ default: m.ClientsManagement })));
-const SuppliersManagement = lazy(() => import('@/pages/admin/SuppliersManagement').then(m => ({ default: m.SuppliersManagement })));
-const PlansManagement = lazy(() => import('@/pages/admin/PlansManagement').then(m => ({ default: m.PlansManagement })));
-const IntegrationsManagement = lazy(() => import('@/pages/admin/IntegrationsManagement').then(m => ({ default: m.IntegrationsManagement })));
+const SuperAdminDashboard = lazy(() => import('@/pages/admin/SuperAdminDashboard'));
+const AccountsManagement = lazy(() => import('@/pages/admin/AccountsManagement'));
+const SystemSettings = lazy(() => import('@/pages/admin/SystemSettings'));
+const ClientsManagement = lazy(() => import('@/pages/admin/ClientsManagement'));
+const SuppliersManagement = lazy(() => import('@/pages/admin/SuppliersManagement'));
+const PlansManagement = lazy(() => import('@/pages/admin/PlansManagement'));
+const IntegrationsManagement = lazy(() => import('@/pages/admin/IntegrationsManagement'));
 const WhatsAppTemplates = lazy(() => import('@/pages/admin/WhatsAppTemplates'));
-const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs').then(m => ({ default: m.AuditLogs })));
+const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs'));
 
 // Páginas principais com lazy loading
 const Quotes = lazy(() => import('@/pages/Quotes'));

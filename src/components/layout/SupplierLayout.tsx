@@ -53,3 +53,5 @@ export function SupplierLayout() {
     </SidebarProvider>
   );
 }
+
+export default SupplierLayout;

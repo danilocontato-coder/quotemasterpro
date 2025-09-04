@@ -419,3 +419,5 @@ export const AccountsManagement = () => {
     </div>
   );
 };
+
+export default AccountsManagement;
