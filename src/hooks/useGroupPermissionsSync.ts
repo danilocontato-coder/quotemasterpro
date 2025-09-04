@@ -47,13 +47,20 @@ export function useGroupPermissionsSync() {
         return false;
       }
 
-      // Verificar se já tem perfil vinculado
+      // Verificar se já tem perfil vinculado (verificação mais robusta)
       if (group.permission_profile_id) {
         const existingProfile = permissionProfiles.find(p => p.id === group.permission_profile_id);
         if (existingProfile) {
-          toast.error('Este grupo já possui um perfil de permissão');
+          toast.error('Este grupo já possui um perfil de permissão configurado');
           return false;
         }
+      }
+
+      // Verificar se já existe um perfil com o mesmo nome (evitar duplicatas)
+      const duplicateProfile = permissionProfiles.find(p => p.name === group.name && p.client_id === client.id);
+      if (duplicateProfile) {
+        toast.error(`Já existe um perfil de permissão para o grupo "${group.name}"`);
+        return false;
       }
 
       // Definir permissões padrão baseadas no nome do grupo
