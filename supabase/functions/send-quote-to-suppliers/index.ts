@@ -23,6 +23,9 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Expose resolved Evolution config to all branches (including helper function)
+  let resolvedEvolution: any = null;
+
   try {
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
