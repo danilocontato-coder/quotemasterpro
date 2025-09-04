@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, EyeOff, MessageSquare, Mail, CreditCard, Zap, Brain, Truck, Globe } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Eye, EyeOff, MessageSquare, Mail, CreditCard, Zap, Brain, Truck, Globe, Building, Users } from "lucide-react";
 import { Integration } from "@/hooks/useSupabaseIntegrations";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface IntegrationFormModalProps {
@@ -128,6 +130,37 @@ export function IntegrationFormModal({ open, onOpenChange, onSubmit, editingInte
   const [active, setActive] = useState(editingIntegration?.active || false);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Novo estado para escopo da integração
+  const [integrationScope, setIntegrationScope] = useState<'global' | 'specific'>(
+    editingIntegration?.client_id ? 'specific' : 'global'
+  );
+  const [selectedClientId, setSelectedClientId] = useState<string>(
+    editingIntegration?.client_id || ''
+  );
+  const [availableClients, setAvailableClients] = useState<Array<{id: string, name: string}>>([]);
+
+  // Carregar clientes disponíveis
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('id, name')
+          .eq('status', 'active')
+          .order('name');
+        
+        if (error) throw error;
+        setAvailableClients(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar clientes:', error);
+      }
+    };
+
+    if (open) {
+      loadClients();
+    }
+  }, [open]);
 
   const selectedIntegrationType = integrationTypes.find(type => type.id === selectedType);
 
@@ -147,18 +180,28 @@ export function IntegrationFormModal({ open, onOpenChange, onSubmit, editingInte
       return;
     }
 
+    // Validar seleção de cliente se for específico
+    if (integrationScope === 'specific' && !selectedClientId) {
+      toast.error('Selecione um cliente para integração específica');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await onSubmit({
         integration_type: selectedType,
         configuration: formData,
-        active
+        active,
+        client_id: integrationScope === 'specific' ? selectedClientId : null,
+        supplier_id: null // Por enquanto só para clientes
       });
       
       // Reset form
       setSelectedType('');
       setFormData({});
       setActive(false);
+      setIntegrationScope('global');
+      setSelectedClientId('');
       onOpenChange(false);
     } catch (error) {
       console.error('Erro ao salvar integração:', error);
@@ -261,6 +304,62 @@ export function IntegrationFormModal({ open, onOpenChange, onSubmit, editingInte
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Escopo da Integração - Novo Campo */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Escopo da Integração</Label>
+            <RadioGroup
+              value={integrationScope}
+              onValueChange={(value: 'global' | 'specific') => {
+                setIntegrationScope(value);
+                if (value === 'global') setSelectedClientId('');
+              }}
+              className="grid grid-cols-2 gap-4"
+            >
+              <div className="flex items-center space-x-2 border rounded-lg p-4 hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="global" id="global" />
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  <div>
+                    <Label htmlFor="global" className="font-medium cursor-pointer">Global</Label>
+                    <p className="text-xs text-muted-foreground">Para todos os clientes</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 border rounded-lg p-4 hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="specific" id="specific" />
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-green-600" />
+                  <div>
+                    <Label htmlFor="specific" className="font-medium cursor-pointer">Cliente Específico</Label>
+                    <p className="text-xs text-muted-foreground">Para um cliente exclusivo</p>
+                  </div>
+                </div>
+              </div>
+            </RadioGroup>
+
+            {/* Seleção de Cliente */}
+            {integrationScope === 'specific' && (
+              <div className="space-y-2">
+                <Label>Cliente</Label>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableClients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!selectedClientId && (
+                  <p className="text-xs text-red-500">Selecione um cliente para integração específica</p>
+                )}
+              </div>
+            )}
+          </div>
           {/* Seleção do Tipo */}
           {!editingIntegration && (
             <div className="space-y-4">

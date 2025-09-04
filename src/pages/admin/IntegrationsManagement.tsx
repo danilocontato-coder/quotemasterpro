@@ -25,7 +25,9 @@ import {
   CheckCircle,
   AlertCircle,
   Globe,
-  Loader2
+  Loader2,
+  Building,
+  Users
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -78,6 +80,23 @@ const getStatusBadge = (active: boolean) => {
   return active 
     ? <Badge className="bg-green-100 text-green-800 border-green-200">Ativa</Badge>
     : <Badge className="bg-red-100 text-red-800 border-red-200">Inativa</Badge>;
+};
+
+const getScopeBadge = (integration: Integration) => {
+  if (integration.client_id) {
+    return (
+      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+        <Building className="h-3 w-3 mr-1" />
+        Cliente Específico
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+      <Users className="h-3 w-3 mr-1" />
+      Global
+    </Badge>
+  );
 };
 
 export const IntegrationsManagement = () => {
@@ -274,9 +293,10 @@ export const IntegrationsManagement = () => {
                   <TableRow>
                     <TableHead>Integração</TableHead>
                     <TableHead>Tipo</TableHead>
+                    <TableHead>Escopo</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Criado em</TableHead>
-                    <TableHead>Ativo</TableHead>
+                    <TableHead>Criada em</TableHead>
+                    <TableHead>Ativa</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -303,6 +323,10 @@ export const IntegrationsManagement = () => {
                           <Badge variant="outline" className="capitalize">
                             {integration.integration_type.replace('_', ' ')}
                           </Badge>
+                        </TableCell>
+                        
+                        <TableCell>
+                          {getScopeBadge(integration)}
                         </TableCell>
                         
                         <TableCell>
