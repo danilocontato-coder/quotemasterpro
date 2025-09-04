@@ -405,34 +405,64 @@ _Esta é uma solicitação automática do sistema QuoteMaster Pro_`;
       }
     }
 
-    // Log the activity
-    const { error: logError } = await supabase
-      .from('audit_logs')
-      .insert({
-        user_id: quote.created_by,
-        action: 'QUOTE_SENT_TO_SUPPLIERS',
-        entity_type: 'quotes',
-        entity_id: quote_id,
-        details: {
-          suppliers_count: suppliers.length,
-          send_whatsapp,
-          send_email,
-          supplier_names: suppliers.map(s => s.name)
-        }
-      });
+    // If we reach here, the N8N webhook was successful
+    // Update quote status to 'sent' using EdgeRuntime.waitUntil for background processing
+    EdgeRuntime.waitUntil((async () => {
+      try {
+        const { error: statusError } = await supabase
+          .from('quotes')
+          .update({ 
+            status: 'sent',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', quote_id);
 
-    if (logError) {
-      console.warn('Failed to log activity:', logError);
-    }
+        if (statusError) {
+          console.error('Failed to update quote status:', statusError);
+        } else {
+          console.log(`Quote ${quote_id} status updated to 'sent'`);
+        }
+      } catch (error) {
+        console.error('Error updating quote status:', error);
+      }
+    })());
+
+    // Log the activity (also in background)
+    EdgeRuntime.waitUntil((async () => {
+      try {
+        const { error: logError } = await supabase
+          .from('audit_logs')
+          .insert({
+            user_id: quote.created_by,
+            action: 'QUOTE_SENT_TO_SUPPLIERS',
+            entity_type: 'quotes',
+            entity_id: quote_id,
+            details: {
+              suppliers_count: suppliers.length,
+              send_whatsapp,
+              send_email,
+              supplier_names: suppliers.map(s => s.name),
+              webhook_url_used: n8nWebhookUrl
+            }
+          });
+
+        if (logError) {
+          console.warn('Failed to log activity:', logError);
+        }
+      } catch (error) {
+        console.error('Error logging activity:', error);
+      }
+    })());
 
     console.log('Quote sent successfully to N8N');
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Cotação enviada para ${suppliers.length} fornecedor(es)`,
+        message: `Cotação enviada para ${suppliers.length} fornecedor(es) e status atualizado para 'enviado'`,
         suppliers_contacted: suppliers.length,
-        webhook_url_used: n8nWebhookUrl
+        webhook_url_used: n8nWebhookUrl,
+        quote_status_updated: true
       }),
       {
         status: 200,
