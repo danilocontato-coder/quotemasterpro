@@ -13,7 +13,7 @@ import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
 
 // Lazy loading de layouts principais
 const MainLayout = lazy(() => import('@/components/layout/MainLayout').then(m => ({ default: m.MainLayout })));
-const SuperAdminLayout = lazy(() => import('@/components/layout/SuperAdminLayout').then(m => ({ default: m.SuperAdminLayout })));
+const SuperAdminLayout = lazy(() => import('@/components/layout/SuperAdminLayout'));
 const SupplierLayout = lazy(() => import('@/components/layout/SupplierLayout').then(m => ({ default: m.SupplierLayout })));
 
 // Auth pages com lazy loading

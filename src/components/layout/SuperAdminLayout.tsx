@@ -126,3 +126,5 @@ export const SuperAdminLayout = () => {
     </div>
   );
 };
+
+export default SuperAdminLayout;
