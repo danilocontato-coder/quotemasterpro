@@ -152,8 +152,8 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
   };
 
   const handleSubmit = async () => {
-    // Verificar limites antes de criar cotação
-    if (!enforceLimit('CREATE_QUOTE')) {
+    // Verificar limites antes de criar cotação (apenas para novas cotações)
+    if (!editingQuote && !enforceLimit('CREATE_QUOTE')) {
       return;
     }
     
@@ -162,16 +162,19 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       title: formData.title,
       description: formData.description,
       deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
-      status: 'draft',
-      client_id: '', // Will be set by the hook
-      client_name: '', // Will be set by the hook
+      status: editingQuote ? editingQuote.status : 'draft', // Preserve status when editing
+      client_id: editingQuote?.client_id || '', // Will be set by the hook
+      client_name: editingQuote?.client_name || '', // Will be set by the hook
       supplier_id: formData.supplier_ids[0] || undefined,
       supplier_name: formData.supplier_ids[0] ? suppliers.find(s => s.id === formData.supplier_ids[0])?.name : undefined,
-      total: 0,
+      total: editingQuote?.total || 0,
       items_count: formData.items.length,
-      responses_count: 0,
-      suppliers_sent_count: 0
+      responses_count: editingQuote?.responses_count || 0,
+      suppliers_sent_count: editingQuote?.suppliers_sent_count || 0
     };
+    
+    console.log('Submitting quote data:', quoteData);
+    console.log('Is editing:', !!editingQuote);
     
     onQuoteCreate(quoteData);
     

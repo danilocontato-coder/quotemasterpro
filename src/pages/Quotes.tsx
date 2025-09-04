@@ -48,15 +48,25 @@ export default function Quotes() {
   };
 
   const handleQuoteUpdate = async (quoteData: any) => {
+    console.log('handleQuoteUpdate called with:', quoteData);
+    console.log('editingQuote:', editingQuote);
+    
     if (editingQuote) {
       try {
-        await updateQuote(editingQuote.id, quoteData);
+        console.log('Calling updateQuote with ID:', editingQuote.id, 'and data:', quoteData);
+        const result = await updateQuote(editingQuote.id, quoteData);
+        console.log('Update result:', result);
+        
         toast.success(`Cotação atualizada com sucesso!`);
         setEditingQuote(null);
         setIsCreateModalOpen(false);
       } catch (error) {
+        console.error('Error updating quote:', error);
         toast.error("Erro ao atualizar cotação");
       }
+    } else {
+      console.error('No editingQuote found!');
+      toast.error("Erro: cotação para edição não encontrada");
     }
   };
 
