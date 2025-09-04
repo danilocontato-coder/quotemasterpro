@@ -25,19 +25,15 @@ import {
 } from "lucide-react";
 import { useSupabaseUsers } from "@/hooks/useSupabaseUsers";
 import { useGroupPermissionsSync } from "@/hooks/useGroupPermissionsSync";
-import { useSupabasePermissions } from "@/hooks/useSupabasePermissions";
 import { toast } from "sonner";
 
 export function Permissions() {
   const { groups } = useSupabaseUsers();
-  const { permissionProfiles } = useSupabasePermissions();
-  const { updateGroupPermissions, createPermissionProfileForGroup } = useGroupPermissionsSync();
+  const { updateGroupPermissions, createPermissionProfileForGroup, hasPermissionProfile, getGroupPermissionProfile } = useGroupPermissionsSync();
   const [activeGroupId, setActiveGroupId] = useState("");
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
-  const activeProfile = activeGroup?.permission_profile_id 
-    ? permissionProfiles.find(p => p.id === activeGroup.permission_profile_id)
-    : null;
+  const activeProfile = activeGroup ? getGroupPermissionProfile(activeGroup.id) : null;
 
   // Set first group as active when groups load
   useEffect(() => {
