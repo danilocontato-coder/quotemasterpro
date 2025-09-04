@@ -124,13 +124,18 @@ export function useApprovals() {
   const { createRatingPrompt } = useSupplierRatings();
 
   // Function to mark approved quote as delivered (triggers rating)
-  const markAsDelivered = (quoteId: string, supplierName: string) => {
-    createRatingPrompt({
-      type: 'delivery_received',
-      supplierId: '1', // Mock supplier ID - in real app would come from quote
-      supplierName,
-      quoteId,
-    });
+  const markAsDelivered = async (quoteId: string, supplierName: string) => {
+    try {
+      await createRatingPrompt({
+        type: 'delivery_received',
+        supplierId: '1', // Mock supplier ID - in real app would come from quote
+        supplierName,
+        quoteId,
+      });
+    } catch (error) {
+      console.error('Error marking as delivered:', error);
+      throw error;
+    }
   };
 
   const approveRequest = (id: string, approverId: string, comment?: string) => {
