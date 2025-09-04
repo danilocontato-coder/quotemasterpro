@@ -151,8 +151,13 @@ setFormData({
                       handleUserChange(user.id, checked as boolean)
                     }
                   />
-                  <Label htmlFor={user.id} className="text-sm">
-                    {user.name} ({user.role})
+                  <Label htmlFor={user.id} className="text-sm cursor-pointer">
+                    <div>
+                      <div className="font-medium">{user.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {user.role} • {user.email}
+                      </div>
+                    </div>
                   </Label>
                 </div>
               ))}

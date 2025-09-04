@@ -22,17 +22,36 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   id,
   disabled = false
 }) => {
-  const { symbol, parseCurrencyInput } = useCurrency();
+  const { symbol } = useCurrency();
   const [displayValue, setDisplayValue] = useState('');
 
   useEffect(() => {
     // Format the initial value
     if (value > 0) {
-      setDisplayValue(value.toFixed(2).replace('.', ','));
+      setDisplayValue(formatNumberToBR(value));
     } else {
       setDisplayValue('');
     }
   }, [value]);
+
+  const formatNumberToBR = (num: number): string => {
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const parseFromBR = (str: string): number => {
+    if (!str) return 0;
+    // Remove symbols and normalize
+    const cleanStr = str
+      .replace(/[^\d,.]/g, '') // Keep only digits, comma and dot
+      .replace(/\./g, '') // Remove thousands separators (dots)
+      .replace(',', '.'); // Convert decimal comma to dot
+    
+    const num = parseFloat(cleanStr);
+    return isNaN(num) ? 0 : num;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
@@ -40,19 +59,26 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     // Allow only numbers, comma, and dot
     const cleanValue = inputValue.replace(/[^\d,.]/g, '');
     
-    setDisplayValue(cleanValue);
+    // Limit to 2 decimal places after comma
+    const parts = cleanValue.split(',');
+    if (parts[1] && parts[1].length > 2) {
+      parts[1] = parts[1].substring(0, 2);
+    }
+    const formattedValue = parts.join(',');
+    
+    setDisplayValue(formattedValue);
     
     // Parse and notify parent component
-    const numericValue = parseCurrencyInput(cleanValue);
+    const numericValue = parseFromBR(formattedValue);
     onChange(numericValue);
   };
 
   const handleBlur = () => {
     // Format the display value on blur
     if (displayValue) {
-      const numericValue = parseCurrencyInput(displayValue);
+      const numericValue = parseFromBR(displayValue);
       if (numericValue > 0) {
-        setDisplayValue(numericValue.toFixed(2).replace('.', ','));
+        setDisplayValue(formatNumberToBR(numericValue));
       }
     }
   };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import { EditApprovalLevelModal } from "@/components/approvals/EditApprovalLevel
 import { DeleteApprovalLevelModal } from "@/components/approvals/DeleteApprovalLevelModal";
 import { useSupabaseApprovalLevels, type ApprovalLevel } from "@/hooks/useSupabaseApprovalLevels";
 import { useCurrency } from "@/hooks/useCurrency";
+import { supabase } from "@/integrations/supabase/client";
 
 export function ApprovalLevels() {
 const { 
@@ -43,8 +44,38 @@ const [createModalOpen, setCreateModalOpen] = useState(false);
 const [editModalOpen, setEditModalOpen] = useState(false);
 const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 const [selectedLevel, setSelectedLevel] = useState<ApprovalLevel | null>(null);
+const [userNames, setUserNames] = useState<Record<string, string>>({});
 
 const filteredLevels = approvalLevels || [];
+
+// Fetch user names for displaying approvers
+useEffect(() => {
+  const fetchUserNames = async () => {
+    try {
+      const allApproverIds = [...new Set(filteredLevels.flatMap(level => level.approvers))];
+      
+      if (allApproverIds.length === 0) return;
+      
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', allApproverIds);
+        
+      if (error) throw error;
+      
+      const namesMap = users?.reduce((acc, user) => {
+        acc[user.id] = user.name;
+        return acc;
+      }, {} as Record<string, string>) || {};
+      
+      setUserNames(namesMap);
+    } catch (error) {
+      console.error('Error fetching user names:', error);
+    }
+  };
+  
+  fetchUserNames();
+}, [filteredLevels]);
 
   const handleEdit = (level: ApprovalLevel) => {
     setSelectedLevel(level);
@@ -208,9 +239,9 @@ const stats = {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {level.approvers.slice(0, 2).map((approver, idx) => (
+                          {level.approvers.slice(0, 2).map((approverId, idx) => (
                             <Badge key={idx} variant="secondary" className="text-xs">
-                              {approver}
+                              {userNames[approverId] || approverId}
                             </Badge>
                           ))}
                           {level.approvers.length > 2 && (
