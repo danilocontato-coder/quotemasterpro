@@ -506,17 +506,11 @@ export const SuppliersManagement = () => {
           setShowCreateModal(false);
           setEditingSupplier(null);
         }}
-        onCreateSupplier={async (supplierData) => {
+        onCreateSupplier={async (supplierData, credentials) => {
           try {
             if (editingSupplier) {
               await updateSupplier(editingSupplier.id, supplierData);
             } else {
-              const credentials = {
-                username: '',
-                password: '',
-                generateCredentials: false,
-                forcePasswordChange: false
-              };
               await createSupplierWithUser(supplierData, credentials);
             }
             setShowCreateModal(false);

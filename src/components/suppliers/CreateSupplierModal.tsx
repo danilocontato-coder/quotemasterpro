@@ -5,24 +5,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { UserPlus, Shield, MapPin, User, Lock, Eye, EyeOff, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Supplier } from "@/hooks/useSupabaseSuppliers";
 import { brazilStates } from '@/data/brazilStates';
 
 interface CreateSupplierModalProps {
   open: boolean;
   onClose: () => void;
-  onCreateSupplier: (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => Promise<any>;
+  onCreateSupplier: (supplierData: any, credentials: any) => Promise<any>;
   editingSupplier?: any;
 }
 
 export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSupplier }: CreateSupplierModalProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
-  // Form state simplificado
-  const [formData, setFormData] = useState({
+  // Supplier data state
+  const [supplierData, setSupplierData] = useState({
     name: '',
     cnpj: '',
     email: '',
@@ -38,8 +41,12 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
       state: '',
       zipCode: ''
     },
-    business_info: {},
-    specialties: [] as string[],
+    business_info: {
+      description: '',
+      specialties: [] as string[],
+      workingHours: '',
+      servicesOffered: ''
+    },
     type: 'local' as 'local' | 'certified',
     region: '',
     state: '',
@@ -53,12 +60,21 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
     certification_expires_at: null
   });
 
+  // Credentials state
+  const [credentials, setCredentials] = useState({
+    username: '',
+    password: '',
+    generateCredentials: true,
+    forcePasswordChange: true
+  });
+
   const [selectedState, setSelectedState] = useState('');
   const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [specialtiesInput, setSpecialtiesInput] = useState('');
 
-  // Reset form - FUNÇÃO SIMPLES
+  // Reset form
   const resetForm = () => {
-    setFormData({
+    setSupplierData({
       name: '',
       cnpj: '',
       email: '',
@@ -74,8 +90,12 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
         state: '',
         zipCode: ''
       },
-      business_info: {},
-      specialties: [],
+      business_info: {
+        description: '',
+        specialties: [],
+        workingHours: '',
+        servicesOffered: ''
+      },
       type: 'local',
       region: '',
       state: '',
@@ -88,18 +108,27 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
       certification_date: null,
       certification_expires_at: null
     });
+    
+    setCredentials({
+      username: '',
+      password: '',
+      generateCredentials: true,
+      forcePasswordChange: true
+    });
+    
     setSelectedState('');
     setAvailableCities([]);
+    setSpecialtiesInput('');
   };
 
-  // Load editing data - SIMPLES e CONTROLADO
+  // Load editing data
   useEffect(() => {
     if (!open) return;
     
     if (editingSupplier) {
       console.log('📝 Loading edit data for:', editingSupplier.name);
       
-      setFormData({
+      setSupplierData({
         name: editingSupplier.name || '',
         cnpj: editingSupplier.cnpj || '',
         email: editingSupplier.email || '',
@@ -115,8 +144,12 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
           state: '',
           zipCode: ''
         },
-        business_info: editingSupplier.business_info || {},
-        specialties: editingSupplier.specialties || [],
+        business_info: editingSupplier.business_info || {
+          description: '',
+          specialties: [],
+          workingHours: '',
+          servicesOffered: ''
+        },
         type: editingSupplier.type || 'local',
         region: editingSupplier.region || '',
         state: editingSupplier.state || '',
@@ -129,6 +162,11 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
         certification_date: editingSupplier.certification_date || null,
         certification_expires_at: editingSupplier.certification_expires_at || null
       });
+      
+      // Set specialties input
+      if (editingSupplier.business_info?.specialties) {
+        setSpecialtiesInput(editingSupplier.business_info.specialties.join(', '));
+      }
       
       // Set state for form
       if (editingSupplier.state) {
@@ -149,11 +187,15 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
     if (state) {
       setSelectedState(stateCode);
       setAvailableCities(state.cities);
-      setFormData(prev => ({
+      setSupplierData(prev => ({
         ...prev,
         state: state.name,
         region: getRegionFromState(stateCode),
-        city: ''
+        city: '',
+        address: {
+          ...prev.address,
+          state: state.name
+        }
       }));
     }
   };
@@ -169,11 +211,45 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
     return regions[stateCode] || '';
   };
 
-  // Handle submit - SIMPLES e PROTEGIDO
+  // Handle specialties change
+  const handleSpecialtiesChange = (value: string) => {
+    setSpecialtiesInput(value);
+    const specialties = value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    setSupplierData(prev => ({
+      ...prev,
+      business_info: {
+        ...prev.business_info,
+        specialties
+      }
+    }));
+  };
+
+  // Handle type change
+  const handleTypeChange = (type: 'local' | 'certified') => {
+    setSupplierData(prev => ({
+      ...prev,
+      type,
+      is_certified: type === 'certified',
+      visibility_scope: type === 'certified' ? 'global' : 'region',
+      client_id: type === 'certified' ? null : prev.client_id
+    }));
+  };
+
+  // Generate username from email
+  useEffect(() => {
+    if (supplierData.email && !editingSupplier) {
+      const username = supplierData.email.split('@')[0];
+      setCredentials(prev => ({
+        ...prev,
+        username
+      }));
+    }
+  }, [supplierData.email, editingSupplier]);
+
+  // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // PREVENT MULTIPLE CALLS
     if (isLoading) {
       console.log('⚠️ Submit already in progress, ignoring...');
       return;
@@ -183,8 +259,8 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
     console.log('🔄 Submit started');
 
     try {
-      // Validate
-      if (!formData.name || !formData.email || !formData.cnpj) {
+      // Validate required fields
+      if (!supplierData.name || !supplierData.email || !supplierData.cnpj) {
         toast({
           title: "Campos obrigatórios",
           description: "Nome, email e CNPJ são obrigatórios.",
@@ -193,7 +269,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
         return;
       }
 
-      if (!formData.whatsapp) {
+      if (!supplierData.whatsapp) {
         toast({
           title: "WhatsApp obrigatório",
           description: "O WhatsApp é necessário para envio de cotações.",
@@ -202,13 +278,32 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
         return;
       }
 
+      if (!supplierData.city || !supplierData.state) {
+        toast({
+          title: "Localização obrigatória",
+          description: "Estado e cidade são obrigatórios.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate credentials for new suppliers
+      if (!editingSupplier && !credentials.generateCredentials && (!credentials.username || !credentials.password)) {
+        toast({
+          title: "Credenciais obrigatórias",
+          description: "Username e senha são obrigatórios quando não gerar automaticamente.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       console.log('📤 Calling onCreateSupplier...');
-      await onCreateSupplier(formData);
+      await onCreateSupplier(supplierData, credentials);
       console.log('✅ onCreateSupplier completed');
       
       toast({
         title: editingSupplier ? "Fornecedor atualizado" : "Fornecedor criado",
-        description: `${formData.name} foi ${editingSupplier ? 'atualizado' : 'criado'} com sucesso.`
+        description: `${supplierData.name} foi ${editingSupplier ? 'atualizado' : 'criado'} com sucesso.`
       });
 
       resetForm();
@@ -228,7 +323,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
@@ -236,18 +331,22 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Informações Básicas */}
           <Card>
             <CardHeader>
-              <CardTitle>Informações Básicas</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Informações Básicas
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Nome *</Label>
+                  <Label>Nome da Empresa *</Label>
                   <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    value={supplierData.name}
+                    onChange={(e) => setSupplierData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Nome da empresa"
                     required
                   />
@@ -256,8 +355,8 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                 <div>
                   <Label>CNPJ *</Label>
                   <Input
-                    value={formData.cnpj}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cnpj: e.target.value }))}
+                    value={supplierData.cnpj}
+                    onChange={(e) => setSupplierData(prev => ({ ...prev, cnpj: e.target.value }))}
                     placeholder="00.000.000/0000-00"
                     required
                   />
@@ -267,28 +366,110 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                   <Label>Email *</Label>
                   <Input
                     type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    value={supplierData.email}
+                    onChange={(e) => setSupplierData(prev => ({ ...prev, email: e.target.value }))}
                     placeholder="contato@empresa.com"
                     required
                   />
                 </div>
 
                 <div>
+                  <Label>Telefone</Label>
+                  <Input
+                    value={supplierData.phone}
+                    onChange={(e) => setSupplierData(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="(11) 3000-0000"
+                  />
+                </div>
+
+                <div>
                   <Label>WhatsApp *</Label>
                   <Input
-                    value={formData.whatsapp}
-                    onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                    value={supplierData.whatsapp}
+                    onChange={(e) => setSupplierData(prev => ({ ...prev, whatsapp: e.target.value }))}
                     placeholder="+55 11 99999-0000"
                     required
                   />
                 </div>
 
                 <div>
+                  <Label>Website</Label>
+                  <Input
+                    value={supplierData.website}
+                    onChange={(e) => setSupplierData(prev => ({ ...prev, website: e.target.value }))}
+                    placeholder="https://empresa.com.br"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tipo de Fornecedor */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Tipo de Fornecedor
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div 
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                    supplierData.type === 'local' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                  onClick={() => handleTypeChange('local')}
+                >
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <h3 className="font-medium">Fornecedor Local</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Visível apenas para clientes da mesma região
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div 
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                    supplierData.type === 'certified' 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                  onClick={() => handleTypeChange('certified')}
+                >
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-5 w-5 text-purple-600" />
+                    <div>
+                      <h3 className="font-medium">Fornecedor Certificado</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Visível globalmente na plataforma
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Localização */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Localização
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <Label>Estado *</Label>
                   <Select value={selectedState} onValueChange={handleStateChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder="Selecione o estado" />
                     </SelectTrigger>
                     <SelectContent>
                       {brazilStates.map((state) => (
@@ -303,8 +484,12 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                 <div>
                   <Label>Cidade *</Label>
                   <Select
-                    value={formData.city}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, city: value }))}
+                    value={supplierData.city}
+                    onValueChange={(value) => setSupplierData(prev => ({ 
+                      ...prev, 
+                      city: value,
+                      address: { ...prev.address, city: value }
+                    }))}
                     disabled={!selectedState}
                   >
                     <SelectTrigger>
@@ -319,21 +504,200 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-                  Cancelar
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isLoading || !formData.name || !formData.email || !formData.cnpj || !formData.whatsapp}
-                >
-                  {isLoading ? 'Salvando...' : (editingSupplier ? 'Atualizar' : 'Criar')}
-                </Button>
+                <div>
+                  <Label>Endereço</Label>
+                  <Input
+                    value={supplierData.address.street}
+                    onChange={(e) => setSupplierData(prev => ({ 
+                      ...prev, 
+                      address: { ...prev.address, street: e.target.value }
+                    }))}
+                    placeholder="Rua, Avenida..."
+                  />
+                </div>
+
+                <div>
+                  <Label>Número</Label>
+                  <Input
+                    value={supplierData.address.number}
+                    onChange={(e) => setSupplierData(prev => ({ 
+                      ...prev, 
+                      address: { ...prev.address, number: e.target.value }
+                    }))}
+                    placeholder="123"
+                  />
+                </div>
+
+                <div>
+                  <Label>Bairro</Label>
+                  <Input
+                    value={supplierData.address.neighborhood}
+                    onChange={(e) => setSupplierData(prev => ({ 
+                      ...prev, 
+                      address: { ...prev.address, neighborhood: e.target.value }
+                    }))}
+                    placeholder="Bairro"
+                  />
+                </div>
+
+                <div>
+                  <Label>CEP</Label>
+                  <Input
+                    value={supplierData.address.zipCode}
+                    onChange={(e) => setSupplierData(prev => ({ 
+                      ...prev, 
+                      address: { ...prev.address, zipCode: e.target.value }
+                    }))}
+                    placeholder="00000-000"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Informações do Negócio */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações do Negócio</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Especialidades (separadas por vírgula)</Label>
+                <Input
+                  value={specialtiesInput}
+                  onChange={(e) => handleSpecialtiesChange(e.target.value)}
+                  placeholder="Ex: Materiais de construção, Elétricos, Hidráulicos"
+                />
+              </div>
+
+              <div>
+                <Label>Descrição da Empresa</Label>
+                <Textarea
+                  value={supplierData.business_info.description}
+                  onChange={(e) => setSupplierData(prev => ({ 
+                    ...prev, 
+                    business_info: { ...prev.business_info, description: e.target.value }
+                  }))}
+                  placeholder="Descreva os serviços e produtos oferecidos..."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label>Horário de Funcionamento</Label>
+                <Input
+                  value={supplierData.business_info.workingHours}
+                  onChange={(e) => setSupplierData(prev => ({ 
+                    ...prev, 
+                    business_info: { ...prev.business_info, workingHours: e.target.value }
+                  }))}
+                  placeholder="Ex: Segunda a Sexta, 8h às 18h"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Credenciais de Acesso (apenas para novos fornecedores) */}
+          {!editingSupplier && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  Credenciais de Acesso
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="generateCredentials"
+                    checked={credentials.generateCredentials}
+                    onCheckedChange={(checked) => setCredentials(prev => ({ 
+                      ...prev, 
+                      generateCredentials: checked 
+                    }))}
+                  />
+                  <Label htmlFor="generateCredentials">Gerar credenciais automaticamente</Label>
+                </div>
+
+                {!credentials.generateCredentials && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Username *</Label>
+                      <Input
+                        value={credentials.username}
+                        onChange={(e) => setCredentials(prev => ({ 
+                          ...prev, 
+                          username: e.target.value 
+                        }))}
+                        placeholder="nome.usuario"
+                        required={!credentials.generateCredentials}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Senha *</Label>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          value={credentials.password}
+                          onChange={(e) => setCredentials(prev => ({ 
+                            ...prev, 
+                            password: e.target.value 
+                          }))}
+                          placeholder="********"
+                          required={!credentials.generateCredentials}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="forcePasswordChange"
+                    checked={credentials.forcePasswordChange}
+                    onCheckedChange={(checked) => setCredentials(prev => ({ 
+                      ...prev, 
+                      forcePasswordChange: checked 
+                    }))}
+                  />
+                  <Label htmlFor="forcePasswordChange">Forçar alteração de senha no primeiro login</Label>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose} 
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isLoading || !supplierData.name || !supplierData.email || !supplierData.cnpj || !supplierData.whatsapp}
+            >
+              {isLoading ? 'Salvando...' : (editingSupplier ? 'Atualizar Fornecedor' : 'Criar Fornecedor')}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
