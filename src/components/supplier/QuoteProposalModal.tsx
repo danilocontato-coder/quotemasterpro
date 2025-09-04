@@ -43,7 +43,8 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
   const totalValue = proposalItems.reduce((sum, item) => sum + item.total, 0);
   const hasProposal = !!quote.proposal;
   const canEdit = !hasProposal || quote.proposal?.status === 'draft';
-  const canSend = hasProposal && quote.proposal?.status === 'draft' && proposalItems.length > 0;
+  const canSend = (hasProposal && quote.proposal?.status === 'draft' && proposalItems.length > 0) || 
+                  (!hasProposal && proposalItems.length > 0 && totalValue > 0);
 
   const handleItemChange = (index: number, field: keyof ProposalItem, value: string | number) => {
     if (!canEdit) return;
@@ -119,10 +120,28 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
   };
 
   const handleSend = async () => {
-    if (!quote?.proposal) return;
-
     try {
-      await sendProposal(quote.proposal.id);
+      let proposalId = quote?.proposal?.id;
+      
+      // If no proposal exists, create one first
+      if (!proposalId) {
+        const proposalData = {
+          items: proposalItems,
+          totalValue,
+          deliveryTime,
+          paymentTerms,
+          observations,
+          attachments: [],
+        };
+        
+        const newProposal = await createProposal(quote!.id, proposalData);
+        if (!newProposal) return;
+        proposalId = newProposal.id;
+      }
+      
+      // Send the proposal
+      await sendProposal(proposalId);
+      
       toast({
         title: "Proposta enviada",
         description: "Sua proposta foi enviada para o cliente.",
@@ -417,9 +436,9 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {quote.attachments && quote.attachments.length > 0 ? (
+                {quote.proposal?.attachments && quote.proposal.attachments.length > 0 ? (
                   <div className="space-y-2">
-                    {quote.attachments.map((attachment) => (
+                    {quote.proposal.attachments.map((attachment) => (
                       <div
                         key={attachment.id}
                         className="flex items-center justify-between p-3 border rounded-lg"

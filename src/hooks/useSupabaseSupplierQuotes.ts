@@ -494,6 +494,9 @@ export const useSupabaseSupplierQuotes = () => {
 
       if (error) throw error;
 
+      // Get quote info for notification
+      const quote = supplierQuotes.find(q => q.proposal?.id === proposalId);
+      
       // Update local state
       setSupplierQuotes(prev => prev.map(quote => 
         quote.proposal?.id === proposalId
@@ -509,6 +512,23 @@ export const useSupabaseSupplierQuotes = () => {
             }
           : quote
       ));
+
+      // Notify client via WhatsApp
+      if (quote) {
+        try {
+          await supabase.functions.invoke('notify-client-proposal', {
+            body: {
+              quoteId: quote.id,
+              supplierId: user.supplierId,
+              supplierName: user.name || 'Fornecedor',
+              totalValue: data.total_amount
+            }
+          });
+        } catch (notifyError) {
+          console.warn('Failed to notify client:', notifyError);
+          // Don't fail the whole operation if notification fails
+        }
+      }
 
       // Create audit log
       await supabase.from('audit_logs').insert({
@@ -567,12 +587,15 @@ export const useSupabaseSupplierQuotes = () => {
         uploadedAt: new Date().toISOString(),
       };
 
-      // Update local state
+      // Update local state - add to proposal attachments
       setSupplierQuotes(prev => prev.map(quote => 
         quote.id === quoteId
           ? {
               ...quote,
-              attachments: [...(quote.attachments || []), attachment]
+              proposal: quote.proposal ? {
+                ...quote.proposal,
+                attachments: [...quote.proposal.attachments, attachment]
+              } : undefined
             }
           : quote
       ));
@@ -616,12 +639,15 @@ export const useSupabaseSupplierQuotes = () => {
         }
       }
 
-      // Update local state
+      // Update local state - remove from proposal attachments
       setSupplierQuotes(prev => prev.map(quote => 
         quote.id === quoteId
           ? {
               ...quote,
-              attachments: quote.attachments?.filter(att => att.id !== attachmentId) || []
+              proposal: quote.proposal ? {
+                ...quote.proposal,
+                attachments: quote.proposal.attachments.filter(att => att.id !== attachmentId)
+              } : undefined
             }
           : quote
       ));
