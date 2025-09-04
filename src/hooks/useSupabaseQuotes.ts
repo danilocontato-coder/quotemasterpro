@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ApprovalService } from '@/services/ApprovalService';
+import { getStatusText } from '@/utils/statusUtils';
 
 export interface Quote {
   id: string;
@@ -190,6 +191,92 @@ export const useSupabaseQuotes = () => {
       });
       return null;
     }
+  };
+
+  // Update quote status
+  const updateQuoteStatus = async (quoteId: string, newStatus: string, additionalData?: any) => {
+    try {
+      console.log(`Updating quote ${quoteId} status to ${newStatus}`);
+      
+      const updateData = {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+        ...additionalData
+      };
+
+      const { data, error } = await supabase
+        .from('quotes')
+        .update(updateData)
+        .eq('id', quoteId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating quote status:', error);
+        throw error;
+      }
+
+      // Update local state
+      setQuotes(prev => 
+        prev.map(quote => 
+          quote.id === quoteId 
+            ? { ...quote, ...data }
+            : quote
+        )
+      );
+
+      // Create audit log
+      if (user) {
+        await supabase.from('audit_logs').insert({
+          user_id: user.id,
+          action: 'STATUS_UPDATE',
+          entity_type: 'quotes',
+          entity_id: quoteId,
+          panel_type: user.role === 'admin' ? 'admin' : 'client',
+          details: { 
+            previous_status: quotes.find(q => q.id === quoteId)?.status,
+            new_status: newStatus,
+            ...additionalData 
+          }
+        });
+      }
+
+      toast({
+        title: 'Sucesso',
+        description: `Status da cotação atualizado para ${getStatusText(newStatus)}`,
+      });
+
+      return data;
+    } catch (err) {
+      console.error('Error updating quote status:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar status da cotação';
+      toast({
+        title: 'Erro',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
+  // Mark quote as sent to suppliers
+  const markQuoteAsSent = async (quoteId: string, suppliersCount: number) => {
+    return updateQuoteStatus(quoteId, 'sent', {
+      suppliers_sent_count: suppliersCount
+    });
+  };
+
+  // Mark quote as under review (when responses are received)
+  const markQuoteAsUnderReview = async (quoteId: string) => {
+    const quote = quotes.find(q => q.id === quoteId);
+    if (quote && quote.status === 'sent') {
+      return updateQuoteStatus(quoteId, 'under_review');
+    }
+  };
+
+  // Mark quote as received/completed
+  const markQuoteAsReceived = async (quoteId: string) => {
+    return updateQuoteStatus(quoteId, 'received');
   };
 
   // Update quote
@@ -492,6 +579,10 @@ export const useSupabaseQuotes = () => {
     updateQuote,
     deleteQuote,
     getQuoteById,
+    updateQuoteStatus,
+    markQuoteAsSent,
+    markQuoteAsUnderReview,
+    markQuoteAsReceived,
     refetch: fetchQuotes,
   };
 };

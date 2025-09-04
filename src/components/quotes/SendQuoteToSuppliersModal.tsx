@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Send, Mail, MessageSquare, Users, X } from "lucide-react";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
+import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -28,6 +29,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [evolutionConfigured, setEvolutionConfigured] = useState(false);
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
+  const { markQuoteAsSent } = useSupabaseQuotes();
 
   // Filter active suppliers
   const activeSuppliers = suppliers.filter(s => s.status === 'active');
@@ -173,6 +175,10 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         console.log('Webhook usado:', data.webhook_url_used);
         const method = data?.send_method ? `\nMétodo: ${data.send_method}` : '';
         toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : '') + method);
+        
+        // Atualizar status da cotação para 'sent'
+        await markQuoteAsSent(quote.id, selectedSuppliers.length);
+        
         setOpen(false);
       } else {
         const evo = data?.resolved_evolution;

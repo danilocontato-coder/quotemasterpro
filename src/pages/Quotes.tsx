@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +34,7 @@ export default function Quotes() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6; // 6 cotações por página para visualização confortável
   
-  const { quotes, createQuote, updateQuote, deleteQuote, isLoading } = useSupabaseQuotes();
+  const { quotes, createQuote, updateQuote, deleteQuote, isLoading, markQuoteAsReceived } = useSupabaseQuotes();
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
   const handleQuoteCreate = async (quoteData: any) => {
@@ -111,6 +111,12 @@ export default function Quotes() {
   const handleViewClick = (quote: any) => {
     setViewingQuote(quote);
     setIsDetailModalOpen(true);
+  };
+
+  const handleMarkAsReceived = async (quote: any) => {
+    if (quote.status === 'approved') {
+      await markQuoteAsReceived(quote.id);
+    }
   };
 
   const filteredQuotes = quotes.filter(quote => {
@@ -444,7 +450,20 @@ export default function Quotes() {
                             quoteTitle={quote.title}
                             disabled={false}
                           />
-                        )}
+                         )}
+                         
+                         {/* Mark as Received button - only for approved quotes */}
+                         {quote.status === 'approved' && (
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-green-600 hover:text-green-700"
+                             title="Marcar como Recebido"
+                             onClick={() => handleMarkAsReceived(quote)}
+                           >
+                             <CheckCircle className="h-4 w-4" />
+                           </Button>
+                         )}
                         
                         <Button 
                           variant="ghost" 
