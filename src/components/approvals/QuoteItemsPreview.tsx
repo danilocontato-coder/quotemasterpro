@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface QuoteItem {
   id: string;
@@ -18,6 +19,7 @@ interface QuoteItemsPreviewProps {
 }
 
 export function QuoteItemsPreview({ quoteId }: QuoteItemsPreviewProps) {
+  const { formatCurrency } = useCurrency();
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,12 +47,6 @@ export function QuoteItemsPreview({ quoteId }: QuoteItemsPreviewProps) {
     fetchQuoteItems();
   }, [quoteId]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value || 0);
-  };
 
   if (isLoading) {
     return (

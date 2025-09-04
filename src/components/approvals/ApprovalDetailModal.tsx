@@ -11,6 +11,8 @@ import { useSupabaseApprovals, type Approval } from "@/hooks/useSupabaseApproval
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useToast } from "@/hooks/use-toast";
 import { QuoteItemsPreview } from "./QuoteItemsPreview";
+import { useCurrency } from "@/hooks/useCurrency";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ApprovalDetailModalProps {
   open: boolean;
@@ -20,22 +22,49 @@ interface ApprovalDetailModalProps {
 
 export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailModalProps) {
   const { approveRequest, rejectRequest } = useSupabaseApprovals();
+  const { formatCurrency } = useCurrency();
   const { toast } = useToast();
   const { quotes } = useSupabaseQuotes();
   const [quoteData, setQuoteData] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [rejectComment, setRejectComment] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [approverName, setApproverName] = useState<string>("");
 
-  // Buscar dados da cotação quando o modal abrir
+  // Fetch approver name
   useEffect(() => {
-    if (open && approval?.quote_id) {
-      setIsLoadingQuote(true);
-      const quote = quotes.find(q => q.id === approval.quote_id);
-      setQuoteData(quote);
-      setIsLoadingQuote(false);
+    const fetchApproverName = async () => {
+      if (approval?.approver_id) {
+        try {
+          const { data: user } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', approval.approver_id)
+            .maybeSingle();
+          
+          if (user) {
+            setApproverName(user.name);
+          }
+        } catch (error) {
+          console.error('Error fetching approver name:', error);
+        }
+      }
+    };
+
+    if (approval?.approver_id) {
+      fetchApproverName();
     }
-  }, [open, approval?.quote_id, quotes]);
+  }, [approval?.approver_id]);
+
+// Buscar dados da cotação quando o modal abrir
+useEffect(() => {
+  if (open && approval?.quote_id) {
+    setIsLoadingQuote(true);
+    const quote = quotes.find(q => q.id === approval.quote_id);
+    setQuoteData(quote);
+    setIsLoadingQuote(false);
+  }
+}, [open, approval?.quote_id, quotes]);
 
   const handleApprove = async () => {
     const success = await approveRequest(approval.id, "Aprovado via interface");
@@ -67,21 +96,14 @@ export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailM
     window.open(`/quotes?id=${approval.quote_id}`, '_blank');
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value || 0);
+const getStatusBadgeColor = (status: string) => {
+  const colors = {
+    pending: "bg-yellow-100 text-yellow-800",
+    approved: "bg-green-100 text-green-800",
+    rejected: "bg-red-100 text-red-800"
   };
-
-  const getStatusBadgeColor = (status: string) => {
-    const colors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      approved: "bg-green-100 text-green-800",
-      rejected: "bg-red-100 text-red-800"
-    };
-    return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
-  };
+  return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
+};
 
   if (!approval) {
     return null;
@@ -118,6 +140,12 @@ export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailM
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">Aprovado em: {new Date(approval.approved_at).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                )}
+                {approverName && (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Aprovador: {approverName}</span>
                   </div>
                 )}
                 {approval.comments && (

@@ -27,34 +27,84 @@ import { ApprovalDetailModal } from "@/components/approvals/ApprovalDetailModal"
 import { QuoteMarkAsReceivedButton } from "@/components/quotes/QuoteMarkAsReceivedButton";
 import { useSupabaseApprovals, type Approval } from "@/hooks/useSupabaseApprovals";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCurrency } from "@/hooks/useCurrency";
+import { supabase } from "@/integrations/supabase/client";
 
 export function Approvals() {
   const { approvals, isLoading, refetch } = useSupabaseApprovals();
+  const { formatCurrency } = useCurrency();
   const [searchTerm, setSearchTerm] = useState("");
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
+  const [quotesData, setQuotesData] = useState<Record<string, any>>({});
+  const [approverNames, setApproverNames] = useState<Record<string, string>>({});
 
   // Load approvals on component mount
   useEffect(() => {
     refetch();
   }, []);
 
+  // Fetch quotes data and approver names
+  useEffect(() => {
+    const fetchAdditionalData = async () => {
+      if (approvals.length === 0) return;
+
+      // Fetch quotes data
+      const quoteIds = [...new Set(approvals.map(a => a.quote_id))];
+      if (quoteIds.length > 0) {
+        try {
+          const { data: quotes } = await supabase
+            .from('quotes')
+            .select('id, title, total, client_name')
+            .in('id', quoteIds);
+          
+          const quotesMap = quotes?.reduce((acc, quote) => {
+            acc[quote.id] = quote;
+            return acc;
+          }, {} as Record<string, any>) || {};
+          
+          setQuotesData(quotesMap);
+        } catch (error) {
+          console.error('Error fetching quotes:', error);
+        }
+      }
+
+      // Fetch approver names
+      const approverIds = [...new Set(approvals.map(a => a.approver_id).filter(Boolean))];
+      if (approverIds.length > 0) {
+        try {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, name')
+            .in('id', approverIds);
+          
+          const namesMap = users?.reduce((acc, user) => {
+            acc[user.id] = user.name;
+            return acc;
+          }, {} as Record<string, string>) || {};
+          
+          setApproverNames(namesMap);
+        } catch (error) {
+          console.error('Error fetching approver names:', error);
+        }
+      }
+    };
+
+    fetchAdditionalData();
+  }, [approvals]);
+
   const filteredApprovals = approvals.filter(approval => {
-    const matchesSearch = approval.quote_id.toLowerCase().includes(searchTerm.toLowerCase());
+    const quote = quotesData[approval.quote_id];
+    const matchesSearch = approval.quote_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quote?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quote?.client_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (activeTab === "pending") return matchesSearch && approval.status === "pending";
     if (activeTab === "approved") return matchesSearch && approval.status === "approved";
     if (activeTab === "rejected") return matchesSearch && approval.status === "rejected";
     return matchesSearch;
   });
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
 
   const getStatusColor = (status: string) => {
     const colors = {
@@ -72,24 +122,6 @@ export function Approvals() {
       rejected: "Rejeitado"
     };
     return statusText[status as keyof typeof statusText] || status;
-  };
-
-  const getPriorityColor = (priority: string) => {
-    const colors = {
-      high: "bg-destructive text-destructive-foreground",
-      medium: "bg-warning text-warning-foreground",
-      low: "bg-success text-white"
-    };
-    return colors[priority as keyof typeof colors] || "bg-secondary";
-  };
-
-  const getPriorityText = (priority: string) => {
-    const priorityText = {
-      high: "Alta",
-      medium: "Média", 
-      low: "Baixa"
-    };
-    return priorityText[priority as keyof typeof priorityText] || priority;
   };
 
   const handleViewDetails = (approval: Approval) => {
@@ -170,7 +202,7 @@ export function Approvals() {
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cotação ou cliente..."
+                placeholder="Buscar por cotação, título ou cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
@@ -202,58 +234,101 @@ export function Approvals() {
                       <TableHead>Cotação</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Valor</TableHead>
-                      <TableHead>Prioridade</TableHead>
+                      <TableHead>Aprovador</TableHead>
                       <TableHead>Solicitado em</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredApprovals.map((approval) => (
-                      <TableRow key={approval.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">#{approval.quote_id}</div>
-                            <div className="text-sm text-muted-foreground">
-                              Cotação ID: {approval.id}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>Cliente</TableCell>
-                        <TableCell>R$ 0,00</TableCell>
-                        <TableCell>
-                          <Badge className="bg-warning text-warning-foreground">
-                            Média
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(approval.created_at).toLocaleDateString('pt-BR')}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(approval.status)}>
-                            {getStatusText(approval.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleViewDetails(approval)}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Detalhes
-                            </Button>
-                            {approval.status === 'approved' && (
-                              <Button variant="outline" size="sm">
-                                <Eye className="h-4 w-4 mr-2" />
-                                Ver Cotação
-                              </Button>
-                            )}
+                    {isLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : filteredApprovals.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <div className="flex flex-col items-center gap-2">
+                            <FileText className="h-8 w-8 text-muted-foreground" />
+                            <p className="text-muted-foreground">
+                              {activeTab === "pending" ? "Nenhuma aprovação pendente" :
+                               activeTab === "approved" ? "Nenhuma aprovação aprovada" :
+                               "Nenhuma aprovação rejeitada"}
+                            </p>
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredApprovals.map((approval) => {
+                        const quote = quotesData[approval.quote_id];
+                        return (
+                          <TableRow key={approval.id}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">#{approval.quote_id}</div>
+                                {quote?.title && (
+                                  <div className="text-sm text-muted-foreground">
+                                    {quote.title}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">
+                                {quote?.client_name || 'Carregando...'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-semibold">
+                                {quote ? formatCurrency(quote.total || 0) : 'Carregando...'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {approval.approver_id ? 
+                                  (approverNames[approval.approver_id] || approval.approver_id) : 
+                                  'Não atribuído'
+                                }
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(approval.created_at).toLocaleDateString('pt-BR')}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(approval.status)}>
+                                {getStatusText(approval.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-2 justify-end">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleViewDetails(approval)}
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Detalhes
+                                </Button>
+                                {approval.status === 'approved' && (
+                                  <Button variant="outline" size="sm">
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Ver Cotação
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
