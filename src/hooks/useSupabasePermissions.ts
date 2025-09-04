@@ -36,29 +36,19 @@ export function useSupabasePermissions() {
   const fetchPermissionProfiles = async () => {
     try {
       setLoading(true);
-      
-      // Get current user's client_id to filter profiles
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('client_id')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
 
-      console.log('🔍 DEBUG fetchPermissionProfiles:', {
-        userId: (await supabase.auth.getUser()).data.user?.id,
-        clientId: profile?.client_id
-      });
+      console.log('🔍 DEBUG fetchPermissionProfiles: iniciando busca...');
 
       const { data, error } = await supabase
         .from('permission_profiles')
         .select('*')
         .eq('active', true)
-        .eq('client_id', profile?.client_id)
         .order('name');
 
       console.log('📋 DEBUG permission_profiles result:', {
         profilesCount: data?.length || 0,
         profiles: data?.map(p => ({ id: p.id, name: p.name })),
+        gestoresFound: data?.some(p => p.name === 'Gestores'),
         error: error?.message
       });
 
