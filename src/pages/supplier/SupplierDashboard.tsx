@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSupabaseSupplierDashboard } from "@/hooks/useSupabaseSupplierDashboard";
+import { SupplierDebugPanel } from "@/components/supplier/SupplierDebugPanel";
 
 interface MetricCardProps {
   title: string;
@@ -64,6 +65,9 @@ export default function SupplierDashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Debug Panel - Removível após testes */}
+      <SupplierDebugPanel />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard do Fornecedor</h1>
