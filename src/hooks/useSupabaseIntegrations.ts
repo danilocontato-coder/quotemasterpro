@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -30,6 +30,7 @@ export function useSupabaseIntegrations() {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const { user } = useAuth();
+  const lastUserKeyRef = useRef<string>('');
 
   const loadIntegrations = async () => {
     try {
@@ -58,7 +59,15 @@ export function useSupabaseIntegrations() {
   };
 
   useEffect(() => {
-    loadIntegrations();
+    // Create a stable key from user properties that matter for filtering
+    const userKey = `${user?.id}-${user?.role}-${user?.clientId}-${user?.supplierId}`;
+    
+    // Only reload if user key actually changed
+    if (userKey !== lastUserKeyRef.current && user) {
+      console.log('User key changed, reloading integrations:', userKey);
+      lastUserKeyRef.current = userKey;
+      loadIntegrations();
+    }
   }, [user]);
 
   const filteredIntegrations = integrations.filter(integration => {
@@ -129,14 +138,25 @@ export function useSupabaseIntegrations() {
 
   const deleteIntegration = async (id: string) => {
     try {
+      console.log('Iniciando exclusão da integração:', id);
+      
+      // Otimistic update - remove from UI immediately
+      const originalIntegrations = [...integrations];
+      setIntegrations(prev => prev.filter(int => int.id !== id));
+
       const { error } = await supabase
         .from('integrations')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na exclusão:', error);
+        // Rollback on error
+        setIntegrations(originalIntegrations);
+        throw error;
+      }
 
-      setIntegrations(prev => prev.filter(int => int.id !== id));
+      console.log('Integração excluída com sucesso:', id);
       toast.success('Integração excluída com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir integração:', error);
