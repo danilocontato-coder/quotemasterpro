@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -8,58 +8,79 @@ import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
+import { OptimizedSkeleton, LazyWrapper } from '@/components/ui/optimized-components';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
 
-// Auth pages
-import Login from '@/pages/auth/Login';
-import Register from '@/pages/auth/Register';
-import ForgotPassword from '@/pages/auth/ForgotPassword';
-import { MainLayout } from '@/components/layout/MainLayout';
-import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout';
-import { SupplierLayout } from '@/components/layout/SupplierLayout';
+// Lazy loading de layouts principais
+const MainLayout = lazy(() => import('@/components/layout/MainLayout').then(m => ({ default: m.MainLayout })));
+const SuperAdminLayout = lazy(() => import('@/components/layout/SuperAdminLayout').then(m => ({ default: m.SuperAdminLayout })));
+const SupplierLayout = lazy(() => import('@/components/layout/SupplierLayout').then(m => ({ default: m.SupplierLayout })));
 
-import AdminDashboard from '@/pages/dashboards/AdminDashboard';
-import SupportDashboard from '@/pages/dashboards/SupportDashboard';
-import Dashboard from '@/pages/Dashboard';
-import { SuperAdminDashboard } from '@/pages/admin/SuperAdminDashboard';
-import { AccountsManagement } from '@/pages/admin/AccountsManagement';
-import { SystemSettings } from '@/pages/admin/SystemSettings';
-import { ClientsManagement } from '@/pages/admin/ClientsManagement';
-import { SuppliersManagement } from '@/pages/admin/SuppliersManagement';
-import { PlansManagement } from '@/pages/admin/PlansManagement';
-import { IntegrationsManagement } from '@/pages/admin/IntegrationsManagement';
-import WhatsAppTemplates from '@/pages/admin/WhatsAppTemplates';
-import { AuditLogs } from '@/pages/admin/AuditLogs';
+// Auth pages com lazy loading
+const Login = lazy(() => import('@/pages/auth/Login'));
+const Register = lazy(() => import('@/pages/auth/Register'));
+const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword'));
 
-// Existing pages
-import Quotes from '@/pages/Quotes';
-import Suppliers from '@/pages/Suppliers';
-import Products from '@/pages/Products';
-import Payments from '@/pages/Payments';
-import { Reports } from '@/pages/Reports';
-import { Approvals } from '@/pages/Approvals';
-import { ApprovalLevels } from '@/pages/ApprovalLevels';
-import Users from '@/pages/Users';
-import Notifications from '@/pages/Notifications';
-import { Profiles } from '@/pages/Profiles';
-import { Permissions } from '@/pages/Permissions';
-import Communication from '@/pages/Communication';
-import { Settings } from '@/pages/Settings';
-import AdminSuppliers from '@/pages/AdminSuppliers';
-import NotFound from '@/pages/NotFound';
+// Dashboard pages com lazy loading
+const AdminDashboard = lazy(() => import('@/pages/dashboards/AdminDashboard'));
+const SupportDashboard = lazy(() => import('@/pages/dashboards/SupportDashboard'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
 
-// Supplier pages
-import SupplierDashboard from '@/pages/supplier/SupplierDashboard';
-import SupplierQuotes from '@/pages/supplier/SupplierQuotes';
-import SupplierProducts from '@/pages/supplier/SupplierProducts';
-import SupplierFinancial from '@/pages/supplier/SupplierFinancial';
-import SupplierHistory from '@/pages/supplier/SupplierHistory';
-import SupplierAuth from '@/pages/supplier/SupplierAuth';
-import SupplierQuoteResponse from '@/pages/supplier/SupplierQuoteResponse';
-import SupplierResponseSuccess from '@/pages/supplier/SupplierResponseSuccess';
+// Admin pages com lazy loading
+const SuperAdminDashboard = lazy(() => import('@/pages/admin/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })));
+const AccountsManagement = lazy(() => import('@/pages/admin/AccountsManagement').then(m => ({ default: m.AccountsManagement })));
+const SystemSettings = lazy(() => import('@/pages/admin/SystemSettings').then(m => ({ default: m.SystemSettings })));
+const ClientsManagement = lazy(() => import('@/pages/admin/ClientsManagement').then(m => ({ default: m.ClientsManagement })));
+const SuppliersManagement = lazy(() => import('@/pages/admin/SuppliersManagement').then(m => ({ default: m.SuppliersManagement })));
+const PlansManagement = lazy(() => import('@/pages/admin/PlansManagement').then(m => ({ default: m.PlansManagement })));
+const IntegrationsManagement = lazy(() => import('@/pages/admin/IntegrationsManagement').then(m => ({ default: m.IntegrationsManagement })));
+const WhatsAppTemplates = lazy(() => import('@/pages/admin/WhatsAppTemplates'));
+const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs').then(m => ({ default: m.AuditLogs })));
 
-const queryClient = new QueryClient();
+// Páginas principais com lazy loading
+const Quotes = lazy(() => import('@/pages/Quotes'));
+const Suppliers = lazy(() => import('@/pages/Suppliers'));
+const Products = lazy(() => import('@/pages/Products'));
+const Payments = lazy(() => import('@/pages/Payments'));
+const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
+const Approvals = lazy(() => import('@/pages/Approvals').then(m => ({ default: m.Approvals })));
+const ApprovalLevels = lazy(() => import('@/pages/ApprovalLevels').then(m => ({ default: m.ApprovalLevels })));
+const Users = lazy(() => import('@/pages/Users'));
+const Notifications = lazy(() => import('@/pages/Notifications'));
+const Profiles = lazy(() => import('@/pages/Profiles').then(m => ({ default: m.Profiles })));
+const Permissions = lazy(() => import('@/pages/Permissions').then(m => ({ default: m.Permissions })));
+const Communication = lazy(() => import('@/pages/Communication'));
+const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
+const AdminSuppliers = lazy(() => import('@/pages/AdminSuppliers'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
+
+// Supplier pages com lazy loading
+const SupplierDashboard = lazy(() => import('@/pages/supplier/SupplierDashboard'));
+const SupplierQuotes = lazy(() => import('@/pages/supplier/SupplierQuotes'));
+const SupplierProducts = lazy(() => import('@/pages/supplier/SupplierProducts'));
+const SupplierFinancial = lazy(() => import('@/pages/supplier/SupplierFinancial'));
+const SupplierHistory = lazy(() => import('@/pages/supplier/SupplierHistory'));
+const SupplierAuth = lazy(() => import('@/pages/supplier/SupplierAuth'));
+const SupplierQuoteResponse = lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
+const SupplierResponseSuccess = lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
+
+// Query client otimizado para performance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutos
+      gcTime: 10 * 60 * 1000, // 10 minutos
+      refetchOnWindowFocus: false,
+      retry: 1,
+      refetchOnMount: false
+    }
+  }
+});
 
 function App() {
+  // Monitor de performance global
+  usePerformanceMonitor();
+  
   // Optimized system performance and prevent unwanted refreshes
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -97,10 +118,16 @@ function App() {
           <AuthProvider>
             <Router>
               <Routes>
-                {/* Auth routes */}
-                <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/register" element={<Register />} />
-                <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                {/* Auth routes com lazy loading */}
+                <Route path="/auth/login" element={
+                  <LazyWrapper><Login /></LazyWrapper>
+                } />
+                <Route path="/auth/register" element={
+                  <LazyWrapper><Register /></LazyWrapper>
+                } />
+                <Route path="/auth/forgot-password" element={
+                  <LazyWrapper><ForgotPassword /></LazyWrapper>
+                } />
                 
                 {/* Public routes */}
                 <Route path="/" element={<RoleBasedRedirect />} />
@@ -108,10 +135,14 @@ function App() {
                 {/* Dashboard routes - organized as nested routes */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Dashboard />} />
+                  <Route index element={
+                    <LazyWrapper><Dashboard /></LazyWrapper>
+                  } />
                   <Route path="quotes" element={<Navigate to="/quotes" replace />} />
                   <Route path="suppliers" element={<Navigate to="/suppliers" replace />} />
                   <Route path="products" element={<Navigate to="/products" replace />} />
@@ -125,13 +156,15 @@ function App() {
                   <Route path="reports" element={<Navigate to="/reports" replace />} />
                 </Route>
                 
-                {/* Main application routes */}
+                {/* Main application routes com lazy loading */}
                 <Route path="/quotes" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <MainLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <MainLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<Quotes />} />
+                  <Route index element={<LazyWrapper><Quotes /></LazyWrapper>} />
                 </Route>
                 <Route path="/suppliers" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
@@ -211,21 +244,23 @@ function App() {
                   <Route index element={<Reports />} />
                 </Route>
 
-                {/* Admin routes - SuperAdmin Panel */}
+                {/* Admin routes - SuperAdmin Panel com lazy loading */}
                 <Route path="/admin" element={
                   <ProtectedRoute allowedRoles={['admin']}>
-                    <SuperAdminLayout />
+                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                      <SuperAdminLayout />
+                    </Suspense>
                   </ProtectedRoute>
                 }>
-                  <Route path="superadmin" element={<SuperAdminDashboard />} />
-                  <Route path="clients" element={<ClientsManagement />} />
-                  <Route path="suppliers" element={<SuppliersManagement />} />
-                  <Route path="plans" element={<PlansManagement />} />
-                  <Route path="integrations" element={<IntegrationsManagement />} />
-                  <Route path="whatsapp-templates" element={<WhatsAppTemplates />} />
-                  <Route path="accounts" element={<AccountsManagement />} />
-                  <Route path="audit" element={<AuditLogs />} />
-                  <Route path="settings" element={<SystemSettings />} />
+                  <Route path="superadmin" element={<LazyWrapper><SuperAdminDashboard /></LazyWrapper>} />
+                  <Route path="clients" element={<LazyWrapper><ClientsManagement /></LazyWrapper>} />
+                  <Route path="suppliers" element={<LazyWrapper><SuppliersManagement /></LazyWrapper>} />
+                  <Route path="plans" element={<LazyWrapper><PlansManagement /></LazyWrapper>} />
+                  <Route path="integrations" element={<LazyWrapper><IntegrationsManagement /></LazyWrapper>} />
+                  <Route path="whatsapp-templates" element={<LazyWrapper><WhatsAppTemplates /></LazyWrapper>} />
+                  <Route path="accounts" element={<LazyWrapper><AccountsManagement /></LazyWrapper>} />
+                  <Route path="audit" element={<LazyWrapper><AuditLogs /></LazyWrapper>} />
+                  <Route path="settings" element={<LazyWrapper><SystemSettings /></LazyWrapper>} />
                   <Route index element={<Navigate to="/admin/superadmin" replace />} />
                 </Route>
 

@@ -379,28 +379,25 @@ export function useSupabaseAdminClients() {
 
       console.log('Cliente atualizado com sucesso no banco');
 
-      // Atualizar estado local de forma otimizada - EVITAR RE-RENDER CUSTOSO
+      // Usar batch update para otimizar re-renders
+      const clientUpdateBatch = {
+        companyName: clientData.companyName,
+        email: clientData.email,
+        phone: clientData.phone || "",
+        cnpj: clientData.cnpj,
+        address: typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address || parseAddress()),
+        status: clientData.status,
+        plan: clientData.plan,
+        groupId: clientData.groupId,
+        groupName: clientData.groupId ? clientGroups.find(g => g.id === clientData.groupId)?.name : undefined
+      };
+
+      // Atualizar estado local de forma otimizada - UMA ÚNICA OPERAÇÃO
       setClients((prev) => {
         console.log('🔄 Atualizando estado local do cliente', id);
-        const updated = prev.map((c) => {
-          if (c.id === id) {
-            // Usar Object.assign para otimizar a atualização
-            return Object.assign({}, c, {
-              companyName: clientData.companyName !== undefined ? clientData.companyName : c.companyName,
-              email: clientData.email !== undefined ? clientData.email : c.email,
-              phone: clientData.phone !== undefined ? (clientData.phone || "") : c.phone,
-              cnpj: clientData.cnpj !== undefined ? clientData.cnpj : c.cnpj,
-              address: clientData.address !== undefined ? (typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address || parseAddress())) : c.address,
-              status: clientData.status !== undefined ? clientData.status : c.status,
-              plan: clientData.plan !== undefined ? clientData.plan : c.plan,
-              groupId: clientData.groupId !== undefined ? clientData.groupId : c.groupId,
-              groupName: clientData.groupId !== undefined ? (clientGroups.find(g => g.id === clientData.groupId)?.name) : c.groupName
-            });
-          }
-          return c;
-        });
-        console.log('✅ Estado local atualizado');
-        return updated;
+        return prev.map((c) => 
+          c.id === id ? { ...c, ...clientUpdateBatch } : c
+        );
       });
 
       toast.success("Cliente atualizado com sucesso!");
