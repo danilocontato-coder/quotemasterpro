@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Supplier } from '@/hooks/useSupabaseSuppliers';
@@ -39,11 +39,19 @@ export const useSupabaseAdminSuppliers = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
+  
+  // Usar useRef para evitar re-criação de funções
+  const isLoadingRef = useRef(false);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
-  const fetchSuppliers = async () => {
-    if (isLoading) return; // Previne chamadas concorrentes
+  const fetchSuppliers = useCallback(async () => {
+    if (isLoadingRef.current) {
+      console.log('fetchSuppliers já está em execução, ignorando...');
+      return;
+    }
     
     try {
+      isLoadingRef.current = true;
       setIsLoading(true);
       console.log('Carregando fornecedores...');
       
@@ -69,22 +77,21 @@ export const useSupabaseAdminSuppliers = () => {
       });
     } finally {
       setIsLoading(false);
+      isLoadingRef.current = false;
     }
-  };
+  }, [toast]);
 
   // Fetch inicial controlado
   useEffect(() => {
-    if (!initialized) {
+    if (!initialized && !isLoadingRef.current) {
       fetchSuppliers();
     }
-  }, [initialized]);
+  }, [initialized, fetchSuppliers]);
 
-  // Real-time otimizado com debounce
+  // Real-time subscription otimizada
   useEffect(() => {
     if (!initialized) return;
 
-    let timeoutId: NodeJS.Timeout;
-    
     const channel = supabase
       .channel('admin-suppliers-changes')
       .on(
@@ -94,22 +101,31 @@ export const useSupabaseAdminSuppliers = () => {
           schema: 'public',
           table: 'suppliers'
         },
-        () => {
-          console.log('Supplier change detected, scheduling refresh...');
-          // Debounce para evitar múltiplas chamadas
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => {
-            fetchSuppliers();
-          }, 1000);
+        (payload) => {
+          console.log('Supplier change detected:', payload.eventType);
+          
+          // Debounce com ref
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+          }
+          
+          timeoutRef.current = setTimeout(() => {
+            if (!isLoadingRef.current) {
+              console.log('Executando refresh após mudança...');
+              fetchSuppliers();
+            }
+          }, 1500);
         }
       )
       .subscribe();
 
     return () => {
-      clearTimeout(timeoutId);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
       supabase.removeChannel(channel);
     };
-  }, [initialized]);
+  }, [initialized, fetchSuppliers]);
 
   const createSupplierWithUser = async (
     supplierData: SupplierWithUserData,
@@ -253,10 +269,14 @@ export const useSupabaseAdminSuppliers = () => {
     }
   };
 
-  const updateSupplier = async (id: string, updates: Partial<Supplier>) => {
-    if (isLoading) return false;
+  const updateSupplier = useCallback(async (id: string, updates: Partial<Supplier>) => {
+    if (isLoadingRef.current) {
+      console.log('Update já em andamento, ignorando...');
+      return false;
+    }
     
     try {
+      isLoadingRef.current = true;
       setIsLoading(true);
       console.log('Atualizando fornecedor:', id, updates);
       
@@ -274,7 +294,7 @@ export const useSupabaseAdminSuppliers = () => {
 
       console.log('Fornecedor atualizado com sucesso');
       
-      // Atualizar estado local
+      // Atualizar estado local de forma otimizada
       setSuppliers(prev => 
         prev.map(supplier => supplier.id === id ? { ...supplier, ...data as Supplier } : supplier)
       );
@@ -295,8 +315,9 @@ export const useSupabaseAdminSuppliers = () => {
       return false;
     } finally {
       setIsLoading(false);
+      isLoadingRef.current = false;
     }
-  };
+  }, [toast]);
 
   const deleteSupplier = async (id: string, name: string) => {
     if (isLoading) return false;
