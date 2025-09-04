@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       }
 
       // Log the certification
-      await supabase.from('audit_logs').insert({
+      await createClient(supabaseUrl, supabaseServiceKey).from('audit_logs').insert({
         action: 'SUPPLIER_CERTIFIED',
         entity_type: 'suppliers',
         entity_id: supplier_id,
@@ -137,8 +137,8 @@ Deno.serve(async (req) => {
         }
       })
 
-  } else if (type === 'whatsapp_user_credentials') {
-      // Send user credentials via WhatsApp
+    } else if (type === 'whatsapp_user_credentials') {
+      // Send user credentials via WhatsApp using client/global Evolution config
       if (!to || !user_email || !temp_password) {
         throw new Error('Campos obrigatórios ausentes: to, user_email, temp_password')
       }
@@ -150,6 +150,77 @@ Deno.serve(async (req) => {
         number = `55${number}`
       }
 
+      // Resolve Evolution config: client -> global -> env
+      const supabase = createClient(supabaseUrl, supabaseServiceKey)
+      let clientId: string | null = null
+      try {
+        if (user_id) {
+          const { data: u } = await supabase
+            .from('users')
+            .select('client_id')
+            .eq('id', user_id)
+            .maybeSingle()
+          clientId = u?.client_id || null
+        }
+        if (!clientId && user_email) {
+          const { data: u2 } = await supabase
+            .from('users')
+            .select('client_id')
+            .eq('email', user_email)
+            .maybeSingle()
+          clientId = u2?.client_id || null
+        }
+      } catch (e) {
+        console.warn('[WHATSAPP CREDENTIALS] Falha ao obter client_id:', e)
+      }
+
+      let evoInstance: string | null = null
+      let evoApiUrl: string | null = null
+      let evoToken: string | null = null
+      let evoScope: 'client' | 'global' | 'env' = 'env'
+
+      try {
+        if (clientId) {
+          const { data: evoClientInt } = await supabase
+            .from('integrations')
+            .select('configuration')
+            .eq('integration_type', 'whatsapp_evolution')
+            .eq('active', true)
+            .eq('client_id', clientId)
+            .maybeSingle()
+          const cfg = evoClientInt?.configuration || null
+          if (cfg) {
+            evoInstance = (cfg.instance ?? cfg['evolution_instance']) || null
+            evoApiUrl = (cfg.api_url ?? cfg['evolution_api_url']) || null
+            evoToken = (cfg.token ?? cfg['evolution_token']) || null
+            evoScope = 'client'
+          }
+        }
+        if (!evoApiUrl || !evoToken) {
+          const { data: evoGlobalInt } = await supabase
+            .from('integrations')
+            .select('configuration')
+            .eq('integration_type', 'whatsapp_evolution')
+            .eq('active', true)
+            .is('client_id', null)
+            .maybeSingle()
+          const cfg = evoGlobalInt?.configuration || null
+          if (cfg) {
+            evoInstance = evoInstance || (cfg.instance ?? cfg['evolution_instance']) || null
+            evoApiUrl = evoApiUrl || (cfg.api_url ?? cfg['evolution_api_url']) || null
+            evoToken = evoToken || (cfg.token ?? cfg['evolution_token']) || null
+            evoScope = evoScope === 'client' ? 'client' : 'global'
+          }
+        }
+      } catch (e) {
+        console.warn('[WHATSAPP CREDENTIALS] Falha ao carregar integração Evolution:', e)
+      }
+
+      // Fallback to env secrets
+      evoApiUrl = (evoApiUrl || evolutionApiUrl || '').replace(/\/+$/, '')
+      evoToken = evoToken || evolutionApiToken || null
+      evoInstance = evoInstance || Deno.env.get('EVOLUTION_INSTANCE') || null
+
       const message =
         `👋 Olá${user_name ? ' ' + user_name : ''}!\n\n` +
         `Seu acesso ao *QuoteMaster Pro* foi criado. Seguem suas credenciais:\n\n` +
@@ -159,12 +230,20 @@ Deno.serve(async (req) => {
         `Por segurança, você deverá alterar a senha no primeiro login.\n\n` +
         `Se não reconhece esta mensagem, ignore este aviso.`
 
-      const base = evolutionApiUrl.replace(/\/+$/, '')
-      const candidates = [
-        `${base}/message/sendText`,
-        `${base}/messages/sendText`,
-        `${base}/message/send`,
-      ]
+      const candidates: string[] = []
+      if (evoInstance) {
+        candidates.push(
+          `${evoApiUrl}/message/sendText/${evoInstance}`,
+          `${evoApiUrl}/messages/sendText/${evoInstance}`,
+          `${evoApiUrl}/message/send/${evoInstance}`,
+        )
+      }
+      // Fallbacks without instance
+      candidates.push(
+        `${evoApiUrl}/message/sendText`,
+        `${evoApiUrl}/messages/sendText`,
+        `${evoApiUrl}/message/send`,
+      )
 
       let lastErrorText = ''
       for (const endpoint of candidates) {
@@ -173,7 +252,7 @@ Deno.serve(async (req) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'apikey': evolutionApiToken,
+              'apikey': String(evoToken),
             },
             body: JSON.stringify({ number, text: message })
           })
@@ -185,7 +264,8 @@ Deno.serve(async (req) => {
               messageId: whatsappData.messageId || `whatsapp_${Date.now()}`,
               provider: 'evolution-api',
               endpoint,
-              number
+              number,
+              config_scope: evoScope
             }
             console.log(`[WHATSAPP CREDENTIALS] Enviado com sucesso para ${number} via ${endpoint}`)
             break
@@ -203,15 +283,15 @@ Deno.serve(async (req) => {
       if (!result.success) {
         result = {
           success: false,
-          error: `Falha na Evolution API. Verifique EVOLUTION_API_URL/TOKEN e endpoint. Último erro: ${lastErrorText}`,
+          error: `Falha na Evolution API. Verifique configuração (escopo=${evoScope}). Último erro: ${lastErrorText}`,
           tried_endpoints: candidates,
-          number
+          number,
+          evo_scope: evoScope
         }
       }
 
       // Audit log
       try {
-        const supabase = createClient(supabaseUrl, supabaseServiceKey)
         await supabase.from('audit_logs').insert({
           action: 'USER_CREDENTIALS_SENT',
           entity_type: 'users',
@@ -222,6 +302,7 @@ Deno.serve(async (req) => {
             messageId: (result as any).messageId,
             provider: (result as any).provider,
             endpoints_tried: (result as any).tried_endpoints,
+            evo_scope: evoScope,
           }
         })
       } catch (logErr) {
