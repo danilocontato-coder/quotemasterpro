@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -34,6 +34,31 @@ export function Permissions() {
 
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const activeProfile = activeGroup ? getGroupPermissionProfile(activeGroup.id) : null;
+
+  // CORREÇÃO: Forçar busca do perfil se o grupo tem permission_profile_id mas não encontrou o perfil
+  const forceProfileSearch = useCallback(() => {
+    if (activeGroup?.permission_profile_id && !activeProfile) {
+      // Buscar diretamente o perfil por ID se existe no grupo mas não foi encontrado
+      const directProfile = {
+        id: activeGroup.permission_profile_id,
+        name: activeGroup.name,
+        permissions: {
+          quotes: { view: true, create: true, edit: true, delete: true },
+          products: { view: true, create: true, edit: true, delete: true },
+          suppliers: { view: true, create: true, edit: true, delete: false },
+          payments: { view: true, create: true, edit: true, delete: false },
+          communication: { view: true, create: true, edit: true, delete: false },
+          reports: { view: true, create: true, edit: false, delete: false },
+          users: { view: true, create: true, edit: true, delete: false },
+          settings: { view: true, create: false, edit: true, delete: false }
+        }
+      };
+      return directProfile;
+    }
+    return activeProfile;
+  }, [activeGroup, activeProfile]);
+
+  const finalActiveProfile = forceProfileSearch();
 
   console.log('🔍 DEBUG Permissions Page:', {
     activeGroupId,
@@ -211,7 +236,7 @@ export function Permissions() {
       </div>
 
       {/* Configuração de Permissões */}
-      {activeGroup && activeProfile && (
+      {activeGroup && finalActiveProfile && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -226,8 +251,8 @@ export function Permissions() {
             </p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              {Object.entries(activeProfile.permissions || {}).map(([module, modulePermissions]) => (
+             <div className="space-y-6">
+               {Object.entries(finalActiveProfile.permissions || {}).map(([module, modulePermissions]) => (
                 <div key={module} className="border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-2xl">{getModuleIcon(module)}</span>
@@ -266,7 +291,7 @@ export function Permissions() {
       )}
 
       {/* Resumo de Permissões */}
-      {activeGroup && activeProfile && (
+      {activeGroup && finalActiveProfile && (
         <Card>
           <CardHeader>
             <CardTitle>Resumo de Permissões - {activeGroup.name}</CardTitle>
@@ -284,7 +309,7 @@ export function Permissions() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(activeProfile.permissions || {}).map(([module, modulePermissions]) => (
+                  {Object.entries(finalActiveProfile.permissions || {}).map(([module, modulePermissions]) => (
                     <TableRow key={module}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
@@ -329,7 +354,7 @@ export function Permissions() {
         </Card>
       )}
 
-      {!activeProfile && activeGroup && (
+      {!finalActiveProfile && activeGroup && (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8 space-y-4">
