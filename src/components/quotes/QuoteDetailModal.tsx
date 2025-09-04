@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +27,7 @@ import { ItemAnalysisModal } from './ItemAnalysisModal';
 import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
 import { getStatusText } from "@/utils/statusUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface QuoteProposal {
   id: string;
@@ -174,11 +175,61 @@ const mockProposals: QuoteProposal[] = [
 export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: QuoteDetailModalProps) {
   const [showComparison, setShowComparison] = useState(false);
   const [showItemAnalysis, setShowItemAnalysis] = useState(false);
+  const [proposals, setProposals] = useState<QuoteProposal[]>([]);
+  const [isLoadingProposals, setIsLoadingProposals] = useState(false);
   const { toast } = useToast();
 
-  const proposals = useMemo(() => {
-    return mockProposals.filter(p => p.quoteId === quote?.id);
-  }, [quote?.id]);
+  // Fetch real proposals from Supabase
+  const fetchProposals = async () => {
+    if (!quote?.id) return;
+    
+    setIsLoadingProposals(true);
+    try {
+      const { data: responses, error } = await supabase
+        .from('quote_responses')
+        .select(`
+          *,
+          suppliers!inner(name, cnpj, email, phone)
+        `)
+        .eq('quote_id', quote.id);
+
+      if (error) {
+        console.error('Error fetching proposals:', error);
+        return;
+      }
+
+      console.log('📋 Proposals fetched for quote detail:', responses?.length || 0);
+
+      const transformedProposals: QuoteProposal[] = (responses || []).map(response => ({
+        id: response.id,
+        quoteId: response.quote_id,
+        supplierId: response.supplier_id,
+        supplierName: response.suppliers.name,
+        items: [], // Will be populated if needed
+        totalPrice: response.total_amount,
+        deliveryTime: response.delivery_time || 7,
+        shippingCost: 0, // Default shipping cost
+        sla: 24, // Default SLA in hours
+        warrantyMonths: 12, // Default warranty
+        reputation: 4.5, // Default rating
+        observations: response.notes || '',
+        submittedAt: response.created_at,
+        status: 'pending'
+      }));
+
+      setProposals(transformedProposals);
+    } catch (error) {
+      console.error('Error fetching proposals:', error);
+    } finally {
+      setIsLoadingProposals(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && quote?.id) {
+      fetchProposals();
+    }
+  }, [open, quote?.id]);
 
   // Calculate best combination (multi-supplier optimization)
   const bestCombination = useMemo(() => {
@@ -459,7 +510,17 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
             </TabsContent>
 
             <TabsContent value="proposals" className="space-y-4">
-              {proposals.length === 0 ? (
+              {isLoadingProposals ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+                    <h3 className="text-lg font-semibold mb-2">Carregando Propostas</h3>
+                    <p className="text-muted-foreground">
+                      Buscando propostas dos fornecedores...
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : proposals.length === 0 ? (
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -481,7 +542,10 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                               {proposal.reputation}/5 ⭐
                             </Badge>
                             <Badge>
-                               R$ {(proposal.totalPrice || 0).toFixed(2)}
+                               R$ {proposal.totalPrice.toLocaleString('pt-BR', { 
+                                 minimumFractionDigits: 2, 
+                                 maximumFractionDigits: 2 
+                               })}
                             </Badge>
                           </div>
                         </div>
@@ -494,7 +558,10 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Frete</p>
-                            <p className="font-semibold">R$ {(proposal.shippingCost || 0).toFixed(2)}</p>
+                            <p className="font-semibold">R$ {proposal.shippingCost.toLocaleString('pt-BR', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 2 
+                            })}</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">SLA</p>
