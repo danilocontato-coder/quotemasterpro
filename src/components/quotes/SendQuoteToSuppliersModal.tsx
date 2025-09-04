@@ -12,6 +12,7 @@ import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { selectBestSupplier, createSupplierResponseLink, generateQuoteToken } from "@/lib/supplierDeduplication";
 
 interface SendQuoteToSuppliersModalProps {
   quote: any;
@@ -30,9 +31,28 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
   const { markQuoteAsSent } = useSupabaseQuotes();
-
-  // Filter active suppliers
+  
+  // Filter active suppliers and prioritize certified ones
   const activeSuppliers = suppliers.filter(s => s.status === 'active');
+  
+  // Group suppliers by CNPJ to handle potential duplicates
+  const supplierGroups = activeSuppliers.reduce((groups, supplier) => {
+    const key = supplier.cnpj || supplier.email; // Use CNPJ or email as grouping key
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(supplier);
+    return groups;
+  }, {} as Record<string, typeof activeSuppliers>);
+  
+  // Select best supplier from each group (prioritize certified)
+  const deduplicatedSuppliers = Object.values(supplierGroups)
+    .map(group => selectBestSupplier(group))
+    .filter(Boolean)
+    .sort((a, b) => {
+      // Certified suppliers first, then by name
+      if (a.type === 'certified' && b.type !== 'certified') return -1;
+      if (a.type !== 'certified' && b.type === 'certified') return 1;
+      return a.name.localeCompare(b.name);
+    });
 
   // Default message
   useEffect(() => {
@@ -43,10 +63,10 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
 
   // Select all suppliers by default
   useEffect(() => {
-    if (activeSuppliers.length > 0 && selectedSuppliers.length === 0) {
-      setSelectedSuppliers(activeSuppliers.map(s => s.id));
+    if (deduplicatedSuppliers.length > 0 && selectedSuppliers.length === 0) {
+      setSelectedSuppliers(deduplicatedSuppliers.map(s => s.id));
     }
-  }, [activeSuppliers]);
+  }, [deduplicatedSuppliers]);
 
   // Resolve configured webhook URL and Evolution API
   useEffect(() => {
@@ -130,10 +150,10 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   };
 
   const handleSelectAll = () => {
-    if (selectedSuppliers.length === activeSuppliers.length) {
+    if (selectedSuppliers.length === deduplicatedSuppliers.length) {
       setSelectedSuppliers([]);
     } else {
-      setSelectedSuppliers(activeSuppliers.map(s => s.id));
+      setSelectedSuppliers(deduplicatedSuppliers.map(s => s.id));
     }
   };
 
@@ -154,11 +174,12 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       // Determina automaticamente o método de envio baseado na configuração do SuperAdmin
       const sendVia = evolutionConfigured ? 'direct' : 'n8n';
       
+      // Generate unique response links for each selected supplier
       const supplierLinks = selectedSuppliers.map((supplierId) => {
-        const token = crypto.randomUUID();
+        const token = generateQuoteToken();
         return {
           supplier_id: supplierId,
-          link: `${window.location.origin}/supplier/auth/${quote?.id}/${token}`,
+          link: createSupplierResponseLink(quote?.id, token),
           token
         };
       });
@@ -190,24 +211,26 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         // Atualizar status da cotação para 'sent'
         await markQuoteAsSent(quote.id, selectedSuppliers.length);
         
-        // Gerar e logar links únicos para fornecedores (para teste/desenvolvimento)
-        const quoteToken = crypto.randomUUID();
+        // Generate and log unique links for suppliers (for testing/development)
         const supplierLinks = selectedSuppliers.map(supplierId => {
-          const supplier = activeSuppliers.find(s => s.id === supplierId);
-          const link = `${window.location.origin}/supplier/auth/${quote?.id}/${quoteToken}`;
+          const supplier = deduplicatedSuppliers.find(s => s.id === supplierId);
+          const token = generateQuoteToken();
+          const link = createSupplierResponseLink(quote?.id, token);
           
           return {
             supplierId,
             supplierName: supplier?.name || 'Fornecedor',
             supplierEmail: supplier?.email || '',
+            supplierType: supplier?.type || 'local',
             link
           };
         });
 
         // Log dos links gerados (em produção, estes seriam enviados por email/WhatsApp)
-        console.log('Links únicos gerados para fornecedores:');
-        supplierLinks.forEach(({ supplierName, link }) => {
-          console.log(`${supplierName}: ${link}`);
+        console.log('Links únicos gerados para fornecedores (dedupe ativo):');
+        supplierLinks.forEach(({ supplierName, supplierType, link }) => {
+          const badge = supplierType === 'certified' ? '🏆 CERTIFICADO' : '📍 LOCAL';
+          console.log(`${badge} ${supplierName}: ${link}`);
         });
         
         setOpen(false);
@@ -330,14 +353,14 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
               <CardTitle className="text-base flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Fornecedores ({selectedSuppliers.length}/{activeSuppliers.length})
+                  Fornecedores ({selectedSuppliers.length}/{deduplicatedSuppliers.length})
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleSelectAll}
                 >
-                  {selectedSuppliers.length === activeSuppliers.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                  {selectedSuppliers.length === deduplicatedSuppliers.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
                 </Button>
               </CardTitle>
             </CardHeader>
@@ -347,9 +370,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
                   <p className="text-sm text-muted-foreground mt-2">Carregando fornecedores...</p>
                 </div>
-              ) : activeSuppliers.length > 0 ? (
+              ) : deduplicatedSuppliers.length > 0 ? (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {activeSuppliers.map((supplier) => (
+                  {deduplicatedSuppliers.map((supplier) => (
                     <div
                       key={supplier.id}
                       className="flex items-center justify-between p-3 border rounded hover:bg-muted/20 cursor-pointer"
@@ -361,7 +384,14 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
                           onCheckedChange={() => handleToggleSupplier(supplier.id)}
                         />
                         <div className="flex-1">
-                          <p className="font-medium text-sm">{supplier.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{supplier.name}</p>
+                            {supplier.type === 'certified' && (
+                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                🏆 Certificado
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             {supplier.email && (
                               <span className="flex items-center gap-1">

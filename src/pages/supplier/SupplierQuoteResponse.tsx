@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Upload, FileText, Plus, Trash2, Building2, Clock, DollarSign } from 'lucide-react';
+import { Upload, FileText, Plus, Trash2, Building2, Clock, DollarSign, UserPlus } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
 
 interface QuoteItem {
   id: string;
@@ -45,6 +46,8 @@ const SupplierQuoteResponse = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  const [showClaimAccount, setShowClaimAccount] = useState(false);
+  const [existingSupplier, setExistingSupplier] = useState<any>(null);
   
   const [supplierData, setSupplierData] = useState({
     name: '',
@@ -250,26 +253,35 @@ const SupplierQuoteResponse = () => {
         return;
       }
 
-      // Verificar se fornecedor já existe ou criar novo
-      let supplierId;
-      const { data: existingSupplier } = await supabase
-        .from('suppliers')
-        .select('id')
-        .eq('email', supplierData.email)
-        .single();
+      // Check for existing supplier using deduplication logic
+      const duplicateCheck = await checkSupplierDuplicate(
+        supplierData.cnpj || '',
+        supplierData.email || '',
+        supabase
+      );
 
-      if (existingSupplier) {
-        supplierId = existingSupplier.id;
+      let supplierId;
+      if (duplicateCheck.exists && duplicateCheck.existing) {
+        // Use existing supplier
+        supplierId = duplicateCheck.existing.id;
+        setExistingSupplier(duplicateCheck.existing);
+        
+        toast({
+          title: "Fornecedor encontrado",
+          description: `Vinculando proposta ao fornecedor existente: ${duplicateCheck.existing.name}`,
+        });
       } else {
+        // Create new supplier
         const { data: newSupplier, error: supplierError } = await supabase
           .from('suppliers')
           .insert({
             name: supplierData.name,
-            cnpj: supplierData.cnpj,
+            cnpj: normalizeCNPJ(supplierData.cnpj || ''),
             email: supplierData.email,
             phone: supplierData.phone,
             whatsapp: supplierData.whatsapp,
-            status: 'active'
+            status: 'active',
+            type: 'local' // Default for suppliers responding via link
           })
           .select('id')
           .single();
@@ -623,9 +635,28 @@ const SupplierQuoteResponse = () => {
                   rows={3}
                 />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+                
+                {/* Optional: Show "Create Account" button for existing suppliers */}
+                {existingSupplier && !showClaimAccount && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 mb-2">
+                      💡 Este fornecedor já existe na plataforma. Deseja criar uma conta para acessar a plataforma diretamente?
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowClaimAccount(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Criar Conta e Vincular
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
         {/* Botões de Ação */}
         <div className="flex gap-4">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Supplier } from '@/hooks/useSupabaseSuppliers';
+import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
 
 interface SupplierWithUserData {
   name: string;
@@ -82,6 +83,27 @@ export const useSupabaseAdminSuppliers = () => {
     credentials: CredentialsData
   ) => {
     try {
+      // Check for duplicates before creating
+      const duplicateCheck = await checkSupplierDuplicate(
+        supplierData.cnpj || '',
+        supplierData.email || '',
+        supabase
+      );
+
+      if (duplicateCheck.exists && duplicateCheck.existing) {
+        const existing = duplicateCheck.existing;
+        const reason = duplicateCheck.reason === 'cnpj' ? 'CNPJ' : 'E-mail';
+        
+        toast({
+          title: "Fornecedor já existe",
+          description: `Já existe um fornecedor ${existing.type === 'certified' ? 'certificado' : 'local'} com este ${reason}: ${existing.name}. Deseja vincular ao existente ou criar como novo?`,
+          variant: "destructive"
+        });
+        
+        // For admin, return the existing supplier instead of creating duplicate
+        return existing;
+      }
+
       // 1. Create auth user if credentials are provided
       let authUserId = null;
       if (credentials.generateCredentials) {
@@ -103,9 +125,16 @@ export const useSupabaseAdminSuppliers = () => {
       }
 
       // 2. Create supplier record
+      const supplierPayload = {
+        ...supplierData,
+        cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
+        // For certified suppliers, set client_id to null (global)
+        client_id: supplierData.type === 'certified' ? null : supplierData.client_id
+      };
+      
       const { data: supplier, error: supplierError } = await supabase
         .from('suppliers')
-        .insert([supplierData])
+        .insert([supplierPayload])
         .select()
         .single();
 

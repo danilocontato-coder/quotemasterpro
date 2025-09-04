@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
 
 export interface Supplier {
   id: string;
@@ -125,6 +126,27 @@ export const useSupabaseSuppliers = () => {
 
   const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => {
     try {
+      // Check for duplicates before creating
+      const duplicateCheck = await checkSupplierDuplicate(
+        supplierData.cnpj || '',
+        supplierData.email || '',
+        supabase
+      );
+
+      if (duplicateCheck.exists && duplicateCheck.existing) {
+        const existing = duplicateCheck.existing;
+        const reason = duplicateCheck.reason === 'cnpj' ? 'CNPJ' : 'E-mail';
+        
+        toast({
+          title: "Fornecedor já existe",
+          description: `Já existe um fornecedor ${existing.type === 'certified' ? 'certificado' : 'local'} com este ${reason}: ${existing.name}`,
+          variant: "destructive"
+        });
+        
+        // Return existing supplier instead of creating new one
+        return existing;
+      }
+
       // Get current user's profile to get client_id
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) {
@@ -145,6 +167,7 @@ export const useSupabaseSuppliers = () => {
         .from('suppliers')
         .insert([{
           ...supplierData,
+          cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
           client_id: profile.client_id, // Incluir o client_id do usuário atual
           rating: 0,
           completed_orders: 0
