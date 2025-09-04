@@ -33,11 +33,21 @@ export const useSupabaseQuotes = () => {
 
   // Fetch quotes based on user role
   const fetchQuotes = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('❌ No user found, skipping quote fetch');
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
+
+      console.log('🔄 Fetching quotes for user:', {
+        id: user.id,
+        role: user.role,
+        clientId: user.clientId,
+        supplierId: user.supplierId
+      });
 
       let query = supabase
         .from('quotes')
@@ -47,16 +57,50 @@ export const useSupabaseQuotes = () => {
       // Filter based on user role
       if (user.role === 'client' || user.role === 'manager' || user.role === 'collaborator') {
         if (user.clientId) {
+          console.log('✅ Adding client filter for clientId:', user.clientId);
           query = query.eq('client_id', user.clientId);
+        } else {
+          console.log('❌ No clientId found for user role:', user.role);
+          // Don't fetch quotes if no clientId for client roles
+          setQuotes([]);
+          setIsLoading(false);
+          return;
         }
-      } else if (user.role === 'supplier' && user.supplierId) {
-        query = query.eq('supplier_id', user.supplierId);
+      } else if (user.role === 'supplier') {
+        if (user.supplierId) {
+          console.log('✅ Adding supplier filter for supplierId:', user.supplierId);
+          query = query.eq('supplier_id', user.supplierId);
+        } else {
+          console.log('❌ No supplierId found for supplier role');
+          setQuotes([]);
+          setIsLoading(false);
+          return;
+        }
+      } else if (user.role === 'admin') {
+        console.log('✅ Admin user - fetching all quotes');
+        // Admin sees all quotes (no filter)
+      } else {
+        console.log('⚠️ Unknown user role:', user.role);
+        setQuotes([]);
+        setIsLoading(false);
+        return;
       }
-      // Admin sees all quotes (no filter)
 
+      console.log('📡 Executing query...');
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase query error:', error);
+        throw error;
+      }
+
+      console.log('✅ Query successful, received quotes:', data?.length || 0);
+      console.log('📊 Quote data sample:', data?.[0] ? {
+        id: data[0].id,
+        title: data[0].title,
+        status: data[0].status,
+        client_id: data[0].client_id
+      } : 'No quotes found');
 
       // Count responses for each quote and update the data
       const quotesWithCounts = await Promise.all(
