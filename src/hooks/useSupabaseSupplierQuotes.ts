@@ -91,14 +91,37 @@ export const useSupabaseSupplierQuotes = () => {
 
   // Fetch quotes for supplier
   const fetchSupplierQuotes = useCallback(async () => {
-    if (!user) return;
-
-    // Early return if user doesn't have supplierId yet
-    if (!user.supplierId) {
-      console.log('User does not have supplierId yet, waiting...');
+    if (!user) {
       setIsLoading(false);
-      setSupplierQuotes([]);
       return;
+    }
+
+    // Handle supplier without supplierId - try to find supplier record
+    if (!user.supplierId) {
+      console.log('⚠️ User missing supplierId in quotes, attempting to find supplier record...');
+      
+      try {
+        const { data: supplierData, error: supplierError } = await supabase
+          .from('suppliers')
+          .select('id')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        if (!supplierData || supplierError) {
+          console.log('No supplier record found for quotes:', user.email);
+          setIsLoading(false);
+          setSupplierQuotes([]);
+          return;
+        }
+
+        // Temporarily use the found supplier ID for this session
+        console.log('📋 Using found supplier ID for quotes:', supplierData.id);
+        user.supplierId = supplierData.id; // Temporary assignment
+      } catch (error) {
+        console.error('Error in supplier lookup for quotes:', error);
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {

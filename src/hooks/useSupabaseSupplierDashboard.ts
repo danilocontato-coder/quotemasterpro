@@ -37,22 +37,58 @@ export const useSupabaseSupplierDashboard = () => {
   const { toast } = useToast();
 
   const fetchDashboardData = useCallback(async () => {
-    if (!user) return;
-
-    // Early return if user doesn't have supplierId yet  
-    if (!user.supplierId) {
-      console.log('User does not have supplierId yet, waiting...');
+    if (!user) {
       setIsLoading(false);
-      setMetrics({
-        activeQuotes: 0,
-        pendingProposals: 0,
-        monthlyRevenue: 0,
-        approvalRate: 0,
-        revenueGrowth: 0,
-        approvalGrowth: 0,
-      });
-      setRecentQuotes([]);
       return;
+    }
+
+    // Handle supplier without supplierId - try to find supplier record
+    if (!user.supplierId) {
+      console.log('⚠️ User missing supplierId, attempting to find supplier record...');
+      
+      try {
+        const { data: supplierData, error: supplierError } = await supabase
+          .from('suppliers')
+          .select('id')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        if (supplierError) {
+          console.error('Error finding supplier:', supplierError);
+        }
+
+        if (!supplierData) {
+          console.log('No supplier record found for user:', user.email);
+          setIsLoading(false);
+          setMetrics({
+            activeQuotes: 0,
+            pendingProposals: 0,
+            monthlyRevenue: 0,
+            approvalRate: 0,
+            revenueGrowth: 0,
+            approvalGrowth: 0,
+          });
+          setRecentQuotes([]);
+          return;
+        }
+
+        // Update profile with found supplier_id
+        await supabase
+          .from('profiles')
+          .update({ supplier_id: supplierData.id })
+          .eq('id', user.id);
+
+        // Reload user data - dispatch event for AuthContext to catch
+        window.dispatchEvent(new CustomEvent('user-profile-updated'));
+        
+        console.log('✅ Supplier ID updated in profile:', supplierData.id);
+        setIsLoading(false);
+        return;
+      } catch (error) {
+        console.error('Error in supplier lookup:', error);
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {

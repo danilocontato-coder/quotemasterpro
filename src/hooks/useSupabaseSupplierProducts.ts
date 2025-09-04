@@ -36,14 +36,37 @@ export const useSupabaseSupplierProducts = () => {
   const { toast } = useToast();
 
   const fetchProducts = useCallback(async () => {
-    if (!user) return;
-
-    // Early return if user doesn't have supplierId yet
-    if (!user.supplierId) {
-      console.log('User does not have supplierId yet, waiting...');
+    if (!user) {
       setIsLoading(false);
-      setProducts([]);
       return;
+    }
+
+    // Handle supplier without supplierId - try to find supplier record
+    if (!user.supplierId) {
+      console.log('⚠️ User missing supplierId in products, attempting to find supplier record...');
+      
+      try {
+        const { data: supplierData, error: supplierError } = await supabase
+          .from('suppliers')
+          .select('id')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        if (!supplierData || supplierError) {
+          console.log('No supplier record found for products:', user.email);
+          setIsLoading(false);
+          setProducts([]);
+          return;
+        }
+
+        // Temporarily use the found supplier ID for this session
+        console.log('📦 Using found supplier ID for products:', supplierData.id);
+        user.supplierId = supplierData.id; // Temporary assignment
+      } catch (error) {
+        console.error('Error in supplier lookup for products:', error);
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {
