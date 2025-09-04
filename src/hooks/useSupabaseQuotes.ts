@@ -628,58 +628,31 @@ export const useSupabaseQuotes = () => {
         async (payload) => {
           console.log('📨 Quote response change received:', payload);
           
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const response = payload.new as any;
+          // Since we have database triggers handling the updates,
+          // we just need to refetch the affected quote to get the updated data
+          if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+            const response = payload.eventType === 'INSERT' ? payload.new : payload.old;
             const quoteId = response.quote_id;
             
-            // Recount responses for this quote
-            const { count } = await supabase
-              .from('quote_responses')
-              .select('*', { count: 'exact', head: true })
-              .eq('quote_id', quoteId);
+            console.log('🔄 Refetching quote after response change:', quoteId);
             
-            console.log('📊 Updating responses count for quote', quoteId, 'new count:', count);
+            // Fetch the updated quote data (trigger will have updated responses_count and status)
+            const { data: updatedQuote } = await supabase
+              .from('quotes')
+              .select('*')
+              .eq('id', quoteId)
+              .single();
             
-            // Update the local state with new count
-            setQuotes(prev => 
-              prev.map(quote => 
-                quote.id === quoteId 
-                  ? { ...quote, responses_count: count || 0 }
-                  : quote
-              )
-            );
-            
-            // If this is a new response and quote status allows, update to receiving
-            if (payload.eventType === 'INSERT') {
-              const currentQuote = quotes.find(q => q.id === quoteId);
-              if (currentQuote && currentQuote.status === 'sent') {
-                console.log('🔄 Auto-updating quote status to receiving');
-                // This will trigger the quotes subscription above
-                await supabase
-                  .from('quotes')
-                  .update({ status: 'receiving' })
-                  .eq('id', quoteId);
-              }
+            if (updatedQuote) {
+              console.log('📊 Quote updated by trigger - responses_count:', updatedQuote.responses_count, 'status:', updatedQuote.status);
+              
+              // Update the local state with the fresh data from database
+              setQuotes(prev => 
+                prev.map(quote => 
+                  quote.id === quoteId ? updatedQuote : quote
+                )
+              );
             }
-          } else if (payload.eventType === 'DELETE') {
-            const response = payload.old as any;
-            const quoteId = response.quote_id;
-            
-            // Recount responses for this quote
-            const { count } = await supabase
-              .from('quote_responses')
-              .select('*', { count: 'exact', head: true })
-              .eq('quote_id', quoteId);
-            
-            console.log('📊 Updating responses count after deletion for quote', quoteId, 'new count:', count);
-            
-            setQuotes(prev => 
-              prev.map(quote => 
-                quote.id === quoteId 
-                  ? { ...quote, responses_count: count || 0 }
-                  : quote
-              )
-            );
           }
         }
       )
