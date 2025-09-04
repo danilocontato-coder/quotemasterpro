@@ -13,9 +13,10 @@ export function useGroupPermissionsSync() {
   const { 
     permissionProfiles, 
     createPermissionProfile, 
-    updatePermissionProfile 
+    updatePermissionProfile,
+    refreshProfiles 
   } = useSupabasePermissions();
-  const { groups } = useSupabaseUsers();
+  const { groups, fetchGroups } = useSupabaseUsers();
   const { client } = useSupabaseCurrentClient();
 
   // Mapeamento de permissões (somente para referência)
@@ -111,6 +112,12 @@ export function useGroupPermissionsSync() {
           .update({ permission_profile_id: newProfile.id })
           .eq('id', group.id);
         
+        // IMPORTANTE: Atualizar os dados na interface
+        await Promise.all([
+          refreshProfiles(),  // Atualizar perfis de permissão
+          fetchGroups()       // Atualizar grupos
+        ]);
+        
         toast.success(`Permissões criadas para ${group.name}!`);
         return true;
       }
@@ -121,7 +128,7 @@ export function useGroupPermissionsSync() {
       toast.error('Erro ao criar perfil de permissão');
       return false;
     }
-  }, [groups, createPermissionProfile, client, permissionProfiles]);
+  }, [groups, createPermissionProfile, client, permissionProfiles, refreshProfiles, fetchGroups]);
 
   /**
    * Atualizar permissões de um grupo específico
@@ -151,6 +158,9 @@ export function useGroupPermissionsSync() {
         permissions: updatedPermissions
       });
 
+      // Atualizar dados na interface
+      await refreshProfiles();
+
       toast.success('Permissão atualizada!');
       return true;
     } catch (error) {
@@ -158,7 +168,7 @@ export function useGroupPermissionsSync() {
       toast.error('Erro ao atualizar permissões');
       return false;
     }
-  }, [groups, permissionProfiles, updatePermissionProfile]);
+  }, [groups, permissionProfiles, updatePermissionProfile, refreshProfiles]);
 
   /**
    * Verificar se um grupo tem perfil de permissão
