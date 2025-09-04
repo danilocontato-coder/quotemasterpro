@@ -513,9 +513,15 @@ export const useSupabaseSupplierQuotes = () => {
           : quote
       ));
 
-      // Notify client via WhatsApp
+      // Notify client via WhatsApp and update quote status to receiving
       if (quote) {
         try {
+          // Update quote status to "receiving" when first proposal is sent
+          await supabase
+            .from('quotes')
+            .update({ status: 'receiving' })
+            .eq('id', quote.id);
+
           await supabase.functions.invoke('notify-client-proposal', {
             body: {
               quoteId: quote.id,

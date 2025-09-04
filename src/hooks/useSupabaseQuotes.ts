@@ -303,8 +303,16 @@ export const useSupabaseQuotes = () => {
   // Mark quote as under review (when responses are received)
   const markQuoteAsUnderReview = async (quoteId: string) => {
     const quote = quotes.find(q => q.id === quoteId);
-    if (quote && quote.status === 'sent') {
+    if (quote && (quote.status === 'sent' || quote.status === 'receiving')) {
       return updateQuoteStatus(quoteId, 'under_review');
+    }
+  };
+
+  // Mark quote as receiving (when opened for proposals)
+  const markQuoteAsReceiving = async (quoteId: string) => {
+    const quote = quotes.find(q => q.id === quoteId);
+    if (quote && quote.status === 'sent') {
+      return updateQuoteStatus(quoteId, 'receiving');
     }
   };
 
@@ -622,6 +630,7 @@ export const useSupabaseQuotes = () => {
     updateQuoteStatus,
     markQuoteAsSent,
     markQuoteAsUnderReview,
+    markQuoteAsReceiving,
     markQuoteAsReceived,
     refetch: fetchQuotes,
   };

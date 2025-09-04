@@ -24,6 +24,7 @@ import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
 import { QuoteComparison } from './QuoteComparison';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
+import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
 import { getStatusText } from "@/utils/statusUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 
@@ -250,7 +251,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
   const handleSendToSuppliers = () => {
     if (!quote) return;
     
-    handleStatusChange('receiving');
+    handleStatusChange('sent');
     toast({
       title: "Cotação enviada!",
       description: "Fornecedores foram notificados e podem enviar propostas.",
@@ -372,9 +373,45 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                   </Button>
                 )}
 
+                {/* Mark as Received Button */}
+                <QuoteMarkAsReceivedButton 
+                  quoteId={quote.id} 
+                  currentStatus={quote.status} 
+                />
+
+                {quote.status === 'under_review' && (
+                  <>
+                    <Button 
+                      onClick={() => handleStatusChange('approved')} 
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Aprovar Cotação
+                    </Button>
+                    <Button 
+                      onClick={() => handleStatusChange('rejected')} 
+                      variant="destructive"
+                      className="flex items-center gap-2"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Rejeitar Cotação
+                    </Button>
+                  </>
+                )}
+
+                {quote.status === 'approved' && (
+                  <Button 
+                    onClick={() => handleStatusChange('finalized')} 
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Finalizar Cotação
+                  </Button>
+                )}
+
                 {/* Análise de Mercado - Simplified since items are not in Quote interface */}
                 {proposals.length > 0 && 
-                 ['receiving', 'approved', 'finalized'].includes(quote.status) && (
+                 ['receiving', 'under_review', 'approved', 'finalized'].includes(quote.status) && (
                   <Button 
                     variant="outline"
                     onClick={() => setShowItemAnalysis(true)}

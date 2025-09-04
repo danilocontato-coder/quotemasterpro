@@ -1,59 +1,62 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader2 } from "lucide-react";
-import { useApprovals } from "@/hooks/useApprovals";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useSupabaseQuotes } from '@/hooks/useSupabaseQuotes';
+import { CheckCircle, Clock } from 'lucide-react';
 
 interface QuoteMarkAsReceivedButtonProps {
   quoteId: string;
-  supplierName: string;
-  disabled?: boolean;
+  currentStatus: string;
+  className?: string;
 }
 
 export function QuoteMarkAsReceivedButton({ 
   quoteId, 
-  supplierName, 
-  disabled = false 
+  currentStatus, 
+  className 
 }: QuoteMarkAsReceivedButtonProps) {
-  const { markAsDelivered } = useApprovals();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const { markQuoteAsUnderReview } = useSupabaseQuotes();
 
   const handleMarkAsReceived = async () => {
-    if (isLoading) return;
-    
     setIsLoading(true);
     try {
-      await markAsDelivered(quoteId, supplierName);
+      await markQuoteAsUnderReview(quoteId);
       toast({
-        title: "Entrega confirmada",
-        description: "A entrega foi marcada como recebida. Avalie sua experiência!",
+        title: 'Status atualizado',
+        description: 'Cotação marcada como "Em Análise"',
       });
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Erro ao confirmar entrega. Tente novamente.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Não foi possível atualizar o status',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Only show for quotes that are receiving proposals
+  if (currentStatus !== 'receiving') {
+    return null;
+  }
+
   return (
     <Button
-      variant="outline"
-      size="sm"
       onClick={handleMarkAsReceived}
-      disabled={disabled || isLoading}
-      className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50 disabled:opacity-50"
+      disabled={isLoading}
+      size="sm"
+      variant="outline"
+      className={className}
     >
       {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <Clock className="h-4 w-4 animate-spin" />
       ) : (
         <CheckCircle className="h-4 w-4" />
       )}
-      {isLoading ? 'Processando...' : 'Marcar como Recebido'}
+      Marcar como Recebida
     </Button>
   );
 }
