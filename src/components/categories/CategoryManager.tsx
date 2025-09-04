@@ -218,7 +218,12 @@ export function CategoryManager({ onCategoryAdd, onCategoryChange }: CategoryMan
                             style={{ backgroundColor: category.color }}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{category.name}</p>
+                            <p className="font-medium text-sm truncate flex items-center gap-2">
+                              {category.name}
+                              {category.is_system && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">Sistema</Badge>
+                              )}
+                            </p>
                             {category.description && (
                               <p className="text-xs text-muted-foreground truncate">
                                 {category.description}
@@ -235,7 +240,8 @@ export function CategoryManager({ onCategoryAdd, onCategoryChange }: CategoryMan
                             size="sm"
                             onClick={() => handleEditCategory(category)}
                             className="h-8 w-8 p-0 hover:bg-secondary"
-                            title="Editar categoria"
+                            title={category.is_system ? "Categorias do sistema não podem ser editadas" : "Editar categoria"}
+                            disabled={!!category.is_system}
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
@@ -243,9 +249,9 @@ export function CategoryManager({ onCategoryAdd, onCategoryChange }: CategoryMan
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemoveCategory(category)}
-                            disabled={productCount > 0}
+                            disabled={productCount > 0 || !!category.is_system}
                             className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                            title={productCount > 0 ? "Não é possível excluir: categoria em uso" : "Excluir categoria"}
+                            title={category.is_system ? "Categorias do sistema não podem ser excluídas" : (productCount > 0 ? "Não é possível excluir: categoria em uso" : "Excluir categoria")}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>

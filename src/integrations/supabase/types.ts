@@ -123,24 +123,30 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
+          is_system: boolean
           name: string
           updated_at: string
         }
         Insert: {
           color?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
+          is_system?: boolean
           name: string
           updated_at?: string
         }
         Update: {
           color?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
+          is_system?: boolean
           name?: string
           updated_at?: string
         }

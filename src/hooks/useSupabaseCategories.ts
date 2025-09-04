@@ -5,10 +5,12 @@ import { useToast } from '@/hooks/use-toast';
 export interface Category {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   color: string;
   created_at: string;
   updated_at: string;
+  created_by?: string | null;
+  is_system?: boolean;
 }
 
 export const useSupabaseCategories = () => {
@@ -47,12 +49,17 @@ export const useSupabaseCategories = () => {
 
   const addCategory = async (categoryData: { name: string; description?: string; color?: string }) => {
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) throw new Error('Usuário não autenticado');
+
       const { data, error } = await supabase
         .from('categories')
         .insert([{
           name: categoryData.name,
           description: categoryData.description || null,
-          color: categoryData.color || '#3b82f6'
+          color: categoryData.color || '#3b82f6',
+          created_by: authData.user.id,
+          is_system: false
         }])
         .select()
         .single();
