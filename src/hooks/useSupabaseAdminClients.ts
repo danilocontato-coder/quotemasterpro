@@ -195,7 +195,8 @@ export function useSupabaseAdminClients() {
   }, [clients, searchTerm, filterGroup, filterStatus]);
 
   const createClient = async (
-    clientData: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">
+    clientData: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">,
+    notificationOptions?: { sendByEmail?: boolean; sendByWhatsApp?: boolean }
   ) => {
     console.log('🚀 DEBUG: createClient iniciado', {
       companyName: clientData.companyName,
@@ -320,6 +321,43 @@ export function useSupabaseAdminClients() {
                 }
               }
             });
+
+            // Enviar credenciais via WhatsApp se solicitado
+            if (notificationOptions?.sendByWhatsApp) {
+              const primaryContact = clientData.contacts?.find(c => c.isPrimary);
+              const phoneNumber = primaryContact?.phone || clientData.phone;
+              
+              if (phoneNumber) {
+                try {
+                  console.log('📱 DEBUG: Enviando credenciais via WhatsApp para', phoneNumber);
+                  const { data: notifyResp, error: notifyErr } = await supabase.functions.invoke("notify", {
+                    body: {
+                      type: "whatsapp_user_credentials",
+                      to: phoneNumber,
+                      userData: {
+                        email: clientData.email,
+                        password: password,
+                        companyName: clientData.companyName,
+                        loginUrl: window.location.origin + "/auth/login"
+                      }
+                    }
+                  });
+
+                  if (notifyErr) {
+                    console.error('Erro ao enviar WhatsApp:', notifyErr);
+                    toast.error("Erro ao enviar credenciais via WhatsApp");
+                  } else {
+                    console.log('✅ WhatsApp enviado com sucesso:', notifyResp);
+                    toast.success(`📱 Credenciais enviadas via WhatsApp para ${phoneNumber}`);
+                  }
+                } catch (whatsappError) {
+                  console.error('Erro no envio WhatsApp:', whatsappError);
+                  toast.error("Falha ao enviar WhatsApp - verifique a configuração");
+                }
+              } else {
+                toast.error("Número de telefone não informado para envio via WhatsApp");
+              }
+            }
           }
         } else {
           console.warn('useSupabaseAdminClients: Falha ao criar usuário de auth (não crítico)', fnErr);

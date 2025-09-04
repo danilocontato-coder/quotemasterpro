@@ -36,7 +36,10 @@ import { AdminClient, ClientGroup, ClientContact, ClientDocument } from '@/hooks
 interface CreateClientModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateClient: (client: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">) => Promise<any>;
+  onCreateClient: (
+    client: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">, 
+    notificationOptions?: { sendByEmail?: boolean; sendByWhatsApp?: boolean }
+  ) => Promise<any>;
   clientGroups: ClientGroup[];
   generateUsername: (companyName: string) => string;
   generateTemporaryPassword: () => string;
@@ -255,22 +258,12 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       };
 
       console.log('CreateClientModal: Chamando onCreateClient', { clientData });
-      await onCreateClient(clientData);
+      await onCreateClient(clientData, {
+        sendByEmail: credentials.sendByEmail,
+        sendByWhatsApp: credentials.sendByWhatsApp
+      });
 
-      // Simulate sending credentials
-      if (credentials.sendByEmail) {
-        toast({
-          title: "E-mail enviado",
-          description: `Credenciais enviadas para ${formData.email}`
-        });
-      }
-
-      if (credentials.sendByWhatsApp && primaryContact.phone) {
-        toast({
-          title: "WhatsApp enviado", 
-          description: `Credenciais enviadas via WhatsApp para ${primaryContact.phone}`
-        });
-      }
+      // Notification is handled by the hook now - no need for simulated toasts
 
       toast({
         title: "Cliente criado",
