@@ -98,11 +98,21 @@ export default function Suppliers() {
     }
   };
   const handleEditSupplier = (supplier: any) => {
+    const isAdmin = user?.role === 'admin';
+    const isOwnLocal = !!supplier.client_id && supplier.client_id === user?.clientId;
+    const canEdit = isAdmin || isOwnLocal;
+    if (!canEdit) {
+      toast({
+        title: 'Ação não permitida',
+        description: 'Apenas o SuperAdmin pode editar fornecedores certificados. Você só pode editar fornecedores locais do seu cliente.',
+        variant: 'destructive'
+      });
+      return;
+    }
     console.log('Editando fornecedor:', supplier.name, supplier.type);
     setEditingSupplier(supplier);
     setShowNewSupplierModal(true);
   };
-
   const handleDeleteSupplier = async (supplier: any) => {
     const canDelete = (user?.role === 'admin') || (!!supplier.client_id && supplier.client_id === user?.clientId);
     if (!canDelete) {
@@ -359,7 +369,8 @@ export default function Suppliers() {
                        size="sm" 
                        className="flex-1"
                        onClick={() => handleEditSupplier(supplier)}
-                     >
+                       disabled={!(user?.role === 'admin' || (!!supplier.client_id && supplier.client_id === user?.clientId))}
+                      >
                        <Edit className="h-4 w-4 mr-2" />
                        Editar
                      </Button>
@@ -367,8 +378,9 @@ export default function Suppliers() {
                      <Button 
                        variant="outline" 
                        size="sm"
-                       onClick={() => handleDeleteSupplier(supplier)}
-                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleDeleteSupplier(supplier)}
+                        disabled={!(user?.role === 'admin' || (!!supplier.client_id && supplier.client_id === user?.clientId))}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
                      >
                        <Trash2 className="h-4 w-4" />
                      </Button>
