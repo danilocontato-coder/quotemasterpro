@@ -23,6 +23,15 @@ Deno.serve(async (req) => {
 
   try {
     console.log('Creating auth user - request received');
+    
+    const requestBody: CreateUserRequest = await req.json();
+    console.log('🔧 DEBUG: Request body recebido:', {
+      email: requestBody.email,
+      name: requestBody.name,
+      role: requestBody.role,
+      clientId: requestBody.clientId,
+      hasPassword: !!requestBody.password
+    });
 
     // Get the auth user from the request
     const authHeader = req.headers.get('Authorization');
@@ -103,6 +112,15 @@ Deno.serve(async (req) => {
 
     const requestBody: CreateUserRequest = await req.json();
     const { email, password, name, role, clientId, temporaryPassword, action = 'create' } = requestBody;
+
+    console.log('🔍 DEBUG: Dados extraídos:', {
+      email,
+      name,
+      role,
+      clientId,
+      temporaryPassword,
+      action
+    });
 
     console.log('Action type:', action, 'for email:', email);
 
@@ -303,11 +321,23 @@ if (authError) {
 
     // Link profile and users to client when provided
     const newUserId = authData.user?.id as string | undefined;
+    console.log('🔗 DEBUG: Iniciando vinculação ao cliente', { newUserId, clientId });
+    
     if (clientId && newUserId) {
       try {
+        console.log('👤 DEBUG: Criando/atualizando profile');
         await supabaseAdmin
           .from('profiles')
-          .upsert({ id: newUserId, email, name, role, client_id: clientId, company_name: name }, { onConflict: 'id' });
+          .upsert({ 
+            id: newUserId, 
+            email, 
+            name, 
+            role, 
+            client_id: clientId, 
+            company_name: name 
+          }, { onConflict: 'id' });
+
+        console.log('✅ DEBUG: Profile criado/atualizado');
 
         const { data: existingUserRow } = await supabaseAdmin
           .from('users')
@@ -315,19 +345,52 @@ if (authError) {
           .eq('auth_user_id', newUserId)
           .maybeSingle();
 
+        console.log('👥 DEBUG: Usuário existente encontrado:', existingUserRow);
+
         if (existingUserRow?.id) {
+          console.log('🔄 DEBUG: Atualizando usuário existente');
           await supabaseAdmin
             .from('users')
-            .update({ name, email, role, status: 'active', client_id: clientId, force_password_change: temporaryPassword ?? true })
+            .update({ 
+              name, 
+              email, 
+              role, 
+              status: 'active', 
+              client_id: clientId, 
+              force_password_change: temporaryPassword ?? true 
+            })
             .eq('id', existingUserRow.id);
+          console.log('✅ DEBUG: Usuário atualizado');
         } else {
+          console.log('➕ DEBUG: Criando novo usuário');
           await supabaseAdmin
             .from('users')
-            .insert({ name, email, role, status: 'active', client_id: clientId, auth_user_id: newUserId, force_password_change: temporaryPassword ?? true });
+            .insert({ 
+              name, 
+              email, 
+              role, 
+              status: 'active', 
+              client_id: clientId, 
+              auth_user_id: newUserId, 
+              force_password_change: temporaryPassword ?? true 
+            });
+          console.log('✅ DEBUG: Novo usuário criado');
         }
+
+        // Verificar se o cliente existe e tem plano
+        const { data: clientData } = await supabaseAdmin
+          .from('clients')
+          .select('id, subscription_plan_id')
+          .eq('id', clientId)
+          .maybeSingle();
+
+        console.log('🏢 DEBUG: Dados do cliente:', clientData);
+        
       } catch (dbErr) {
-        console.error('Error linking new user to client:', dbErr);
+        console.error('❌ DEBUG: Erro ao vincular usuário ao cliente:', dbErr);
       }
+    } else {
+      console.log('⚠️ DEBUG: Não vinculando ao cliente (clientId ou newUserId ausente)');
     }
 
     // Return the created user data

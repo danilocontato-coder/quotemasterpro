@@ -36,7 +36,13 @@ export function useSupabaseSubscriptionGuard() {
   // Carregar dados de uso atual do cliente
   useEffect(() => {
     const loadClientUsage = async () => {
+      console.log('🔄 DEBUG: loadClientUsage iniciado', {
+        clientId: currentClient?.id,
+        clientSubscriptionPlan: currentClient?.subscription_plan_id
+      });
+
       if (!currentClient?.id) {
+        console.log('⚠️ DEBUG: Sem cliente atual, encerrando');
         setIsLoading(false);
         return;
       }
@@ -44,6 +50,7 @@ export function useSupabaseSubscriptionGuard() {
       try {
         setIsLoading(true);
 
+        console.log('📊 DEBUG: Buscando client_usage para:', currentClient.id);
         // Buscar uso atual do cliente
         const { data: usage, error } = await supabase
           .from('client_usage')
@@ -51,12 +58,15 @@ export function useSupabaseSubscriptionGuard() {
           .eq('client_id', currentClient.id)
           .maybeSingle();
 
+        console.log('📊 DEBUG: Resultado da busca client_usage:', { usage, error });
+
         if (error && error.code !== 'PGRST116') {
-          console.error('Erro ao carregar uso do cliente:', error);
+          console.error('❌ DEBUG: Erro ao carregar uso do cliente:', error);
           return;
         }
 
         if (!usage) {
+          console.log('🔧 DEBUG: Usage não existe, calculando baseado em tabelas');
           // Se não existe registro, buscar dados contando as tabelas
           const [quotesResponse, usersResponse] = await Promise.all([
             supabase
@@ -72,6 +82,11 @@ export function useSupabaseSubscriptionGuard() {
               .eq('status', 'active')
           ]);
 
+          console.log('🔢 DEBUG: Contagens calculadas:', {
+            quotes: quotesResponse.count,
+            users: usersResponse.count
+          });
+
           const mockUsage: ClientUsage = {
             id: 'temp',
             client_id: currentClient.id,
@@ -86,12 +101,14 @@ export function useSupabaseSubscriptionGuard() {
             created_at: new Date().toISOString()
           };
 
+          console.log('💭 DEBUG: Usage mock criado:', mockUsage);
           setClientUsage(mockUsage);
         } else {
+          console.log('✅ DEBUG: Usage encontrado no banco:', usage);
           setClientUsage(usage);
         }
       } catch (error) {
-        console.error('Erro ao carregar dados de uso:', error);
+        console.error('❌ DEBUG: Erro ao carregar dados de uso:', error);
       } finally {
         setIsLoading(false);
       }
@@ -101,28 +118,62 @@ export function useSupabaseSubscriptionGuard() {
   }, [currentClient?.id]);
 
   const checkLimit = (action: string, additionalCount: number = 1): LimitCheckResult => {
+    console.log('🔍 DEBUG: checkLimit chamado', {
+      action,
+      additionalCount,
+      hasUser: !!user,
+      hasCurrentClient: !!currentClient,
+      hasClientUsage: !!clientUsage
+    });
+
     if (!user || !currentClient) {
+      console.log('❌ DEBUG: Usuário ou cliente não encontrado');
       return { allowed: false, reason: 'Usuário não autenticado', currentUsage: 0, limit: 0 };
     }
 
     if (!clientUsage) {
+      console.log('❌ DEBUG: Dados de uso não carregados');
       return { allowed: false, reason: 'Dados de uso não carregados', currentUsage: 0, limit: 0 };
     }
 
     // Obter plano do cliente (fallback para basic se não especificado)
     const planId = currentClient.subscription_plan_id || 'basic';
+    console.log('📋 DEBUG: Plano sendo usado:', planId);
+    
     const userPlan = getPlanById(planId);
     
+    console.log('📋 DEBUG: Plano encontrado:', {
+      id: userPlan?.id,
+      name: userPlan?.displayName,
+      limitsMaxQuotes: userPlan?.limits?.maxQuotesPerMonth,
+      limitsMaxUsers: userPlan?.limits?.maxUsersPerClient
+    });
+    
     if (!userPlan) {
+      console.log('❌ DEBUG: Plano não encontrado no sistema');
       return { allowed: false, reason: 'Plano não encontrado', currentUsage: 0, limit: 0 };
     }
+
+    console.log('📊 DEBUG: Usage atual do cliente:', {
+      quotes_this_month: clientUsage.quotes_this_month,
+      users_count: clientUsage.users_count,
+      storage_used_gb: clientUsage.storage_used_gb
+    });
 
     switch (action) {
       case 'CREATE_QUOTE':
         const quotesLimit = userPlan.limits.maxQuotesPerMonth;
         const newQuotesCount = clientUsage.quotes_this_month + additionalCount;
         
+        console.log('📈 DEBUG: Verificando limite de cotações:', {
+          current: clientUsage.quotes_this_month,
+          additional: additionalCount,
+          newTotal: newQuotesCount,
+          limit: quotesLimit
+        });
+        
         if (quotesLimit !== -1 && newQuotesCount > quotesLimit) {
+          console.log('🚫 DEBUG: Limite de cotações excedido');
           return {
             allowed: false,
             reason: `Limite de cotações mensais atingido (${quotesLimit}). Faça upgrade do seu plano para continuar.`,
@@ -132,6 +183,7 @@ export function useSupabaseSubscriptionGuard() {
           };
         }
         
+        console.log('✅ DEBUG: Limite de cotações OK');
         return {
           allowed: true,
           currentUsage: clientUsage.quotes_this_month,
@@ -142,7 +194,15 @@ export function useSupabaseSubscriptionGuard() {
         const usersLimit = userPlan.limits.maxUsersPerClient;
         const newUsersCount = clientUsage.users_count + additionalCount;
         
+        console.log('👥 DEBUG: Verificando limite de usuários:', {
+          current: clientUsage.users_count,
+          additional: additionalCount,
+          newTotal: newUsersCount,
+          limit: usersLimit
+        });
+        
         if (usersLimit !== -1 && newUsersCount > usersLimit) {
+          console.log('🚫 DEBUG: Limite de usuários excedido');
           return {
             allowed: false,
             reason: `Limite de usuários atingido (${usersLimit}). Faça upgrade do seu plano para adicionar mais usuários.`,
@@ -152,6 +212,7 @@ export function useSupabaseSubscriptionGuard() {
           };
         }
         
+        console.log('✅ DEBUG: Limite de usuários OK');
         return {
           allowed: true,
           currentUsage: clientUsage.users_count,
@@ -355,6 +416,12 @@ export function useSupabaseSubscriptionGuard() {
   const userPlan = currentClient?.subscription_plan_id 
     ? getPlanById(currentClient.subscription_plan_id) 
     : getPlanById('basic');
+
+  console.log('🎯 DEBUG: userPlan final:', {
+    planId: currentClient?.subscription_plan_id || 'basic',
+    planFound: !!userPlan,
+    planName: userPlan?.displayName
+  });
 
   return {
     currentUsage: getCurrentUsage(),

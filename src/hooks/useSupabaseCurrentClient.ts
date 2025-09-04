@@ -23,10 +23,17 @@ export function useSupabaseCurrentClient() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchClientInfo = async () => {
+    console.log('🔍 DEBUG: fetchClientInfo iniciado', {
+      userId: user?.id,
+      clientId: user?.clientId,
+      userRole: user?.role
+    });
+
     if (!user?.clientId) {
+      console.log('⚠️ DEBUG: Usuário sem clientId, usando dados do usuário');
       // If user doesn't have a clientId, create basic info from user data
       if (user) {
-        setClient({
+        const fallbackClient = {
           id: user.id,
           name: user.companyName || user.name,
           email: user.email,
@@ -36,7 +43,9 @@ export function useSupabaseCurrentClient() {
           status: 'active',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        };
+        console.log('💡 DEBUG: Cliente fallback criado:', fallbackClient);
+        setClient(fallbackClient);
       }
       setIsLoading(false);
       return;
@@ -46,19 +55,29 @@ export function useSupabaseCurrentClient() {
       setIsLoading(true);
       setError(null);
 
+      console.log('📋 DEBUG: Buscando cliente no banco:', user.clientId);
+
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('id', user.clientId)
         .maybeSingle();
 
+      console.log('📋 DEBUG: Resultado da busca:', { data, error });
+
       if (error) throw error;
 
       if (data) {
+        console.log('✅ DEBUG: Cliente encontrado:', {
+          id: data.id,
+          name: data.name,
+          subscription_plan_id: data.subscription_plan_id
+        });
         setClient(data);
       } else {
+        console.log('⚠️ DEBUG: Cliente não encontrado, usando fallback');
         // Fallback to user data if no client found
-        setClient({
+        const fallbackClient = {
           id: user.id,
           name: user.companyName || user.name,
           email: user.email,
@@ -68,15 +87,17 @@ export function useSupabaseCurrentClient() {
           status: 'active',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        };
+        console.log('💡 DEBUG: Cliente fallback criado:', fallbackClient);
+        setClient(fallbackClient);
       }
     } catch (err) {
-      console.error('Error fetching client info:', err);
+      console.error('❌ DEBUG: Erro ao buscar informações do cliente:', err);
       setError(err instanceof Error ? err.message : 'Erro ao buscar informações do cliente');
       
       // Fallback to user data
       if (user) {
-        setClient({
+        const errorFallbackClient = {
           id: user.id,
           name: user.companyName || user.name,
           email: user.email,
@@ -86,7 +107,9 @@ export function useSupabaseCurrentClient() {
           status: 'active',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        };
+        console.log('🆘 DEBUG: Cliente fallback por erro criado:', errorFallbackClient);
+        setClient(errorFallbackClient);
       }
     } finally {
       setIsLoading(false);

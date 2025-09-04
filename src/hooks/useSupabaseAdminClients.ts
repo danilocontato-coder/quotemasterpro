@@ -197,40 +197,55 @@ export function useSupabaseAdminClients() {
   const createClient = async (
     clientData: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">
   ) => {
-    console.log('useSupabaseAdminClients: createClient iniciado', clientData);
+    console.log('🚀 DEBUG: createClient iniciado', {
+      companyName: clientData.companyName,
+      plan: clientData.plan,
+      email: clientData.email
+    });
     setLoading(true);
     let createdClientId: string | null = null;
 
     try {
       // 1) Cria o registro do cliente PRIMEIRO (sempre funciona)
-      console.log('useSupabaseAdminClients: Criando registro do cliente');
+      console.log('🔧 DEBUG: Criando registro do cliente no Supabase');
+      const insertPayload = {
+        name: clientData.companyName,
+        cnpj: clientData.cnpj,
+        email: clientData.email,
+        phone: clientData.phone,
+        address: typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address),
+        status: clientData.status,
+        subscription_plan_id: clientData.plan,
+        username: clientData.loginCredentials.username,
+        group_id: clientData.groupId || null,
+      };
+      console.log('📤 DEBUG: Payload do cliente:', insertPayload);
+
       const { data: insertData, error: insertErr } = await supabase
         .from("clients")
-        .insert({
-          name: clientData.companyName,
-          cnpj: clientData.cnpj,
-          email: clientData.email,
-          phone: clientData.phone,
-          address: typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address),
-          status: clientData.status,
-          subscription_plan_id: clientData.plan,
-          username: clientData.loginCredentials.username,
-          group_id: clientData.groupId || null,
-        })
-        .select("id")
+        .insert([insertPayload])
+        .select("id, subscription_plan_id")
         .single();
 
       if (insertErr) {
-        console.error('useSupabaseAdminClients: Erro ao inserir cliente', insertErr);
+        console.error('❌ DEBUG: Erro ao inserir cliente', insertErr);
         throw insertErr;
       }
       createdClientId = insertData?.id as string;
-      console.log('useSupabaseAdminClients: Cliente criado com ID', createdClientId);
+      console.log('✅ DEBUG: Cliente criado com sucesso', {
+        id: createdClientId,
+        planSalvo: insertData?.subscription_plan_id
+      });
 
       // 2) Tenta criar usuário de autenticação (opcional - não bloqueia se falhar)
       try {
         const password = clientData.loginCredentials.password || generateTemporaryPassword();
-        console.log('useSupabaseAdminClients: Tentando criar usuário de autenticação');
+        console.log('🔐 DEBUG: Tentando criar usuário de autenticação', {
+          email: clientData.email,
+          role: 'manager',
+          clientId: createdClientId,
+          temporaryPassword: clientData.loginCredentials.temporaryPassword
+        });
         
         const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
           body: {
@@ -243,13 +258,31 @@ export function useSupabaseAdminClients() {
           },
         });
 
+        console.log('🔐 DEBUG: Resposta da edge function:', { authResp, fnErr });
+
         if (!fnErr && authResp) {
           const authPayload = authResp as any;
           if (authPayload?.success !== false && authPayload?.auth_user_id) {
             const createdAuthUserId = authPayload.auth_user_id;
-            console.log('useSupabaseAdminClients: Auth user criado com ID', createdAuthUserId);
+            console.log('✅ DEBUG: Auth user criado com ID', createdAuthUserId);
 
-            // 3) A Edge Function já cria/atualiza profile e users vinculando ao clientId. Nada a fazer aqui.
+            // Verificar se profile foi criado corretamente
+            const { data: profileCheck } = await supabase
+              .from('profiles')
+              .select('id, client_id, role')
+              .eq('id', createdAuthUserId)
+              .maybeSingle();
+            
+            console.log('👤 DEBUG: Profile criado:', profileCheck);
+
+            // Verificar se user foi criado corretamente
+            const { data: userCheck } = await supabase
+              .from('users')
+              .select('id, client_id, role, auth_user_id')
+              .eq('auth_user_id', createdAuthUserId)
+              .maybeSingle();
+            
+            console.log('👥 DEBUG: User criado:', userCheck);
             
             // Mostrar credenciais criadas com toast melhorado
             const copyToClipboard = async (text: string) => {
@@ -504,7 +537,7 @@ export function useSupabaseAdminClients() {
   // Aplicar características do plano ao cliente
   const applyPlanCharacteristicsToClient = async (clientId: string, planId: string) => {
     try {
-      console.log('Aplicando características do plano ao cliente:', { clientId, planId });
+      console.log('🎯 DEBUG: Aplicando características do plano', { clientId, planId });
       
       // Buscar dados completos do plano no Supabase
       const { data: planData, error: planError } = await supabase
@@ -514,38 +547,69 @@ export function useSupabaseAdminClients() {
         .single();
 
       if (planError || !planData) {
-        console.error('Erro ao buscar dados do plano:', planError);
+        console.error('❌ DEBUG: Erro ao buscar dados do plano:', planError);
         return;
       }
 
-      console.log('Dados do plano encontrados:', planData);
+      console.log('📋 DEBUG: Dados do plano encontrados:', {
+        id: planData.id,
+        name: planData.display_name,
+        limits: {
+          maxQuotes: planData.max_quotes,
+          maxUsers: planData.max_users,
+          maxSuppliers: planData.max_suppliers,
+          maxStorageGB: planData.max_storage_gb,
+        }
+      });
+
+      // Verificar se client_usage já existe
+      const { data: existingUsage } = await supabase
+        .from('client_usage')
+        .select('*')
+        .eq('client_id', clientId)
+        .maybeSingle();
+
+      console.log('📊 DEBUG: Usage existente:', existingUsage);
 
       // Aplicar limites do plano na tabela client_usage
+      const usageData = {
+        client_id: clientId,
+        // Resetar contadores mensais se mudou de plano
+        quotes_this_month: existingUsage?.quotes_this_month || 0,
+        quote_responses_this_month: existingUsage?.quote_responses_this_month || 0,
+        // Manter contadores atuais se já existem
+        users_count: existingUsage?.users_count || 0,
+        storage_used_gb: existingUsage?.storage_used_gb || 0,
+        products_in_catalog: existingUsage?.products_in_catalog || 0,
+        categories_count: existingUsage?.categories_count || 0,
+        updated_at: new Date().toISOString(),
+        last_reset_date: new Date().toISOString().split('T')[0]
+      };
+
+      console.log('💾 DEBUG: Dados de usage a serem salvos:', usageData);
+
       const { error: usageError } = await supabase
         .from('client_usage')
-        .upsert({
-          client_id: clientId,
-          // Resetar contadores mensais se mudou de plano
-          quotes_this_month: 0,
-          quote_responses_this_month: 0,
-          // Manter contadores atuais se já existem
-          users_count: 0, // Será recalculado pelos triggers
-          storage_used_gb: 0, // Manter o valor atual
-          products_in_catalog: 0, // Manter o valor atual
-          categories_count: 0, // Manter o valor atual
-          updated_at: new Date().toISOString(),
-          last_reset_date: new Date().toISOString().split('T')[0]
-        }, {
+        .upsert(usageData, {
           onConflict: 'client_id',
           ignoreDuplicates: false
         });
 
       if (usageError) {
-        console.error('Erro ao aplicar limites do plano:', usageError);
+        console.error('❌ DEBUG: Erro ao aplicar limites do plano:', usageError);
       } else {
-        console.log('Características do plano aplicadas com sucesso ao cliente');
+        console.log('✅ DEBUG: Características do plano aplicadas com sucesso');
         toast.success(`Plano ${planData.display_name} aplicado com todas suas características!`);
       }
+
+      // Verificar se foi salvo corretamente
+      const { data: savedUsage } = await supabase
+        .from('client_usage')
+        .select('*')
+        .eq('client_id', clientId)
+        .maybeSingle();
+
+      console.log('✔️ DEBUG: Usage salvo no banco:', savedUsage);
 
       // Criar log de auditoria
       await supabase.from('audit_logs').insert({
@@ -571,8 +635,10 @@ export function useSupabaseAdminClients() {
         }
       });
 
+      console.log('📝 DEBUG: Log de auditoria criado');
+
     } catch (error) {
-      console.error('Erro ao aplicar características do plano:', error);
+      console.error('❌ DEBUG: Erro ao aplicar características do plano:', error);
       toast.error('Erro ao aplicar características do plano');
     }
   };
