@@ -35,6 +35,14 @@ export function Permissions() {
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const activeProfile = activeGroup ? getGroupPermissionProfile(activeGroup.id) : null;
 
+  console.log('🔍 DEBUG Permissions Page:', {
+    activeGroupId,
+    activeGroup: activeGroup?.name,
+    hasProfile: !!activeProfile,
+    profileId: activeProfile?.id,
+    groupPermissionProfileId: activeGroup?.permission_profile_id
+  });
+
   // Set first group as active when groups load
   useEffect(() => {
     if (groups.length > 0 && !activeGroupId) {
@@ -42,13 +50,37 @@ export function Permissions() {
     }
   }, [groups, activeGroupId]);
 
+  // Force re-render when group permission profile changes
+  useEffect(() => {
+    if (activeGroup) {
+      console.log('👀 Grupo ativo mudou:', activeGroup.name, 'Profile ID:', activeGroup.permission_profile_id);
+    }
+  }, [activeGroup?.permission_profile_id]);
+
   const handlePermissionChange = async (module: string, action: 'view' | 'create' | 'edit' | 'delete', value: boolean) => {
     if (!activeGroupId) return;
     
     try {
+      console.log('🔄 Alterando permissão:', { module, action, value });
       await updateGroupPermissions(activeGroupId, module, action, value);
     } catch (error) {
-      console.error('Erro ao atualizar permissão:', error);
+      console.error('Erro ao alterar permissão:', error);
+    }
+  };
+
+  const handleCreatePermissions = async () => {
+    if (!activeGroupId) return;
+    
+    console.log('🚀 Criando permissões para grupo:', activeGroupId);
+    const success = await createPermissionProfileForGroup(activeGroupId);
+    
+    if (success) {
+      console.log('✅ Permissões criadas, forçando re-render...');
+      // Forçar uma nova busca dos dados após sucesso
+      setTimeout(() => {
+        const updatedProfile = getGroupPermissionProfile(activeGroupId);
+        console.log('🔍 Perfil após criação:', updatedProfile);
+      }, 2000);
     }
   };
 
@@ -310,7 +342,7 @@ export function Permissions() {
                 </p>
               </div>
               <Button 
-                onClick={() => createPermissionProfileForGroup(activeGroup.id)}
+                onClick={handleCreatePermissions}
                 className="flex items-center gap-2"
               >
                 <Plus className="h-4 w-4" />

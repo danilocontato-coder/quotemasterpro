@@ -36,6 +36,8 @@ export function useGroupPermissionsSync() {
    */
   const createPermissionProfileForGroup = useCallback(async (groupId: string) => {
     try {
+      console.log('🔧 Iniciando criação de perfil para grupo:', groupId);
+      
       if (!client?.id) {
         toast.error('Cliente não identificado');
         return false;
@@ -47,10 +49,13 @@ export function useGroupPermissionsSync() {
         return false;
       }
 
+      console.log('📋 Grupo encontrado:', group.name, 'Permission Profile ID:', group.permission_profile_id);
+
       // Verificar se já tem perfil vinculado (verificação mais robusta)
       if (group.permission_profile_id) {
         const existingProfile = permissionProfiles.find(p => p.id === group.permission_profile_id);
         if (existingProfile) {
+          console.log('❌ Grupo já possui perfil:', existingProfile);
           toast.error('Este grupo já possui um perfil de permissão configurado');
           return false;
         }
@@ -59,6 +64,7 @@ export function useGroupPermissionsSync() {
       // Verificar se já existe um perfil com o mesmo nome (evitar duplicatas)
       const duplicateProfile = permissionProfiles.find(p => p.name === group.name && p.client_id === client.id);
       if (duplicateProfile) {
+        console.log('❌ Perfil duplicado encontrado:', duplicateProfile);
         toast.error(`Já existe um perfil de permissão para o grupo "${group.name}"`);
         return false;
       }
@@ -99,12 +105,15 @@ export function useGroupPermissionsSync() {
         permissions['suppliers'] = { view: true, create: false, edit: false, delete: false };
         permissions['communication'] = { view: true, create: false, edit: false, delete: false };
         permissions['payments'] = { view: false, create: false, edit: false, delete: false };
-        permissions['reports'] = { view: false, create: false, edit: false, delete: false };
+        permissions['reports'] = { view: false, create: false, delete: false };
         permissions['users'] = { view: false, create: false, edit: false, delete: false };
         permissions['settings'] = { view: false, create: false, edit: false, delete: false };
       }
 
+      console.log('🎯 Permissões definidas:', permissions);
+
       // Criar perfil de permissão
+      console.log('📤 Criando perfil de permissão...');
       const newProfile = await createPermissionProfile({
         name: group.name,
         description: group.description || `Permissões para ${group.name}`,
@@ -112,26 +121,45 @@ export function useGroupPermissionsSync() {
         client_id: client.id
       });
 
+      console.log('✅ Perfil criado:', newProfile);
+
       // Vincular o perfil ao grupo
       if (newProfile) {
-        await supabase
+        console.log('🔗 Vinculando perfil ao grupo...');
+        const { error: linkError } = await supabase
           .from('user_groups')
           .update({ permission_profile_id: newProfile.id })
           .eq('id', group.id);
-        
-        // IMPORTANTE: Atualizar os dados na interface
+
+        if (linkError) {
+          console.error('❌ Erro ao vincular perfil ao grupo:', linkError);
+          throw linkError;
+        }
+
+        console.log('🔄 Atualizando interface...');
+        // IMPORTANTE: Atualizar os dados na interface com delay para garantir consistência
         await Promise.all([
-          refreshProfiles(),  // Atualizar perfis de permissão
-          fetchGroups()       // Atualizar grupos
+          refreshProfiles(),
+          fetchGroups()
         ]);
+
+        // Aguardar um pouco para garantir que os dados foram atualizados
+        setTimeout(async () => {
+          await Promise.all([
+            refreshProfiles(),
+            fetchGroups()
+          ]);
+          console.log('✨ Interface atualizada com delay');
+        }, 1000);
         
         toast.success(`Permissões criadas para ${group.name}!`);
+        console.log('🎉 Processo concluído com sucesso');
         return true;
       }
       
       return false;
     } catch (error) {
-      console.error('Erro ao criar perfil de permissão:', error);
+      console.error('💥 Erro ao criar perfil de permissão:', error);
       toast.error('Erro ao criar perfil de permissão');
       return false;
     }
