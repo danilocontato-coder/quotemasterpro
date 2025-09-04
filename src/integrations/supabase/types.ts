@@ -1204,6 +1204,10 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
+      next_quote_id: {
+        Args: { prefix?: string }
+        Returns: string
+      }
       normalize_cnpj: {
         Args: { cnpj_in: string }
         Returns: string

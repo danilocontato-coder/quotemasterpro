@@ -97,9 +97,6 @@ export const useSupabaseQuotes = () => {
     try {
       console.log('=== INICIANDO createQuote ===', quoteData);
       
-      // Generate unique ID
-      const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
-      
       // Separate items from quote data
       const { items, ...quoteFields } = quoteData;
       
@@ -111,7 +108,6 @@ export const useSupabaseQuotes = () => {
         .single();
       
       const newQuote = {
-        id: quoteId,
         title: quoteFields.title,
         description: quoteFields.description || '',
         deadline: quoteFields.deadline,
@@ -123,13 +119,13 @@ export const useSupabaseQuotes = () => {
         items_count: items?.length || 0,
         responses_count: 0,
         suppliers_sent_count: 0
-      };
+      } as const;
 
       console.log('=== INSERINDO QUOTE ===', newQuote);
 
       const { data, error } = await supabase
         .from('quotes')
-        .insert(newQuote)
+        .insert(newQuote as any)
         .select()
         .single();
 
