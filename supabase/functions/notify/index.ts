@@ -7,7 +7,7 @@ const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL')!
 const evolutionApiToken = Deno.env.get('EVOLUTION_API_TOKEN')!
 
 interface NotificationRequest {
-  type: 'email' | 'whatsapp' | 'certification'
+  type: 'email' | 'whatsapp' | 'certification' | 'whatsapp_user_credentials'
   to?: string
   supplier_id?: string
   supplier_name?: string
@@ -24,6 +24,12 @@ interface NotificationRequest {
     clientName: string
     clientContact: string
   }
+  // User credentials payload
+  user_id?: string
+  user_name?: string
+  user_email?: string
+  temp_password?: string
+  app_url?: string
 }
 
 Deno.serve(async (req) => {
@@ -33,7 +39,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { type, to, supplier_id, supplier_name, supplier_email, supplier_whatsapp, quoteData }: NotificationRequest = await req.json()
+    const { type, to, supplier_id, supplier_name, supplier_email, supplier_whatsapp, quoteData, user_id, user_name, user_email, temp_password, app_url }: NotificationRequest = await req.json()
 
     console.log(`[NOTIFY] Processando notificação tipo ${type}`)
 
@@ -130,6 +136,68 @@ Deno.serve(async (req) => {
           notification_sent: result.success
         }
       })
+
+  } else if (type === 'whatsapp_user_credentials') {
+      // Send user credentials via WhatsApp
+      if (!to || !user_email || !temp_password) {
+        throw new Error('Campos obrigatórios ausentes: to, user_email, temp_password')
+      }
+
+      const message =
+        `👋 Olá${user_name ? ' ' + user_name : ''}!\n\n` +
+        `Seu acesso ao *QuoteMaster Pro* foi criado. Seguem suas credenciais:\n\n` +
+        `• E-mail: ${user_email}\n` +
+        `• Senha temporária: ${temp_password}\n\n` +
+        `${app_url ? `Acesse: ${app_url}\n\n` : ''}` +
+        `Por segurança, você deverá alterar a senha no primeiro login.\n\n` +
+        `Se não reconhece esta mensagem, ignore este aviso.`
+
+      const whatsappResponse = await fetch(`${evolutionApiUrl}/message/sendText`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': evolutionApiToken
+        },
+        body: JSON.stringify({
+          number: to,
+          text: message
+        })
+      })
+
+      if (whatsappResponse.ok) {
+        const whatsappData = await whatsappResponse.json()
+        result = {
+          success: true,
+          messageId: whatsappData.messageId || `whatsapp_${Date.now()}`,
+          provider: 'evolution-api'
+        }
+        console.log(`[WHATSAPP CREDENTIALS] Enviado com sucesso para ${to}`)
+      } else {
+        const error = await whatsappResponse.text()
+        console.error(`[WHATSAPP CREDENTIALS] Erro ao enviar para ${to}:`, error)
+        result = {
+          success: false,
+          error: `Falha na Evolution API: ${error}`
+        }
+      }
+
+      // Audit log
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey)
+        await supabase.from('audit_logs').insert({
+          action: 'USER_CREDENTIALS_SENT',
+          entity_type: 'users',
+          entity_id: user_id || user_email || 'unknown',
+          details: {
+            to,
+            success: result.success,
+            messageId: result.messageId,
+            provider: result.provider
+          }
+        })
+      } catch (logErr) {
+        console.warn('[WHATSAPP CREDENTIALS] Falha ao registrar audit log:', logErr)
+      }
 
     } else if (type === 'whatsapp' && quoteData) {
       // Original quote notification logic

@@ -36,6 +36,7 @@ import {
 import { useSupabaseUsers, SupabaseUser } from '@/hooks/useSupabaseUsers';
 import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CreateUserModalProps {
   open: boolean;
@@ -76,23 +77,29 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
     }
   }, [formData.email, formData.generateCredentials, generateTemporaryPassword]);
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      role: '',
-      status: 'active',
-      client_id: '',
-      supplier_id: '',
-      groups: [],
-      generateCredentials: true,
-      username: '',
-      password: '',
-      force_password_change: true
-    });
-    setPasswordCopied(false);
-  };
+const resetForm = () => {
+  setFormData({
+    name: '',
+    email: '',
+    phone: '',
+    role: '',
+    status: 'active',
+    client_id: '',
+    supplier_id: '',
+    groups: [],
+    generateCredentials: true,
+    username: '',
+    password: '',
+    force_password_change: true
+  });
+  setPasswordCopied(false);
+};
+
+const normalizePhone = (phone: string) => {
+  const digits = (phone || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.startsWith('55') ? digits : `55${digits}`;
+};
 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.email.trim() || !formData.role) {
@@ -101,7 +108,7 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
     }
 
     // Verificar limite de usuários antes de criar
-    if (!enforceLimit('ADD_USER')) {
+    if (!enforceLimit('CREATE_USER')) {
       return;
     }
 
@@ -126,7 +133,30 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
         password: formData.generateCredentials ? formData.password : undefined
       };
 
-      await createUser(userData);
+      const created = await createUser(userData);
+
+      // Enviar credenciais via WhatsApp, se houver telefone e credenciais geradas
+      if (formData.generateCredentials && formData.password && formData.phone) {
+        const to = normalizePhone(formData.phone);
+        try {
+          const { error } = await supabase.functions.invoke('notify', {
+            body: {
+              type: 'whatsapp_user_credentials',
+              to,
+              user_id: created?.id,
+              user_name: formData.name,
+              user_email: formData.email,
+              temp_password: formData.password,
+              app_url: window.location.origin
+            }
+          });
+          if (error) throw error;
+          toast.success(`Credenciais enviadas via WhatsApp para ${formData.phone}`);
+        } catch (err) {
+          console.error('Erro ao enviar WhatsApp:', err);
+          toast.error('Usuário criado, mas houve falha ao enviar as credenciais por WhatsApp');
+        }
+      }
       
       toast.success(`Usuário ${formData.name} criado com sucesso!`);
       resetForm();
@@ -231,6 +261,9 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="+55 11 99999-0000"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Se informado, as credenciais de acesso serão enviadas via WhatsApp para este número.
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Status</label>
