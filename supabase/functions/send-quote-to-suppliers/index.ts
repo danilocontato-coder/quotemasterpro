@@ -91,6 +91,9 @@ const handler = async (req: Request): Promise<Response> => {
     let evolutionInstance: string | null = null;
     let evolutionApiUrl: string | null = null;
     let evolutionToken: string | null = null;
+    let tokenSource: 'config' | 'global' | null = null;
+    let apiUrlSource: 'config' | 'global' | null = null;
+    let evoScope: 'client' | 'global' | 'none' = 'none';
 
     const { data: evoClientInt } = await supabase
       .from('integrations')
@@ -101,6 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     let evoCfg: any = evoClientInt?.configuration || null;
+    if (evoCfg) evoScope = 'client';
     if (!evoCfg) {
       const { data: evoGlobalInt } = await supabase
         .from('integrations')
@@ -110,22 +114,34 @@ const handler = async (req: Request): Promise<Response> => {
         .is('client_id', null)
         .maybeSingle();
       evoCfg = evoGlobalInt?.configuration || null;
+      if (evoCfg) evoScope = 'global';
     }
 
     try {
       if (evoCfg) {
         evolutionInstance = (evoCfg.instance ?? evoCfg['evolution_instance']) || null;
-        evolutionApiUrl = (evoCfg.api_url ?? evoCfg['evolution_api_url']) || null;
-        evolutionToken = (evoCfg.token ?? evoCfg['evolution_token']) || null;
+        const cfgApiUrl = (evoCfg.api_url ?? evoCfg['evolution_api_url']) || null;
+        const cfgToken = (evoCfg.token ?? evoCfg['evolution_token']) || null;
+        if (cfgApiUrl) { evolutionApiUrl = cfgApiUrl; apiUrlSource = 'config'; }
+        if (cfgToken) { evolutionToken = cfgToken; tokenSource = 'config'; }
       }
     } catch {}
 
     if (!evolutionApiUrl) {
-      evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL') || null;
+      const envUrl = Deno.env.get('EVOLUTION_API_URL') || null;
+      if (envUrl) { evolutionApiUrl = envUrl; apiUrlSource = 'global'; }
     }
     if (!evolutionToken) {
-      evolutionToken = Deno.env.get('EVOLUTION_API_TOKEN') || null;
+      const envToken = Deno.env.get('EVOLUTION_API_TOKEN') || null;
+      if (envToken) { evolutionToken = envToken; tokenSource = 'global'; }
     }
+
+    const resolvedEvolution = {
+      instance: evolutionInstance,
+      api_url_defined: Boolean(evolutionApiUrl),
+      token_defined: Boolean(evolutionToken),
+      source: { token: tokenSource, api_url: apiUrlSource, scope: evoScope }
+    };
 
     // Load WhatsApp template
     let whatsappTemplate = null;
@@ -468,7 +484,9 @@ const handler = async (req: Request): Promise<Response> => {
         message: `Cotação enviada para ${suppliers.length} fornecedor(es) e status atualizado para 'enviado'`,
         suppliers_contacted: suppliers.length,
         webhook_url_used: n8nWebhookUrl,
-        quote_status_updated: true
+        quote_status_updated: true,
+        send_method: 'n8n',
+        resolved_evolution: resolvedEvolution
       }),
       {
         status: 200,
@@ -629,7 +647,8 @@ const handler = async (req: Request): Promise<Response> => {
           suppliers_total: suppliers.length,
           errors: errorCount > 0 ? errors : undefined,
           send_method: 'evolution_direct',
-          quote_status_updated: true
+          quote_status_updated: true,
+          resolved_evolution: resolvedEvolution
         }),
         {
           status: 200,
@@ -643,7 +662,8 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ 
           success: false,
           error: 'Erro ao enviar via Evolution API', 
-          details: error.message 
+          details: error.message,
+          resolved_evolution: resolvedEvolution
         }),
         {
           status: 200,
