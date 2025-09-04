@@ -363,12 +363,6 @@ export const useSupabaseQuotes = () => {
                   quote.id === quoteId ? updatedQuote as Quote : quote
                 )
               );
-              
-              // Force a complete refresh to ensure UI is up to date
-              setTimeout(() => {
-                console.log('🔄 Force refreshing quotes after realtime update');
-                fetchQuotes();
-              }, 500);
             }
           }
         }
