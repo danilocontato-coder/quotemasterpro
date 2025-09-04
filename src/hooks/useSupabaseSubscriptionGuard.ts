@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,17 +33,8 @@ export function useSupabaseSubscriptionGuard() {
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchSubscriptionPlans();
-  }, []);
-
-  useEffect(() => {
-    if (currentClient && !clientLoading) {
-      fetchClientUsage();
-    }
-  }, [currentClient, clientLoading]);
-
-  const fetchSubscriptionPlans = async () => {
+  // Fetch planos apenas uma vez
+  const fetchSubscriptionPlans = useCallback(async () => {
     try {
       console.log('📦 DEBUG: Buscando planos do Supabase...');
       const { data, error } = await supabase
@@ -61,20 +52,14 @@ export function useSupabaseSubscriptionGuard() {
     } catch (error) {
       console.error('❌ DEBUG: Erro ao carregar planos:', error);
     }
-  };
+  }, []); // Dependências vazias intencionalmente
 
-  const getPlanById = (planId: string) => {
-    const plan = subscriptionPlans.find(p => p.id === planId);
-    console.log('🔍 DEBUG: Buscando plano:', { planId, found: !!plan, planName: plan?.display_name });
-    return plan;
-  };
+  useEffect(() => {
+    fetchSubscriptionPlans();
+  }, []); // Executa apenas uma vez
 
-  const fetchClientUsage = async () => {
-    console.log('🔄 DEBUG: fetchClientUsage iniciado', {
-      clientId: currentClient?.id,
-      clientSubscriptionPlan: currentClient?.subscription_plan_id
-    });
-
+  // Fetch client usage controlado
+  const fetchClientUsage = useCallback(async () => {
     if (!currentClient?.id) {
       console.log('⚠️ DEBUG: Sem cliente atual, encerrando');
       setIsLoading(false);
@@ -146,9 +131,22 @@ export function useSupabaseSubscriptionGuard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentClient?.id]); // Depende apenas do ID do cliente
 
-  const checkLimit = (action: string, additionalCount: number = 1): LimitCheckResult => {
+  useEffect(() => {
+    if (currentClient && !clientLoading) {
+      fetchClientUsage();
+    }
+  }, [currentClient, clientLoading, fetchClientUsage]);
+
+  // getPlanById usando useMemo para evitar recálculo
+  const getPlanById = useCallback((planId: string) => {
+    const plan = subscriptionPlans.find(p => p.id === planId);
+    console.log('🔍 DEBUG: Buscando plano:', { planId, found: !!plan, planName: plan?.display_name });
+    return plan;
+  }, [subscriptionPlans]);
+
+  const checkLimit = useCallback((action: string, additionalCount: number = 1): LimitCheckResult => {
     console.log('🔍 DEBUG: checkLimit chamado', {
       action,
       additionalCount,
@@ -235,9 +233,9 @@ export function useSupabaseSubscriptionGuard() {
           limit: -1
         };
     }
-  };
+  }, [user, currentClient, clientUsage, getPlanById]);
 
-  const showUpgradeToast = (result: LimitCheckResult) => {
+  const showUpgradeToast = useCallback((result: LimitCheckResult) => {
     if (result.upgradeRequired) {
       toast.error(result.reason || 'Limite atingido', {
         description: 'Considere fazer upgrade do seu plano para continuar usando todos os recursos.',
@@ -249,9 +247,9 @@ export function useSupabaseSubscriptionGuard() {
         }
       });
     }
-  };
+  }, []);
 
-  const enforceLimit = (action: string, additionalCount: number = 1): boolean => {
+  const enforceLimit = useCallback((action: string, additionalCount: number = 1): boolean => {
     const result = checkLimit(action, additionalCount);
     
     if (!result.allowed) {
@@ -260,22 +258,22 @@ export function useSupabaseSubscriptionGuard() {
     }
     
     return true;
-  };
+  }, [checkLimit, showUpgradeToast]);
 
-  const getUsagePercentage = (action: string): number => {
+  const getUsagePercentage = useCallback((action: string): number => {
     const result = checkLimit(action, 0);
     
     if (result.limit === -1) return 0; // Unlimited
     if (result.limit === 0) return 100;
     
     return Math.round((result.currentUsage / result.limit) * 100);
-  };
+  }, [checkLimit]);
 
-  const isNearLimit = (action: string, threshold: number = 80): boolean => {
+  const isNearLimit = useCallback((action: string, threshold: number = 80): boolean => {
     return getUsagePercentage(action) >= threshold;
-  };
+  }, [getUsagePercentage]);
 
-  const refreshUsage = async () => {
+  const refreshUsage = useCallback(async () => {
     if (!currentClient?.id) return;
 
     try {
@@ -296,9 +294,9 @@ export function useSupabaseSubscriptionGuard() {
     } catch (error) {
       console.error('Erro ao recarregar dados de uso:', error);
     }
-  };
+  }, [currentClient?.id]);
 
-  const getCurrentUsage = () => {
+  const getCurrentUsage = useCallback(() => {
     if (!clientUsage) {
       return {
         quotesThisMonth: 0,
@@ -320,18 +318,22 @@ export function useSupabaseSubscriptionGuard() {
       productsInCatalog: clientUsage.products_in_catalog,
       categoriesCount: clientUsage.categories_count
     };
-  };
+  }, [clientUsage]);
 
-  const userPlan = currentClient?.subscription_plan_id 
-    ? getPlanById(currentClient.subscription_plan_id) 
-    : getPlanById('basic');
-
-  console.log('🎯 DEBUG: userPlan final:', {
-    planId: currentClient?.subscription_plan_id || 'basic',
-    planFound: !!userPlan,
-    planName: userPlan?.display_name,
-    allPlansCount: subscriptionPlans.length
-  });
+  // userPlan usando useMemo para evitar recálculo infinito
+  const userPlan = useMemo(() => {
+    const planId = currentClient?.subscription_plan_id || 'basic';
+    const plan = getPlanById(planId);
+    
+    console.log('🎯 DEBUG: userPlan final:', {
+      planId,
+      planFound: !!plan,
+      planName: plan?.display_name,
+      allPlansCount: subscriptionPlans.length
+    });
+    
+    return plan;
+  }, [currentClient?.subscription_plan_id, getPlanById, subscriptionPlans.length]);
 
   return {
     currentUsage: getCurrentUsage(),
