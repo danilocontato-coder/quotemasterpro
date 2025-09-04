@@ -33,11 +33,24 @@ export const useSupabaseQuotes = () => {
 
   // Fetch quotes based on user role
   const fetchQuotes = async () => {
-    if (!user) return;
+    console.log('🚀 fetchQuotes called with user:', user);
+    
+    if (!user) {
+      console.log('❌ No user found, skipping fetch');
+      return;
+    }
 
     try {
+      console.log('⏳ Setting loading to true');
       setIsLoading(true);
       setError(null);
+
+      console.log('🔍 Building query for user:', {
+        id: user.id,
+        role: user.role,
+        clientId: user.clientId,
+        supplierId: user.supplierId
+      });
 
       let query = supabase
         .from('quotes')
@@ -47,16 +60,34 @@ export const useSupabaseQuotes = () => {
       // Filter based on user role
       if (user.role === 'client' || user.role === 'manager' || user.role === 'collaborator') {
         if (user.clientId) {
+          console.log('✅ Adding client filter for:', user.clientId);
           query = query.eq('client_id', user.clientId);
+        } else {
+          console.log('❌ No clientId found for client role');
+          setQuotes([]);
+          setIsLoading(false);
+          return;
         }
       } else if (user.role === 'supplier' && user.supplierId) {
+        console.log('✅ Adding supplier filter for:', user.supplierId);
         query = query.eq('supplier_id', user.supplierId);
+      } else if (user.role === 'admin') {
+        console.log('✅ Admin user - fetching all quotes');
+      } else {
+        console.log('⚠️ Unknown role or missing IDs:', user.role);
       }
-      // Admin sees all quotes (no filter)
 
+      console.log('📡 Executing Supabase query...');
       const { data, error } = await query;
 
-      if (error) throw error;
+      console.log('📊 Query result:', { data: data?.length, error });
+
+      if (error) {
+        console.error('💥 Supabase error:', error);
+        throw error;
+      }
+
+      console.log('✅ Quotes fetched successfully:', data?.length || 0, 'quotes');
 
       // Count responses for each quote and update the data
       const quotesWithCounts = await Promise.all(
@@ -528,8 +559,14 @@ export const useSupabaseQuotes = () => {
 
   // Real-time subscription
   useEffect(() => {
-    if (!user) return;
+    console.log('🔄 useEffect triggered with user:', user?.id, user?.role);
+    
+    if (!user) {
+      console.log('❌ No user in useEffect, skipping');
+      return;
+    }
 
+    console.log('📞 Calling fetchQuotes from useEffect');
     fetchQuotes();
 
     // Set up real-time subscription
