@@ -63,14 +63,13 @@ export interface ProposalItem {
   specifications?: string;
 }
 
-const getSupplierStatus = (clientStatus: string): SupplierQuote['status'] => {
-  switch (clientStatus) {
-    case 'sent':
-    case 'receiving':
+const getSupplierStatus = (responseStatus: string): SupplierQuote['status'] => {
+  switch (responseStatus) {
+    case 'pending':
       return 'pending';
-    case 'under_review':
+    case 'sent':
       return 'proposal_sent';
-    case 'approved':
+    case 'accepted':
       return 'approved';
     case 'rejected':
       return 'rejected';
@@ -494,40 +493,52 @@ export const useSupabaseSupplierQuotes = () => {
 
       if (error) throw error;
 
-      // Get quote info for notification
-      const quote = supplierQuotes.find(q => q.proposal?.id === proposalId);
-      
-      // Update local state
-      setSupplierQuotes(prev => prev.map(quote => 
-        quote.proposal?.id === proposalId
-          ? {
-              ...quote,
-              status: 'proposal_sent',
-              sentAt: new Date().toISOString(),
-              proposal: quote.proposal ? {
-                ...quote.proposal,
-                status: 'sent',
-                sentAt: new Date().toISOString(),
-              } : undefined
-            }
-          : quote
-      ));
+      // Determine target quote and update local state robustly
+      const existingQuoteByProposal = supplierQuotes.find(q => q.proposal?.id === proposalId);
+      const targetQuoteId = existingQuoteByProposal?.id || (data as any)?.quote_id;
 
-      // Notify client via WhatsApp and update quote status to receiving
-      if (quote) {
+      // Update local state using quote_id fallback
+      setSupplierQuotes(prev => prev.map(q => {
+        if (q.id !== targetQuoteId) return q;
+        const prevProposal = q.proposal;
+        const updatedProposal: QuoteProposal = {
+          id: (data as any).id,
+          quoteId: targetQuoteId,
+          supplierId: user.supplierId!,
+          items: prevProposal?.items || [],
+          totalValue: (data as any).total_amount,
+          deliveryTime: (data as any).delivery_time || prevProposal?.deliveryTime || 7,
+          paymentTerms: prevProposal?.paymentTerms || '30 dias',
+          observations: (data as any).notes ?? prevProposal?.observations,
+          attachments: prevProposal?.attachments || [],
+          status: 'sent',
+          createdAt: (data as any).created_at,
+          sentAt: new Date().toISOString(),
+        };
+
+        return {
+          ...q,
+          status: 'proposal_sent',
+          sentAt: new Date().toISOString(),
+          proposal: updatedProposal,
+        };
+      }));
+
+      // Update quote status to "receiving" and notify client via WhatsApp
+      if (targetQuoteId) {
         try {
           // Update quote status to "receiving" when first proposal is sent
           await supabase
             .from('quotes')
             .update({ status: 'receiving' })
-            .eq('id', quote.id);
+            .eq('id', targetQuoteId);
 
           await supabase.functions.invoke('notify-client-proposal', {
             body: {
-              quoteId: quote.id,
+              quoteId: targetQuoteId,
               supplierId: user.supplierId,
               supplierName: user.name || 'Fornecedor',
-              totalValue: data.total_amount
+              totalValue: (data as any).total_amount
             }
           });
         } catch (notifyError) {
