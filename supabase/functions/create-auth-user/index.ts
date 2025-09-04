@@ -110,7 +110,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    const requestBody: CreateUserRequest = await req.json();
     const { email, password, name, role, clientId, temporaryPassword, action = 'create' } = requestBody;
 
     console.log('🔍 DEBUG: Dados extraídos:', {
