@@ -218,7 +218,12 @@ export function useGroupPermissionsSync() {
       permissionProfileId: group.permission_profile_id,
       profileFound: !!profile,
       totalProfiles: permissionProfiles.length,
-      profileIds: permissionProfiles.map(p => p.id)
+      profileIds: permissionProfiles.map(p => ({ id: p.id, name: p.name })),
+      gestoresSpecific: group.name === 'Gestores' ? {
+        gestoresGroupId: group.id,
+        gestoresProfileId: group.permission_profile_id,
+        profileExists: permissionProfiles.some(p => p.id === '402c0875-2663-4933-adbe-814d3fbdce53')
+      } : null
     });
     
     return profile || null;
