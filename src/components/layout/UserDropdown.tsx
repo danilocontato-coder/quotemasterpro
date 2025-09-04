@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
-import { usePlanDetails } from "@/hooks/useSubscriptionPlans";
+import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
 import { toast } from "sonner";
 
 export function UserDropdown() {
@@ -22,7 +22,10 @@ export function UserDropdown() {
   const { user, logout } = useAuth();
   const { settings } = useSupabaseSettings();
   const { clientName, subscriptionPlan } = useSupabaseCurrentClient();
-  const { displayName: planDisplayName } = usePlanDetails(subscriptionPlan);
+  const { userPlan } = useSupabaseSubscriptionGuard();
+  
+  // Get plan display name from Supabase data
+  const planDisplayName = userPlan?.display_name || userPlan?.name || null;
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
