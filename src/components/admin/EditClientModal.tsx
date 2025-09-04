@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
+import { useClientOptimization } from '@/hooks/useClientOptimization';
 
 interface Client {
   id: string;
@@ -60,6 +62,8 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { plans } = useSupabaseSubscriptionPlans();
+  const { debounceOperation, isOperationPending } = useClientOptimization();
 
   useEffect(() => {
     if (client) {
@@ -82,39 +86,44 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
     e.preventDefault();
     if (!client) return;
     
-    if (isLoading) {
-      console.log('Operação já em andamento, ignorando...');
-      return;
-    }
+    const operationKey = `update-client-${client.id}`;
+    
+    // Use debounce para evitar múltiplas submissões
+    const canProceed = debounceOperation(operationKey, async () => {
+      if (isOperationPending(operationKey)) {
+        console.log('Operação já em andamento, ignorando...');
+        return;
+      }
 
-    setIsLoading(true);
-    try {
-      console.log('Iniciando atualização do cliente:', client.id);
-      
-      // Convert "none" back to null/empty for the API
-      const dataToUpdate = {
-        ...formData,
-        groupId: formData.groupId === 'none' ? null : formData.groupId
-      };
-      
-      await onUpdateClient(client.id, dataToUpdate);
-      
-      console.log('Cliente atualizado com sucesso, fechando modal...');
-      
-      // Aguardar um pouco antes de fechar para garantir que a operação foi concluída
-      setTimeout(() => {
+      setIsLoading(true);
+      try {
+        console.log('Iniciando atualização do cliente:', client.id);
+        
+        // Convert "none" back to null/empty for the API
+        const dataToUpdate = {
+          ...formData,
+          groupId: formData.groupId === 'none' ? null : formData.groupId
+        };
+        
+        await onUpdateClient(client.id, dataToUpdate);
+        
+        console.log('Cliente atualizado com sucesso, fechando modal...');
         onOpenChange(false);
-      }, 300);
-      
-    } catch (error) {
-      console.error('Erro ao atualizar cliente:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o cliente. Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+        
+      } catch (error) {
+        console.error('Erro ao atualizar cliente:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível atualizar o cliente. Tente novamente.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300);
+
+    if (!canProceed) {
+      console.log('Operação em andamento, cancelando nova tentativa');
     }
   };
 
@@ -243,9 +252,14 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="basic">Básico</SelectItem>
-                      <SelectItem value="professional">Profissional</SelectItem>
-                      <SelectItem value="enterprise">Empresarial</SelectItem>
+                      {plans
+                        .filter(plan => plan.target_audience === 'clients' || plan.target_audience === 'both')
+                        .filter(plan => plan.status === 'active')
+                        .map(plan => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            {plan.display_name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
