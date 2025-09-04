@@ -32,6 +32,7 @@ export const SuppliersManagement = () => {
   const [deletingSupplier, setDeletingSupplier] = useState<any>(null);
   const [certifyingSupplier, setCertifyingSupplier] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [toggleStatusLoading, setToggleStatusLoading] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Filter suppliers based on search and filters
@@ -108,6 +109,44 @@ export const SuppliersManagement = () => {
         </span>
       </div>
     );
+  };
+
+  const handleEditSupplier = async (supplier: any) => {
+    try {
+      setEditingSupplier(supplier);
+      setShowCreateModal(true);
+    } catch (error) {
+      console.error('Erro ao abrir editor:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar dados do fornecedor",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleToggleStatus = async (supplier: any) => {
+    if (toggleStatusLoading === supplier.id) return;
+    
+    setToggleStatusLoading(supplier.id);
+    try {
+      const newStatus = supplier.status === 'active' ? 'inactive' : 'active';
+      await updateSupplier(supplier.id, { status: newStatus });
+      
+      toast({
+        title: "Status Atualizado",
+        description: `Fornecedor ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso`,
+      });
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar o status do fornecedor.",
+        variant: "destructive"
+      });
+    } finally {
+      setToggleStatusLoading(null);
+    }
   };
 
   const handleCertifySupplier = async (supplier: any, certify: boolean) => {
@@ -376,10 +415,7 @@ export const SuppliersManagement = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setEditingSupplier(supplier);
-                              setShowCreateModal(true);
-                            }}>
+                            <DropdownMenuItem onClick={() => handleEditSupplier(supplier)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Editar
                             </DropdownMenuItem>
@@ -402,12 +438,16 @@ export const SuppliersManagement = () => {
                             </DropdownMenuItem>
                             
                             <DropdownMenuItem 
-                              onClick={() => updateSupplier(supplier.id, { 
-                                status: supplier.status === 'active' ? 'inactive' : 'active' 
-                              })}
+                              onClick={() => handleToggleStatus(supplier)}
+                              disabled={toggleStatusLoading === supplier.id}
                               className={supplier.status === 'active' ? 'text-red-600' : 'text-green-600'}
                             >
-                              {supplier.status === 'active' ? (
+                              {toggleStatusLoading === supplier.id ? (
+                                <>
+                                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                  Processando...
+                                </>
+                              ) : supplier.status === 'active' ? (
                                 <>
                                   <XCircle className="h-4 w-4 mr-2" />
                                   Desativar
