@@ -45,20 +45,19 @@ serve(async (req) => {
 
     const client = quote.clients
 
+    // Get users from this client to notify them
+    const { data: clientUsers, error: usersError } = await supabase
+      .from('profiles')
+      .select('id, email, name')
+      .eq('client_id', client.id)
+
+    if (usersError) {
+      console.error('❌ Error fetching client users:', usersError)
+    }
+
     // Try to resolve Evolution configuration for this client
     const evolutionConfig = await resolveEvolutionConfig(supabase, client.id)
     
-    if (!evolutionConfig.apiUrl || !evolutionConfig.token) {
-      console.log('⚠️ No Evolution configuration found, skipping WhatsApp notification')
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          message: 'Evolution API not configured' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Format message
     const message = `🎯 *Nova Proposta Recebida!*
 
@@ -72,7 +71,7 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
 
     // Try to send WhatsApp notification
     let whatsappResult = null
-    if (client.phone) {
+    if (evolutionConfig.apiUrl && evolutionConfig.token && client.phone) {
       const normalizedPhone = normalizePhone(client.phone)
       if (normalizedPhone) {
         console.log('📱 Sending WhatsApp to:', normalizedPhone)
@@ -86,15 +85,15 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
       }
     }
 
-    // Create notification in database
-    await supabase
-      .from('notifications')
-      .insert({
-        user_id: client.id, // This should be the client user ID, but we'll use client ID for now
+    // Create notifications for all client users
+    if (clientUsers && clientUsers.length > 0) {
+      const notifications = clientUsers.map(user => ({
+        user_id: user.id,
         title: 'Nova Proposta Recebida',
         message: `${supplierName} enviou uma proposta para a cotação ${quote.title}`,
         type: 'proposal',
         priority: 'normal',
+        action_url: `/quotes?highlight=${quoteId}`,
         metadata: {
           quote_id: quoteId,
           supplier_id: supplierId,
@@ -102,7 +101,12 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
           total_value: totalValue,
           whatsapp_sent: whatsappResult?.success || false
         }
-      })
+      }))
+
+      await supabase
+        .from('notifications')
+        .insert(notifications)
+    }
 
     // Log the notification attempt
     console.log('📝 Notification logged:', {

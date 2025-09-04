@@ -460,13 +460,14 @@ export default function Quotes() {
                           )}
                           
                           {/* Comparator button - only show for quotes with proposals */}
-                          {(quote.status === 'sent' || quote.status === 'receiving' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
-                          <QuoteComparisonButton
-                            quoteId={quote.id}
-                            quoteTitle={quote.title}
-                            disabled={false}
-                          />
-                         )}
+                           {(quote.status === 'sent' || quote.status === 'receiving' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
+                           <QuoteComparisonButton
+                             quoteId={quote.id}
+                             quoteTitle={quote.title}
+                             responsesCount={quote.responses_count || 0}
+                             disabled={false}
+                           />
+                          )}
                          
                          {/* Mark as Received button - only for approved quotes */}
                          {quote.status === 'approved' && (

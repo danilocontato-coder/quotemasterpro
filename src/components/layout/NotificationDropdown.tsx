@@ -1,4 +1,4 @@
-import { Bell, CheckCircle, AlertTriangle, Info, X } from "lucide-react";
+import { Bell, CheckCircle, AlertTriangle, Info, X, FileText, Truck, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseNotifications } from "@/hooks/useSupabaseNotifications";
+import { useNavigate } from "react-router-dom";
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -19,6 +20,12 @@ const getNotificationIcon = (type: string) => {
       return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
     case 'error':
       return <X className="h-4 w-4 text-red-500" />;
+    case 'proposal':
+      return <FileText className="h-4 w-4 text-purple-500" />;
+    case 'delivery':
+      return <Truck className="h-4 w-4 text-orange-500" />;
+    case 'payment':
+      return <CreditCard className="h-4 w-4 text-green-600" />;
     default:
       return <Info className="h-4 w-4 text-blue-500" />;
   }
@@ -26,6 +33,7 @@ const getNotificationIcon = (type: string) => {
 
 export function NotificationDropdown() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useSupabaseNotifications();
+  const navigate = useNavigate();
 
   return (
     <DropdownMenu>
@@ -77,7 +85,12 @@ export function NotificationDropdown() {
               <DropdownMenuItem
                 key={notification.id}
                 className={`p-4 cursor-pointer ${!notification.read ? 'bg-primary/5' : ''}`}
-                onClick={() => markAsRead(notification.id)}
+                onClick={() => {
+                  markAsRead(notification.id);
+                  if (notification.action_url) {
+                    navigate(notification.action_url);
+                  }
+                }}
               >
                 <div className="flex gap-3 w-full">
                   {getNotificationIcon(notification.type)}
@@ -92,7 +105,7 @@ export function NotificationDropdown() {
                       {notification.message}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {notification.time}
+                      {new Date(notification.created_at).toLocaleString('pt-BR')}
                     </p>
                   </div>
                 </div>
