@@ -16,6 +16,7 @@ export interface Quote {
   supplier_name?: string;
   items_count: number;
   responses_count: number;
+  suppliers_sent_count: number;
   deadline?: string;
   created_by: string;
   created_at: string;

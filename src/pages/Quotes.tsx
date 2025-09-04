@@ -351,8 +351,8 @@ export default function Quotes() {
                     </td>
                     <td>
                       <div className="text-sm">
-                        {quote.responses_count || 0}/5
-                        <p className="text-xs text-muted-foreground">propostas</p>
+                        {quote.responses_count || 0}/{quote.suppliers_sent_count || 0}
+                        <p className="text-xs text-muted-foreground">respostas</p>
                       </div>
                     </td>
                     <td>

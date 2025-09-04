@@ -413,6 +413,7 @@ _Esta é uma solicitação automática do sistema QuoteMaster Pro_`;
           .from('quotes')
           .update({ 
             status: 'sent',
+            suppliers_sent_count: suppliers.length,
             updated_at: new Date().toISOString()
           })
           .eq('id', quote_id);

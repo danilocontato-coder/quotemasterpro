@@ -169,7 +169,8 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       supplier_name: formData.supplier_ids[0] ? suppliers.find(s => s.id === formData.supplier_ids[0])?.name : undefined,
       total: 0,
       items_count: formData.items.length,
-      responses_count: 0
+      responses_count: 0,
+      suppliers_sent_count: 0
     };
     
     onQuoteCreate(quoteData);
