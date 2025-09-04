@@ -29,7 +29,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via = 'n8n' }: SendQuoteRequest = await req.json();
+    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via }: SendQuoteRequest = await req.json();
 
     console.log('Processing quote:', quote_id);
 
@@ -51,11 +51,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get suppliers - either specific ones or all active suppliers
+    // Get suppliers - filter by selected IDs or by client/global active suppliers
     let suppliersQuery = supabase
       .from('suppliers')
       .select('*')
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .or(`client_id.eq.${quote.client_id},client_id.is.null`);
 
     if (supplier_ids && supplier_ids.length > 0) {
       suppliersQuery = suppliersQuery.in('id', supplier_ids);
@@ -255,10 +256,16 @@ const handler = async (req: Request): Promise<Response> => {
       platform: 'QuoteMaster Pro'
     };
 
-    console.log(`Processing via ${send_via}:`, { quote_id, suppliers_count: suppliers.length });
+    const hasEvolution = Boolean(evolutionInstance && evolutionApiUrl && evolutionToken);
+    const chosenMethod: 'direct' | 'n8n' = (send_via === 'direct' && hasEvolution && send_whatsapp)
+      ? 'direct'
+      : (send_via === 'n8n')
+        ? 'n8n'
+        : (hasEvolution && send_whatsapp ? 'direct' : 'n8n');
 
-    // Check if sending directly via Evolution API
-    if (send_via === 'direct' && send_whatsapp && evolutionApiUrl && evolutionToken) {
+    console.log('Chosen sending method:', { chosenMethod, send_via_provided: send_via, hasEvolution, send_whatsapp, quote_id, suppliers_count: suppliers.length });
+
+    if (chosenMethod === 'direct') {
       return await handleDirectEvolutionSending();
     }
     
