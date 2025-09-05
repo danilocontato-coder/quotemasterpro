@@ -67,12 +67,24 @@ const SupplierAuth = () => {
 
       if (error) throw error;
 
-      // Tentar identificar perfil, mas não bloquear o fluxo por papel
+      // Tentar identificar perfil e auto-completar onboarding se necessário
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, supplier_id')
+        .select('role, supplier_id, onboarding_completed')
         .eq('id', data.user.id)
         .maybeSingle();
+
+      // Auto-completar onboarding se fornecedor já vinculado mas onboarding incompleto
+      if (profile?.supplier_id && !profile?.onboarding_completed) {
+        console.log('🔧 Auto-completando onboarding para fornecedor já vinculado');
+        await supabase
+          .from('profiles')
+          .update({ 
+            onboarding_completed: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data.user.id);
+      }
 
       if (!profile || profile.role !== 'supplier') {
         toast({
@@ -176,7 +188,12 @@ const SupplierAuth = () => {
 
           const { error: profileError } = await supabase
             .from('profiles')
-            .update({ supplier_id: supplier.id, role: 'supplier' })
+            .update({ 
+              supplier_id: supplier.id, 
+              role: 'supplier',
+              onboarding_completed: true,
+              updated_at: new Date().toISOString()
+            })
             .eq('id', authData.user.id);
           if (profileError) throw profileError;
 
