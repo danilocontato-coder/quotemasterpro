@@ -462,7 +462,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
 
                 {/* Análise de Mercado - Simplified since items are not in Quote interface */}
                 {proposals.length > 0 && 
-                 ['receiving', 'under_review', 'approved', 'finalized'].includes(quote.status) && (
+                 ['receiving', 'received', 'under_review', 'approved', 'finalized'].includes(quote.status) && (
                   <Button 
                     variant="outline"
                     onClick={() => setShowItemAnalysis(true)}
@@ -497,7 +497,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                   </Button>
                 )}
 
-                {bestCombination && quote.status === 'receiving' && (
+                {bestCombination && (quote.status === 'receiving' || quote.status === 'received') && (
                   <Button 
                     onClick={handleApproveOptimal}
                     className="flex items-center gap-2 bg-green-600 hover:bg-green-700"

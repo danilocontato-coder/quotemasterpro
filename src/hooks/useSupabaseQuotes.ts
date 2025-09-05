@@ -191,7 +191,7 @@ export const useSupabaseQuotes = () => {
   };
   const markQuoteAsUnderReview = (quoteId: string) => updateQuoteStatus(quoteId, 'under_review');
   const markQuoteAsReceiving = (quoteId: string) => updateQuoteStatus(quoteId, 'receiving');
-  const markQuoteAsReceived = (quoteId: string) => updateQuoteStatus(quoteId, 'under_review');
+  const markQuoteAsReceived = (quoteId: string) => updateQuoteStatus(quoteId, 'received');
 
   const updateQuote = async (id: string, updates: any) => {
     try {
