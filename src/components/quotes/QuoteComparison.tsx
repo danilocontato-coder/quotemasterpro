@@ -7,8 +7,9 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Save, Download, Trophy, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
+import { Save, Download, Trophy, TrendingUp, TrendingDown, BarChart3, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { MarketAnalysisModal } from './MarketAnalysisModal';
 
 export interface QuoteProposal {
@@ -40,6 +41,7 @@ interface QuoteComparisonProps {
   onClose: () => void;
   proposals: QuoteProposal[];
   quoteTitle: string;
+  onProposalApproved?: () => void;
 }
 
 const defaultWeights: ComparisonCriteria = {
@@ -56,10 +58,12 @@ export function QuoteComparison({
   onClose,
   proposals,
   quoteTitle,
+  onProposalApproved,
 }: QuoteComparisonProps) {
   const [weights, setWeights] = useState<ComparisonCriteria>(defaultWeights);
   const [matrixName, setMatrixName] = useState('');
   const [isMarketAnalysisOpen, setIsMarketAnalysisOpen] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const { toast } = useToast();
 
   // Normalize scores (0-100 scale)
@@ -188,6 +192,44 @@ export function QuoteComparison({
     setMatrixName('');
   };
 
+  const handleApproveProposal = async (proposal: any) => {
+    if (isApproving) return;
+    
+    setIsApproving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('approve-proposal', {
+        body: {
+          responseId: proposal.id,
+          quoteId: proposal.quoteId,
+          comments: 'Proposta aprovada através do sistema de comparação inteligente'
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Proposta Aprovada!",
+        description: `Fornecedor ${proposal.supplierName} foi notificado via WhatsApp`,
+      });
+
+      // Call callback to refresh quotes
+      onProposalApproved?.();
+      
+      // Close modal
+      onClose();
+      
+    } catch (error) {
+      console.error('Error approving proposal:', error);
+      toast({
+        title: "❌ Erro",
+        description: "Erro ao aprovar proposta. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
   const exportComparison = () => {
     const data = {
       title: `Comparação: ${quoteTitle}`,
@@ -302,9 +344,18 @@ export function QuoteComparison({
                       <span>Reputação: {bestProposal.reputation}/5 ⭐</span>
                     </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-900">{bestProposal.finalScore.toFixed(1)}</div>
-                    <div className="text-sm text-blue-600">Score Final</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-900">{bestProposal.finalScore.toFixed(1)}</div>
+                      <div className="text-sm text-blue-600">Score Final</div>
+                    </div>
+                    <Button
+                      onClick={() => handleApproveProposal(bestProposal)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      disabled={isApproving}
+                    >
+                      {isApproving ? 'Aprovando...' : 'Aprovar Proposta'}
+                    </Button>
                   </div>
                 </div>
                 <div className="mt-3 p-3 bg-blue-100 rounded-lg">
@@ -384,11 +435,23 @@ export function QuoteComparison({
                         {index === 0 && <Trophy className="h-3 w-3 mr-1" />}
                         #{index + 1}
                       </Badge>
-                      <div>
-                        <span className="font-medium">{proposal.supplierName}</span>
-                        {index === 0 && (
-                          <div className="text-xs text-blue-600 font-medium">RECOMENDADO</div>
-                        )}
+                      <div className="flex items-center justify-between w-full">
+                        <div>
+                          <span className="font-medium">{proposal.supplierName}</span>
+                          {index === 0 && (
+                            <div className="text-xs text-blue-600 font-medium">RECOMENDADO</div>
+                          )}
+                        </div>
+                        <Button
+                          onClick={() => handleApproveProposal(proposal)}
+                          size="sm"
+                          variant={index === 0 ? "default" : "outline"}
+                          disabled={isApproving}
+                          className={index === 0 ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          {isApproving ? 'Aprovando...' : 'Aprovar'}
+                        </Button>
                       </div>
                     </div>
                     

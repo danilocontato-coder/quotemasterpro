@@ -135,6 +135,10 @@ export function QuoteComparisonButton({
         onClose={() => setShowComparison(false)}
         proposals={proposals}
         quoteTitle={quoteTitle}
+        onProposalApproved={() => {
+          // Refresh proposals after approval
+          fetchProposals();
+        }}
       />
     </>
   );
