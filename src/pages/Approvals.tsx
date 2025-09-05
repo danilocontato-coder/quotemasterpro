@@ -56,7 +56,7 @@ export function Approvals() {
         try {
           const { data: quotes } = await supabase
             .from('quotes')
-            .select('id, title, total, client_name')
+            .select('id, title, total, client_name, description, status, deadline, supplier_name, items_count, created_at')
             .in('id', quoteIds);
           
           const quotesMap = quotes?.reduce((acc, quote) => {
@@ -232,10 +232,10 @@ export function Approvals() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cotação</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Valor</TableHead>
+                      <TableHead>Cliente / Fornecedor</TableHead>
+                      <TableHead>Valor / Itens</TableHead>
                       <TableHead>Aprovador</TableHead>
-                      <TableHead>Solicitado em</TableHead>
+                      <TableHead>Prazos</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
@@ -282,13 +282,27 @@ export function Approvals() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="font-medium">
-                                {quote?.client_name || 'Carregando...'}
+                              <div>
+                                <div className="font-medium">
+                                  {quote?.client_name || 'Carregando...'}
+                                </div>
+                                {quote?.supplier_name && (
+                                  <div className="text-sm text-muted-foreground">
+                                    Fornecedor: {quote.supplier_name}
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="font-semibold">
-                                {quote ? formatCurrency(quote.total || 0) : 'Carregando...'}
+                              <div>
+                                <div className="font-semibold">
+                                  {quote ? formatCurrency(quote.total || 0) : 'Carregando...'}
+                                </div>
+                                {quote?.items_count && (
+                                  <div className="text-sm text-muted-foreground">
+                                    {quote.items_count} {quote.items_count === 1 ? 'item' : 'itens'}
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -299,8 +313,22 @@ export function Approvals() {
                                 }
                               </div>
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {new Date(approval.created_at).toLocaleDateString('pt-BR')}
+                            <TableCell>
+                              <div className="text-sm">
+                                <div>
+                                  Solicitado: {new Date(approval.created_at).toLocaleDateString('pt-BR')}
+                                </div>
+                                {quote?.deadline && (
+                                  <div className="text-muted-foreground">
+                                    Prazo: {new Date(quote.deadline).toLocaleDateString('pt-BR')}
+                                  </div>
+                                )}
+                                {quote?.created_at && (
+                                  <div className="text-muted-foreground">
+                                    Cotação: {new Date(quote.created_at).toLocaleDateString('pt-BR')}
+                                  </div>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Badge className={getStatusColor(approval.status)}>
