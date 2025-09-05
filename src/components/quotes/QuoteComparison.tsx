@@ -415,7 +415,7 @@ export function QuoteComparison({
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <div className="min-w-[800px]">
-                <div className="grid grid-cols-8 gap-4 mb-4 text-sm font-medium text-muted-foreground border-b pb-2">
+                <div className="grid grid-cols-8 gap-4 mb-4 text-xs font-medium text-muted-foreground border-b pb-2">
                   <div>Fornecedor</div>
                   <div>Preço ({weights.price}%)</div>
                   <div>Prazo ({weights.deliveryTime}%)</div>
@@ -435,55 +435,43 @@ export function QuoteComparison({
                         {index === 0 && <Trophy className="h-3 w-3 mr-1" />}
                         #{index + 1}
                       </Badge>
-                      <div className="flex items-center justify-between w-full">
-                        <div>
-                          <span className="font-medium">{proposal.supplierName}</span>
-                          {index === 0 && (
-                            <div className="text-xs text-blue-600 font-medium">RECOMENDADO</div>
-                          )}
-                        </div>
-                        <Button
-                          onClick={() => handleApproveProposal(proposal)}
-                          size="sm"
-                          variant={index === 0 ? "default" : "outline"}
-                          disabled={isApproving}
-                          className={index === 0 ? "bg-green-600 hover:bg-green-700 text-white" : ""}
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          {isApproving ? 'Aprovando...' : 'Aprovar'}
-                        </Button>
+                      <div>
+                        <span className="font-medium text-sm">{proposal.supplierName}</span>
+                        {index === 0 && (
+                          <div className="text-xs text-blue-600 font-medium">RECOMENDADO</div>
+                        )}
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 text-sm">
                       <span>R$ {proposal.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                       {proposal.price === Math.min(...proposals.map(p => p.price)) && (
                         <TrendingDown className="h-3 w-3 text-green-600" />
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 text-sm">
                       <span>{proposal.deliveryTime} dias</span>
                       {proposal.deliveryTime === Math.min(...proposals.map(p => p.deliveryTime)) && (
                         <TrendingUp className="h-3 w-3 text-green-600" />
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 text-sm">
                       <span>R$ {proposal.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                       {proposal.shippingCost === Math.min(...proposals.map(p => p.shippingCost)) && (
                         <TrendingDown className="h-3 w-3 text-green-600" />
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 text-sm">
                       <span>{proposal.sla}h</span>
                       {proposal.sla === Math.min(...proposals.map(p => p.sla)) && (
                         <TrendingUp className="h-3 w-3 text-green-600" />
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 text-sm">
                       <span>{proposal.warrantyMonths} meses</span>
                       {proposal.warrantyMonths === Math.max(...proposals.map(p => p.warrantyMonths)) && (
                         <TrendingUp className="h-3 w-3 text-green-600" />
