@@ -38,8 +38,8 @@ export function QuoteMarkAsReceivedButton({
     }
   };
 
-  // Only show for quotes that are receiving proposals
-  if (currentStatus !== 'receiving') {
+  // Only show for quotes that are receiving proposals and not yet approved
+  if (currentStatus !== 'receiving' && currentStatus !== 'received') {
     return null;
   }
 

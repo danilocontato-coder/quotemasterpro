@@ -485,18 +485,18 @@ export default function Quotes() {
                            />
                           )}
                          
-                         {/* Mark as Received button - only for approved quotes */}
-                         {quote.status === 'approved' && (
-                           <Button 
-                             variant="ghost" 
-                             size="icon" 
-                             className="h-8 w-8 text-green-600 hover:text-green-700"
-                             title="Marcar como Recebido"
-                             onClick={() => handleMarkAsReceived(quote)}
-                           >
-                             <CheckCircle className="h-4 w-4" />
-                           </Button>
-                         )}
+                          {/* Mark as Received button - only for quotes with status 'received' but not yet approved */}
+                          {quote.status === 'received' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-green-600 hover:text-green-700"
+                              title="Marcar como Recebido"
+                              onClick={() => handleMarkAsReceived(quote)}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
                         
                         <Button 
                           variant="ghost" 
