@@ -30,12 +30,15 @@ import {
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
+import { ProposalAcceptanceModal } from "@/components/supplier/ProposalAcceptanceModal";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+  const [isAcceptanceModalOpen, setIsAcceptanceModalOpen] = useState(false);
+  const [selectedResponseId, setSelectedResponseId] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
@@ -120,6 +123,12 @@ export default function SupplierQuotes() {
   const handleSendProposal = (quote: any) => {
     setSelectedQuote(quote);
     setIsProposalModalOpen(true);
+  };
+
+  const handleAcceptProposal = (quote: any) => {
+    setSelectedQuote(quote);
+    setSelectedResponseId(quote.proposal?.id || '');
+    setIsAcceptanceModalOpen(true);
   };
 
   return (
@@ -291,31 +300,42 @@ export default function SupplierQuotes() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleViewQuote(quote)}
-                          title="Ver detalhes e proposta"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {quote.status === 'pending' && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleSendProposal(quote)}
-                            title="Enviar proposta"
-                          >
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="sm" title="Mensagens">
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                     <TableCell>
+                       <div className="flex items-center gap-2">
+                         <Button 
+                           variant="ghost" 
+                           size="sm" 
+                           onClick={() => handleViewQuote(quote)}
+                           title="Ver detalhes e proposta"
+                         >
+                           <Eye className="h-4 w-4" />
+                         </Button>
+                         {quote.status === 'pending' && (
+                           <Button 
+                             variant="ghost" 
+                             size="sm"
+                             onClick={() => handleSendProposal(quote)}
+                             title="Enviar proposta"
+                           >
+                             <Send className="h-4 w-4" />
+                           </Button>
+                         )}
+                         {(quote.status === 'approved' && quote.proposal?.status !== 'accepted') && (
+                           <Button 
+                             variant="ghost" 
+                             size="sm"
+                             onClick={() => handleAcceptProposal(quote)}
+                             title="Aceitar proposta aprovada"
+                             className="text-green-600 hover:text-green-700"
+                           >
+                             <CheckCircle className="h-4 w-4" />
+                           </Button>
+                         )}
+                         <Button variant="ghost" size="sm" title="Mensagens">
+                           <MessageSquare className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -385,6 +405,13 @@ export default function SupplierQuotes() {
         quote={selectedQuote}
         open={isProposalModalOpen}
         onOpenChange={setIsProposalModalOpen}
+      />
+
+      <ProposalAcceptanceModal
+        quote={selectedQuote}
+        responseId={selectedResponseId}
+        open={isAcceptanceModalOpen}
+        onOpenChange={setIsAcceptanceModalOpen}
       />
     </div>
   );
