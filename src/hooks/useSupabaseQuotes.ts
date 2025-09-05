@@ -99,26 +99,43 @@ export const useSupabaseQuotes = () => {
 
   const createQuote = async (quoteData: any) => {
     try {
+      console.log('=== DEBUG createQuote INICIADO ===');
+      console.log('❓ User context:', { user, hasUser: !!user, clientId: user?.clientId });
+      
       if (!user) {
         throw new Error('Usuário não autenticado');
       }
 
       // Get the authenticated user ID from Supabase Auth
       const { data: { user: authUser } } = await supabase.auth.getUser();
+      console.log('🔍 Supabase auth user:', { authUser: authUser?.id, email: authUser?.email });
+      
       if (!authUser) {
         throw new Error('Nenhum usuário autenticado encontrado');
       }
 
       // Load profile to satisfy RLS (client_id must match profile.client_id)
+      console.log('🔍 Buscando profile para user ID:', authUser.id);
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, client_id, company_name, name')
+        .select('id, client_id, company_name, name, role')
         .eq('id', authUser.id)
         .maybeSingle();
 
-      if (profileError) throw profileError;
-      if (!profile || !profile.client_id) {
-        console.error('RLS check failed: profile.client_id ausente', { profile, ctxClientId: user.clientId });
+      console.log('🔍 Profile resultado:', { profile, profileError });
+
+      if (profileError) {
+        console.error('❌ Erro ao buscar profile:', profileError);
+        throw profileError;
+      }
+      
+      if (!profile) {
+        console.error('❌ Profile não encontrado para user:', authUser.id);
+        throw new Error('Perfil do usuário não encontrado. Verifique sua conta.');
+      }
+      
+      if (!profile.client_id) {
+        console.error('❌ Profile.client_id ausente:', { profile, ctxClientId: user.clientId });
         throw new Error('Seu usuário não está vinculado a um cliente. Peça ao administrador para associar seu perfil.');
       }
 
@@ -137,7 +154,14 @@ export const useSupabaseQuotes = () => {
         deadline: quoteData.deadline
       };
 
-      console.log('Creating quote with data (debug):', newQuoteData);
+      console.log('🔍 Dados finais da cotação:', newQuoteData);
+      console.log('🔍 RLS Check - Comparação:', {
+        'profile.client_id': profile.client_id,
+        'newQuoteData.client_id': newQuoteData.client_id,
+        'authUser.id': authUser.id,
+        'newQuoteData.created_by': newQuoteData.created_by,
+        'match': profile.client_id === newQuoteData.client_id && authUser.id === newQuoteData.created_by
+      });
 
       const { data, error } = await supabase
         .from('quotes')
