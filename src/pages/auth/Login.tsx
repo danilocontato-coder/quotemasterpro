@@ -29,7 +29,13 @@ const Login: React.FC = () => {
     if (user && !authLoading) {
       const redirectPath = getRoleBasedRoute(user.role);
       console.log('Login: redirecting user', user.email, 'with role', user.role, 'to', redirectPath);
-      navigate(redirectPath, { replace: true });
+      
+      // Add small delay to prevent instant redirect during logout
+      const timeoutId = setTimeout(() => {
+        navigate(redirectPath, { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [user, authLoading, navigate]);
 
