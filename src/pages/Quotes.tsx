@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +34,7 @@ export default function Quotes() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6; // 6 cotações por página para visualização confortável
   
-  const { quotes, createQuote, updateQuote, deleteQuote, isLoading, markQuoteAsReceived, refetch } = useSupabaseQuotes();
+  const { quotes, createQuote, updateQuote, deleteQuote, isLoading, error, markQuoteAsReceived, refetch } = useSupabaseQuotes();
   const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
@@ -42,6 +42,7 @@ export default function Quotes() {
   console.log('🎯 Quotes page - Hook results:', {
     quotes: quotes?.length || 0,
     isLoading,
+    error,
     hookCalled: true,
     quotesWithStatus: quotes?.map(q => ({ 
       id: q.id, 
@@ -51,6 +52,13 @@ export default function Quotes() {
       suppliers_sent_count: q.suppliers_sent_count 
     }))
   });
+
+  // Session health check - adicionar alertas para problemas de sessão
+  useEffect(() => {
+    if (error && error.includes('Sessão expirada')) {
+      toast.error('Sua sessão expirou. Recarregue a página para fazer login novamente.');
+    }
+  }, [error]);
 
   // Force refresh button para debug
   const handleForceRefresh = () => {
@@ -211,6 +219,25 @@ export default function Quotes() {
 
   return (
     <div className="space-y-6">
+      {/* Session Error Alert */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            <h3 className="font-semibold">Problema de Autenticação</h3>
+          </div>
+          <p className="text-sm text-destructive/80 mt-1">{error}</p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mt-3"
+            onClick={() => window.location.reload()}
+          >
+            Recarregar Página
+          </Button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -236,6 +263,7 @@ export default function Quotes() {
                 setIsCreateModalOpen(true);
               }
             }}
+            disabled={!!error} // Disable if there's an auth error
           >
             <Plus className="h-4 w-4" />
             Nova Cotação

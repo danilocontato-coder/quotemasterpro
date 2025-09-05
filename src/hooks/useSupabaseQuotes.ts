@@ -45,6 +45,22 @@ export const useSupabaseQuotes = () => {
         return;
       }
 
+      // Verify current session before making any requests
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError);
+        setError('Erro de autenticação. Faça login novamente.');
+        return;
+      }
+      
+      if (!session) {
+        console.log('⚠️ No valid session found');
+        setError('Sessão expirada. Faça login novamente.');
+        return;
+      }
+
+      console.log('✅ Valid session found for user:', session.user?.id);
+
       let query = supabase.from('quotes').select('*').order('created_at', { ascending: false });
 
       // Apply role-based filtering
@@ -77,7 +93,13 @@ export const useSupabaseQuotes = () => {
 
       if (fetchError) {
         console.error('❌ Error fetching quotes:', fetchError);
-        setError(fetchError.message);
+        
+        // Handle specific authentication errors
+        if (fetchError.code === 'PGRST301' || fetchError.message.includes('JWT')) {
+          setError('Sessão expirada. Recarregue a página.');
+        } else {
+          setError(fetchError.message);
+        }
         return;
       }
 
@@ -91,7 +113,7 @@ export const useSupabaseQuotes = () => {
       })));
     } catch (err) {
       console.error('❌ Unexpected error fetching quotes:', err);
-      setError('Failed to fetch quotes');
+      setError('Falha na conexão. Verifique sua internet.');
     } finally {
       setIsLoading(false);
     }
@@ -106,18 +128,14 @@ export const useSupabaseQuotes = () => {
         throw new Error('Usuário não autenticado');
       }
 
-      // Get the authenticated user ID from Supabase Auth
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      console.log('🔍 Supabase auth user:', { authUser: authUser?.id, email: authUser?.email, authError });
-      
-      if (authError) {
-        console.error('❌ Erro de autenticação:', authError);
-        throw new Error('Erro de autenticação: ' + authError.message);
+      // Verify session is valid before proceeding
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Sessão expirada. Faça login novamente.');
       }
-      
-      if (!authUser) {
-        throw new Error('Nenhum usuário autenticado encontrado');
-      }
+
+      const authUser = session.user;
+      console.log('🔍 Valid session for user:', { userId: authUser.id, email: authUser.email });
 
       // Use the safe function to get client_id
       const { data: clientId, error: clientError } = await supabase.rpc('get_current_user_client_id');
