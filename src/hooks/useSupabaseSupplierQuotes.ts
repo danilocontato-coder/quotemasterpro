@@ -69,7 +69,7 @@ const getSupplierStatus = (responseStatus: string): SupplierQuote['status'] => {
       return 'pending';
     case 'sent':
       return 'proposal_sent';
-    case 'accepted':
+    case 'approved':
       return 'approved';
     case 'rejected':
       return 'rejected';
@@ -318,6 +318,112 @@ export const useSupabaseSupplierQuotes = () => {
       setIsLoading(false);
     }
   }, [user, toast]);
+
+  // Setup realtime subscriptions for quote responses
+  useEffect(() => {
+    if (!user?.supplierId) return;
+
+    console.log('📡 Setting up realtime subscriptions for supplier quotes');
+
+    // Listen to quote_responses changes for this supplier
+    const quotesChannel = supabase
+      .channel('supplier-quote-responses')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quote_responses',
+          filter: `supplier_id=eq.${user.supplierId}`
+        },
+        (payload) => {
+          console.log('📡 Quote response changed:', payload);
+          
+          if (payload.eventType === 'UPDATE') {
+            const updatedResponse = payload.new as any;
+            
+            // Update local state with new status
+            setSupplierQuotes(prev => prev.map(quote => {
+              if (quote.id === updatedResponse.quote_id && quote.proposal) {
+                const newStatus = updatedResponse.status === 'approved' ? 'approved' : 
+                                 updatedResponse.status === 'rejected' ? 'rejected' :
+                                 updatedResponse.status === 'pending' ? 'pending' : 'approved';
+                
+                return {
+                  ...quote,
+                  status: updatedResponse.status === 'approved' ? 'approved' : quote.status,
+                  proposal: {
+                    ...quote.proposal,
+                    status: newStatus,
+                    totalValue: updatedResponse.total_amount,
+                    deliveryTime: updatedResponse.delivery_time || quote.proposal.deliveryTime,
+                    observations: updatedResponse.notes || quote.proposal.observations,
+                  }
+                };
+              }
+              return quote;
+            }));
+
+            // Show toast notification for status changes
+            if (updatedResponse.status === 'approved') {
+              toast({
+                title: '🎉 Proposta Aprovada!',
+                description: `Sua proposta foi aprovada pelo cliente!`,
+                duration: 5000,
+              });
+            } else if (updatedResponse.status === 'rejected') {
+              toast({
+                title: '❌ Proposta Rejeitada',
+                description: `Sua proposta foi rejeitada pelo cliente.`,
+                variant: 'destructive',
+                duration: 5000,
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    // Also listen to quotes table changes for status updates
+    const quotesTableChannel = supabase
+      .channel('supplier-quotes-table')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quotes'
+        },
+        (payload) => {
+          console.log('📡 Quote table changed:', payload);
+          
+          const updatedQuote = payload.new as any;
+          
+          // Update quote status if it affects our quotes
+          setSupplierQuotes(prev => prev.map(quote => {
+            if (quote.id === updatedQuote.id) {
+              return {
+                ...quote,
+                status: updatedQuote.status === 'approved' ? 'approved' : quote.status,
+              };
+            }
+            return quote;
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('📡 Cleaning up realtime subscriptions');
+      supabase.removeChannel(quotesChannel);
+      supabase.removeChannel(quotesTableChannel);
+    };
+  }, [user?.supplierId, toast]);
+
+  // Fetch quotes when user changes
+  useEffect(() => {
+    fetchSupplierQuotes();
+  }, [fetchSupplierQuotes]);
 
   // Get quote by ID
   const getQuoteById = useCallback((id: string) => {
