@@ -37,7 +37,7 @@ export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailM
       if (approval?.approver_id) {
         try {
           const { data: user } = await supabase
-            .from('users')
+            .from('profiles')
             .select('name')
             .eq('id', approval.approver_id)
             .maybeSingle();

@@ -75,7 +75,7 @@ export function Approvals() {
       if (approverIds.length > 0) {
         try {
           const { data: users } = await supabase
-            .from('users')
+            .from('profiles')
             .select('id, name')
             .in('id', approverIds);
           
