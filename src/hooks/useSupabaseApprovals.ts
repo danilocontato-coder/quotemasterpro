@@ -146,7 +146,7 @@ export const useSupabaseApprovals = () => {
 
     fetchApprovals();
 
-    const subscription = supabase
+    const approvalSubscription = supabase
       .channel('approvals_changes')
       .on(
         'postgres_changes',
@@ -173,8 +173,26 @@ export const useSupabaseApprovals = () => {
       )
       .subscribe();
 
+    // Subscribe to quotes changes for related data updates
+    const quotesSubscription = supabase
+      .channel('quotes_changes_for_approvals')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quotes'
+        },
+        () => {
+          // Refetch approvals when quotes are updated to get fresh data
+          fetchApprovals();
+        }
+      )
+      .subscribe();
+
     return () => {
-      subscription.unsubscribe();
+      approvalSubscription.unsubscribe();
+      quotesSubscription.unsubscribe();
     };
   }, [user]);
 
