@@ -191,6 +191,9 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
 
   const handleSubmit = async () => {
     console.log('=== INICIO handleSubmit ===');
+    console.log('🔍 DEBUG: Form data atual:', formData);
+    console.log('🔍 DEBUG: Current step:', currentStep);
+    console.log('🔍 DEBUG: Can proceed?', canProceed());
     
     try {
       // Verificar limites apenas para novas cotações (não edições)
@@ -198,6 +201,40 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
         console.log('=== LIMITE ATINGIDO ===');
         return;
       }
+
+      // DEBUG: Validar dados antes de criar
+      console.log('🔍 DEBUG: Validando dados...');
+      if (!formData.title || !formData.title.trim()) {
+        console.error('❌ Título não preenchido');
+        toast({
+          title: "Erro",
+          description: "Título da cotação é obrigatório",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!formData.items || formData.items.length === 0) {
+        console.error('❌ Nenhum item adicionado');
+        toast({
+          title: "Erro",
+          description: "Adicione pelo menos um item à cotação",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!formData.supplier_ids || formData.supplier_ids.length === 0) {
+        console.error('❌ Nenhum fornecedor selecionado');
+        toast({
+          title: "Erro",
+          description: "Selecione pelo menos um fornecedor",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('✅ Dados validados, criando cotação...');
       
       // Convert form data to quote format
       const quoteData: any = {
@@ -220,6 +257,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
         }))
       };
       
+      console.log('🔍 DEBUG: Dados da cotação preparados:', quoteData);
       console.log('=== CHAMANDO onQuoteCreate ===');
       await onQuoteCreate(quoteData);
       console.log('=== SUCESSO ===');
@@ -230,25 +268,47 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
   };
 
   const canProceed = () => {
+    // DEBUG: Log do estado atual
+    console.log('🔍 DEBUG canProceed - Current step:', currentStep);
+    console.log('🔍 DEBUG canProceed - Form data:', {
+      title: formData.title,
+      titleLength: formData.title.length,
+      itemsCount: formData.items.length,
+      suppliersCount: formData.supplier_ids.length,
+      emailMethod: formData.communicationMethods.email,
+      whatsappMethod: formData.communicationMethods.whatsapp
+    });
+    
     // Sempre permitir se estivermos na última etapa
     if (currentStep === steps.length) {
-      return formData.title.trim() !== "" && formData.items.length > 0;
+      const canProceedFinal = formData.title.trim() !== "" && formData.items.length > 0;
+      console.log('🔍 DEBUG canProceed - Step 5 result:', canProceedFinal);
+      return canProceedFinal;
     }
     
+    let result = false;
     switch (currentStep) {
       case 1:
-        return formData.title.trim() !== "";
+        result = formData.title.trim() !== "";
+        break;
       case 2:
-        return formData.items.length > 0;
+        result = formData.items.length > 0;
+        break;
       case 3:
-        return formData.supplier_ids.length > 0;
+        result = formData.supplier_ids.length > 0;
+        break;
       case 4:
-        return true;
+        result = true;
+        break;
       case 5:
-        return formData.communicationMethods.email || formData.communicationMethods.whatsapp;
+        result = formData.communicationMethods.email || formData.communicationMethods.whatsapp;
+        break;
       default:
-        return false;
+        result = false;
     }
+    
+    console.log('🔍 DEBUG canProceed - Step', currentStep, 'result:', result);
+    return result;
   };
 
   const renderStep = () => {
