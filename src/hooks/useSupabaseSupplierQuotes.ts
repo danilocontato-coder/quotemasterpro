@@ -374,8 +374,8 @@ export const useSupabaseSupplierQuotes = () => {
               });
             } else if (updatedResponse.status === 'rejected') {
               toast({
-                title: '❌ Proposta Rejeitada',
-                description: `Sua proposta foi rejeitada pelo cliente.`,
+                title: '📋 Proposta Não Selecionada',
+                description: `Sua proposta não foi selecionada pelo cliente.`,
                 variant: 'destructive',
                 duration: 5000,
               });

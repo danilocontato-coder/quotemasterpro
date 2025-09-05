@@ -71,9 +71,9 @@ export default function SupplierQuotes() {
       case 'proposal_sent':
         return <Badge variant="default">Proposta Enviada</Badge>;
       case 'approved':
-        return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Aprovado</Badge>;
+        return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Aprovada</Badge>;
       case 'rejected':
-        return <Badge variant="destructive">Rejeitado</Badge>;
+        return <Badge variant="destructive">Reprovada</Badge>;
       case 'expired':
         return <Badge variant="outline" className="text-orange-600 border-orange-600">Expirado</Badge>;
       default:
@@ -172,7 +172,7 @@ export default function SupplierQuotes() {
           variant="success"
         />
         <FilterMetricCard
-          title="Rejeitadas"
+          title="Reprovadas"
           value={statusCounts.rejected || 0}
           icon={<XCircle />}
           isActive={statusFilter === 'rejected'}

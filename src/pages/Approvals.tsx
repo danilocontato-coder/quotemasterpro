@@ -174,7 +174,7 @@ export function Approvals() {
               <ThumbsDown className="h-8 w-8 text-destructive" />
               <div className="ml-4">
                 <p className="text-2xl font-bold">{rejectedCount}</p>
-                <p className="text-sm text-muted-foreground">Rejeitadas</p>
+                <p className="text-sm text-muted-foreground">Reprovadas</p>
               </div>
             </div>
           </CardContent>
@@ -222,7 +222,7 @@ export function Approvals() {
               </TabsTrigger>
               <TabsTrigger value="rejected" className="flex items-center gap-2">
                 <XCircle className="h-4 w-4" />
-                Rejeitadas ({rejectedCount})
+                Reprovadas ({rejectedCount})
               </TabsTrigger>
             </TabsList>
 
@@ -261,7 +261,7 @@ export function Approvals() {
                             <p className="text-muted-foreground">
                               {activeTab === "pending" ? "Nenhuma aprovação pendente" :
                                activeTab === "approved" ? "Nenhuma aprovação aprovada" :
-                               "Nenhuma aprovação rejeitada"}
+                               "Nenhuma aprovação reprovada"}
                             </p>
                           </div>
                         </TableCell>

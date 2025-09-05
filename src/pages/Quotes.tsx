@@ -206,7 +206,7 @@ export default function Quotes() {
     { value: "sent", label: "Enviadas" },
     { value: "under_review", label: "Em Análise" },
     { value: "approved", label: "Aprovadas" },
-    { value: "rejected", label: "Rejeitadas" },
+    { value: "rejected", label: "Reprovadas" },
   ];
 
   return (

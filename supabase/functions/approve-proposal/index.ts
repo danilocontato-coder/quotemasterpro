@@ -98,7 +98,25 @@ serve(async (req) => {
       console.error('❌ Error updating quote:', quoteUpdateError);
     }
 
-    // 5. Send WhatsApp notification to supplier
+    // 5. Reject all other proposals for this quote automatically
+    const { data: otherResponses, error: otherResponsesError } = await supabase
+      .from('quote_responses')
+      .update({ 
+        status: 'rejected',
+        notes: 'Proposta não selecionada - outra proposta foi aprovada'
+      })
+      .neq('id', responseId)
+      .eq('quote_id', quoteId)
+      .eq('status', 'pending')
+      .select('id, supplier_id, supplier_name');
+
+    if (otherResponsesError) {
+      console.error('❌ Error rejecting other proposals:', otherResponsesError);
+    } else {
+      console.log(`✅ Auto-rejected ${otherResponses?.length || 0} other proposals`);
+    }
+
+    // 6. Send WhatsApp notification to approved supplier
     let whatsappResult = null;
     if (response.suppliers?.whatsapp) {
       try {
@@ -132,7 +150,7 @@ Obrigado pela sua proposta! 🤝`;
       }
     }
 
-    // 6. Create notification for supplier - buscar o auth_user_id do supplier
+    // 7. Create notification for approved supplier
     const { data: supplierUser } = await supabase
       .from('users')
       .select('auth_user_id')
@@ -165,7 +183,37 @@ Obrigado pela sua proposta! 🤝`;
     }
 
 
-    // 7. Log audit trail
+    // 8. Create notifications for rejected suppliers
+    if (otherResponses && otherResponses.length > 0) {
+      for (const rejectedResponse of otherResponses) {
+        try {
+          const { data: rejectedSupplierUser } = await supabase
+            .from('users')
+            .select('auth_user_id')
+            .eq('supplier_id', rejectedResponse.supplier_id)
+            .single();
+
+          if (rejectedSupplierUser?.auth_user_id) {
+            await supabase.from('notifications').insert({
+              user_id: rejectedSupplierUser.auth_user_id,
+              title: '📋 Proposta Não Selecionada',
+              message: `Sua proposta para "${quote.title}" não foi selecionada. Outra proposta foi aprovada pelo cliente.`,
+              type: 'proposal_rejected',
+              priority: 'normal',
+              metadata: {
+                quote_id: quoteId,
+                response_id: rejectedResponse.id,
+                reason: 'Outra proposta foi selecionada'
+              }
+            });
+          }
+        } catch (notifError) {
+          console.error(`❌ Error notifying rejected supplier ${rejectedResponse.supplier_id}:`, notifError);
+        }
+      }
+    }
+
+    // 9. Log audit trail
     const { error: auditError } = await supabase
       .from('audit_logs')
       .insert({
@@ -180,7 +228,8 @@ Obrigado pela sua proposta! 🤝`;
           supplier_name: response.supplier_name,
           approved_amount: response.total_amount,
           comments: comments,
-          whatsapp_sent: whatsappResult?.success || false
+          whatsapp_sent: whatsappResult?.success || false,
+          other_proposals_rejected: otherResponses?.length || 0
         }
       });
 

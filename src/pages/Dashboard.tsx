@@ -41,7 +41,7 @@ export default function Dashboard() {
       case 'sent': return 'Enviada';
       case 'under_review': return 'Em Análise';
       case 'approved': return 'Aprovada';
-      case 'rejected': return 'Rejeitada';
+      case 'rejected': return 'Reprovada';
       case 'completed': return 'Concluída';
       case 'cancelled': return 'Cancelada';
       case 'pending': return 'Pendente';

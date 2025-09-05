@@ -180,8 +180,8 @@ export class ApprovalService {
       if (quote?.created_by) {
         await supabase.from('notifications').insert({
           user_id: quote.created_by,
-          title: 'Cotação Rejeitada',
-          message: `Sua cotação "${quote.title}" foi rejeitada. Motivo: ${comments}`,
+          title: 'Cotação Reprovada',
+          message: `Sua cotação "${quote.title}" foi reprovada. Motivo: ${comments}`,
           type: 'approval_rejected',
           action_url: `/quotes?id=${approval.quote_id}`,
           metadata: {
