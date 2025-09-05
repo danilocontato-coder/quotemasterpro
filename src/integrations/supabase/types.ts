@@ -594,9 +594,12 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
+          last_login: string | null
           name: string
+          onboarding_completed: boolean | null
           role: string
           supplier_id: string | null
+          tenant_type: string | null
           updated_at: string | null
         }
         Insert: {
@@ -607,9 +610,12 @@ export type Database = {
           created_at?: string | null
           email: string
           id: string
+          last_login?: string | null
           name: string
+          onboarding_completed?: boolean | null
           role?: string
           supplier_id?: string | null
+          tenant_type?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -620,9 +626,12 @@ export type Database = {
           created_at?: string | null
           email?: string
           id?: string
+          last_login?: string | null
           name?: string
+          onboarding_completed?: boolean | null
           role?: string
           supplier_id?: string | null
+          tenant_type?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1348,6 +1357,10 @@ export type Database = {
         Args: { quote_id_param: string }
         Returns: boolean
       }
+      get_current_user_client_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_current_user_supplier_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1396,6 +1409,14 @@ export type Database = {
       initialize_client_data: {
         Args: { client_uuid: string }
         Returns: undefined
+      }
+      initialize_user_profile: {
+        Args: { user_email: string; user_id: string; user_name?: string }
+        Returns: string
+      }
+      link_user_to_client: {
+        Args: { target_client_id: string; user_id: string }
+        Returns: boolean
       }
       next_product_code: {
         Args: { prefix?: string }
