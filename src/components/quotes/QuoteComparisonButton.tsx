@@ -36,9 +36,10 @@ export function QuoteComparisonButton({
         .eq('quote_id', quoteId);
 
       console.log('📊 Proposals fetched for quote', quoteId, ':', responses?.length || 0);
+      console.log('📊 Raw responses data:', responses);
 
       if (error) {
-        console.error('Error fetching proposals:', error);
+        console.error('❌ Error fetching proposals:', error);
         return;
       }
 
@@ -66,12 +67,27 @@ export function QuoteComparisonButton({
   };
 
   useEffect(() => {
+    console.log('🔍 QuoteComparisonButton - useEffect triggered:', { 
+      quoteId, 
+      responsesCount, 
+      shouldFetch: responsesCount > 0 
+    });
     if (responsesCount > 0) {
       fetchProposals();
     }
   }, [quoteId, responsesCount]);
 
   const hasProposals = proposals.length >= 1; // Show comparison with at least 1 proposal
+  
+  console.log('🔍 QuoteComparisonButton - Render state:', { 
+    quoteId,
+    responsesCount, 
+    proposalsLength: proposals.length, 
+    hasProposals, 
+    disabled,
+    isLoading,
+    finalDisabled: disabled || !hasProposals || isLoading
+  });
 
   return (
     <>
