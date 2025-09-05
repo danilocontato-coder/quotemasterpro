@@ -34,7 +34,7 @@ export default function Quotes() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6; // 6 cotações por página para visualização confortável
   
-  const { quotes, createQuote, updateQuote, deleteQuote, isLoading, markQuoteAsReceived } = useSupabaseQuotes();
+  const { quotes, createQuote, updateQuote, deleteQuote, isLoading, markQuoteAsReceived, refetch } = useSupabaseQuotes();
   const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
@@ -43,8 +43,20 @@ export default function Quotes() {
     quotes: quotes?.length || 0,
     isLoading,
     hookCalled: true,
-    quotesData: quotes?.map(q => ({ id: q.id, status: q.status, responses_count: q.responses_count }))
+    quotesWithStatus: quotes?.map(q => ({ 
+      id: q.id, 
+      title: q.title,
+      status: q.status, 
+      responses_count: q.responses_count,
+      suppliers_sent_count: q.suppliers_sent_count 
+    }))
   });
+
+  // Force refresh button para debug
+  const handleForceRefresh = () => {
+    console.log('🔄 Force refresh triggered');
+    refetch();
+  };
 
   const handleQuoteCreate = async (quoteData: any) => {
     console.log('=== HANDLE QUOTE CREATE INICIADO ===');
@@ -340,6 +352,9 @@ export default function Quotes() {
               />
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={handleForceRefresh} className="text-xs">
+                🔄 Refresh
+              </Button>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}

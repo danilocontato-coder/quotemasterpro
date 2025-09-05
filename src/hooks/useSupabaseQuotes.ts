@@ -83,6 +83,12 @@ export const useSupabaseQuotes = () => {
 
       setQuotes(data || []);
       console.log('✅ Quotes fetched successfully:', data?.length || 0);
+      console.log('📋 Fetched quotes details:', data?.map(q => ({ 
+        id: q.id, 
+        status: q.status, 
+        responses_count: q.responses_count,
+        title: q.title
+      })));
     } catch (err) {
       console.error('❌ Unexpected error fetching quotes:', err);
       setError('Failed to fetch quotes');
@@ -392,7 +398,9 @@ export const useSupabaseQuotes = () => {
   // Initial fetch
   useEffect(() => {
     console.log('🔄 useSupabaseQuotes - Initial fetch effect triggered');
-    fetchQuotes();
+    if (user) {
+      fetchQuotes();
+    }
   }, [user]);
 
   return {
