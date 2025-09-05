@@ -107,8 +107,13 @@ export const useSupabaseQuotes = () => {
       }
 
       // Get the authenticated user ID from Supabase Auth
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      console.log('🔍 Supabase auth user:', { authUser: authUser?.id, email: authUser?.email });
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      console.log('🔍 Supabase auth user:', { authUser: authUser?.id, email: authUser?.email, authError });
+      
+      if (authError) {
+        console.error('❌ Erro de autenticação:', authError);
+        throw new Error('Erro de autenticação: ' + authError.message);
+      }
       
       if (!authUser) {
         throw new Error('Nenhum usuário autenticado encontrado');
@@ -120,12 +125,35 @@ export const useSupabaseQuotes = () => {
 
       if (clientError) {
         console.error('❌ Erro ao buscar client_id:', clientError);
-        throw new Error('Erro ao verificar vinculação do usuário');
+        throw new Error(`Erro ao verificar vinculação do usuário: ${clientError.message}`);
       }
       
       if (!clientId) {
         console.error('❌ Client ID não encontrado para user:', authUser.id);
-        throw new Error('Seu usuário não está vinculado a um cliente. Recarregue a página ou contate o administrador.');
+        console.log('🔍 Tentando buscar profile diretamente...');
+        
+        // Try to get profile directly
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('client_id, onboarding_completed')
+          .eq('id', authUser.id)
+          .maybeSingle();
+          
+        console.log('🔍 Profile direto:', { profile, profileError });
+        
+        if (profileError || !profile?.client_id) {
+          throw new Error('Seu usuário não está vinculado a um cliente. Complete o onboarding primeiro.');
+        }
+        
+        // Use profile client_id if RPC failed
+        const effectiveClientId = profile.client_id;
+        console.log('✅ Usando client_id do profile:', effectiveClientId);
+      }
+
+      const effectiveClientId = clientId || user.clientId;
+      
+      if (!effectiveClientId) {
+        throw new Error('Não foi possível determinar o cliente. Recarregue a página.');
       }
 
       // Generate unique quote ID (DB also has trigger, but we keep readable IDs)
@@ -135,22 +163,17 @@ export const useSupabaseQuotes = () => {
         id: quoteId,
         title: quoteData.title,
         description: quoteData.description,
-        client_id: clientId, // use RPC result to pass RLS
-        client_name: user.companyName || 'Cliente',
+        client_id: effectiveClientId,
+        client_name: user.companyName || user.name || 'Cliente',
         created_by: authUser.id, // must be auth.uid()
         status: 'draft',
         total: quoteData.total || 0,
-        deadline: quoteData.deadline
+        deadline: quoteData.deadline,
+        supplier_scope: quoteData.supplier_scope || 'local',
+        items_count: quoteData.items?.length || 0
       };
 
       console.log('🔍 Dados finais da cotação:', newQuoteData);
-      console.log('🔍 RLS Check - Dados válidos:', {
-        'clientId': clientId,
-        'authUser.id': authUser.id,
-        'created_by': newQuoteData.created_by,
-        'client_id': newQuoteData.client_id,
-        'valid': !!clientId && authUser.id === newQuoteData.created_by
-      });
 
       const { data, error } = await supabase
         .from('quotes')
@@ -158,26 +181,66 @@ export const useSupabaseQuotes = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao inserir cotação:', error);
+        throw new Error(`Falha ao salvar cotação: ${error.message}`);
+      }
+
+      console.log('✅ Cotação criada:', data);
+
+      // Add to local state immediately for better UX
+      setQuotes(prev => [data, ...prev]);
+
+      // Create items if provided
+      if (quoteData.items && quoteData.items.length > 0) {
+        console.log('🔍 Inserindo itens da cotação...');
+        
+        const itemsToInsert = quoteData.items.map((item: any) => ({
+          quote_id: data.id,
+          product_name: item.product_name,
+          quantity: item.quantity || 1,
+          product_id: item.product_id || null,
+          unit_price: item.unit_price || 0,
+          total: (item.quantity || 1) * (item.unit_price || 0)
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('quote_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) {
+          console.error('❌ Erro ao inserir itens:', itemsError);
+          // Don't fail the entire quote creation for items error
+          toast.error('Cotação criada, mas alguns itens não foram salvos');
+        } else {
+          console.log('✅ Itens inseridos com sucesso');
+        }
+      }
 
       // Create audit log
-      await supabase.from('audit_logs').insert({
-        action: 'QUOTE_CREATE',
-        entity_type: 'quotes',
-        entity_id: data.id,
-        panel_type: 'client',
-        user_id: authUser.id,
-        details: {
-          quote_title: data.title,
-          status: data.status
-        }
-      });
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'QUOTE_CREATE',
+          entity_type: 'quotes',
+          entity_id: data.id,
+          panel_type: 'client',
+          user_id: authUser.id,
+          details: {
+            quote_title: data.title,
+            status: data.status,
+            items_count: quoteData.items?.length || 0
+          }
+        });
+      } catch (auditError) {
+        console.warn('⚠️ Erro ao criar log de auditoria:', auditError);
+        // Don't fail quote creation for audit log error
+      }
 
       toast.success('Cotação criada com sucesso!');
       return data;
     } catch (error: any) {
       console.error('❌ Error creating quote:', error);
-      toast.error('Erro ao criar cotação: ' + error.message);
+      toast.error('Erro ao criar cotação: ' + (error.message || 'Erro desconhecido'));
       throw error;
     }
   };
@@ -330,7 +393,11 @@ export const useSupabaseQuotes = () => {
 
     // Set up real-time subscription for quotes
     const quotesSubscription = supabase
-      .channel('quotes_realtime')
+      .channel(`quotes_realtime_${user.id}`, {
+        config: {
+          broadcast: { self: true }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -371,11 +438,17 @@ export const useSupabaseQuotes = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status);
+      });
 
     // Set up real-time subscription for quote responses
     const responsesSubscription = supabase
-      .channel('quote_responses_realtime')
+      .channel(`quote_responses_realtime_${user.id}`, {
+        config: {
+          broadcast: { self: true }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -420,7 +493,9 @@ export const useSupabaseQuotes = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Quote responses subscription status:', status);
+      });
 
     return () => {
       console.log('🔄 Cleaning up real-time subscriptions');
