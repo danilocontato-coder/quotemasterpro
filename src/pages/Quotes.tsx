@@ -461,7 +461,7 @@ export default function Quotes() {
                           )}
                           
                           {/* Comparator button - only show for quotes with proposals */}
-                           {(quote.status === 'sent' || quote.status === 'receiving' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
+                           {(quote.status === 'sent' || quote.status === 'receiving' || quote.status === 'received' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
                            <QuoteComparisonButton
                              quoteId={quote.id}
                              quoteTitle={quote.title}

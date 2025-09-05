@@ -11,6 +11,7 @@ const statusSteps = [
   { key: 'draft', label: 'Rascunho', icon: FileText },
   { key: 'sent', label: 'Enviada', icon: Send },
   { key: 'receiving', label: 'Recebendo', icon: Package },
+  { key: 'received', label: 'Recebido', icon: CheckCircle2 },
   { key: 'under_review', label: 'Em Análise', icon: Eye },
   { key: 'approved', label: 'Aprovada', icon: CheckCircle2 },
   { key: 'rejected', label: 'Rejeitada', icon: X },
@@ -23,6 +24,8 @@ const getStatusVariant = (status: string) => {
     case 'sent':
       return 'default';
     case 'receiving':
+      return 'secondary';
+    case 'received':
       return 'secondary';
     case 'under_review':
       return 'secondary';
@@ -74,10 +77,13 @@ export function StatusProgressIndicator({ status, showProgress = false }: Status
               stepClasses = 'bg-blue-100 text-blue-800';
               break;
             case 'receiving':
-              stepClasses = 'bg-purple-100 text-purple-800';
+              stepClasses = 'bg-orange-100 text-orange-800';
+              break;
+            case 'received':
+              stepClasses = 'bg-green-100 text-green-800';
               break;
             case 'under_review':
-              stepClasses = 'bg-orange-100 text-orange-800';
+              stepClasses = 'bg-purple-100 text-purple-800';
               break;
             case 'approved':
               stepClasses = 'bg-green-100 text-green-800';
