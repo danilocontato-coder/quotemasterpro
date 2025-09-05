@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,21 +100,23 @@ const SupplierQuoteResponse = () => {
         console.error('Error fetching quote items:', itemsError);
       }
 
-      setQuote({
-        ...quote,
-        items: items || []
+      startTransition(() => {
+        setQuote({
+          ...quote,
+          items: items || []
+        });
+        
+        // Inicializar itens da proposta baseado nos itens da cotação
+        const initialItems = (items || []).map((item: any) => ({
+          description: item.product_name,
+          brand: '',
+          quantity: item.quantity,
+          unitPrice: 0,
+          totalPrice: 0
+        }));
+        
+        setProposalItems(initialItems);
       });
-      
-      // Inicializar itens da proposta baseado nos itens da cotação
-      const initialItems = (items || []).map((item: any) => ({
-        description: item.product_name,
-        brand: '',
-        quantity: item.quantity,
-        unitPrice: 0,
-        totalPrice: 0
-      }));
-      
-      setProposalItems(initialItems);
       
     } catch (error) {
       console.error('Error fetching quote:', error);
@@ -160,33 +162,35 @@ const SupplierQuoteResponse = () => {
         if (data.success) {
           const extracted = data.data;
           
-          // Preencher dados do fornecedor
-          setSupplierData({
-            name: extracted.supplierName || '',
-            cnpj: extracted.cnpj || '',
-            email: extracted.contact?.email || '',
-            phone: extracted.contact?.phone || '',
-            whatsapp: extracted.contact?.phone || ''
+          startTransition(() => {
+            // Preencher dados do fornecedor
+            setSupplierData({
+              name: extracted.supplierName || '',
+              cnpj: extracted.cnpj || '',
+              email: extracted.contact?.email || '',
+              phone: extracted.contact?.phone || '',
+              whatsapp: extracted.contact?.phone || ''
+            });
+            
+            // Preencher dados da proposta
+            setProposalData({
+              deliveryTime: extracted.deliveryTime || '',
+              paymentTerms: extracted.paymentTerms || '',
+              validUntil: extracted.validUntil || '',
+              notes: extracted.notes || ''
+            });
+            
+            // Preencher itens
+            if (extracted.items && extracted.items.length > 0) {
+              setProposalItems(extracted.items.map((item: any) => ({
+                description: item.description || '',
+                brand: item.brand || '',
+                quantity: item.quantity || 1,
+                unitPrice: item.unitPrice || 0,
+                totalPrice: item.totalPrice || 0
+              })));
+            }
           });
-          
-          // Preencher dados da proposta
-          setProposalData({
-            deliveryTime: extracted.deliveryTime || '',
-            paymentTerms: extracted.paymentTerms || '',
-            validUntil: extracted.validUntil || '',
-            notes: extracted.notes || ''
-          });
-          
-          // Preencher itens
-          if (extracted.items && extracted.items.length > 0) {
-            setProposalItems(extracted.items.map((item: any) => ({
-              description: item.description || '',
-              brand: item.brand || '',
-              quantity: item.quantity || 1,
-              unitPrice: item.unitPrice || 0,
-              totalPrice: item.totalPrice || 0
-            })));
-          }
           
           toast({
             title: "✅ Dados extraídos com sucesso!",
@@ -229,15 +233,17 @@ const SupplierQuoteResponse = () => {
   };
 
   const updateProposalItem = (index: number, field: keyof ProposalItem, value: any) => {
-    const updated = [...proposalItems];
-    updated[index] = { ...updated[index], [field]: value };
-    
-    // Recalcular total se quantidade ou preço unitário mudou
-    if (field === 'quantity' || field === 'unitPrice') {
-      updated[index].totalPrice = updated[index].quantity * updated[index].unitPrice;
-    }
-    
-    setProposalItems(updated);
+    startTransition(() => {
+      const updated = [...proposalItems];
+      updated[index] = { ...updated[index], [field]: value };
+      
+      // Recalcular total se quantidade ou preço unitário mudou
+      if (field === 'quantity' || field === 'unitPrice') {
+        updated[index].totalPrice = updated[index].quantity * updated[index].unitPrice;
+      }
+      
+      setProposalItems(updated);
+    });
   };
 
   const calculateTotal = () => {
