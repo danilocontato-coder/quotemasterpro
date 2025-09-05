@@ -99,32 +99,45 @@ export const useSupabaseQuotes = () => {
 
   const createQuote = async (quoteData: any) => {
     try {
-      if (!user || !user.clientId) {
-        throw new Error('User not authenticated or no client associated');
+      if (!user) {
+        throw new Error('Usuário não autenticado');
       }
 
       // Get the authenticated user ID from Supabase Auth
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) {
-        throw new Error('No authenticated user found');
+        throw new Error('Nenhum usuário autenticado encontrado');
       }
 
-      // Generate unique quote ID
+      // Load profile to satisfy RLS (client_id must match profile.client_id)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, client_id, company_name, name')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      if (!profile || !profile.client_id) {
+        console.error('RLS check failed: profile.client_id ausente', { profile, ctxClientId: user.clientId });
+        throw new Error('Seu usuário não está vinculado a um cliente. Peça ao administrador para associar seu perfil.');
+      }
+
+      // Generate unique quote ID (DB also has trigger, but we keep readable IDs)
       const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
 
       const newQuoteData = {
         id: quoteId,
         title: quoteData.title,
         description: quoteData.description,
-        client_id: user.clientId,
-        client_name: user.companyName || 'Cliente',
-        created_by: authUser.id, // Use auth.uid() instead of user.id
+        client_id: profile.client_id, // use DB source to pass RLS
+        client_name: user.companyName || profile.company_name || 'Cliente',
+        created_by: authUser.id, // must be auth.uid()
         status: 'draft',
         total: quoteData.total || 0,
         deadline: quoteData.deadline
       };
 
-      console.log('Creating quote with data:', newQuoteData);
+      console.log('Creating quote with data (debug):', newQuoteData);
 
       const { data, error } = await supabase
         .from('quotes')
@@ -140,7 +153,7 @@ export const useSupabaseQuotes = () => {
         entity_type: 'quotes',
         entity_id: data.id,
         panel_type: 'client',
-        user_id: authUser.id, // Use auth.uid() for audit log too
+        user_id: authUser.id,
         details: {
           quote_title: data.title,
           status: data.status
