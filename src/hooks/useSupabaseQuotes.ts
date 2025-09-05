@@ -221,70 +221,70 @@ export const useSupabaseQuotes = () => {
         throw new Error(`Inconsistência: RPC retornou ${rlsTest}, mas profile tem ${profileCheck.client_id}`);
       }
 
-      const newQuoteData = {
+      // Build minimal payload to satisfy RLS (only required columns)
+      const minimalInsert = {
         id: quoteId,
         title: quoteData.title,
-        description: quoteData.description,
-        client_id: rlsTest, // Use RPC-guaranteed client_id for RLS
+        client_id: rlsTest, // must match profiles.client_id of auth user
         client_name: user.companyName || user.name || 'Cliente',
-        created_by: authUser.id, // must be auth.uid()
-        status: 'draft',
-        total: quoteData.total || 0,
-        deadline: quoteData.deadline,
-        supplier_scope: quoteData.supplier_scope || 'local',
-        items_count: quoteData.items?.length || 0
-      };
+        created_by: authUser.id
+      } as const;
 
-      console.log('🔍 Final insert data:', newQuoteData);
-      
-      // Final validation before insert
-      console.log('🔍 Pre-insert validation:', {
-        authUserId: authUser.id,
-        clientId: newQuoteData.client_id,
-        createdBy: newQuoteData.created_by,
-        match_auth_created: authUser.id === newQuoteData.created_by,
-        match_rpc_client: rlsTest === newQuoteData.client_id,
-        ready_for_insert: authUser.id === newQuoteData.created_by && rlsTest === newQuoteData.client_id
-      });
+      console.log('🔍 Minimal payload for insert (RLS-safe):', minimalInsert);
 
-      const { data, error } = await supabase
+      // First insert minimal row to pass RLS
+      const { data: createdQuote, error: insertError } = await supabase
         .from('quotes')
-        .insert(newQuoteData)
-        .select()
+        .insert(minimalInsert)
+        .select('*')
         .single();
 
-      if (error) {
-        console.error('❌ Erro ao inserir cotação:', error);
-        
-        // If RLS error, provide more specific debugging
-        if (error.code === '42501') {
-          console.error('❌ RLS Policy Violation - Details:', {
-            errorCode: error.code,
-            errorMessage: error.message,
-            providedData: {
-              auth_user_id: authUser.id,
-              client_id: newQuoteData.client_id,
-              created_by: newQuoteData.created_by,
-              profile_client_id: profileCheck?.client_id
-            },
-            rlsCondition: 'INSERT policy requires: auth.uid() IS NOT NULL AND created_by = auth.uid() AND client_id IS NOT NULL AND client_id = profile.client_id'
-          });
+      if (insertError) {
+        console.error('❌ Erro ao inserir cotação (minimal):', insertError);
+        if (insertError.code === '42501') {
+          console.error('❌ RLS violation on minimal insert. Check created_by/auth.uid and client_id/profile.client_id');
         }
-        
-        throw new Error(`Falha ao salvar cotação: ${error.message}`);
+        throw new Error(`Falha ao salvar cotação: ${insertError.message}`);
       }
 
-      console.log('✅ Cotação criada:', data);
+      console.log('✅ Cotação criada (minimal):', createdQuote);
+
+      // Update optional fields in a second step (UPDATE policy allows created_by owner)
+      const updateData: Record<string, any> = {};
+      if (quoteData.description) updateData.description = quoteData.description;
+      if (quoteData.total != null) updateData.total = quoteData.total;
+      if (quoteData.deadline) updateData.deadline = quoteData.deadline;
+      updateData.status = 'draft';
+      updateData.supplier_scope = quoteData.supplier_scope || 'local';
+      updateData.items_count = quoteData.items?.length || 0;
+
+      let finalQuote = createdQuote;
+
+      if (Object.keys(updateData).length > 0) {
+        console.log('🔄 Atualizando campos opcionais da cotação...', updateData);
+        const { data: updated, error: updateError } = await supabase
+          .from('quotes')
+          .update({ ...updateData, updated_at: new Date().toISOString() })
+          .eq('id', createdQuote.id)
+          .select('*')
+          .single();
+        if (updateError) {
+          console.error('⚠️ Erro ao atualizar campos opcionais:', updateError);
+          // Não falhar a criação por erro na atualização; manter registro básico
+        } else if (updated) {
+          finalQuote = updated as any;
+        }
+      }
 
       // Add to local state immediately for better UX
-      setQuotes(prev => [data, ...prev]);
+      setQuotes(prev => [finalQuote as any, ...prev]);
 
       // Create items if provided
       if (quoteData.items && quoteData.items.length > 0) {
         console.log('🔍 Inserindo itens da cotação...');
         
         const itemsToInsert = quoteData.items.map((item: any) => ({
-          quote_id: data.id,
+          quote_id: (finalQuote as any).id,
           product_name: item.product_name,
           quantity: item.quantity || 1,
           product_id: item.product_id || null,
@@ -310,12 +310,12 @@ export const useSupabaseQuotes = () => {
         await supabase.from('audit_logs').insert({
           action: 'QUOTE_CREATE',
           entity_type: 'quotes',
-          entity_id: data.id,
+          entity_id: (finalQuote as any).id,
           panel_type: 'client',
           user_id: authUser.id,
           details: {
-            quote_title: data.title,
-            status: data.status,
+            quote_title: (finalQuote as any).title,
+            status: (finalQuote as any).status,
             items_count: quoteData.items?.length || 0
           }
         });
@@ -325,7 +325,7 @@ export const useSupabaseQuotes = () => {
       }
 
       toast.success('Cotação criada com sucesso!');
-      return data;
+      return finalQuote;
     } catch (error: any) {
       console.error('❌ Error creating quote:', error);
       toast.error('Erro ao criar cotação: ' + (error.message || 'Erro desconhecido'));
