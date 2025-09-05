@@ -70,12 +70,12 @@ export function QuoteComparisonButton({
     console.log('🔍 QuoteComparisonButton - useEffect triggered:', { 
       quoteId, 
       responsesCount, 
-      shouldFetch: responsesCount > 0 
+      shouldFetch: quoteId && quoteId.length > 0 
     });
-    if (responsesCount > 0) {
+    if (quoteId && quoteId.length > 0) {
       fetchProposals();
     }
-  }, [quoteId, responsesCount]);
+  }, [quoteId]);
 
   const hasProposals = proposals.length >= 1; // Show comparison with at least 1 proposal
   
