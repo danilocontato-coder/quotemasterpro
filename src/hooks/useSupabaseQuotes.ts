@@ -198,7 +198,7 @@ export const useSupabaseQuotes = () => {
         id: quoteId,
         title: quoteData.title,
         description: quoteData.description,
-        client_id: profileCheck.client_id, // Use profile client_id directly
+        client_id: rlsTest || clientId, // Use RPC-guaranteed client_id for RLS
         client_name: user.companyName || user.name || 'Cliente',
         created_by: authUser.id, // must be auth.uid()
         status: 'draft',
