@@ -13,6 +13,18 @@ export interface Approval {
   approved_at?: string;
   created_at: string;
   updated_at: string;
+  quotes?: {
+    id: string;
+    title: string;
+    description?: string;
+    total: number;
+    client_name: string;
+    supplier_name?: string;
+    status: string;
+    deadline?: string;
+    items_count?: number;
+    created_at: string;
+  };
 }
 
 export const useSupabaseApprovals = () => {
@@ -29,7 +41,21 @@ export const useSupabaseApprovals = () => {
       
       let query = supabase
         .from('approvals')
-        .select('*')
+        .select(`
+          *,
+          quotes:quote_id (
+            id,
+            title,
+            description,
+            total,
+            client_name,
+            supplier_name,
+            status,
+            deadline,
+            items_count,
+            created_at
+          )
+        `)
         .order('created_at', { ascending: false });
 
       // Filter based on user role

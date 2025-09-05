@@ -37,7 +37,7 @@ export function Approvals() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
   const [activeTab, setActiveTab] = useState("pending");
-  const [quotesData, setQuotesData] = useState<Record<string, any>>({});
+  
   const [approverNames, setApproverNames] = useState<Record<string, string>>({});
 
   // Load approvals on component mount
@@ -45,30 +45,10 @@ export function Approvals() {
     refetch();
   }, []);
 
-  // Fetch quotes data and approver names
+  // Fetch approver names only (quotes data now comes from the hook)
   useEffect(() => {
-    const fetchAdditionalData = async () => {
+    const fetchApproverNames = async () => {
       if (approvals.length === 0) return;
-
-      // Fetch quotes data
-      const quoteIds = [...new Set(approvals.map(a => a.quote_id))];
-      if (quoteIds.length > 0) {
-        try {
-          const { data: quotes } = await supabase
-            .from('quotes')
-            .select('id, title, total, client_name, description, status, deadline, supplier_name, items_count, created_at')
-            .in('id', quoteIds);
-          
-          const quotesMap = quotes?.reduce((acc, quote) => {
-            acc[quote.id] = quote;
-            return acc;
-          }, {} as Record<string, any>) || {};
-          
-          setQuotesData(quotesMap);
-        } catch (error) {
-          console.error('Error fetching quotes:', error);
-        }
-      }
 
       // Fetch approver names
       const approverIds = [...new Set(approvals.map(a => a.approver_id).filter(Boolean))];
@@ -91,11 +71,11 @@ export function Approvals() {
       }
     };
 
-    fetchAdditionalData();
+    fetchApproverNames();
   }, [approvals]);
 
   const filteredApprovals = approvals.filter(approval => {
-    const quote = quotesData[approval.quote_id];
+    const quote = approval.quotes;
     const matchesSearch = approval.quote_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote?.client_name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -268,7 +248,7 @@ export function Approvals() {
                       </TableRow>
                     ) : (
                       filteredApprovals.map((approval) => {
-                        const quote = quotesData[approval.quote_id];
+                        const quote = approval.quotes;
                         return (
                           <TableRow key={approval.id}>
                             <TableCell>
