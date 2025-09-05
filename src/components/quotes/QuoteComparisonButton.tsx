@@ -56,16 +56,13 @@ export function QuoteComparisonButton({
         .eq('quote_id', quoteId);
       console.log('🔍 DEEP DEBUG - Simple responses query:', simpleResponses, 'error:', simpleError);
 
-      // Try with inner join
+      // Try with direct query only (no join to avoid RLS on suppliers)
       const { data: responses, error } = await supabase
         .from('quote_responses')
-        .select(`
-          *,
-          suppliers!inner(name, cnpj, email, phone)
-        `)
+        .select('*')
         .eq('quote_id', quoteId);
 
-      console.log('🔍 DEEP DEBUG - Final responses with join:', responses, 'error:', error);
+      console.log('🔍 DEEP DEBUG - Final responses (no join):', responses, 'error:', error);
 
       if (error) {
         console.error('❌ DEEP DEBUG - Error in final query:', error);
@@ -76,7 +73,7 @@ export function QuoteComparisonButton({
         id: response.id,
         quoteId: response.quote_id,
         supplierId: response.supplier_id,
-        supplierName: response.suppliers.name,
+        supplierName: response.supplier_name,
         price: response.total_amount,
         deliveryTime: response.delivery_time || 7,
         shippingCost: 0,
