@@ -126,6 +126,19 @@ export class ApprovalService {
         });
       }
 
+      // Create audit log
+      await supabase.from('audit_logs').insert({
+        user_id: approverId,
+        action: 'APPROVE_QUOTE',
+        entity_type: 'approvals',
+        entity_id: approvalId,
+        panel_type: 'client',
+        details: {
+          quote_id: approval.quote_id,
+          comments: comments
+        }
+      });
+
       return approval;
     } catch (error) {
       console.error('Error approving quote:', error);
@@ -178,6 +191,19 @@ export class ApprovalService {
           }
         });
       }
+
+      // Create audit log
+      await supabase.from('audit_logs').insert({
+        user_id: approverId,
+        action: 'REJECT_QUOTE',
+        entity_type: 'approvals',
+        entity_id: approvalId,
+        panel_type: 'client',
+        details: {
+          quote_id: approval.quote_id,
+          rejection_reason: comments
+        }
+      });
 
       return approval;
     } catch (error) {

@@ -290,7 +290,7 @@ export const useSupabaseSupplierQuotes = () => {
             paymentTerms: '30 dias',
             observations: existingResponse.notes,
             attachments: [],
-            status: existingResponse.status === 'approved' ? 'approved' : (existingResponse.status === 'pending' ? 'draft' : 'sent'),
+            status: existingResponse.status === 'approved' ? 'accepted' : (existingResponse.status === 'pending' ? 'draft' : 'sent'),
             createdAt: existingResponse.created_at,
             sentAt: existingResponse.status === 'sent' ? existingResponse.created_at : undefined,
           } : undefined,
@@ -345,21 +345,22 @@ export const useSupabaseSupplierQuotes = () => {
             // Update local state with new status
             setSupplierQuotes(prev => prev.map(quote => {
               if (quote.id === updatedResponse.quote_id && quote.proposal) {
-                const newStatus = updatedResponse.status === 'approved' ? 'approved' : 
-                                 updatedResponse.status === 'rejected' ? 'rejected' :
-                                 updatedResponse.status === 'pending' ? 'pending' : 'approved';
+                const newProposalStatus: QuoteProposal['status'] = 
+                  updatedResponse.status === 'approved' ? 'accepted' : 
+                  updatedResponse.status === 'rejected' ? 'rejected' :
+                  updatedResponse.status === 'pending' ? 'draft' : 'sent';
                 
                 return {
                   ...quote,
                   status: updatedResponse.status === 'approved' ? 'approved' : quote.status,
                   proposal: {
                     ...quote.proposal,
-                    status: newStatus,
+                    status: newProposalStatus,
                     totalValue: updatedResponse.total_amount,
                     deliveryTime: updatedResponse.delivery_time || quote.proposal.deliveryTime,
                     observations: updatedResponse.notes || quote.proposal.observations,
                   }
-                };
+                } as SupplierQuote;
               }
               return quote;
             }));
