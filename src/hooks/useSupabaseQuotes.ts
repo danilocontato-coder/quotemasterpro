@@ -114,29 +114,18 @@ export const useSupabaseQuotes = () => {
         throw new Error('Nenhum usuário autenticado encontrado');
       }
 
-      // Load profile to satisfy RLS (client_id must match profile.client_id)
-      console.log('🔍 Buscando profile para user ID:', authUser.id);
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, client_id, company_name, name, role')
-        .eq('id', authUser.id)
-        .maybeSingle();
+      // Use the safe function to get client_id
+      const { data: clientId, error: clientError } = await supabase.rpc('get_current_user_client_id');
+      console.log('🔍 Client ID from RPC:', { clientId, clientError });
 
-      console.log('🔍 Profile resultado:', { profile, profileError });
-
-      if (profileError) {
-        console.error('❌ Erro ao buscar profile:', profileError);
-        throw profileError;
+      if (clientError) {
+        console.error('❌ Erro ao buscar client_id:', clientError);
+        throw new Error('Erro ao verificar vinculação do usuário');
       }
       
-      if (!profile) {
-        console.error('❌ Profile não encontrado para user:', authUser.id);
-        throw new Error('Perfil do usuário não encontrado. Verifique sua conta.');
-      }
-      
-      if (!profile.client_id) {
-        console.error('❌ Profile.client_id ausente:', { profile, ctxClientId: user.clientId });
-        throw new Error('Seu usuário não está vinculado a um cliente. Peça ao administrador para associar seu perfil.');
+      if (!clientId) {
+        console.error('❌ Client ID não encontrado para user:', authUser.id);
+        throw new Error('Seu usuário não está vinculado a um cliente. Recarregue a página ou contate o administrador.');
       }
 
       // Generate unique quote ID (DB also has trigger, but we keep readable IDs)
@@ -146,8 +135,8 @@ export const useSupabaseQuotes = () => {
         id: quoteId,
         title: quoteData.title,
         description: quoteData.description,
-        client_id: profile.client_id, // use DB source to pass RLS
-        client_name: user.companyName || profile.company_name || 'Cliente',
+        client_id: clientId, // use RPC result to pass RLS
+        client_name: user.companyName || 'Cliente',
         created_by: authUser.id, // must be auth.uid()
         status: 'draft',
         total: quoteData.total || 0,
@@ -155,12 +144,12 @@ export const useSupabaseQuotes = () => {
       };
 
       console.log('🔍 Dados finais da cotação:', newQuoteData);
-      console.log('🔍 RLS Check - Comparação:', {
-        'profile.client_id': profile.client_id,
-        'newQuoteData.client_id': newQuoteData.client_id,
+      console.log('🔍 RLS Check - Dados válidos:', {
+        'clientId': clientId,
         'authUser.id': authUser.id,
-        'newQuoteData.created_by': newQuoteData.created_by,
-        'match': profile.client_id === newQuoteData.client_id && authUser.id === newQuoteData.created_by
+        'created_by': newQuoteData.created_by,
+        'client_id': newQuoteData.client_id,
+        'valid': !!clientId && authUser.id === newQuoteData.created_by
       });
 
       const { data, error } = await supabase

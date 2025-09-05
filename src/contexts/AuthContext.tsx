@@ -132,16 +132,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: supabaseUser.id,
           email: supabaseUser.email || '',
           name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-          role: 'client' as UserRole,
+          role: 'collaborator' as UserRole,
           active: true,
         };
         setUser(fallbackUser);
-        setIsLoading(false);
         return;
       }
 
       if (profile) {
-        const userProfile = {
+        console.log('✅ Profile encontrado:', {
+          id: profile.id,
+          email: profile.email,
+          client_id: profile.client_id,
+          onboarding_completed: profile.onboarding_completed,
+          role: profile.role
+        });
+
+        const userProfile: User = {
           id: profile.id,
           email: profile.email,
           name: profile.name,
@@ -154,12 +161,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(userProfile);
       } else {
+        console.log('⚠️ Profile não encontrado, criando usuário básico');
         // Profile doesn't exist, create a basic user
         const basicUser = {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
           name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-          role: 'client' as UserRole,
+          role: 'collaborator' as UserRole,
           active: true,
         };
         setUser(basicUser);
@@ -171,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: supabaseUser.id,
         email: supabaseUser.email || '',
         name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-        role: 'client' as UserRole,
+        role: 'collaborator' as UserRole,
         active: true,
       };
       setUser(errorFallbackUser);
