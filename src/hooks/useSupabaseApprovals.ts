@@ -222,11 +222,26 @@ export const useSupabaseApprovals = () => {
     };
   }, [user]);
 
+  const fixQuoteApprovalStatus = async (quoteId: string) => {
+    try {
+      setIsLoading(true);
+      await ApprovalService.fixQuoteApprovalStatus(quoteId);
+      await fetchApprovals(); // Refresh the data
+      return true;
+    } catch (error) {
+      console.error('Error fixing quote approval status:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     approvals,
     isLoading,
     approveRequest,
     rejectRequest,
+    fixQuoteApprovalStatus,
     refetch: fetchApprovals
   };
 };

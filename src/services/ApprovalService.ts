@@ -47,10 +47,12 @@ export class ApprovalService {
       if (approvalError) throw approvalError;
 
       // Atualizar status da cotação para 'under_review'
-      await supabase
+      const { error: updateQuoteError } = await supabase
         .from('quotes')
         .update({ status: 'under_review' })
         .eq('id', data.quoteId);
+
+      if (updateQuoteError) throw updateQuoteError;
 
       // Criar notificação para os aprovadores
       for (const approverId of approvalLevel.approvers) {
@@ -99,11 +101,13 @@ export class ApprovalService {
 
       if (approvalError) throw approvalError;
 
-      // Atualizar status da cotação para 'approved'
-      await supabase
+  // Atualizar status da cotação para 'approved'
+      const { error: updateError } = await supabase
         .from('quotes')
         .update({ status: 'approved' })
         .eq('id', approval.quote_id);
+
+      if (updateError) throw updateError;
 
       // Criar notificação para o solicitante
       const { data: quote } = await supabase
@@ -164,11 +168,13 @@ export class ApprovalService {
 
       if (approvalError) throw approvalError;
 
-      // Atualizar status da cotação para 'rejected'
-      await supabase
+  // Atualizar status da cotação para 'rejected'
+      const { error: updateError } = await supabase
         .from('quotes')
         .update({ status: 'rejected' })
         .eq('id', approval.quote_id);
+
+      if (updateError) throw updateError;
 
       // Criar notificação para o solicitante
       const { data: quote } = await supabase
@@ -233,6 +239,102 @@ export class ApprovalService {
     } catch (error) {
       console.error('Error checking approval requirement:', error);
       return { required: false, level: null };
+    }
+  }
+
+  // Corrigir cotações que foram finalizadas sem aprovação
+  static async fixQuoteApprovalStatus(quoteId: string) {
+    try {
+      // Buscar a cotação
+      const { data: quote, error: quoteError } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
+
+      if (quoteError || !quote) throw quoteError || new Error('Quote not found');
+
+      // Verificar se precisa de aprovação
+      const { required, level } = await this.checkIfApprovalRequired(
+        quoteId, 
+        quote.total, 
+        quote.client_id
+      );
+
+      // Se precisa de aprovação mas não tem registro, criar
+      if (required && level) {
+        const { data: existingApproval } = await supabase
+          .from('approvals')
+          .select('*')
+          .eq('quote_id', quoteId)
+          .single();
+
+        if (!existingApproval) {
+          // Criar aprovação retroativa
+          await this.createApprovalForQuote({
+            quoteId: quote.id,
+            clientId: quote.client_id,
+            amount: quote.total,
+            comments: 'Aprovação criada automaticamente para cotação finalizada'
+          });
+
+          console.log(`Approval created for quote ${quoteId}`);
+        }
+      }
+
+      // Se não precisa de aprovação e está finalized, manter como está
+      if (!required && quote.status === 'finalized') {
+        console.log(`Quote ${quoteId} doesn't require approval - status maintained as finalized`);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error fixing quote approval status:', error);
+      throw error;
+    }
+  }
+
+  // Validar transição de status antes de atualizar cotação
+  static async validateStatusTransition(quoteId: string, newStatus: string) {
+    try {
+      const { data: quote } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
+
+      if (!quote) return { valid: false, reason: 'Quote not found' };
+
+      // Se tentando finalizar, verificar se precisa de aprovação
+      if (newStatus === 'finalized') {
+        const { required } = await this.checkIfApprovalRequired(
+          quoteId,
+          quote.total,
+          quote.client_id
+        );
+
+        if (required) {
+          // Verificar se tem aprovação
+          const { data: approval } = await supabase
+            .from('approvals')
+            .select('*')
+            .eq('quote_id', quoteId)
+            .eq('status', 'approved')
+            .single();
+
+          if (!approval) {
+            return { 
+              valid: false, 
+              reason: 'Quote requires approval before being finalized' 
+            };
+          }
+        }
+      }
+
+      return { valid: true };
+    } catch (error) {
+      console.error('Error validating status transition:', error);
+      return { valid: false, reason: 'Validation error' };
     }
   }
 }

@@ -52,3 +52,29 @@ export const getValidStatusTransitions = (currentStatus: string): string[] => {
       return [];
   }
 };
+
+// Função para verificar se uma transição de status é válida
+export const isValidStatusTransition = (currentStatus: string, newStatus: string): boolean => {
+  const validTransitions = getValidStatusTransitions(currentStatus);
+  return validTransitions.includes(newStatus);
+};
+
+// Função para obter o próximo status automático baseado na lógica de negócio
+export const getNextAutomaticStatus = (currentStatus: string, context?: any): string | null => {
+  switch (currentStatus) {
+    case 'receiving':
+      // Se todas as propostas foram recebidas, pode ir para under_review
+      if (context?.allProposalsReceived) {
+        return 'under_review';
+      }
+      return null;
+    case 'under_review':
+      // Após aprovação/rejeição, o status é atualizado pelo ApprovalService
+      return null;
+    case 'approved':
+      // Após aprovação, pode ser finalizada (mas precisa verificar se não requer aprovação adicional)
+      return null;
+    default:
+      return null;
+  }
+};
