@@ -11,10 +11,10 @@ import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
 
-// Lazy loading de layouts principais
-const MainLayout = lazy(() => import('@/components/layout/MainLayout'));
-const SuperAdminLayout = lazy(() => import('@/components/layout/SuperAdminLayout'));
-const SupplierLayout = lazy(() => import('@/components/layout/SupplierLayout'));
+// Layouts principais - import estático para evitar erro de dynamic import
+import MainLayout from '@/components/layout/MainLayout';
+import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
+import SupplierLayout from '@/components/layout/SupplierLayout';
 
 // Auth pages com lazy loading
 const Login = lazy(() => import('@/pages/auth/Login'));
@@ -142,9 +142,7 @@ function App() {
                 {/* Dashboard routes - organized as nested routes */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
-                      <MainLayout />
-                    </Suspense>
+                    <MainLayout />
                   </ProtectedRoute>
                 }>
                   <Route index element={
@@ -168,9 +166,7 @@ function App() {
                 {/* Main application routes com lazy loading */}
                 <Route path="/quotes" element={
                   <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
-                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
-                      <MainLayout />
-                    </Suspense>
+                    <MainLayout />
                   </ProtectedRoute>
                 }>
                   <Route index element={
