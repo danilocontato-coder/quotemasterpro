@@ -240,7 +240,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       const quoteData: any = {
         title: formData.title,
         description: formData.description,
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
         status: 'draft',
         total: 0,
         items_count: formData.items.length,
