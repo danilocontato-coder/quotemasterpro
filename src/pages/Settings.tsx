@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Lock, Bell, Palette } from "lucide-react";
+import { User, Lock, Bell, Palette, Settings as SettingsIcon } from "lucide-react";
 import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
 import { PasswordChange } from "@/components/settings/PasswordChange";
+import { QuoteApprovalSettings } from "@/components/settings/QuoteApprovalSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function Settings() {
@@ -98,7 +99,7 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Perfil
@@ -110,6 +111,10 @@ export function Settings() {
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notificações
+          </TabsTrigger>
+          <TabsTrigger value="approval" className="flex items-center gap-2">
+            <SettingsIcon className="h-4 w-4" />
+            Aprovações
           </TabsTrigger>
           <TabsTrigger value="preferences" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
@@ -354,6 +359,10 @@ export function Settings() {
 
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="approval">
+          <QuoteApprovalSettings />
         </TabsContent>
 
         <TabsContent value="preferences">

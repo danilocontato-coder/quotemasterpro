@@ -183,8 +183,40 @@ Obrigado pela sua proposta! 🤝`;
     }
 
 
-    // 8. Create notifications for rejected suppliers
-    if (otherResponses && otherResponses.length > 0) {
+    // 8. Check if should notify rejected suppliers (configurable)
+    let shouldNotifyRejected = true;
+    
+    try {
+      // First check client-specific setting
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('settings')
+        .eq('id', quote.client_id)
+        .single();
+      
+      if (clientData?.settings?.auto_notify_rejected_proposals !== undefined) {
+        shouldNotifyRejected = clientData.settings.auto_notify_rejected_proposals;
+      } else {
+        // Fallback to system setting
+        const { data: systemSetting } = await supabase
+          .from('system_settings')
+          .select('setting_value')
+          .eq('setting_key', 'auto_notify_rejected_proposals')
+          .single();
+        
+        if (systemSetting?.setting_value?.enabled !== undefined) {
+          shouldNotifyRejected = systemSetting.setting_value.enabled;
+        }
+      }
+    } catch (settingsError) {
+      console.error('❌ Error checking notification settings:', settingsError);
+      // Default to true if there's an error
+    }
+
+    console.log('📤 Should notify rejected suppliers:', shouldNotifyRejected);
+
+    // 9. Create notifications for rejected suppliers (if enabled)
+    if (shouldNotifyRejected && otherResponses && otherResponses.length > 0) {
       for (const rejectedResponse of otherResponses) {
         try {
           const { data: rejectedSupplierUser } = await supabase
@@ -211,9 +243,12 @@ Obrigado pela sua proposta! 🤝`;
           console.error(`❌ Error notifying rejected supplier ${rejectedResponse.supplier_id}:`, notifError);
         }
       }
+      console.log(`📤 Notified ${otherResponses.length} rejected suppliers`);
+    } else if (!shouldNotifyRejected) {
+      console.log('📤 Skipped notifying rejected suppliers (disabled by client setting)');
     }
 
-    // 9. Log audit trail
+    // 10. Log audit trail
     const { error: auditError } = await supabase
       .from('audit_logs')
       .insert({
@@ -229,7 +264,8 @@ Obrigado pela sua proposta! 🤝`;
           approved_amount: response.total_amount,
           comments: comments,
           whatsapp_sent: whatsappResult?.success || false,
-          other_proposals_rejected: otherResponses?.length || 0
+          other_proposals_rejected: otherResponses?.length || 0,
+          rejected_suppliers_notified: shouldNotifyRejected && otherResponses ? otherResponses.length : 0
         }
       });
 

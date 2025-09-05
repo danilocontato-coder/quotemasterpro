@@ -247,6 +247,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          settings: Json | null
           status: string | null
           subscription_plan_id: string | null
           updated_at: string | null
@@ -266,6 +267,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          settings?: Json | null
           status?: string | null
           subscription_plan_id?: string | null
           updated_at?: string | null
@@ -285,6 +287,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          settings?: Json | null
           status?: string | null
           subscription_plan_id?: string | null
           updated_at?: string | null
