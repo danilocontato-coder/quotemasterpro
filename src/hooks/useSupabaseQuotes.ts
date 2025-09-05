@@ -177,11 +177,28 @@ export const useSupabaseQuotes = () => {
       // Generate unique quote ID (DB also has trigger, but we keep readable IDs)
       const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
 
+      // TEST: Verify RLS conditions before insert
+      console.log('🔍 Testing RLS conditions...');
+      const { data: rlsTest, error: rlsError } = await supabase.rpc('get_current_user_client_id');
+      console.log('🔍 RLS Test - get_current_user_client_id:', { rlsTest, rlsError });
+      
+      // Verify the user's profile and client_id
+      const { data: profileCheck, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, client_id, role, email')
+        .eq('id', authUser.id)
+        .single();
+      console.log('🔍 Profile check:', { profileCheck, profileError });
+
+      if (!profileCheck?.client_id) {
+        throw new Error(`Usuário não está vinculado a um cliente. Profile: ${JSON.stringify(profileCheck)}`);
+      }
+
       const newQuoteData = {
         id: quoteId,
         title: quoteData.title,
         description: quoteData.description,
-        client_id: effectiveClientId,
+        client_id: profileCheck.client_id, // Use profile client_id directly
         client_name: user.companyName || user.name || 'Cliente',
         created_by: authUser.id, // must be auth.uid()
         status: 'draft',
@@ -191,7 +208,21 @@ export const useSupabaseQuotes = () => {
         items_count: quoteData.items?.length || 0
       };
 
-      console.log('🔍 Dados finais da cotação:', newQuoteData);
+      console.log('🔍 Final insert data:', newQuoteData);
+      
+      // Validate all RLS conditions manually
+      const rlsChecks = {
+        'auth.uid() is not null': !!authUser.id,
+        'created_by = auth.uid()': newQuoteData.created_by === authUser.id,
+        'client_id is not null': !!newQuoteData.client_id,
+        'client_id matches profile': newQuoteData.client_id === profileCheck.client_id
+      };
+      console.log('🔍 RLS Validation Checks:', rlsChecks);
+      
+      const allChecksPassed = Object.values(rlsChecks).every(check => check === true);
+      if (!allChecksPassed) {
+        throw new Error(`RLS checks failed: ${JSON.stringify(rlsChecks)}`);
+      }
 
       const { data, error } = await supabase
         .from('quotes')
@@ -201,6 +232,22 @@ export const useSupabaseQuotes = () => {
 
       if (error) {
         console.error('❌ Erro ao inserir cotação:', error);
+        
+        // If RLS error, provide more specific debugging
+        if (error.code === '42501') {
+          console.error('❌ RLS Policy Violation - Details:', {
+            errorCode: error.code,
+            errorMessage: error.message,
+            providedData: {
+              auth_user_id: authUser.id,
+              client_id: newQuoteData.client_id,
+              created_by: newQuoteData.created_by,
+              profile_client_id: profileCheck?.client_id
+            },
+            rlsCondition: 'INSERT policy requires: auth.uid() IS NOT NULL AND created_by = auth.uid() AND client_id IS NOT NULL AND client_id = profile.client_id'
+          });
+        }
+        
         throw new Error(`Falha ao salvar cotação: ${error.message}`);
       }
 
