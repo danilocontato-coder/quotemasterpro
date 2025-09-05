@@ -58,11 +58,19 @@ export const useAuthTenant = () => {
       }
 
       const hasClientId = !!profile?.client_id;
-      const isCompleted = profile?.onboarding_completed || false;
+      
+      // Se tem client_id mas onboarding não foi marcado como completed, auto-completar
+      if (hasClientId && !profile?.onboarding_completed) {
+        console.log('🔧 Auto-completando onboarding para usuário já vinculado');
+        await supabase
+          .from('profiles')
+          .update({ onboarding_completed: true })
+          .eq('id', user.id);
+      }
 
       setTenantState({
         clientId: profile?.client_id || null,
-        onboardingCompleted: hasClientId && isCompleted,
+        onboardingCompleted: hasClientId, // Se tem client_id, considera completo
         isLoading: false
       });
 
