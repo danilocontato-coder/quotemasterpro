@@ -232,12 +232,10 @@ export const useSupabaseQuotes = () => {
 
       console.log('🔍 Minimal payload for insert (RLS-safe):', minimalInsert);
 
-      // First insert minimal row to pass RLS
-      const { data: createdQuote, error: insertError } = await supabase
+      // First insert minimal row to pass RLS (no select to avoid SELECT policy issues)
+      const { error: insertError } = await supabase
         .from('quotes')
-        .insert(minimalInsert)
-        .select('*')
-        .single();
+        .insert(minimalInsert);
 
       if (insertError) {
         console.error('❌ Erro ao inserir cotação (minimal):', insertError);
@@ -247,7 +245,21 @@ export const useSupabaseQuotes = () => {
         throw new Error(`Falha ao salvar cotação: ${insertError.message}`);
       }
 
-      console.log('✅ Cotação criada (minimal):', createdQuote);
+      // Fetch the created quote explicitly
+      let finalQuote: any = minimalInsert;
+      const { data: createdQuote, error: fetchCreatedError } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', minimalInsert.id)
+        .maybeSingle();
+
+      if (fetchCreatedError) {
+        console.warn('⚠️ Falha ao recuperar cotação recém-criada, seguindo com dados mínimos:', fetchCreatedError);
+      } else if (createdQuote) {
+        finalQuote = createdQuote as any;
+      }
+
+      console.log('✅ Cotação criada (minimal):', finalQuote);
 
       // Update optional fields in a second step (UPDATE policy allows created_by owner)
       const updateData: Record<string, any> = {};
@@ -258,7 +270,7 @@ export const useSupabaseQuotes = () => {
       updateData.supplier_scope = quoteData.supplier_scope || 'local';
       updateData.items_count = quoteData.items?.length || 0;
 
-      let finalQuote = createdQuote;
+      
 
       if (Object.keys(updateData).length > 0) {
         console.log('🔄 Atualizando campos opcionais da cotação...', updateData);
