@@ -132,27 +132,38 @@ Obrigado pela sua proposta! 🤝`;
       }
     }
 
-    // 6. Create notification for supplier
-    const { error: notificationError } = await supabase
-      .from('notifications')
-      .insert({
-        user_id: response.supplier_id,
-        title: '🎉 Proposta Aprovada!',
-        message: `Sua proposta para "${quote.title}" foi aprovada! Valor: R$ ${response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        type: 'proposal_approved',
-        priority: 'high',
-        metadata: {
-          quote_id: quoteId,
-          response_id: responseId,
-          approved_amount: response.total_amount,
-          whatsapp_sent: whatsappResult?.success || false,
-          comments: comments
-        }
-      });
+    // 6. Create notification for supplier - buscar o auth_user_id do supplier
+    const { data: supplierUser } = await supabase
+      .from('users')
+      .select('auth_user_id')
+      .eq('supplier_id', response.supplier_id)
+      .single();
 
-    if (notificationError) {
-      console.error('❌ Error creating notification:', notificationError);
+    if (supplierUser?.auth_user_id) {
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: supplierUser.auth_user_id,
+          title: '🎉 Proposta Aprovada!',
+          message: `Sua proposta para "${quote.title}" foi aprovada! Valor: R$ ${response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          type: 'proposal_approved',
+          priority: 'high',
+          metadata: {
+            quote_id: quoteId,
+            response_id: responseId,
+            approved_amount: response.total_amount,
+            whatsapp_sent: whatsappResult?.success || false,
+            comments: comments
+          }
+        });
+
+      if (notificationError) {
+        console.error('❌ Error creating notification:', notificationError);
+      }
+    } else {
+      console.log('⚠️ Supplier user not found for notification');
     }
+
 
     // 7. Log audit trail
     const { error: auditError } = await supabase

@@ -59,7 +59,12 @@ export default function SupplierQuotes() {
     );
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, responseStatus?: string) => {
+    // Se houver uma resposta aprovada, mostrar isso em destaque
+    if (responseStatus === 'approved') {
+      return <Badge className="bg-green-600 text-white">✅ Proposta Aprovada</Badge>;
+    }
+    
     switch (status) {
       case 'pending':
         return <Badge variant="secondary">Aguardando Proposta</Badge>;
@@ -255,8 +260,8 @@ export default function SupplierQuotes() {
                         <p className="text-sm text-muted-foreground">{quote.description}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{quote.client}</TableCell>
-                    <TableCell>{getStatusBadge(quote.status)}</TableCell>
+                     <TableCell>{quote.client}</TableCell>
+                     <TableCell>{getStatusBadge(quote.status, quote.proposal?.status)}</TableCell>
                     <TableCell>
                       <span className={quote.status === 'expired' ? 'text-red-600' : ''}>
                         {new Date(quote.deadline).toLocaleDateString('pt-BR')}

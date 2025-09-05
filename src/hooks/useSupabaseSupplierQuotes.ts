@@ -290,7 +290,7 @@ export const useSupabaseSupplierQuotes = () => {
             paymentTerms: '30 dias',
             observations: existingResponse.notes,
             attachments: [],
-            status: existingResponse.status === 'pending' ? 'draft' : 'sent',
+            status: existingResponse.status === 'approved' ? 'approved' : (existingResponse.status === 'pending' ? 'draft' : 'sent'),
             createdAt: existingResponse.created_at,
             sentAt: existingResponse.status === 'sent' ? existingResponse.created_at : undefined,
           } : undefined,
