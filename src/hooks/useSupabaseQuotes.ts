@@ -190,15 +190,42 @@ export const useSupabaseQuotes = () => {
         .single();
       console.log('🔍 Profile check:', { profileCheck, profileError });
 
+      // CRITICAL: Check if RLS will pass by testing the exact condition
+      console.log('🔍 RPC result for validation:', { rlsTest, rlsError });
+      
+      // Test each RLS condition individually
+      const conditions = {
+        auth_uid_exists: !!authUser.id,
+        created_by_matches: true, // We'll set created_by = authUser.id
+        client_id_not_null: !!rlsTest,
+        client_id_matches_profile: rlsTest === profileCheck?.client_id
+      };
+      
+      console.log('🔍 Individual RLS conditions:', conditions);
+      
+      const rlsValidationResult = {
+        data: rlsTest,
+        conditions,
+        allValid: Object.values(conditions).every(Boolean)
+      };
+
       if (!profileCheck?.client_id) {
         throw new Error(`Usuário não está vinculado a um cliente. Profile: ${JSON.stringify(profileCheck)}`);
+      }
+
+      if (!rlsTest) {
+        throw new Error(`RPC get_current_user_client_id retornou null. Verifique se o usuário tem client_id no profile.`);
+      }
+
+      if (rlsTest !== profileCheck.client_id) {
+        throw new Error(`Inconsistência: RPC retornou ${rlsTest}, mas profile tem ${profileCheck.client_id}`);
       }
 
       const newQuoteData = {
         id: quoteId,
         title: quoteData.title,
         description: quoteData.description,
-        client_id: rlsTest || clientId, // Use RPC-guaranteed client_id for RLS
+        client_id: rlsTest, // Use RPC-guaranteed client_id for RLS
         client_name: user.companyName || user.name || 'Cliente',
         created_by: authUser.id, // must be auth.uid()
         status: 'draft',
@@ -210,19 +237,15 @@ export const useSupabaseQuotes = () => {
 
       console.log('🔍 Final insert data:', newQuoteData);
       
-      // Validate all RLS conditions manually
-      const rlsChecks = {
-        'auth.uid() is not null': !!authUser.id,
-        'created_by = auth.uid()': newQuoteData.created_by === authUser.id,
-        'client_id is not null': !!newQuoteData.client_id,
-        'client_id matches profile': newQuoteData.client_id === profileCheck.client_id
-      };
-      console.log('🔍 RLS Validation Checks:', rlsChecks);
-      
-      const allChecksPassed = Object.values(rlsChecks).every(check => check === true);
-      if (!allChecksPassed) {
-        throw new Error(`RLS checks failed: ${JSON.stringify(rlsChecks)}`);
-      }
+      // Final validation before insert
+      console.log('🔍 Pre-insert validation:', {
+        authUserId: authUser.id,
+        clientId: newQuoteData.client_id,
+        createdBy: newQuoteData.created_by,
+        match_auth_created: authUser.id === newQuoteData.created_by,
+        match_rpc_client: rlsTest === newQuoteData.client_id,
+        ready_for_insert: authUser.id === newQuoteData.created_by && rlsTest === newQuoteData.client_id
+      });
 
       const { data, error } = await supabase
         .from('quotes')
