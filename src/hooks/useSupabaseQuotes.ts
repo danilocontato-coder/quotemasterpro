@@ -103,6 +103,12 @@ export const useSupabaseQuotes = () => {
         throw new Error('User not authenticated or no client associated');
       }
 
+      // Get the authenticated user ID from Supabase Auth
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        throw new Error('No authenticated user found');
+      }
+
       // Generate unique quote ID
       const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
 
@@ -112,11 +118,13 @@ export const useSupabaseQuotes = () => {
         description: quoteData.description,
         client_id: user.clientId,
         client_name: user.companyName || 'Cliente',
-        created_by: user.id,
+        created_by: authUser.id, // Use auth.uid() instead of user.id
         status: 'draft',
         total: quoteData.total || 0,
         deadline: quoteData.deadline
       };
+
+      console.log('Creating quote with data:', newQuoteData);
 
       const { data, error } = await supabase
         .from('quotes')
@@ -132,7 +140,7 @@ export const useSupabaseQuotes = () => {
         entity_type: 'quotes',
         entity_id: data.id,
         panel_type: 'client',
-        user_id: user.id,
+        user_id: authUser.id, // Use auth.uid() for audit log too
         details: {
           quote_title: data.title,
           status: data.status
