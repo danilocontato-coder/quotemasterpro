@@ -21,12 +21,42 @@ export function QuoteComparisonButton({
   const [proposals, setProposals] = useState<QuoteProposal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch real proposals from Supabase
+  // Debug: Fetch real proposals from Supabase with extensive logging
   const fetchProposals = async () => {
     if (!quoteId) return;
     
     setIsLoading(true);
+    console.log('🔍 DEEP DEBUG - Starting fetch for quote:', quoteId);
+    
     try {
+      // First, let's check what user we are
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log('🔍 DEEP DEBUG - Current user:', user?.id, user?.user_metadata?.role);
+      
+      // Check user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+      console.log('🔍 DEEP DEBUG - User profile:', profile, 'error:', profileError);
+
+      // Check if quote exists and current user can see it
+      const { data: quote, error: quoteError } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
+      console.log('🔍 DEEP DEBUG - Quote data:', quote, 'error:', quoteError);
+
+      // Try simple query first (without joins)
+      const { data: simpleResponses, error: simpleError } = await supabase
+        .from('quote_responses')
+        .select('*')
+        .eq('quote_id', quoteId);
+      console.log('🔍 DEEP DEBUG - Simple responses query:', simpleResponses, 'error:', simpleError);
+
+      // Try with inner join
       const { data: responses, error } = await supabase
         .from('quote_responses')
         .select(`
@@ -35,11 +65,10 @@ export function QuoteComparisonButton({
         `)
         .eq('quote_id', quoteId);
 
-      console.log('📊 Proposals fetched for quote', quoteId, ':', responses?.length || 0);
-      console.log('📊 Raw responses data:', responses);
+      console.log('🔍 DEEP DEBUG - Final responses with join:', responses, 'error:', error);
 
       if (error) {
-        console.error('❌ Error fetching proposals:', error);
+        console.error('❌ DEEP DEBUG - Error in final query:', error);
         return;
       }
 
@@ -50,17 +79,18 @@ export function QuoteComparisonButton({
         supplierName: response.suppliers.name,
         price: response.total_amount,
         deliveryTime: response.delivery_time || 7,
-        shippingCost: 0, // Default shipping cost
-        sla: 24, // Default SLA in hours
-        warrantyMonths: 12, // Default warranty
-        reputation: 4.5, // Default rating
+        shippingCost: 0,
+        sla: 24,
+        warrantyMonths: 12,
+        reputation: 4.5,
         observations: response.notes || '',
         submittedAt: response.created_at
       }));
 
+      console.log('🔍 DEEP DEBUG - Transformed proposals:', transformedProposals);
       setProposals(transformedProposals);
     } catch (error) {
-      console.error('Error fetching proposals:', error);
+      console.error('❌ DEEP DEBUG - Catch error:', error);
     } finally {
       setIsLoading(false);
     }
