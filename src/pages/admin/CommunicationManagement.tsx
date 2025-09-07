@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
   Bell, 
   Plus, 
@@ -13,7 +14,13 @@ import {
   AlertTriangle,
   CheckCircle,
   Info,
-  Clock
+  Clock,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Archive,
+  Paperclip,
+  File
 } from 'lucide-react';
 import { useSupabaseTickets } from '@/hooks/useSupabaseTickets';
 import { useSupabaseAnnouncements } from '@/hooks/useSupabaseAnnouncements';
@@ -251,6 +258,12 @@ export const CommunicationManagement = () => {
                                      Expira: {formatDate(announcement.expires_at)}
                                    </div>
                                  )}
+                                 {announcement.attachments && announcement.attachments.length > 0 && (
+                                   <div className="flex items-center gap-1">
+                                     <Paperclip className="h-3 w-3" />
+                                     {announcement.attachments.length} anexos
+                                   </div>
+                                 )}
                                </div>
                              </div>
                              <div className="flex items-center gap-2">
@@ -263,6 +276,29 @@ export const CommunicationManagement = () => {
                                    {announcement.recipients_count} destinatários
                                  </Badge>
                                )}
+                               
+                               {/* Menu de Ações */}
+                               <DropdownMenu>
+                                 <DropdownMenuTrigger asChild>
+                                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                     <MoreVertical className="h-4 w-4" />
+                                   </Button>
+                                 </DropdownMenuTrigger>
+                                 <DropdownMenuContent align="end">
+                                   <DropdownMenuItem>
+                                     <Edit className="h-4 w-4 mr-2" />
+                                     Editar
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem>
+                                     <Archive className="h-4 w-4 mr-2" />
+                                     Arquivar
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem className="text-red-600">
+                                     <Trash2 className="h-4 w-4 mr-2" />
+                                     Excluir
+                                   </DropdownMenuItem>
+                                 </DropdownMenuContent>
+                               </DropdownMenu>
                              </div>
                           </div>
                         </CardContent>
@@ -313,11 +349,19 @@ export const CommunicationManagement = () => {
                                   <Users className="h-3 w-3" />
                                   {ticket.created_by_name}
                                 </div>
-                                {ticket.category && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {ticket.category}
-                                  </Badge>
-                                )}
+                                 {ticket.category && (
+                                   <Badge variant="outline" className="text-xs">
+                                     {ticket.category}
+                                   </Badge>
+                                 )}
+                                 {ticket.messages.some(msg => msg.attachments && msg.attachments.length > 0) && (
+                                   <div className="flex items-center gap-1">
+                                     <Paperclip className="h-3 w-3" />
+                                     <span>
+                                       {ticket.messages.reduce((total, msg) => total + (msg.attachments?.length || 0), 0)} anexos
+                                     </span>
+                                   </div>
+                                 )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
