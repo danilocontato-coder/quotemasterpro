@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RoleBasedNotificationDropdown } from "./RoleBasedNotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
+import { NotificationToast } from "@/components/common/NotificationToast";
 
 export function SupplierLayout() {
   // Mock data for supplier - In production this would come from auth/Supabase
@@ -12,7 +13,9 @@ export function SupplierLayout() {
   const planDisplayName = "Premium";
 
   return (
-    <SidebarProvider>
+    <>
+      <NotificationToast />
+      <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <SupplierSidebar />
         
@@ -50,7 +53,8 @@ export function SupplierLayout() {
           </main>
         </div>
       </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </>
   );
 }
 

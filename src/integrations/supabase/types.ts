@@ -1592,6 +1592,18 @@ export type Database = {
         Args: { user_email: string }
         Returns: boolean
       }
+      create_notification: {
+        Args: {
+          p_action_url?: string
+          p_message: string
+          p_metadata?: Json
+          p_priority?: string
+          p_title: string
+          p_type?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       current_user_account_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1680,6 +1692,18 @@ export type Database = {
       normalize_cnpj: {
         Args: { cnpj_in: string }
         Returns: string
+      }
+      notify_client_users: {
+        Args: {
+          p_action_url?: string
+          p_client_id: string
+          p_message: string
+          p_metadata?: Json
+          p_priority?: string
+          p_title: string
+          p_type?: string
+        }
+        Returns: undefined
       }
       reset_monthly_usage: {
         Args: Record<PropertyKey, never>

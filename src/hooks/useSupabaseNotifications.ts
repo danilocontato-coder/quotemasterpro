@@ -7,7 +7,7 @@ interface Notification {
   id: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment';
+  type: 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket';
   created_at: string;
   read: boolean;
   priority: 'low' | 'normal' | 'high';
@@ -45,7 +45,7 @@ export function useSupabaseNotifications() {
         id: notification.id,
         title: notification.title,
         message: notification.message,
-        type: notification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment',
+        type: notification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
         created_at: notification.created_at,
         read: notification.read,
         priority: notification.priority as 'low' | 'normal' | 'high',

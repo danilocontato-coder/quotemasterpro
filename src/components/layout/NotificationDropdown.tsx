@@ -26,6 +26,10 @@ const getNotificationIcon = (type: string) => {
       return <Truck className="h-4 w-4 text-orange-500" />;
     case 'payment':
       return <CreditCard className="h-4 w-4 text-green-600" />;
+    case 'quote':
+      return <FileText className="h-4 w-4 text-blue-500" />;
+    case 'ticket':
+      return <AlertTriangle className="h-4 w-4 text-orange-500" />;
     default:
       return <Info className="h-4 w-4 text-blue-500" />;
   }
