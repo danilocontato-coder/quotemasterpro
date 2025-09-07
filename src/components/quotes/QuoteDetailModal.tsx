@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useAINegotiation } from '@/hooks/useAINegotiation';
+import { AINegotiationCard } from './AINegotiationCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -178,6 +180,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
   const [proposals, setProposals] = useState<QuoteProposal[]>([]);
   const [isLoadingProposals, setIsLoadingProposals] = useState(false);
   const { toast } = useToast();
+  const { getNegotiationByQuoteId } = useAINegotiation();
 
   // Fetch real proposals from Supabase
   const fetchProposals = async () => {
@@ -230,6 +233,8 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
       fetchProposals();
     }
   }, [open, quote?.id]);
+
+  const negotiation = quote ? getNegotiationByQuoteId(quote.id) : null;
 
   // Calculate best combination (multi-supplier optimization)
   const bestCombination = useMemo(() => {
@@ -510,6 +515,13 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
             </TabsContent>
 
             <TabsContent value="proposals" className="space-y-4">
+              {/* Negociação IA */}
+              {negotiation && (
+                <div className="mb-6">
+                  <AINegotiationCard negotiation={negotiation} />
+                </div>
+              )}
+
               {isLoadingProposals ? (
                 <Card>
                   <CardContent className="p-8 text-center">

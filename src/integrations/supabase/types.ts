@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_negotiations: {
+        Row: {
+          ai_analysis: Json | null
+          approved_by: string | null
+          completed_at: string | null
+          conversation_log: Json | null
+          created_at: string
+          discount_percentage: number | null
+          human_approved: boolean | null
+          human_feedback: string | null
+          id: string
+          negotiated_amount: number | null
+          negotiation_strategy: Json | null
+          original_amount: number
+          quote_id: string
+          selected_response_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          approved_by?: string | null
+          completed_at?: string | null
+          conversation_log?: Json | null
+          created_at?: string
+          discount_percentage?: number | null
+          human_approved?: boolean | null
+          human_feedback?: string | null
+          id?: string
+          negotiated_amount?: number | null
+          negotiation_strategy?: Json | null
+          original_amount: number
+          quote_id: string
+          selected_response_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          approved_by?: string | null
+          completed_at?: string | null
+          conversation_log?: Json | null
+          created_at?: string
+          discount_percentage?: number | null
+          human_approved?: boolean | null
+          human_feedback?: string | null
+          id?: string
+          negotiated_amount?: number | null
+          negotiation_strategy?: Json | null
+          original_amount?: number
+          quote_id?: string
+          selected_response_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_negotiations_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_negotiations_selected_response_id_fkey"
+            columns: ["selected_response_id"]
+            isOneToOne: false
+            referencedRelation: "quote_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcement_reads: {
         Row: {
           announcement_id: string

@@ -51,6 +51,7 @@ const Payments = lazy(() => import('@/pages/Payments'));
 const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
 const Approvals = lazy(() => import('@/pages/Approvals').then(m => ({ default: m.Approvals })));
 const ApprovalLevels = lazy(() => import('@/pages/ApprovalLevels').then(m => ({ default: m.ApprovalLevels })));
+const AINegotiations = lazy(() => import('@/pages/AINegotiations'));
 const Users = lazy(() => import('@/pages/Users'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
 const Profiles = lazy(() => import('@/pages/Profiles').then(m => ({ default: m.Profiles })));
@@ -249,6 +250,17 @@ function App() {
                   <Route index element={
                     <SuspenseWithTransition lines={5} className="p-4">
                       <ApprovalLevels />
+                    </SuspenseWithTransition>
+                  } />
+                </Route>
+                <Route path="/ai-negotiations" element={
+                  <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={
+                    <SuspenseWithTransition lines={5} className="p-4">
+                      <AINegotiations />
                     </SuspenseWithTransition>
                   } />
                 </Route>
