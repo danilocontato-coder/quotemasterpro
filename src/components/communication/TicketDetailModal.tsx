@@ -298,23 +298,36 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                                   }
                                 }
 
-                                // Fallback: listar pasta tickets e procurar por nome equivalente
+                                // Fallback: tentar localizar pelo nome (ignorando timestamp e acentuação)
                                 if (!signedUrl) {
-                                  const { data: list, error: listError } = await supabase.storage
-                                    .from('attachments')
-                                    .list('tickets', { limit: 1000 });
-                                  if (!listError && Array.isArray(list)) {
-                                    const target = list.find((item: any) => 
-                                      item.name === attachment || 
-                                      sanitizeFilename(item.name) === sanitizeFilename(attachment)
-                                    );
-                                    if (target) {
-                                      const { data, error } = await supabase.storage
-                                        .from('attachments')
-                                        .createSignedUrl(`tickets/${target.name}`, 3600);
-                                      if (!error && data?.signedUrl) {
-                                        signedUrl = data.signedUrl;
-                                      }
+                                  const attBase = (attachment.split('/').pop() || attachment);
+                                  const attSan = sanitizeFilename(attBase).toLowerCase();
+
+                                  const tryListAndMatch = async (folder: string) => {
+                                    const { data: list, error: listError } = await supabase.storage
+                                      .from('attachments')
+                                      .list(folder, { limit: 1000 });
+                                    if (listError || !Array.isArray(list)) return null;
+
+                                    const target = list.find((item: any) => {
+                                      const nameSan = sanitizeFilename(item.name).toLowerCase();
+                                      return (
+                                        nameSan === attSan ||
+                                        nameSan.endsWith(attSan) ||
+                                        nameSan.includes(attSan)
+                                      );
+                                    });
+                                    return target ? `${folder ? folder + '/' : ''}${target.name}` : null;
+                                  };
+
+                                  const foundKey = (await tryListAndMatch('tickets')) || (await tryListAndMatch(''));
+
+                                  if (foundKey) {
+                                    const { data, error } = await supabase.storage
+                                      .from('attachments')
+                                      .createSignedUrl(foundKey, 3600);
+                                    if (!error && data?.signedUrl) {
+                                      signedUrl = data.signedUrl;
                                     }
                                   }
                                 }
