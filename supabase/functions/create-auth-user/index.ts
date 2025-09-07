@@ -288,12 +288,20 @@ if (authError) {
                   });
               }
             }
+
+            // If a password was provided, update it for the existing auth user
+            if (password) {
+              const { error: updatePwdErr } = await supabaseAdmin.auth.admin.updateUserById(existingUserId, { password });
+              if (updatePwdErr) {
+                console.error('Error updating existing user password:', updatePwdErr);
+              }
+            }
           } catch (linkErr) {
             console.error('Error linking existing user:', linkErr);
           }
 
           return new Response(
-            JSON.stringify({ success: true, auth_user_id: existingUserId, email, linked_existing: true }),
+            JSON.stringify({ success: true, auth_user_id: existingUserId, email, linked_existing: true, password_updated: !!password }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         }

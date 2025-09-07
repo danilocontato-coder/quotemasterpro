@@ -147,7 +147,7 @@ export const useSupabaseAdminSuppliers = () => {
       console.log('🔐 Creating auth user for supplier...');
       const { data: authResp, error: fnErr } = await supabase.functions.invoke('create-auth-user', {
         body: {
-          email: supplierData.email,
+          email: supplierData.email.trim(),
           password,
           name: supplierData.name,
           role: 'supplier',
