@@ -23,6 +23,7 @@ export const CommunicationManagement = () => {
   const [createAnnouncementOpen, setCreateAnnouncementOpen] = useState(false);
   const { 
     tickets, 
+    fetchTickets,
     getOpenTicketsCount 
   } = useSupabaseTickets();
   
@@ -32,10 +33,11 @@ export const CommunicationManagement = () => {
     isLoading: announcementsLoading 
   } = useSupabaseAnnouncements();
 
-  // Fetch all announcements for admin view
+  // Fetch all data for admin view
   React.useEffect(() => {
     fetchAnnouncements(); // Admin can see all announcements
-  }, [fetchAnnouncements]);
+    fetchTickets(); // Admin can see all tickets
+  }, [fetchAnnouncements, fetchTickets]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('pt-BR', {
