@@ -404,21 +404,13 @@ export const mockTickets: Ticket[] = [
 ];
 
 export const ticketCategories = [
-  'Administração e Gestão',
-  'Conservação e Limpeza',
-  'Elétrica e Energia',
-  'Financeiro e Contabilidade',
-  'Hidráulica e Saneamento',
-  'Jardim e Paisagismo',
-  'Jurídico e Legal',
-  'Manutenção Predial',
-  'Obras e Reformas',
-  'Pintura e Acabamento',
-  'Portaria e Segurança',
-  'Serralheria e Metalúrgica',
-  'Sistemas e TI',
+  'Financeiro',
   'Suporte Técnico',
-  'Telecomunicações',
+  'Comercial',
+  'Dúvidas Gerais',
+  'Reclamação',
+  'Sugestão',
+  'Acesso e Login',
   'Outros'
 ];
 
