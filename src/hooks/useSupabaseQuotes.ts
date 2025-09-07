@@ -229,12 +229,10 @@ export const useSupabaseQuotes = () => {
 
       console.log('🔍 Minimal payload for insert (RLS-safe):', minimalInsert);
 
-      // Inserir e retornar a linha criada (permitido pela SELECT policy para o criador)
-      const { data: inserted, error: insertError } = await supabase
+      // Inserção mínima SEM retorno para evitar sensibilidade à SELECT policy
+      const { error: insertError } = await supabase
         .from('quotes')
-        .insert(minimalInsert as any)
-        .select('*')
-        .single();
+        .insert(minimalInsert as any);
 
       if (insertError) {
         console.error('❌ Erro ao inserir cotação (minimal):', insertError);
@@ -244,7 +242,23 @@ export const useSupabaseQuotes = () => {
         throw new Error(`Falha ao salvar cotação: ${insertError.message}`);
       }
 
-      let finalQuote: any = inserted;
+      // Busca posterior do registro recém-criado (maybeSingle)
+      let finalQuote: any = minimalInsert;
+      const { data: createdQuote, error: fetchCreatedError } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('created_by', authUser.id)
+        .eq('client_id', rlsTest)
+        .eq('title', minimalInsert.title)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchCreatedError) {
+        console.warn('⚠️ Falha ao recuperar cotação recém-criada, seguindo com dados mínimos:', fetchCreatedError);
+      } else if (createdQuote) {
+        finalQuote = createdQuote as any;
+      }
 
       console.log('✅ Cotação criada (minimal):', finalQuote);
 
@@ -252,13 +266,15 @@ export const useSupabaseQuotes = () => {
       const updateData: Record<string, any> = {};
       if (quoteData.description) updateData.description = quoteData.description;
       if (quoteData.total != null) updateData.total = quoteData.total;
-      if (quoteData.deadline) updateData.deadline = quoteData.deadline;
+      if ('deadline' in quoteData) {
+        updateData.deadline = quoteData.deadline ? new Date(quoteData.deadline).toISOString() : null;
+      }
       updateData.status = 'draft';
       updateData.supplier_scope = quoteData.supplier_scope || 'local';
       updateData.items_count = quoteData.items?.length || 0;
 
       
-
+      
       if (Object.keys(updateData).length > 0) {
         console.log('🔄 Atualizando campos opcionais da cotação...', updateData);
         const { data: updated, error: updateError } = await supabase
