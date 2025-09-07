@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Calendar } from "lucide-react";
-import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
-import { useAdminClients } from "@/hooks/useAdminClients";
+import { useSupabaseAnnouncements } from "@/hooks/useSupabaseAnnouncements";
+import { useSupabaseAdminClients } from "@/hooks/useSupabaseAdminClients";
 
 interface CreateAnnouncementModalProps {
   open: boolean;
@@ -24,8 +24,8 @@ export function CreateAnnouncementModal({ open, onOpenChange }: CreateAnnounceme
   const [expiresAt, setExpiresAt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const { createAnnouncement } = useSupabaseCommunication();
-  const { clients } = useAdminClients();
+  const { createAnnouncement } = useSupabaseAnnouncements();
+  const { clients } = useSupabaseAdminClients();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +40,7 @@ export function CreateAnnouncementModal({ open, onOpenChange }: CreateAnnounceme
         priority,
         targetAudience,
         (targetClientId && targetClientId !== 'all_clients') ? targetClientId : undefined,
+        undefined, // targetSupplierId - not supported in this form yet
         expiresAt || undefined
       );
 
