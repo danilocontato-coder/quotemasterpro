@@ -303,70 +303,74 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                               e.preventDefault();
                               e.stopPropagation();
 
+                              console.log('🔍 DEBUG: Starting attachment download process');
+                              console.log('🔍 DEBUG: Attachment path:', attachment);
+                              console.log('🔍 DEBUG: Supabase client:', supabase);
+
                               try {
-                                // Se já for URL completa, abrir direto
-                                if (/^https?:\/\//i.test(attachment)) {
-                                  window.open(attachment, '_blank');
+                                // Primeiro, vamos verificar se o bucket existe
+                                console.log('🔍 DEBUG: Checking if attachments bucket exists...');
+                                const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+                                console.log('🔍 DEBUG: Available buckets:', buckets);
+                                console.log('🔍 DEBUG: Buckets error:', bucketsError);
+
+                                if (bucketsError) {
+                                  console.error('❌ DEBUG: Error listing buckets:', bucketsError);
+                                  alert(`Erro ao listar buckets: ${bucketsError.message}`);
                                   return;
                                 }
 
-                                // Normalizar caminho relativo
-                                const baseName = (attachment.split('/').pop() || attachment).trim();
-                                const sanitizedBase = sanitizeFilename(baseName).replace(/^\//, '');
+                                const attachmentsBucket = buckets?.find(bucket => bucket.name === 'attachments');
+                                console.log('🔍 DEBUG: Attachments bucket found:', attachmentsBucket);
 
-                                const candidates: string[] = [];
-                                // Caminho original informado
-                                candidates.push(attachment.replace(/^\//, ''));
-                                // Tentativas padrão na pasta tickets
-                                candidates.push(`tickets/${sanitizedBase}`);
-                                candidates.push(`tickets/${baseName}`);
-
-                                let signedUrl: string | null = null;
-                                let lastErr: any = null;
-
-                                for (const key of candidates) {
-                                  const { data, error } = await supabase.storage
-                                    .from('attachments')
-                                    .createSignedUrl(key, 3600);
-                                  if (!error && data?.signedUrl) {
-                                    signedUrl = data.signedUrl;
-                                    break;
-                                  }
-                                  lastErr = error;
-                                }
-
-                                // Fallback: listar e tentar encontrar pelo nome, na pasta tickets e raiz
-                                if (!signedUrl) {
-                                  const tryListAndMatch = async (folder: string) => {
-                                    const { data: list, error: listErr } = await supabase.storage
-                                      .from('attachments')
-                                      .list(folder, { limit: 1000 });
-                                    if (listErr || !Array.isArray(list)) return null;
-                                    const found = list.find((item: any) => sanitizeFilename(item.name).toLowerCase().includes(sanitizedBase.toLowerCase()));
-                                    return found ? `${folder ? folder + '/' : ''}${found.name}` : null;
-                                  };
-
-                                  const foundKey = (await tryListAndMatch('tickets')) || (await tryListAndMatch(''));
-                                  if (foundKey) {
-                                    const { data, error } = await supabase.storage
-                                      .from('attachments')
-                                      .createSignedUrl(foundKey, 3600);
-                                    if (!error && data?.signedUrl) signedUrl = data.signedUrl;
-                                  }
-                                }
-
-                                if (!signedUrl) {
-                                  const msg = lastErr?.message === 'Bucket not found'
-                                    ? 'Bucket de anexos não encontrado. Verifique a configuração de Storage.'
-                                    : 'Arquivo não encontrado no armazenamento.';
-                                  alert(msg);
+                                if (!attachmentsBucket) {
+                                  console.error('❌ DEBUG: Bucket "attachments" not found');
+                                  alert('Bucket "attachments" não foi encontrado. O administrador precisa criar o bucket no Supabase Storage.');
                                   return;
                                 }
 
-                                window.open(signedUrl, '_blank');
-                              } catch (err) {
-                                console.error('Erro ao baixar o arquivo:', err);
-                                alert('Erro ao baixar o arquivo');
+                                // Listar arquivos no bucket para debug
+                                console.log('🔍 DEBUG: Listing files in attachments bucket...');
+                                const { data: files, error: listError } = await supabase.storage
+                                  .from('attachments')
+                                  .list('', { limit: 100 });
+                                console.log('🔍 DEBUG: Files in root:', files);
+                                console.log('🔍 DEBUG: List error:', listError);
+
+                                // Listar arquivos na pasta tickets
+                                const { data: ticketFiles, error: ticketListError } = await supabase.storage
+                                  .from('attachments')
+                                  .list('tickets', { limit: 100 });
+                                console.log('🔍 DEBUG: Files in tickets folder:', ticketFiles);
+                                console.log('🔍 DEBUG: Ticket list error:', ticketListError);
+
+                                // Tentar criar URL assinada
+                                console.log('🔍 DEBUG: Attempting to create signed URL for:', attachment);
+                                const { data, error } = await supabase.storage
+                                  .from('attachments')
+                                  .createSignedUrl(attachment, 3600);
+                                
+                                console.log('🔍 DEBUG: Signed URL data:', data);
+                                console.log('🔍 DEBUG: Signed URL error:', error);
+
+                                if (error) {
+                                  console.error('❌ DEBUG: Error creating signed URL:', error);
+                                  alert(`Erro ao criar URL assinada: ${error.message}`);
+                                  return;
+                                }
+                                
+                                if (!data?.signedUrl) {
+                                  console.error('❌ DEBUG: No signed URL returned');
+                                  alert('Nenhuma URL assinada foi retornada');
+                                  return;
+                                }
+
+                                console.log('✅ DEBUG: Opening signed URL:', data.signedUrl);
+                                window.open(data.signedUrl, '_blank');
+                                
+                              } catch (error) {
+                                console.error('❌ DEBUG: Catch block error:', error);
+                                alert(`Erro inesperado: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
                               }
                             };
 
