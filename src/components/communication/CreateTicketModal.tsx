@@ -105,12 +105,12 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
             <div className="space-y-2">
               <Label htmlFor="category">Categoria *</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background z-50">
                   {ticketCategories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
+                    <SelectItem key={cat} value={cat} className="hover:bg-accent">
                       {cat}
                     </SelectItem>
                   ))}
