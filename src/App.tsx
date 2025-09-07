@@ -37,6 +37,7 @@ const SuppliersManagement = lazy(() => import('@/pages/admin/SuppliersManagement
 const PlansManagement = lazy(() => import('@/pages/admin/PlansManagement'));
 const IntegrationsManagement = lazy(() => import('@/pages/admin/IntegrationsManagement'));
 const WhatsAppTemplates = lazy(() => import('@/pages/admin/WhatsAppTemplates'));
+const CommunicationManagement = lazy(() => import('@/pages/admin/CommunicationManagement'));
 const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs'));
 
 // Páginas principais com lazy loading
@@ -361,6 +362,11 @@ function App() {
                   <Route path="whatsapp-templates" element={
                     <SuspenseWithTransition lines={5} className="p-4">
                       <WhatsAppTemplates />
+                    </SuspenseWithTransition>
+                  } />
+                  <Route path="communication" element={
+                    <SuspenseWithTransition lines={5} className="p-4">
+                      <CommunicationManagement />
                     </SuspenseWithTransition>
                   } />
                   <Route path="accounts" element={

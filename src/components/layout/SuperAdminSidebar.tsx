@@ -126,6 +126,12 @@ const navigation = [
     name: 'Comunicação',
     items: [
       {
+        name: 'Central de Comunicação',
+        href: '/admin/communication',
+        icon: MessageSquare,
+        description: 'Comunicados e tickets'
+      },
+      {
         name: 'Notificações',
         href: '/admin/notifications',
         icon: Bell,
