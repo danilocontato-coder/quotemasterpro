@@ -174,9 +174,7 @@ export const useSupabaseQuotes = () => {
         throw new Error('Não foi possível determinar o cliente. Recarregue a página.');
       }
 
-      // Generate unique quote ID (DB also has trigger, but we keep readable IDs)
-      const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
-
+      // Deixe o banco gerar o ID via trigger (next_quote_id)
       // TEST: Verify RLS conditions before insert
       console.log('🔍 Testing RLS conditions...');
       const { data: rlsTest, error: rlsError } = await supabase.rpc('get_current_user_client_id');
@@ -221,9 +219,8 @@ export const useSupabaseQuotes = () => {
         throw new Error(`Inconsistência: RPC retornou ${rlsTest}, mas profile tem ${profileCheck.client_id}`);
       }
 
-      // Build minimal payload to satisfy RLS (only required columns)
+      // Build minimal payload to satisfy RLS (only required columns). Não enviar 'id'.
       const minimalInsert = {
-        id: quoteId,
         title: quoteData.title,
         client_id: rlsTest, // must match profiles.client_id of auth user
         client_name: user.companyName || user.name || 'Cliente',
@@ -232,10 +229,12 @@ export const useSupabaseQuotes = () => {
 
       console.log('🔍 Minimal payload for insert (RLS-safe):', minimalInsert);
 
-      // First insert minimal row to pass RLS (no select to avoid SELECT policy issues)
-      const { error: insertError } = await supabase
+      // Inserir e retornar a linha criada (permitido pela SELECT policy para o criador)
+      const { data: inserted, error: insertError } = await supabase
         .from('quotes')
-        .insert(minimalInsert);
+        .insert(minimalInsert as any)
+        .select('*')
+        .single();
 
       if (insertError) {
         console.error('❌ Erro ao inserir cotação (minimal):', insertError);
@@ -245,19 +244,7 @@ export const useSupabaseQuotes = () => {
         throw new Error(`Falha ao salvar cotação: ${insertError.message}`);
       }
 
-      // Fetch the created quote explicitly
-      let finalQuote: any = minimalInsert;
-      const { data: createdQuote, error: fetchCreatedError } = await supabase
-        .from('quotes')
-        .select('*')
-        .eq('id', minimalInsert.id)
-        .maybeSingle();
-
-      if (fetchCreatedError) {
-        console.warn('⚠️ Falha ao recuperar cotação recém-criada, seguindo com dados mínimos:', fetchCreatedError);
-      } else if (createdQuote) {
-        finalQuote = createdQuote as any;
-      }
+      let finalQuote: any = inserted;
 
       console.log('✅ Cotação criada (minimal):', finalQuote);
 
@@ -277,7 +264,7 @@ export const useSupabaseQuotes = () => {
         const { data: updated, error: updateError } = await supabase
           .from('quotes')
           .update({ ...updateData, updated_at: new Date().toISOString() })
-          .eq('id', createdQuote.id)
+          .eq('id', (finalQuote as any).id)
           .select('*')
           .single();
         if (updateError) {
