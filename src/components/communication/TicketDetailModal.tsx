@@ -10,6 +10,7 @@ import { Send, Clock, User, Headphones, AlertTriangle, Paperclip, CheckCircle2, 
 import { useSupabaseTickets } from "@/hooks/useSupabaseTickets";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTicketStatusColor, getTicketPriorityColor } from "@/data/mockCommunication";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TicketDetailModalProps {
   ticket: any;
@@ -255,18 +256,35 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                       
                       {msg.attachments && msg.attachments.length > 0 && (
                         <div className="mt-2 space-y-1">
-                          {msg.attachments.map((attachment: string, index: number) => (
-                            <a 
-                              key={index} 
-                              href={`https://bpsqyaxdhqejozmlejcb.supabase.co/storage/v1/object/public/attachments/${attachment}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 cursor-pointer hover:underline"
-                            >
-                              <Paperclip className="h-3 w-3" />
-                              <span>{attachment.split('/').pop()}</span>
-                            </a>
-                          ))}
+                          {msg.attachments.map((attachment: string, index: number) => {
+                            const handleDownload = async () => {
+                              try {
+                                const { data, error } = await supabase.storage
+                                  .from('attachments')
+                                  .createSignedUrl(attachment, 3600); // 1 hour expiry
+                                
+                                if (error) {
+                                  console.error('Error creating signed URL:', error);
+                                  return;
+                                }
+                                
+                                window.open(data.signedUrl, '_blank');
+                              } catch (error) {
+                                console.error('Error downloading file:', error);
+                              }
+                            };
+
+                            return (
+                              <button
+                                key={index}
+                                onClick={handleDownload}
+                                className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 cursor-pointer hover:underline"
+                              >
+                                <Paperclip className="h-3 w-3" />
+                                <span>{attachment.split('/').pop()}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
