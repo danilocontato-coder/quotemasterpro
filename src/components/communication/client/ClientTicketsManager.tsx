@@ -20,23 +20,16 @@ import {
 import { useSupabaseTickets } from '@/hooks/useSupabaseTickets';
 import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { CreateTicketModal } from '../CreateTicketModal';
 
 export function ClientTicketsManager() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [newMessageContent, setNewMessageContent] = useState('');
 
-  const { tickets, fetchTickets, createTicket, addTicketMessage, isLoading } = useSupabaseTickets();
+  const { tickets, fetchTickets, addTicketMessage, isLoading } = useSupabaseTickets();
   const { client } = useSupabaseCurrentClient();
   const { user } = useAuth();
-
-  // Form state
-  const [formData, setFormData] = useState({
-    subject: '',
-    description: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
-    category: ''
-  });
 
   useEffect(() => {
     if (client?.id) {
@@ -86,33 +79,6 @@ export function ClientTicketsManager() {
 
   const selectedTicketData = selectedTicket ? tickets.find(t => t.id === selectedTicket) : null;
 
-  const handleCreateTicket = async () => {
-    if (!formData.subject.trim() || !formData.description.trim() || !client?.id || !user?.name) {
-      return;
-    }
-
-    const ticketId = await createTicket(
-      formData.subject,
-      formData.description,
-      formData.priority as 'low' | 'medium' | 'high' | 'urgent',
-      formData.category || 'Geral',
-      client.id,
-      undefined,
-      client.name
-    );
-
-    if (ticketId) {
-      setIsCreateModalOpen(false);
-      setFormData({
-        subject: '',
-        description: '',
-        priority: 'medium',
-        category: ''
-      });
-      fetchTickets(client.id);
-    }
-  };
-
   const handleAddMessage = async () => {
     if (!selectedTicket || !newMessageContent.trim()) return;
 
@@ -137,81 +103,16 @@ export function ClientTicketsManager() {
           </p>
         </div>
 
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Ticket
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Criar Novo Ticket de Suporte</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="subject">Assunto</Label>
-                <Input
-                  id="subject"
-                  value={formData.subject}
-                  onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
-                  placeholder="Descreva brevemente o problema"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Descreva o problema em detalhes"
-                  rows={4}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Prioridade</Label>
-                  <Select
-                    value={formData.priority}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as any }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Baixa</SelectItem>
-                      <SelectItem value="medium">Média</SelectItem>
-                      <SelectItem value="high">Alta</SelectItem>
-                      <SelectItem value="urgent">Urgente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">Categoria</Label>
-                  <Input
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="Ex: Técnico, Financeiro"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreateTicket}>
-                  Criar Ticket
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsCreateModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Ticket
+        </Button>
       </div>
+
+      <CreateTicketModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tickets List */}
