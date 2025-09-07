@@ -166,7 +166,7 @@ export const useSupabaseQuotes = () => {
       
       console.log('🔍 DEBUG: deadline normalizado:', deadline);
 
-      // Step 1: Get client_id via RPC and insert minimum required data
+      // Get client_id via RPC
       const { data: clientIdData, error: clientIdError } = await supabase
         .rpc('get_current_user_client_id');
 
@@ -177,52 +177,38 @@ export const useSupabaseQuotes = () => {
 
       console.log('🔍 DEBUG: client_id obtido via RPC:', clientIdData);
 
-      // Generate quote ID
-      const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
-      
-      // Minimum payload for INSERT policy compliance
+      // Complete payload - let trigger generate sequential ID
       const insertPayload = {
-        id: quoteId,
         title: quoteData.title,
+        description: quoteData.description || null,
+        deadline: deadline,
+        supplier_scope: quoteData.supplier_scope || 'local',
+        items_count: quoteData.items?.length || 0,
+        selected_supplier_ids: quoteData.supplier_ids || [],
         client_id: clientIdData,
         client_name: 'Cliente',
-        created_by: user.id
+        created_by: user.id,
+        status: 'draft'
       };
 
-      console.log('🔍 DEBUG: Payload mínimo para insert:', insertPayload);
+      console.log('🔍 DEBUG: Payload completo para insert:', insertPayload);
 
-      // Step 1: INSERT minimum required fields
-      const { error: insertError } = await supabase
+      // Insert quote and get the generated data (cast to bypass type checking)
+      const { data: insertedQuote, error: insertError } = await supabase
         .from('quotes')
-        .insert(insertPayload);
+        .insert(insertPayload as any)
+        .select('*')
+        .single();
 
       if (insertError) {
         console.error('❌ Error inserting quote:', insertError);
         throw insertError;
       }
 
+      const quoteId = insertedQuote.id;
       console.log('✅ Quote inserted successfully, ID:', quoteId);
 
-      // Step 2: UPDATE optional fields
-      const { error: updateError } = await supabase
-        .from('quotes')
-        .update({
-          description: quoteData.description || null,
-          deadline: deadline,
-          supplier_scope: quoteData.supplier_scope || 'local',
-          items_count: quoteData.items?.length || 0,
-          selected_supplier_ids: quoteData.supplier_ids || []
-        })
-        .eq('id', quoteId);
-
-      if (updateError) {
-        console.error('❌ Error updating quote:', updateError);
-        throw updateError;
-      }
-
-      console.log('✅ Quote updated with optional fields');
-
-      // Step 3: Insert items if provided
+      // Insert items if provided
       if (quoteData.items && quoteData.items.length > 0) {
         const itemsToInsert = quoteData.items.map((item: any) => ({
           quote_id: quoteId,
@@ -245,21 +231,9 @@ export const useSupabaseQuotes = () => {
         console.log('✅ Quote items inserted successfully');
       }
 
-      // Step 4: Fetch the complete quote
-      const { data: completeQuote, error: fetchError } = await supabase
-        .from('quotes')
-        .select('*')
-        .eq('id', quoteId)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error('❌ Error fetching complete quote:', fetchError);
-        throw fetchError;
-      }
-
       console.log('✅ Quote created successfully:', quoteId);
       await fetchQuotes(); // Refresh the list
-      return completeQuote;
+      return insertedQuote;
     } catch (error) {
       console.error('❌ Error creating quote:', error);
       throw error;
