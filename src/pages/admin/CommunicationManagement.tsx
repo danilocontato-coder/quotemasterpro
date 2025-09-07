@@ -15,7 +15,7 @@ import {
   Info,
   Clock
 } from 'lucide-react';
-import { useSupabaseCommunication } from '@/hooks/useSupabaseCommunication';
+import { useSupabaseTickets } from '@/hooks/useSupabaseTickets';
 import { useSupabaseAnnouncements } from '@/hooks/useSupabaseAnnouncements';
 import { CreateAnnouncementModal } from '@/components/admin/CreateAnnouncementModal';
 
@@ -24,7 +24,7 @@ export const CommunicationManagement = () => {
   const { 
     tickets, 
     getOpenTicketsCount 
-  } = useSupabaseCommunication();
+  } = useSupabaseTickets();
   
   const { 
     announcements, 
