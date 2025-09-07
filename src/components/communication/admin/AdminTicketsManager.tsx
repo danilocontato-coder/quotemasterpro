@@ -122,10 +122,10 @@ export function AdminTicketsManager() {
   const getTicketStats = () => {
     return {
       total: tickets.length,
-      novo: tickets.filter(t => t.status === 'novo').length,
-      open: tickets.filter(t => t.status === 'open').length,
-      inProgress: tickets.filter(t => t.status === 'in_progress').length,
-      urgent: tickets.filter(t => t.priority === 'urgent').length
+      novo: tickets.filter(t => (t.status as any) === 'novo').length,
+      open: tickets.filter(t => (t.status as any) === 'open').length,
+      inProgress: tickets.filter(t => (t.status as any) === 'in_progress').length,
+      urgent: tickets.filter(t => (t.priority as any) === 'urgent').length
     };
   };
 
