@@ -80,6 +80,7 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
   };
 
   const getInitials = (name: string) => {
+    if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
