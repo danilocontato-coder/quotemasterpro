@@ -118,10 +118,6 @@ serve(async (req) => {
           user_id: user.id,
           plan_id: planId,
           supabase_plan_id: planId
-        },
-        payment_settings: {
-          payment_method_types: ["card", "boleto"],
-          save_default_payment_method: "on_subscription"
         }
       }
     });
