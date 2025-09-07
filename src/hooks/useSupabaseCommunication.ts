@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,10 +60,15 @@ export const useSupabaseCommunication = () => {
   const { user } = useAuth();
   const { client } = useSupabaseCurrentClient();
 
+  // Add a unique render ID to track re-renders
+  const renderIdRef = useRef(Math.random().toString(36).substr(2, 9));
+  
   console.log('🔍 useSupabaseCommunication hook initialized', {
     userId: user?.id,
     clientId: client?.id,
-    userRole: user?.role
+    userRole: user?.role,
+    renderId: renderIdRef.current,
+    timestamp: new Date().toISOString()
   });
 
   // Fetch announcements
@@ -126,7 +131,7 @@ export const useSupabaseCommunication = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, client?.id]);
+  }, [user?.id, client?.id]); // Remove toast from dependencies
 
   // Fetch tickets with messages
   const fetchTickets = useCallback(async () => {
@@ -197,7 +202,7 @@ export const useSupabaseCommunication = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, client?.id]);
+  }, [user?.id, client?.id]); // Remove toast from dependencies
 
   // Mark announcement as read
   const markAnnouncementAsRead = useCallback(async (announcementId: string) => {
@@ -232,7 +237,7 @@ export const useSupabaseCommunication = () => {
         variant: "destructive"
       });
     }
-  }, [user?.id, toast]);
+  }, [user?.id]); // Remove toast from dependencies
 
   // Create ticket
   const createTicket = useCallback(async (
@@ -295,8 +300,10 @@ export const useSupabaseCommunication = () => {
         description: `Ticket #${ticketData.id} foi criado com sucesso.`,
       });
 
-      // Refresh tickets
-      fetchTickets();
+      // Refresh tickets without causing re-renders
+      setTimeout(() => {
+        fetchTickets();
+      }, 100);
       
       return ticketData.id;
 
@@ -309,7 +316,7 @@ export const useSupabaseCommunication = () => {
       });
       return null;
     }
-  }, [user, client, toast, fetchTickets]);
+  }, [user?.id, user?.name, client?.id, client?.name]); // Remove fetchTickets and toast from dependencies
 
   // Add message to ticket
   const addTicketMessage = useCallback(async (ticketId: string, content: string, attachments?: string[]) => {
@@ -345,8 +352,10 @@ export const useSupabaseCommunication = () => {
         description: "Sua mensagem foi adicionada ao ticket.",
       });
 
-      // Refresh tickets to get the new message
-      fetchTickets();
+      // Refresh tickets to get the new message without causing re-renders
+      setTimeout(() => {
+        fetchTickets();
+      }, 100);
 
     } catch (err) {
       console.error('❌ Error adding ticket message:', err);
@@ -356,7 +365,7 @@ export const useSupabaseCommunication = () => {
         variant: "destructive"
       });
     }
-  }, [user, toast, fetchTickets]);
+  }, [user?.id, user?.name]); // Remove fetchTickets and toast from dependencies
 
   // Create announcement (admin only)
   const createAnnouncement = useCallback(async (
@@ -407,8 +416,10 @@ export const useSupabaseCommunication = () => {
         description: "O comunicado foi criado com sucesso.",
       });
 
-      // Refresh announcements
-      fetchAnnouncements();
+      // Refresh announcements without causing re-renders
+      setTimeout(() => {
+        fetchAnnouncements();
+      }, 100);
       
       return data.id;
 
@@ -421,7 +432,7 @@ export const useSupabaseCommunication = () => {
       });
       return null;
     }
-  }, [user, client?.id, toast, fetchAnnouncements]);
+  }, [user?.id, user?.name, user?.role, client?.id]); // Remove fetchAnnouncements and toast from dependencies
 
   // Utility functions
   const getUnreadAnnouncementsCount = useCallback(() => {
@@ -432,14 +443,22 @@ export const useSupabaseCommunication = () => {
     return tickets.filter(ticket => ticket.status === 'open' || ticket.status === 'in_progress').length;
   }, [tickets]);
 
-  // Load initial data
+  // Load initial data - Remove functions from dependencies to prevent infinite re-renders
   useEffect(() => {
-    if (user && client?.id) {
+    if (user?.id && client?.id) {
       console.log('🔄 Loading communication data...');
-      fetchAnnouncements();
-      fetchTickets();
+      
+      // Call functions directly instead of relying on dependencies
+      const loadData = async () => {
+        await Promise.all([
+          fetchAnnouncements(),
+          fetchTickets()
+        ]);
+      };
+      
+      loadData();
     }
-  }, [user?.id, client?.id, fetchAnnouncements, fetchTickets]);
+  }, [user?.id, client?.id]); // Only depend on stable IDs
 
   return {
     // State

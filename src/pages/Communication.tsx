@@ -7,8 +7,12 @@ import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
 import { ChatSection } from "@/components/communication/ChatSection";
 import { AnnouncementsSection } from "@/components/communication/AnnouncementsSection";
 import { TicketsSection } from "@/components/communication/TicketsSection";
+import { useRenderTracker } from "@/hooks/useRenderTracker";
 
 export default function Communication() {
+  // Track re-renders
+  useRenderTracker('Communication');
+  
   const [activeTab, setActiveTab] = useState("chats");
   
   const {

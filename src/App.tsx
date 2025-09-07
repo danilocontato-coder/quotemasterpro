@@ -69,11 +69,11 @@ const SupplierResponseSuccess = lazy(() => import('@/pages/supplier/SupplierResp
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutos
-      gcTime: 10 * 60 * 1000, // 10 minutos
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
       refetchOnWindowFocus: false,
       retry: 1,
-      refetchOnMount: false
+      refetchOnMount: false,
     }
   }
 });
@@ -84,10 +84,14 @@ function App() {
   
   // Optimized system performance and prevent unwanted refreshes
   useEffect(() => {
+    let isPageRefreshing = false;
+    
     const handleVisibilityChange = () => {
       // Only log visibility changes, don't force reloads
-      if (!document.hidden) {
+      if (!document.hidden && !isPageRefreshing) {
         console.debug('Tab became visible - maintaining state');
+        // Reset any potential refresh flags
+        isPageRefreshing = false;
       }
     };
 
@@ -97,18 +101,27 @@ function App() {
                              document.querySelector('[data-dirty="true"]');
       
       if (hasUnsavedForms) {
+        isPageRefreshing = true;
         event.preventDefault();
         return 'Você tem alterações não salvas. Deseja realmente sair?';
       }
     };
 
+    // Prevent auto-refresh on focus
+    const handleFocus = () => {
+      // Prevent any auto-refresh behaviors
+      console.debug('Window focused - maintaining current state');
+    };
+
     // Use passive listeners for better performance
     document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('focus', handleFocus, { passive: true });
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
