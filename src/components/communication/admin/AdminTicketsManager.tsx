@@ -62,6 +62,8 @@ export function AdminTicketsManager() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'novo':
+        return <Badge className="bg-blue-500 text-white">Novo</Badge>;
       case 'open':
         return <Badge className="bg-red-500 text-white">Aberto</Badge>;
       case 'in_progress':
@@ -120,6 +122,7 @@ export function AdminTicketsManager() {
   const getTicketStats = () => {
     return {
       total: tickets.length,
+      novo: tickets.filter(t => t.status === 'novo').length,
       open: tickets.filter(t => t.status === 'open').length,
       inProgress: tickets.filter(t => t.status === 'in_progress').length,
       urgent: tickets.filter(t => t.priority === 'urgent').length
@@ -157,10 +160,10 @@ export function AdminTicketsManager() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="h-8 w-8 text-red-500" />
+              <FileText className="h-8 w-8 text-blue-500" />
               <div>
-                <p className="text-2xl font-bold">{stats.open}</p>
-                <p className="text-sm text-muted-foreground">Abertos</p>
+                <p className="text-2xl font-bold">{stats.novo}</p>
+                <p className="text-sm text-muted-foreground">Novos</p>
               </div>
             </div>
           </CardContent>
@@ -213,13 +216,14 @@ export function AdminTicketsManager() {
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
-                <SelectItem value="open">Aberto</SelectItem>
-                <SelectItem value="in_progress">Em Andamento</SelectItem>
-                <SelectItem value="resolved">Resolvido</SelectItem>
-                <SelectItem value="closed">Fechado</SelectItem>
-              </SelectContent>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="novo">Novo</SelectItem>
+                  <SelectItem value="open">Aberto</SelectItem>
+                  <SelectItem value="in_progress">Em Andamento</SelectItem>
+                  <SelectItem value="resolved">Resolvido</SelectItem>
+                  <SelectItem value="closed">Fechado</SelectItem>
+                </SelectContent>
             </Select>
             <Select value={filterPriority} onValueChange={setFilterPriority}>
               <SelectTrigger className="w-full sm:w-[180px]">
@@ -283,7 +287,13 @@ export function AdminTicketsManager() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <CardTitle className="text-sm leading-tight truncate">
+                            <CardTitle 
+                              className="text-sm leading-tight truncate text-blue-600 hover:text-blue-800 cursor-pointer hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Abrir modal de chat direto com o cliente
+                              }}
+                            >
                               #{ticket.id}
                             </CardTitle>
                             {getStatusBadge(ticket.status)}
@@ -351,6 +361,7 @@ export function AdminTicketsManager() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="novo">Novo</SelectItem>
                         <SelectItem value="open">Aberto</SelectItem>
                         <SelectItem value="in_progress">Em Andamento</SelectItem>
                         <SelectItem value="resolved">Resolvido</SelectItem>
@@ -396,6 +407,21 @@ export function AdminTicketsManager() {
                         </span>
                       </div>
                       <p className="text-sm">{message.content}</p>
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {message.attachments.map((attachment: string, index: number) => (
+                            <a 
+                              key={index} 
+                              href={`https://bpsqyaxdhqejozmlejcb.supabase.co/storage/v1/object/public/attachments/${attachment}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 cursor-pointer hover:underline"
+                            >
+                              <span>📎 {attachment.split('/').pop()}</span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -222,10 +222,16 @@ export function TicketDetailModal({ ticket, open, onOpenChange }: TicketDetailMo
                       {msg.attachments && msg.attachments.length > 0 && (
                         <div className="mt-2 space-y-1">
                           {msg.attachments.map((attachment: string, index: number) => (
-                            <div key={index} className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 cursor-pointer">
+                            <a 
+                              key={index} 
+                              href={`https://bpsqyaxdhqejozmlejcb.supabase.co/storage/v1/object/public/attachments/${attachment}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 cursor-pointer hover:underline"
+                            >
                               <Paperclip className="h-3 w-3" />
-                              <span>{attachment}</span>
-                            </div>
+                              <span>{attachment.split('/').pop()}</span>
+                            </a>
                           ))}
                         </div>
                       )}
