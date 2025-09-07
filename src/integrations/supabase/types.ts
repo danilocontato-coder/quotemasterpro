@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_negotiation_settings: {
+        Row: {
+          active: boolean
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_negotiations: {
         Row: {
           ai_analysis: Json | null
@@ -82,6 +115,92 @@ export type Database = {
             columns: ["selected_response_id"]
             isOneToOne: false
             referencedRelation: "quote_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_prompts: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean | null
+          prompt_content: string
+          prompt_name: string
+          prompt_type: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean | null
+          prompt_content: string
+          prompt_name: string
+          prompt_type: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean | null
+          prompt_content?: string
+          prompt_name?: string
+          prompt_type?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
+      ai_training_data: {
+        Row: {
+          actual_output: Json | null
+          approved_by: string | null
+          created_at: string
+          expected_output: Json
+          feedback: string | null
+          id: string
+          input_data: Json
+          quote_id: string | null
+          success_score: number | null
+          training_type: string
+        }
+        Insert: {
+          actual_output?: Json | null
+          approved_by?: string | null
+          created_at?: string
+          expected_output: Json
+          feedback?: string | null
+          id?: string
+          input_data: Json
+          quote_id?: string | null
+          success_score?: number | null
+          training_type: string
+        }
+        Update: {
+          actual_output?: Json | null
+          approved_by?: string | null
+          created_at?: string
+          expected_output?: Json
+          feedback?: string | null
+          id?: string
+          input_data?: Json
+          quote_id?: string | null
+          success_score?: number | null
+          training_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_training_data_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
@@ -321,6 +440,48 @@ export type Database = {
           id?: string
           is_system?: boolean
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      client_ai_settings: {
+        Row: {
+          ai_negotiation_enabled: boolean
+          auto_start_analysis: boolean | null
+          auto_start_negotiation: boolean | null
+          client_id: string
+          created_at: string
+          custom_prompts: Json | null
+          id: string
+          max_discount_percentage: number | null
+          min_order_value_for_ai: number | null
+          negotiation_style: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_negotiation_enabled?: boolean
+          auto_start_analysis?: boolean | null
+          auto_start_negotiation?: boolean | null
+          client_id: string
+          created_at?: string
+          custom_prompts?: Json | null
+          id?: string
+          max_discount_percentage?: number | null
+          min_order_value_for_ai?: number | null
+          negotiation_style?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_negotiation_enabled?: boolean
+          auto_start_analysis?: boolean | null
+          auto_start_negotiation?: boolean | null
+          client_id?: string
+          created_at?: string
+          custom_prompts?: Json | null
+          id?: string
+          max_discount_percentage?: number | null
+          min_order_value_for_ai?: number | null
+          negotiation_style?: string | null
           updated_at?: string
         }
         Relationships: []
