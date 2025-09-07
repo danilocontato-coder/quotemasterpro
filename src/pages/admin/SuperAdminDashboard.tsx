@@ -237,8 +237,8 @@ export const SuperAdminDashboard = () => {
                         <span className="text-sm">Críticos</span>
                         <span className="font-semibold text-red-600">3</span>
                       </div>
-                      <Button variant="outline" size="sm" className="w-full mt-4">
-                        Central de Suporte
+                      <Button variant="outline" size="sm" className="w-full mt-4" asChild>
+                        <a href="/admin/communication">Central de Comunicação</a>
                       </Button>
                     </div>
                 </CardContent>

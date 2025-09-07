@@ -2,11 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bell, AlertTriangle, CheckCircle, Info, Clock, Paperclip, Eye } from "lucide-react";
-import { useCommunication } from "@/hooks/useCommunication";
+import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
 import { getAnnouncementTypeColor } from "@/data/mockCommunication";
 
 export function AnnouncementsSection() {
-  const { announcements, markAnnouncementAsRead } = useCommunication();
+  const { announcements, markAnnouncementAsRead } = useSupabaseCommunication();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('pt-BR', {
@@ -72,7 +72,7 @@ export function AnnouncementsSection() {
         <div className="space-y-4">
           {announcements.map((announcement) => {
             const typeColor = getAnnouncementTypeColor(announcement.type);
-            const expired = isExpired(announcement.expiresAt);
+            const expired = isExpired(announcement.expires_at);
             
             return (
               <Card 
@@ -101,14 +101,14 @@ export function AnnouncementsSection() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          <span>{formatDate(announcement.createdAt)}</span>
+                          <span>{formatDate(announcement.created_at)}</span>
                           <span>•</span>
-                          <span>Por {announcement.createdByName}</span>
-                          {announcement.expiresAt && (
+                          <span>Por {announcement.created_by_name}</span>
+                          {announcement.expires_at && (
                             <>
                               <span>•</span>
                               <span className={expired ? 'text-red-600' : 'text-orange-600'}>
-                                {expired ? 'Expirado' : `Expira em ${formatDate(announcement.expiresAt)}`}
+                                {expired ? 'Expirado' : `Expira em ${formatDate(announcement.expires_at)}`}
                               </span>
                             </>
                           )}
@@ -148,9 +148,9 @@ export function AnnouncementsSection() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">
-                        {announcement.targetAudience === 'all' && 'Todos'}
-                        {announcement.targetAudience === 'clients' && 'Clientes'}
-                        {announcement.targetAudience === 'suppliers' && 'Fornecedores'}
+                        {announcement.target_audience === 'all' && 'Todos'}
+                        {announcement.target_audience === 'clients' && 'Clientes'}
+                        {announcement.target_audience === 'suppliers' && 'Fornecedores'}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         Prioridade: {announcement.priority === 'low' ? 'Baixa' : 

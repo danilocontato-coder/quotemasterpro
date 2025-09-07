@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Headphones, Paperclip, X, Upload, File } from "lucide-react";
-import { useCommunication } from "@/hooks/useCommunication";
+import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
 import { ticketCategories } from "@/data/mockCommunication";
 
 interface CreateTicketModalProps {
@@ -23,7 +23,7 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { createTicket } = useCommunication();
+  const { createTicket } = useSupabaseCommunication();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
