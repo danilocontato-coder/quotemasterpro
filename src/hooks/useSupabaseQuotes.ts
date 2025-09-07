@@ -57,38 +57,54 @@ export const useSupabaseQuotes = () => {
         setError('Erro de autenticação. Faça login novamente.');
         return;
       }
-      
+
       if (!session) {
-        console.log('⚠️ No valid session found');
-        setError('Sessão expirada. Faça login novamente.');
+        console.error('❌ No valid session found');
+        setError('Sessão inválida. Faça login novamente.');
         return;
       }
 
-      console.log('✅ Valid session found for user:', session.user?.id);
+      console.log('✅ Valid session found, proceeding with quotes fetch');
 
-      let query = supabase.from('quotes').select('*').order('created_at', { ascending: false });
+      let query = supabase
+        .from('quotes')
+        .select(`
+          id,
+          title,
+          description,
+          total,
+          status,
+          client_id,
+          supplier_id,
+          items_count,
+          responses_count,
+          deadline,
+          created_by,
+          created_at,
+          updated_at,
+          suppliers_sent_count,
+          supplier_scope,
+          selected_supplier_ids,
+          clients!quotes_client_id_fkey(name),
+          suppliers!quotes_supplier_id_fkey(name)
+        `)
+        .order('created_at', { ascending: false });
 
-      // Apply role-based filtering
+      // Apply filters based on user role
       if (user.role === 'admin') {
-        // Admin can see all quotes - no additional filtering
+        console.log('👑 Admin user - fetching all quotes');
+        // Admin can see all quotes
       } else if (user.role === 'supplier') {
-        // Suppliers can only see quotes they're involved with
-        if (user.supplierId) {
-          query = query.or(
-            `supplier_id.eq.${user.supplierId},` +
-            `supplier_scope.eq.all,` +
-            `supplier_scope.eq.global,` +
-            `selected_supplier_ids.cs.{${user.supplierId}}`
-          );
-        } else {
-          setQuotes([]);
-          return;
-        }
+        console.log('🏭 Supplier user - filtering quotes for supplier:', user.supplierId);
+        // Only show quotes that are relevant to this supplier
+        query = query.or(`supplier_id.eq.${user.supplierId},supplier_scope.eq.all,supplier_scope.eq.global,status.eq.sent,status.eq.receiving`);
       } else {
-        // Client users (manager, collaborator) can only see their client's quotes
+        console.log('🏢 Client user - filtering quotes for client:', user.clientId);
+        // Client users only see their own quotes
         if (user.clientId) {
           query = query.eq('client_id', user.clientId);
         } else {
+          console.warn('⚠️ Client user without clientId');
           setQuotes([]);
           return;
         }
@@ -98,27 +114,40 @@ export const useSupabaseQuotes = () => {
 
       if (fetchError) {
         console.error('❌ Error fetching quotes:', fetchError);
-        
-        // Handle specific authentication errors
-        if (fetchError.code === 'PGRST301' || fetchError.message.includes('JWT')) {
-          setError('Sessão expirada. Recarregue a página.');
-        } else {
-          setError(fetchError.message);
-        }
+        setError('Erro ao carregar cotações: ' + fetchError.message);
         return;
       }
 
-      setQuotes(data || []);
-      console.log('✅ Quotes fetched successfully:', data?.length || 0);
-      console.log('📋 Fetched quotes details:', data?.map(q => ({ 
-        id: q.id, 
-        status: q.status, 
-        responses_count: q.responses_count,
-        title: q.title
-      })));
-    } catch (err) {
-      console.error('❌ Unexpected error fetching quotes:', err);
-      setError('Falha na conexão. Verifique sua internet.');
+      console.log(`✅ Successfully fetched ${data?.length || 0} quotes`);
+
+      // Transform data to match our interface
+      const transformedQuotes: Quote[] = (data || []).map(quote => ({
+        id: quote.id,
+        title: quote.title,
+        description: quote.description,
+        total: quote.total,
+        status: quote.status,
+        client_id: quote.client_id,
+        client_name: quote.clients?.name || 'N/A',
+        supplier_id: quote.supplier_id,
+        supplier_name: quote.suppliers?.name || 'N/A',
+        items_count: quote.items_count,
+        responses_count: quote.responses_count,
+        deadline: quote.deadline,
+        created_by: quote.created_by,
+        created_at: quote.created_at,
+        updated_at: quote.updated_at,
+        suppliers_sent_count: quote.suppliers_sent_count,
+        supplier_scope: quote.supplier_scope,
+        selected_supplier_ids: quote.selected_supplier_ids,
+      }));
+
+      setQuotes(transformedQuotes);
+      console.log('📊 Quotes set in state:', transformedQuotes.length);
+
+    } catch (error) {
+      console.error('❌ Unexpected error in fetchQuotes:', error);
+      setError('Erro inesperado ao carregar cotações');
     } finally {
       setIsLoading(false);
     }
@@ -126,440 +155,167 @@ export const useSupabaseQuotes = () => {
 
   const createQuote = async (quoteData: any) => {
     try {
-      console.log('=== DEBUG createQuote INICIADO ===');
-      console.log('❓ User context:', { user, hasUser: !!user, clientId: user?.clientId });
-      
-      if (!user) {
-        throw new Error('Usuário não autenticado');
+      if (!user?.clientId) {
+        throw new Error('Cliente não identificado');
       }
 
-      // Verify session is valid before proceeding
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('Sessão expirada. Faça login novamente.');
-      }
-
-      const authUser = session.user;
-      console.log('🔍 Valid session for user:', { userId: authUser.id, email: authUser.email });
-
-      // Use the safe function to get client_id
-      const { data: clientId, error: clientError } = await supabase.rpc('get_current_user_client_id');
-      console.log('🔍 Client ID from RPC:', { clientId, clientError });
-
-      if (clientError) {
-        console.error('❌ Erro ao buscar client_id:', clientError);
-        throw new Error(`Erro ao verificar vinculação do usuário: ${clientError.message}`);
-      }
-      
-      if (!clientId) {
-        console.error('❌ Client ID não encontrado para user:', authUser.id);
-        console.log('🔍 Tentando buscar profile diretamente...');
-        
-        // Try to get profile directly
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('client_id, onboarding_completed')
-          .eq('id', authUser.id)
-          .maybeSingle();
-          
-        console.log('🔍 Profile direto:', { profile, profileError });
-        
-        if (profileError || !profile?.client_id) {
-          throw new Error('Seu usuário não está vinculado a um cliente. Complete o onboarding primeiro.');
-        }
-        
-        // Use profile client_id if RPC failed
-        const effectiveClientId = profile.client_id;
-        console.log('✅ Usando client_id do profile:', effectiveClientId);
-      }
-
-      const effectiveClientId = clientId || user.clientId;
-      
-      if (!effectiveClientId) {
-        throw new Error('Não foi possível determinar o cliente. Recarregue a página.');
-      }
-
-      // Deixe o banco gerar o ID via trigger (next_quote_id)
-      // TEST: Verify RLS conditions before insert
-      console.log('🔍 Testing RLS conditions...');
-      const { data: rlsTest, error: rlsError } = await supabase.rpc('get_current_user_client_id');
-      console.log('🔍 RLS Test - get_current_user_client_id:', { rlsTest, rlsError });
-      
-      // Verify the user's profile and client_id
-      const { data: profileCheck, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, client_id, role, email')
-        .eq('id', authUser.id)
+      const { data, error } = await supabase
+        .from('quotes')
+        .insert([{
+          ...quoteData,
+          client_id: user.clientId,
+          created_by: user.id,
+          status: 'draft'
+        }])
+        .select()
         .single();
-      console.log('🔍 Profile check:', { profileCheck, profileError });
 
-      // CRITICAL: Check if RLS will pass by testing the exact condition
-      console.log('🔍 RPC result for validation:', { rlsTest, rlsError });
-      
-      // Test each RLS condition individually
-      const conditions = {
-        auth_uid_exists: !!authUser.id,
-        created_by_matches: true, // We'll set created_by = authUser.id
-        client_id_not_null: !!rlsTest,
-        client_id_matches_profile: rlsTest === profileCheck?.client_id
-      };
-      
-      console.log('🔍 Individual RLS conditions:', conditions);
-      
-      const rlsValidationResult = {
-        data: rlsTest,
-        conditions,
-        allValid: Object.values(conditions).every(Boolean)
-      };
+      if (error) throw error;
 
-      if (!profileCheck?.client_id) {
-        throw new Error(`Usuário não está vinculado a um cliente. Profile: ${JSON.stringify(profileCheck)}`);
-      }
-
-      if (!rlsTest) {
-        throw new Error(`RPC get_current_user_client_id retornou null. Verifique se o usuário tem client_id no profile.`);
-      }
-
-      if (rlsTest !== profileCheck.client_id) {
-        throw new Error(`Inconsistência: RPC retornou ${rlsTest}, mas profile tem ${profileCheck.client_id}`);
-      }
-
-      // Build minimal payload to satisfy RLS (only required columns). Não enviar 'id'.
-      const minimalInsert = {
-        title: quoteData.title,
-        client_id: rlsTest, // must match profiles.client_id of auth user
-        client_name: user.companyName || user.name || 'Cliente',
-        created_by: authUser.id
-      } as const;
-
-      console.log('🔍 Minimal payload for insert (RLS-safe):', minimalInsert);
-
-      // Inserção mínima SEM retorno para evitar sensibilidade à SELECT policy
-      const { error: insertError } = await supabase
-        .from('quotes')
-        .insert(minimalInsert as any);
-
-      if (insertError) {
-        console.error('❌ Erro ao inserir cotação (minimal):', insertError);
-        if (insertError.code === '42501') {
-          console.error('❌ RLS violation on minimal insert. Check created_by/auth.uid and client_id/profile.client_id');
-        }
-        throw new Error(`Falha ao salvar cotação: ${insertError.message}`);
-      }
-
-      // Busca posterior do registro recém-criado (maybeSingle)
-      let finalQuote: any = minimalInsert;
-      const { data: createdQuote, error: fetchCreatedError } = await supabase
-        .from('quotes')
-        .select('*')
-        .eq('created_by', authUser.id)
-        .eq('client_id', rlsTest)
-        .eq('title', minimalInsert.title)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (fetchCreatedError) {
-        console.warn('⚠️ Falha ao recuperar cotação recém-criada, seguindo com dados mínimos:', fetchCreatedError);
-      } else if (createdQuote) {
-        finalQuote = createdQuote as any;
-      }
-
-      console.log('✅ Cotação criada (minimal):', finalQuote);
-
-      // Update optional fields in a second step (UPDATE policy allows created_by owner)
-      const updateData: Record<string, any> = {};
-      if (quoteData.description) updateData.description = quoteData.description;
-      if (quoteData.total != null) updateData.total = quoteData.total;
-      if ('deadline' in quoteData) {
-        updateData.deadline = quoteData.deadline ? new Date(quoteData.deadline).toISOString() : null;
-      }
-      updateData.status = 'draft';
-      updateData.supplier_scope = quoteData.supplier_scope || 'local';
-      updateData.items_count = quoteData.items?.length || 0;
-
-      
-      
-      if (Object.keys(updateData).length > 0) {
-        console.log('🔄 Atualizando campos opcionais da cotação...', updateData);
-        const { data: updated, error: updateError } = await supabase
-          .from('quotes')
-          .update({ ...updateData, updated_at: new Date().toISOString() })
-          .eq('id', (finalQuote as any).id)
-          .select('*')
-          .single();
-        if (updateError) {
-          console.error('⚠️ Erro ao atualizar campos opcionais:', updateError);
-          // Não falhar a criação por erro na atualização; manter registro básico
-        } else if (updated) {
-          finalQuote = updated as any;
-        }
-      }
-
-      // Não adicionar ao estado local - deixar o realtime fazer isso para evitar duplicação
-
-      // Create items if provided
-      if (quoteData.items && quoteData.items.length > 0) {
-        console.log('🔍 Inserindo itens da cotação...');
-        
-        const itemsToInsert = quoteData.items.map((item: any) => ({
-          quote_id: (finalQuote as any).id,
-          product_name: item.product_name,
-          quantity: item.quantity || 1,
-          product_id: item.product_id || null,
-          unit_price: item.unit_price || 0,
-          total: (item.quantity || 1) * (item.unit_price || 0)
-        }));
-
-        const { error: itemsError } = await supabase
-          .from('quote_items')
-          .insert(itemsToInsert);
-
-        if (itemsError) {
-          console.error('❌ Erro ao inserir itens:', itemsError);
-          // Don't fail the entire quote creation for items error
-          toast.error('Cotação criada, mas alguns itens não foram salvos');
-        } else {
-          console.log('✅ Itens inseridos com sucesso');
-        }
-      }
-
-      // Create audit log
-      try {
-        await supabase.from('audit_logs').insert({
-          action: 'QUOTE_CREATE',
-          entity_type: 'quotes',
-          entity_id: (finalQuote as any).id,
-          panel_type: 'client',
-          user_id: authUser.id,
-          details: {
-            quote_title: (finalQuote as any).title,
-            status: (finalQuote as any).status,
-            items_count: quoteData.items?.length || 0
-          }
-        });
-      } catch (auditError) {
-        console.warn('⚠️ Erro ao criar log de auditoria:', auditError);
-        // Don't fail quote creation for audit log error
-      }
-
-      toast.success('Cotação criada com sucesso!');
-      return finalQuote;
-    } catch (error: any) {
+      console.log('✅ Quote created successfully:', data.id);
+      await fetchQuotes(); // Refresh the list
+      return data;
+    } catch (error) {
       console.error('❌ Error creating quote:', error);
-      toast.error('Erro ao criar cotação: ' + (error.message || 'Erro desconhecido'));
       throw error;
     }
   };
 
-  const updateQuoteStatus = async (quoteId: string, newStatus: string, additionalData?: any) => {
+  const updateQuote = async (quoteId: string, updates: Partial<Quote>) => {
     try {
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const updateData = {
-        status: newStatus,
-        updated_at: new Date().toISOString(),
-        ...additionalData
-      };
-
       const { data, error } = await supabase
         .from('quotes')
-        .update(updateData)
+        .update(updates)
         .eq('id', quoteId)
         .select()
         .single();
 
       if (error) throw error;
 
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        action: 'QUOTE_STATUS_UPDATE',
-        entity_type: 'quotes',
-        entity_id: quoteId,
-        panel_type: user.role === 'supplier' ? 'supplier' : 'client',
-        user_id: user.id,
-        details: {
-          old_status: quotes.find(q => q.id === quoteId)?.status,
-          new_status: newStatus
-        }
-      });
-
-      toast.success('Status da cotação atualizado!');
+      console.log('✅ Quote updated successfully:', quoteId);
+      
+      // Update local state
+      setQuotes(prev => 
+        prev.map(quote => quote.id === quoteId ? { ...quote, ...updates } : quote)
+      );
+      
       return data;
-    } catch (error: any) {
-      console.error('❌ Error updating quote status:', error);
-      toast.error('Erro ao atualizar status: ' + error.message);
+    } catch (error) {
+      console.error('❌ Error updating quote:', error);
       throw error;
     }
   };
 
-  const markQuoteAsSent = (quoteId: string, suppliersCount?: number) => {
-    const additionalData = suppliersCount ? { suppliers_sent_count: suppliersCount } : {};
-    return updateQuoteStatus(quoteId, 'sent', additionalData);
-  };
-  const markQuoteAsUnderReview = (quoteId: string) => updateQuoteStatus(quoteId, 'under_review');
-  const markQuoteAsReceiving = (quoteId: string) => updateQuoteStatus(quoteId, 'receiving');
-  const markQuoteAsReceived = (quoteId: string) => updateQuoteStatus(quoteId, 'received');
-
-  const updateQuote = async (id: string, updates: any) => {
+  const deleteQuote = async (quoteId: string) => {
     try {
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('quotes')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
+        .delete()
+        .eq('id', quoteId);
 
       if (error) throw error;
 
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        action: 'QUOTE_UPDATE',
-        entity_type: 'quotes',
-        entity_id: id,
-        panel_type: user.role === 'supplier' ? 'supplier' : 'client',
-        user_id: user.id,
-        details: updates
-      });
-
-      toast.success('Cotação atualizada com sucesso!');
-      return data;
-    } catch (error: any) {
-      console.error('❌ Error updating quote:', error);
-      toast.error('Erro ao atualizar cotação: ' + error.message);
-      throw error;
-    }
-  };
-
-  const deleteQuote = async (id: string, reason?: string) => {
-    try {
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const quote = quotes.find(q => q.id === id);
-      if (!quote) {
-        throw new Error('Quote not found');
-      }
-
-      // Only allow permanent deletion for draft quotes
-      if (quote.status === 'draft') {
-        const { error } = await supabase
-          .from('quotes')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-      } else {
-        // Move to trash for non-draft quotes
-        await updateQuoteStatus(id, 'cancelled');
-      }
-
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        action: quote.status === 'draft' ? 'QUOTE_DELETE' : 'QUOTE_CANCEL',
-        entity_type: 'quotes',
-        entity_id: id,
-        panel_type: user.role === 'supplier' ? 'supplier' : 'client',
-        user_id: user.id,
-        details: {
-          reason,
-          original_status: quote.status
-        }
-      });
-
-      toast.success(quote.status === 'draft' ? 'Cotação excluída!' : 'Cotação cancelada!');
-    } catch (error: any) {
+      console.log('✅ Quote deleted successfully:', quoteId);
+      setQuotes(prev => prev.filter(quote => quote.id !== quoteId));
+    } catch (error) {
       console.error('❌ Error deleting quote:', error);
-      toast.error('Erro ao excluir cotação: ' + error.message);
       throw error;
     }
   };
 
-  const getQuoteById = (id: string): Quote | undefined => {
-    return quotes.find(quote => quote.id === id);
+  const getQuoteById = (quoteId: string) => {
+    return quotes.find(quote => quote.id === quoteId);
   };
 
-  // Set up real-time subscriptions
+  const updateQuoteStatus = async (quoteId: string, status: string) => {
+    return updateQuote(quoteId, { status });
+  };
+
+  const markQuoteAsSent = async (quoteId: string) => {
+    return updateQuoteStatus(quoteId, 'sent');
+  };
+
+  const markQuoteAsUnderReview = async (quoteId: string) => {
+    return updateQuoteStatus(quoteId, 'under_review');
+  };
+
+  const markQuoteAsReceiving = async (quoteId: string) => {
+    return updateQuoteStatus(quoteId, 'receiving');
+  };
+
+  const markQuoteAsReceived = async (quoteId: string) => {
+    return updateQuoteStatus(quoteId, 'received');
+  };
+
+  // Subscription setup otimizada para evitar loops
   useEffect(() => {
-    if (!user) {
-      console.log('⚠️ No user, skipping real-time setup');
-      return;
-    }
+    let quotesSubscription: any = null;
+    let responsesSubscription: any = null;
 
-    console.log('🔄 Setting up real-time subscriptions for quotes...');
+    const setupRealtime = () => {
+      if (!userId) {
+        console.log('🔍 [DEBUG-QUOTES] ⚠️ Sem usuário para subscription');
+        return;
+      }
 
-    // Set up real-time subscription for quotes
-    const quotesSubscription = supabase
-      .channel(`quotes_realtime_${user.id}`, {
-        config: {
-          broadcast: { self: true }
-        }
-      })
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'quotes'
-        },
-        (payload) => {
-          console.log('📨 Real-time quote update received:', payload);
-          
-          if (payload.eventType === 'UPDATE') {
-            const updatedQuote = payload.new as Quote;
-            console.log('📝 Updating quote in real-time:', updatedQuote.id, 'new status:', updatedQuote.status, 'responses_count:', updatedQuote.responses_count);
+      console.log('🔍 [DEBUG-QUOTES] 🔥 Setting up realtime subscription for quotes', { userId, userRole });
+
+      // Set up real-time subscription for quotes com ID único por user
+      quotesSubscription = supabase
+        .channel(`quotes_realtime_${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'quotes'
+          },
+          (payload) => {
+            console.log('🔍 [DEBUG-QUOTES] 📨 Real-time quote update received:', payload);
             
-            setQuotes(prev => 
-              prev.map(quote => quote.id === updatedQuote.id ? updatedQuote : quote)
-            );
-          } else if (payload.eventType === 'INSERT') {
-            const newQuote = payload.new as Quote;
-            console.log('📝 Adding new quote in real-time:', newQuote.id);
-            
-            // Check if this quote should be visible to current user
-            const shouldShow = user.role === 'admin' || 
-              (user.role !== 'supplier' && newQuote.client_id === user.clientId) ||
-              (user.role === 'supplier' && (
-                newQuote.supplier_id === user.supplierId ||
-                newQuote.supplier_scope === 'all' ||
-                newQuote.supplier_scope === 'global' ||
-                newQuote.selected_supplier_ids?.includes(user.supplierId || '')
-              ));
-            
-            if (shouldShow) {
-              // Verificar se já existe para evitar duplicação
-              setQuotes(prev => {
-                const exists = prev.some(q => q.id === newQuote.id);
-                return exists ? prev : [newQuote, ...prev];
-              });
+            // Só processar se página estiver visível
+            if (document.hidden) {
+              console.log('🔍 [DEBUG-QUOTES] ⏸️ Página oculta - ignorando atualização realtime');
+              return;
             }
-          } else if (payload.eventType === 'DELETE') {
-            console.log('📝 Removing quote in real-time:', payload.old.id);
-            setQuotes(prev => prev.filter(quote => quote.id !== payload.old.id));
+            
+            if (payload.eventType === 'UPDATE') {
+              const updatedQuote = payload.new as Quote;
+              console.log('🔍 [DEBUG-QUOTES] 📝 Updating quote in real-time:', updatedQuote.id, 'new status:', updatedQuote.status);
+              
+              setQuotes(prev => 
+                prev.map(quote => quote.id === updatedQuote.id ? updatedQuote : quote)
+              );
+            } else if (payload.eventType === 'INSERT') {
+              const newQuote = payload.new as Quote;
+              console.log('🔍 [DEBUG-QUOTES] 📝 Adding new quote in real-time:', newQuote.id);
+              
+              // Check if this quote should be visible to current user
+              const shouldShow = userRole === 'admin' || 
+                (userRole !== 'supplier' && newQuote.client_id === clientId) ||
+                (userRole === 'supplier' && (
+                  newQuote.supplier_id === userId ||
+                  newQuote.supplier_scope === 'all' ||
+                  newQuote.supplier_scope === 'global'
+                ));
+              
+              if (shouldShow) {
+                setQuotes(prev => {
+                  const exists = prev.some(q => q.id === newQuote.id);
+                  return exists ? prev : [newQuote, ...prev];
+                });
+              }
+            } else if (payload.eventType === 'DELETE') {
+              console.log('🔍 [DEBUG-QUOTES] 📝 Removing quote in real-time:', payload.old.id);
+              setQuotes(prev => prev.filter(quote => quote.id !== payload.old.id));
+            }
           }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
-      });
+        )
+        .subscribe();
 
-    // Set up real-time subscription for quote responses
-    const responsesSubscription = supabase
-      .channel(`quote_responses_realtime_${user.id}`, {
-        config: {
-          broadcast: { self: true }
-        }
-      })
+      // Set up real-time subscription for quote responses
+      responsesSubscription = supabase
+        .channel(`quote_responses_realtime_${userId}`)
         .on(
           'postgres_changes',
           {
@@ -570,21 +326,17 @@ export const useSupabaseQuotes = () => {
           async (payload) => {
             console.log('🔍 [DEBUG-QUOTES] 📨 Quote response change received:', payload);
             
-            // Só processar se página estiver visível
             if (document.hidden) {
               console.log('🔍 [DEBUG-QUOTES] ⏸️ Página oculta - ignorando resposta realtime');
               return;
             }
             
-            // Since we have database triggers handling the updates,
-            // we just need to refetch the affected quote to get the updated data
             if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
               const response = payload.eventType === 'INSERT' ? payload.new : payload.old;
               const quoteId = response.quote_id;
               
               console.log('🔍 [DEBUG-QUOTES] 🔄 Refreshing quote after response change:', quoteId);
               
-              // Fetch the updated quote data (trigger will have updated responses_count and status)
               const { data: updatedQuote } = await supabase
                 .from('quotes')
                 .select('*')
@@ -592,24 +344,18 @@ export const useSupabaseQuotes = () => {
                 .single();
               
               if (updatedQuote) {
-                console.log('🔍 [DEBUG-QUOTES] 📊 Quote updated by trigger - responses_count:', updatedQuote.responses_count, 'status:', updatedQuote.status);
+                console.log('🔍 [DEBUG-QUOTES] 📊 Quote updated by trigger:', updatedQuote.responses_count);
                 
-                // Update the local state with the fresh data from database
                 setQuotes(prev => 
                   prev.map(quote => 
                     quote.id === quoteId ? updatedQuote as Quote : quote
                   )
                 );
-                
-                // Log update sem force refresh (deixar realtime handle)
-                console.log('🔍 [DEBUG-QUOTES] ✅ Quote updated by trigger - state sincronizado');
               }
             }
           }
         )
-        .subscribe((status) => {
-          console.log('🔍 [DEBUG-QUOTES] 📡 Quote responses subscription status:', status);
-        });
+        .subscribe();
     };
 
     setupRealtime();

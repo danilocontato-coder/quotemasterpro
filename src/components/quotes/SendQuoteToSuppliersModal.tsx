@@ -30,7 +30,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [evolutionConfigured, setEvolutionConfigured] = useState(false);
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
-  const { markQuoteAsSent } = useSupabaseQuotes();
+  const { updateQuoteStatus } = useSupabaseQuotes();
   
   // Filter suppliers based on quote's supplier_scope preference
   const activeSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
@@ -228,7 +228,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : '') + method);
         
         // Atualizar status da cotação para 'sent'
-        await markQuoteAsSent(quote.id, selectedSuppliers.length);
+        await updateQuoteStatus(quote.id, 'sent');
         
         // Log dos links dos fornecedores selecionados
         console.log('Fornecedores selecionados e links enviados:');

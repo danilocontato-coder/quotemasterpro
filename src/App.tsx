@@ -10,7 +10,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
-import { useDebugReloads } from '@/hooks/useDebugReloads';
+import { DebugWrapper } from '@/components/debug/DebugWrapper';
 
 // Layouts principais - import estático para evitar erro de dynamic import
 import MainLayout from '@/components/layout/MainLayout';
@@ -88,9 +88,6 @@ function App() {
   // Monitor de performance global
   usePerformanceMonitor();
   
-  // Debug profundo de reloads
-  useDebugReloads();
-  
   // Sistema robusto de prevenção de reloads automáticos
   useEffect(() => {
     let isTabActive = !document.hidden;
@@ -146,7 +143,8 @@ function App() {
       <TooltipProvider>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <AuthProvider>
-            <Router>
+            <DebugWrapper>
+              <Router>
               <Routes>
                 {/* Auth routes com lazy loading */}
                 <Route path="/auth/login" element={
@@ -439,7 +437,8 @@ function App() {
               </Routes>
               <Toaster />
               <Sonner />
-            </Router>
+              </Router>
+            </DebugWrapper>
           </AuthProvider>
         </ThemeProvider>
       </TooltipProvider>

@@ -122,7 +122,7 @@ export default function Quotes() {
   const handleDeleteConfirm = async (reason?: string) => {
     if (quoteToDelete) {
       try {
-        await deleteQuote(quoteToDelete.id, reason);
+        await deleteQuote(quoteToDelete.id);
         const action = quoteToDelete.status === 'draft' ? 'excluída' : 'cancelada';
         toast.success(`Cotação ${action} com sucesso!`);
         setQuoteToDelete(null);

@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Hook de debug para identificar causas de reload automático
+ * IMPORTANTE: Deve ser usado dentro de um AuthProvider
  */
-export function useDebugReloads() {
+export function useDebugReloads(user?: { id: string; role: string } | null) {
   const mountTimeRef = useRef(Date.now());
   const renderCountRef = useRef(0);
-  const { user } = useAuth();
   
   renderCountRef.current++;
   
