@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Calendar, Users, Target, TrendingUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Calendar, Users, Target, TrendingUp, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { CreateCouponModal } from '@/components/admin/CreateCouponModal';
 import { EditCouponModal } from '@/components/admin/EditCouponModal';
 import { CouponUsagesModal } from '@/components/admin/CouponUsagesModal';
+import { CouponAnalytics } from '@/components/admin/CouponAnalytics';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const CouponsManagement = () => {
   const { 
@@ -24,6 +26,7 @@ export const CouponsManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [viewingUsages, setViewingUsages] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('cupons');
   
   const pagination = usePagination(coupons, { initialPageSize: 10 });
 
@@ -107,6 +110,18 @@ export const CouponsManagement = () => {
           Novo Cupom
         </Button>
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="cupons">Cupons</TabsTrigger>
+          <TabsTrigger value="analytics">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cupons" className="space-y-6">
 
       {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -349,6 +364,12 @@ export const CouponsManagement = () => {
           onClose={() => setViewingUsages(null)}
         />
       )}
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <CouponAnalytics />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
