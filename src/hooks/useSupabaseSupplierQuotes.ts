@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface SupplierQuote {
@@ -127,733 +127,317 @@ export const useSupabaseSupplierQuotes = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('📋 Fetching quotes for supplier:', user.supplierId);
+      console.log('🎯 CRÍTICO: Buscando APENAS cotações direcionadas especificamente para:', user.supplierId);
 
-      // First, get all quote responses for this supplier
+      // PASSO 1: Buscar cotações através da tabela quote_suppliers (relacionamento direto)
+      const { data: targetedQuotes, error: targetedError } = await supabase
+        .from('quote_suppliers')
+        .select(`
+          quote_id,
+          quotes!inner (
+            id,
+            title,
+            description,
+            status,
+            client_id,
+            client_name,
+            total,
+            items_count,
+            responses_count,
+            deadline,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('supplier_id', user.supplierId);
+
+      if (targetedError) {
+        console.error('❌ Error fetching targeted quotes:', targetedError);
+        throw targetedError;
+      }
+
+      console.log('🎯 Cotações direcionadas encontradas:', targetedQuotes?.length || 0);
+
+      // PASSO 2: Buscar cotações onde já respondi
       const { data: supplierResponses, error: responsesError } = await supabase
         .from('quote_responses')
-        .select('*')
+        .select(`
+          quote_id,
+          status,
+          created_at,
+          quotes!inner (
+            id,
+            title,
+            description,
+            status,
+            client_id,
+            client_name,
+            total,
+            items_count,
+            responses_count,
+            deadline,
+            created_at,
+            updated_at
+          )
+        `)
         .eq('supplier_id', user.supplierId);
 
       if (responsesError) {
-        console.error('❌ Error fetching supplier responses:', responsesError);
+        console.error('❌ Error fetching responded quotes:', responsesError);
         throw responsesError;
       }
 
-      console.log('📋 Supplier responses found:', supplierResponses?.length || 0);
+      console.log('📋 Cotações com resposta encontradas:', supplierResponses?.length || 0);
 
-      // Get quote IDs from responses
-      const quotesWithResponsesIds = supplierResponses?.map(r => r.quote_id) || [];
-
-      // Fetch quotes that have responses from this supplier
-      let quotesData: any[] = [];
-      if (quotesWithResponsesIds.length > 0) {
-        const { data: quotesWithResponses, error: quotesWithResponsesError } = await supabase
-          .from('quotes')
-          .select('*')
-          .in('id', quotesWithResponsesIds)
-          .order('created_at', { ascending: false });
-
-        if (quotesWithResponsesError) {
-          console.error('❌ Error fetching quotes with responses:', quotesWithResponsesError);
-          throw quotesWithResponsesError;
-        }
-
-        quotesData = quotesWithResponses || [];
-      }
-
-      console.log('📋 Quotes with responses found:', quotesData.length);
-
-      // Get supplier location for proper filtering
-      const { data: supplierInfo, error: supplierInfoError } = await supabase
-        .from('suppliers')
-        .select('region, state, city')
-        .eq('id', user.supplierId)
-        .maybeSingle();
-
-      if (supplierInfoError) {
-        console.error('❌ Error fetching supplier info:', supplierInfoError);
-      }
-
-      // Also fetch quotes that are specifically available for this supplier
-      // 1. Global/all quotes available to ALL suppliers (but only certified suppliers should see these)
-      let availableQuotes: any[] = [];
+      // Combinar e remover duplicatas
+      const quotesMap = new Map<string, any>();
+      const responsesMap = new Map<string, any>();
       
-      // Check if supplier is certified (can see global quotes)
-      const { data: supplierData, error: supplierError } = await supabase
-        .from('suppliers')
-        .select('type, is_certified')
-        .eq('id', user.supplierId)
-        .maybeSingle();
-
-      if (!supplierError && supplierData?.is_certified) {
-        const { data: globalQuotes, error: globalQuotesError } = await supabase
-          .from('quotes')
-          .select('*')
-          .in('supplier_scope', ['global', 'all'])
-          .in('status', ['sent', 'receiving'])
-          .order('created_at', { ascending: false });
-
-        if (globalQuotesError) {
-          console.error('❌ Error fetching global quotes:', globalQuotesError);
-        } else {
-          console.log('📋 Global quotes found:', globalQuotes?.length || 0);
-          availableQuotes = [...availableQuotes, ...(globalQuotes || [])];
+      // Adicionar cotações direcionadas
+      targetedQuotes?.forEach(item => {
+        if (item.quotes) {
+          quotesMap.set(item.quotes.id, item.quotes);
         }
-      }
+      });
 
-      // 2. Local quotes in the same region (only if supplier is local and in same region as client)
-      if (supplierInfo?.region) {
-        const { data: localQuotes, error: localQuotesError } = await supabase
-          .from('quotes')
-          .select(`
-            *,
-            clients!inner(id, address)
-          `)
-          .eq('supplier_scope', 'local')
-          .is('supplier_id', null)
-          .in('status', ['sent', 'receiving'])
-          .order('created_at', { ascending: false });
-
-        if (localQuotesError) {
-          console.error('❌ Error fetching local quotes:', localQuotesError);
-        } else {
-          // Filter by client region match
-          const filteredLocalQuotes = (localQuotes || []).filter((quote: any) => {
-            const clientAddress = quote.clients?.address;
-            const clientRegion = clientAddress?.region || clientAddress?.state;
-            return clientRegion === supplierInfo.region || clientRegion === supplierInfo.state;
+      // Adicionar cotações respondidas e mapear respostas
+      supplierResponses?.forEach(item => {
+        if (item.quotes) {
+          quotesMap.set(item.quotes.id, item.quotes);
+          responsesMap.set(item.quote_id, {
+            status: item.status,
+            created_at: item.created_at
           });
-          console.log('📋 Local quotes found:', filteredLocalQuotes.length);
-          availableQuotes = [...availableQuotes, ...filteredLocalQuotes];
         }
-      }
+      });
 
-      // 3. Quotes explicitly assigned to this supplier via quote_suppliers
-      const { data: assignedMappings, error: assignedMapError } = await supabase
-        .from('quote_suppliers')
-        .select('quote_id')
-        .eq('supplier_id', user.supplierId);
+      const uniqueQuotesArray = Array.from(quotesMap.values());
+      console.log('✅ Total de cotações únicas para o fornecedor:', uniqueQuotesArray.length);
 
-      if (assignedMapError) {
-        console.error('❌ Error fetching assigned mappings:', assignedMapError);
-      }
-
-      let assignedQuotes: any[] = [];
-      const assignedIds = (assignedMappings || []).map(m => m.quote_id).filter(Boolean);
-      if (assignedIds.length > 0) {
-        const { data: assignedQuotesData, error: assignedQuotesError } = await supabase
-          .from('quotes')
-          .select('*')
-          .in('id', assignedIds)
-          .order('created_at', { ascending: false });
-
-        if (assignedQuotesError) {
-          console.error('❌ Error fetching assigned quotes:', assignedQuotesError);
-        } else {
-          assignedQuotes = assignedQuotesData || [];
-          console.log('📋 Assigned quotes found:', assignedQuotes.length);
-        }
-      }
-
-      // 4. Quotes where this supplier is in selected_supplier_ids array
-      const { data: selectedQuotes, error: selectedQuotesError } = await supabase
-        .from('quotes')
-        .select('*')
-        .contains('selected_supplier_ids', [user.supplierId])
-        .in('status', ['sent', 'receiving'])
-        .order('created_at', { ascending: false });
-
-      if (selectedQuotesError) {
-        console.error('❌ Error fetching selected quotes:', selectedQuotesError);
-      } else {
-        console.log('📋 Selected quotes found:', selectedQuotes?.length || 0);
-        availableQuotes = [...availableQuotes, ...(selectedQuotes || [])];
-      }
-
-      // Combine and deduplicate quotes
-      const allQuotes = [...quotesData, ...assignedQuotes, ...availableQuotes];
-      const uniqueQuotes = allQuotes.reduce((acc, quote) => {
-        if (!acc.find(q => q.id === quote.id)) {
-          acc.push(quote);
-        }
-        return acc;
-      }, [] as any[]);
-
-      // Fetch items separately to avoid RLS recursion via embedded selects
-      let itemsByQuoteId: Record<string, any[]> = {};
-      try {
-        const quoteIds = uniqueQuotes.map((q: any) => q.id);
-        if (quoteIds.length > 0) {
-          const { data: itemsData, error: itemsError } = await supabase
-            .from('quote_items')
-            .select('*')
-            .in('quote_id', quoteIds);
-          if (!itemsError && itemsData) {
-            itemsByQuoteId = itemsData.reduce((acc: Record<string, any[]>, item: any) => {
-              (acc[item.quote_id] ||= []).push(item);
-              return acc;
-            }, {});
-          } else if (itemsError) {
-            console.error('❌ Error fetching quote items:', itemsError);
-          }
-        }
-      } catch (itemsErr) {
-        console.error('❌ Unexpected error fetching quote items:', itemsErr);
-      }
-
-      console.log('📋 Total unique quotes found:', uniqueQuotes.length);
-
-      // Transform quotes to supplier format
-      const transformedQuotes: SupplierQuote[] = uniqueQuotes.map(quote => {
-        const existingResponse = supplierResponses?.find(r => r.quote_id === quote.id);
-        
+      // Transform to SupplierQuote format
+      const transformedQuotes: SupplierQuote[] = uniqueQuotesArray.map(quote => {
+        const response = responsesMap.get(quote.id);
         return {
           id: quote.id,
           title: quote.title,
           description: quote.description || '',
           client: quote.client_name,
           clientId: quote.client_id,
-          status: existingResponse ? getSupplierStatus(existingResponse.status) : 'pending',
+          status: response ? getSupplierStatus(response.status) : 'pending',
           deadline: quote.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           estimatedValue: quote.total > 0 ? quote.total : undefined,
-          sentAt: existingResponse?.created_at,
           createdAt: quote.created_at,
-          items: (itemsByQuoteId[quote.id] || []).map((item: any) => ({
-            id: item.id,
-            productName: item.product_name,
-            description: item.product_name,
-            quantity: item.quantity,
-            unitPrice: item.unit_price,
-            total: item.total,
-          })),
-          attachments: [],
-          proposal: existingResponse ? {
-            id: existingResponse.id,
-            quoteId: quote.id,
-            supplierId: user.supplierId,
-            items: [], // Will be loaded separately if needed
-            totalValue: existingResponse.total_amount,
-            deliveryTime: existingResponse.delivery_time || 7,
-            paymentTerms: '30 dias',
-            observations: existingResponse.notes,
-            attachments: [],
-            status: existingResponse.status === 'approved' ? 'accepted' : (existingResponse.status === 'pending' ? 'draft' : 'sent'),
-            createdAt: existingResponse.created_at,
-            sentAt: existingResponse.status === 'sent' ? existingResponse.created_at : undefined,
-          } : undefined,
+          items: [], // Will be loaded separately when needed
+          sentAt: response ? response.created_at : undefined,
         };
       });
 
-      console.log('📋 Transformed quotes:', transformedQuotes.length);
       setSupplierQuotes(transformedQuotes);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar cotações';
-      console.error('❌ Complete error in fetchSupplierQuotes:', err);
-      console.error('❌ Error details:', {
-        message: errorMessage,
-        code: (err as any)?.code,
-        details: (err as any)?.details,
-        hint: (err as any)?.hint
-      });
-      setError(errorMessage);
-      toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      console.log('✅ Supplier quotes set successfully:', transformedQuotes.length);
+
+    } catch (error) {
+      console.error('❌ Error in fetchSupplierQuotes:', error);
+      setError('Erro ao carregar cotações');
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
-  // Setup realtime subscriptions for quote responses
-  useEffect(() => {
-    if (!user?.supplierId) return;
+  // Get quote by ID
+  const getQuoteById = useCallback(async (quoteId: string) => {
+    try {
+      const { data: quote, error } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
 
-    console.log('📡 Setting up realtime subscriptions for supplier quotes');
+      if (error) {
+        console.error('Error fetching quote by ID:', error);
+        return null;
+      }
 
-    // Listen to quote_responses changes for this supplier
-    const quotesChannel = supabase
-      .channel('supplier-quote-responses')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'quote_responses',
-          filter: `supplier_id=eq.${user.supplierId}`
-        },
-        (payload) => {
-          console.log('📡 Quote response changed:', payload);
-          
-          if (payload.eventType === 'UPDATE') {
-            const updatedResponse = payload.new as any;
-            
-            // Update local state with new status
-            setSupplierQuotes(prev => prev.map(quote => {
-              if (quote.id === updatedResponse.quote_id && quote.proposal) {
-                const newProposalStatus: QuoteProposal['status'] = 
-                  updatedResponse.status === 'approved' ? 'accepted' : 
-                  updatedResponse.status === 'rejected' ? 'rejected' :
-                  updatedResponse.status === 'pending' ? 'draft' : 'sent';
-                
-                return {
-                  ...quote,
-                  status: updatedResponse.status === 'approved' ? 'approved' : quote.status,
-                  proposal: {
-                    ...quote.proposal,
-                    status: newProposalStatus,
-                    totalValue: updatedResponse.total_amount,
-                    deliveryTime: updatedResponse.delivery_time || quote.proposal.deliveryTime,
-                    observations: updatedResponse.notes || quote.proposal.observations,
-                  }
-                } as SupplierQuote;
-              }
-              return quote;
-            }));
+      return quote;
+    } catch (error) {
+      console.error('Error in getQuoteById:', error);
+      return null;
+    }
+  }, []);
 
-            // Show toast notification for status changes
-            if (updatedResponse.status === 'approved') {
-              toast({
-                title: '🎉 Proposta Aprovada!',
-                description: `Sua proposta foi aprovada pelo cliente!`,
-                duration: 5000,
-              });
-            } else if (updatedResponse.status === 'rejected') {
-              toast({
-                title: '📋 Proposta Não Selecionada',
-                description: `Sua proposta não foi selecionada pelo cliente.`,
-                variant: 'destructive',
-                duration: 5000,
-              });
-            }
-          }
-        }
-      )
-      .subscribe();
+  // Get quote items
+  const getQuoteItems = useCallback(async (quoteId: string) => {
+    try {
+      const { data: items, error } = await supabase
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quoteId);
 
-    // Also listen to quotes table changes for status updates
-    const quotesTableChannel = supabase
-      .channel('supplier-quotes-table')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'quotes'
-        },
-        (payload) => {
-          console.log('📡 Quote table changed:', payload);
-          
-          const updatedQuote = payload.new as any;
-          
-          // Update quote status if it affects our quotes
-          setSupplierQuotes(prev => prev.map(quote => {
-            if (quote.id === updatedQuote.id) {
-              return {
-                ...quote,
-                status: updatedQuote.status === 'approved' ? 'approved' : quote.status,
-              };
-            }
-            return quote;
-          }));
-        }
-      )
-      .subscribe();
+      if (error) {
+        console.error('Error fetching quote items:', error);
+        return [];
+      }
 
-    return () => {
-      console.log('📡 Cleaning up realtime subscriptions');
-      supabase.removeChannel(quotesChannel);
-      supabase.removeChannel(quotesTableChannel);
+      return items.map(item => ({
+        id: item.id,
+        productName: item.product_name,
+        description: `Produto: ${item.product_name}`,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        total: item.total,
+      }));
+    } catch (error) {
+      console.error('Error in getQuoteItems:', error);
+      return [];
+    }
+  }, []);
+
+  // Submit quote response
+  const submitQuoteResponse = useCallback(async (quoteId: string, responseData: {
+    items: Array<{
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+      total: number;
+      notes?: string;
+    }>;
+    total_amount: number;
+    delivery_time: number;
+    payment_terms: string;
+    notes?: string;
+  }) => {
+    if (!user?.supplierId) {
+      throw new Error('Supplier ID not found');
+    }
+
+    try {
+      console.log('🔍 Submitting quote response:', { quoteId, responseData });
+
+      const { data: response, error } = await supabase
+        .from('quote_responses')
+        .insert({
+          quote_id: quoteId,
+          supplier_id: user.supplierId,
+          supplier_name: user.name || 'Fornecedor',
+          items: responseData.items,
+          total_amount: responseData.total_amount,
+          delivery_time: responseData.delivery_time,
+          payment_terms: responseData.payment_terms,
+          notes: responseData.notes,
+          status: 'sent'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error submitting quote response:', error);
+        throw error;
+      }
+
+      console.log('✅ Quote response submitted successfully');
+      
+      // Refresh quotes to update status
+      await fetchSupplierQuotes();
+      
+      toast({
+        title: "Proposta Enviada",
+        description: "Sua proposta foi enviada com sucesso!",
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Error in submitQuoteResponse:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao enviar proposta. Tente novamente.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [user, fetchSupplierQuotes, toast]);
+
+  // Create proposal (compatibility)
+  const createProposal = useCallback(async (quoteId: string, proposalData: Omit<QuoteProposal, 'id' | 'quoteId' | 'supplierId' | 'createdAt' | 'status'>) => {
+    if (!user?.supplierId) {
+      throw new Error('Supplier ID not found');
+    }
+
+    const newProposal: QuoteProposal = {
+      ...proposalData,
+      id: crypto.randomUUID(),
+      quoteId,
+      supplierId: user.supplierId,
+      status: 'draft',
+      createdAt: new Date().toISOString(),
     };
-  }, [user?.supplierId, toast]);
 
-  // Fetch quotes when user changes
+    setProposals(prev => [newProposal, ...prev]);
+    return newProposal;
+  }, [user?.supplierId]);
+
+  // Update proposal (compatibility)
+  const updateProposal = useCallback((proposalId: string, updates: Partial<QuoteProposal>) => {
+    setProposals(prev => prev.map(proposal =>
+      proposal.id === proposalId
+        ? { ...proposal, ...updates }
+        : proposal
+    ));
+  }, []);
+
+  // Send proposal (compatibility)
+  const sendProposal = useCallback(async (proposalId: string) => {
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) return;
+
+    try {
+      await submitQuoteResponse(proposal.quoteId, {
+        items: proposal.items.map(item => ({
+          product_name: item.productName,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          total: item.total,
+          notes: item.specifications
+        })),
+        total_amount: proposal.totalValue,
+        delivery_time: proposal.deliveryTime,
+        payment_terms: proposal.paymentTerms,
+        notes: proposal.observations
+      });
+
+      updateProposal(proposalId, {
+        status: 'sent',
+        sentAt: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Error sending proposal:', error);
+      throw error;
+    }
+  }, [proposals, submitQuoteResponse, updateProposal]);
+
+  // Add attachment (compatibility)
+  const addAttachment = useCallback((quoteId: string, file: File) => {
+    const attachment: QuoteAttachment = {
+      id: crypto.randomUUID(),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      url: URL.createObjectURL(file),
+      uploadedAt: new Date().toISOString(),
+    };
+
+    return attachment;
+  }, []);
+
+  // Remove attachment (compatibility)
+  const removeAttachment = useCallback((quoteId: string, attachmentId: string) => {
+    // This is a placeholder for compatibility
+    console.log('Remove attachment:', quoteId, attachmentId);
+  }, []);
+
+  // Load quotes on mount
   useEffect(() => {
     fetchSupplierQuotes();
   }, [fetchSupplierQuotes]);
-
-  // Get quote by ID
-  const getQuoteById = useCallback((id: string) => {
-    return supplierQuotes.find(quote => quote.id === id);
-  }, [supplierQuotes]);
-
-  // Create or update proposal
-  const createProposal = useCallback(async (
-    quoteId: string, 
-    proposalData: Omit<QuoteProposal, 'id' | 'quoteId' | 'supplierId' | 'createdAt' | 'status'>
-  ) => {
-    if (!user || !user.supplierId) return null;
-
-    try {
-      // Check if response already exists
-      const { data: existingResponse } = await supabase
-        .from('quote_responses')
-        .select('*')
-        .eq('quote_id', quoteId)
-        .eq('supplier_id', user.supplierId)
-        .maybeSingle();
-
-      const responseData = {
-        quote_id: quoteId,
-        supplier_id: user.supplierId,
-        supplier_name: user.name || 'Fornecedor',
-        total_amount: proposalData.totalValue,
-        delivery_time: proposalData.deliveryTime,
-        notes: proposalData.observations,
-        status: 'pending'
-      };
-
-      let savedResponse;
-      if (existingResponse) {
-        // Update existing response
-        const { data, error } = await supabase
-          .from('quote_responses')
-          .update(responseData)
-          .eq('id', existingResponse.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        savedResponse = data;
-      } else {
-        // Create new response
-        const { data, error } = await supabase
-          .from('quote_responses')
-          .insert(responseData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        savedResponse = data;
-      }
-
-      // Update local state
-      setSupplierQuotes(prev => prev.map(quote => 
-        quote.id === quoteId 
-          ? {
-              ...quote,
-              proposal: {
-                id: savedResponse.id,
-                quoteId,
-                supplierId: user.supplierId,
-                items: proposalData.items,
-                totalValue: proposalData.totalValue,
-                deliveryTime: proposalData.deliveryTime,
-                paymentTerms: proposalData.paymentTerms,
-                observations: proposalData.observations,
-                attachments: proposalData.attachments,
-                status: 'draft',
-                createdAt: savedResponse.created_at,
-              }
-            }
-          : quote
-      ));
-
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        user_id: user.id,
-        action: existingResponse ? 'UPDATE' : 'CREATE',
-        entity_type: 'quote_responses',
-        entity_id: savedResponse.id,
-        panel_type: 'supplier',
-        details: { 
-          quote_id: quoteId,
-          total_amount: proposalData.totalValue,
-          delivery_time: proposalData.deliveryTime
-        }
-      });
-
-      toast({
-        title: 'Sucesso',
-        description: 'Proposta salva com sucesso',
-      });
-
-      return savedResponse;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar proposta';
-      toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-      return null;
-    }
-  }, [user, toast]);
-
-  // Update proposal
-  const updateProposal = useCallback(async (proposalId: string, updates: Partial<QuoteProposal>) => {
-    if (!user) return;
-
-    try {
-      const updateData: any = {};
-      if (updates.totalValue !== undefined) updateData.total_amount = updates.totalValue;
-      if (updates.deliveryTime !== undefined) updateData.delivery_time = updates.deliveryTime;
-      if (updates.observations !== undefined) updateData.notes = updates.observations;
-
-      const { data, error } = await supabase
-        .from('quote_responses')
-        .update(updateData)
-        .eq('id', proposalId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update local state
-      setSupplierQuotes(prev => prev.map(quote => 
-        quote.proposal?.id === proposalId
-          ? {
-              ...quote,
-              proposal: quote.proposal ? {
-                ...quote.proposal,
-                ...updates,
-              } : undefined
-            }
-          : quote
-      ));
-
-      toast({
-        title: 'Sucesso',
-        description: 'Proposta atualizada com sucesso',
-      });
-
-      return data;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar proposta';
-      toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-      return null;
-    }
-  }, [user, toast]);
-
-  // Send proposal
-  const sendProposal = useCallback(async (proposalId: string) => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('quote_responses')
-        .update({ 
-          status: 'sent',
-          created_at: new Date().toISOString() // Update timestamp when sent
-        })
-        .eq('id', proposalId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Determine target quote and update local state robustly
-      const existingQuoteByProposal = supplierQuotes.find(q => q.proposal?.id === proposalId);
-      const targetQuoteId = existingQuoteByProposal?.id || (data as any)?.quote_id;
-
-      // Update local state using quote_id fallback
-      setSupplierQuotes(prev => prev.map(q => {
-        if (q.id !== targetQuoteId) return q;
-        const prevProposal = q.proposal;
-        const updatedProposal: QuoteProposal = {
-          id: (data as any).id,
-          quoteId: targetQuoteId,
-          supplierId: user.supplierId!,
-          items: prevProposal?.items || [],
-          totalValue: (data as any).total_amount,
-          deliveryTime: (data as any).delivery_time || prevProposal?.deliveryTime || 7,
-          paymentTerms: prevProposal?.paymentTerms || '30 dias',
-          observations: (data as any).notes ?? prevProposal?.observations,
-          attachments: prevProposal?.attachments || [],
-          status: 'sent',
-          createdAt: (data as any).created_at,
-          sentAt: new Date().toISOString(),
-        };
-
-        return {
-          ...q,
-          status: 'proposal_sent',
-          sentAt: new Date().toISOString(),
-          proposal: updatedProposal,
-        };
-      }));
-
-      // Update quote status to "receiving" and notify client via WhatsApp
-      if (targetQuoteId) {
-        try {
-          // Update quote status to "receiving" when first proposal is sent
-          await supabase
-            .from('quotes')
-            .update({ status: 'receiving' })
-            .eq('id', targetQuoteId);
-
-          await supabase.functions.invoke('notify-client-proposal', {
-            body: {
-              quoteId: targetQuoteId,
-              supplierId: user.supplierId,
-              supplierName: user.name || 'Fornecedor',
-              totalValue: (data as any).total_amount
-            }
-          });
-        } catch (notifyError) {
-          console.warn('Failed to notify client:', notifyError);
-          // Don't fail the whole operation if notification fails
-        }
-      }
-
-      // Create audit log
-      await supabase.from('audit_logs').insert({
-        user_id: user.id,
-        action: 'SEND_PROPOSAL',
-        entity_type: 'quote_responses',
-        entity_id: proposalId,
-        panel_type: 'supplier',
-        details: { sent_at: new Date().toISOString() }
-      });
-
-      toast({
-        title: 'Sucesso',
-        description: 'Proposta enviada com sucesso',
-      });
-
-      return data;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao enviar proposta';
-      toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-      return null;
-    }
-  }, [user, toast]);
-
-  // Add attachment (using Supabase Storage)
-  const addAttachment = useCallback(async (quoteId: string, file: File) => {
-    if (!user) return null;
-
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `quotes/${quoteId}/${fileName}`;
-
-      // Upload file to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('attachments')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('attachments')
-        .getPublicUrl(filePath);
-
-      const attachment: QuoteAttachment = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: publicUrl,
-        uploadedAt: new Date().toISOString(),
-      };
-
-      // Update local state - add to proposal attachments
-      setSupplierQuotes(prev => prev.map(quote => 
-        quote.id === quoteId
-          ? {
-              ...quote,
-              proposal: quote.proposal ? {
-                ...quote.proposal,
-                attachments: [...quote.proposal.attachments, attachment]
-              } : undefined
-            }
-          : quote
-      ));
-
-      toast({
-        title: 'Sucesso',
-        description: 'Arquivo anexado com sucesso',
-      });
-
-      return attachment;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao anexar arquivo';
-      toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-      return null;
-    }
-  }, [user, toast]);
-
-  // Remove attachment
-  const removeAttachment = useCallback(async (quoteId: string, attachmentId: string) => {
-    try {
-      // Find the attachment to get the file path
-      const quote = supplierQuotes.find(q => q.id === quoteId);
-      const attachment = quote?.attachments?.find(a => a.id === attachmentId);
-      
-      if (attachment) {
-        // Extract file path from URL
-        const urlParts = attachment.url.split('/');
-        const filePath = `quotes/${quoteId}/${urlParts[urlParts.length - 1]}`;
-        
-        // Delete from storage
-        const { error: deleteError } = await supabase.storage
-          .from('attachments')
-          .remove([filePath]);
-
-        if (deleteError) {
-          console.warn('Error deleting file from storage:', deleteError);
-        }
-      }
-
-      // Update local state - remove from proposal attachments
-      setSupplierQuotes(prev => prev.map(quote => 
-        quote.id === quoteId
-          ? {
-              ...quote,
-              proposal: quote.proposal ? {
-                ...quote.proposal,
-                attachments: quote.proposal.attachments.filter(att => att.id !== attachmentId)
-              } : undefined
-            }
-          : quote
-      ));
-
-      toast({
-        title: 'Sucesso',
-        description: 'Arquivo removido com sucesso',
-      });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao remover arquivo';
-      toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
-  }, [supplierQuotes, toast]);
-
-  // Fetch data on mount and when user changes
-  useEffect(() => {
-    console.log('🔍 useSupabaseSupplierQuotes useEffect triggered:', {
-      userRole: user?.role,
-      supplierId: user?.supplierId,
-      userId: user?.id,
-      userEmail: user?.email,
-    });
-    
-    if (user?.role === 'supplier') {
-      console.log('📋 User is supplier, calling fetchSupplierQuotes...');
-      fetchSupplierQuotes();
-    } else {
-      console.log('⚠️ User is not supplier, role:', user?.role);
-    }
-  }, [user?.role, user?.supplierId]); // Don't include fetchSupplierQuotes to avoid infinite loops
 
   return {
     supplierQuotes,
@@ -861,6 +445,8 @@ export const useSupabaseSupplierQuotes = () => {
     isLoading,
     error,
     getQuoteById,
+    getQuoteItems,
+    submitQuoteResponse,
     createProposal,
     updateProposal,
     sendProposal,

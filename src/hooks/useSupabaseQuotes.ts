@@ -249,6 +249,27 @@ export const useSupabaseQuotes = () => {
         console.log('✅ Quote items inserted successfully');
       }
 
+      // Step 4: CRÍTICO - Registrar fornecedores específicos selecionados
+      if (quoteData.supplier_ids && quoteData.supplier_ids.length > 0) {
+        const quoteSuppliers = quoteData.supplier_ids.map((supplierId: string) => ({
+          quote_id: quoteId,
+          supplier_id: supplierId
+        }));
+
+        console.log('🔍 DEBUG: Registrando fornecedores específicos:', quoteSuppliers);
+
+        const { error: suppliersError } = await supabase
+          .from('quote_suppliers')
+          .insert(quoteSuppliers);
+
+        if (suppliersError) {
+          console.error('❌ Error inserting quote suppliers:', suppliersError);
+          throw suppliersError;
+        }
+
+        console.log('✅ Fornecedores específicos registrados para a cotação');
+      }
+
       // Step 4: Fetch the complete quote
       const { data: completeQuote, error: fetchError } = await supabase
         .from('quotes')
