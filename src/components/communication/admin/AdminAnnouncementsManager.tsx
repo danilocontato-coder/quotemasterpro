@@ -138,7 +138,8 @@ export function AdminAnnouncementsManager() {
       formData.type,
       formData.priority,
       formData.targetAudience,
-      formData.targetClientId,
+      formData.targetAudience === 'clients' ? formData.targetClientId : undefined,
+      formData.targetAudience === 'suppliers' ? formData.targetClientId : undefined,
       formData.expiresAt || undefined,
       formData.attachments
     );

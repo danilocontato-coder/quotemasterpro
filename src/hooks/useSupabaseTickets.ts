@@ -118,12 +118,13 @@ export const useSupabaseTickets = () => {
 
   // Create ticket
   const createTicket = useCallback(async (
-    clientId: string,
-    clientName: string,
     subject: string, 
     description: string, 
     priority: 'low' | 'medium' | 'high' | 'urgent', 
-    category: string, 
+    category: string,
+    clientId?: string,
+    supplierId?: string,
+    targetName?: string,
     attachments?: string[]
   ) => {
     if (!user) {
@@ -137,18 +138,26 @@ export const useSupabaseTickets = () => {
 
     try {
       // Create ticket
+      const ticketData_insert: any = {
+        subject: subject.trim(),
+        description: description.trim(),
+        priority,
+        category,
+        created_by: user.id,
+        created_by_name: user.name
+      };
+      
+      if (clientId) {
+        ticketData_insert.client_id = clientId;
+        ticketData_insert.client_name = targetName;
+      } else if (supplierId) {
+        ticketData_insert.supplier_id = supplierId;
+        ticketData_insert.supplier_name = targetName;
+      }
+
       const { data: ticketData, error: ticketError } = await supabase
         .from('support_tickets')
-        .insert({
-          client_id: clientId,
-          client_name: clientName,
-          subject: subject.trim(),
-          description: description.trim(),
-          priority,
-          category,
-          created_by: user.id,
-          created_by_name: user.name
-        })
+        .insert(ticketData_insert)
         .select()
         .single();
 

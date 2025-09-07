@@ -92,12 +92,13 @@ export function ClientTicketsManager() {
     }
 
     const ticketId = await createTicket(
-      client.id,
-      client.name,
       formData.subject,
       formData.description,
-      formData.priority,
-      formData.category || 'Geral'
+      formData.priority as 'low' | 'medium' | 'high' | 'urgent',
+      formData.category || 'Geral',
+      client.id,
+      undefined,
+      client.name
     );
 
     if (ticketId) {

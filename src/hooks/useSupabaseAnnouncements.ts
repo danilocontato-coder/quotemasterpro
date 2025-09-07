@@ -144,7 +144,8 @@ export const useSupabaseAnnouncements = () => {
     type: 'info' | 'warning' | 'success' | 'urgent',
     priority: 'low' | 'medium' | 'high',
     targetAudience: 'clients' | 'suppliers' | 'all',
-    targetClientId: string,
+    targetClientId?: string,
+    targetSupplierId?: string,
     expiresAt?: string,
     attachments?: string[]
   ) => {
@@ -158,9 +159,45 @@ export const useSupabaseAnnouncements = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('announcements')
-        .insert({
+      // For target_audience 'all' or when both client and supplier are specified
+      const announcements_to_create = [];
+      
+      if (targetAudience === 'all') {
+        // Create announcements for all clients
+        const { data: allClients } = await supabase.from('clients').select('id');
+        const { data: allSuppliers } = await supabase.from('suppliers').select('id');
+        
+        if (allClients) {
+          announcements_to_create.push(...allClients.map(client => ({
+            client_id: client.id,
+            title: title.trim(),
+            content: content.trim(),
+            type,
+            priority,
+            target_audience: 'clients' as const,
+            created_by: user.id,
+            created_by_name: user.name,
+            expires_at: expiresAt || null,
+            attachments: attachments || []
+          })));
+        }
+        
+        if (allSuppliers) {
+          announcements_to_create.push(...allSuppliers.map(supplier => ({
+            supplier_id: supplier.id,
+            title: title.trim(),
+            content: content.trim(),
+            type,
+            priority,
+            target_audience: 'suppliers' as const,
+            created_by: user.id,
+            created_by_name: user.name,
+            expires_at: expiresAt || null,
+            attachments: attachments || []
+          })));
+        }
+      } else if (targetAudience === 'clients' && targetClientId) {
+        announcements_to_create.push({
           client_id: targetClientId,
           title: title.trim(),
           content: content.trim(),
@@ -171,9 +208,35 @@ export const useSupabaseAnnouncements = () => {
           created_by_name: user.name,
           expires_at: expiresAt || null,
           attachments: attachments || []
-        })
-        .select()
-        .single();
+        });
+      } else if (targetAudience === 'suppliers' && targetSupplierId) {
+        announcements_to_create.push({
+          supplier_id: targetSupplierId,
+          title: title.trim(),
+          content: content.trim(),
+          type,
+          priority,
+          target_audience: targetAudience,
+          created_by: user.id,
+          created_by_name: user.name,
+          expires_at: expiresAt || null,
+          attachments: attachments || []
+        });
+      }
+
+      let data = null;
+      if (announcements_to_create.length > 0) {
+        const { data: insertedData, error } = await supabase
+          .from('announcements')
+          .insert(announcements_to_create)
+          .select();
+
+        if (error) {
+          throw error;
+        }
+        
+        data = insertedData?.[0];
+      }
 
       if (error) {
         throw error;
