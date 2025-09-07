@@ -291,8 +291,7 @@ export const useSupabaseQuotes = () => {
         }
       }
 
-      // Add to local state immediately for better UX
-      setQuotes(prev => [finalQuote as any, ...prev]);
+      // Não adicionar ao estado local - deixar o realtime fazer isso para evitar duplicação
 
       // Create items if provided
       if (quoteData.items && quoteData.items.length > 0) {
@@ -533,7 +532,11 @@ export const useSupabaseQuotes = () => {
               ));
             
             if (shouldShow) {
-              setQuotes(prev => [newQuote, ...prev]);
+              // Verificar se já existe para evitar duplicação
+              setQuotes(prev => {
+                const exists = prev.some(q => q.id === newQuote.id);
+                return exists ? prev : [newQuote, ...prev];
+              });
             }
           } else if (payload.eventType === 'DELETE') {
             console.log('📝 Removing quote in real-time:', payload.old.id);
