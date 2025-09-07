@@ -93,15 +93,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes - com filtros para evitar reloads desnecessários
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('🔄 Auth state changed:', event, { hasSession: !!session, userId: session?.user?.id });
         
+        // Ignorar eventos que não requerem ação (evitar loops)
+        if (event === 'TOKEN_REFRESHED' && session?.user?.id === user?.id) {
+          console.log('🔄 Token refresh - mantendo estado atual');
+          return;
+        }
+        
+        // Verificar se página está visível antes de processar mudanças
+        if (document.hidden && event === 'SIGNED_IN') {
+          console.log('🔄 Sign in detectado com página oculta - adiando processamento');
+          return;
+        }
+        
         setSession(session);
         
         if (session?.user) {
-          // Use setTimeout to avoid blocking the auth state change
+          // Use setTimeout para evitar bloquear mudança de estado de auth
           setTimeout(() => {
             fetchUserProfile(session.user);
           }, 0);

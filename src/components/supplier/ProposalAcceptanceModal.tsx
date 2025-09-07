@@ -111,8 +111,8 @@ export function ProposalAcceptanceModal({
 
       onOpenChange(false);
       
-      // Refresh page to show updated status
-      window.location.reload();
+      // Não fazer reload - deixar realtime atualizar os dados
+      console.log('✅ Proposta aceita - aguardando atualização em tempo real');
 
     } catch (error) {
       console.error('Error accepting proposal:', error);

@@ -231,9 +231,9 @@ export default function Quotes() {
             variant="outline" 
             size="sm" 
             className="mt-3"
-            onClick={() => window.location.reload()}
+            onClick={() => refetch()}
           >
-            Recarregar Página
+            Tentar Novamente
           </Button>
         </div>
       )}

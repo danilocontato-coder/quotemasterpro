@@ -30,6 +30,11 @@ export const useSupabaseQuotes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  
+  // Estabilizar dependências para evitar re-renders desnecessários
+  const userId = user?.id;
+  const userRole = user?.role;
+  const clientId = user?.clientId;
 
   console.log('🎯 useSupabaseQuotes hook initialized');
   console.log('👤 useSupabaseQuotes - user from useAuth:', user?.id, user?.role);
@@ -590,11 +595,8 @@ export const useSupabaseQuotes = () => {
                 )
               );
               
-              // Force a complete refresh to ensure UI is up to date
-              setTimeout(() => {
-                console.log('🔄 Force refreshing quotes after realtime update');
-                fetchQuotes();
-              }, 500);
+              // Log update sem force refresh (deixar realtime handle)
+              console.log('✅ Quote updated by trigger - state sincronizado');
             }
           }
         }
@@ -608,15 +610,15 @@ export const useSupabaseQuotes = () => {
       quotesSubscription.unsubscribe();
       responsesSubscription.unsubscribe();
     };
-  }, [user]);
+  }, [userId]); // Usar userId estável
 
-  // Initial fetch
+  // Initial fetch - usando dependência estável
   useEffect(() => {
     console.log('🔄 useSupabaseQuotes - Initial fetch effect triggered');
-    if (user) {
+    if (userId) {
       fetchQuotes();
     }
-  }, [user]);
+  }, [userId]); // Dependência estável
 
   return {
     quotes,

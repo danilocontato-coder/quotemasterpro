@@ -45,10 +45,13 @@ export function useRealtimeDataSync() {
           filter: `id=eq.${user.id}`,
         },
         () => {
-          debounceUpdate(() => {
-            console.debug('Profile update detected');
-            window.dispatchEvent(new CustomEvent('user-profile-updated'));
-          });
+          // Só atualizar se página estiver visível
+          if (!document.hidden) {
+            debounceUpdate(() => {
+              console.debug('Profile update detected - página visível');
+              window.dispatchEvent(new CustomEvent('user-profile-updated'));
+            });
+          }
         }
       );
 
@@ -64,10 +67,13 @@ export function useRealtimeDataSync() {
             filter: `id=eq.${user.clientId}`,
           },
           () => {
-            debounceUpdate(() => {
-              console.debug('Client data update detected');
-              window.dispatchEvent(new CustomEvent('client-data-updated'));
-            });
+            // Só atualizar se página estiver visível
+            if (!document.hidden) {
+              debounceUpdate(() => {
+                console.debug('Client data update detected - página visível');
+                window.dispatchEvent(new CustomEvent('client-data-updated'));
+              });
+            }
           }
         );
     }

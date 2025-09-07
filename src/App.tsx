@@ -65,15 +65,20 @@ const SupplierAuth = lazy(() => import('@/pages/supplier/SupplierAuth'));
 const SupplierQuoteResponse = lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierResponseSuccess = lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
 
-// Query client otimizado para performance
+// Query client otimizado para evitar refreshes automáticos
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutos
-      gcTime: 10 * 60 * 1000, // 10 minutos
-      refetchOnWindowFocus: false,
+      staleTime: 15 * 60 * 1000, // 15 minutos para evitar refetch frequente
+      gcTime: 30 * 60 * 1000, // 30 minutos de cache
+      refetchOnWindowFocus: false, // CRÍTICO: não refazer queries no foco
+      refetchOnMount: false, // CRÍTICO: não refazer queries no mount
+      refetchOnReconnect: false, // CRÍTICO: não refazer queries na reconexão
       retry: 1,
-      refetchOnMount: false
+      retryOnMount: false
+    },
+    mutations: {
+      retry: 1
     }
   }
 });
@@ -82,16 +87,32 @@ function App() {
   // Monitor de performance global
   usePerformanceMonitor();
   
-  // Optimized system performance and prevent unwanted refreshes
+  // Sistema robusto de prevenção de reloads automáticos
   useEffect(() => {
+    let isTabActive = !document.hidden;
+    
     const handleVisibilityChange = () => {
-      // Only log visibility changes, don't force reloads
-      if (!document.hidden) {
-        console.debug('Tab became visible - maintaining state');
+      const wasHidden = !isTabActive;
+      isTabActive = !document.hidden;
+      
+      if (wasHidden && isTabActive) {
+        console.debug('🔄 Tab voltou a ficar visível - mantendo estado sem reload');
+        // Apenas log - não fazer reload ou refetch automático
       }
     };
 
-    // Optimized beforeunload handler
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.debug('🔄 Página restaurada do cache - mantendo estado');
+        // Não fazer reload quando página volta do cache do navegador
+      }
+    };
+
+    const handleFocus = () => {
+      console.debug('🔄 Janela ganhou foco - mantendo estado');
+      // Não fazer refetch automático no foco
+    };
+
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       const hasUnsavedForms = document.querySelector('form:not([data-saved="true"])') ||
                              document.querySelector('[data-dirty="true"]');
@@ -102,12 +123,16 @@ function App() {
       }
     };
 
-    // Use passive listeners for better performance
+    // Prevenir refresh automático em mudanças de visibilidade
     document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
+    window.addEventListener('pageshow', handlePageShow, { passive: true });
+    window.addEventListener('focus', handleFocus, { passive: true });
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);

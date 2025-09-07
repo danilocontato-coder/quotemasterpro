@@ -152,8 +152,8 @@ export const useAuthTenant = () => {
         description: "Sua conta foi vinculada com sucesso ao cliente",
       });
 
-      // Recarregar a página para atualizar contexto
-      window.location.reload();
+      // Não fazer reload - notificar contexto para atualizar
+      window.dispatchEvent(new CustomEvent('user-profile-updated'));
 
       return true;
     } catch (error) {
