@@ -221,12 +221,62 @@ export const useSupabaseAdminSuppliers = () => {
     }
   };
 
+  const resetSupplierPassword = async (supplierId: string, email: string) => {
+    try {
+      console.log('🔐 Resetting supplier password:', { supplierId, email });
+      const genPassword = () => {
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        let pwd = '';
+        for (let i = 0; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+        return pwd;
+      };
+      const newPassword = genPassword();
+
+      const { data: authResp, error: fnErr } = await supabase.functions.invoke('create-auth-user', {
+        body: {
+          email: (email || '').trim(),
+          password: newPassword,
+          name: 'Reset Supplier Password',
+          role: 'supplier',
+          supplierId,
+          temporaryPassword: true,
+          action: 'reset_password',
+        },
+      });
+
+      if (fnErr || !authResp?.success) {
+        console.error('❌ Error resetting supplier password:', fnErr || authResp?.error);
+        toast({
+          title: 'Falha ao resetar senha',
+          description: authResp?.error || 'Não foi possível resetar a senha do fornecedor.',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
+      const credentials = `Email: ${email}\nNova senha: ${newPassword}`;
+      try {
+        await navigator.clipboard.writeText(credentials);
+        toast({ title: 'Senha resetada', description: 'Credenciais copiadas para a área de transferência.' });
+      } catch {
+        toast({ title: 'Senha resetada', description: `Anote a nova senha: ${newPassword}` });
+      }
+
+      return newPassword;
+    } catch (error) {
+      console.error('❌ Unexpected error resetting supplier password:', error);
+      toast({ title: 'Erro', description: 'Erro inesperado ao resetar senha.', variant: 'destructive' });
+      return null;
+    }
+  };
+
   return {
     suppliers,
     isLoading,
     refetch: fetchSuppliers,
     createSupplierWithUser,
     updateSupplier,
-    deleteSupplier
+    deleteSupplier,
+    resetSupplierPassword,
   };
 };
