@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Headphones, Paperclip, X, Upload, File } from "lucide-react";
 import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { ticketCategories } from "@/data/mockCommunication";
 
 interface CreateTicketModalProps {
@@ -24,6 +26,7 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { createTicket } = useSupabaseCommunication();
+  const { toast } = useToast();
 
   // DEBUG: Log das categorias
   console.log("🔍 DEBUG: ticketCategories", ticketCategories);
@@ -35,17 +38,45 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
 
     setIsLoading(true);
     try {
-      // Convert files to names for mock data
-      const attachmentNames = attachments.map(file => file.name);
-      const ticketId = createTicket(subject.trim(), description.trim(), priority, category, attachmentNames);
+      // Upload files to Supabase Storage first
+      const uploadedAttachments: string[] = [];
       
-      // Reset form
-      setSubject("");
-      setDescription("");
-      setPriority('medium');
-      setCategory("");
-      setAttachments([]);
-      onOpenChange(false);
+      for (const file of attachments) {
+        console.log("🔍 DEBUG: Uploading file", file.name);
+        const fileName = `${Date.now()}-${file.name}`;
+        const filePath = `tickets/${fileName}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, file);
+        
+        if (uploadError) {
+          console.error('❌ Error uploading file:', uploadError);
+          throw new Error(`Erro ao enviar arquivo ${file.name}: ${uploadError.message}`);
+        }
+        
+        console.log("✅ File uploaded:", uploadData.path);
+        uploadedAttachments.push(uploadData.path);
+      }
+      
+      const ticketId = await createTicket(subject.trim(), description.trim(), priority, category, uploadedAttachments);
+      
+      if (ticketId) {
+        // Reset form
+        setSubject("");
+        setDescription("");
+        setPriority('medium');
+        setCategory("");
+        setAttachments([]);
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error('❌ Error creating ticket:', error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao criar ticket",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
