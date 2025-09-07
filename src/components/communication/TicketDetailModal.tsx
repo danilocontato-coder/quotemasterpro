@@ -277,20 +277,18 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-medium">
-                        {msg.senderName || 
-                          (msg.senderType === 'client' ? ticket.createdByName || ticket.client_name || 'Cliente' : 
-                           msg.senderType === 'support' ? 'Suporte' : 
-                           msg.senderType === 'admin' ? 'Administrador' : 'Sistema')}
+                        {msg.is_internal 
+                          ? (msg.sender_name || 'Suporte') 
+                          : (msg.sender_name || ticket.created_by_name || ticket.client_name || 'Cliente')}
                       </span>
-                      {msg.senderType === 'client' && <User className="h-3 w-3 text-blue-600" />}
-                      {msg.senderType === 'support' && <Headphones className="h-3 w-3 text-green-600" />}
-                      {msg.senderType === 'admin' && <AlertTriangle className="h-3 w-3 text-red-600" />}
+                      {!msg.is_internal && <User className="h-3 w-3 text-blue-600" />}
+                      {msg.is_internal && <Headphones className="h-3 w-3 text-green-600" />}
                       <span className="text-xs text-muted-foreground">
                         {formatDateTime(msg.timestamp || msg.created_at)}
                       </span>
-                      {msg.isInternal && (
+                      {msg.is_internal && (
                         <Badge variant="outline" className="text-xs">
-                          Interno
+                          Suporte
                         </Badge>
                       )}
                     </div>
@@ -308,78 +306,26 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                               console.log('🔍 Downloading attachment:', attachment);
                               
                               try {
-                                const candidates: string[] = [];
-                                if (attachment) {
-                                  candidates.push(attachment);
-                                  if (!attachment.includes('/')) {
-                                    candidates.push(`tickets/${attachment}`);
-                                    candidates.push(`tickets/${sanitizeFilename(attachment)}`);
-                                  }
+                                const fileName = attachment.split('/').pop() || attachment;
+                                
+                                // Tentar obter URL assinada diretamente
+                                const { data, error } = await supabase.storage
+                                  .from('attachments')
+                                  .createSignedUrl(attachment, 3600);
+                                
+                                if (error) {
+                                  console.error('❌ Error creating signed URL:', error);
+                                  alert('Erro ao acessar o arquivo');
+                                  return;
                                 }
-
-                                let signedUrl: string | null = null;
-
-                                // Tentar múltiplas chaves candidatas
-                                for (const key of candidates) {
-                                  const { data, error } = await supabase.storage
-                                    .from('attachments')
-                                    .createSignedUrl(key, 3600);
-                                  if (!error && data?.signedUrl) {
-                                    signedUrl = data.signedUrl;
-                                    break;
-                                  } else {
-                                    console.warn('⚠️ Signed URL falhou para chave', key, error?.message);
-                                  }
-                                }
-
-                                // Fallback: tentar localizar pelo nome (ignorando timestamp e acentuação)
-                                if (!signedUrl) {
-                                  const attBase = (attachment.split('/').pop() || attachment);
-                                  const attSan = sanitizeFilename(attBase).toLowerCase();
-
-                                  const tryListAndMatch = async (folder: string) => {
-                                    const { data: list, error: listError } = await supabase.storage
-                                      .from('attachments')
-                                      .list(folder, { limit: 1000 });
-                                    if (listError || !Array.isArray(list)) return null;
-
-                                    const target = list.find((item: any) => {
-                                      const nameSan = sanitizeFilename(item.name).toLowerCase();
-                                      return (
-                                        nameSan === attSan ||
-                                        nameSan.endsWith(attSan) ||
-                                        nameSan.includes(attSan)
-                                      );
-                                    });
-                                    return target ? `${folder ? folder + '/' : ''}${target.name}` : null;
-                                  };
-
-                                  const foundKey = (await tryListAndMatch('tickets')) || (await tryListAndMatch(''));
-
-                                  if (foundKey) {
-                                    const { data, error } = await supabase.storage
-                                      .from('attachments')
-                                      .createSignedUrl(foundKey, 3600);
-                                    if (!error && data?.signedUrl) {
-                                      signedUrl = data.signedUrl;
-                                    }
-                                  }
-                                }
-
-                                if (!signedUrl) {
-                                  alert('Arquivo não encontrado no armazenamento.');
+                                
+                                if (!data?.signedUrl) {
+                                  alert('Arquivo não encontrado');
                                   return;
                                 }
 
-                                // Abrir em nova aba
-                                const link = document.createElement('a');
-                                link.href = signedUrl;
-                                link.target = '_blank';
-                                link.rel = 'noopener noreferrer';
-                                link.download = attachment.split('/').pop() || 'attachment';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
+                                // Abrir em nova aba para visualizar ou fazer download
+                                window.open(data.signedUrl, '_blank');
                                 
                               } catch (error) {
                                 console.error('❌ Error downloading file:', error);
