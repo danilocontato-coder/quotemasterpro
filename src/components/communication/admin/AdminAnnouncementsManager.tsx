@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useSupabaseAnnouncements } from '@/hooks/useSupabaseAnnouncements';
 import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
+import { useSupabaseAdminSuppliers } from '@/hooks/useSupabaseAdminSuppliers';
 import { useEffect } from 'react';
 
 export function AdminAnnouncementsManager() {
@@ -43,6 +44,7 @@ export function AdminAnnouncementsManager() {
   } = useSupabaseAnnouncements();
 
   const { clients } = useSupabaseAdminClients();
+  const { suppliers } = useSupabaseAdminSuppliers();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -51,7 +53,7 @@ export function AdminAnnouncementsManager() {
     type: 'info' as 'info' | 'warning' | 'success' | 'urgent',
     priority: 'medium' as 'low' | 'medium' | 'high',
     targetAudience: 'clients' as 'clients' | 'suppliers' | 'all',
-    targetClientId: '',
+    targetEntityId: '',
     expiresAt: '',
     attachments: [] as string[]
   });
@@ -128,7 +130,8 @@ export function AdminAnnouncementsManager() {
   });
 
   const handleCreateAnnouncement = async () => {
-    if (!formData.title.trim() || !formData.content.trim() || !formData.targetClientId) {
+    if (!formData.title.trim() || !formData.content.trim() || 
+        (!formData.targetEntityId && formData.targetAudience !== 'all')) {
       return;
     }
 
@@ -138,8 +141,8 @@ export function AdminAnnouncementsManager() {
       formData.type,
       formData.priority,
       formData.targetAudience,
-      formData.targetAudience === 'clients' ? formData.targetClientId : undefined,
-      formData.targetAudience === 'suppliers' ? formData.targetClientId : undefined,
+      formData.targetAudience === 'clients' ? formData.targetEntityId : undefined,
+      formData.targetAudience === 'suppliers' ? formData.targetEntityId : undefined,
       formData.expiresAt || undefined,
       formData.attachments
     );
@@ -152,7 +155,7 @@ export function AdminAnnouncementsManager() {
         type: 'info',
         priority: 'medium',
         targetAudience: 'clients',
-        targetClientId: '',
+        targetEntityId: '',
         expiresAt: '',
         attachments: []
       });
@@ -252,23 +255,59 @@ export function AdminAnnouncementsManager() {
               </div>
 
               <div className="space-y-2">
-                <Label>Cliente Destinatário</Label>
+                <Label>Público-Alvo</Label>
                 <Select
-                  value={formData.targetClientId}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, targetClientId: value }))}
+                  value={formData.targetAudience}
+                  onValueChange={(value) => setFormData(prev => ({ 
+                    ...prev, 
+                    targetAudience: value as any,
+                    targetEntityId: '' // Reset selection when changing audience
+                  }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o cliente" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.companyName}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="clients">Clientes</SelectItem>
+                    <SelectItem value="suppliers">Fornecedores</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.targetAudience !== 'all' && (
+                <div className="space-y-2">
+                  <Label>
+                    {formData.targetAudience === 'clients' ? 'Cliente Destinatário' : 'Fornecedor Destinatário'}
+                  </Label>
+                  <Select
+                    value={formData.targetEntityId}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, targetEntityId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={
+                        formData.targetAudience === 'clients' 
+                          ? "Selecione o cliente" 
+                          : "Selecione o fornecedor"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formData.targetAudience === 'clients' 
+                        ? clients.map(client => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.companyName}
+                            </SelectItem>
+                          ))
+                        : suppliers.map(supplier => (
+                            <SelectItem key={supplier.id} value={supplier.id}>
+                              {supplier.name}
+                            </SelectItem>
+                          ))
+                      }
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="expiresAt">Data de Expiração (opcional)</Label>

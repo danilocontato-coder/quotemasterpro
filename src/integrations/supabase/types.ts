@@ -54,6 +54,8 @@ export type Database = {
           expires_at: string | null
           id: string
           priority: string
+          supplier_id: string | null
+          supplier_name: string | null
           target_audience: string
           title: string
           type: string
@@ -69,6 +71,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           priority?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
           target_audience?: string
           title: string
           type?: string
@@ -84,6 +88,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           priority?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
           target_audience?: string
           title?: string
           type?: string
@@ -95,6 +101,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -1188,6 +1201,8 @@ export type Database = {
           priority: string
           status: string
           subject: string
+          supplier_id: string | null
+          supplier_name: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1204,6 +1219,8 @@ export type Database = {
           priority?: string
           status?: string
           subject: string
+          supplier_id?: string | null
+          supplier_name?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1220,6 +1237,8 @@ export type Database = {
           priority?: string
           status?: string
           subject?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1228,6 +1247,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]

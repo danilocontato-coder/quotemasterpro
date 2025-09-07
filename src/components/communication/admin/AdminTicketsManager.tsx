@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { useSupabaseTickets } from '@/hooks/useSupabaseTickets';
 import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
+import { useSupabaseAdminSuppliers } from '@/hooks/useSupabaseAdminSuppliers';
+import { CreateTicketModal } from './CreateTicketModal';
 
 export function AdminTicketsManager() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,6 +44,7 @@ export function AdminTicketsManager() {
   } = useSupabaseTickets();
 
   const { clients } = useSupabaseAdminClients();
+  const { suppliers } = useSupabaseAdminSuppliers();
 
   useEffect(() => {
     fetchTickets();
@@ -131,9 +134,10 @@ export function AdminTicketsManager() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Gerenciar Tickets de Suporte</h2>
           <p className="text-muted-foreground">
-            Gerencie todos os tickets de suporte dos clientes
+            Gerencie todos os tickets de suporte dos clientes e fornecedores
           </p>
         </div>
+        <CreateTicketModal onTicketCreated={() => fetchTickets()} />
       </div>
 
       {/* Statistics */}
