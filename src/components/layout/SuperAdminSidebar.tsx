@@ -173,10 +173,10 @@ const navigation = [
         description: 'Status dos serviços'
       },
       {
-        name: 'API Keys',
-        href: '/admin/api-keys',
+        name: 'Configuração de APIs',
+        href: '/admin/api-config',
         icon: Key,
-        description: 'Chaves de API'
+        description: 'Chaves de API e integrações'
       }
     ]
   }

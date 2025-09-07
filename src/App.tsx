@@ -36,6 +36,7 @@ const ClientsManagement = lazy(() => import('@/pages/admin/ClientsManagement'));
 const SuppliersManagement = lazy(() => import('@/pages/admin/SuppliersManagement'));
 const PlansManagement = lazy(() => import('@/pages/admin/PlansManagement'));
 const IntegrationsManagement = lazy(() => import('@/pages/admin/IntegrationsManagement'));
+const ApiConfiguration = lazy(() => import('@/pages/admin/ApiConfiguration'));
 const WhatsAppTemplates = lazy(() => import('@/pages/admin/WhatsAppTemplates'));
 const CouponsManagement = lazy(() => import('@/pages/admin/CouponsManagement').then(m => ({ default: m.default })));
 const CommunicationManagement = lazy(() => import('@/pages/admin/CommunicationManagement'));
@@ -376,6 +377,11 @@ function App() {
                   <Route path="integrations" element={
                     <SuspenseWithTransition lines={5} className="p-4">
                       <IntegrationsManagement />
+                    </SuspenseWithTransition>
+                  } />
+                  <Route path="api-config" element={
+                    <SuspenseWithTransition lines={5} className="p-4">
+                      <ApiConfiguration />
                     </SuspenseWithTransition>
                   } />
                   <Route path="whatsapp-templates" element={
