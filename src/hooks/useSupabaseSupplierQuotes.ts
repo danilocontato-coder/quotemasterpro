@@ -164,36 +164,69 @@ export const useSupabaseSupplierQuotes = () => {
 
       console.log('📋 Quotes with responses found:', quotesData.length);
 
-      // Also fetch quotes that are available for suppliers
-      // 1. Global/all quotes available to all suppliers
-      const { data: globalQuotes, error: globalQuotesError } = await supabase
-        .from('quotes')
-        .select('*')
-        .in('supplier_scope', ['global', 'all'])
-        .in('status', ['sent', 'receiving'])
-        .order('created_at', { ascending: false });
+      // Get supplier location for proper filtering
+      const { data: supplierInfo, error: supplierInfoError } = await supabase
+        .from('suppliers')
+        .select('region, state, city')
+        .eq('id', user.supplierId)
+        .maybeSingle();
 
-      // 2. Local quotes available to this supplier (sent but without specific assignment)
-      const { data: localQuotes, error: localQuotesError } = await supabase
-        .from('quotes')
-        .select('*')
-        .eq('supplier_scope', 'local')
-        .is('supplier_id', null)
-        .in('status', ['sent', 'receiving'])
-        .order('created_at', { ascending: false });
-
-      if (globalQuotesError) {
-        console.error('❌ Error fetching global quotes:', globalQuotesError);
-        // Don't throw here - this is optional data
-      } else {
-        console.log('📋 Global quotes found:', globalQuotes?.length || 0);
+      if (supplierInfoError) {
+        console.error('❌ Error fetching supplier info:', supplierInfoError);
       }
 
-      if (localQuotesError) {
-        console.error('❌ Error fetching local quotes:', localQuotesError);
-        // Don't throw here - this is optional data
-      } else {
-        console.log('📋 Local quotes found:', localQuotes?.length || 0);
+      // Also fetch quotes that are specifically available for this supplier
+      // 1. Global/all quotes available to ALL suppliers (but only certified suppliers should see these)
+      let availableQuotes: any[] = [];
+      
+      // Check if supplier is certified (can see global quotes)
+      const { data: supplierData, error: supplierError } = await supabase
+        .from('suppliers')
+        .select('type, is_certified')
+        .eq('id', user.supplierId)
+        .maybeSingle();
+
+      if (!supplierError && supplierData?.is_certified) {
+        const { data: globalQuotes, error: globalQuotesError } = await supabase
+          .from('quotes')
+          .select('*')
+          .in('supplier_scope', ['global', 'all'])
+          .in('status', ['sent', 'receiving'])
+          .order('created_at', { ascending: false });
+
+        if (globalQuotesError) {
+          console.error('❌ Error fetching global quotes:', globalQuotesError);
+        } else {
+          console.log('📋 Global quotes found:', globalQuotes?.length || 0);
+          availableQuotes = [...availableQuotes, ...(globalQuotes || [])];
+        }
+      }
+
+      // 2. Local quotes in the same region (only if supplier is local and in same region as client)
+      if (supplierInfo?.region) {
+        const { data: localQuotes, error: localQuotesError } = await supabase
+          .from('quotes')
+          .select(`
+            *,
+            clients!inner(id, address)
+          `)
+          .eq('supplier_scope', 'local')
+          .is('supplier_id', null)
+          .in('status', ['sent', 'receiving'])
+          .order('created_at', { ascending: false });
+
+        if (localQuotesError) {
+          console.error('❌ Error fetching local quotes:', localQuotesError);
+        } else {
+          // Filter by client region match
+          const filteredLocalQuotes = (localQuotes || []).filter((quote: any) => {
+            const clientAddress = quote.clients?.address;
+            const clientRegion = clientAddress?.region || clientAddress?.state;
+            return clientRegion === supplierInfo.region || clientRegion === supplierInfo.state;
+          });
+          console.log('📋 Local quotes found:', filteredLocalQuotes.length);
+          availableQuotes = [...availableQuotes, ...filteredLocalQuotes];
+        }
       }
 
       // 3. Quotes explicitly assigned to this supplier via quote_suppliers
@@ -223,8 +256,23 @@ export const useSupabaseSupplierQuotes = () => {
         }
       }
 
+      // 4. Quotes where this supplier is in selected_supplier_ids array
+      const { data: selectedQuotes, error: selectedQuotesError } = await supabase
+        .from('quotes')
+        .select('*')
+        .contains('selected_supplier_ids', [user.supplierId])
+        .in('status', ['sent', 'receiving'])
+        .order('created_at', { ascending: false });
+
+      if (selectedQuotesError) {
+        console.error('❌ Error fetching selected quotes:', selectedQuotesError);
+      } else {
+        console.log('📋 Selected quotes found:', selectedQuotes?.length || 0);
+        availableQuotes = [...availableQuotes, ...(selectedQuotes || [])];
+      }
+
       // Combine and deduplicate quotes
-      const allQuotes = [...quotesData, ...assignedQuotes, ...(globalQuotes || []), ...(localQuotes || [])];
+      const allQuotes = [...quotesData, ...assignedQuotes, ...availableQuotes];
       const uniqueQuotes = allQuotes.reduce((acc, quote) => {
         if (!acc.find(q => q.id === quote.id)) {
           acc.push(quote);
