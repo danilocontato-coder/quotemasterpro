@@ -280,7 +280,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('userAvatarUpdated', handleAvatarUpdate);
       window.removeEventListener('user-profile-updated', handleProfileReload);
     };
-  }, [user?.id]); // Only depend on user ID to prevent unnecessary re-runs
+  }, [user?.id, session?.user?.id]); // More stable dependencies
 
   const logout = async (): Promise<void> => {
     await supabase.auth.signOut();

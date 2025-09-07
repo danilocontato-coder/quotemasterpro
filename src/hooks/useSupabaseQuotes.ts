@@ -30,9 +30,18 @@ export const useSupabaseQuotes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  
+  // Stabilize user reference to prevent excessive re-renders
+  const userId = user?.id;
+  const userRole = user?.role;
+  const clientId = user?.clientId;
 
-  console.log('🎯 useSupabaseQuotes hook initialized');
-  console.log('👤 useSupabaseQuotes - user from useAuth:', user?.id, user?.role);
+  console.log('🎯 useSupabaseQuotes hook render:', {
+    userId,
+    userRole,
+    clientId,
+    renderTimestamp: Date.now()
+  });
 
   const fetchQuotes = async () => {
     try {
@@ -590,11 +599,8 @@ export const useSupabaseQuotes = () => {
                 )
               );
               
-              // Force a complete refresh to ensure UI is up to date
-              setTimeout(() => {
-                console.log('🔄 Force refreshing quotes after realtime update');
-                fetchQuotes();
-              }, 500);
+              // Remove the force refresh to prevent constant re-renders
+              console.log('📊 Quote updated via realtime - no force refresh needed');
             }
           }
         }
@@ -608,15 +614,15 @@ export const useSupabaseQuotes = () => {
       quotesSubscription.unsubscribe();
       responsesSubscription.unsubscribe();
     };
-  }, [user]);
+  }, [user?.id]); // Only depend on user ID, not the entire user object
 
-  // Initial fetch
+  // Initial fetch - use useMemo dependencies
   useEffect(() => {
     console.log('🔄 useSupabaseQuotes - Initial fetch effect triggered');
-    if (user) {
+    if (user?.id) {
       fetchQuotes();
     }
-  }, [user]);
+  }, [user?.id]); // Only depend on user ID
 
   return {
     quotes,

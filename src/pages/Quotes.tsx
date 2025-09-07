@@ -13,8 +13,7 @@ import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
 import { StatusProgressIndicator } from "@/components/quotes/StatusProgressIndicator";
 import { EconomyNotification, useEconomyAlerts } from "@/components/quotes/EconomyNotification";
 import { SendQuoteToSuppliersModal } from "@/components/quotes/SendQuoteToSuppliersModal";
-import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
-import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
+import { OptimizedQuotesWrapper } from "@/components/quotes/OptimizedQuotesWrapper";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { toast } from "sonner";
 
@@ -34,8 +33,9 @@ export default function Quotes() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6; // 6 cotações por página para visualização confortável
   
-  const { quotes, createQuote, updateQuote, deleteQuote, isLoading, error, markQuoteAsReceived, refetch } = useSupabaseQuotes();
-  const { enforceLimit } = useSupabaseSubscriptionGuard();
+  // Move hooks inside OptimizedQuotesWrapper to prevent re-renders
+  // const { quotes, createQuote, updateQuote, deleteQuote, isLoading, error, markQuoteAsReceived, refetch } = useSupabaseQuotes();
+  // const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
 
   // Debug: verificar se o hook está sendo chamado
