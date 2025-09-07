@@ -33,7 +33,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useSupabaseTickets } from '@/hooks/useSupabaseTickets';
 import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
 import { useSupabaseAdminSuppliers } from '@/hooks/useSupabaseAdminSuppliers';
-import { CreateTicketModal } from './CreateTicketModal';
+import { CreateTicketModal } from '../CreateTicketModal';
 import { TicketDetailModal } from '../TicketDetailModal';
 
 export function AdminTicketsManager() {
@@ -44,6 +44,7 @@ export function AdminTicketsManager() {
   const [newMessageContent, setNewMessageContent] = useState('');
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [chatTicket, setChatTicket] = useState<any>(null);
+  const [createTicketModalOpen, setCreateTicketModalOpen] = useState(false);
 
   const { 
     tickets, 
@@ -173,7 +174,10 @@ export function AdminTicketsManager() {
             Gerencie todos os tickets de suporte dos clientes e fornecedores
           </p>
         </div>
-        <CreateTicketModal onTicketCreated={() => fetchTickets()} />
+        <Button onClick={() => setCreateTicketModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Ticket
+        </Button>
       </div>
 
       {/* Statistics */}
@@ -510,6 +514,17 @@ export function AdminTicketsManager() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Ticket Modal */}
+      <CreateTicketModal 
+        open={createTicketModalOpen}
+        onOpenChange={(open) => {
+          setCreateTicketModalOpen(open);
+          if (!open) {
+            fetchTickets(); // Refresh tickets when modal closes
+          }
+        }}
+      />
 
       {/* Chat Modal */}
       <TicketDetailModal 

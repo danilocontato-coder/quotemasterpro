@@ -22,17 +22,12 @@ import {
   Paperclip,
   File
 } from 'lucide-react';
-import { useSupabaseTickets } from '@/hooks/useSupabaseTickets';
 import { useSupabaseAnnouncements } from '@/hooks/useSupabaseAnnouncements';
 import { CreateAnnouncementModal } from '@/components/admin/CreateAnnouncementModal';
+import { AdminTicketsManager } from '@/components/communication/admin/AdminTicketsManager';
 
 export const CommunicationManagement = () => {
   const [createAnnouncementOpen, setCreateAnnouncementOpen] = useState(false);
-  const { 
-    tickets, 
-    fetchTickets,
-    getOpenTicketsCount 
-  } = useSupabaseTickets();
   
   const { 
     announcements, 
@@ -43,8 +38,7 @@ export const CommunicationManagement = () => {
   // Fetch all data for admin view
   React.useEffect(() => {
     fetchAnnouncements(); // Admin can see all announcements
-    fetchTickets(); // Admin can see all tickets
-  }, [fetchAnnouncements, fetchTickets]);
+  }, [fetchAnnouncements]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('pt-BR', {
@@ -86,36 +80,6 @@ export const CommunicationManagement = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'resolved':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'closed':
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'Aberto';
-      case 'in_progress':
-        return 'Em Andamento';
-      case 'resolved':
-        return 'Resolvido';
-      case 'closed':
-        return 'Fechado';
-      default:
-        return status;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card px-6 py-4">
@@ -146,43 +110,6 @@ export const CommunicationManagement = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-orange-50 border-orange-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-orange-600">Tickets Abertos</p>
-                  <p className="text-2xl font-bold text-orange-900">{getOpenTicketsCount()}</p>
-                </div>
-                <MessageSquare className="h-8 w-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-green-50 border-green-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-600">Total de Tickets</p>
-                  <p className="text-2xl font-bold text-green-900">{tickets.length}</p>
-                </div>
-                <Users className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-purple-50 border-purple-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-600">Taxa de Resolução</p>
-                  <p className="text-2xl font-bold text-purple-900">
-                    {tickets.length > 0 ? Math.round((tickets.filter(t => t.status === 'resolved').length / tickets.length) * 100) : 0}%
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <Tabs defaultValue="announcements" className="space-y-6">
@@ -311,77 +238,7 @@ export const CommunicationManagement = () => {
           </TabsContent>
 
           <TabsContent value="tickets" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tickets de Suporte</CardTitle>
-                <CardDescription>Visualizar e gerenciar tickets de suporte dos clientes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {tickets.length === 0 ? (
-                  <div className="text-center py-12">
-                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Nenhum ticket encontrado</h3>
-                    <p className="text-muted-foreground">Os tickets de suporte aparecerão aqui quando os clientes criarem solicitações</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {tickets.map((ticket) => (
-                      <Card key={ticket.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold">{ticket.subject}</h3>
-                                <Badge className={getStatusColor(ticket.status)}>
-                                  {getStatusText(ticket.status)}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                                {ticket.description}
-                              </p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <span className="font-mono">#{ticket.id}</span>
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {formatDate(ticket.created_at)}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
-                                  {ticket.created_by_name}
-                                </div>
-                                 {ticket.category && (
-                                   <Badge variant="outline" className="text-xs">
-                                     {ticket.category}
-                                   </Badge>
-                                 )}
-                                 {ticket.messages.some(msg => msg.attachments && msg.attachments.length > 0) && (
-                                   <div className="flex items-center gap-1">
-                                     <Paperclip className="h-3 w-3" />
-                                     <span>
-                                       {ticket.messages.reduce((total, msg) => total + (msg.attachments?.length || 0), 0)} anexos
-                                     </span>
-                                   </div>
-                                 )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={ticket.priority === 'urgent' || ticket.priority === 'high' ? 'destructive' : 'secondary'}>
-                                {ticket.priority === 'low' ? 'Baixa' : 
-                                 ticket.priority === 'medium' ? 'Média' : 
-                                 ticket.priority === 'high' ? 'Alta' : 'Urgente'}
-                              </Badge>
-                              <Badge variant="outline">
-                                {ticket.messages.length} mensagens
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <AdminTicketsManager />
           </TabsContent>
         </Tabs>
       </div>
