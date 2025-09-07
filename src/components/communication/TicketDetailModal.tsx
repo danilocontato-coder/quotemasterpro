@@ -87,8 +87,11 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
     }
   };
 
-  const formatDateTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('pt-BR', {
+  const formatDateTime = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Data não disponível';
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return 'Data inválida';
+    return date.toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -97,8 +100,11 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
     });
   };
 
-  const formatDate = (timestamp: string) => {
-    return new Date(timestamp).toLocaleDateString('pt-BR', {
+  const formatDate = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Data não disponível';
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return 'Data inválida';
+    return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -222,11 +228,11 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                   </div>
                   <div>
                     <p className="text-muted-foreground">Criado em</p>
-                    <p className="font-medium">{formatDateTime(ticket.createdAt)}</p>
+                    <p className="font-medium">{formatDateTime(ticket.created_at || ticket.createdAt)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Criado por</p>
-                    <p className="font-medium">{ticket.createdByName}</p>
+                    <p className="font-medium">{ticket.createdByName || ticket.client_name || 'Usuário não identificado'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Atribuído a</p>
@@ -234,7 +240,7 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                   </div>
                   <div>
                     <p className="text-muted-foreground">Última atualização</p>
-                    <p className="font-medium">{formatDateTime(ticket.updatedAt)}</p>
+                    <p className="font-medium">{formatDateTime(ticket.updated_at || ticket.updatedAt)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -271,13 +277,16 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-medium">
-                        {msg.senderName}
+                        {msg.senderName || 
+                          (msg.senderType === 'client' ? ticket.createdByName || ticket.client_name || 'Cliente' : 
+                           msg.senderType === 'support' ? 'Suporte' : 
+                           msg.senderType === 'admin' ? 'Administrador' : 'Sistema')}
                       </span>
                       {msg.senderType === 'client' && <User className="h-3 w-3 text-blue-600" />}
                       {msg.senderType === 'support' && <Headphones className="h-3 w-3 text-green-600" />}
                       {msg.senderType === 'admin' && <AlertTriangle className="h-3 w-3 text-red-600" />}
                       <span className="text-xs text-muted-foreground">
-                        {formatDateTime(msg.timestamp)}
+                        {formatDateTime(msg.timestamp || msg.created_at)}
                       </span>
                       {msg.isInternal && (
                         <Badge variant="outline" className="text-xs">
