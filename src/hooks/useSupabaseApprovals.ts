@@ -55,9 +55,10 @@ export const useSupabaseApprovals = () => {
 
       // Aplicar filtros baseados no role do usuário ANTES de buscar
       if (user.role !== 'admin') {
-        if (user.role === 'client' && user.clientId) {
-          console.log('📋 useSupabaseApprovals: User is client, will filter by client quotes');
-          // Para clientes, primeiro buscar IDs das cotações do cliente
+        const isClientScoped = ['client', 'manager', 'collaborator'].includes(user.role);
+        if (isClientScoped && user.clientId) {
+          console.log('📋 useSupabaseApprovals: User is client-scoped, will filter by client quotes');
+          // Para clientes/manager/collaborator, buscar IDs das cotações do cliente
           const { data: clientQuotes } = await supabase
             .from('quotes')
             .select('id')
