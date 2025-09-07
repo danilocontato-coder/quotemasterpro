@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Send, Clock, User, Headphones, AlertTriangle, Paperclip, CheckCircle2, XCircle } from "lucide-react";
+import { Send, Clock, User, Headphones, AlertTriangle, Paperclip, CheckCircle2, XCircle, X } from "lucide-react";
 import { useSupabaseTickets } from "@/hooks/useSupabaseTickets";
 import { useAuth } from "@/contexts/AuthContext";
 import { getTicketStatusColor, getTicketPriorityColor } from "@/data/mockCommunication";
@@ -22,7 +22,9 @@ interface TicketDetailModalProps {
 export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }: TicketDetailModalProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { addTicketMessage, updateTicketStatus } = useSupabaseTickets();
   const { user } = useAuth();
 
@@ -45,8 +47,31 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
 
     setIsLoading(true);
     try {
-      await addTicketMessage(ticket.id, message.trim(), [], user?.role === 'admin');
+      // Upload attachments to storage first
+      const uploadedAttachments: string[] = [];
+      
+      for (const file of attachments) {
+        console.log("🔍 DEBUG: Uploading file", file.name);
+        const safeName = sanitizeFilename(file.name);
+        const fileName = `${Date.now()}-${safeName}`;
+        const filePath = `tickets/${fileName}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, file);
+        
+        if (uploadError) {
+          console.error('❌ Error uploading file:', uploadError);
+          throw new Error(`Erro ao enviar arquivo ${file.name}: ${uploadError.message}`);
+        }
+        
+        console.log("✅ File uploaded:", uploadData.path);
+        uploadedAttachments.push(uploadData.path);
+      }
+
+      await addTicketMessage(ticket.id, message.trim(), uploadedAttachments, user?.role === 'admin');
       setMessage("");
+      setAttachments([]);
       if (onTicketUpdate) {
         onTicketUpdate();
       }
@@ -388,9 +413,32 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                 rows={3}
               />
               <div className="flex justify-between items-center">
-                <p className="text-sm text-muted-foreground">
-                  Pressione Enter para enviar, Shift+Enter para nova linha
-                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      setAttachments(prev => [...prev, ...files]);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                  {attachments.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {attachments.length} arquivo(s) selecionado(s)
+                    </span>
+                  )}
+                </div>
                 <Button
                   onClick={handleSendMessage}
                   disabled={!message.trim() || isLoading}
@@ -400,6 +448,26 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                   {isLoading ? "Enviando..." : "Enviar"}
                 </Button>
               </div>
+              
+              {/* Show selected attachments */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {attachments.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-1 bg-muted px-2 py-1 rounded text-xs"
+                    >
+                      <span>{file.name}</span>
+                      <button
+                        onClick={() => setAttachments(prev => prev.filter((_, i) => i !== index))}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-4">

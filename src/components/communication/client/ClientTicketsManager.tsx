@@ -267,8 +267,8 @@ export function ClientTicketsManager() {
                   ))}
                 </div>
 
-                {/* Add Message (only for open/in_progress tickets) */}
-                {(selectedTicketData.status === 'open' || selectedTicketData.status === 'in_progress') && (
+                {/* Add Message (only for open/in_progress/novo tickets) */}
+                {['novo', 'open', 'in_progress'].includes(selectedTicketData.status) && (
                   <div className="border-t pt-4">
                     <Label htmlFor="message">Adicionar Comentário</Label>
                     <Textarea
@@ -279,14 +279,31 @@ export function ClientTicketsManager() {
                       rows={3}
                       className="mt-2"
                     />
-                    <Button 
-                      onClick={handleAddMessage}
-                      className="mt-2"
-                      disabled={!newMessageContent.trim()}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Enviar Comentário
-                    </Button>
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-xs text-muted-foreground">
+                        Você pode enviar mensagens para se comunicar com nossa equipe de suporte
+                      </p>
+                      <Button 
+                        onClick={handleAddMessage}
+                        disabled={!newMessageContent.trim() || isLoading}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        {isLoading ? "Enviando..." : "Enviar Comentário"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Status message for closed/resolved tickets */}
+                {['resolved', 'closed'].includes(selectedTicketData.status) && (
+                  <div className="border-t pt-4 text-center">
+                    <div className="bg-muted rounded-lg p-4">
+                      <CheckCircle className="h-8 w-8 mx-auto text-green-600 mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Este ticket foi {selectedTicketData.status === 'resolved' ? 'resolvido' : 'fechado'} e não aceita mais comentários.
+                        {selectedTicketData.status === 'resolved' && ' Caso precise de mais ajuda, crie um novo ticket.'}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
