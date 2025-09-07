@@ -433,6 +433,120 @@ export type Database = {
           },
         ]
       }
+      coupon_usages: {
+        Row: {
+          client_id: string | null
+          coupon_id: string
+          discount_amount: number
+          final_amount: number
+          id: string
+          original_amount: number
+          subscription_plan_id: string | null
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          coupon_id: string
+          discount_amount: number
+          final_amount: number
+          id?: string
+          original_amount: number
+          subscription_plan_id?: string | null
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          coupon_id?: string
+          discount_amount?: number
+          final_amount?: number
+          id?: string
+          original_amount?: number
+          subscription_plan_id?: string | null
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_usages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usages_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          max_discount_amount: number | null
+          minimum_purchase_amount: number | null
+          name: string
+          starts_at: string
+          target_audience: string
+          target_plans: string[] | null
+          updated_at: string
+          usage_count: number
+          usage_limit: number | null
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type: string
+          discount_value: number
+          expires_at?: string | null
+          id?: string
+          max_discount_amount?: number | null
+          minimum_purchase_amount?: number | null
+          name: string
+          starts_at?: string
+          target_audience?: string
+          target_plans?: string[] | null
+          updated_at?: string
+          usage_count?: number
+          usage_limit?: number | null
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          max_discount_amount?: number | null
+          minimum_purchase_amount?: number | null
+          name?: string
+          starts_at?: string
+          target_audience?: string
+          target_plans?: string[] | null
+          updated_at?: string
+          usage_count?: number
+          usage_limit?: number | null
+        }
+        Relationships: []
+      }
       deliveries: {
         Row: {
           actual_delivery_date: string | null
@@ -1728,6 +1842,23 @@ export type Database = {
           state: string
           supplier_id: string
           visibility_scope: string
+        }[]
+      }
+      validate_coupon: {
+        Args: {
+          coupon_code: string
+          plan_id?: string
+          purchase_amount?: number
+          user_uuid?: string
+        }
+        Returns: {
+          coupon_id: string
+          discount_type: string
+          discount_value: number
+          error_message: string
+          final_discount: number
+          max_discount_amount: number
+          valid: boolean
         }[]
       }
     }

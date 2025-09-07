@@ -148,6 +148,12 @@ const navigation = [
         href: '/admin/whatsapp-templates',
         icon: MessageSquare,
         description: 'Modelos de mensagem'
+      },
+      {
+        name: 'Gestão de Cupons',
+        href: '/admin/coupons',
+        icon: CreditCard,
+        description: 'Cupons de desconto'
       }
     ]
   },

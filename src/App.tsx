@@ -37,6 +37,7 @@ const SuppliersManagement = lazy(() => import('@/pages/admin/SuppliersManagement
 const PlansManagement = lazy(() => import('@/pages/admin/PlansManagement'));
 const IntegrationsManagement = lazy(() => import('@/pages/admin/IntegrationsManagement'));
 const WhatsAppTemplates = lazy(() => import('@/pages/admin/WhatsAppTemplates'));
+const CouponsManagement = lazy(() => import('@/pages/admin/CouponsManagement').then(m => ({ default: m.default })));
 const CommunicationManagement = lazy(() => import('@/pages/admin/CommunicationManagement'));
 const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs'));
 
@@ -362,6 +363,11 @@ function App() {
                   <Route path="whatsapp-templates" element={
                     <SuspenseWithTransition lines={5} className="p-4">
                       <WhatsAppTemplates />
+                    </SuspenseWithTransition>
+                  } />
+                  <Route path="coupons" element={
+                    <SuspenseWithTransition lines={5} className="p-4">
+                      <CouponsManagement />
                     </SuspenseWithTransition>
                   } />
                   <Route path="communication" element={
