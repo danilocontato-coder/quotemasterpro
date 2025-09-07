@@ -155,26 +155,111 @@ export const useSupabaseQuotes = () => {
 
   const createQuote = async (quoteData: any) => {
     try {
+      console.log('🔍 DEBUG: Criando cotação com dados:', quoteData);
+      
       if (!user?.clientId) {
         throw new Error('Cliente não identificado');
       }
 
-      const { data, error } = await supabase
+      // Normalize deadline to ISO string or null
+      const deadline = quoteData.deadline ? new Date(quoteData.deadline).toISOString() : null;
+      
+      console.log('🔍 DEBUG: deadline normalizado:', deadline);
+
+      // Step 1: Get client_id via RPC and insert minimum required data
+      const { data: clientIdData, error: clientIdError } = await supabase
+        .rpc('get_current_user_client_id');
+
+      if (clientIdError) {
+        console.error('❌ Error getting client_id:', clientIdError);
+        throw clientIdError;
+      }
+
+      console.log('🔍 DEBUG: client_id obtido via RPC:', clientIdData);
+
+      // Generate quote ID
+      const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
+      
+      // Minimum payload for INSERT policy compliance
+      const insertPayload = {
+        id: quoteId,
+        title: quoteData.title,
+        client_id: clientIdData,
+        client_name: 'Cliente',
+        created_by: user.id
+      };
+
+      console.log('🔍 DEBUG: Payload mínimo para insert:', insertPayload);
+
+      // Step 1: INSERT minimum required fields
+      const { error: insertError } = await supabase
         .from('quotes')
-        .insert([{
-          ...quoteData,
-          client_id: user.clientId,
-          created_by: user.id,
-          status: 'draft'
-        }])
-        .select()
-        .single();
+        .insert(insertPayload);
 
-      if (error) throw error;
+      if (insertError) {
+        console.error('❌ Error inserting quote:', insertError);
+        throw insertError;
+      }
 
-      console.log('✅ Quote created successfully:', data.id);
+      console.log('✅ Quote inserted successfully, ID:', quoteId);
+
+      // Step 2: UPDATE optional fields
+      const { error: updateError } = await supabase
+        .from('quotes')
+        .update({
+          description: quoteData.description || null,
+          deadline: deadline,
+          supplier_scope: quoteData.supplier_scope || 'local',
+          items_count: quoteData.items?.length || 0,
+          selected_supplier_ids: quoteData.supplier_ids || []
+        })
+        .eq('id', quoteId);
+
+      if (updateError) {
+        console.error('❌ Error updating quote:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ Quote updated with optional fields');
+
+      // Step 3: Insert items if provided
+      if (quoteData.items && quoteData.items.length > 0) {
+        const itemsToInsert = quoteData.items.map((item: any) => ({
+          quote_id: quoteId,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price || 0,
+          total: (item.quantity || 0) * (item.unit_price || 0),
+          product_id: item.product_id
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('quote_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) {
+          console.error('❌ Error inserting quote items:', itemsError);
+          throw itemsError;
+        }
+
+        console.log('✅ Quote items inserted successfully');
+      }
+
+      // Step 4: Fetch the complete quote
+      const { data: completeQuote, error: fetchError } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('❌ Error fetching complete quote:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('✅ Quote created successfully:', quoteId);
       await fetchQuotes(); // Refresh the list
-      return data;
+      return completeQuote;
     } catch (error) {
       console.error('❌ Error creating quote:', error);
       throw error;
