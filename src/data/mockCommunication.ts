@@ -404,14 +404,22 @@ export const mockTickets: Ticket[] = [
 ];
 
 export const ticketCategories = [
-  'Técnico',
-  'Dúvida',
-  'Solicitação',
-  'Reclamação',
-  'Sugestão',
-  'Financeiro',
-  'Acesso',
-  'Outro'
+  'Administração e Gestão',
+  'Conservação e Limpeza',
+  'Elétrica e Energia',
+  'Financeiro e Contabilidade',
+  'Hidráulica e Saneamento',
+  'Jardim e Paisagismo',
+  'Jurídico e Legal',
+  'Manutenção Predial',
+  'Obras e Reformas',
+  'Pintura e Acabamento',
+  'Portaria e Segurança',
+  'Serralheria e Metalúrgica',
+  'Sistemas e TI',
+  'Suporte Técnico',
+  'Telecomunicações',
+  'Outros'
 ];
 
 export const getAnnouncementTypeColor = (type: string) => {
