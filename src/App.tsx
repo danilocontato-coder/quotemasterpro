@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, Suspense, lazy, startTransition } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,6 +11,7 @@ import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
 import { DebugWrapper } from '@/components/debug/DebugWrapper';
+import { SuspenseWithTransition } from '@/components/layout/SuspenseWithTransition';
 
 // Layouts principais - import estático para evitar erro de dynamic import
 import MainLayout from '@/components/layout/MainLayout';
@@ -148,19 +149,19 @@ function App() {
               <Routes>
                 {/* Auth routes com lazy loading */}
                 <Route path="/auth/login" element={
-                  <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                  <SuspenseWithTransition lines={10} className="p-6">
                     <Login />
-                  </Suspense>
+                  </SuspenseWithTransition>
                 } />
                 <Route path="/auth/register" element={
-                  <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                  <SuspenseWithTransition lines={10} className="p-6">
                     <Register />
-                  </Suspense>
+                  </SuspenseWithTransition>
                 } />
                 <Route path="/auth/forgot-password" element={
-                  <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                  <SuspenseWithTransition lines={10} className="p-6">
                     <ForgotPassword />
-                  </Suspense>
+                  </SuspenseWithTransition>
                 } />
                 
                 {/* Public routes */}
@@ -173,9 +174,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Dashboard />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="quotes" element={<Navigate to="/quotes" replace />} />
                   <Route path="suppliers" element={<Navigate to="/suppliers" replace />} />
@@ -197,9 +198,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Quotes />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/suppliers" element={
@@ -208,9 +209,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Suppliers />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/products" element={
@@ -219,9 +220,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Products />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/approvals" element={
@@ -230,9 +231,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Approvals />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/approval-levels" element={
@@ -241,9 +242,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <ApprovalLevels />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/payments" element={
@@ -252,9 +253,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Payments />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/users" element={
@@ -263,9 +264,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Users />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/communication" element={
@@ -274,9 +275,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Communication />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/notifications" element={
@@ -285,9 +286,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Notifications />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/settings" element={
@@ -296,9 +297,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Settings />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/permissions" element={
@@ -307,9 +308,9 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Permissions />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
                 <Route path="/reports" element={
@@ -318,64 +319,64 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <Reports />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
 
                 {/* Admin routes - SuperAdmin Panel com lazy loading */}
                 <Route path="/admin" element={
                   <ProtectedRoute allowedRoles={['admin']}>
-                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                    <SuspenseWithTransition lines={10} className="p-6">
                       <SuperAdminLayout />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   </ProtectedRoute>
                 }>
                   <Route path="superadmin" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SuperAdminDashboard />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="clients" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <ClientsManagement />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="suppliers" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SuppliersManagement />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="plans" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <PlansManagement />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="integrations" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <IntegrationsManagement />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="whatsapp-templates" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <WhatsAppTemplates />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="accounts" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <AccountsManagement />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="audit" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <AuditLogs />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="settings" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SystemSettings />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route index element={<Navigate to="/admin/superadmin" replace />} />
                 </Route>
@@ -383,40 +384,40 @@ function App() {
                 {/* Supplier routes */}
                 <Route path="/supplier" element={
                   <ProtectedRoute allowedRoles={['supplier']}>
-                    <Suspense fallback={<OptimizedSkeleton lines={10} className="p-6" />}>
+                    <SuspenseWithTransition lines={10} className="p-6">
                       <SupplierLayout />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SupplierDashboard />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="quotes" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SupplierQuotes />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="products" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SupplierProducts />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="history" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SupplierHistory />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="financial" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SupplierFinancial />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                   <Route path="deliveries" element={
-                    <Suspense fallback={<OptimizedSkeleton lines={5} className="p-4" />}>
+                    <SuspenseWithTransition lines={5} className="p-4">
                       <SupplierDeliveries />
-                    </Suspense>
+                    </SuspenseWithTransition>
                   } />
                 </Route>
 
