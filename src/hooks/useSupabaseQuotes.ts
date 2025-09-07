@@ -270,7 +270,7 @@ export const useSupabaseQuotes = () => {
         console.log('✅ Fornecedores específicos registrados para a cotação');
       }
 
-      // Step 4: Fetch the complete quote
+      // Step 5: Fetch the complete quote
       const { data: completeQuote, error: fetchError } = await supabase
         .from('quotes')
         .select('*')
@@ -280,6 +280,34 @@ export const useSupabaseQuotes = () => {
       if (fetchError) {
         console.error('❌ Error fetching complete quote:', fetchError);
         throw fetchError;
+      }
+
+      // Step 6: Create notification for new quote
+      try {
+        const { error: notificationError } = await supabase.functions.invoke('create-notification', {
+          body: {
+            client_id: clientIdData,
+            notify_all_client_users: true,
+            title: 'Nova Cotação Criada',
+            message: `A cotação #${quoteId} foi criada: ${quoteData.title}`,
+            type: 'quote',
+            priority: 'normal',
+            action_url: '/quotes',
+            metadata: {
+              quote_id: quoteId,
+              quote_title: quoteData.title,
+              items_count: quoteData.items?.length || 0
+            }
+          }
+        });
+
+        if (notificationError) {
+          console.error('⚠️ Error creating notification (non-critical):', notificationError);
+        } else {
+          console.log('✅ Notification created for new quote');
+        }
+      } catch (notificationError) {
+        console.error('⚠️ Error creating notification (non-critical):', notificationError);
       }
 
       console.log('✅ Quote created successfully:', quoteId);

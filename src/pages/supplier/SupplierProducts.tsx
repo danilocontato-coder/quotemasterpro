@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Pagination,
   PaginationContent,
@@ -14,13 +15,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Plus, Search, Edit, Package, AlertTriangle, MoreHorizontal, Eye, Power, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Package, AlertTriangle, MoreHorizontal, Eye, Power, Trash2, TestTube } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useSupabaseSupplierProducts, SupplierProduct } from "@/hooks/useSupabaseSupplierProducts";
 import { CreateProductModal } from "@/components/supplier/CreateProductModal";
 import { EditProductModal } from "@/components/supplier/EditProductModal";
 import { StockManagementModal } from "@/components/supplier/StockManagementModal";
 import { CategoryManagerModal } from "@/components/supplier/CategoryManagerModal";
+import { NotificationTester } from "@/components/debug/NotificationTester";
 import { toast } from "@/hooks/use-toast";
 
 export default function SupplierProducts() {
@@ -158,20 +160,22 @@ export default function SupplierProducts() {
             Gerencie seu catálogo de produtos e estoque
           </p>
         </div>
-        <Button 
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Produto
-        </Button>
-        <Button 
-          onClick={() => setIsCategoryModalOpen(true)}
-          variant="outline"
-        >
-          <Package className="mr-2 h-4 w-4" />
-          Gerenciar Categorias
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Produto
+          </Button>
+          <Button 
+            onClick={() => setIsCategoryModalOpen(true)}
+            variant="outline"
+          >
+            <Package className="mr-2 h-4 w-4" />
+            Gerenciar Categorias
+          </Button>
+        </div>
       </div>
 
       {/* Stock Alerts */}
@@ -193,8 +197,21 @@ export default function SupplierProducts() {
         </Card>
       )}
 
-      {/* Filters and Search */}
-      <Card className="card-corporate">
+      <Tabs defaultValue="products" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="products" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Produtos
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <TestTube className="h-4 w-4" />
+            Teste de Notificações
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="products" className="space-y-6">
+          {/* Filters and Search */}
+          <Card className="card-corporate">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Filtros</CardTitle>
         </CardHeader>
@@ -386,6 +403,12 @@ export default function SupplierProducts() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <NotificationTester />
+        </TabsContent>
+      </Tabs>
 
       {/* Modals */}
       <CreateProductModal 

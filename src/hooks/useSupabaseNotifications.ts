@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Notification {
@@ -77,7 +78,7 @@ export function useSupabaseNotifications() {
     fetchNotifications();
   }, [user]);
 
-  // Subscribe to real-time updates
+  // Subscribe to real-time updates with toast notifications
   useEffect(() => {
     if (!user) return;
 
@@ -88,13 +89,44 @@ export function useSupabaseNotifications() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('🔔 [NOTIFICATIONS] Real-time update received:', payload);
+          console.log('🔔 [NOTIFICATIONS] New notification received:', payload);
+          
+          const newNotification = payload.new as any;
+          
+          // Show toast for new notification
+          toast(newNotification.title, {
+            description: newNotification.message,
+            duration: 5000,
+            action: newNotification.action_url ? {
+              label: 'Ver',
+              onClick: () => {
+                if (newNotification.action_url) {
+                  window.location.href = newNotification.action_url;
+                }
+              }
+            } : undefined
+          });
+
+          // Refresh notifications list
+          fetchNotifications();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('🔔 [NOTIFICATIONS] Notification updated:', payload);
           fetchNotifications();
         }
       )
@@ -148,6 +180,36 @@ export function useSupabaseNotifications() {
     }
   };
 
+  // Create notification helper
+  const createNotification = async (notificationData: {
+    title: string;
+    message: string;
+    type?: 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket';
+    priority?: 'low' | 'normal' | 'high';
+    action_url?: string;
+    metadata?: Record<string, any>;
+    client_id?: string;
+    supplier_id?: string;
+    notify_all_client_users?: boolean;
+  }) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-notification', {
+        body: {
+          user_id: user?.id,
+          ...notificationData
+        }
+      });
+
+      if (error) throw error;
+
+      console.log('✅ Notification created successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Error creating notification:', error);
+      throw error;
+    }
+  };
+
   const formatTime = (created_at: string) => {
     const now = new Date();
     const notificationTime = new Date(created_at);
@@ -177,6 +239,7 @@ export function useSupabaseNotifications() {
     error,
     markAsRead,
     markAllAsRead,
+    createNotification,
     refetch: fetchNotifications,
   };
 }
