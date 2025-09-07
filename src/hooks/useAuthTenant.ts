@@ -45,10 +45,21 @@ export const useAuthTenant = () => {
     try {
       setTenantState(prev => ({ ...prev, isLoading: true }));
 
-      // Buscar profile atualizado
+      // ADMIN não precisa de vinculação com cliente
+      if (user.role === 'admin') {
+        console.log('🔧 Admin detectado - pulando vinculação de cliente');
+        setTenantState({
+          clientId: null,
+          onboardingCompleted: true, // Admin sempre tem onboarding completo
+          isLoading: false
+        });
+        return;
+      }
+
+      // Buscar profile atualizado para não-admins
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('client_id, onboarding_completed, tenant_type')
+        .select('client_id, onboarding_completed, tenant_type, role')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -57,6 +68,18 @@ export const useAuthTenant = () => {
         throw error;
       }
 
+      // Para suppliers, verificar supplier_id ao invés de client_id
+      if (user.role === 'supplier') {
+        const hasSupplierBinding = !!user.supplierId;
+        setTenantState({
+          clientId: user.supplierId || null,
+          onboardingCompleted: hasSupplierBinding,
+          isLoading: false
+        });
+        return;
+      }
+
+      // Para outros usuários (client, manager, collaborator), verificar client_id
       const hasClientId = !!profile?.client_id;
       
       // Se tem client_id mas onboarding não foi marcado como completed, auto-completar
@@ -83,7 +106,7 @@ export const useAuthTenant = () => {
       console.error('Erro ao verificar status do tenant:', error);
       setTenantState({
         clientId: null,
-        onboardingCompleted: false,
+        onboardingCompleted: user.role === 'admin', // Admin sempre completo
         isLoading: false
       });
     }
@@ -187,8 +210,8 @@ export const useAuthTenant = () => {
     ensureBound,
     refreshTenantStatus,
     
-    // Helpers
-    needsOnboarding: !tenantState.onboardingCompleted && !tenantState.isLoading,
-    isReady: tenantState.onboardingCompleted && !!tenantState.clientId
+    // Helpers - Admin sempre ready, outros precisam de vinculação
+    needsOnboarding: !tenantState.onboardingCompleted && !tenantState.isLoading && user?.role !== 'admin',
+    isReady: tenantState.onboardingCompleted || user?.role === 'admin'
   };
 };
