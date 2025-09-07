@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { SuperAdminSidebar } from './SuperAdminSidebar';
 import { UserDropdown } from './UserDropdown';
 import { RoleBasedNotificationDropdown } from './RoleBasedNotificationDropdown';
-import { NotificationToast } from '@/components/common/NotificationToast';
+
 import { SystemMetricsBar } from '@/components/admin/SystemMetricsBar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,6 @@ export const SuperAdminLayout = () => {
 
   return (
     <>
-      <NotificationToast />
       <div className="h-screen bg-background flex">
       {/* Sidebar */}
       <SuperAdminSidebar />

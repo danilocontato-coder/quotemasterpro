@@ -39,6 +39,12 @@ export function NotificationDropdown() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useSupabaseNotifications();
   const navigate = useNavigate();
 
+  console.log('🔔 [DROPDOWN] Rendering with notifications:', {
+    total: notifications.length,
+    unread: unreadCount,
+    isLoading
+  });
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -90,8 +96,10 @@ export function NotificationDropdown() {
                 key={notification.id}
                 className={`p-4 cursor-pointer ${!notification.read ? 'bg-primary/5' : ''}`}
                 onClick={() => {
+                  console.log('🔔 [DROPDOWN] Clicking notification:', notification.id);
                   markAsRead(notification.id);
                   if (notification.action_url) {
+                    console.log('🔔 [DROPDOWN] Navigating to:', notification.action_url);
                     navigate(notification.action_url);
                   }
                 }}

@@ -78,7 +78,7 @@ export function useSupabaseNotifications() {
     fetchNotifications();
   }, [user]);
 
-  // Subscribe to real-time updates with toast notifications
+  // Subscribe to real-time updates with immediate toast notifications
   useEffect(() => {
     if (!user) return;
 
@@ -99,10 +99,10 @@ export function useSupabaseNotifications() {
           
           const newNotification = payload.new as any;
           
-          // Show toast for new notification
+          // Show immediate toast for new notification
           toast(newNotification.title, {
             description: newNotification.message,
-            duration: 5000,
+            duration: newNotification.priority === 'high' ? 8000 : 5000,
             action: newNotification.action_url ? {
               label: 'Ver',
               onClick: () => {
@@ -113,8 +113,20 @@ export function useSupabaseNotifications() {
             } : undefined
           });
 
-          // Refresh notifications list
-          fetchNotifications();
+          // Add notification to state immediately
+          const formattedNotification = {
+            id: newNotification.id,
+            title: newNotification.title,
+            message: newNotification.message,
+            type: newNotification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
+            created_at: newNotification.created_at,
+            read: false,
+            priority: newNotification.priority as 'low' | 'normal' | 'high',
+            action_url: newNotification.action_url,
+            metadata: newNotification.metadata,
+          };
+
+          setNotifications(prev => [formattedNotification, ...prev]);
         }
       )
       .on(
