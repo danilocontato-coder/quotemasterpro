@@ -66,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
   useEffect(() => {
+    console.log('🔍 [DEBUG-AUTH] AuthProvider useEffect triggered for session initialization');
     // Get initial session
     const initializeAuth = async () => {
       try {
@@ -96,28 +97,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes - com filtros para evitar reloads desnecessários
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('🔄 Auth state changed:', event, { hasSession: !!session, userId: session?.user?.id });
+        console.log('🔍 [DEBUG-AUTH] Auth state changed:', {
+          event,
+          hasSession: !!session,
+          userId: session?.user?.id,
+          currentUserId: user?.id,
+          timestamp: new Date().toISOString(),
+          pageHidden: document.hidden
+        });
         
         // Ignorar eventos que não requerem ação (evitar loops)
         if (event === 'TOKEN_REFRESHED' && session?.user?.id === user?.id) {
-          console.log('🔄 Token refresh - mantendo estado atual');
+          console.log('🔍 [DEBUG-AUTH] Token refresh - mantendo estado atual');
           return;
         }
         
         // Verificar se página está visível antes de processar mudanças
         if (document.hidden && event === 'SIGNED_IN') {
-          console.log('🔄 Sign in detectado com página oculta - adiando processamento');
+          console.log('🔍 [DEBUG-AUTH] Sign in detectado com página oculta - adiando processamento');
           return;
         }
         
+        console.log('🔍 [DEBUG-AUTH] Processando mudança de auth state...');
         setSession(session);
         
         if (session?.user) {
           // Use setTimeout para evitar bloquear mudança de estado de auth
           setTimeout(() => {
+            console.log('🔍 [DEBUG-AUTH] Chamando fetchUserProfile...');
             fetchUserProfile(session.user);
           }, 0);
         } else {
+          console.log('🔍 [DEBUG-AUTH] Sem sessão - limpando user state');
           setUser(null);
           setForcePasswordChange(false);
           setIsLoading(false);
@@ -129,6 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
+    console.log('🔍 [DEBUG-AUTH] fetchUserProfile called for user:', supabaseUser.id);
     setIsLoading(true);
     
     try {

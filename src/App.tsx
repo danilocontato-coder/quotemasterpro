@@ -10,6 +10,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
+import { useDebugReloads } from '@/hooks/useDebugReloads';
 
 // Layouts principais - import estático para evitar erro de dynamic import
 import MainLayout from '@/components/layout/MainLayout';
@@ -86,6 +87,9 @@ const queryClient = new QueryClient({
 function App() {
   // Monitor de performance global
   usePerformanceMonitor();
+  
+  // Debug profundo de reloads
+  useDebugReloads();
   
   // Sistema robusto de prevenção de reloads automáticos
   useEffect(() => {

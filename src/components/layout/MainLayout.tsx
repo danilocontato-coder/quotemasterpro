@@ -6,14 +6,34 @@ import { Input } from "@/components/ui/input";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 import { SystemStatusHeader } from "./SystemStatusHeader";
-import { useRealtimeDataSync } from "@/hooks/useRealtimeDataSync";
+import { useRealtimeOptimized } from "@/hooks/useRealtimeOptimized";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useRef } from "react";
 
 export function MainLayout() {
   const { user } = useAuth();
+  const mountTimeRef = useRef(Date.now());
+  const renderCountRef = useRef(0);
   
-  // Sincronização em tempo real dos dados
-  useRealtimeDataSync();
+  renderCountRef.current++;
+  
+  console.log('🔍 [DEBUG-LAYOUT] MainLayout render:', {
+    renderCount: renderCountRef.current,
+    userId: user?.id,
+    userRole: user?.role,
+    timeSinceMount: Date.now() - mountTimeRef.current,
+    timestamp: new Date().toISOString()
+  });
+  
+  useEffect(() => {
+    console.log('🔍 [DEBUG-LAYOUT] MainLayout mounted at:', new Date().toISOString());
+    return () => {
+      console.log('🔍 [DEBUG-LAYOUT] MainLayout unmounting after:', Date.now() - mountTimeRef.current, 'ms');
+    };
+  }, []);
+  
+  // Sincronização em tempo real otimizada
+  useRealtimeOptimized();
 
   return (
     <SidebarProvider>

@@ -10,6 +10,7 @@ export function useRealtimeDataSync() {
   const { user } = useAuth();
 
   useEffect(() => {
+    console.log('🔍 [DEBUG-REALTIME] useRealtimeDataSync effect triggered for user:', user?.id);
     if (!user?.id) return;
 
     // Debounce para evitar múltiplas atualizações
@@ -97,9 +98,11 @@ export function useRealtimeDataSync() {
         );
     }
 
+    console.log('🔍 [DEBUG-REALTIME] Subscribing to channel...');
     channel.subscribe();
 
     return () => {
+      console.log('🔍 [DEBUG-REALTIME] Cleaning up realtime subscriptions...');
       clearTimeout(updateTimeout);
       supabase.removeChannel(channel);
     };

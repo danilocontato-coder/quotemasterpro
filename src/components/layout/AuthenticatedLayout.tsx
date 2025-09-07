@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from './MainLayout';
@@ -8,6 +8,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export const AuthenticatedLayout: React.FC = () => {
   const { user, isLoading } = useAuth();
+  const mountTimeRef = useRef(Date.now());
+  const renderCountRef = useRef(0);
+  
+  renderCountRef.current++;
+  
+  console.log('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout render:', {
+    renderCount: renderCountRef.current,
+    isLoading,
+    userId: user?.id,
+    userRole: user?.role,
+    timeSinceMount: Date.now() - mountTimeRef.current,
+    timestamp: new Date().toISOString()
+  });
+  
+  useEffect(() => {
+    console.log('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout mounted');
+    return () => {
+      console.log('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout unmounting after:', Date.now() - mountTimeRef.current, 'ms');
+    };
+  }, []);
 
   if (isLoading) {
     return (

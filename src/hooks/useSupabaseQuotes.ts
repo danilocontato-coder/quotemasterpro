@@ -36,8 +36,8 @@ export const useSupabaseQuotes = () => {
   const userRole = user?.role;
   const clientId = user?.clientId;
 
-  console.log('🎯 useSupabaseQuotes hook initialized');
-  console.log('👤 useSupabaseQuotes - user from useAuth:', user?.id, user?.role);
+  console.log('🔍 [DEBUG-QUOTES] useSupabaseQuotes hook initialized');
+  console.log('🔍 [DEBUG-QUOTES] user from useAuth:', userId, userRole, clientId);
 
   const fetchQuotes = async () => {
     try {
@@ -560,57 +560,66 @@ export const useSupabaseQuotes = () => {
           broadcast: { self: true }
         }
       })
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'quote_responses'
-        },
-        async (payload) => {
-          console.log('📨 Quote response change received:', payload);
-          
-          // Since we have database triggers handling the updates,
-          // we just need to refetch the affected quote to get the updated data
-          if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
-            const response = payload.eventType === 'INSERT' ? payload.new : payload.old;
-            const quoteId = response.quote_id;
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'quote_responses'
+          },
+          async (payload) => {
+            console.log('🔍 [DEBUG-QUOTES] 📨 Quote response change received:', payload);
             
-            console.log('🔄 Refreshing quote after response change:', quoteId);
+            // Só processar se página estiver visível
+            if (document.hidden) {
+              console.log('🔍 [DEBUG-QUOTES] ⏸️ Página oculta - ignorando resposta realtime');
+              return;
+            }
             
-            // Fetch the updated quote data (trigger will have updated responses_count and status)
-            const { data: updatedQuote } = await supabase
-              .from('quotes')
-              .select('*')
-              .eq('id', quoteId)
-              .single();
-            
-            if (updatedQuote) {
-              console.log('📊 Quote updated by trigger - responses_count:', updatedQuote.responses_count, 'status:', updatedQuote.status);
+            // Since we have database triggers handling the updates,
+            // we just need to refetch the affected quote to get the updated data
+            if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+              const response = payload.eventType === 'INSERT' ? payload.new : payload.old;
+              const quoteId = response.quote_id;
               
-              // Update the local state with the fresh data from database
-              setQuotes(prev => 
-                prev.map(quote => 
-                  quote.id === quoteId ? updatedQuote as Quote : quote
-                )
-              );
+              console.log('🔍 [DEBUG-QUOTES] 🔄 Refreshing quote after response change:', quoteId);
               
-              // Log update sem force refresh (deixar realtime handle)
-              console.log('✅ Quote updated by trigger - state sincronizado');
+              // Fetch the updated quote data (trigger will have updated responses_count and status)
+              const { data: updatedQuote } = await supabase
+                .from('quotes')
+                .select('*')
+                .eq('id', quoteId)
+                .single();
+              
+              if (updatedQuote) {
+                console.log('🔍 [DEBUG-QUOTES] 📊 Quote updated by trigger - responses_count:', updatedQuote.responses_count, 'status:', updatedQuote.status);
+                
+                // Update the local state with the fresh data from database
+                setQuotes(prev => 
+                  prev.map(quote => 
+                    quote.id === quoteId ? updatedQuote as Quote : quote
+                  )
+                );
+                
+                // Log update sem force refresh (deixar realtime handle)
+                console.log('🔍 [DEBUG-QUOTES] ✅ Quote updated by trigger - state sincronizado');
+              }
             }
           }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Quote responses subscription status:', status);
-      });
+        )
+        .subscribe((status) => {
+          console.log('🔍 [DEBUG-QUOTES] 📡 Quote responses subscription status:', status);
+        });
+    };
+
+    setupRealtime();
 
     return () => {
-      console.log('🔄 Cleaning up real-time subscriptions');
-      quotesSubscription.unsubscribe();
-      responsesSubscription.unsubscribe();
+      console.log('🔍 [DEBUG-QUOTES] 🔄 Cleaning up real-time subscriptions');
+      if (quotesSubscription) quotesSubscription.unsubscribe();
+      if (responsesSubscription) responsesSubscription.unsubscribe();
     };
-  }, [userId]); // Usar userId estável
+  }, [userId]); // CRÍTICO: usar apenas userId estável
 
   // Initial fetch - usando dependência estável
   useEffect(() => {
