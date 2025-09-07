@@ -302,33 +302,70 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                             const handleDownload = async (e: React.MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              
-                              console.log('🔍 Downloading attachment:', attachment);
-                              
+
                               try {
-                                const fileName = attachment.split('/').pop() || attachment;
-                                
-                                // Tentar obter URL assinada diretamente
-                                const { data, error } = await supabase.storage
-                                  .from('attachments')
-                                  .createSignedUrl(attachment, 3600);
-                                
-                                if (error) {
-                                  console.error('❌ Error creating signed URL:', error);
-                                  alert('Erro ao acessar o arquivo');
-                                  return;
-                                }
-                                
-                                if (!data?.signedUrl) {
-                                  alert('Arquivo não encontrado');
+                                // Se já for URL completa, abrir direto
+                                if (/^https?:\/\//i.test(attachment)) {
+                                  window.open(attachment, '_blank');
                                   return;
                                 }
 
-                                // Abrir em nova aba para visualizar ou fazer download
-                                window.open(data.signedUrl, '_blank');
-                                
-                              } catch (error) {
-                                console.error('❌ Error downloading file:', error);
+                                // Normalizar caminho relativo
+                                const baseName = (attachment.split('/').pop() || attachment).trim();
+                                const sanitizedBase = sanitizeFilename(baseName).replace(/^\//, '');
+
+                                const candidates: string[] = [];
+                                // Caminho original informado
+                                candidates.push(attachment.replace(/^\//, ''));
+                                // Tentativas padrão na pasta tickets
+                                candidates.push(`tickets/${sanitizedBase}`);
+                                candidates.push(`tickets/${baseName}`);
+
+                                let signedUrl: string | null = null;
+                                let lastErr: any = null;
+
+                                for (const key of candidates) {
+                                  const { data, error } = await supabase.storage
+                                    .from('attachments')
+                                    .createSignedUrl(key, 3600);
+                                  if (!error && data?.signedUrl) {
+                                    signedUrl = data.signedUrl;
+                                    break;
+                                  }
+                                  lastErr = error;
+                                }
+
+                                // Fallback: listar e tentar encontrar pelo nome, na pasta tickets e raiz
+                                if (!signedUrl) {
+                                  const tryListAndMatch = async (folder: string) => {
+                                    const { data: list, error: listErr } = await supabase.storage
+                                      .from('attachments')
+                                      .list(folder, { limit: 1000 });
+                                    if (listErr || !Array.isArray(list)) return null;
+                                    const found = list.find((item: any) => sanitizeFilename(item.name).toLowerCase().includes(sanitizedBase.toLowerCase()));
+                                    return found ? `${folder ? folder + '/' : ''}${found.name}` : null;
+                                  };
+
+                                  const foundKey = (await tryListAndMatch('tickets')) || (await tryListAndMatch(''));
+                                  if (foundKey) {
+                                    const { data, error } = await supabase.storage
+                                      .from('attachments')
+                                      .createSignedUrl(foundKey, 3600);
+                                    if (!error && data?.signedUrl) signedUrl = data.signedUrl;
+                                  }
+                                }
+
+                                if (!signedUrl) {
+                                  const msg = lastErr?.message === 'Bucket not found'
+                                    ? 'Bucket de anexos não encontrado. Verifique a configuração de Storage.'
+                                    : 'Arquivo não encontrado no armazenamento.';
+                                  alert(msg);
+                                  return;
+                                }
+
+                                window.open(signedUrl, '_blank');
+                              } catch (err) {
+                                console.error('Erro ao baixar o arquivo:', err);
                                 alert('Erro ao baixar o arquivo');
                               }
                             };
