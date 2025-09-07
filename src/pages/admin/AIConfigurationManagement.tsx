@@ -34,6 +34,16 @@ export default function AIConfigurationManagement() {
     aggressiveness: 'moderate'
   });
 
+  // Carregar configurações do Supabase quando disponível
+  React.useEffect(() => {
+    if (settings.length > 0) {
+      const generalConfig = settings.find(s => s.setting_key === 'general_config');
+      if (generalConfig && generalConfig.setting_value) {
+        setActiveSettings(generalConfig.setting_value);
+      }
+    }
+  }, [settings]);
+
   const handleSaveSettings = async () => {
     try {
       await updateSettings('general', activeSettings);
