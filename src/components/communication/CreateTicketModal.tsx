@@ -95,7 +95,7 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Headphones className="h-5 w-5" />
