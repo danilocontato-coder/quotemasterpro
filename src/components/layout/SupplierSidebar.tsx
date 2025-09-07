@@ -10,6 +10,7 @@ import {
   History
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { TransitionNavLink } from "./TransitionNavLink";
 import {
   Sidebar,
   SidebarContent,
@@ -71,14 +72,13 @@ export function SupplierSidebar() {
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild className="h-10">
-                    <NavLink 
+                    <TransitionNavLink 
                       to={item.url} 
-                      end
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
+                    </TransitionNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -95,14 +95,13 @@ export function SupplierSidebar() {
             <SidebarMenu className="space-y-1">
               <SidebarMenuItem>
                 <SidebarMenuButton asChild className="h-10">
-                  <NavLink 
+                  <TransitionNavLink 
                     to="/supplier/messages" 
-                    end
                     className={`nav-item ${isActive("/supplier/messages") ? 'active' : ''}`}
                   >
                     <MessageSquare className="h-5 w-5" />
                     {!isCollapsed && <span>Mensagens</span>}
-                  </NavLink>
+                  </TransitionNavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -119,14 +118,13 @@ export function SupplierSidebar() {
               {systemItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild className="h-10">
-                    <NavLink 
+                    <TransitionNavLink 
                       to={item.url} 
-                      end
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
+                    </TransitionNavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

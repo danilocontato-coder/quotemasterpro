@@ -1,5 +1,6 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { TransitionNavLink } from './TransitionNavLink';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -209,7 +210,7 @@ export const SuperAdminSidebar = () => {
             <div key={section.name}>
               {/* Single item or section header */}
               {section.href ? (
-                <NavLink
+                <TransitionNavLink
                   to={section.href}
                   className={({ isActive: navIsActive }) =>
                     cn(
@@ -222,7 +223,7 @@ export const SuperAdminSidebar = () => {
                 >
                   <section.icon className="h-4 w-4" />
                   {section.name}
-                </NavLink>
+                </TransitionNavLink>
               ) : (
                 <>
                   <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -230,7 +231,7 @@ export const SuperAdminSidebar = () => {
                   </h3>
                   <div className="space-y-1">
                     {section.items?.map((item) => (
-                      <NavLink
+                      <TransitionNavLink
                         key={item.href}
                         to={item.href}
                         className={({ isActive: navIsActive }) =>
@@ -252,7 +253,7 @@ export const SuperAdminSidebar = () => {
                         {(isActive(item.href) && !isActive(item.href, true)) && (
                           <div className="w-2 h-2 bg-primary rounded-full"></div>
                         )}
-                      </NavLink>
+                      </TransitionNavLink>
                     ))}
                   </div>
                 </>
