@@ -168,16 +168,20 @@ export function CreateTicketModal({ onTicketCreated }: CreateTicketModalProps) {
               </SelectTrigger>
               <SelectContent>
                 {formData.targetAudience === 'clients' 
-                  ? clients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.companyName}
-                      </SelectItem>
-                    ))
-                  : suppliers.map(supplier => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    ))
+                  ? clients
+                      .filter(client => client.id && client.id.trim() !== '')
+                      .map(client => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.companyName || 'Cliente sem nome'}
+                        </SelectItem>
+                      ))
+                  : suppliers
+                      .filter(supplier => supplier.id && supplier.id.trim() !== '')
+                      .map(supplier => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name || 'Fornecedor sem nome'}
+                        </SelectItem>
+                      ))
                 }
               </SelectContent>
             </Select>
