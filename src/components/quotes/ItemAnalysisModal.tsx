@@ -47,12 +47,19 @@ export function ItemAnalysisModal({
   const [showCacheStats, setShowCacheStats] = useState(false);
   const [cacheStats, setCacheStats] = useState({ totalItems: 0, totalSize: 0 });
 
+  const [hasAutoStarted, setHasAutoStarted] = useState(false);
+
   useEffect(() => {
-    if (open && items.length > 0) {
-      // Auto-start analysis when modal opens
+    if (open && items.length > 0 && !hasAutoStarted) {
+      // Auto-start analysis when modal opens (only once)
       handleAnalyzeAll();
+      setHasAutoStarted(true);
     }
-  }, [open, items]);
+    if (!open) {
+      // Reset auto-start flag when modal closes
+      setHasAutoStarted(false);
+    }
+  }, [open, items, hasAutoStarted]);
 
   useEffect(() => {
     if (showCacheStats) {
