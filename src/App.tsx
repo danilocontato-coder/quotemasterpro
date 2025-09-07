@@ -41,6 +41,7 @@ const WhatsAppTemplates = lazy(() => import('@/pages/admin/WhatsAppTemplates'));
 const CouponsManagement = lazy(() => import('@/pages/admin/CouponsManagement').then(m => ({ default: m.default })));
 const CommunicationManagement = lazy(() => import('@/pages/admin/CommunicationManagement'));
 const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs'));
+const AIConfigurationManagement = lazy(() => import('@/pages/admin/AIConfigurationManagement'));
 
 // Páginas principais com lazy loading
 const PlansPage = lazy(() => import('@/pages/client/PlansPage').then(m => ({ default: m.PlansPage })));
@@ -424,6 +425,11 @@ function App() {
                   <Route path="settings" element={
                     <SuspenseWithTransition lines={5} className="p-4">
                       <SystemSettings />
+                    </SuspenseWithTransition>
+                  } />
+                  <Route path="ai-config" element={
+                    <SuspenseWithTransition lines={5} className="p-4">
+                      <AIConfigurationManagement />
                     </SuspenseWithTransition>
                   } />
                   <Route index element={<Navigate to="/admin/superadmin" replace />} />
