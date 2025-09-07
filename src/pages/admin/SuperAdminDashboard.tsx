@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { NotificationTester } from '@/components/debug/NotificationTester';
 
 export const SuperAdminDashboard = () => {
   console.log('SuperAdminDashboard component rendering');
@@ -68,34 +69,43 @@ export const SuperAdminDashboard = () => {
 
       <div className="p-6 space-y-6">
         {/* Métricas Principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <MetricCard
-              title="Usuários Totais"
-              value={metrics.totalUsers?.toLocaleString() || '0'}
-              icon={Users}
-            />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <MetricCard
+                  title="Usuários Totais"
+                  value={metrics.totalUsers?.toLocaleString() || '0'}
+                  icon={Users}
+                />
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                <MetricCard
+                  title="Receita Mensal"
+                  value={`R$ ${(metrics.monthlyRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  icon={DollarSign}
+                />
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
+                <MetricCard
+                  title="Uptime do Sistema"
+                  value={metrics.systemUptime || '99.9%'}
+                  icon={Activity}
+                />
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                <MetricCard
+                  title="Chamadas API"
+                  value={metrics.apiCalls?.toLocaleString() || '0'}
+                  icon={Zap}
+                />
+              </div>
+            </div>
           </div>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-            <MetricCard
-              title="Receita Mensal"
-              value={`R$ ${(metrics.monthlyRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-              icon={DollarSign}
-            />
-          </div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-            <MetricCard
-              title="Uptime do Sistema"
-              value={metrics.systemUptime || '99.9%'}
-              icon={Activity}
-            />
-          </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-            <MetricCard
-              title="Chamadas API"
-              value={metrics.apiCalls?.toLocaleString() || '0'}
-              icon={Zap}
-            />
+          
+          {/* Testador de Notificações */}
+          <div className="lg:col-span-1">
+            <NotificationTester />
           </div>
         </div>
 

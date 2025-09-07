@@ -23,6 +23,7 @@ export function useSupabaseNotifications() {
 
   const fetchNotifications = async () => {
     if (!user) {
+      console.log('🔔 [NOTIFICATIONS] No user found, clearing notifications');
       setNotifications([]);
       setIsLoading(false);
       return;
@@ -32,6 +33,8 @@ export function useSupabaseNotifications() {
       setIsLoading(true);
       setError(null);
 
+      console.log('🔔 [NOTIFICATIONS] Fetching notifications for user:', user.id);
+
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
@@ -40,6 +43,8 @@ export function useSupabaseNotifications() {
         .limit(50);
 
       if (error) throw error;
+
+      console.log('🔔 [NOTIFICATIONS] Raw data received:', data?.length || 0, 'notifications');
 
       const formattedNotifications = (data || []).map(notification => ({
         id: notification.id,
@@ -53,9 +58,15 @@ export function useSupabaseNotifications() {
         metadata: notification.metadata,
       }));
 
+      console.log('🔔 [NOTIFICATIONS] Formatted notifications:', {
+        total: formattedNotifications.length,
+        unread: formattedNotifications.filter(n => !n.read).length,
+        types: formattedNotifications.map(n => n.type)
+      });
+
       setNotifications(formattedNotifications);
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      console.error('❌ [NOTIFICATIONS] Error fetching notifications:', err);
       setError(err instanceof Error ? err.message : 'Erro ao buscar notificações');
     } finally {
       setIsLoading(false);
@@ -70,6 +81,8 @@ export function useSupabaseNotifications() {
   useEffect(() => {
     if (!user) return;
 
+    console.log('🔔 [NOTIFICATIONS] Setting up real-time subscription for user:', user.id);
+
     const channel = supabase
       .channel('notifications-changes')
       .on(
@@ -80,13 +93,17 @@ export function useSupabaseNotifications() {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('🔔 [NOTIFICATIONS] Real-time update received:', payload);
           fetchNotifications();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🔔 [NOTIFICATIONS] Real-time subscription status:', status);
+      });
 
     return () => {
+      console.log('🔔 [NOTIFICATIONS] Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
