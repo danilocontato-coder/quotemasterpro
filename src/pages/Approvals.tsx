@@ -33,12 +33,6 @@ import { supabase } from "@/integrations/supabase/client";
 export function Approvals() {
   const { approvals, isLoading, refetch } = useSupabaseApprovals();
   const { formatCurrency } = useCurrency();
-  
-  console.log('🏠 Approvals Page: Component rendered with:', {
-    approvalsCount: approvals.length,
-    isLoading,
-    hasRefetch: !!refetch
-  });
   const [searchTerm, setSearchTerm] = useState("");
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);

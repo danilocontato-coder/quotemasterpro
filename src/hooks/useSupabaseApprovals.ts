@@ -18,6 +18,7 @@ export interface Approval {
     title: string;
     description?: string;
     total: number;
+    client_id?: string;
     client_name: string;
     supplier_name?: string;
     status: string;
@@ -49,43 +50,29 @@ export const useSupabaseApprovals = () => {
       
       let query = supabase
         .from('approvals')
-        .select(`
-          *,
-          quotes:quote_id (
-            id,
-            title,
-            description,
-            total,
-            client_name,
-            supplier_name,
-            status,
-            deadline,
-            items_count,
-            created_at
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      // Filter based on user role
+      // Aplicar filtros baseados no role do usuário ANTES de buscar
       if (user.role !== 'admin') {
         if (user.role === 'client' && user.clientId) {
-          console.log('📋 useSupabaseApprovals: Filtering by client quotes for clientId:', user.clientId);
-          // Cliente vê aprovações das cotações do seu cliente
-          // Primeiro buscar os IDs das cotações do cliente
+          console.log('📋 useSupabaseApprovals: User is client, will filter by client quotes');
+          // Para clientes, primeiro buscar IDs das cotações do cliente
           const { data: clientQuotes } = await supabase
             .from('quotes')
             .select('id')
             .eq('client_id', user.clientId);
           
-          console.log('📋 useSupabaseApprovals: Client quotes found:', clientQuotes?.length || 0);
-          
           const quoteIds = clientQuotes?.map(q => q.id) || [];
+          console.log('📋 useSupabaseApprovals: Client quote IDs:', quoteIds);
+          
           if (quoteIds.length > 0) {
-            console.log('📋 useSupabaseApprovals: Filtering approvals by quote IDs:', quoteIds);
             query = query.in('quote_id', quoteIds);
           } else {
-            console.log('📋 useSupabaseApprovals: No client quotes found, returning empty');
-            query = query.eq('quote_id', ''); // Força retorno vazio se não há cotações
+            // Se não há cotações do cliente, retornar vazio
+            setApprovals([]);
+            setIsLoading(false);
+            return;
           }
         } else {
           console.log('👤 useSupabaseApprovals: Filtering by approver_id:', user.id);
@@ -96,19 +83,50 @@ export const useSupabaseApprovals = () => {
         console.log('👑 useSupabaseApprovals: Admin user, showing all approvals');
       }
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('❌ useSupabaseApprovals: Fetch error:', error);
-        throw error;
-      }
+      // Buscar aprovações com filtro aplicado
+      const { data: approvalsData, error: approvalsError } = await query;
       
-      console.log('✅ useSupabaseApprovals: Data received:', {
-        count: data?.length || 0,
-        data: data?.slice(0, 2) // Log first 2 items for debug
+      if (approvalsError) {
+        console.error('❌ useSupabaseApprovals: Fetch error:', approvalsError);
+        throw approvalsError;
+      }
+
+      // Depois buscar dados das cotações relacionadas
+      let approvalsWithQuotes: Approval[] = [];
+      
+      if (approvalsData && approvalsData.length > 0) {
+        const quoteIds = [...new Set(approvalsData.map(a => a.quote_id))];
+        
+        const { data: quotesData } = await supabase
+          .from('quotes')
+          .select(`
+            id,
+            title,
+            description,
+            total,
+            client_id,
+            client_name,
+            supplier_name,
+            status,
+            deadline,
+            items_count,
+            created_at
+          `)
+          .in('id', quoteIds);
+
+        // Combinar aprovações com dados das cotações
+        approvalsWithQuotes = approvalsData.map(approval => ({
+          ...approval,
+          quotes: quotesData?.find(quote => quote.id === approval.quote_id)
+        })) as Approval[];
+      }
+
+      console.log('✅ useSupabaseApprovals: Data processed:', {
+        count: approvalsWithQuotes?.length || 0,
+        data: approvalsWithQuotes?.slice(0, 2) // Log first 2 items for debug
       });
       
-      setApprovals((data as unknown as Approval[]) || []);
+      setApprovals(approvalsWithQuotes || []);
     } catch (error) {
       console.error('Error fetching approvals:', error);
       toast({
