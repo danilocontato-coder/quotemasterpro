@@ -3,20 +3,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Bell, Headphones } from "lucide-react";
-import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
+import { useSupabaseAnnouncements } from "@/hooks/useSupabaseAnnouncements";
+import { useSupabaseTickets } from "@/hooks/useSupabaseTickets";
+import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { ChatSection } from "@/components/communication/ChatSection";
-import { AnnouncementsSection } from "@/components/communication/AnnouncementsSection";
-import { TicketsSection } from "@/components/communication/TicketsSection";
+import { ClientAnnouncementsList } from "@/components/communication/client/ClientAnnouncementsList";
+import { ClientTicketsManager } from "@/components/communication/client/ClientTicketsManager";
+import { useEffect } from "react";
 
 export default function Communication() {
   const [activeTab, setActiveTab] = useState("chats");
+  const { client } = useSupabaseCurrentClient();
   
-  const {
-    announcements,
-    tickets,
-    getUnreadAnnouncementsCount,
-    getOpenTicketsCount,
-  } = useSupabaseCommunication();
+  const { announcements, fetchAnnouncements, getUnreadAnnouncementsCount } = useSupabaseAnnouncements();
+  const { tickets, fetchTickets, getOpenTicketsCount } = useSupabaseTickets();
+
+  useEffect(() => {
+    if (client?.id) {
+      fetchAnnouncements(client.id);
+      fetchTickets(client.id);
+    }
+  }, [client?.id, fetchAnnouncements, fetchTickets]);
 
   const unreadChats = 0; // Chats will be implemented separately
   const unreadAnnouncements = getUnreadAnnouncementsCount();
@@ -129,12 +136,12 @@ export default function Communication() {
               <ChatSection />
             </TabsContent>
             
-            <TabsContent value="announcements" className="m-0">
-              <AnnouncementsSection />
+            <TabsContent value="announcements" className="m-0 p-6">
+              <ClientAnnouncementsList />
             </TabsContent>
             
-            <TabsContent value="tickets" className="m-0">
-              <TicketsSection />
+            <TabsContent value="tickets" className="m-0 p-6">
+              <ClientTicketsManager />
             </TabsContent>
           </CardContent>
         </Tabs>
