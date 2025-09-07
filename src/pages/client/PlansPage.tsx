@@ -348,3 +348,5 @@ export const PlansPage = () => {
     </div>
   );
 };
+
+export default PlansPage;

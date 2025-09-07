@@ -10,7 +10,8 @@ import {
   UserCog,
   Shield,
   CheckCircle,
-  Layers
+  Layers,
+  Crown
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -52,6 +53,7 @@ const systemItems = [
   { title: "Usuários", url: "/users", icon: UserCog },
   { title: "Permissões", url: "/permissions", icon: Shield },
   { title: "Relatórios", url: "/reports", icon: BarChart3 },
+  { title: "Planos", url: "/plans", icon: Crown },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 

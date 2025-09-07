@@ -42,6 +42,7 @@ const CommunicationManagement = lazy(() => import('@/pages/admin/CommunicationMa
 const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs'));
 
 // Páginas principais com lazy loading
+const PlansPage = lazy(() => import('@/pages/client/PlansPage').then(m => ({ default: m.PlansPage })));
 const Quotes = lazy(() => import('@/pages/Quotes'));
 const Suppliers = lazy(() => import('@/pages/Suppliers'));
 const Products = lazy(() => import('@/pages/Products'));
@@ -191,6 +192,7 @@ function App() {
                   <Route path="settings" element={<Navigate to="/settings" replace />} />
                   <Route path="permissions" element={<Navigate to="/permissions" replace />} />
                   <Route path="reports" element={<Navigate to="/reports" replace />} />
+                  <Route path="plans" element={<Navigate to="/plans" replace />} />
                 </Route>
                 
                 {/* Main application routes com lazy loading */}
@@ -326,6 +328,17 @@ function App() {
                     </SuspenseWithTransition>
                   } />
                 </Route>
+                <Route path="/plans" element={
+                  <ProtectedRoute allowedRoles={['client', 'admin', 'manager', 'collaborator']}>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={
+                    <SuspenseWithTransition lines={5} className="p-4">
+                      <PlansPage />
+                    </SuspenseWithTransition>
+                  } />
+                </Route>
 
                 {/* Admin routes - SuperAdmin Panel com lazy loading */}
                 <Route path="/admin" element={
@@ -338,6 +351,11 @@ function App() {
                   <Route path="superadmin" element={
                     <SuspenseWithTransition lines={5} className="p-4">
                       <SuperAdminDashboard />
+                    </SuspenseWithTransition>
+                  } />
+                  <Route path="plans" element={
+                    <SuspenseWithTransition lines={5} className="p-4">
+                      <PlansManagement />
                     </SuspenseWithTransition>
                   } />
                   <Route path="clients" element={
