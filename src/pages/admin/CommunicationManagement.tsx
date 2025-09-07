@@ -16,16 +16,26 @@ import {
   Clock
 } from 'lucide-react';
 import { useSupabaseCommunication } from '@/hooks/useSupabaseCommunication';
+import { useSupabaseAnnouncements } from '@/hooks/useSupabaseAnnouncements';
 import { CreateAnnouncementModal } from '@/components/admin/CreateAnnouncementModal';
 
 export const CommunicationManagement = () => {
   const [createAnnouncementOpen, setCreateAnnouncementOpen] = useState(false);
   const { 
-    announcements, 
     tickets, 
-    getUnreadAnnouncementsCount, 
     getOpenTicketsCount 
   } = useSupabaseCommunication();
+  
+  const { 
+    announcements, 
+    fetchAnnouncements,
+    isLoading: announcementsLoading 
+  } = useSupabaseAnnouncements();
+
+  // Fetch all announcements for admin view
+  React.useEffect(() => {
+    fetchAnnouncements(); // Admin can see all announcements
+  }, [fetchAnnouncements]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('pt-BR', {
@@ -325,6 +335,10 @@ export const CommunicationManagement = () => {
       <CreateAnnouncementModal
         open={createAnnouncementOpen}
         onOpenChange={setCreateAnnouncementOpen}
+        onSuccess={() => {
+          setCreateAnnouncementOpen(false);
+          fetchAnnouncements(); // Refresh the list after creating
+        }}
       />
     </div>
   );

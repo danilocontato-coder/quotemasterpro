@@ -12,9 +12,10 @@ import { useSupabaseAdminClients } from "@/hooks/useSupabaseAdminClients";
 interface CreateAnnouncementModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
-export function CreateAnnouncementModal({ open, onOpenChange }: CreateAnnouncementModalProps) {
+export function CreateAnnouncementModal({ open, onOpenChange, onSuccess }: CreateAnnouncementModalProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [type, setType] = useState<'info' | 'warning' | 'success' | 'urgent'>('info');
@@ -53,7 +54,7 @@ export function CreateAnnouncementModal({ open, onOpenChange }: CreateAnnounceme
         setTargetAudience('clients');
         setTargetClientId('all_clients');
         setExpiresAt("");
-        onOpenChange(false);
+        onSuccess?.(); // Call success callback to refresh and close
       }
     } finally {
       setIsLoading(false);
