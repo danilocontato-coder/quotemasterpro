@@ -257,32 +257,50 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                       {msg.attachments && msg.attachments.length > 0 && (
                         <div className="mt-2 space-y-1">
                           {msg.attachments.map((attachment: string, index: number) => {
-                            const handleDownload = async () => {
+                            const handleDownload = async (e: React.MouseEvent) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              
+                              console.log('🔍 Downloading attachment:', attachment);
+                              
                               try {
                                 const { data, error } = await supabase.storage
                                   .from('attachments')
-                                  .createSignedUrl(attachment, 3600); // 1 hour expiry
+                                  .createSignedUrl(attachment, 3600);
                                 
                                 if (error) {
-                                  console.error('Error creating signed URL:', error);
+                                  console.error('❌ Error creating signed URL:', error);
+                                  alert('Erro ao acessar o arquivo: ' + error.message);
                                   return;
                                 }
                                 
-                                window.open(data.signedUrl, '_blank');
+                                console.log('✅ Signed URL created:', data.signedUrl);
+                                
+                                // Abrir em nova aba
+                                const link = document.createElement('a');
+                                link.href = data.signedUrl;
+                                link.target = '_blank';
+                                link.rel = 'noopener noreferrer';
+                                link.download = attachment.split('/').pop() || 'attachment';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                
                               } catch (error) {
-                                console.error('Error downloading file:', error);
+                                console.error('❌ Error downloading file:', error);
+                                alert('Erro ao baixar o arquivo');
                               }
                             };
 
                             return (
-                              <button
+                              <div
                                 key={index}
                                 onClick={handleDownload}
-                                className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 cursor-pointer hover:underline"
+                                className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 cursor-pointer hover:underline p-1 rounded hover:bg-blue-50"
                               >
                                 <Paperclip className="h-3 w-3" />
                                 <span>{attachment.split('/').pop()}</span>
-                              </button>
+                              </div>
                             );
                           })}
                         </div>
