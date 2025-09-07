@@ -33,6 +33,8 @@ export default function AIConfigurationManagement() {
     minNegotiationAmount: 1000,
     aggressiveness: 'moderate'
   });
+  const [analysisPrompt, setAnalysisPrompt] = useState('');
+  const [negotiationPrompt, setNegotiationPrompt] = useState('');
 
   // Carregar configurações do Supabase quando disponível
   React.useEffect(() => {
@@ -43,6 +45,16 @@ export default function AIConfigurationManagement() {
       }
     }
   }, [settings]);
+
+  // Carregar prompts do Supabase quando disponível
+  React.useEffect(() => {
+    if (prompts.length > 0) {
+      const ap = prompts.find(p => p.prompt_type === 'analysis');
+      const np = prompts.find(p => p.prompt_type === 'negotiation');
+      setAnalysisPrompt(ap?.prompt_content || '');
+      setNegotiationPrompt(np?.prompt_content || '');
+    }
+  }, [prompts]);
 
   const handleSaveSettings = async () => {
     try {
@@ -251,7 +263,8 @@ export default function AIConfigurationManagement() {
                   id="analysisPrompt"
                   placeholder="Instrução para análise de cotações..."
                   className="min-h-32"
-                  defaultValue="Você é um especialista em negociações comerciais. Analise as propostas considerando preço, qualidade, prazo e histórico do fornecedor..."
+                  value={analysisPrompt}
+                  onChange={(e) => setAnalysisPrompt(e.target.value)}
                 />
               </div>
 
@@ -261,11 +274,25 @@ export default function AIConfigurationManagement() {
                   id="negotiationPrompt"
                   placeholder="Instrução para negociação..."
                   className="min-h-32"
-                  defaultValue="Crie uma mensagem de negociação profissional, respeitosa e persuasiva. Use tom colaborativo e enfatize benefícios mútuos..."
+                  value={negotiationPrompt}
+                  onChange={(e) => setNegotiationPrompt(e.target.value)}
                 />
               </div>
 
-              <Button>Salvar Prompts</Button>
+              <Button onClick={async () => {
+                try {
+                  // Atualizar ou criar prompts
+                  const analysis = prompts.find(p => p.prompt_type === 'analysis');
+                  const negotiation = prompts.find(p => p.prompt_type === 'negotiation');
+                  if (analysis) await updatePrompt(analysis.id, { prompt_content: analysisPrompt });
+                  else await createPrompt({ prompt_type: 'analysis', prompt_name: 'Análise de Cotações', prompt_content: analysisPrompt, is_default: true, active: true });
+                  if (negotiation) await updatePrompt(negotiation.id, { prompt_content: negotiationPrompt });
+                  else await createPrompt({ prompt_type: 'negotiation', prompt_name: 'Negociação Comercial', prompt_content: negotiationPrompt, is_default: true, active: true });
+                  toast({ title: 'Prompts salvos', description: 'Prompts atualizados com sucesso.' });
+                } catch (e) {
+                  toast({ title: 'Erro ao salvar', description: 'Não foi possível salvar os prompts.', variant: 'destructive' });
+                }
+              }}>Salvar Prompts</Button>
             </CardContent>
           </Card>
         </TabsContent>

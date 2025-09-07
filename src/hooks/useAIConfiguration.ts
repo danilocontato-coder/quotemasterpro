@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface AISettings {
@@ -31,16 +32,32 @@ export function useAIConfiguration() {
   const [trainingData, setTrainingData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const sb: any = supabase;
 
   const fetchSettings = async () => {
     setIsLoading(true);
     try {
-      // Usar dados mock até os tipos do Supabase serem atualizados
+      // Tenta carregar do Supabase
+      const { data, error } = await sb
+        .from('ai_negotiation_settings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setSettings(data as AISettings[]);
+      } else {
+        throw new Error('No settings found');
+      }
+    } catch (error) {
+      console.warn('Supabase settings fallback to local/mock:', error);
+      // Fallback: localStorage ou mock
+      const generalConfig = localStorage.getItem('ai_config_general');
       const mockSettings: AISettings[] = [
         {
           id: '1',
           setting_key: 'general_config',
-          setting_value: {
+          setting_value: generalConfig ? JSON.parse(generalConfig) : {
             enabled: true,
             autoAnalysis: true,
             autoNegotiation: false,
@@ -55,11 +72,7 @@ export function useAIConfiguration() {
           updated_at: new Date().toISOString()
         }
       ];
-      
       setSettings(mockSettings);
-    } catch (error) {
-      console.error('Error fetching AI settings:', error);
-      setSettings([]);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +80,15 @@ export function useAIConfiguration() {
 
   const fetchPrompts = async () => {
     try {
-      // Usar dados mock até os tipos do Supabase serem atualizados
+      const { data, error } = await sb
+        .from('ai_prompts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setPrompts(data as AIPrompt[]);
+    } catch (error) {
+      console.warn('Supabase prompts fallback to mock:', error);
       const mockPrompts: AIPrompt[] = [
         {
           id: '1',
@@ -94,46 +115,90 @@ export function useAIConfiguration() {
           updated_at: new Date().toISOString()
         }
       ];
-      
       setPrompts(mockPrompts);
-    } catch (error) {
-      console.error('Error fetching AI prompts:', error);
-      setPrompts([]);
     }
   };
 
   const updateSettings = async (category: string, settingValue: any) => {
     try {
-      // Persistir no localStorage temporariamente
-      const settingsKey = `ai_config_${category}`;
-      localStorage.setItem(settingsKey, JSON.stringify(settingValue));
-
-      // Atualizar estado local
-      const updatedSetting: AISettings = {
-        id: '1',
+      const payload = {
         setting_key: `${category}_config`,
         setting_value: settingValue,
-        category: category,
+        category,
+        active: true,
+        description: `Configurações ${category} da IA`
+      };
+
+      const { data, error } = await sb
+        .from('ai_negotiation_settings')
+        .upsert(payload, { onConflict: 'setting_key' })
+        .select()
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setSettings(prev => {
+          const filtered = prev.filter(s => s.setting_key !== `${category}_config`);
+          return [...filtered, data as AISettings];
+        });
+        return data as AISettings;
+      }
+
+      // fallback local
+      localStorage.setItem(`ai_config_${category}`, JSON.stringify(settingValue));
+      return {
+        id: 'local',
+        setting_key: `${category}_config`,
+        setting_value: settingValue,
+        category,
+        active: true,
+        description: `Configurações ${category} da IA`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } as AISettings;
+    } catch (error) {
+      console.warn('Supabase updateSettings falhou, usando localStorage:', error);
+      localStorage.setItem(`ai_config_${category}`, JSON.stringify(settingValue));
+      const updatedSetting: AISettings = {
+        id: 'local',
+        setting_key: `${category}_config`,
+        setting_value: settingValue,
+        category,
         active: true,
         description: `Configurações ${category} da IA`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-
       setSettings(prev => {
         const filtered = prev.filter(s => s.setting_key !== `${category}_config`);
         return [...filtered, updatedSetting];
       });
-
       return updatedSetting;
-    } catch (error) {
-      console.error('Error updating AI settings:', error);
-      throw error;
     }
   };
 
   const createPrompt = async (promptData: Partial<AIPrompt>) => {
     try {
+      const { data, error } = await sb
+        .from('ai_prompts')
+        .insert({
+          prompt_type: promptData.prompt_type || 'custom',
+          prompt_name: promptData.prompt_name || 'Novo Prompt',
+          prompt_content: promptData.prompt_content || '',
+          variables: promptData.variables || [],
+          is_default: false,
+          active: true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPrompts(prev => [data as AIPrompt, ...prev]);
+      return data as AIPrompt;
+    } catch (error) {
+      console.warn('Supabase createPrompt falhou, usando estado local:', error);
       const newPrompt: AIPrompt = {
         id: Math.random().toString(36).substr(2, 9),
         prompt_type: promptData.prompt_type || 'custom',
@@ -146,27 +211,35 @@ export function useAIConfiguration() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-
       setPrompts(prev => [newPrompt, ...prev]);
       return newPrompt;
-    } catch (error) {
-      console.error('Error creating AI prompt:', error);
-      throw error;
     }
   };
 
   const updatePrompt = async (id: string, promptData: Partial<AIPrompt>) => {
     try {
+      const { data, error } = await sb
+        .from('ai_prompts')
+        .update({
+          ...promptData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPrompts(prev => prev.map(p => p.id === id ? (data as AIPrompt) : p));
+      return data as AIPrompt;
+    } catch (error) {
+      console.warn('Supabase updatePrompt falhou, atualizando apenas localmente:', error);
       setPrompts(prev => prev.map(p => p.id === id ? {
         ...p,
         ...promptData,
         updated_at: new Date().toISOString()
       } : p));
-      
-      return promptData;
-    } catch (error) {
-      console.error('Error updating AI prompt:', error);
-      throw error;
+      return { id, ...promptData } as AIPrompt;
     }
   };
 
@@ -186,10 +259,17 @@ export function useAIConfiguration() {
 
   const deletePrompt = async (id: string) => {
     try {
+      const { error } = await sb
+        .from('ai_prompts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
       setPrompts(prev => prev.filter(p => p.id !== id));
     } catch (error) {
-      console.error('Error deleting AI prompt:', error);
-      throw error;
+      console.warn('Supabase deletePrompt falhou, removendo localmente:', error);
+      setPrompts(prev => prev.filter(p => p.id !== id));
     }
   };
 
