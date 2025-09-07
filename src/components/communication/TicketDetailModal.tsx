@@ -303,73 +303,120 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                               e.preventDefault();
                               e.stopPropagation();
                               
+                              console.log('📎 Iniciando download do anexo:', attachment);
+                              
                               try {
-                                // Se já for URL completa, abrir direto
+                                // Método 1: Tentar URL direta se já for uma URL completa
                                 if (/^https?:\/\//i.test(attachment)) {
+                                  console.log('📎 Abrindo URL direta:', attachment);
                                   window.open(attachment, '_blank');
                                   return;
                                 }
-                                
-                                const baseName = (attachment.split('/').pop() || attachment).trim();
-                                const sanitizedBase = sanitizeFilename(baseName).replace(/^\//, '');
-                                
-                                const candidates: string[] = [];
-                                // Caminho original informado
-                                candidates.push(attachment.replace(/^\//, ''));
-                                // Tentativas padrão na pasta tickets
-                                candidates.push(`tickets/${sanitizedBase}`);
-                                candidates.push(`tickets/${baseName}`);
-                                
-                                let signedUrl: string | null = null;
-                                let lastErr: any = null;
-                                
-                                for (const key of candidates) {
-                                  const { data, error } = await supabase.storage
-                                    .from('attachments')
-                                    .createSignedUrl(key, 3600);
-                                  if (!error && data?.signedUrl) {
-                                    signedUrl = data.signedUrl;
-                                    break;
-                                  }
-                                  lastErr = error;
-                                }
-                                
-                                // Fallback: listar e tentar encontrar pelo nome, na pasta tickets e raiz
-                                if (!signedUrl) {
-                                  const tryListAndMatch = async (folder: string) => {
-                                    const { data: list, error: listErr } = await supabase.storage
-                                      .from('attachments')
-                                      .list(folder, { limit: 1000 });
-                                    if (listErr || !Array.isArray(list)) return null;
-                                    const found = list.find((item: any) => sanitizeFilename(item.name).toLowerCase().includes(sanitizedBase.toLowerCase()));
-                                    return found ? `${folder ? folder + '/' : ''}${found.name}` : null;
-                                  };
-                                  
-                                  const foundKey = (await tryListAndMatch('tickets')) || (await tryListAndMatch(''));
-                                  if (foundKey) {
+
+                                // Método 2: Tentar diferentes caminhos no bucket
+                                const fileName = attachment.split('/').pop() || attachment;
+                                const pathVariations = [
+                                  attachment,
+                                  `tickets/${attachment}`,
+                                  `tickets/${fileName}`,
+                                  fileName
+                                ];
+
+                                console.log('📎 Tentando variações de caminho:', pathVariations);
+
+                                for (const path of pathVariations) {
+                                  try {
+                                    console.log('📎 Tentando caminho:', path);
                                     const { data, error } = await supabase.storage
                                       .from('attachments')
-                                      .createSignedUrl(foundKey, 3600);
-                                    if (!error && data?.signedUrl) signedUrl = data.signedUrl;
+                                      .createSignedUrl(path, 3600);
+                                    
+                                    if (!error && data?.signedUrl) {
+                                      console.log('✅ URL assinada criada com sucesso:', data.signedUrl);
+                                      window.open(data.signedUrl, '_blank');
+                                      return;
+                                    } else if (error) {
+                                      console.log('⚠️ Erro para caminho', path, ':', error.message);
+                                    }
+                                  } catch (pathError) {
+                                    console.log('⚠️ Exceção para caminho', path, ':', pathError);
                                   }
                                 }
-                                
-                                if (!signedUrl) {
-                                  const msg = lastErr?.message === 'Bucket not found'
-                                    ? 'Bucket de anexos não encontrado. Verifique a configuração de Storage.'
-                                    : 'Arquivo não encontrado no armazenamento.';
-                                  alert(msg);
-                                  return;
+
+                                // Método 3: Listar arquivos e buscar por similaridade
+                                console.log('📎 Tentando busca por similaridade...');
+                                try {
+                                  const folders = ['', 'tickets'];
+                                  for (const folder of folders) {
+                                    const { data: files, error: listError } = await supabase.storage
+                                      .from('attachments')
+                                      .list(folder, { limit: 1000 });
+                                    
+                                    if (!listError && files) {
+                                      console.log(`📎 Arquivos encontrados na pasta "${folder}":`, files.map(f => f.name));
+                                      
+                                      // Buscar arquivo similar
+                                      const foundFile = files.find(file => 
+                                        file.name.toLowerCase().includes(fileName.toLowerCase()) ||
+                                        fileName.toLowerCase().includes(file.name.toLowerCase())
+                                      );
+                                      
+                                      if (foundFile) {
+                                        const fullPath = folder ? `${folder}/${foundFile.name}` : foundFile.name;
+                                        console.log('📎 Arquivo similar encontrado:', fullPath);
+                                        
+                                        const { data, error } = await supabase.storage
+                                          .from('attachments')
+                                          .createSignedUrl(fullPath, 3600);
+                                        
+                                        if (!error && data?.signedUrl) {
+                                          console.log('✅ URL assinada criada para arquivo similar:', data.signedUrl);
+                                          window.open(data.signedUrl, '_blank');
+                                          return;
+                                        }
+                                      }
+                                    }
+                                  }
+                                } catch (searchError) {
+                                  console.error('❌ Erro na busca por similaridade:', searchError);
                                 }
-                                
-                                window.open(signedUrl, '_blank');
+
+                                // Método 4: Fallback - tentar download direto via blob
+                                console.log('📎 Tentando download direto...');
+                                for (const path of pathVariations) {
+                                  try {
+                                    const { data: blob, error } = await supabase.storage
+                                      .from('attachments')
+                                      .download(path);
+                                    
+                                    if (!error && blob) {
+                                      console.log('✅ Arquivo baixado como blob:', blob);
+                                      const url = URL.createObjectURL(blob);
+                                      const link = document.createElement('a');
+                                      link.href = url;
+                                      link.download = fileName;
+                                      link.target = '_blank';
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      URL.revokeObjectURL(url);
+                                      return;
+                                    }
+                                  } catch (downloadError) {
+                                    console.log('⚠️ Erro no download direto para', path, ':', downloadError);
+                                  }
+                                }
+
+                                // Se chegou até aqui, nada funcionou
+                                console.error('❌ Nenhum método de acesso ao arquivo funcionou');
+                                alert(`Não foi possível acessar o arquivo "${fileName}". O arquivo pode não existir ou você pode não ter permissão para acessá-lo.`);
                                 
                               } catch (error) {
-                                console.error('Erro ao baixar o arquivo:', error);
-                                alert('Erro ao baixar o arquivo');
+                                console.error('❌ Erro geral no download:', error);
+                                alert(`Erro ao tentar acessar o arquivo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
                               }
                             };
-                            
+
                             return (
                               <div
                                 key={index}
