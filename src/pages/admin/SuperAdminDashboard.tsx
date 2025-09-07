@@ -21,6 +21,7 @@ import {
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useSuperAdminDashboard } from '@/hooks/useSuperAdminDashboard';
 import { NotificationTester } from '@/components/debug/NotificationTester';
+import { PaginatedActivities } from '@/components/admin/PaginatedActivities';
 
 export const SuperAdminDashboard = () => {
   console.log('SuperAdminDashboard component rendering');
@@ -143,66 +144,13 @@ export const SuperAdminDashboard = () => {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Atividades Recentes */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Atividades Recentes
-                  </CardTitle>
-                  <CardDescription>Últimas ações na plataforma</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isLoading ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="animate-pulse">
-                          <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                          <div className="h-3 bg-muted rounded w-1/2"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : activities.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Activity className="h-8 w-8 mx-auto mb-2" />
-                      <p>Nenhuma atividade recente</p>
-                    </div>
-                  ) : (
-                    activities.map((activity) => {
-                      const Icon = getActivityIcon(activity.type);
-                      return (
-                        <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg border">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-full ${
-                              activity.status === 'success' ? 'bg-green-100 text-green-600' :
-                              activity.status === 'warning' ? 'bg-yellow-100 text-yellow-600' :
-                              activity.status === 'error' ? 'bg-red-100 text-red-600' :
-                              'bg-blue-100 text-blue-600'
-                            }`}>
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-sm">{activity.action}</p>
-                              <p className="text-xs text-muted-foreground">{activity.entity}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <Badge variant={
-                              activity.status === 'success' ? 'default' :
-                              activity.status === 'warning' ? 'secondary' :
-                              activity.status === 'error' ? 'destructive' :
-                              'outline'
-                            } className="text-xs">
-                              {activity.status}
-                            </Badge>
-                            <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </CardContent>
-              </Card>
+              {/* Atividades Recentes com Paginação */}
+              <PaginatedActivities
+                activities={activities}
+                isLoading={isLoading}
+                getActivityIcon={getActivityIcon}
+                itemsPerPage={5}
+              />
 
               {/* Status do Sistema */}
               <Card>

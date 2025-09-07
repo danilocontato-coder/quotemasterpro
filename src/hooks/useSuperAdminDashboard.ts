@@ -109,7 +109,7 @@ export function useSuperAdminDashboard() {
         supabase.from('support_tickets').select('*'),
         supabase.from('profiles').select('*'),
         supabase.from('client_usage').select('*'),
-        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(20)
+        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50) // Aumentar para 50 para demonstrar paginação
       ]);
 
       // Verificar erros
@@ -249,7 +249,7 @@ export function useSuperAdminDashboard() {
       });
 
       // Criar atividades baseadas nos audit logs
-      const recentActivities: ActivityItem[] = auditLogs.slice(0, 15).map((log, index) => {
+      const recentActivities: ActivityItem[] = auditLogs.slice(0, 25).map((log, index) => { // Aumentar para 25 atividades
         const timeAgo = getTimeAgo(log.created_at);
         
         let type: ActivityItem['type'] = 'system';
