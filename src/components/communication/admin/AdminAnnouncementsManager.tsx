@@ -293,18 +293,18 @@ export function AdminAnnouncementsManager() {
                     </SelectTrigger>
                     <SelectContent>
                       {formData.targetAudience === 'clients' 
-                        ? clients
-                            .filter(client => client.id && client.id.trim() !== '')
+                        ? (clients || [])
+                            .filter(client => client?.id && client.id.trim() !== '' && client.companyName)
                             .map(client => (
                               <SelectItem key={client.id} value={client.id}>
-                                {client.companyName || 'Cliente sem nome'}
+                                {client.companyName}
                               </SelectItem>
                             ))
-                        : suppliers
-                            .filter(supplier => supplier.id && supplier.id.trim() !== '')
+                        : (suppliers || [])
+                            .filter(supplier => supplier?.id && supplier.id.trim() !== '' && supplier.name)
                             .map(supplier => (
                               <SelectItem key={supplier.id} value={supplier.id}>
-                                {supplier.name || 'Fornecedor sem nome'}
+                                {supplier.name}
                               </SelectItem>
                             ))
                       }

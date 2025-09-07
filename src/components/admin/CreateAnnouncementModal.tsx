@@ -20,7 +20,7 @@ export function CreateAnnouncementModal({ open, onOpenChange }: CreateAnnounceme
   const [type, setType] = useState<'info' | 'warning' | 'success' | 'urgent'>('info');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [targetAudience, setTargetAudience] = useState<'clients' | 'suppliers' | 'all'>('clients');
-  const [targetClientId, setTargetClientId] = useState<string>('');
+  const [targetClientId, setTargetClientId] = useState<string>('all_clients');
   const [expiresAt, setExpiresAt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
@@ -39,7 +39,7 @@ export function CreateAnnouncementModal({ open, onOpenChange }: CreateAnnounceme
         type,
         priority,
         targetAudience,
-        targetClientId || undefined,
+        (targetClientId && targetClientId !== 'all_clients') ? targetClientId : undefined,
         expiresAt || undefined
       );
 
@@ -50,7 +50,7 @@ export function CreateAnnouncementModal({ open, onOpenChange }: CreateAnnounceme
         setType('info');
         setPriority('medium');
         setTargetAudience('clients');
-        setTargetClientId('');
+        setTargetClientId('all_clients');
         setExpiresAt("");
         onOpenChange(false);
       }
@@ -136,12 +136,14 @@ export function CreateAnnouncementModal({ open, onOpenChange }: CreateAnnounceme
                   <SelectValue placeholder="Selecionar cliente específico ou deixar em branco para todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os clientes</SelectItem>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.companyName}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all_clients">Todos os clientes</SelectItem>
+                  {(clients || [])
+                    .filter(client => client?.id && client.id.trim() !== '' && client.companyName)
+                    .map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.companyName}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
