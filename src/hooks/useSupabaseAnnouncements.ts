@@ -169,6 +169,17 @@ export const useSupabaseAnnouncements = () => {
     }
 
     try {
+      console.log('🔍 DEBUG: Creating announcement with params:', {
+        title,
+        content,
+        type,
+        priority,
+        targetAudience,
+        targetClientId,
+        targetSupplierId,
+        user: user ? { id: user.id, name: user.name, role: user.role } : 'null'
+      });
+      
       // For target_audience 'all' or when both client and supplier are specified
       const announcements_to_create = [];
       
@@ -176,6 +187,8 @@ export const useSupabaseAnnouncements = () => {
         // Create announcements for all clients
         const { data: allClients } = await supabase.from('clients').select('id').eq('status', 'active');
         const { data: allSuppliers } = await supabase.from('suppliers').select('id').eq('status', 'active');
+        
+        console.log('🔍 DEBUG: Fetched clients and suppliers:', { allClients, allSuppliers });
         
         if (allClients && allClients.length > 0) {
           announcements_to_create.push(...allClients
@@ -211,6 +224,7 @@ export const useSupabaseAnnouncements = () => {
             })));
         }
       } else if (targetAudience === 'clients' && targetClientId) {
+        console.log('🔍 DEBUG: Creating announcement for specific client:', targetClientId);
         announcements_to_create.push({
           client_id: targetClientId,
           title: title.trim(),
@@ -219,11 +233,12 @@ export const useSupabaseAnnouncements = () => {
           priority,
           target_audience: targetAudience,
           created_by: user.id,
-          created_by_name: user.name,
+          created_by_name: user.name || user.email || 'Admin',
           expires_at: expiresAt || null,
           attachments: attachments || []
         });
       } else if (targetAudience === 'suppliers' && targetSupplierId) {
+        console.log('🔍 DEBUG: Creating announcement for specific supplier:', targetSupplierId);
         announcements_to_create.push({
           supplier_id: targetSupplierId,
           title: title.trim(),
@@ -232,36 +247,71 @@ export const useSupabaseAnnouncements = () => {
           priority,
           target_audience: targetAudience,
           created_by: user.id,
-          created_by_name: user.name,
+          created_by_name: user.name || user.email || 'Admin',
           expires_at: expiresAt || null,
           attachments: attachments || []
         });
-      }
-
-      let data = null;
-      if (announcements_to_create.length > 0) {
-        const { data: insertedData, error } = await supabase
-          .from('announcements')
-          .insert(announcements_to_create)
-          .select();
-
-        if (error) {
-          throw error;
-        }
+      } else if (targetAudience === 'clients') {
+        // If no specific client is selected, create for all active clients
+        console.log('🔍 DEBUG: Creating announcement for all clients (no specific client selected)');
+        const { data: allClients } = await supabase.from('clients').select('id').eq('status', 'active');
         
-        data = insertedData?.[0];
+        if (allClients && allClients.length > 0) {
+          announcements_to_create.push(...allClients
+            .filter(client => client && client.id)
+            .map(client => ({
+              client_id: client.id,
+              title: title.trim(),
+              content: content.trim(),
+              type,
+              priority,
+              target_audience: 'clients' as const,
+              created_by: user.id,
+              created_by_name: user.name || user.email || 'Admin',
+              expires_at: expiresAt || null,
+              attachments: attachments || []
+            })));
+        }
       }
+
+      console.log('🔍 DEBUG: Announcements to create:', announcements_to_create);
+
+      if (announcements_to_create.length === 0) {
+        console.warn('⚠️ No announcements to create - no valid targets found');
+        toast({
+          title: "Aviso",
+          description: "Nenhum destinatário válido encontrado para o comunicado.",
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      const { data: insertedData, error } = await supabase
+        .from('announcements')
+        .insert(announcements_to_create)
+        .select();
+
+      console.log('🔍 DEBUG: Insert result:', { insertedData, error });
 
       if (error) {
         throw error;
       }
+      
+      const firstAnnouncement = insertedData?.[0];
+      if (!firstAnnouncement) {
+        console.warn('⚠️ No announcement data returned from insert');
+        throw new Error('Nenhum dado de comunicado retornado após inserção');
+      }
 
       toast({
         title: "Comunicado criado",
-        description: "O comunicado foi criado com sucesso.",
+        description: `Comunicado criado com sucesso para ${announcements_to_create.length} destinatário(s).`,
       });
 
-      return data.id;
+      // Refresh announcements list
+      await fetchAnnouncements();
+
+      return firstAnnouncement.id;
 
     } catch (err) {
       console.error('❌ Error creating announcement:', err);
