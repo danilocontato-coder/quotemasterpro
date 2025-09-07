@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           active: boolean
           category: string
+          client_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category?: string
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           active?: boolean
           category?: string
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -45,7 +48,15 @@ export type Database = {
           setting_value?: Json
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_negotiation_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_negotiations: {
         Row: {
@@ -122,6 +133,7 @@ export type Database = {
       ai_prompts: {
         Row: {
           active: boolean | null
+          client_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -134,6 +146,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -146,6 +159,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          client_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -156,7 +170,15 @@ export type Database = {
           updated_at?: string
           variables?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_prompts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_training_data: {
         Row: {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
 
 interface AISettings {
   id: string;
@@ -32,27 +33,41 @@ export function useAIConfiguration() {
   const [trainingData, setTrainingData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { client: currentClient } = useSupabaseCurrentClient();
   const sb: any = supabase;
 
   const fetchSettings = async () => {
+    if (!currentClient?.id) return;
+    
     setIsLoading(true);
     try {
-      // Tenta carregar do Supabase
+      // Buscar configurações específicas do cliente
       const { data, error } = await sb
         .from('ai_negotiation_settings')
         .select('*')
+        .eq('client_id', currentClient.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       if (data && data.length > 0) {
         setSettings(data as AISettings[]);
       } else {
-        throw new Error('No settings found');
+        // Criar configurações padrão para o cliente
+        const defaultConfig = {
+          enabled: true,
+          autoAnalysis: true,
+          autoNegotiation: false,
+          maxDiscountPercent: 15,
+          minNegotiationAmount: 1000,
+          aggressiveness: 'moderate'
+        };
+        
+        await updateSettings('general', defaultConfig);
       }
     } catch (error) {
       console.warn('Supabase settings fallback to local/mock:', error);
       // Fallback: localStorage ou mock
-      const generalConfig = localStorage.getItem('ai_config_general');
+      const generalConfig = localStorage.getItem(`ai_config_general_${currentClient?.id}`);
       const mockSettings: AISettings[] = [
         {
           id: '1',
@@ -79,10 +94,13 @@ export function useAIConfiguration() {
   };
 
   const fetchPrompts = async () => {
+    if (!currentClient?.id) return;
+    
     try {
       const { data, error } = await sb
         .from('ai_prompts')
         .select('*')
+        .eq('client_id', currentClient.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -120,18 +138,21 @@ export function useAIConfiguration() {
   };
 
   const updateSettings = async (category: string, settingValue: any) => {
+    if (!currentClient?.id) return;
+    
     try {
       const payload = {
         setting_key: `${category}_config`,
         setting_value: settingValue,
         category,
+        client_id: currentClient.id,
         active: true,
         description: `Configurações ${category} da IA`
       };
 
       const { data, error } = await sb
         .from('ai_negotiation_settings')
-        .upsert(payload, { onConflict: 'setting_key' })
+        .upsert(payload, { onConflict: 'setting_key,client_id' })
         .select()
         .maybeSingle();
 
@@ -146,7 +167,7 @@ export function useAIConfiguration() {
       }
 
       // fallback local
-      localStorage.setItem(`ai_config_${category}`, JSON.stringify(settingValue));
+      localStorage.setItem(`ai_config_${category}_${currentClient.id}`, JSON.stringify(settingValue));
       return {
         id: 'local',
         setting_key: `${category}_config`,
@@ -159,7 +180,7 @@ export function useAIConfiguration() {
       } as AISettings;
     } catch (error) {
       console.warn('Supabase updateSettings falhou, usando localStorage:', error);
-      localStorage.setItem(`ai_config_${category}`, JSON.stringify(settingValue));
+      localStorage.setItem(`ai_config_${category}_${currentClient?.id}`, JSON.stringify(settingValue));
       const updatedSetting: AISettings = {
         id: 'local',
         setting_key: `${category}_config`,
@@ -179,6 +200,8 @@ export function useAIConfiguration() {
   };
 
   const createPrompt = async (promptData: Partial<AIPrompt>) => {
+    if (!currentClient?.id) return;
+    
     try {
       const { data, error } = await sb
         .from('ai_prompts')
@@ -187,6 +210,7 @@ export function useAIConfiguration() {
           prompt_name: promptData.prompt_name || 'Novo Prompt',
           prompt_content: promptData.prompt_content || '',
           variables: promptData.variables || [],
+          client_id: currentClient.id,
           is_default: false,
           active: true,
         })
@@ -273,33 +297,13 @@ export function useAIConfiguration() {
     }
   };
 
-  // Carregar configurações do localStorage na inicialização
+  // Carregar configurações quando o cliente mudar
   useEffect(() => {
-    const loadLocalConfig = () => {
-      const generalConfig = localStorage.getItem('ai_config_general');
-      if (generalConfig) {
-        const parsedConfig = JSON.parse(generalConfig);
-        const mockSettings: AISettings[] = [
-          {
-            id: '1',
-            setting_key: 'general_config',
-            setting_value: parsedConfig,
-            category: 'general',
-            description: 'Configurações gerais da IA',
-            active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ];
-        setSettings(mockSettings);
-      } else {
-        fetchSettings();
-      }
-    };
-
-    loadLocalConfig();
-    fetchPrompts();
-  }, []);
+    if (currentClient?.id) {
+      fetchSettings();
+      fetchPrompts();
+    }
+  }, [currentClient?.id]);
 
   return {
     settings,
