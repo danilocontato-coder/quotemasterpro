@@ -5,21 +5,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Send, Clock, User, Headphones, AlertTriangle, Paperclip } from "lucide-react";
-import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Send, Clock, User, Headphones, AlertTriangle, Paperclip, CheckCircle2, XCircle } from "lucide-react";
+import { useSupabaseTickets } from "@/hooks/useSupabaseTickets";
+import { useAuth } from "@/contexts/AuthContext";
 import { getTicketStatusColor, getTicketPriorityColor } from "@/data/mockCommunication";
 
 interface TicketDetailModalProps {
   ticket: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onTicketUpdate?: () => void;
 }
 
-export function TicketDetailModal({ ticket, open, onOpenChange }: TicketDetailModalProps) {
+export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }: TicketDetailModalProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { addTicketMessage } = useSupabaseCommunication();
+  const { addTicketMessage, updateTicketStatus } = useSupabaseTickets();
+  const { user } = useAuth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,8 +44,11 @@ export function TicketDetailModal({ ticket, open, onOpenChange }: TicketDetailMo
 
     setIsLoading(true);
     try {
-      await addTicketMessage(ticket.id, message.trim());
+      await addTicketMessage(ticket.id, message.trim(), [], user?.role === 'admin');
       setMessage("");
+      if (onTicketUpdate) {
+        onTicketUpdate();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -78,6 +85,8 @@ export function TicketDetailModal({ ticket, open, onOpenChange }: TicketDetailMo
 
   const getStatusText = (status: string) => {
     switch (status) {
+      case 'novo':
+        return 'Novo';
       case 'open':
         return 'Aberto';
       case 'in_progress':
@@ -88,6 +97,15 @@ export function TicketDetailModal({ ticket, open, onOpenChange }: TicketDetailMo
         return 'Fechado';
       default:
         return status;
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!ticket || !user || user.role !== 'admin') return;
+    
+    const success = await updateTicketStatus(ticket.id, newStatus as any);
+    if (success && onTicketUpdate) {
+      onTicketUpdate();
     }
   };
 
@@ -133,9 +151,24 @@ export function TicketDetailModal({ ticket, open, onOpenChange }: TicketDetailMo
                 <Badge className={priorityColor}>
                   {getPriorityText(ticket.priority)}
                 </Badge>
-                <Badge className={statusColor}>
-                  {getStatusText(ticket.status)}
-                </Badge>
+                {user?.role === 'admin' ? (
+                  <Select value={ticket.status} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="novo">Novo</SelectItem>
+                      <SelectItem value="open">Aberto</SelectItem>
+                      <SelectItem value="in_progress">Em Andamento</SelectItem>
+                      <SelectItem value="resolved">Resolvido</SelectItem>
+                      <SelectItem value="closed">Fechado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Badge className={statusColor}>
+                    {getStatusText(ticket.status)}
+                  </Badge>
+                )}
               </div>
             </div>
             

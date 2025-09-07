@@ -21,12 +21,20 @@ import {
   Calendar,
   Users,
   FileText,
-  ArrowUpDown
+  ArrowUpDown,
+  MoreVertical,
+  Edit,
+  Eye,
+  CheckCircle2,
+  XCircle,
+  Paperclip
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useSupabaseTickets } from '@/hooks/useSupabaseTickets';
 import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
 import { useSupabaseAdminSuppliers } from '@/hooks/useSupabaseAdminSuppliers';
 import { CreateTicketModal } from './CreateTicketModal';
+import { TicketDetailModal } from '../TicketDetailModal';
 
 export function AdminTicketsManager() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +42,8 @@ export function AdminTicketsManager() {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [newMessageContent, setNewMessageContent] = useState('');
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [chatTicket, setChatTicket] = useState<any>(null);
 
   const { 
     tickets, 
@@ -116,6 +126,29 @@ export function AdminTicketsManager() {
     if (success) {
       setNewMessageContent('');
       fetchTickets();
+    }
+  };
+
+  const openTicketChat = (ticket: any) => {
+    setChatTicket(ticket);
+    setChatModalOpen(true);
+  };
+
+  const handleTicketAction = async (ticketId: string, action: string) => {
+    switch (action) {
+      case 'open_chat':
+        const ticket = tickets.find(t => t.id === ticketId);
+        if (ticket) openTicketChat(ticket);
+        break;
+      case 'mark_progress':
+        await handleStatusChange(ticketId, 'in_progress');
+        break;
+      case 'mark_resolved':
+        await handleStatusChange(ticketId, 'resolved');
+        break;
+      case 'mark_closed':
+        await handleStatusChange(ticketId, 'closed');
+        break;
     }
   };
 
@@ -289,17 +322,17 @@ export function AdminTicketsManager() {
                           <div className="flex items-center gap-2 mb-1">
                             <CardTitle 
                               className="text-sm leading-tight truncate text-blue-600 hover:text-blue-800 cursor-pointer hover:underline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Abrir modal de chat direto com o cliente
-                              }}
+                              onClick={() => openTicketChat(ticket)}
                             >
                               #{ticket.id}
                             </CardTitle>
                             {getStatusBadge(ticket.status)}
                             {getPriorityBadge(ticket.priority)}
                           </div>
-                          <h4 className="font-medium text-sm mb-2 line-clamp-1">
+                          <h4 
+                            className="font-medium text-sm mb-2 line-clamp-1 cursor-pointer hover:text-blue-600"
+                            onClick={() => openTicketChat(ticket)}
+                          >
                             {ticket.subject}
                           </h4>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
@@ -321,6 +354,32 @@ export function AdminTicketsManager() {
                             </div>
                           )}
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleTicketAction(ticket.id, 'open_chat')}>
+                              <MessageSquare className="mr-2 h-4 w-4" />
+                              Abrir Chat
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleTicketAction(ticket.id, 'mark_progress')}>
+                              <Clock className="mr-2 h-4 w-4" />
+                              Marcar em Andamento
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleTicketAction(ticket.id, 'mark_resolved')}>
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Marcar como Resolvido
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleTicketAction(ticket.id, 'mark_closed')}>
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Fechar Ticket
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </CardHeader>
                   </Card>
@@ -451,6 +510,14 @@ export function AdminTicketsManager() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Chat Modal */}
+      <TicketDetailModal 
+        ticket={chatTicket}
+        open={chatModalOpen}
+        onOpenChange={setChatModalOpen}
+        onTicketUpdate={fetchTickets}
+      />
     </div>
   );
 }
