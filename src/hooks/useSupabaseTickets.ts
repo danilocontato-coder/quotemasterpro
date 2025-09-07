@@ -9,7 +9,7 @@ interface SupportTicket {
   client_name?: string;
   subject: string;
   description: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  status: 'novo' | 'open' | 'in_progress' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   category?: string;
   created_by: string;
@@ -85,7 +85,7 @@ export const useSupabaseTickets = () => {
 
           return {
             ...ticket,
-            status: ticket.status as 'open' | 'in_progress' | 'resolved' | 'closed',
+            status: ticket.status as 'novo' | 'open' | 'in_progress' | 'resolved' | 'closed',
             priority: ticket.priority as 'low' | 'medium' | 'high' | 'urgent',
             created_at: ticket.created_at || new Date().toISOString(),
             updated_at: ticket.updated_at || new Date().toISOString(),
@@ -252,7 +252,7 @@ export const useSupabaseTickets = () => {
   // Update ticket status (admin only)
   const updateTicketStatus = useCallback(async (
     ticketId: string, 
-    status: 'open' | 'in_progress' | 'resolved' | 'closed',
+    status: 'novo' | 'open' | 'in_progress' | 'resolved' | 'closed',
     assignedTo?: string,
     assignedToName?: string
   ) => {
@@ -314,10 +314,10 @@ export const useSupabaseTickets = () => {
 
   // Utility functions
   const getOpenTicketsCount = useCallback(() => {
-    return tickets.filter(ticket => ticket.status === 'open' || ticket.status === 'in_progress').length;
+    return tickets.filter(ticket => ticket.status === 'novo' || ticket.status === 'open' || ticket.status === 'in_progress').length;
   }, [tickets]);
 
-  const getTicketsByStatus = useCallback((status: 'open' | 'in_progress' | 'resolved' | 'closed') => {
+  const getTicketsByStatus = useCallback((status: 'novo' | 'open' | 'in_progress' | 'resolved' | 'closed') => {
     return tickets.filter(ticket => ticket.status === status);
   }, [tickets]);
 
