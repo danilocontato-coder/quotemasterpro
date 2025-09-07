@@ -226,34 +226,42 @@ export const CommunicationManagement = () => {
                                   {announcement.type === 'urgent' && 'Urgente'}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                                {announcement.content}
-                              </p>
-                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {formatDate(announcement.created_at)}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
-                                  {announcement.target_audience === 'all' && 'Todos'}
-                                  {announcement.target_audience === 'clients' && 'Clientes'}
-                                  {announcement.target_audience === 'suppliers' && 'Fornecedores'}
-                                </div>
-                                {announcement.expires_at && (
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    Expira: {formatDate(announcement.expires_at)}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">
-                                Prioridade: {announcement.priority === 'low' ? 'Baixa' : 
-                                          announcement.priority === 'medium' ? 'Média' : 'Alta'}
-                              </Badge>
-                            </div>
+                               <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                                 {announcement.content}
+                               </p>
+                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                 <div className="flex items-center gap-1">
+                                   <Clock className="h-3 w-3" />
+                                   {formatDate(announcement.created_at)}
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                   <Users className="h-3 w-3" />
+                                   {announcement.target_audience === 'all' && 'Todos'}
+                                   {announcement.target_audience === 'clients' && 'Clientes'}
+                                   {announcement.target_audience === 'suppliers' && 'Fornecedores'}
+                                   {announcement.recipients_count && announcement.recipients_count > 1 && 
+                                     ` (${announcement.recipients_count} destinatários)`
+                                   }
+                                 </div>
+                                 {announcement.expires_at && (
+                                   <div className="flex items-center gap-1">
+                                     <Calendar className="h-3 w-3" />
+                                     Expira: {formatDate(announcement.expires_at)}
+                                   </div>
+                                 )}
+                               </div>
+                             </div>
+                             <div className="flex items-center gap-2">
+                               <Badge variant="outline">
+                                 Prioridade: {announcement.priority === 'low' ? 'Baixa' : 
+                                           announcement.priority === 'medium' ? 'Média' : 'Alta'}
+                               </Badge>
+                               {announcement.recipients_count && announcement.recipients_count > 1 && (
+                                 <Badge variant="secondary">
+                                   {announcement.recipients_count} destinatários
+                                 </Badge>
+                               )}
+                             </div>
                           </div>
                         </CardContent>
                       </Card>

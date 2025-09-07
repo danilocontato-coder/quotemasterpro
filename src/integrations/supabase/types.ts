@@ -45,6 +45,7 @@ export type Database = {
       }
       announcements: {
         Row: {
+          announcement_group_id: string | null
           attachments: string[]
           client_id: string
           content: string
@@ -62,6 +63,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          announcement_group_id?: string | null
           attachments?: string[]
           client_id: string
           content: string
@@ -79,6 +81,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          announcement_group_id?: string | null
           attachments?: string[]
           client_id?: string
           content?: string

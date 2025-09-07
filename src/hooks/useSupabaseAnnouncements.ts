@@ -18,6 +18,8 @@ interface Announcement {
   created_at: string;
   updated_at: string;
   read?: boolean;
+  recipients_count?: number;
+  announcement_group_id?: string;
 }
 
 export const useSupabaseAnnouncements = () => {
@@ -39,34 +41,88 @@ export const useSupabaseAnnouncements = () => {
       setIsLoading(true);
       setError(null);
 
-      let query = supabase
-        .from('announcements')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (user.role === 'admin') {
+        // For admin, fetch grouped announcements
+        const { data: announcementsData, error: announcementsError } = await supabase
+          .from('announcements')
+          .select(`
+            id,
+            announcement_group_id,
+            title,
+            content,
+            type,
+            priority,
+            target_audience,
+            attachments,
+            created_by,
+            created_by_name,
+            expires_at,
+            created_at,
+            updated_at
+          `)
+          .order('created_at', { ascending: false });
 
-      // If not admin and no specific clientId, we need current client
-      if (user.role !== 'admin' && !clientId) {
-        console.log('⚠️ Non-admin users need a client ID');
-        return;
-      }
+        if (announcementsError) {
+          throw announcementsError;
+        }
 
-      // Filter by client if specified or if not admin
-      if (clientId) {
+        // Group by announcement_group_id and count recipients
+        const groupedAnnouncements = new Map();
+        
+        (announcementsData || []).forEach(announcement => {
+          const groupId = announcement.announcement_group_id;
+          if (!groupedAnnouncements.has(groupId)) {
+            groupedAnnouncements.set(groupId, {
+              ...announcement,
+              recipients_count: 1,
+              read: true // Admin always sees as read
+            });
+          } else {
+            const existing = groupedAnnouncements.get(groupId);
+            existing.recipients_count += 1;
+          }
+        });
+
+        const enrichedAnnouncements = Array.from(groupedAnnouncements.values()).map(announcement => ({
+          ...announcement,
+          type: announcement.type as 'info' | 'warning' | 'success' | 'urgent',
+          priority: announcement.priority as 'low' | 'medium' | 'high',
+          target_audience: announcement.target_audience as 'clients' | 'suppliers' | 'all',
+          created_at: announcement.created_at || new Date().toISOString(),
+          updated_at: announcement.updated_at || new Date().toISOString(),
+          attachments: announcement.attachments || [],
+          created_by: announcement.created_by || undefined,
+          created_by_name: announcement.created_by_name || undefined,
+          expires_at: announcement.expires_at || undefined
+        }));
+
+        console.log('✅ Admin announcements fetched and grouped:', enrichedAnnouncements.length);
+        setAnnouncements(enrichedAnnouncements);
+        
+      } else {
+        // For regular users, fetch their specific announcements
+        let query = supabase
+          .from('announcements')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        // If not admin and no specific clientId, we need current client
+        if (!clientId) {
+          console.log('⚠️ Non-admin users need a client ID');
+          return;
+        }
+
+        // Filter by client
         query = query.eq('client_id', clientId);
-      } else if (user.role !== 'admin') {
-        // This shouldn't happen but just in case
-        return;
-      }
 
-      const { data: announcementsData, error: announcementsError } = await query;
+        const { data: announcementsData, error: announcementsError } = await query;
 
-      if (announcementsError) {
-        throw announcementsError;
-      }
+        if (announcementsError) {
+          throw announcementsError;
+        }
 
-      // For client users, also get read status
-      let readAnnouncementIds = new Set<string>();
-      if (user.role !== 'admin') {
+        // For client users, also get read status
+        let readAnnouncementIds = new Set<string>();
         const { data: readsData, error: readsError } = await supabase
           .from('announcement_reads')
           .select('announcement_id')
@@ -77,24 +133,25 @@ export const useSupabaseAnnouncements = () => {
         } else {
           readAnnouncementIds = new Set(readsData?.map(r => r.announcement_id) || []);
         }
+
+        const enrichedAnnouncements = (announcementsData || []).map(announcement => ({
+          ...announcement,
+          read: readAnnouncementIds.has(announcement.id),
+          type: announcement.type as 'info' | 'warning' | 'success' | 'urgent',
+          priority: announcement.priority as 'low' | 'medium' | 'high',
+          target_audience: announcement.target_audience as 'clients' | 'suppliers' | 'all',
+          created_at: announcement.created_at || new Date().toISOString(),
+          updated_at: announcement.updated_at || new Date().toISOString(),
+          attachments: announcement.attachments || [],
+          created_by: announcement.created_by || undefined,
+          created_by_name: announcement.created_by_name || undefined,
+          expires_at: announcement.expires_at || undefined,
+          recipients_count: 1
+        }));
+
+        console.log('✅ Client announcements fetched:', enrichedAnnouncements.length);
+        setAnnouncements(enrichedAnnouncements);
       }
-
-      const enrichedAnnouncements = (announcementsData || []).map(announcement => ({
-        ...announcement,
-        read: user.role === 'admin' ? true : readAnnouncementIds.has(announcement.id),
-        type: announcement.type as 'info' | 'warning' | 'success' | 'urgent',
-        priority: announcement.priority as 'low' | 'medium' | 'high',
-        target_audience: announcement.target_audience as 'clients' | 'suppliers' | 'all',
-        created_at: announcement.created_at || new Date().toISOString(),
-        updated_at: announcement.updated_at || new Date().toISOString(),
-        attachments: announcement.attachments || [],
-        created_by: announcement.created_by || undefined,
-        created_by_name: announcement.created_by_name || undefined,
-        expires_at: announcement.expires_at || undefined
-      }));
-
-      console.log('✅ Announcements fetched:', enrichedAnnouncements.length);
-      setAnnouncements(enrichedAnnouncements);
 
     } catch (err) {
       console.error('❌ Error fetching announcements:', err);
@@ -180,6 +237,9 @@ export const useSupabaseAnnouncements = () => {
         user: user ? { id: user.id, name: user.name, role: user.role } : 'null'
       });
       
+      // Generate a unique group ID for this batch of announcements
+      const groupId = crypto.randomUUID();
+      
       // For target_audience 'all' or when both client and supplier are specified
       const announcements_to_create = [];
       
@@ -194,6 +254,7 @@ export const useSupabaseAnnouncements = () => {
           announcements_to_create.push(...allClients
             .filter(client => client && client.id)
             .map(client => ({
+              announcement_group_id: groupId,
               client_id: client.id,
               title: title.trim(),
               content: content.trim(),
@@ -211,6 +272,7 @@ export const useSupabaseAnnouncements = () => {
           announcements_to_create.push(...allSuppliers
             .filter(supplier => supplier && supplier.id)
             .map(supplier => ({
+              announcement_group_id: groupId,
               supplier_id: supplier.id,
               title: title.trim(),
               content: content.trim(),
@@ -226,6 +288,7 @@ export const useSupabaseAnnouncements = () => {
       } else if (targetAudience === 'clients' && targetClientId) {
         console.log('🔍 DEBUG: Creating announcement for specific client:', targetClientId);
         announcements_to_create.push({
+          announcement_group_id: groupId,
           client_id: targetClientId,
           title: title.trim(),
           content: content.trim(),
@@ -240,6 +303,7 @@ export const useSupabaseAnnouncements = () => {
       } else if (targetAudience === 'suppliers' && targetSupplierId) {
         console.log('🔍 DEBUG: Creating announcement for specific supplier:', targetSupplierId);
         announcements_to_create.push({
+          announcement_group_id: groupId,
           supplier_id: targetSupplierId,
           title: title.trim(),
           content: content.trim(),
@@ -260,6 +324,7 @@ export const useSupabaseAnnouncements = () => {
           announcements_to_create.push(...allClients
             .filter(client => client && client.id)
             .map(client => ({
+              announcement_group_id: groupId,
               client_id: client.id,
               title: title.trim(),
               content: content.trim(),
@@ -311,7 +376,7 @@ export const useSupabaseAnnouncements = () => {
       // Refresh announcements list
       await fetchAnnouncements();
 
-      return firstAnnouncement.id;
+      return groupId;
 
     } catch (err) {
       console.error('❌ Error creating announcement:', err);
