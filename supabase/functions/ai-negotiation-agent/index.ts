@@ -9,16 +9,9 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-interface QuoteAnalysis {
-  bestResponse: any;
-  analysisReason: string;
-  negotiationStrategy: any;
-  potentialSavings: number;
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -27,7 +20,7 @@ serve(async (req) => {
 
   try {
     const { action, quoteId, negotiationId } = await req.json();
-    console.log(`AI Negotiation Agent - Action: ${action}, Quote: ${quoteId}`);
+    console.log(`AI Negotiation Agent - Action: ${action}, Quote: ${quoteId}, Negotiation: ${negotiationId}`);
 
     switch (action) {
       case 'analyze':
@@ -39,300 +32,298 @@ serve(async (req) => {
       case 'reject':
         return await rejectNegotiation(negotiationId);
       default:
-        throw new Error('Invalid action');
+        throw new Error('Ação inválida');
     }
   } catch (error) {
-    console.error('Error in ai-negotiation-agent:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Erro na edge function AI Negotiation:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
   }
 });
 
 async function analyzeQuote(quoteId: string) {
-  console.log(`Analyzing quote: ${quoteId}`);
+  console.log(`Analisando cotação: ${quoteId}`);
   
-  // Buscar cotação e propostas
-  const { data: quote } = await supabase
+  // Buscar cotação e suas respostas
+  const { data: quote, error: quoteError } = await supabase
     .from('quotes')
-    .select('*')
+    .select('*, quote_responses(*)')
     .eq('id', quoteId)
     .single();
 
-  const { data: responses } = await supabase
-    .from('quote_responses')
-    .select('*')
-    .eq('quote_id', quoteId);
-
-  const { data: supplier_data } = await supabase
-    .from('suppliers')
-    .select('*')
-    .in('id', responses?.map(r => r.supplier_id) || []);
-
-  if (!quote || !responses || responses.length === 0) {
-    throw new Error('Quote or responses not found');
+  if (quoteError || !quote) {
+    throw new Error('Cotação não encontrada');
   }
 
-  // Análise com IA
-  const analysis = await analyzeWithAI(quote, responses, supplier_data);
-  
-  // Atualizar negociação com análise
-  const { data: negotiation } = await supabase
-    .from('ai_negotiations')
-    .update({
-      selected_response_id: analysis.bestResponse.id,
-      ai_analysis: analysis,
-      status: 'completed'
-    })
-    .eq('quote_id', quoteId)
-    .select()
-    .single();
+  if (!quote.quote_responses || quote.quote_responses.length === 0) {
+    throw new Error('Nenhuma proposta encontrada para análise');
+  }
 
-  // Atualizar status da cotação
-  await supabase
-    .from('quotes')
-    .update({ status: 'ai_negotiating' })
-    .eq('id', quoteId);
+  // Encontrar a melhor proposta (menor valor)
+  const bestResponse = quote.quote_responses.reduce((best: any, current: any) => 
+    current.total_amount < best.total_amount ? current : best
+  );
 
-  console.log('Analysis completed:', analysis);
-  
-  return new Response(JSON.stringify({
-    success: true,
-    analysis,
-    negotiation
-  }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
+  // Calcular preço médio do mercado
+  const averagePrice = quote.quote_responses.reduce((sum: number, resp: any) => 
+    sum + resp.total_amount, 0) / quote.quote_responses.length;
 
-async function analyzeWithAI(quote: any, responses: any[], suppliers: any[]): Promise<QuoteAnalysis> {
-  const prompt = `
-Você é um especialista em negociação empresarial. Analise estas propostas para a cotação "${quote.title}":
+  // Determinar se vale a pena negociar
+  const negotiationPotential = ((bestResponse.total_amount - averagePrice * 0.85) / bestResponse.total_amount) * 100;
+  const shouldNegotiate = negotiationPotential > 5; // Se há mais de 5% de margem
 
-COTAÇÃO:
-- Valor estimado: R$ ${quote.total}
-- Descrição: ${quote.description}
-- Prazo: ${quote.deadline}
+  // Criar análise da IA usando GPT-5
+  const analysisPrompt = `
+Você é um especialista em negociações comerciais. Analise esta situação:
 
-PROPOSTAS RECEBIDAS:
-${responses.map((r, i) => `
-${i + 1}. Fornecedor: ${r.supplier_name}
-   - Valor: R$ ${r.total_amount}
-   - Prazo: ${r.delivery_time} dias
-   - Observações: ${r.notes || 'Nenhuma'}
-`).join('')}
+Cotação: ${quote.title || quote.description}
+Melhor proposta atual: R$ ${bestResponse.total_amount.toLocaleString('pt-BR')}
+Fornecedor: ${bestResponse.supplier_name}
+Preço médio do mercado: R$ ${averagePrice.toLocaleString('pt-BR')}
+Margem de negociação estimada: ${negotiationPotential.toFixed(1)}%
 
-DADOS DOS FORNECEDORES:
-${suppliers.map(s => `
-- ${s.name}: Rating ${s.rating}/5, ${s.completed_orders} pedidos concluídos
-  Especialidades: ${s.specialties?.join(', ') || 'N/A'}
-`).join('')}
+Forneça uma análise em português com:
+1. Razão para negociar (máximo 150 caracteres)
+2. Estratégia de negociação (máximo 200 caracteres)
+3. Desconto objetivo realista (percentual entre 3-15%)
 
-Sua tarefa:
-1. Escolha a MELHOR proposta considerando preço, qualidade, prazo e histórico
-2. Calcule uma margem de negociação realista (5-15% tipicamente)
-3. Crie uma estratégia de negociação humanizada e respeitosa
-
-Responda APENAS em JSON válido:
+Responda APENAS no formato JSON:
 {
-  "bestResponseIndex": 0,
-  "analysisReason": "Explicação detalhada da escolha",
-  "negotiationStrategy": {
-    "targetDiscount": 8.5,
-    "maxDiscount": 12,
-    "approach": "volume/payment_terms/relationship",
-    "talking_points": ["ponto 1", "ponto 2"]
-  },
-  "potentialSavings": 1250.50,
-  "riskAssessment": "low/medium/high"
+  "reason": "razão aqui",
+  "strategy": "estratégia aqui", 
+  "targetDiscount": numero_percentual
 }`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Você é um especialista em negociação empresarial. Sempre responda com JSON válido.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1000,
+        model: 'gpt-5-2025-08-07',
+        messages: [{ role: 'user', content: analysisPrompt }],
+        max_completion_tokens: 500,
       }),
     });
 
-    const data = await response.json();
-    const aiResponse = JSON.parse(data.choices[0].message.content);
+    const analysisData = await analysisResponse.json();
+    let aiAnalysis;
     
-    return {
-      bestResponse: responses[aiResponse.bestResponseIndex],
-      analysisReason: aiResponse.analysisReason,
-      negotiationStrategy: aiResponse.negotiationStrategy,
-      potentialSavings: aiResponse.potentialSavings
-    };
-  } catch (error) {
-    console.error('Error calling OpenAI:', error);
-    // Fallback para análise simples
-    const cheapest = responses.reduce((prev, curr) => 
-      prev.total_amount < curr.total_amount ? prev : curr
+    try {
+      aiAnalysis = JSON.parse(analysisData.choices[0].message.content);
+    } catch (parseError) {
+      // Fallback case
+      aiAnalysis = {
+        reason: "Preço acima da média de mercado, há margem para negociação",
+        strategy: "Abordagem colaborativa enfatizando relacionamento de longo prazo",
+        targetDiscount: Math.min(Math.max(negotiationPotential * 0.6, 3), 15)
+      };
+    }
+
+    // Criar registro de negociação
+    const { data: negotiation, error: negotiationError } = await supabase
+      .from('ai_negotiations')
+      .insert({
+        quote_id: quoteId,
+        selected_response_id: bestResponse.id,
+        original_amount: bestResponse.total_amount,
+        ai_analysis: aiAnalysis,
+        negotiation_strategy: {
+          reason: aiAnalysis.reason,
+          strategy: aiAnalysis.strategy,
+          targetDiscount: aiAnalysis.targetDiscount,
+          marketAverage: averagePrice,
+          negotiationPotential: negotiationPotential
+        },
+        status: shouldNegotiate ? 'analyzed' : 'not_viable'
+      })
+      .select()
+      .single();
+
+    if (negotiationError) {
+      throw new Error('Erro ao criar registro de negociação');
+    }
+
+    console.log(`Análise concluída para cotação ${quoteId}:`, aiAnalysis);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        negotiation,
+        shouldNegotiate,
+        analysis: aiAnalysis
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-    
-    return {
-      bestResponse: cheapest,
-      analysisReason: "Selecionada automaticamente a proposta com menor valor",
-      negotiationStrategy: {
-        targetDiscount: 5,
-        maxDiscount: 10,
-        approach: "volume",
-        talking_points: ["Considerando o volume do pedido", "Relacionamento de longo prazo"]
-      },
-      potentialSavings: cheapest.total_amount * 0.05
-    };
+
+  } catch (apiError) {
+    console.error('Erro na API OpenAI:', apiError);
+    throw new Error('Erro ao analisar cotação com IA');
   }
 }
 
 async function startNegotiation(negotiationId: string) {
-  console.log(`Starting negotiation: ${negotiationId}`);
+  console.log(`Iniciando negociação: ${negotiationId}`);
   
-  // Buscar dados da negociação
-  const { data: negotiation } = await supabase
+  // Buscar negociação
+  const { data: negotiation, error: negotiationError } = await supabase
     .from('ai_negotiations')
-    .select(`
-      *,
-      quotes(*),
-      quote_responses!selected_response_id(*)
-    `)
+    .select('*, quote_responses(*)')
     .eq('id', negotiationId)
     .single();
 
-  if (!negotiation) {
-    throw new Error('Negotiation not found');
+  if (negotiationError || !negotiation) {
+    throw new Error('Negociação não encontrada');
   }
 
-  // Buscar dados do fornecedor
-  const { data: supplier } = await supabase
-    .from('suppliers')
-    .select('*')
-    .eq('id', negotiation.quote_responses.supplier_id)
-    .single();
+  const targetDiscount = negotiation.negotiation_strategy.targetDiscount || 8;
+  const proposedAmount = negotiation.original_amount * (1 - targetDiscount / 100);
 
-  // Gerar mensagem de negociação
-  const negotiationMessage = await generateNegotiationMessage(
-    negotiation,
-    supplier
-  );
+  // Gerar mensagem inicial de negociação usando GPT-5
+  const negotiationPrompt = `
+Você é um assistente de compras profissional iniciando uma negociação comercial.
 
-  // Simular envio (aqui você integraria com WhatsApp/Email)
-  const conversationLog = [
-    {
-      timestamp: new Date().toISOString(),
-      type: 'ai_message',
-      content: negotiationMessage,
-      channel: 'whatsapp' // ou 'email'
-    }
-  ];
+Contexto:
+- Proposta atual: R$ ${negotiation.original_amount.toLocaleString('pt-BR')}
+- Valor proposto: R$ ${proposedAmount.toLocaleString('pt-BR')}
+- Estratégia: ${negotiation.negotiation_strategy.strategy}
+- Razão: ${negotiation.negotiation_strategy.reason}
 
-  // Atualizar negociação
-  await supabase
-    .from('ai_negotiations')
-    .update({
-      status: 'negotiating',
-      conversation_log: conversationLog
-    })
-    .eq('id', negotiationId);
+Escreva UMA mensagem de abertura de negociação em português, sendo:
+- Profissional e respeitosa
+- Máximo 200 caracteres
+- Enfatizando parceria de longo prazo
+- Propondo o valor específico
 
-  return new Response(JSON.stringify({
-    success: true,
-    message: negotiationMessage,
-    negotiationId
-  }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-async function generateNegotiationMessage(negotiation: any, supplier: any): Promise<string> {
-  const strategy = negotiation.ai_analysis.negotiationStrategy;
-  const targetDiscount = strategy.targetDiscount || 5;
-  const originalAmount = negotiation.quote_responses.total_amount;
-  const targetAmount = originalAmount * (1 - targetDiscount / 100);
-
-  const prompt = `
-Crie uma mensagem de negociação profissional e humanizada para o fornecedor:
-
-CONTEXTO:
-- Fornecedor: ${supplier.name}
-- Proposta original: R$ ${originalAmount}
-- Meta de desconto: ${targetDiscount}%
-- Valor alvo: R$ ${targetAmount.toFixed(2)}
-- Estratégia: ${strategy.approach}
-- Pontos de conversa: ${strategy.talking_points?.join(', ')}
-
-Crie uma mensagem WhatsApp/Email que seja:
-- Respeitosa e profissional
-- Humanizada (não pareça bot)
-- Específica sobre o desconto desejado
-- Inclua justificativa válida
-- Tom positivo e colaborativo
-- Máximo 200 palavras
-
-Responda APENAS com o texto da mensagem, sem aspas ou formatação extra.`;
+Responda APENAS a mensagem, sem aspas ou formatação.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const messageResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Você é um especialista em comunicação empresarial brasileira.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
+        model: 'gpt-5-2025-08-07',
+        messages: [{ role: 'user', content: negotiationPrompt }],
+        max_completion_tokens: 300,
       }),
     });
 
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
-  } catch (error) {
-    console.error('Error generating message:', error);
-    return `Olá ${supplier.name}! Analisamos sua excelente proposta de R$ ${originalAmount} e gostaríamos de negociar um valor de R$ ${targetAmount.toFixed(2)} considerando o volume e nossa parceria. Podemos conversar sobre essa possibilidade?`;
+    const messageData = await messageResponse.json();
+    const aiMessage = messageData.choices[0].message.content.trim();
+
+    // Simular resposta do fornecedor (para demonstração)
+    const supplierResponses = [
+      `Entendo a proposta. Posso trabalhar com R$ ${(proposedAmount * 1.03).toLocaleString('pt-BR')} considerando o relacionamento.`,
+      `O valor está apertado. Minha contraproposta é R$ ${(proposedAmount * 1.05).toLocaleString('pt-BR')}.`,
+      `Vou aceitar R$ ${proposedAmount.toLocaleString('pt-BR')} para garantir esta parceria.`,
+      `Preciso de R$ ${(proposedAmount * 1.02).toLocaleString('pt-BR')} para manter a qualidade.`
+    ];
+
+    const supplierResponse = supplierResponses[Math.floor(Math.random() * supplierResponses.length)];
+    
+    // Extrair valor da resposta do fornecedor
+    const supplierAmountMatch = supplierResponse.match(/R\$\s*([\d.,]+)/);
+    const finalAmount = supplierAmountMatch ? 
+      parseFloat(supplierAmountMatch[1].replace(/[.,]/g, m => m === ',' ? '.' : '')) : 
+      proposedAmount;
+
+    const conversationLog = [
+      {
+        role: 'ai',
+        message: aiMessage,
+        timestamp: new Date().toISOString()
+      },
+      {
+        role: 'supplier',
+        message: supplierResponse,
+        timestamp: new Date(Date.now() + 300000).toISOString() // 5 min depois
+      }
+    ];
+
+    // Atualizar negociação
+    const { data: updatedNegotiation, error: updateError } = await supabase
+      .from('ai_negotiations')
+      .update({
+        status: 'completed',
+        negotiated_amount: finalAmount,
+        discount_percentage: ((negotiation.original_amount - finalAmount) / negotiation.original_amount) * 100,
+        conversation_log: conversationLog,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', negotiationId)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw new Error('Erro ao atualizar negociação');
+    }
+
+    console.log(`Negociação ${negotiationId} concluída. Valor final: R$ ${finalAmount}`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        negotiation: updatedNegotiation,
+        savings: negotiation.original_amount - finalAmount
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (apiError) {
+    console.error('Erro na negociação:', apiError);
+    throw new Error('Erro ao realizar negociação');
   }
 }
 
 async function approveNegotiation(negotiationId: string) {
-  await supabase
+  const { data, error } = await supabase
     .from('ai_negotiations')
     .update({
       status: 'approved',
       human_approved: true,
-      approved_by: null // Seria preenchido com auth.uid() em uma implementação real
+      approved_by: 'current_user' // Em produção, pegar do auth
     })
-    .eq('id', negotiationId);
+    .eq('id', negotiationId)
+    .select()
+    .single();
 
-  return new Response(JSON.stringify({ success: true }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  if (error) {
+    throw new Error('Erro ao aprovar negociação');
+  }
+
+  return new Response(
+    JSON.stringify({ success: true, negotiation: data }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
 
 async function rejectNegotiation(negotiationId: string) {
-  await supabase
+  const { data, error } = await supabase
     .from('ai_negotiations')
     .update({
       status: 'rejected',
       human_approved: false
     })
-    .eq('id', negotiationId);
+    .eq('id', negotiationId)
+    .select()
+    .single();
 
-  return new Response(JSON.stringify({ success: true }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  if (error) {
+    throw new Error('Erro ao rejeitar negociação');
+  }
+
+  return new Response(
+    JSON.stringify({ success: true, negotiation: data }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
