@@ -100,10 +100,7 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      payment_method_types: ["card", "boleto", "pix"],
-      payment_method_options: {
-        boleto: { expires_after_days: 3 }
-      },
+      payment_method_types: ["card"],
       billing_address_collection: "auto",
       locale: "pt-BR",
       success_url: `${origin}/plans?success=true&session_id={CHECKOUT_SESSION_ID}`,
