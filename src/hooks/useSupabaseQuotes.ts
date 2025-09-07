@@ -177,9 +177,13 @@ export const useSupabaseQuotes = () => {
 
       console.log('🔍 DEBUG: client_id obtido via RPC:', clientIdData);
 
-      // Generate quote ID
-      const quoteId = `RFQ${Date.now().toString().slice(-6)}`;
-      
+      // Generate sequential quote ID via RPC (non-random)
+      const { data: nextId, error: nextIdError } = await supabase.rpc('next_quote_id', { prefix: 'RFQ' });
+      if (nextIdError || !nextId) {
+        console.error('❌ Error generating sequential RFQ ID:', nextIdError);
+        throw nextIdError || new Error('Falha ao gerar ID da cotação');
+      }
+      const quoteId = nextId as string;
       // Minimum payload for INSERT policy compliance
       const insertPayload = {
         id: quoteId,
