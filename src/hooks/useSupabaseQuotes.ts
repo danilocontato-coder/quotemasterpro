@@ -48,8 +48,8 @@ export const useSupabaseQuotes = () => {
       setIsLoading(true);
       setError(null);
       
-      if (!user) {
-        console.log('⚠️ No user available for fetching quotes');
+      if (!userId) {
+        console.log('⚠️ No userId available for fetching quotes');
         setQuotes([]);
         return;
       }
