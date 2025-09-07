@@ -12,6 +12,8 @@ export function SupplierLayout() {
   const supplierName = "Materiais Santos Ltda";
   const planDisplayName = "Premium";
 
+  console.log('🔍 [SUPPLIER-LAYOUT] Component rendering without NotificationToast');
+
   return (
     <>
       <SidebarProvider>
