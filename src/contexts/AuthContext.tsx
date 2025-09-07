@@ -66,6 +66,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
   useEffect(() => {
+    // Prevent refresh on visibility change
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔍 Page visible again - not refreshing');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Get initial session
     const initializeAuth = async () => {
       try {
@@ -96,6 +105,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Ignore token refresh events to prevent unnecessary re-renders
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('🔄 Token refreshed - ignoring to prevent re-render');
+          return;
+        }
+
+        // Ignore events that happen when page is hidden (tab switching)
+        if (document.hidden && event !== 'SIGNED_OUT') {
+          console.log('🔄 Auth event ignored - page hidden:', event);
+          return;
+        }
+        
         console.log('🔄 Auth state changed:', event, { 
           hasSession: !!session, 
           userId: session?.user?.id,
@@ -106,10 +127,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         
         if (session?.user) {
-          // Use setTimeout to avoid blocking the auth state change
-          setTimeout(() => {
-            fetchUserProfile(session.user);
-          }, 0);
+          // Only fetch profile on actual sign in or initial load
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            setTimeout(() => {
+              fetchUserProfile(session.user);
+            }, 0);
+          }
         } else {
           setUser(null);
           setForcePasswordChange(false);
@@ -118,7 +141,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
