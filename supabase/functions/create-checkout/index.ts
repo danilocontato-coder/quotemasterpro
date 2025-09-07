@@ -93,13 +93,19 @@ serve(async (req) => {
                 supabase_plan_id: planId
               }
             },
-            unit_amount: Math.round(plan.monthly_price * 100), // Converter para centavos
+            unit_amount: Math.round(plan.monthly_price * 100),
             recurring: { interval: "month" },
           },
           quantity: 1,
         },
       ],
       mode: "subscription",
+      payment_method_types: ["card", "boleto", "pix"],
+      payment_method_options: {
+        boleto: { expires_after_days: 3 }
+      },
+      billing_address_collection: "auto",
+      locale: "pt-BR",
       success_url: `${origin}/plans?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/plans?canceled=true`,
       metadata: {
@@ -112,6 +118,10 @@ serve(async (req) => {
           user_id: user.id,
           plan_id: planId,
           supabase_plan_id: planId
+        },
+        payment_settings: {
+          payment_method_types: ["card", "boleto"],
+          save_default_payment_method: "on_subscription"
         }
       }
     });
