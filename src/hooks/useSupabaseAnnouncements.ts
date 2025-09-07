@@ -158,43 +158,57 @@ export const useSupabaseAnnouncements = () => {
       return null;
     }
 
+    // Additional safety check to ensure user data is available
+    if (!user.id || !user.name) {
+      toast({
+        title: "Erro",
+        description: "Dados do usuário não disponíveis. Tente novamente.",
+        variant: "destructive"
+      });
+      return null;
+    }
+
     try {
       // For target_audience 'all' or when both client and supplier are specified
       const announcements_to_create = [];
       
       if (targetAudience === 'all') {
         // Create announcements for all clients
-        const { data: allClients } = await supabase.from('clients').select('id');
-        const { data: allSuppliers } = await supabase.from('suppliers').select('id');
+        const { data: allClients } = await supabase.from('clients').select('id').eq('status', 'active');
+        const { data: allSuppliers } = await supabase.from('suppliers').select('id').eq('status', 'active');
         
-        if (allClients) {
-          announcements_to_create.push(...allClients.map(client => ({
-            client_id: client.id,
-            title: title.trim(),
-            content: content.trim(),
-            type,
-            priority,
-            target_audience: 'clients' as const,
-            created_by: user.id,
-            created_by_name: user.name,
-            expires_at: expiresAt || null,
-            attachments: attachments || []
-          })));
+        if (allClients && allClients.length > 0) {
+          announcements_to_create.push(...allClients
+            .filter(client => client && client.id)
+            .map(client => ({
+              client_id: client.id,
+              title: title.trim(),
+              content: content.trim(),
+              type,
+              priority,
+              target_audience: 'clients' as const,
+              created_by: user.id,
+              created_by_name: user.name || user.email || 'Admin',
+              expires_at: expiresAt || null,
+              attachments: attachments || []
+            })));
         }
         
-        if (allSuppliers) {
-          announcements_to_create.push(...allSuppliers.map(supplier => ({
-            supplier_id: supplier.id,
-            title: title.trim(),
-            content: content.trim(),
-            type,
-            priority,
-            target_audience: 'suppliers' as const,
-            created_by: user.id,
-            created_by_name: user.name,
-            expires_at: expiresAt || null,
-            attachments: attachments || []
-          })));
+        if (allSuppliers && allSuppliers.length > 0) {
+          announcements_to_create.push(...allSuppliers
+            .filter(supplier => supplier && supplier.id)
+            .map(supplier => ({
+              supplier_id: supplier.id,
+              title: title.trim(),
+              content: content.trim(),
+              type,
+              priority,
+              target_audience: 'suppliers' as const,
+              created_by: user.id,
+              created_by_name: user.name || user.email || 'Admin',
+              expires_at: expiresAt || null,
+              attachments: attachments || []
+            })));
         }
       } else if (targetAudience === 'clients' && targetClientId) {
         announcements_to_create.push({
