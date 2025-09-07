@@ -4,29 +4,14 @@ import { SuperAdminSidebar } from './SuperAdminSidebar';
 import { UserDropdown } from './UserDropdown';
 import { RoleBasedNotificationDropdown } from './RoleBasedNotificationDropdown';
 import { NotificationToast } from '@/components/common/NotificationToast';
+import { SystemMetricsBar } from '@/components/admin/SystemMetricsBar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Search, 
-  Bell, 
-  Settings, 
-  Shield,
-  Activity,
-  Users,
-  TrendingUp,
-  AlertTriangle
-} from 'lucide-react';
+import { Search, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 export const SuperAdminLayout = () => {
   console.log('SuperAdminLayout component rendering');
-  // Mock quick stats for header
-  const quickStats = {
-    activeUsers: 1247,
-    systemLoad: '23%',
-    alertsCount: 3,
-    uptime: '99.9%'
-  };
 
   return (
     <>
@@ -49,50 +34,12 @@ export const SuperAdminLayout = () => {
               />
             </div>
             
-            {/* Quick Stats */}
-            <div className="hidden lg:flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Users className="h-4 w-4 text-blue-500" />
-                <span className="font-medium">{quickStats.activeUsers}</span>
-                <span className="text-muted-foreground">usuários online</span>
-              </div>
-              
-              <div className="flex items-center gap-2 text-sm">
-                <Activity className="h-4 w-4 text-green-500" />
-                <span className="font-medium">{quickStats.systemLoad}</span>
-                <span className="text-muted-foreground">carga</span>
-              </div>
-              
-              <div className="flex items-center gap-2 text-sm">
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
-                <span className="font-medium">{quickStats.uptime}</span>
-                <span className="text-muted-foreground">uptime</span>
-              </div>
-            </div>
+            {/* System Metrics Bar - Funcional */}
+            <SystemMetricsBar />
           </div>
 
           {/* Right side actions */}
           <div className="flex items-center gap-3">
-            {/* Alerts */}
-            {quickStats.alertsCount > 0 && (
-              <Button variant="outline" size="sm" className="relative">
-                <AlertTriangle className="h-4 w-4 text-yellow-500 mr-2" />
-                {quickStats.alertsCount} Alertas
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
-                >
-                  {quickStats.alertsCount}
-                </Badge>
-              </Button>
-            )}
-            
-            {/* Quick Actions */}
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Config
-            </Button>
-            
             {/* Notifications */}
             <RoleBasedNotificationDropdown />
             
