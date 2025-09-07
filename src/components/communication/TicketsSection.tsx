@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Headphones, Plus, Clock, User, AlertTriangle } from "lucide-react";
-import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
+import { useCommunication } from "@/hooks/useCommunication";
 import { getTicketStatusColor, getTicketPriorityColor } from "@/data/mockCommunication";
 import { CreateTicketModal } from "./CreateTicketModal";
 import { TicketDetailModal } from "./TicketDetailModal";
 
 export function TicketsSection() {
-  const { tickets } = useSupabaseCommunication();
+  const { tickets } = useCommunication();
   const [createTicketModalOpen, setCreateTicketModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [ticketDetailModalOpen, setTicketDetailModalOpen] = useState(false);
@@ -125,12 +125,12 @@ export function TicketsSection() {
                         <span className="font-mono">#{ticket.id}</span>
                         <span>•</span>
                         <Clock className="h-3 w-3" />
-                        <span>{formatDate(ticket.created_at)}</span>
-                        {ticket.assigned_to_name && (
+                        <span>{formatDate(ticket.createdAt)}</span>
+                        {ticket.assignedToName && (
                           <>
                             <span>•</span>
                             <User className="h-3 w-3" />
-                            <span>Atribuído a {ticket.assigned_to_name}</span>
+                            <span>Atribuído a {ticket.assignedToName}</span>
                           </>
                         )}
                       </div>
@@ -162,7 +162,7 @@ export function TicketsSection() {
                     </div>
                     
                     <div className="text-sm text-muted-foreground">
-                      Atualizado em {formatDate(ticket.updated_at)}
+                      Atualizado em {formatDate(ticket.updatedAt)}
                     </div>
                   </div>
                 </CardContent>

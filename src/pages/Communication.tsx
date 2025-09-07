@@ -3,26 +3,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Bell, Headphones } from "lucide-react";
-import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
+import { useCommunication } from "@/hooks/useCommunication";
 import { ChatSection } from "@/components/communication/ChatSection";
 import { AnnouncementsSection } from "@/components/communication/AnnouncementsSection";
 import { TicketsSection } from "@/components/communication/TicketsSection";
-import { useRenderTracker } from "@/hooks/useRenderTracker";
 
 export default function Communication() {
-  // Track re-renders
-  useRenderTracker('Communication');
-  
   const [activeTab, setActiveTab] = useState("chats");
   
   const {
-    announcements,
-    tickets,
+    getUnreadChatsCount,
     getUnreadAnnouncementsCount,
     getOpenTicketsCount,
-  } = useSupabaseCommunication();
+  } = useCommunication();
 
-  const unreadChats = 0; // Chats will be implemented separately
+  const unreadChats = getUnreadChatsCount();
   const unreadAnnouncements = getUnreadAnnouncementsCount();
   const openTickets = getOpenTicketsCount();
 
@@ -48,7 +43,7 @@ export default function Communication() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Conversas Ativas</p>
-                <p className="text-2xl font-bold">0</p>
+                <p className="text-2xl font-bold">2</p>
               </div>
             </div>
             {unreadChats > 0 && (
@@ -67,7 +62,7 @@ export default function Communication() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Comunicados</p>
-                <p className="text-2xl font-bold">{announcements.length}</p>
+                <p className="text-2xl font-bold">4</p>
               </div>
             </div>
             {unreadAnnouncements > 0 && (

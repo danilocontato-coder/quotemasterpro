@@ -14,91 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      announcement_reads: {
-        Row: {
-          announcement_id: string
-          id: string
-          read_at: string | null
-          user_id: string
-        }
-        Insert: {
-          announcement_id: string
-          id?: string
-          read_at?: string | null
-          user_id: string
-        }
-        Update: {
-          announcement_id?: string
-          id?: string
-          read_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "announcement_reads_announcement_id_fkey"
-            columns: ["announcement_id"]
-            isOneToOne: false
-            referencedRelation: "announcements"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      announcements: {
-        Row: {
-          attachments: string[]
-          client_id: string
-          content: string
-          created_at: string | null
-          created_by: string | null
-          created_by_name: string | null
-          expires_at: string | null
-          id: string
-          priority: string
-          target_audience: string
-          title: string
-          type: string
-          updated_at: string | null
-        }
-        Insert: {
-          attachments?: string[]
-          client_id: string
-          content: string
-          created_at?: string | null
-          created_by?: string | null
-          created_by_name?: string | null
-          expires_at?: string | null
-          id?: string
-          priority?: string
-          target_audience?: string
-          title: string
-          type?: string
-          updated_at?: string | null
-        }
-        Update: {
-          attachments?: string[]
-          client_id?: string
-          content?: string
-          created_at?: string | null
-          created_by?: string | null
-          created_by_name?: string | null
-          expires_at?: string | null
-          id?: string
-          priority?: string
-          target_audience?: string
-          title?: string
-          type?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "announcements_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       approval_levels: {
         Row: {
           active: boolean
@@ -1173,65 +1088,6 @@ export type Database = {
           },
         ]
       }
-      support_tickets: {
-        Row: {
-          assigned_to: string | null
-          assigned_to_name: string | null
-          category: string | null
-          client_id: string
-          client_name: string | null
-          created_at: string | null
-          created_by: string
-          created_by_name: string | null
-          description: string
-          id: string
-          priority: string
-          status: string
-          subject: string
-          updated_at: string | null
-        }
-        Insert: {
-          assigned_to?: string | null
-          assigned_to_name?: string | null
-          category?: string | null
-          client_id: string
-          client_name?: string | null
-          created_at?: string | null
-          created_by: string
-          created_by_name?: string | null
-          description: string
-          id?: string
-          priority?: string
-          status?: string
-          subject: string
-          updated_at?: string | null
-        }
-        Update: {
-          assigned_to?: string | null
-          assigned_to_name?: string | null
-          category?: string | null
-          client_id?: string
-          client_name?: string | null
-          created_at?: string | null
-          created_by?: string
-          created_by_name?: string | null
-          description?: string
-          id?: string
-          priority?: string
-          status?: string
-          subject?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "support_tickets_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       system_settings: {
         Row: {
           created_at: string | null
@@ -1258,47 +1114,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      ticket_messages: {
-        Row: {
-          attachments: string[]
-          content: string
-          created_at: string | null
-          id: string
-          is_internal: boolean | null
-          sender_id: string
-          sender_name: string | null
-          ticket_id: string
-        }
-        Insert: {
-          attachments?: string[]
-          content: string
-          created_at?: string | null
-          id?: string
-          is_internal?: boolean | null
-          sender_id: string
-          sender_name?: string | null
-          ticket_id: string
-        }
-        Update: {
-          attachments?: string[]
-          content?: string
-          created_at?: string | null
-          id?: string
-          is_internal?: boolean | null
-          sender_id?: string
-          sender_name?: string | null
-          ticket_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ticket_messages_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "support_tickets"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_group_memberships: {
         Row: {
@@ -1642,10 +1457,6 @@ export type Database = {
       }
       next_quote_id_by_client: {
         Args: { p_client_id: string; prefix?: string }
-        Returns: string
-      }
-      next_ticket_id: {
-        Args: { prefix?: string }
         Returns: string
       }
       normalize_cnpj: {

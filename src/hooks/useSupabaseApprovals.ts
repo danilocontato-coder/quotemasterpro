@@ -18,7 +18,6 @@ export interface Approval {
     title: string;
     description?: string;
     total: number;
-    client_id?: string;
     client_name: string;
     supplier_name?: string;
     status: string;
@@ -35,98 +34,60 @@ export const useSupabaseApprovals = () => {
   const { toast } = useToast();
 
   const fetchApprovals = async () => {
-    if (!user) {
-      console.log('🚫 useSupabaseApprovals: No user found');
-      return;
-    }
+    if (!user) return;
 
     try {
       setIsLoading(true);
-      console.log('🔍 useSupabaseApprovals: Fetching approvals for user:', {
-        id: user.id,
-        role: user.role,
-        clientId: user.clientId
-      });
       
       let query = supabase
         .from('approvals')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Aplicar filtros baseados no role do usuário ANTES de buscar
-      if (user.role !== 'admin') {
-        if (user.role === 'client' && user.clientId) {
-          console.log('📋 useSupabaseApprovals: User is client, will filter by client quotes');
-          // Para clientes, primeiro buscar IDs das cotações do cliente
-          const { data: clientQuotes } = await supabase
-            .from('quotes')
-            .select('id')
-            .eq('client_id', user.clientId);
-          
-          const quoteIds = clientQuotes?.map(q => q.id) || [];
-          console.log('📋 useSupabaseApprovals: Client quote IDs:', quoteIds);
-          
-          if (quoteIds.length > 0) {
-            query = query.in('quote_id', quoteIds);
-          } else {
-            // Se não há cotações do cliente, retornar vazio
-            setApprovals([]);
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          console.log('👤 useSupabaseApprovals: Filtering by approver_id:', user.id);
-          // Usuário vê apenas aprovações onde ele é o aprovador
-          query = query.eq('approver_id', user.id);
-        }
-      } else {
-        console.log('👑 useSupabaseApprovals: Admin user, showing all approvals');
-      }
-
-      // Buscar aprovações com filtro aplicado
-      const { data: approvalsData, error: approvalsError } = await query;
-      
-      if (approvalsError) {
-        console.error('❌ useSupabaseApprovals: Fetch error:', approvalsError);
-        throw approvalsError;
-      }
-
-      // Depois buscar dados das cotações relacionadas
-      let approvalsWithQuotes: Approval[] = [];
-      
-      if (approvalsData && approvalsData.length > 0) {
-        const quoteIds = [...new Set(approvalsData.map(a => a.quote_id))];
-        
-        const { data: quotesData } = await supabase
-          .from('quotes')
-          .select(`
+        .select(`
+          *,
+          quotes:quote_id (
             id,
             title,
             description,
             total,
-            client_id,
             client_name,
             supplier_name,
             status,
             deadline,
             items_count,
             created_at
-          `)
-          .in('id', quoteIds);
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-        // Combinar aprovações com dados das cotações
-        approvalsWithQuotes = approvalsData.map(approval => ({
-          ...approval,
-          quotes: quotesData?.find(quote => quote.id === approval.quote_id)
-        })) as Approval[];
+      // Filter based on user role
+      if (user.role !== 'admin') {
+        if (user.role === 'client' && user.clientId) {
+          // Cliente vê aprovações das cotações do seu cliente
+          // Primeiro buscar os IDs das cotações do cliente
+          const { data: clientQuotes } = await supabase
+            .from('quotes')
+            .select('id')
+            .eq('client_id', user.clientId);
+          
+          const quoteIds = clientQuotes?.map(q => q.id) || [];
+          if (quoteIds.length > 0) {
+            query = query.in('quote_id', quoteIds);
+          } else {
+            query = query.eq('quote_id', ''); // Força retorno vazio se não há cotações
+          }
+        } else {
+          // Usuário vê apenas aprovações onde ele é o aprovador
+          query = query.eq('approver_id', user.id);
+        }
       }
 
-      console.log('✅ useSupabaseApprovals: Data processed:', {
-        count: approvalsWithQuotes?.length || 0,
-        data: approvalsWithQuotes?.slice(0, 2) // Log first 2 items for debug
-      });
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Approvals fetch error:', error);
+        throw error;
+      }
       
-      setApprovals(approvalsWithQuotes || []);
+      setApprovals((data as unknown as Approval[]) || []);
     } catch (error) {
       console.error('Error fetching approvals:', error);
       toast({

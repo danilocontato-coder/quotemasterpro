@@ -30,26 +30,17 @@ export const useSupabaseQuotes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  
-  // Stabilize user reference to prevent excessive re-renders
-  const userId = user?.id;
-  const userRole = user?.role;
-  const clientId = user?.clientId;
 
-  console.log('🎯 useSupabaseQuotes hook render:', {
-    userId,
-    userRole,
-    clientId,
-    renderTimestamp: Date.now()
-  });
+  console.log('🎯 useSupabaseQuotes hook initialized');
+  console.log('👤 useSupabaseQuotes - user from useAuth:', user?.id, user?.role);
 
   const fetchQuotes = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      if (!userId) {
-        console.log('⚠️ No userId available for fetching quotes');
+      if (!user) {
+        console.log('⚠️ No user available for fetching quotes');
         setQuotes([]);
         return;
       }
@@ -599,8 +590,11 @@ export const useSupabaseQuotes = () => {
                 )
               );
               
-              // Remove the force refresh to prevent constant re-renders
-              console.log('📊 Quote updated via realtime - no force refresh needed');
+              // Force a complete refresh to ensure UI is up to date
+              setTimeout(() => {
+                console.log('🔄 Force refreshing quotes after realtime update');
+                fetchQuotes();
+              }, 500);
             }
           }
         }
@@ -614,15 +608,15 @@ export const useSupabaseQuotes = () => {
       quotesSubscription.unsubscribe();
       responsesSubscription.unsubscribe();
     };
-  }, [user?.id]); // Only depend on user ID, not the entire user object
+  }, [user]);
 
-  // Initial fetch - use useMemo dependencies
+  // Initial fetch
   useEffect(() => {
     console.log('🔄 useSupabaseQuotes - Initial fetch effect triggered');
-    if (user?.id) {
+    if (user) {
       fetchQuotes();
     }
-  }, [user?.id]); // Only depend on user ID
+  }, [user]);
 
   return {
     quotes,

@@ -117,12 +117,8 @@ export function useSupabaseCurrentClient() {
   };
 
   useEffect(() => {
-    if (user?.id) {
-      // Call function directly to avoid dependency issues
-      const loadClientData = async () => {
-        await fetchClientInfo();
-      };
-      loadClientData();
+    if (user) {
+      fetchClientInfo();
     } else {
       setClient(null);
       setIsLoading(false);

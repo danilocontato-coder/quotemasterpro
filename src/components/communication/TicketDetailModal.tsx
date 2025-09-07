@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Send, Clock, User, Headphones, AlertTriangle, Paperclip } from "lucide-react";
-import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
+import { useCommunication } from "@/hooks/useCommunication";
 import { getTicketStatusColor, getTicketPriorityColor } from "@/data/mockCommunication";
 
 interface TicketDetailModalProps {
@@ -19,7 +19,7 @@ export function TicketDetailModal({ ticket, open, onOpenChange }: TicketDetailMo
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { addTicketMessage } = useSupabaseCommunication();
+  const { addTicketMessage } = useCommunication();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
