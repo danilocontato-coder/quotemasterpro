@@ -15,7 +15,10 @@ import {
   User,
   AlertTriangle,
   CheckCircle,
-  FileText
+  FileText,
+  Filter,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useSupabaseTickets } from '@/hooks/useSupabaseTickets';
 import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
@@ -26,6 +29,7 @@ export function ClientTicketsManager() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [newMessageContent, setNewMessageContent] = useState('');
+  const [showClosedTickets, setShowClosedTickets] = useState(false);
 
   const { tickets, fetchTickets, addTicketMessage, isLoading } = useSupabaseTickets();
   const { client } = useSupabaseCurrentClient();
@@ -91,7 +95,12 @@ export function ClientTicketsManager() {
     }
   };
 
-  const openTicketsCount = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
+  const openTicketsCount = tickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'novo').length;
+  
+  // Filtrar tickets baseado na configuração
+  const filteredTickets = showClosedTickets 
+    ? tickets 
+    : tickets.filter(t => t.status !== 'closed' && t.status !== 'resolved');
 
   return (
     <div className="space-y-4">
@@ -103,10 +112,21 @@ export function ClientTicketsManager() {
           </p>
         </div>
 
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Ticket
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowClosedTickets(!showClosedTickets)}
+          >
+            {showClosedTickets ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {showClosedTickets ? 'Ocultar Fechados' : 'Ver Fechados'}
+          </Button>
+          
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Ticket
+          </Button>
+        </div>
       </div>
 
       <CreateTicketModal
@@ -120,7 +140,7 @@ export function ClientTicketsManager() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Headphones className="h-5 w-5" />
-              Meus Tickets ({tickets.length})
+              {showClosedTickets ? `Todos os Tickets (${filteredTickets.length})` : `Tickets Ativos (${filteredTickets.length})`}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -135,7 +155,7 @@ export function ClientTicketsManager() {
                   </div>
                 ))}
               </div>
-            ) : tickets.length === 0 ? (
+            ) : filteredTickets.length === 0 ? (
               <div className="text-center py-12">
                 <Headphones className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Nenhum ticket criado</h3>
@@ -145,7 +165,7 @@ export function ClientTicketsManager() {
               </div>
             ) : (
               <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                {tickets.map((ticket) => (
+                {filteredTickets.map((ticket) => (
                   <Card 
                     key={ticket.id} 
                     className={`cursor-pointer transition-all duration-200 hover:shadow-md ${

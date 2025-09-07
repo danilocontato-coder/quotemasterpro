@@ -38,7 +38,7 @@ import { TicketDetailModal } from '../TicketDetailModal';
 
 export function AdminTicketsManager() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('active'); // Mudança: padrão para 'active'
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [newMessageContent, setNewMessageContent] = useState('');
@@ -107,7 +107,23 @@ export function AdminTicketsManager() {
     const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.client_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
+    
+    // Lógica de filtro por status modificada
+    let matchesStatus = true;
+    if (filterStatus === 'active') {
+      // Mostrar apenas tickets ativos (não fechados nem resolvidos)
+      matchesStatus = ticket.status !== 'closed' && ticket.status !== 'resolved';
+    } else if (filterStatus === 'closed') {
+      // Mostrar apenas tickets fechados
+      matchesStatus = ticket.status === 'closed';
+    } else if (filterStatus === 'resolved') {
+      // Mostrar apenas tickets resolvidos
+      matchesStatus = ticket.status === 'resolved';
+    } else if (filterStatus !== 'all') {
+      // Filtros específicos de status
+      matchesStatus = ticket.status === filterStatus;
+    }
+    
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     
     return matchesSearch && matchesStatus && matchesPriority;
@@ -254,7 +270,8 @@ export function AdminTicketsManager() {
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="active">Tickets Ativos</SelectItem>
+                  <SelectItem value="all">Todos os tickets</SelectItem>
                   <SelectItem value="novo">Novo</SelectItem>
                   <SelectItem value="open">Aberto</SelectItem>
                   <SelectItem value="in_progress">Em Andamento</SelectItem>
