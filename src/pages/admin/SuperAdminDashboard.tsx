@@ -15,17 +15,16 @@ import {
   Activity,
   Shield,
   Database,
-  Zap
+  Zap,
+  RefreshCw
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
-import { useDashboardData } from '@/hooks/useDashboardData';
+import { useSuperAdminDashboard } from '@/hooks/useSuperAdminDashboard';
 import { NotificationTester } from '@/components/debug/NotificationTester';
 
 export const SuperAdminDashboard = () => {
   console.log('SuperAdminDashboard component rendering');
-  const { metrics, activities, systemHealth, isLoading } = useDashboardData();
-
-
+  const { metrics, activities, systemStatus, financialSummary, isLoading, error } = useSuperAdminDashboard();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -42,9 +41,33 @@ export const SuperAdminDashboard = () => {
       case 'supplier': return Truck;
       case 'support': return HeadphonesIcon;
       case 'system': return Settings;
+      case 'user': return Users;
+      case 'quote': return Database;
+      case 'payment': return DollarSign;
       default: return Activity;
     }
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Erro no Dashboard
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">{error}</p>
+            <Button onClick={() => window.location.reload()} className="mt-4">
+              Tentar Novamente
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -75,29 +98,29 @@ export const SuperAdminDashboard = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <MetricCard
                   title="Usuários Totais"
-                  value={metrics.totalUsers?.toLocaleString() || '0'}
+                  value={isLoading ? "..." : metrics.totalUsers.toLocaleString()}
                   icon={Users}
                 />
               </div>
               <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                 <MetricCard
                   title="Receita Mensal"
-                  value={`R$ ${(metrics.monthlyRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  value={isLoading ? "..." : `R$ ${metrics.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                   icon={DollarSign}
                 />
               </div>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
                 <MetricCard
-                  title="Uptime do Sistema"
-                  value={metrics.systemUptime || '99.9%'}
-                  icon={Activity}
+                  title="Clientes Ativos"
+                  value={isLoading ? "..." : metrics.totalClients.toLocaleString()}
+                  icon={Building2}
                 />
               </div>
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
                 <MetricCard
-                  title="Chamadas API"
-                  value={metrics.apiCalls?.toLocaleString() || '0'}
-                  icon={Zap}
+                  title="Fornecedores"
+                  value={isLoading ? "..." : metrics.totalSuppliers.toLocaleString()}
+                  icon={Truck}
                 />
               </div>
             </div>
@@ -130,24 +153,54 @@ export const SuperAdminDashboard = () => {
                   <CardDescription>Últimas ações na plataforma</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {activities.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg border">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${
-                          activity.status === 'success' ? 'bg-green-100 text-green-600' :
-                          activity.status === 'warning' ? 'bg-yellow-100 text-yellow-600' : 
-                          'bg-blue-100 text-blue-600'
-                        }`}>
-                          {React.createElement(getActivityIcon(activity.type), { className: "h-4 w-4" })}
+                  {isLoading ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                          <div className="h-3 bg-muted rounded w-1/2"></div>
                         </div>
-                        <div>
-                          <p className="font-medium text-sm">{activity.action}</p>
-                          <p className="text-xs text-muted-foreground">{activity.entity}</p>
-                        </div>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{activity.time}</span>
+                      ))}
                     </div>
-                  ))}
+                  ) : activities.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Activity className="h-8 w-8 mx-auto mb-2" />
+                      <p>Nenhuma atividade recente</p>
+                    </div>
+                  ) : (
+                    activities.map((activity) => {
+                      const Icon = getActivityIcon(activity.type);
+                      return (
+                        <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full ${
+                              activity.status === 'success' ? 'bg-green-100 text-green-600' :
+                              activity.status === 'warning' ? 'bg-yellow-100 text-yellow-600' :
+                              activity.status === 'error' ? 'bg-red-100 text-red-600' :
+                              'bg-blue-100 text-blue-600'
+                            }`}>
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">{activity.action}</p>
+                              <p className="text-xs text-muted-foreground">{activity.entity}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant={
+                              activity.status === 'success' ? 'default' :
+                              activity.status === 'warning' ? 'secondary' :
+                              activity.status === 'error' ? 'destructive' :
+                              'outline'
+                            } className="text-xs">
+                              {activity.status}
+                            </Badge>
+                            <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </CardContent>
               </Card>
 
@@ -155,13 +208,18 @@ export const SuperAdminDashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Database className="h-5 w-5" />
-                    Status dos Serviços
+                    <Shield className="h-5 w-5" />
+                    Status do Sistema
                   </CardTitle>
                   <CardDescription>Monitoramento em tempo real</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {systemHealth.map((service) => (
+                  {isLoading ? (
+                    <div className="text-center py-4">
+                      <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
+                      <p>Carregando status...</p>
+                    </div>
+                  ) : systemStatus.map((service) => (
                     <div key={service.service} className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center gap-3">
                         <div className={`w-3 h-3 rounded-full ${getStatusColor(service.status)}`}></div>
@@ -171,7 +229,7 @@ export const SuperAdminDashboard = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium">{service.response}</p>
+                        <p className="text-sm font-medium">{service.responseTime}</p>
                         <p className="text-xs text-muted-foreground">Resposta</p>
                       </div>
                     </div>
@@ -190,19 +248,20 @@ export const SuperAdminDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Ativos</span>
-                        <span className="font-semibold">{metrics.activeClients || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Novos (mês)</span>
-                        <span className="font-semibold text-green-600">+12</span>
-                      </div>
-                      <Button variant="outline" size="sm" className="w-full mt-4">
-                        Gerenciar Clientes
-                      </Button>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm">Total</span>
+                      <span className="font-semibold">{isLoading ? "..." : metrics.totalClients}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Assinaturas Ativas</span>
+                      <span className="font-semibold text-green-600">{isLoading ? "..." : metrics.activeSubscriptions}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Novos Hoje</span>
+                      <span className="font-semibold text-blue-600">{isLoading ? "..." : metrics.todaySignups}</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -214,43 +273,45 @@ export const SuperAdminDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Ativos</span>
-                        <span className="font-semibold">{metrics.activeSuppliers || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Pendentes</span>
-                        <span className="font-semibold text-yellow-600">7</span>
-                      </div>
-                      <Button variant="outline" size="sm" className="w-full mt-4">
-                        Gerenciar Fornecedores
-                      </Button>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm">Ativos</span>
+                      <span className="font-semibold">{isLoading ? "..." : metrics.totalSuppliers}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Cotações</span>
+                      <span className="font-semibold text-green-600">{isLoading ? "..." : metrics.totalQuotes}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Storage (GB)</span>
+                      <span className="font-semibold text-orange-600">{isLoading ? "..." : metrics.storageUsed.toFixed(1)}</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-purple-200 bg-purple-50">
+              <Card className="border-green-200 bg-green-50">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-purple-700 flex items-center gap-2">
-                    <HeadphonesIcon className="h-5 w-5" />
-                    Suporte
+                  <CardTitle className="text-green-700 flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Financeiro
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Tickets Abertos</span>
-                        <span className="font-semibold">{metrics.supportTickets || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Críticos</span>
-                        <span className="font-semibold text-red-600">3</span>
-                      </div>
-                      <Button variant="outline" size="sm" className="w-full mt-4" asChild>
-                        <a href="/admin/communication">Central de Comunicação</a>
-                      </Button>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm">Receita Total</span>
+                      <span className="font-semibold">R$ {isLoading ? "..." : metrics.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Este Mês</span>
+                      <span className="font-semibold text-green-600">R$ {isLoading ? "..." : metrics.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Crescimento</span>
+                      <span className="font-semibold text-green-600">+{isLoading ? "..." : financialSummary.growth.toFixed(1)}%</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -259,9 +320,9 @@ export const SuperAdminDashboard = () => {
           <TabsContent value="accounts">
             <div className="text-center py-12">
               <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Gerenciamento de Contas</h3>
-              <p className="text-muted-foreground mb-4">Interface para gerenciar todas as contas da plataforma</p>
-              <Button>Em desenvolvimento</Button>
+              <h3 className="text-lg font-semibold mb-2">Gestão de Contas</h3>
+              <p className="text-muted-foreground mb-4">Usuários, clientes e fornecedores</p>
+              <Button>Acessar Gestão</Button>
             </div>
           </TabsContent>
 
