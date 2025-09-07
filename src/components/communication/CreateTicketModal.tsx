@@ -32,6 +32,15 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
   console.log("🔍 DEBUG: ticketCategories", ticketCategories);
   console.log("🔍 DEBUG: category state", category);
 
+  // Sanitize filename to avoid spaces/accents issues
+  const sanitizeFilename = (name: string) => {
+    return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // remove diacritics
+      .replace(/[^a-zA-Z0-9._-]/g, '_') // keep safe chars
+      .replace(/_+/g, '_');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !description.trim() || !category) return;
@@ -43,7 +52,8 @@ export function CreateTicketModal({ open, onOpenChange }: CreateTicketModalProps
       
       for (const file of attachments) {
         console.log("🔍 DEBUG: Uploading file", file.name);
-        const fileName = `${Date.now()}-${file.name}`;
+        const safeName = sanitizeFilename(file.name);
+        const fileName = `${Date.now()}-${safeName}`;
         const filePath = `tickets/${fileName}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage

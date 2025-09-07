@@ -85,6 +85,16 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  // Sanitize filename to avoid issues with spaces/accents
+  const sanitizeFilename = (name: string) => {
+    if (!name) return '';
+    return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // remove diacritics
+      .replace(/[^a-zA-Z0-9._/-]/g, '_') // keep folders and safe chars
+      .replace(/_+/g, '_');
+  };
+
   const getStatusText = (status: string) => {
     switch (status) {
       case 'novo':
@@ -264,21 +274,59 @@ export function TicketDetailModal({ ticket, open, onOpenChange, onTicketUpdate }
                               console.log('🔍 Downloading attachment:', attachment);
                               
                               try {
-                                const { data, error } = await supabase.storage
-                                  .from('attachments')
-                                  .createSignedUrl(attachment, 3600);
-                                
-                                if (error) {
-                                  console.error('❌ Error creating signed URL:', error);
-                                  alert('Erro ao acessar o arquivo: ' + error.message);
+                                const candidates: string[] = [];
+                                if (attachment) {
+                                  candidates.push(attachment);
+                                  if (!attachment.includes('/')) {
+                                    candidates.push(`tickets/${attachment}`);
+                                    candidates.push(`tickets/${sanitizeFilename(attachment)}`);
+                                  }
+                                }
+
+                                let signedUrl: string | null = null;
+
+                                // Tentar múltiplas chaves candidatas
+                                for (const key of candidates) {
+                                  const { data, error } = await supabase.storage
+                                    .from('attachments')
+                                    .createSignedUrl(key, 3600);
+                                  if (!error && data?.signedUrl) {
+                                    signedUrl = data.signedUrl;
+                                    break;
+                                  } else {
+                                    console.warn('⚠️ Signed URL falhou para chave', key, error?.message);
+                                  }
+                                }
+
+                                // Fallback: listar pasta tickets e procurar por nome equivalente
+                                if (!signedUrl) {
+                                  const { data: list, error: listError } = await supabase.storage
+                                    .from('attachments')
+                                    .list('tickets', { limit: 1000 });
+                                  if (!listError && Array.isArray(list)) {
+                                    const target = list.find((item: any) => 
+                                      item.name === attachment || 
+                                      sanitizeFilename(item.name) === sanitizeFilename(attachment)
+                                    );
+                                    if (target) {
+                                      const { data, error } = await supabase.storage
+                                        .from('attachments')
+                                        .createSignedUrl(`tickets/${target.name}`, 3600);
+                                      if (!error && data?.signedUrl) {
+                                        signedUrl = data.signedUrl;
+                                      }
+                                    }
+                                  }
+                                }
+
+                                if (!signedUrl) {
+                                  alert('Arquivo não encontrado no armazenamento.');
                                   return;
                                 }
-                                
-                                console.log('✅ Signed URL created:', data.signedUrl);
-                                
+
                                 // Abrir em nova aba
                                 const link = document.createElement('a');
-                                link.href = data.signedUrl;
+                                link.href = signedUrl;
                                 link.target = '_blank';
                                 link.rel = 'noopener noreferrer';
                                 link.download = attachment.split('/').pop() || 'attachment';
