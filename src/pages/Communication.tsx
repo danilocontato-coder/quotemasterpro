@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Bell, Headphones } from "lucide-react";
-import { useCommunication } from "@/hooks/useCommunication";
+import { useSupabaseCommunication } from "@/hooks/useSupabaseCommunication";
 import { ChatSection } from "@/components/communication/ChatSection";
 import { AnnouncementsSection } from "@/components/communication/AnnouncementsSection";
 import { TicketsSection } from "@/components/communication/TicketsSection";
@@ -12,12 +12,13 @@ export default function Communication() {
   const [activeTab, setActiveTab] = useState("chats");
   
   const {
-    getUnreadChatsCount,
+    announcements,
+    tickets,
     getUnreadAnnouncementsCount,
     getOpenTicketsCount,
-  } = useCommunication();
+  } = useSupabaseCommunication();
 
-  const unreadChats = getUnreadChatsCount();
+  const unreadChats = 0; // Chats will be implemented separately
   const unreadAnnouncements = getUnreadAnnouncementsCount();
   const openTickets = getOpenTicketsCount();
 
@@ -43,7 +44,7 @@ export default function Communication() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Conversas Ativas</p>
-                <p className="text-2xl font-bold">2</p>
+                <p className="text-2xl font-bold">0</p>
               </div>
             </div>
             {unreadChats > 0 && (
@@ -62,7 +63,7 @@ export default function Communication() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Comunicados</p>
-                <p className="text-2xl font-bold">4</p>
+                <p className="text-2xl font-bold">{announcements.length}</p>
               </div>
             </div>
             {unreadAnnouncements > 0 && (
