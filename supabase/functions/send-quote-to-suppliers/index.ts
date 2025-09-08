@@ -182,10 +182,10 @@ const handler = async (req: Request): Promise<Response> => {
       return `• ${item.product_name} - Qtd: ${item.quantity} - Valor: ${itemTotal}`;
     }).join('\n') || 'Nenhum item especificado';
 
-    // Generate proposal link (placeholder for now)
-    const proposalLink = `${Deno.env.get('SUPABASE_URL')}/supplier/quotes/${quote.id}/proposal`;
-
-    // Build variables for template rendering on n8n side
+    // Extract short_links from request body
+    const { short_links } = body;
+    
+    // Build variables for template rendering
     const templateVariables = {
       client_name: client.name,
       client_email: client.email || 'Não informado',
@@ -196,7 +196,7 @@ const handler = async (req: Request): Promise<Response> => {
       total_formatted: totalFormatted,
       items_list: itemsList,
       items_count: String(items.length || 0),
-      proposal_link: proposalLink,
+      proposal_link: 'PLACEHOLDER_WILL_BE_REPLACED_PER_SUPPLIER',
     };
 
     // Prepare suppliers (no pre-rendered message; rendering will happen in n8n)
@@ -571,26 +571,8 @@ const handler = async (req: Request): Promise<Response> => {
       let errorCount = 0;
       const errors: string[] = [];
 
-      // Render template message
-      let finalMessage = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
-      const hasItemsPlaceholder = typeof templateContent === 'string' && templateContent.includes('{{items_list}}');
-      
-      // Replace template variables
-      Object.entries(templateVariables || {}).forEach(([key, value]) => {
-        finalMessage = finalMessage.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
-      });
-
-      // Ensure items breakdown is present even if template doesn't include it
-      if (!hasItemsPlaceholder && templateVariables?.items_list) {
-        finalMessage = `${finalMessage}\n\nItens da cotação (${templateVariables.items_count || '0'}):\n${templateVariables.items_list}`;
-      }
-
-      // Add custom message if provided
-      if (customMessage?.trim()) {
-        finalMessage = `${customMessage.trim()}\n\n${finalMessage}`;
-      }
-
-      console.log('Template rendered:', finalMessage.substring(0, 100) + '...');
+      // Store template content for checking later
+      const templateContent = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
 
       // Preflight: check Evolution instance connection state with multiple variants
       try {
@@ -646,16 +628,48 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         try {
-          // Compose message with per-supplier link when available
+          // Get supplier-specific short link
+          const shortLinkEntry = Array.isArray(short_links)
+            ? (short_links as any[]).find((l: any) => l.supplier_id === supplier.id)
+            : null;
+          
+          // Get fallback long link
           const linkEntry = Array.isArray(supplierLinks)
             ? (supplierLinks as any[]).find((l: any) => l.supplier_id === supplier.id)
             : null;
-          const textForSupplier = linkEntry?.link
-            ? `${finalMessage}\n\nResponda sua proposta aqui: ${linkEntry.link}`
-            : finalMessage;
+
+          // Use short link if available, otherwise fallback to long link
+          const supplierProposalLink = shortLinkEntry?.short_link || linkEntry?.link || `${frontendBaseUrl}/supplier/auth/${quoteId}/fallback-token`;
+
+          // Create supplier-specific template variables
+          const supplierTemplateVars = {
+            ...templateVariables,
+            proposal_link: supplierProposalLink
+          };
+
+          // Render template message with supplier-specific variables
+          let finalMessage = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
+          
+          // Replace template variables including the supplier-specific link
+          Object.entries(supplierTemplateVars).forEach(([key, value]) => {
+            finalMessage = finalMessage.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
+          });
+
+          // Ensure items breakdown is present even if template doesn't include it
+          const hasItemsPlaceholder = typeof templateContent === 'string' && templateContent.includes('{{items_list}}');
+          if (!hasItemsPlaceholder && templateVariables?.items_list) {
+            finalMessage = `${finalMessage}\n\nItens da cotação (${templateVariables.items_count || '0'}):\n${templateVariables.items_list}`;
+          }
+
+          // Add custom message if provided
+          if (customMessage?.trim()) {
+            finalMessage = `${customMessage.trim()}\n\n${finalMessage}`;
+          }
+
+          console.log(`Sending to ${supplier.name} with link: ${supplierProposalLink.substring(0, 50)}...`);
 
           // Send via Evolution API using shared helper
-          const sent = await sendEvolutionWhatsApp({ apiUrl: evolutionApiUrl, token: evolutionToken, instance: evolutionInstance, scope: 'client' }, finalPhone, textForSupplier);
+          const sent = await sendEvolutionWhatsApp({ apiUrl: evolutionApiUrl, token: evolutionToken, instance: evolutionInstance, scope: 'client' }, finalPhone, finalMessage);
 
           if (!sent.success) {
             console.error(`Evolution API error for ${supplier.name}:`, sent.error);
