@@ -74,17 +74,18 @@ async function analyzeQuote(quoteId: string) {
     throw new Error('Nenhum item encontrado na cotação para análise');
   }
 
-  // Encontrar a melhor proposta (menor valor)
+  // Encontrar a melhor proposta (menor valor) - usar propostas reais dos fornecedores
   const bestResponse = quote.quote_responses.reduce((best: any, current: any) => 
     current.total_amount < best.total_amount ? current : best
   );
 
-  // Calcular preço médio do mercado
+  // Calcular preço médio do mercado baseado nas propostas dos fornecedores
   const averagePrice = quote.quote_responses.reduce((sum: number, resp: any) => 
     sum + resp.total_amount, 0) / quote.quote_responses.length;
 
-  // Determinar se vale a pena negociar
-  const negotiationPotential = ((bestResponse.total_amount - averagePrice * 0.85) / bestResponse.total_amount) * 100;
+  // Determinar se vale a pena negociar - usar valor da melhor proposta como base
+  const marketPrice = bestResponse.total_amount;
+  const negotiationPotential = ((marketPrice - averagePrice * 0.85) / marketPrice) * 100;
   const shouldNegotiate = negotiationPotential > 5; // Se há mais de 5% de margem
 
   // Buscar configurações de IA
@@ -102,7 +103,7 @@ async function analyzeQuote(quoteId: string) {
     throw new Error(`Chave da API ${usePerplexity ? 'Perplexity' : 'OpenAI'} não configurada`);
   }
 
-  // Criar análise da IA
+  // Criar análise da IA baseada nas propostas reais dos fornecedores
   const analysisPrompt = `
 Você é um especialista em negociações comerciais brasileiras. Analise esta situação:
 
@@ -110,8 +111,14 @@ Cotação: ${quote.title || quote.description}
 
 Itens solicitados:
 ${quote.quote_items.map((item: any) => 
-  `- ${item.product_name} (Qtd: ${item.quantity}, Preço estimado: R$ ${item.unit_price || 0})`
+  `- ${item.product_name} (Qtd: ${item.quantity})`
 ).join('\n')}
+
+Propostas recebidas dos fornecedores:
+${quote.quote_responses.map((resp: any) => 
+  `- ${resp.supplier_name}: R$ ${resp.total_amount.toLocaleString('pt-BR')}`
+).join('\n')}
+
 Melhor proposta atual: R$ ${bestResponse.total_amount.toLocaleString('pt-BR')}
 Fornecedor: ${bestResponse.supplier_name}
 Preço médio das propostas: R$ ${averagePrice.toLocaleString('pt-BR')}
@@ -171,12 +178,12 @@ Responda APENAS no formato JSON:
     }
 
     // Criar registro de negociação
-    const { data: negotiation, error: negotiationError } = await supabase
-      .from('ai_negotiations')
-      .insert({
-        quote_id: quoteId,
-        selected_response_id: bestResponse.id,
-        original_amount: bestResponse.total_amount,
+      const { data: negotiation, error: negotiationError } = await supabase
+        .from('ai_negotiations')
+        .insert({
+          quote_id: quoteId,
+          selected_response_id: bestResponse.id,
+          original_amount: bestResponse.total_amount, // Usar valor da melhor proposta
         ai_analysis: aiAnalysis,
         negotiation_strategy: {
           reason: aiAnalysis.reason,
