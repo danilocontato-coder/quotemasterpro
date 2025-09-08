@@ -316,14 +316,17 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
 
     console.log(`✅ WhatsApp enviado com sucesso para ${supplier.name}:`, whatsappResult.messageId);
 
-    // Criar log de conversa inicial
+    // Criar log de conversa inicial com mais detalhes
     const conversationLog = [
       {
         role: 'ai',
         message: aiMessage,
         timestamp: new Date().toISOString(),
         channel: 'whatsapp',
-        messageId: whatsappResult.messageId
+        messageId: whatsappResult.messageId,
+        phone: normalizedPhone,
+        supplier_name: supplier.name,
+        deliveryStatus: 'sent'
       }
     ];
 

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAINegotiation, type AINegotiation } from '@/hooks/useAINegotiation';
-import { Brain, TrendingDown, MessageSquare, Check, X, AlertCircle } from 'lucide-react';
+import { Brain, TrendingDown, MessageSquare, Check, X, AlertCircle, FileText } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { NegotiationLogModal } from './NegotiationLogModal';
 
 interface AINegotiationCardProps {
   negotiation: AINegotiation;
@@ -32,6 +33,7 @@ export function AINegotiationCard({
   onRejectNegotiation,
   onStartAnalysis
 }: AINegotiationCardProps) {
+  const [showLogModal, setShowLogModal] = useState(false);
   const config = statusConfig[negotiation.status];
   const IconComponent = config.icon;
 
@@ -179,6 +181,18 @@ export function AINegotiationCard({
 
         {/* Ações */}
         <div className="flex gap-2 pt-2">
+          {/* Botão Ver Log - sempre disponível se houver conversa */}
+          {negotiation.conversation_log && negotiation.conversation_log.length > 0 && (
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => setShowLogModal(true)}
+              className="flex-1"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Ver Log Completo
+            </Button>
+          )}
           {negotiation.status === 'analyzing' && onStartAnalysis && (
             <Button 
               size="sm"
@@ -240,6 +254,13 @@ export function AINegotiationCard({
             </Badge>
           )}
         </div>
+
+        {/* Modal do Log */}
+        <NegotiationLogModal 
+          open={showLogModal}
+          onClose={() => setShowLogModal(false)}
+          negotiation={negotiation}
+        />
       </CardContent>
     </Card>
   );
