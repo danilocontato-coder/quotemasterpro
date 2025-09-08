@@ -213,27 +213,55 @@ Responda APENAS no formato JSON:
       };
     }
 
-    // Criar registro de negociação
-    const { data: negotiation, error: negotiationError } = await sb
+    // Criar ou atualizar registro de negociação (evitar violar constraint de status)
+    // Verifica se já existe negociação para esta cotação
+    const { data: existing } = await sb
       .from('ai_negotiations')
-      .insert({
-        quote_id: quoteId,
-        selected_response_id: bestResponse.id,
-        original_amount: bestResponse.total_amount && bestResponse.total_amount > 0 ? bestResponse.total_amount : averagePrice,
-        ai_analysis: aiAnalysis,
-        negotiation_strategy: {
-          reason: aiAnalysis.reason,
-          strategy: aiAnalysis.strategy,
-          targetDiscount: aiAnalysis.targetDiscount,
-          marketAverage: averagePrice,
-          negotiationPotential: negotiationPotential,
-          provider: usePerplexity ? 'perplexity' : 'openai',
-          model: model
-        },
-        status: shouldNegotiate ? 'analyzed' : 'not_viable'
-      })
-      .select()
-      .single();
+      .select('id')
+      .eq('quote_id', quoteId)
+      .limit(1)
+      .maybeSingle();
+
+    const payload = {
+      quote_id: quoteId,
+      selected_response_id: bestResponse.id,
+      original_amount: bestResponse.total_amount && bestResponse.total_amount > 0 ? bestResponse.total_amount : averagePrice,
+      ai_analysis: aiAnalysis,
+      negotiation_strategy: {
+        reason: aiAnalysis.reason,
+        strategy: aiAnalysis.strategy,
+        targetDiscount: aiAnalysis.targetDiscount,
+        marketAverage: averagePrice,
+        negotiationPotential: negotiationPotential,
+        provider: usePerplexity ? 'perplexity' : 'openai',
+        model: model,
+        viable: shouldNegotiate
+      },
+      status: 'completed'
+    };
+
+    let negotiation;
+    let negotiationError;
+
+    if (existing?.id) {
+      const upd = await sb
+        .from('ai_negotiations')
+        .update(payload)
+        .eq('id', existing.id)
+        .select()
+        .single();
+      negotiation = upd.data;
+      negotiationError = upd.error;
+    } else {
+      const ins = await sb
+        .from('ai_negotiations')
+        .insert(payload)
+        .select()
+        .single();
+      negotiation = ins.data;
+      negotiationError = ins.error;
+    }
+
 
     if (negotiationError) {
       console.error('Erro ao criar registro de negociação (Supabase):', negotiationError);
@@ -463,7 +491,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     ];
 
     // Atualizar negociação para status 'negotiating'
-    const { data: updatedNegotiation, error: updateError } = await supabase
+    const { data: updatedNegotiation, error: updateError } = await sb
       .from('ai_negotiations')
       .update({
         status: 'negotiating',
@@ -487,7 +515,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
         whatsapp_sent: true,
         supplier_name: supplier.name,
         message_sent: aiMessage,
-        messageId: whatsappResult.messageId
+        messageId: result.messageId
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -523,8 +551,8 @@ async function approveNegotiation(sb: any, negotiationId: string) {
   );
 }
 
-async function rejectNegotiation(negotiationId: string) {
-  const { data, error } = await supabase
+async function rejectNegotiation(sb: any, negotiationId: string) {
+  const { data, error } = await sb
     .from('ai_negotiations')
     .update({
       status: 'rejected',

@@ -92,7 +92,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [itemAnalysisData, setItemAnalysisData] = useState<ItemAnalysisData[]>([]);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const { toast } = useToast();
-  const { getNegotiationByQuoteId } = useAINegotiation();
+  const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
 
   // Fetch quote items from Supabase
   const fetchQuoteItems = useCallback(async () => {
@@ -518,10 +518,32 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
             <TabsContent value="analysis" className="space-y-6">
               {/* AI Negotiation Card */}
-              {negotiation && (
+              {negotiation ? (
                 <AINegotiationCard
                   negotiation={negotiation}
+                  onStartNegotiation={startNegotiation}
+                  onApproveNegotiation={approveNegotiation}
+                  onRejectNegotiation={rejectNegotiation}
+                  onStartAnalysis={startAnalysis}
                 />
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      Análise Inteligente
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Nenhuma análise foi iniciada para esta cotação.
+                    </p>
+                    <Button onClick={() => startAnalysis(quote.id)} className="flex items-center gap-2">
+                      <Brain className="h-4 w-4" />
+                      Executar análise IA
+                    </Button>
+                  </CardContent>
+                </Card>
               )}
 
               {/* Smart Economy Analysis */}
