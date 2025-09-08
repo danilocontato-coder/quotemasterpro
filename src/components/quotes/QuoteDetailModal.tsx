@@ -20,7 +20,8 @@ import {
   MessageSquare,
   Download,
   Send,
-  BarChart3
+  BarChart3,
+  Brain
 } from 'lucide-react';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
@@ -515,6 +516,43 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                     onRejectNegotiation={rejectNegotiation}
                     onStartAnalysis={startAnalysis}
                   />
+                </div>
+              )}
+
+              {/* Botão para iniciar análise manual se ainda não existe negociação */}
+              {!negotiation && proposals.length > 0 && ['receiving', 'received', 'under_review'].includes(quote.status) && (
+                <div className="mb-6">
+                  <Card className="border-dashed border-2 border-primary/20 bg-primary/5">
+                    <CardContent className="p-6 text-center">
+                      <Brain className="h-12 w-12 mx-auto text-primary mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Análise IA Disponível</h3>
+                      <p className="text-muted-foreground mb-4">
+                        A IA pode analisar as propostas recebidas e iniciar negociações automáticas para obter melhores preços.
+                      </p>
+                      <Button 
+                        onClick={() => startAnalysis(quote.id)}
+                        className="flex items-center gap-2"
+                      >
+                        <Brain className="h-4 w-4" />
+                        Iniciar Análise da IA
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Mensagem quando não há propostas ainda */}
+              {proposals.length === 0 && ['receiving', 'sent'].includes(quote.status) && (
+                <div className="mb-6">
+                  <Card className="border-dashed border-2 border-gray-200 bg-gray-50">
+                    <CardContent className="p-6 text-center">
+                      <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2 text-muted-foreground">Aguardando Propostas</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Quando as propostas chegarem, a IA poderá analisá-las automaticamente.
+                      </p>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
 
