@@ -7,7 +7,7 @@ import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 import { SystemStatusHeader } from "./SystemStatusHeader";
 
-import { useRealtimeOptimized } from "@/hooks/useRealtimeOptimized";
+import { useStableRealtime } from "@/hooks/useStableRealtime";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useRef } from "react";
 
@@ -33,8 +33,8 @@ export function MainLayout() {
     };
   }, []);
   
-  // Sincronização em tempo real otimizada
-  useRealtimeOptimized();
+  // Hook de realtime unificado e estável
+  useStableRealtime();
 
   return (
     <>
