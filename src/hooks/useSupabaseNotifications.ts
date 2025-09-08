@@ -108,7 +108,8 @@ export function useSupabaseNotifications() {
               label: 'Ver',
               onClick: () => {
                 if (newNotification.action_url) {
-                  window.location.href = newNotification.action_url;
+                  // Use custom event to trigger navigation
+                  window.dispatchEvent(new CustomEvent('navigate-to', { detail: newNotification.action_url }));
                 }
               }
             } : undefined

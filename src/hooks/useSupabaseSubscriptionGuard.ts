@@ -222,7 +222,8 @@ export function useSupabaseSubscriptionGuard() {
         action: {
           label: 'Ver Planos',
           onClick: () => {
-            window.location.href = '/admin/plans';
+            // Use custom event to trigger navigation
+            window.dispatchEvent(new CustomEvent('navigate-to', { detail: '/admin/plans' }));
           }
         }
       });

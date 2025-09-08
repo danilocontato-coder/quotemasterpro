@@ -247,8 +247,11 @@ export function useSubscriptionGuard() {
       action: {
         label: "Ver Planos",
         onClick: () => {
-          // Navigate to plans page
-          window.location.href = '/plans';
+          // Navigate to plans page using React Router
+          import('react-router-dom').then(({ useNavigate }) => {
+            // This is a workaround - in a real component, we'd use the hook directly
+            window.dispatchEvent(new CustomEvent('navigate-to', { detail: '/plans' }));
+          });
         }
       }
     });

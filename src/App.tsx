@@ -12,6 +12,8 @@ import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
 import { DebugWrapper } from '@/components/debug/DebugWrapper';
 import { SuspenseWithTransition } from '@/components/layout/SuspenseWithTransition';
+import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
+import { useGlobalNavigation } from '@/hooks/useGlobalNavigation';
 
 // Layouts principais - import estático para evitar erro de dynamic import
 import MainLayout from '@/components/layout/MainLayout';
@@ -119,6 +121,7 @@ function App() {
           <AuthProvider>
             <DebugWrapper>
               <Router>
+                <GlobalNavigationProvider />
               <Routes>
                 {/* Rotas públicas de autenticação */}
                 <Route path="/auth/login" element={
