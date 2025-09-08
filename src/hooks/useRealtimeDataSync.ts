@@ -23,20 +23,7 @@ export function useRealtimeDataSync() {
     // Canal otimizado para atualizações seletivas
     const channel = supabase
       .channel(`user-data-sync-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          debounceUpdate(() => {
-            console.debug('Notification update detected');
-          });
-        }
-      )
+      // Removed notifications handling from here to avoid conflicts
       .on(
         'postgres_changes',
         {

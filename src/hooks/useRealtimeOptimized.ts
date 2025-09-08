@@ -27,20 +27,7 @@ export function useRealtimeOptimized() {
     if (!channelRef.current) {
       channelRef.current = supabase
         .channel(`realtime-optimized-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            if (isVisibleRef.current) {
-              console.log('🔍 [REALTIME-OPT] Notificação atualizada');
-            }
-          }
-        )
+        // Removed notifications handling from here to avoid conflicts
         .on(
           'postgres_changes',
           {

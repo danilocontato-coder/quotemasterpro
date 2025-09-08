@@ -84,8 +84,9 @@ export function useSupabaseNotifications() {
 
     console.log('🔔 [NOTIFICATIONS] Setting up real-time subscription for user:', user.id);
 
+    // Use a unique channel name to avoid conflicts
     const channel = supabase
-      .channel('notifications-changes')
+      .channel(`notifications-main-${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -139,7 +140,16 @@ export function useSupabaseNotifications() {
         },
         (payload) => {
           console.log('🔔 [NOTIFICATIONS] Notification updated:', payload);
-          fetchNotifications();
+          
+          // Update specific notification instead of refetching all
+          const updatedNotification = payload.new as any;
+          setNotifications(prev => 
+            prev.map(n => 
+              n.id === updatedNotification.id 
+                ? { ...n, read: updatedNotification.read }
+                : n
+            )
+          );
         }
       )
       .subscribe((status) => {
@@ -150,7 +160,7 @@ export function useSupabaseNotifications() {
       console.log('🔔 [NOTIFICATIONS] Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]); // Changed dependency to be more specific
 
   const markAsRead = async (id: string) => {
     try {
