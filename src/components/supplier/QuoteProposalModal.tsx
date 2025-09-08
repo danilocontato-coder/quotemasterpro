@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { Plus, Trash2, Upload, FileText, X, Send, Save, Loader2 } from 'lucide-react';
 import { SupplierQuote, ProposalItem, useSupabaseSupplierQuotes } from '@/hooks/useSupabaseSupplierQuotes';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface QuoteProposalModalProps {
   quote: SupplierQuote | null;
@@ -21,7 +22,8 @@ interface QuoteProposalModalProps {
 }
 
 export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalModalProps) {
-  const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment } = useSupabaseSupplierQuotes();
+  const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment, submitQuoteResponse } = useSupabaseSupplierQuotes();
+  const { user } = useAuth();
   const [quoteItems, setQuoteItems] = useState<any[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
@@ -34,12 +36,13 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
   useEffect(() => {
     if (open && quote && (!quoteItems.length || quoteItems[0]?.quote_id !== quote.id)) {
       loadQuoteItems();
+      loadExistingDraft();
     }
   }, [open, quote]);
 
   // Initialize proposal items when quote items are loaded
   useEffect(() => {
-    if (quoteItems.length > 0) {
+    if (quoteItems.length > 0 && proposalItems.length === 0) {
       const initialItems = quoteItems.map(item => ({
         id: item.id,
         productName: item.product_name,
@@ -50,9 +53,9 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
         brand: '',
         specifications: '',
       }));
-      setProposalItems(quote?.proposal?.items || initialItems);
+      setProposalItems(initialItems);
     }
-  }, [quoteItems, quote?.proposal?.items]);
+  }, [quoteItems, proposalItems.length]);
 
   const loadQuoteItems = async () => {
     if (!quote) return;
@@ -80,6 +83,51 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
       console.error('Error in loadQuoteItems:', error);
     } finally {
       setIsLoadingItems(false);
+    }
+  };
+
+  const loadExistingDraft = async () => {
+    if (!quote || !user?.supplierId) return;
+    
+    try {
+      const { data: existingDraft, error } = await supabase
+        .from('quote_responses')
+        .select('*')
+        .eq('quote_id', quote.id)
+        .eq('supplier_id', user.supplierId)
+        .eq('status', 'draft')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading existing draft:', error);
+        return;
+      }
+
+      if (existingDraft) {
+        console.log('📋 Loading existing draft:', existingDraft);
+        
+        // Carregar dados do rascunho
+        setDeliveryTime(existingDraft.delivery_time || 7);
+        setPaymentTerms(existingDraft.payment_terms || '30 dias');
+        setObservations(existingDraft.notes || '');
+        
+        // Carregar itens do rascunho
+        if (existingDraft.items && Array.isArray(existingDraft.items)) {
+          const draftItems = existingDraft.items.map((item: any) => ({
+            id: crypto.randomUUID(),
+            productName: item.product_name || '',
+            description: item.product_name || '',
+            quantity: item.quantity || 1,
+            unitPrice: item.unit_price || 0,
+            total: item.total || 0,
+            brand: '',
+            specifications: item.notes || '',
+          }));
+          setProposalItems(draftItems);
+        }
+      }
+    } catch (error) {
+      console.error('Error in loadExistingDraft:', error);
     }
   };
 
@@ -133,29 +181,80 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
     if (!quote) return;
 
     try {
-      const proposalData = {
-        items: proposalItems,
-        totalValue,
-        deliveryTime,
-        paymentTerms,
-        observations,
-        attachments: quote.proposal?.attachments || [],
+      // Validar se há pelo menos um item
+      if (proposalItems.length === 0) {
+        toast({
+          title: "Erro",
+          description: "Adicione pelo menos um item para salvar como rascunho.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('💾 Salvando rascunho da proposta para cotação:', quote.id);
+
+      // Salvar como rascunho usando quote_responses com status 'draft'
+      const { data: existingResponse, error: checkError } = await supabase
+        .from('quote_responses')
+        .select('id')
+        .eq('quote_id', quote.id)
+        .eq('supplier_id', user?.supplierId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      const responseData = {
+        quote_id: quote.id,
+        supplier_id: user?.supplierId,
+        supplier_name: user?.name || 'Fornecedor',
+        items: proposalItems.map(item => ({
+          product_name: item.productName,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          total: item.total,
+          notes: item.specifications || undefined
+        })),
+        total_amount: totalValue,
+        delivery_time: deliveryTime,
+        payment_terms: paymentTerms,
+        notes: observations || undefined,
+        status: 'draft'
       };
 
-      if (hasProposal && quote.proposal) {
-        await updateProposal(quote.proposal.id, proposalData);
-        toast({
-          title: "Proposta salva",
-          description: "Sua proposta foi salva como rascunho.",
-        });
+      let result;
+      if (existingResponse) {
+        // Atualizar rascunho existente
+        const { data, error } = await supabase
+          .from('quote_responses')
+          .update(responseData)
+          .eq('id', existingResponse.id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        result = data;
       } else {
-        await createProposal(quote.id, proposalData);
-        toast({
-          title: "Proposta criada",
-          description: "Sua proposta foi criada e salva como rascunho.",
-        });
+        // Criar novo rascunho
+        const { data, error } = await supabase
+          .from('quote_responses')
+          .insert(responseData)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        result = data;
       }
+
+      toast({
+        title: "Rascunho salvo",
+        description: "Sua proposta foi salva como rascunho.",
+      });
+
+      console.log('✅ Rascunho salvo com sucesso:', result.id);
     } catch (error) {
+      console.error('❌ Erro ao salvar rascunho:', error);
       toast({
         title: "Erro",
         description: "Não foi possível salvar a proposta.",
@@ -166,36 +265,58 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
 
   const handleSend = async () => {
     try {
-      let proposalId = quote?.proposal?.id;
-      
-      // If no proposal exists, create one first
-      if (!proposalId) {
-        const proposalData = {
-          items: proposalItems,
-          totalValue,
-          deliveryTime,
-          paymentTerms,
-          observations,
-          attachments: [],
-        };
-        
-        const newProposal = await createProposal(quote!.id, proposalData);
-        if (!newProposal) return;
-        proposalId = newProposal.id;
+      // Validar se há itens
+      if (proposalItems.length === 0) {
+        toast({
+          title: "Erro",
+          description: "Adicione pelo menos um item à proposta.",
+          variant: "destructive",
+        });
+        return;
       }
-      
-      // Send the proposal
-      await sendProposal(proposalId);
-      
+
+      // Validar se há informações obrigatórias
+      const hasValidItems = proposalItems.some(item => 
+        item.productName.trim() && item.quantity > 0 && item.unitPrice > 0
+      );
+
+      if (!hasValidItems) {
+        toast({
+          title: "Erro", 
+          description: "Preencha pelo menos um item com produto, quantidade e preço.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('🔄 Enviando proposta para cotação:', quote.id);
+
+      // Enviar proposta usando a função que funciona
+      await submitQuoteResponse(quote.id, {
+        items: proposalItems.map(item => ({
+          product_name: item.productName,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          total: item.total,
+          notes: item.specifications || undefined
+        })),
+        total_amount: totalValue,
+        delivery_time: deliveryTime,
+        payment_terms: paymentTerms,
+        notes: observations || undefined
+      });
+
       toast({
         title: "Proposta enviada",
         description: "Sua proposta foi enviada para o cliente.",
       });
+      
       onOpenChange(false);
     } catch (error) {
+      console.error('❌ Erro ao enviar proposta:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível enviar a proposta.",
+        description: "Não foi possível enviar a proposta. Tente novamente.",
         variant: "destructive",
       });
     }
