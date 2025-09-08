@@ -93,6 +93,47 @@ export default function Users() {
     return status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800";
   };
 
+  const formatLastAccess = (lastAccess: string | null) => {
+    if (!lastAccess) return 'Nunca acessou';
+    
+    const date = new Date(lastAccess);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    // Se foi hoje
+    if (diffDays === 0) {
+      if (diffHours === 0) {
+        if (diffMinutes === 0) {
+          return 'Agora mesmo';
+        }
+        return `${diffMinutes} min atrás`;
+      }
+      return `${diffHours}h atrás`;
+    }
+    
+    // Se foi ontem
+    if (diffDays === 1) {
+      return `Ontem às ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    
+    // Se foi esta semana (últimos 7 dias)
+    if (diffDays < 7) {
+      return `${diffDays} dias atrás`;
+    }
+    
+    // Data completa para acessos mais antigos
+    return date.toLocaleDateString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const handleEdit = (user: any) => {
     setSelectedUser(user);
     setEditModalOpen(true);
@@ -299,7 +340,7 @@ export default function Users() {
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {user.last_access ? new Date(user.last_access).toLocaleDateString() : 'Nunca'}
+                        {formatLastAccess(user.last_access)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
