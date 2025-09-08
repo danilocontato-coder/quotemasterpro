@@ -144,43 +144,25 @@ export const LazyQuotes = lazy(() => import('@/pages/Quotes'));
 export const LazySuppliers = lazy(() => import('@/pages/Suppliers'));
 export const LazyProducts = lazy(() => import('@/pages/Products'));
 
-// Monitor de performance em tempo real - otimizado
+// Monitor de performance em tempo real - simplificado para evitar erros
 export function usePerformanceMonitor() {
-  const [metrics, setMetrics] = useState({
-    memory: 0,
-    renderTime: 0,
-    lastUpdate: Date.now()
-  });
-  
-  useEffect(() => {
+  // Simplified performance monitoring without state
+  React.useEffect(() => {
     const checkPerformance = () => {
-      if ('memory' in performance) {
+      if (typeof performance !== 'undefined' && 'memory' in performance) {
         const memory = (performance as any).memory;
         const usedMB = memory.usedJSHeapSize / 1024 / 1024;
         
-        setMetrics(prev => ({
-          ...prev,
-          memory: usedMB,
-          lastUpdate: Date.now()
-        }));
-        
-        // Thresholds ajustados para reduzir ruído
-        if (usedMB > performanceConfig.MEMORY_WARNING_THRESHOLD) {
-          console.warn(`⚠️ Alto uso de memória: ${usedMB.toFixed(2)}MB`);
-        }
-        
+        // Only log warnings for critical memory usage
         if (usedMB > performanceConfig.MEMORY_CRITICAL_THRESHOLD) {
-          console.error(`🚨 Uso crítico de memória: ${usedMB.toFixed(2)}MB`);
+          console.warn(`🚨 High memory usage: ${usedMB.toFixed(2)}MB`);
         }
       }
     };
     
+    // Check only once on mount to avoid performance issues
     checkPerformance();
-    // Aumentar intervalo para reduzir verificações
-    const interval = setInterval(checkPerformance, 10000);
-    
-    return () => clearInterval(interval);
   }, []);
   
-  return metrics;
+  return { memory: 0, renderTime: 0, lastUpdate: Date.now() };
 }

@@ -9,7 +9,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { OptimizedSkeleton } from '@/components/ui/optimized-components';
-import { usePerformanceMonitor } from '@/hooks/usePerformanceOptimization';
+
 import { DebugWrapper } from '@/components/debug/DebugWrapper';
 import { SuspenseWithTransition } from '@/components/layout/SuspenseWithTransition';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
@@ -93,9 +93,6 @@ const queryClient = new QueryClient({
 
 function App() {
   console.log('🚀 [APP] Application starting...');
-  
-  // Performance monitoring
-  usePerformanceMonitor();
 
   // Error boundary para lazy loading
   useEffect(() => {
