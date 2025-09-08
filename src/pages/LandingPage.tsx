@@ -140,10 +140,10 @@ export default function LandingPage() {
             <a href="#planos" className="text-muted-foreground hover:text-foreground transition-colors">Planos</a>
           </nav>
           <div className="flex items-center space-x-4">
-            <Link to="/login">
+            <Link to="/auth/login">
               <Button variant="ghost">Entrar</Button>
             </Link>
-            <Link to="/register">
+            <Link to="/auth/register">
               <Button>Começar Grátis</Button>
             </Link>
           </div>
@@ -167,7 +167,7 @@ export default function LandingPage() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{animationDelay: '0.6s'}}>
-            <Link to="/register">
+            <Link to="/auth/register">
               <Button size="lg" className="text-lg px-8">
                 Começar Teste Gratuito
                 <ArrowRight className="ml-2 h-5 w-5" />
