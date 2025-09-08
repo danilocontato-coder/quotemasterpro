@@ -180,6 +180,54 @@ export type Database = {
           },
         ]
       }
+      ai_settings: {
+        Row: {
+          aggressiveness: string
+          auto_analysis: boolean
+          auto_negotiation: boolean
+          created_at: string
+          enabled: boolean
+          id: string
+          market_analysis_provider: string
+          max_discount_percent: number
+          min_negotiation_amount: number
+          negotiation_provider: string
+          openai_model: string
+          perplexity_model: string
+          updated_at: string
+        }
+        Insert: {
+          aggressiveness?: string
+          auto_analysis?: boolean
+          auto_negotiation?: boolean
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          market_analysis_provider?: string
+          max_discount_percent?: number
+          min_negotiation_amount?: number
+          negotiation_provider?: string
+          openai_model?: string
+          perplexity_model?: string
+          updated_at?: string
+        }
+        Update: {
+          aggressiveness?: string
+          auto_analysis?: boolean
+          auto_negotiation?: boolean
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          market_analysis_provider?: string
+          max_discount_percent?: number
+          min_negotiation_amount?: number
+          negotiation_provider?: string
+          openai_model?: string
+          perplexity_model?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_training_data: {
         Row: {
           actual_output: Json | null
