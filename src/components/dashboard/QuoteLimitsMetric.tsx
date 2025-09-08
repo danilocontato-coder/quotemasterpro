@@ -64,11 +64,11 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
     );
   }
 
-  const quotesResult = checkLimit('CREATE_QUOTE', 0);
-  const percentage = getUsagePercentage('CREATE_QUOTE');
+  // Fazer todas as verificações uma única vez
+  const quotesResult = React.useMemo(() => checkLimit('CREATE_QUOTE', 0), [checkLimit]);
+  const percentage = React.useMemo(() => getUsagePercentage('CREATE_QUOTE'), [getUsagePercentage]);
   const isUnlimited = quotesResult.limit === -1;
-  const nearLimit = isNearLimit('CREATE_QUOTE', 80);
-  const canCreateOneMore = checkLimit('CREATE_QUOTE', 1).allowed;
+  const nearLimit = percentage >= 80;
   const remaining = isUnlimited ? Number.POSITIVE_INFINITY : Math.max(0, quotesResult.limit - quotesResult.currentUsage);
 
   const getProgressColor = (percentage: number) => {

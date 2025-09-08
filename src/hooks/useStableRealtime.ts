@@ -15,7 +15,7 @@ export function useStableRealtime() {
     // Evita múltiplas inicializações
     if (!user?.id || isInitializedRef.current) return;
     
-    console.log('🔗 [STABLE-REALTIME] Inicializando canal único para:', user.id);
+    
     
     // Criar canal único com timeout para evitar errors
     const channelName = `stable-realtime-${user.id}-${Date.now()}`;
@@ -53,13 +53,13 @@ export function useStableRealtime() {
     const subscribeWithRetry = async (retries = 3) => {
       try {
         await channelRef.current.subscribe((status: string) => {
-          console.log('🔗 [STABLE-REALTIME] Status:', status);
+          console.log('Real-time subscription status:', status);
           if (status === 'SUBSCRIBED') {
             isInitializedRef.current = true;
           }
         });
       } catch (error) {
-        console.error('🔗 [STABLE-REALTIME] Subscription error:', error);
+        console.error('Real-time subscription error:', error);
         if (retries > 0) {
           setTimeout(() => subscribeWithRetry(retries - 1), 1000);
         }
@@ -69,7 +69,7 @@ export function useStableRealtime() {
     subscribeWithRetry();
     
     return () => {
-      console.log('🔗 [STABLE-REALTIME] Cleanup');
+      
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;

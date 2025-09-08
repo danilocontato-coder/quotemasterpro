@@ -60,9 +60,7 @@ export default function Quotes() {
     }
   }, [error]);
 
-  // Force refresh button para debug
   const handleForceRefresh = () => {
-    console.log('🔄 Force refresh triggered');
     refetch();
   };
 
