@@ -267,7 +267,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Cliente</Label>
-                    <p className="font-medium">{quote.client}</p>
+                    <p className="font-medium">{quote.client || 'Nome do cliente não disponível'}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Prazo</Label>
@@ -278,7 +278,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Descrição</Label>
-                  <p className="text-sm">{quote.description}</p>
+                  <p className="text-sm">{quote.description || 'Descrição não disponível'}</p>
                 </div>
               </CardContent>
             </Card>
