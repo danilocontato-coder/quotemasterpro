@@ -448,7 +448,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
         continue;
       }
 
-      // Preflight igual ao módulo "Enviar para fornecedores"
+      // Preflight igual ao módulo "Enviar para fornecedores" (best effort - não bloqueante)
       try {
         const base = cfg.apiUrl.replace(/\/+$/, '');
         const bases = Array.from(new Set([base, `${base}/api`]));
@@ -468,12 +468,10 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
         }
         attempts[attempts.length - 1].preflight = { ok: preflightOk, status: lastStatus };
         if (!preflightOk) {
-          attempts[attempts.length - 1].error = `Preflight falhou (status ${lastStatus})`;
-          continue;
+          attempts[attempts.length - 1].error = `Preflight falhou (status ${lastStatus}) - prosseguindo com envio`;
         }
       } catch (e: any) {
-        attempts[attempts.length - 1].error = `Preflight erro: ${e?.message || String(e)}`;
-        continue;
+        attempts[attempts.length - 1].error = `Preflight erro: ${e?.message || String(e)} - prosseguindo com envio`;
       }
 
       const sent = await sendEvolutionWhatsApp(cfg, normalizedPhone, aiMessage);
