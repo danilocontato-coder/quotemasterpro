@@ -357,110 +357,49 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     const globalCfg = await resolveEvolutionConfig(supabase, null, true);
     const attempts: Array<{scope: string, apiUrl: string | null, error?: string}> = [];
 
-    if (!evolutionConfig.apiUrl || !evolutionConfig.token) {
-      console.warn('WhatsApp não configurado, simulando envio para debug');
-      
-      // Simular envio bem-sucedido para debug se WhatsApp não estiver configurado
-      const simulatedResult = {
-        success: true,
-        messageId: `sim_${Date.now()}`,
-        error: null
-      };
-      
-      console.log(`✅ WhatsApp simulado para ${supplier.name}: ${aiMessage}`);
-      
-      // Criar log de conversa com simulação
-      const conversationLog = [
-        {
-          role: 'ai',
-          message: aiMessage,
-          timestamp: new Date().toISOString(),
-          channel: 'whatsapp_simulated',
-          messageId: simulatedResult.messageId,
-          phone: normalizedPhone,
-          supplier_name: supplier.name,
-          deliveryStatus: 'simulated'
-        }
-      ];
+    // Tentar envio com config do cliente primeiro
+    let usedCfg = clientCfg.apiUrl && clientCfg.token ? clientCfg : null;
+    let result: any = { success: false };
 
-      // Atualizar negociação para status 'negotiating'
-      const { data: updatedNegotiation, error: updateError } = await supabase
-        .from('ai_negotiations')
-        .update({
-          status: 'negotiating',
-          conversation_log: conversationLog,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', negotiationId)
-        .select()
-        .single();
+    if (usedCfg) {
+      attempts.push({ scope: clientCfg.scope, apiUrl: clientCfg.apiUrl });
+      result = await sendEvolutionWhatsApp(usedCfg, normalizedPhone, aiMessage);
+      if (!result.success) attempts[attempts.length - 1].error = result.error;
+    }
 
-      if (updateError) {
-        throw new Error('Erro ao atualizar negociação');
+    // Se falhar, tentar com config global (SuperAdmin)
+    if (!result.success && globalCfg.apiUrl && globalCfg.token) {
+      usedCfg = globalCfg;
+      attempts.push({ scope: globalCfg.scope, apiUrl: globalCfg.apiUrl });
+      const retry = await sendEvolutionWhatsApp(globalCfg, normalizedPhone, aiMessage);
+      result = retry;
+      if (!result.success) attempts[attempts.length - 1].error = result.error;
+    }
+
+    // Se ainda falhar: simular apenas se não houver nenhuma config válida
+    if (!result.success) {
+      if (!clientCfg.apiUrl && !globalCfg.apiUrl) {
+        const simulatedMessageId = `sim_${Date.now()}`;
+        const conversationLog = [
+          { role: 'ai', message: aiMessage, timestamp: new Date().toISOString(), channel: 'whatsapp_simulated', messageId: simulatedMessageId, phone: normalizedPhone, supplier_name: supplier.name, deliveryStatus: 'simulated' }
+        ];
+        const { data: updatedNegotiation } = await supabase
+          .from('ai_negotiations')
+          .update({ status: 'negotiating', conversation_log: conversationLog, updated_at: new Date().toISOString() })
+          .eq('id', negotiationId)
+          .select()
+          .single();
+        return new Response(JSON.stringify({ success: true, negotiation: updatedNegotiation, whatsapp_sent: true, simulated: true, message_sent: aiMessage, messageId: simulatedMessageId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          negotiation: updatedNegotiation,
-          whatsapp_sent: true,
-          supplier_name: supplier.name,
-          message_sent: aiMessage,
-          messageId: simulatedResult.messageId,
-          simulated: true
-        }),
+        JSON.stringify({ success: false, error: 'Falha ao enviar WhatsApp', debug: { supplier_name: supplier.name, phone: normalizedPhone, attempts, tried_endpoints: result.tried_endpoints || [] } }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Enviar via WhatsApp
-    console.log(`Enviando negociação para ${supplier.name} via WhatsApp: ${normalizedPhone}`);
-    
-    const whatsappResult = await sendEvolutionWhatsApp(
-      evolutionConfig, 
-      normalizedPhone, 
-      aiMessage
-    );
+    console.log(`✅ WhatsApp enviado com sucesso para ${supplier.name}:`, result.messageId);
 
-    let finalResult = whatsappResult;
-
-    // Fallback: tentar config do cliente se global falhar
-    if (!finalResult.success) {
-      console.warn('Envio via Evolution falhou com config global. Tentando config do cliente...');
-      const clientCfg = await resolveEvolutionConfig(supabase, quote.client_id, false);
-      if (clientCfg.apiUrl && clientCfg.token) {
-        const retry = await sendEvolutionWhatsApp(clientCfg, normalizedPhone, aiMessage);
-        if (retry.success) {
-          finalResult = retry;
-        } else {
-          console.error('Falha também com config do cliente:', retry.error);
-        }
-      }
-    }
-
-    if (!finalResult.success) {
-      // Não retornar 500 - enviar detalhes para debug no frontend
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Falha ao enviar WhatsApp',
-          debug: {
-            supplier_name: supplier.name,
-            phone: normalizedPhone,
-            scope_used: evolutionConfig.scope,
-            attempts: [
-              { scope: evolutionConfig.scope, apiUrl: evolutionConfig.apiUrl },
-            ],
-            last_error: finalResult.error,
-            tried_endpoints: finalResult.tried_endpoints || []
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-
-    console.log(`✅ WhatsApp enviado com sucesso para ${supplier.name}:`, whatsappResult.messageId);
 
     // Criar log de conversa inicial com mais detalhes
     const conversationLog = [
