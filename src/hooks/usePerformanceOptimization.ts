@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, lazy, Suspense, useState, useEffect, useRef } from 'react';
+import React, { memo, useCallback, useMemo, Suspense, useState, useEffect, useRef } from 'react';
 import { debounce } from 'lodash';
 
 // Sistema de otimização global de performance
@@ -138,11 +138,11 @@ export function useVirtualization<T>(
 }
 
 // Lazy loading de componentes críticos
-export const LazyDashboard = lazy(() => import('@/pages/Dashboard'));
-export const LazyClientsManagement = lazy(() => import('@/pages/admin/ClientsManagement'));
-export const LazyQuotes = lazy(() => import('@/pages/Quotes'));
-export const LazySuppliers = lazy(() => import('@/pages/Suppliers'));
-export const LazyProducts = lazy(() => import('@/pages/Products'));
+export const LazyDashboard = React.lazy(() => import('@/pages/Dashboard'));
+export const LazyClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManagement'));
+export const LazyQuotes = React.lazy(() => import('@/pages/Quotes'));
+export const LazySuppliers = React.lazy(() => import('@/pages/Suppliers'));
+export const LazyProducts = React.lazy(() => import('@/pages/Products'));
 
 // Monitor de performance em tempo real - simplificado para evitar erros
 export function usePerformanceMonitor() {
