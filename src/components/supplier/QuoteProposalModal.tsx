@@ -89,7 +89,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
   const hasProposal = !!quote.proposal;
   const canEdit = !hasProposal || quote.proposal?.status === 'draft';
   const canSend = (hasProposal && quote.proposal?.status === 'draft' && proposalItems.length > 0) || 
-                  (!hasProposal && proposalItems.length > 0 && totalValue > 0);
+                  (!hasProposal && proposalItems.length > 0);
 
   const handleItemChange = (index: number, field: keyof ProposalItem, value: string | number) => {
     if (!canEdit) return;
