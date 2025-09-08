@@ -352,14 +352,10 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     const normalizedPhone = normalizePhone(supplierPhone);
 
 
-    // Configurar Evolution API
-    const evolutionConfig = await resolveEvolutionConfig(supabase, quote.client_id, true);
-    
-    console.log('Evolution config resolved:', { 
-      hasApiUrl: !!evolutionConfig.apiUrl, 
-      hasToken: !!evolutionConfig.token,
-      scope: evolutionConfig.scope 
-    });
+    // Resolver config Evolution: cliente primeiro, depois global
+    const clientCfg = await resolveEvolutionConfig(supabase, quote.client_id, false);
+    const globalCfg = await resolveEvolutionConfig(supabase, null, true);
+    const attempts: Array<{scope: string, apiUrl: string | null, error?: string}> = [];
 
     if (!evolutionConfig.apiUrl || !evolutionConfig.token) {
       console.warn('WhatsApp não configurado, simulando envio para debug');
