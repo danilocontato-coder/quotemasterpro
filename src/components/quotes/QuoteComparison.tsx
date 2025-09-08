@@ -569,7 +569,7 @@ export function QuoteComparison({
             </div>
           </div>
 
-          {/* Market Analysis Modal (Itens) */}
+          {/* Market Analysis Modal (Analyzing Items with ItemAnalysisModal) */}
           <ItemAnalysisModal
             open={isMarketAnalysisOpen}
             onClose={() => setIsMarketAnalysisOpen(false)}
