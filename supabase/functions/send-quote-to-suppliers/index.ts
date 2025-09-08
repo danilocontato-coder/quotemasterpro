@@ -14,6 +14,7 @@ interface SendQuoteRequest {
   custom_message?: string;
   send_via?: 'n8n' | 'direct';
   supplier_links?: { supplier_id: string; link: string; token?: string }[];
+  short_links?: { supplier_id: string; short_link: string; full_link?: string; short_code?: string; full_token?: string }[];
   frontend_base_url?: string;
 }
 
@@ -34,7 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via, supplier_links, frontend_base_url }: SendQuoteRequest = await req.json();
+    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via, supplier_links, short_links, frontend_base_url }: SendQuoteRequest = await req.json();
 
     console.log('Processing quote:', quote_id);
 
@@ -183,7 +184,7 @@ const handler = async (req: Request): Promise<Response> => {
     }).join('\n') || 'Nenhum item especificado';
 
     // Extract short_links from request body
-    const { short_links } = body;
+    // short_links is obtained from request body above
     
     // Build variables for template rendering
     const templateVariables = {
@@ -279,6 +280,7 @@ const handler = async (req: Request): Promise<Response> => {
         createdBy: quote.created_by,
         resolvedEvolution,
         supplierLinks: supplier_links || [],
+        shortLinks: short_links || [],
         frontendBaseUrl: frontend_base_url || null
       });
     }
@@ -561,6 +563,7 @@ const handler = async (req: Request): Promise<Response> => {
       createdBy,
       resolvedEvolution: resolvedEvo,
       supplierLinks,
+      shortLinks,
       frontendBaseUrl
     }: any
   ) {
@@ -629,8 +632,8 @@ const handler = async (req: Request): Promise<Response> => {
 
         try {
           // Get supplier-specific short link
-          const shortLinkEntry = Array.isArray(short_links)
-            ? (short_links as any[]).find((l: any) => l.supplier_id === supplier.id)
+          const shortLinkEntry = Array.isArray(shortLinks)
+            ? (shortLinks as any[]).find((l: any) => l.supplier_id === supplier.id)
             : null;
           
           // Get fallback long link
