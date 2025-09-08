@@ -5,6 +5,8 @@ export interface EvolutionConfig {
   token: string
   instance?: string | null
   scope: EvoScope
+  // Optional explicit send endpoint override (absolute URL or path supporting {instance})
+  sendEndpoint?: string | null
 }
 
 // Normalize to digits and ensure default country code
@@ -15,13 +17,26 @@ export function normalizePhone(input: string, defaultCountry = '55'): string {
 }
 
 export function buildEndpoints(cfg: EvolutionConfig): string[] {
-  const baseRaw = cfg.apiUrl.replace(/\/+$/, '')
+  const baseRaw = (cfg.apiUrl || '').replace(/\/+$/, '')
   const endpoints: string[] = []
   const instance = cfg.instance ? encodeURIComponent(cfg.instance) : null
 
-  // Based on https://evolution.iadc.cloud, try these specific patterns:
+  // 1) Explicit override via env/config (supports absolute URL or relative path and {instance} placeholder)
+  const override = (cfg as any).sendEndpoint as string | null | undefined
+  if (override && override.trim()) {
+    let target = override.trim()
+    if (target.includes('{instance}')) {
+      target = target.replace('{instance}', instance ?? '')
+    }
+    if (!/^https?:\/\//i.test(target)) {
+      target = `${baseRaw}/${target.replace(/^\/+/, '')}`
+    }
+    endpoints.push(target.replace(/([^:]\/)\/+/g, '$1'))
+    return endpoints
+  }
+
+  // 2) Heuristics with and without instance
   if (instance) {
-    // Most common Evolution API patterns
     endpoints.push(
       `${baseRaw}/message/sendText/${instance}`,
       `${baseRaw}/message/send/${instance}`,
@@ -39,7 +54,6 @@ export function buildEndpoints(cfg: EvolutionConfig): string[] {
     )
   }
 
-  // Fallback without instance
   endpoints.push(
     `${baseRaw}/message/sendText`,
     `${baseRaw}/message/send`,
