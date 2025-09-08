@@ -447,19 +447,58 @@ export const useSupabaseSupplierQuotes = () => {
     }
   }, [proposals, submitQuoteResponse, updateProposal]);
 
-  // Add attachment (compatibility)
-  const addAttachment = useCallback((quoteId: string, file: File) => {
-    const attachment: QuoteAttachment = {
-      id: crypto.randomUUID(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      url: URL.createObjectURL(file),
-      uploadedAt: new Date().toISOString(),
-    };
+  // Add attachment (real upload to Supabase Storage)
+  const addAttachment = useCallback(async (quoteId: string, file: File) => {
+    if (!user?.supplierId) {
+      throw new Error('Supplier ID not found');
+    }
 
-    return attachment;
-  }, []);
+    try {
+      const attachmentId = crypto.randomUUID();
+      const fileName = `${user.supplierId}/${quoteId}/${attachmentId}_${file.name}`;
+      
+      console.log('📎 Uploading attachment:', fileName);
+
+      // Upload file to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('attachments')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Error uploading file:', uploadError);
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('attachments')
+        .getPublicUrl(fileName);
+
+      console.log('✅ File uploaded successfully:', publicUrl);
+
+      const attachment: QuoteAttachment = {
+        id: attachmentId,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        url: publicUrl,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      return attachment;
+    } catch (error) {
+      console.error('Error in addAttachment:', error);
+      toast({
+        title: "Erro no upload",
+        description: "Não foi possível anexar o arquivo. Tente novamente.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [user?.supplierId, toast]);
 
   // Remove attachment (compatibility)
   const removeAttachment = useCallback((quoteId: string, attachmentId: string) => {

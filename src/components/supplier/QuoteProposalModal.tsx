@@ -207,7 +207,13 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
     setIsUploading(true);
     try {
       const file = event.target.files[0];
-      await addAttachment(quote.id, file);
+      const attachment = await addAttachment(quote.id, file);
+      
+      // Update quote proposal attachments in local state
+      if (quote.proposal) {
+        quote.proposal.attachments = [...(quote.proposal.attachments || []), attachment];
+      }
+      
       toast({
         title: "Arquivo anexado",
         description: `${file.name} foi anexado à proposta.`,
