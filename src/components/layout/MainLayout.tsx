@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 import { SystemStatusHeader } from "./SystemStatusHeader";
-
-import { useStableRealtime } from "@/hooks/useStableRealtime";
+import { NotificationToast } from "@/components/common/NotificationToast";
+import { useRealtimeOptimized } from "@/hooks/useRealtimeOptimized";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useRef } from "react";
 
@@ -33,11 +33,12 @@ export function MainLayout() {
     };
   }, []);
   
-  // Hook de realtime unificado e estável
-  useStableRealtime();
+  // Sincronização em tempo real otimizada
+  useRealtimeOptimized();
 
   return (
     <>
+      <NotificationToast />
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-background">
           <AppSidebar />

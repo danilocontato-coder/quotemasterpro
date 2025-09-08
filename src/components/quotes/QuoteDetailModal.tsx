@@ -1,6 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useAINegotiation } from '@/hooks/useAINegotiation';
-import { AINegotiationCard } from './AINegotiationCard';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,15 +18,13 @@ import {
   MessageSquare,
   Download,
   Send,
-  BarChart3,
-  Brain
+  BarChart3
 } from 'lucide-react';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
 import { QuoteComparison } from './QuoteComparison';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
 import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
-import { QuoteItemsList } from './QuoteItemsList';
 import { getStatusText } from "@/utils/statusUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,7 +36,6 @@ export interface QuoteProposal {
   supplierName: string;
   items: ProposalItem[];
   totalPrice: number;
-  price: number; // Alias para compatibilidade
   deliveryTime: number;
   shippingCost: number;
   sla: number;
@@ -66,99 +61,157 @@ interface QuoteDetailModalProps {
   onClose: () => void;
   quote: Quote | null;
   onStatusChange?: (quoteId: string, newStatus: Quote['status']) => void;
-  onApprove?: (proposal: QuoteProposal) => void;
 }
 
-// Interface para os itens da cotação
-interface QuoteItem {
-  id: string;
-  product_name: string;
-  quantity: number;
-  unit_price?: number;
-  total?: number;
-}
+// Mock proposals for demonstration
+const mockProposals: QuoteProposal[] = [
+  {
+    id: '1',
+    quoteId: 'RFQ009',
+    supplierId: '1',
+    supplierName: 'Materiais Santos Ltda',
+    items: [
+      {
+        productId: '1',
+        productName: 'Cimento Portland 50kg',
+        quantity: 10,
+        unitPrice: 32.50,
+        total: 325.00,
+        brand: 'Votorantim',
+        specifications: 'CP II-E-32'
+      },
+      {
+        productId: '8',
+        productName: 'Lâmpada LED 12W',
+        quantity: 20,
+        unitPrice: 15.90,
+        total: 318.00,
+        brand: 'Philips',
+        specifications: 'Luz branca 6500K'
+      }
+    ],
+    totalPrice: 643.00,
+    deliveryTime: 7,
+    shippingCost: 45.00,
+    sla: 24,
+    warrantyMonths: 12,
+    reputation: 4.5,
+    observations: 'Proposta com desconto por volume. Entrega programada.',
+    submittedAt: '2025-08-19T10:30:00Z',
+    status: 'pending'
+  },
+  {
+    id: '2',
+    quoteId: 'RFQ009',
+    supplierId: '3',
+    supplierName: 'Elétrica Silva & Cia',
+    items: [
+      {
+        productId: '1',
+        productName: 'Cimento Portland 50kg',
+        quantity: 10,
+        unitPrice: 35.00,
+        total: 350.00,
+        brand: 'Cauê',
+        specifications: 'CP II-F-32'
+      },
+      {
+        productId: '8',
+        productName: 'Lâmpada LED 12W',
+        quantity: 20,
+        unitPrice: 12.50,
+        total: 250.00,
+        brand: 'Osram',
+        specifications: 'Luz branca 6000K'
+      }
+    ],
+    totalPrice: 600.00,
+    deliveryTime: 10,
+    shippingCost: 38.00,
+    sla: 48,
+    warrantyMonths: 18,
+    reputation: 4.8,
+    observations: 'Melhor garantia do mercado. Instalação técnica disponível.',
+    submittedAt: '2025-08-19T14:15:00Z',
+    status: 'pending'
+  },
+  {
+    id: '3',
+    quoteId: 'RFQ009',
+    supplierId: '5',
+    supplierName: 'Hidráulica Rápida',
+    items: [
+      {
+        productId: '1',
+        productName: 'Cimento Portland 50kg',
+        quantity: 10,
+        unitPrice: 31.00,
+        total: 310.00,
+        brand: 'InterCement',
+        specifications: 'CP II-E-32'
+      },
+      {
+        productId: '8',
+        productName: 'Lâmpada LED 12W',
+        quantity: 20,
+        unitPrice: 16.50,
+        total: 330.00,
+        brand: 'Philips',
+        specifications: 'Luz branca 6500K, dimmerizável'
+      }
+    ],
+    totalPrice: 640.00,
+    deliveryTime: 5,
+    shippingCost: 32.00,
+    sla: 12,
+    warrantyMonths: 24,
+    reputation: 4.2,
+    observations: 'Entrega expressa. Produto premium com dimmerização.',
+    submittedAt: '2025-08-19T16:45:00Z',
+    status: 'pending'
+  }
+];
 
-const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
-  open,
-  onClose,
-  quote,
-  onStatusChange,
-  onApprove
-}) => {
-  const [proposals, setProposals] = useState<QuoteProposal[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: QuoteDetailModalProps) {
   const [showComparison, setShowComparison] = useState(false);
   const [showItemAnalysis, setShowItemAnalysis] = useState(false);
-  const [itemAnalysisData, setItemAnalysisData] = useState<ItemAnalysisData[]>([]);
-  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [proposals, setProposals] = useState<QuoteProposal[]>([]);
+  const [isLoadingProposals, setIsLoadingProposals] = useState(false);
   const { toast } = useToast();
-  const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
 
-  // Fetch quote items from Supabase
-  const fetchQuoteItems = useCallback(async () => {
+  // Fetch real proposals from Supabase
+  const fetchProposals = async () => {
     if (!quote?.id) return;
     
+    setIsLoadingProposals(true);
     try {
-      const { data, error } = await supabase
-        .from('quote_items')
-        .select('*')
-        .eq('quote_id', quote.id);
-      
-      if (error) {
-        console.error('Error fetching quote items:', error);
-        return;
-      }
-      
-      setQuoteItems(data || []);
-    } catch (error) {
-      console.error('Error fetching quote items:', error);
-    }
-  }, [quote?.id]);
-
-  // Fetch proposals from Supabase
-  const fetchProposals = useCallback(async () => {
-    if (!quote?.id) return;
-    
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
+      const { data: responses, error } = await supabase
         .from('quote_responses')
         .select(`
           *,
-          suppliers (
-            id,
-            name
-          )
+          suppliers!inner(name, cnpj, email, phone)
         `)
         .eq('quote_id', quote.id);
-      
+
       if (error) {
         console.error('Error fetching proposals:', error);
         return;
       }
 
-      // Transform data to match QuoteProposal interface
-      const transformedProposals: QuoteProposal[] = (data || []).map(response => ({
+      console.log('📋 Proposals fetched for quote detail:', responses?.length || 0);
+
+      const transformedProposals: QuoteProposal[] = (responses || []).map(response => ({
         id: response.id,
         quoteId: response.quote_id,
         supplierId: response.supplier_id,
-        supplierName: response.supplier_name || response.suppliers?.name || 'Fornecedor',
-        items: quoteItems.map(quoteItem => ({
-          productId: quoteItem.id,
-          productName: quoteItem.product_name,
-          quantity: quoteItem.quantity,
-          unitPrice: (quoteItem.unit_price || response.total_amount / (quoteItems.reduce((sum, item) => sum + item.quantity, 0) || 1)),
-          total: (quoteItem.total || quoteItem.quantity * (quoteItem.unit_price || 0)),
-          brand: 'N/A',
-          specifications: ''
-        })),
+        supplierName: response.suppliers.name,
+        items: [], // Will be populated if needed
         totalPrice: response.total_amount,
-        price: response.total_amount, // Para compatibilidade
         deliveryTime: response.delivery_time || 7,
-        shippingCost: 0,
-        sla: 24,
-        warrantyMonths: 12,
-        reputation: 4.0,
+        shippingCost: 0, // Default shipping cost
+        sla: 24, // Default SLA in hours
+        warrantyMonths: 12, // Default warranty
+        reputation: 4.5, // Default rating
         observations: response.notes || '',
         submittedAt: response.created_at,
         status: 'pending'
@@ -168,31 +221,29 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     } catch (error) {
       console.error('Error fetching proposals:', error);
     } finally {
-      setIsLoading(false);
+      setIsLoadingProposals(false);
     }
-  }, [quote?.id, quoteItems]);
+  };
 
   useEffect(() => {
     if (open && quote?.id) {
-      fetchQuoteItems();
-    }
-  }, [open, quote?.id, fetchQuoteItems]);
-
-  useEffect(() => {
-    if (quoteItems.length > 0) {
       fetchProposals();
     }
-  }, [quoteItems, fetchProposals]);
-
-  const negotiation = quote ? getNegotiationByQuoteId(quote.id) : null;
+  }, [open, quote?.id]);
 
   // Calculate best combination (multi-supplier optimization)
   const bestCombination = useMemo(() => {
-    if (proposals.length === 0 || quoteItems.length === 0) return null;
+    if (proposals.length === 0) return null;
 
-    const itemAnalysis = quoteItems.map(quoteItem => {
+    // Since we don't have items from the Quote interface, we'll use a simplified approach
+    const mockItems = [
+      { id: '1', productId: '1', productName: 'Item 1', quantity: 1 },
+      { id: '2', productId: '2', productName: 'Item 2', quantity: 1 }
+    ];
+
+    const itemAnalysis = mockItems.map(quoteItem => {
       const itemProposals = proposals.map(proposal => {
-        const proposalItem = proposal.items.find(item => item.productId === quoteItem.id);
+        const proposalItem = proposal.items.find(item => item.productId === quoteItem.productId);
         return {
           supplierId: proposal.supplierId,
           supplierName: proposal.supplierName,
@@ -215,10 +266,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       }, itemProposals[0]);
 
       return {
-        id: quoteItem.id,
-        productId: quoteItem.id,
-        productName: quoteItem.product_name,
-        quantity: quoteItem.quantity,
+        ...quoteItem,
         bestProposal,
         allProposals: itemProposals,
         savings: itemProposals.length > 0 ? 
@@ -239,7 +287,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       uniqueSuppliers: [...new Set(itemAnalysis.map(item => item.bestProposal?.supplierId).filter(Boolean))],
       isMultiSupplier: [...new Set(itemAnalysis.map(item => item.bestProposal?.supplierId).filter(Boolean))].length > 1
     };
-  }, [proposals, quoteItems]);
+  }, [proposals]);
 
   const handleStatusChange = (newStatus: Quote['status']) => {
     if (!quote) return;
@@ -254,50 +302,24 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const handleSendToSuppliers = () => {
     if (!quote) return;
     
-    // Simulate sending to suppliers
     handleStatusChange('sent');
     toast({
       title: "Cotação enviada!",
-      description: "A cotação foi enviada para os fornecedores selecionados.",
+      description: "Fornecedores foram notificados e podem enviar propostas.",
     });
   };
 
   const handleApproveOptimal = () => {
-    if (!bestCombination) return;
+    if (!quote || !bestCombination) return;
     
+    handleStatusChange('approved');
     toast({
       title: "Combinação aprovada!",
-      description: "A melhor combinação de fornecedores foi aprovada.",
+      description: `Economia de R$ ${bestCombination?.totalSavings?.toFixed(2) || '0.00'} (${bestCombination?.savingsPercentage?.toFixed(1) || '0.0'}%) confirmada.`,
     });
   };
 
-  const refreshProposals = useCallback(() => {
-    fetchProposals();
-  }, [fetchProposals]);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'draft': return <Clock className="h-4 w-4" />;
-      case 'sent': return <Send className="h-4 w-4" />;
-      case 'receiving': return <MessageSquare className="h-4 w-4" />;
-      case 'received': return <Eye className="h-4 w-4" />;
-      case 'approved': return <CheckCircle className="h-4 w-4" />;
-      case 'rejected': return <XCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'sent': return 'bg-blue-100 text-blue-800';
-      case 'receiving': return 'bg-yellow-100 text-yellow-800';
-      case 'received': return 'bg-green-100 text-green-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // getStatusText is now imported from utils
 
   if (!quote) return null;
 
@@ -308,286 +330,325 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           <DialogHeader>
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-2xl font-bold">
-                  {quote.title}
-                </DialogTitle>
-                <p className="text-muted-foreground mt-1">
-                  ID: {quote.id} • Empresa: {quote.client_name}
+                <DialogTitle className="text-xl">{quote.title}</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  ID: {quote.id} • {quote.client_name}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge 
-                  variant="secondary" 
-                  className={`${getStatusColor(quote.status)} flex items-center gap-1`}
-                >
-                  {getStatusIcon(quote.status)}
-                  {getStatusText(quote.status)}
-                </Badge>
-              </div>
+              <Badge className="text-sm px-3 py-1">
+                {getStatusText(quote.status)}
+              </Badge>
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="overview" className="w-full">
+          <Tabs defaultValue="overview" className="space-y-4">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="proposals">
                 Propostas ({proposals.length})
               </TabsTrigger>
               <TabsTrigger value="analysis">Análise Inteligente</TabsTrigger>
-              <TabsTrigger value="history">Histórico</TabsTrigger>
+              <TabsTrigger value="timeline">Histórico</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-6">
-              {/* Quote Summary */}
+            <TabsContent value="overview" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Itens Solicitados</p>
+                        <p className="text-2xl font-bold">{quote.items_count}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Propostas Recebidas</p>
+                        <p className="text-2xl font-bold">{proposals.length}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-orange-600" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Prazo</p>
+                        <p className="text-sm font-semibold">
+                          {quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'Sem prazo'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Resumo da Cotação
-                  </CardTitle>
+                  <CardTitle>Descrição da Cotação</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Package className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-900">Itens</span>
+                  <p>{quote.description}</p>
+                  
+                  {/* Simplified item display since items are not in the Quote interface */}
+                  <div className="mt-4">
+                    <h4 className="font-semibold mb-2">Itens Solicitados:</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center p-2 bg-muted rounded">
+                        <div>
+                          <p className="font-medium">Total de itens: {quote.items_count}</p>
+                          <p className="text-sm text-muted-foreground">Ver detalhes dos itens no sistema</p>
+                        </div>
+                        <p className="font-semibold">R$ {(quote.total || 0).toFixed(2)}</p>
                       </div>
-                      <p className="text-2xl font-bold text-blue-900">{quoteItems.length}</p>
-                    </div>
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Users className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-900">Fornecedores</span>
-                      </div>
-                      <p className="text-2xl font-bold text-green-900">{proposals.length}</p>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="h-4 w-4 text-purple-600" />
-                        <span className="text-sm font-medium text-purple-900">Prazo</span>
-                      </div>
-                      <p className="text-sm font-bold text-purple-900">
-                        {quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'Não definido'}
-                      </p>
                     </div>
                   </div>
-
-                  {quote.description && (
-                    <div className="mt-4">
-                      <h4 className="font-medium mb-2">Descrição</h4>
-                      <p className="text-muted-foreground">{quote.description}</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
-              {/* Quote Items */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Itens da Cotação</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <QuoteItemsList quoteId={quote.id} />
-                </CardContent>
-              </Card>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2">
+                {quote.status === 'draft' && (
+                  <Button onClick={handleSendToSuppliers} className="flex items-center gap-2">
+                    <Send className="h-4 w-4" />
+                    Enviar para Fornecedores
+                  </Button>
+                )}
 
-              {/* Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ações</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-3">
-                    {quote.status === 'draft' && (
-                      <Button onClick={handleSendToSuppliers} className="flex items-center gap-2">
-                        <Send className="h-4 w-4" />
-                        Enviar para Fornecedores
-                      </Button>
-                    )}
-                    
-                    {quote.status === 'receiving' && (
-                      <QuoteMarkAsReceivedButton
-                        quoteId={quote.id}
-                        currentStatus={quote.status}
-                      />
-                    )}
+                {/* Mark as Received Button */}
+                <QuoteMarkAsReceivedButton 
+                  quoteId={quote.id} 
+                  currentStatus={quote.status} 
+                />
 
-                    {proposals.length > 0 && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowComparison(true)}
-                        className="flex items-center gap-2"
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                        Comparar Propostas
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowItemAnalysis(true)}
+                {quote.status === 'under_review' && (
+                  <>
+                    <Button 
+                      onClick={() => handleStatusChange('approved')} 
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Aprovar Cotação
+                    </Button>
+                    <Button 
+                      onClick={() => handleStatusChange('rejected')} 
+                      variant="destructive"
                       className="flex items-center gap-2"
                     >
-                      <Brain className="h-4 w-4" />
-                      Análise Detalhada
+                      <XCircle className="h-4 w-4" />
+                      Rejeitar Cotação
                     </Button>
+                  </>
+                )}
 
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <Download className="h-4 w-4" />
-                      Exportar PDF
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                {quote.status === 'approved' && (
+                  <Button 
+                    onClick={() => handleStatusChange('finalized')} 
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Finalizar Cotação
+                  </Button>
+                )}
+
+                {/* Análise de Mercado - Simplified since items are not in Quote interface */}
+                {proposals.length > 0 && 
+                 ['receiving', 'received', 'under_review', 'approved', 'finalized'].includes(quote.status) && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowItemAnalysis(true)}
+                    className="flex items-center gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Analisar Mercado dos Itens
+                  </Button>
+                )}
+
+                {/* Mensagem explicativa quando análise não está disponível */}
+                {proposals.length === 0 && quote.status !== 'draft' && (
+                  <Button 
+                    variant="outline"
+                    disabled
+                    className="flex items-center gap-2 border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                    title="Aguardando propostas dos fornecedores para análise"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Analisar Mercado dos Itens
+                  </Button>
+                )}
+                
+                {proposals.length >= 2 && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowComparison(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Comparar Propostas
+                  </Button>
+                )}
+
+                {bestCombination && (quote.status === 'receiving' || quote.status === 'received') && (
+                  <Button 
+                    onClick={handleApproveOptimal}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Aprovar Combinação Ótima
+                  </Button>
+                )}
+              </div>
             </TabsContent>
 
-            <TabsContent value="proposals" className="space-y-6">
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <p>Carregando propostas...</p>
-                </div>
-              ) : proposals.length > 0 ? (
+            <TabsContent value="proposals" className="space-y-4">
+              {isLoadingProposals ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+                    <h3 className="text-lg font-semibold mb-2">Carregando Propostas</h3>
+                    <p className="text-muted-foreground">
+                      Buscando propostas dos fornecedores...
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : proposals.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Aguardando Propostas</h3>
+                    <p className="text-muted-foreground">
+                      As propostas dos fornecedores aparecerão aqui quando enviadas.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
                 <div className="space-y-4">
                   {proposals.map((proposal) => (
                     <Card key={proposal.id}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg">{proposal.supplierName}</CardTitle>
-                          <Badge className="bg-blue-100 text-blue-800">
-                            R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">
+                              {proposal.reputation}/5 ⭐
+                            </Badge>
+                            <Badge>
+                               R$ {proposal.totalPrice.toLocaleString('pt-BR', { 
+                                 minimumFractionDigits: 2, 
+                                 maximumFractionDigits: 2 
+                               })}
+                            </Badge>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                           <div>
                             <p className="text-sm text-muted-foreground">Prazo de Entrega</p>
-                            <p className="font-medium">{proposal.deliveryTime} dias</p>
+                            <p className="font-semibold">{proposal.deliveryTime} dias</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Frete</p>
-                            <p className="font-medium">R$ {proposal.shippingCost.toFixed(2)}</p>
+                            <p className="font-semibold">R$ {proposal.shippingCost.toLocaleString('pt-BR', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 2 
+                            })}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">SLA</p>
+                            <p className="font-semibold">{proposal.sla}h</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Garantia</p>
-                            <p className="font-medium">{proposal.warrantyMonths} meses</p>
+                            <p className="font-semibold">{proposal.warrantyMonths} meses</p>
                           </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Reputação</p>
-                            <p className="font-medium">{proposal.reputation}/5 ⭐</p>
-                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <h5 className="font-semibold">Itens:</h5>
+                          {proposal.items.map((item) => (
+                            <div key={item.productId} className="flex justify-between items-center p-2 bg-muted rounded text-sm">
+                              <div>
+                                <p className="font-medium">{item.productName}</p>
+                                <p className="text-muted-foreground">
+                                  {item.brand && `${item.brand} • `}
+                                  Qtd: {item.quantity} • R$ {(item.unitPrice || 0).toFixed(2)}/un
+                                </p>
+                              </div>
+                              <p className="font-semibold">R$ {(item.total || 0).toFixed(2)}</p>
+                            </div>
+                          ))}
                         </div>
 
                         {proposal.observations && (
-                          <div className="mb-4">
-                            <p className="text-sm text-muted-foreground mb-1">Observações</p>
-                            <p className="text-sm">{proposal.observations}</p>
+                          <div className="mt-4">
+                            <h5 className="font-semibold">Observações:</h5>
+                            <p className="text-sm text-muted-foreground mt-1">{proposal.observations}</p>
                           </div>
                         )}
 
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => onApprove?.(proposal)}
-                            className="flex items-center gap-1"
-                          >
-                            <CheckCircle className="h-3 w-3" />
-                            Aprovar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1"
-                          >
-                            <MessageSquare className="h-3 w-3" />
-                            Negociar
-                          </Button>
-                        </div>
+                        <p className="text-xs text-muted-foreground mt-4">
+                          Enviado em: {new Date(proposal.submittedAt).toLocaleString('pt-BR')}
+                        </p>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Nenhuma proposta recebida ainda.</p>
-                </div>
               )}
             </TabsContent>
 
-            <TabsContent value="analysis" className="space-y-6">
-              {/* AI Negotiation Card */}
-              {negotiation ? (
-                <AINegotiationCard
-                  negotiation={negotiation}
-                  onStartNegotiation={startNegotiation}
-                  onApproveNegotiation={approveNegotiation}
-                  onRejectNegotiation={rejectNegotiation}
-                  onStartAnalysis={startAnalysis}
-                />
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5" />
-                      Análise Inteligente
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Nenhuma análise foi iniciada para esta cotação.
-                    </p>
-                    <Button onClick={() => startAnalysis(quote.id)} className="flex items-center gap-2">
-                      <Brain className="h-4 w-4" />
-                      Executar análise IA
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Smart Economy Analysis */}
-              {bestCombination && (
-                <>
-                  <Card>
+            <TabsContent value="analysis" className="space-y-4">
+              {bestCombination ? (
+                <div className="space-y-4">
+                  {/* Economy Summary */}
+                  <Card className="border-green-200 bg-green-50">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-green-700">
+                      <CardTitle className="text-green-800 flex items-center gap-2">
                         <TrendingDown className="h-5 w-5" />
                         Análise de Economia Inteligente
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-sm text-muted-foreground">Economia Total</p>
-                          <p className="text-2xl font-bold text-green-600">
-                            R$ {bestCombination.totalSavings.toFixed(2)}
+                          <p className="text-sm text-green-600">Economia Total</p>
+                          <p className="text-2xl font-bold text-green-800">
+                            R$ {(bestCombination?.totalSavings || 0).toFixed(2)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Percentual</p>
-                          <p className="text-2xl font-bold text-green-600">
-                            {bestCombination.savingsPercentage.toFixed(1)}%
+                          <p className="text-sm text-green-600">Percentual</p>
+                          <p className="text-2xl font-bold text-green-800">
+                            {(bestCombination?.savingsPercentage || 0).toFixed(1)}%
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Custo Final</p>
-                          <p className="text-2xl font-bold text-blue-600">
-                            R$ {bestCombination.totalCost.toFixed(2)}
+                          <p className="text-sm text-green-600">Custo Final</p>
+                          <p className="text-2xl font-bold text-green-800">
+                            R$ {(bestCombination?.totalCost || 0).toFixed(2)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Fornecedores</p>
-                          <p className="text-2xl font-bold">
+                          <p className="text-sm text-green-600">Fornecedores</p>
+                          <p className="text-2xl font-bold text-green-800">
                             {bestCombination.uniqueSuppliers.length}
                           </p>
                         </div>
                       </div>
-                      
+
                       {bestCombination.isMultiSupplier && (
-                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                          <p className="text-sm text-yellow-800">
-                            💡 <strong>Estratégia Multi-fornecedor:</strong> A melhor economia é obtida comprando de diferentes fornecedores.
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-sm text-blue-800 font-medium">
+                            💡 Recomendação: Compra Multi-fornecedor otimizada para máxima economia
                           </p>
                         </div>
                       )}
@@ -643,49 +704,70 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                           </div>
                         ))}
                       </div>
-
-                      {bestCombination.items.length > 0 && (
-                        <div className="mt-6 pt-4 border-t">
-                          <Button onClick={handleApproveOptimal} className="w-full">
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Aprovar Combinação Ótima
-                          </Button>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
-                </>
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Análise Indisponível</h3>
+                    <p className="text-muted-foreground">
+                      Aguardando propostas dos fornecedores para realizar a análise inteligente.
+                    </p>
+                  </CardContent>
+                </Card>
               )}
             </TabsContent>
 
-            <TabsContent value="history" className="space-y-6">
+            <TabsContent value="timeline" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Histórico de Atividades</CardTitle>
+                  <CardTitle>Histórico da Cotação</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                      <div className="bg-blue-100 p-2 rounded-full">
-                        <Send className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
+                    <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                      <div className="flex-1">
                         <p className="font-medium">Cotação criada</p>
                         <p className="text-sm text-muted-foreground">
-                          {quote.created_at ? new Date(quote.created_at).toLocaleString('pt-BR') : 'Data não disponível'}
+                          {new Date(quote.created_at).toLocaleString('pt-BR')}
                         </p>
                       </div>
                     </div>
-                    
+
                     {quote.status !== 'draft' && (
-                      <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-                        <div className="bg-green-100 p-2 rounded-full">
-                          <MessageSquare className="h-4 w-4 text-green-600" />
-                        </div>
-                        <div>
+                      <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                        <div className="flex-1">
                           <p className="font-medium">Enviada para fornecedores</p>
                           <p className="text-sm text-muted-foreground">
-                            {quote.suppliers_sent_count || 0} fornecedores contatados
+                            {new Date(quote.updated_at).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {proposals.map((proposal) => (
+                      <div key={proposal.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                        <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+                        <div className="flex-1">
+                          <p className="font-medium">Proposta recebida - {proposal.supplierName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            R$ {(proposal.totalPrice || 0).toFixed(2)} • {new Date(proposal.submittedAt).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+
+                    {quote.status === 'approved' && (
+                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                        <div className="flex-1">
+                          <p className="font-medium text-green-800">Cotação aprovada</p>
+                          <p className="text-sm text-green-600">
+                            Combinação ótima selecionada
                           </p>
                         </div>
                       </div>
@@ -698,22 +780,41 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Modals */}
       <QuoteComparison
         open={showComparison}
         onClose={() => setShowComparison(false)}
-        proposals={proposals}
-        quoteTitle={quote?.title || ''}
+        proposals={proposals.map(p => ({
+          id: p.id,
+          quoteId: p.quoteId,
+          supplierId: p.supplierId,
+          supplierName: p.supplierName,
+          price: p.totalPrice,
+          deliveryTime: p.deliveryTime,
+          shippingCost: p.shippingCost,
+          sla: p.sla,
+          warrantyMonths: p.warrantyMonths,
+          reputation: p.reputation,
+          observations: p.observations,
+          submittedAt: p.submittedAt,
+        }))}
+        quoteTitle={quote.title}
       />
 
+      {/* Item Analysis Modal */}
       <ItemAnalysisModal
         open={showItemAnalysis}
         onClose={() => setShowItemAnalysis(false)}
-        items={itemAnalysisData}
+        items={[
+          {
+            productName: 'Item de exemplo',
+            category: 'Produtos Gerais',
+            specifications: 'Especificações do produto',
+            quantity: 1,
+            supplierPrice: quote.total || 0
+          }
+        ]}
+        title={`Análise de Mercado - ${quote?.title || 'Cotação'}`}
       />
     </>
   );
-};
-
-export default QuoteDetailModal;
-export { QuoteDetailModal };
+}

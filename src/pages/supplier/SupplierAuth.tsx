@@ -40,40 +40,10 @@ const SupplierAuth = () => {
       navigate('/');
       return;
     }
-    
-    // Validate token with the backend
-    const validateToken = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('validate-quote-token', {
-          body: { quote_id: quoteId, token }
-        });
-        
-        if (error || !data?.valid) {
-          toast({ 
-            title: 'Link inválido', 
-            description: data?.error || 'Token expirado ou inválido.', 
-            variant: 'destructive' 
-          });
-          navigate('/');
-          return;
-        }
-        
-        console.log('Token validated successfully:', data);
-        localStorage.setItem('supplier_quote_context', JSON.stringify({ 
-          quoteId, 
-          token, 
-          quoteInfo: data.quote,
-          ts: Date.now() 
-        }));
-      } catch (error) {
-        console.error('Token validation error:', error);
-        // Continue anyway for backwards compatibility
-        localStorage.setItem('supplier_quote_context', JSON.stringify({ quoteId, token, ts: Date.now() }));
-      }
-    };
-    
-    validateToken();
-  }, [quoteId, token, navigate, toast]);
+    try {
+      localStorage.setItem('supplier_quote_context', JSON.stringify({ quoteId, token, ts: Date.now() }));
+    } catch {}
+  }, [quoteId, token]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

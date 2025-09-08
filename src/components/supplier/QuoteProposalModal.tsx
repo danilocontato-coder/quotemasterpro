@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,10 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Upload, FileText, X, Send, Save, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Upload, FileText, X, Send, Save } from 'lucide-react';
 import { SupplierQuote, ProposalItem, useSupabaseSupplierQuotes } from '@/hooks/useSupabaseSupplierQuotes';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface QuoteProposalModalProps {
   quote: SupplierQuote | null;
@@ -22,115 +20,23 @@ interface QuoteProposalModalProps {
 }
 
 export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalModalProps) {
-  const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment, submitQuoteResponse } = useSupabaseSupplierQuotes();
-  const { user } = useAuth();
-  const [quoteItems, setQuoteItems] = useState<any[]>([]);
-  const [isLoadingItems, setIsLoadingItems] = useState(false);
-  const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
+  const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment } = useSupabaseSupplierQuotes();
+  const [proposalItems, setProposalItems] = useState<ProposalItem[]>(
+    quote?.proposal?.items || quote?.items.map(item => ({
+      id: item.id,
+      productName: item.productName,
+      description: item.description,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice || 0,
+      total: (item.unitPrice || 0) * item.quantity,
+      brand: '',
+      specifications: '',
+    })) || []
+  );
   const [deliveryTime, setDeliveryTime] = useState(quote?.proposal?.deliveryTime || 7);
   const [paymentTerms, setPaymentTerms] = useState(quote?.proposal?.paymentTerms || '30 dias');
   const [observations, setObservations] = useState(quote?.proposal?.observations || '');
   const [isUploading, setIsUploading] = useState(false);
-
-  // Load quote items when modal opens
-  useEffect(() => {
-    if (open && quote && (!quoteItems.length || quoteItems[0]?.quote_id !== quote.id)) {
-      loadQuoteItems();
-      loadExistingDraft();
-    }
-  }, [open, quote]);
-
-  // Initialize proposal items when quote items are loaded
-  useEffect(() => {
-    if (quoteItems.length > 0 && proposalItems.length === 0) {
-      const initialItems = quoteItems.map(item => ({
-        id: item.id,
-        productName: item.product_name,
-        description: item.product_name,
-        quantity: item.quantity,
-        unitPrice: item.unit_price || 0,
-        total: (item.unit_price || 0) * item.quantity,
-        brand: '',
-        specifications: '',
-      }));
-      setProposalItems(initialItems);
-    }
-  }, [quoteItems, proposalItems.length]);
-
-  const loadQuoteItems = async () => {
-    if (!quote) return;
-    
-    setIsLoadingItems(true);
-    try {
-      const { data: items, error } = await supabase
-        .from('quote_items')
-        .select('*')
-        .eq('quote_id', quote.id);
-
-      if (error) {
-        console.error('Error loading quote items:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os itens da cotação.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('📋 Quote items loaded:', items?.length || 0);
-      setQuoteItems(items || []);
-    } catch (error) {
-      console.error('Error in loadQuoteItems:', error);
-    } finally {
-      setIsLoadingItems(false);
-    }
-  };
-
-  const loadExistingDraft = async () => {
-    if (!quote || !user?.supplierId) return;
-    
-    try {
-      const { data: existingDraft, error } = await supabase
-        .from('quote_responses')
-        .select('*')
-        .eq('quote_id', quote.id)
-        .eq('supplier_id', user.supplierId)
-        .eq('status', 'draft')
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error loading existing draft:', error);
-        return;
-      }
-
-      if (existingDraft) {
-        console.log('📋 Loading existing draft:', existingDraft);
-        
-        // Carregar dados do rascunho (campos opcionais que podem não existir nos tipos gerados)
-        const draft: any = existingDraft as any;
-        setDeliveryTime((draft?.delivery_time as number) || 7);
-        setPaymentTerms((draft?.payment_terms as string) || '30 dias');
-        setObservations((draft?.notes as string) || '');
-        
-        // Carregar itens do rascunho (quando existirem)
-        if (Array.isArray(draft?.items)) {
-          const draftItems = (draft.items as any[]).map((item: any) => ({
-            id: crypto.randomUUID(),
-            productName: item.product_name || '',
-            description: item.product_name || '',
-            quantity: item.quantity || 1,
-            unitPrice: item.unit_price || 0,
-            total: item.total || 0,
-            brand: '',
-            specifications: item.notes || '',
-          }));
-          setProposalItems(draftItems);
-        }
-      }
-    } catch (error) {
-      console.error('Error in loadExistingDraft:', error);
-    }
-  };
 
   if (!quote) return null;
 
@@ -138,7 +44,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
   const hasProposal = !!quote.proposal;
   const canEdit = !hasProposal || quote.proposal?.status === 'draft';
   const canSend = (hasProposal && quote.proposal?.status === 'draft' && proposalItems.length > 0) || 
-                  (!hasProposal && proposalItems.length > 0);
+                  (!hasProposal && proposalItems.length > 0 && totalValue > 0);
 
   const handleItemChange = (index: number, field: keyof ProposalItem, value: string | number) => {
     if (!canEdit) return;
@@ -182,80 +88,29 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
     if (!quote) return;
 
     try {
-      // Validar se há pelo menos um item
-      if (proposalItems.length === 0) {
-        toast({
-          title: "Erro",
-          description: "Adicione pelo menos um item para salvar como rascunho.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('💾 Salvando rascunho da proposta para cotação:', quote.id);
-
-      // Salvar como rascunho usando quote_responses com status 'draft'
-      const { data: existingResponse, error: checkError } = await supabase
-        .from('quote_responses')
-        .select('id')
-        .eq('quote_id', quote.id)
-        .eq('supplier_id', user?.supplierId)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-
-      const responseData = {
-        quote_id: quote.id,
-        supplier_id: user?.supplierId,
-        supplier_name: user?.name || 'Fornecedor',
-        items: proposalItems.map(item => ({
-          product_name: item.productName,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
-          total: item.total,
-          notes: item.specifications || undefined
-        })),
-        total_amount: totalValue,
-        delivery_time: deliveryTime,
-        payment_terms: paymentTerms,
-        notes: observations || undefined,
-        status: 'draft'
+      const proposalData = {
+        items: proposalItems,
+        totalValue,
+        deliveryTime,
+        paymentTerms,
+        observations,
+        attachments: quote.proposal?.attachments || [],
       };
 
-      let result;
-      if (existingResponse) {
-        // Atualizar rascunho existente
-        const { data, error } = await supabase
-          .from('quote_responses')
-          .update(responseData)
-          .eq('id', existingResponse.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        result = data;
+      if (hasProposal && quote.proposal) {
+        await updateProposal(quote.proposal.id, proposalData);
+        toast({
+          title: "Proposta salva",
+          description: "Sua proposta foi salva como rascunho.",
+        });
       } else {
-        // Criar novo rascunho
-        const { data, error } = await supabase
-          .from('quote_responses')
-          .insert(responseData)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        result = data;
+        await createProposal(quote.id, proposalData);
+        toast({
+          title: "Proposta criada",
+          description: "Sua proposta foi criada e salva como rascunho.",
+        });
       }
-
-      toast({
-        title: "Rascunho salvo",
-        description: "Sua proposta foi salva como rascunho.",
-      });
-
-      console.log('✅ Rascunho salvo com sucesso:', result.id);
     } catch (error) {
-      console.error('❌ Erro ao salvar rascunho:', error);
       toast({
         title: "Erro",
         description: "Não foi possível salvar a proposta.",
@@ -266,58 +121,36 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
 
   const handleSend = async () => {
     try {
-      // Validar se há itens
-      if (proposalItems.length === 0) {
-        toast({
-          title: "Erro",
-          description: "Adicione pelo menos um item à proposta.",
-          variant: "destructive",
-        });
-        return;
+      let proposalId = quote?.proposal?.id;
+      
+      // If no proposal exists, create one first
+      if (!proposalId) {
+        const proposalData = {
+          items: proposalItems,
+          totalValue,
+          deliveryTime,
+          paymentTerms,
+          observations,
+          attachments: [],
+        };
+        
+        const newProposal = await createProposal(quote!.id, proposalData);
+        if (!newProposal) return;
+        proposalId = newProposal.id;
       }
-
-      // Validar se há informações obrigatórias
-      const hasValidItems = proposalItems.some(item => 
-        item.productName.trim() && item.quantity > 0 && item.unitPrice > 0
-      );
-
-      if (!hasValidItems) {
-        toast({
-          title: "Erro", 
-          description: "Preencha pelo menos um item com produto, quantidade e preço.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('🔄 Enviando proposta para cotação:', quote.id);
-
-      // Enviar proposta usando a função que funciona
-      await submitQuoteResponse(quote.id, {
-        items: proposalItems.map(item => ({
-          product_name: item.productName,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
-          total: item.total,
-          notes: item.specifications || undefined
-        })),
-        total_amount: totalValue,
-        delivery_time: deliveryTime,
-        payment_terms: paymentTerms,
-        notes: observations || undefined
-      });
-
+      
+      // Send the proposal
+      await sendProposal(proposalId);
+      
       toast({
         title: "Proposta enviada",
         description: "Sua proposta foi enviada para o cliente.",
       });
-      
       onOpenChange(false);
     } catch (error) {
-      console.error('❌ Erro ao enviar proposta:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível enviar a proposta. Tente novamente.",
+        description: "Não foi possível enviar a proposta.",
         variant: "destructive",
       });
     }
@@ -329,13 +162,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
     setIsUploading(true);
     try {
       const file = event.target.files[0];
-      const attachment = await addAttachment(quote.id, file);
-      
-      // Update quote proposal attachments in local state
-      if (quote.proposal) {
-        quote.proposal.attachments = [...(quote.proposal.attachments || []), attachment];
-      }
-      
+      await addAttachment(quote.id, file);
       toast({
         title: "Arquivo anexado",
         description: `${file.name} foi anexado à proposta.`,
@@ -395,7 +222,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Cliente</Label>
-                    <p className="font-medium">{quote.client || 'Nome do cliente não disponível'}</p>
+                    <p className="font-medium">{quote.client}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Prazo</Label>
@@ -406,7 +233,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Descrição</Label>
-                  <p className="text-sm">{quote.description || 'Descrição não disponível'}</p>
+                  <p className="text-sm">{quote.description}</p>
                 </div>
               </CardContent>
             </Card>
@@ -416,48 +243,35 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 <CardTitle>Itens Solicitados</CardTitle>
               </CardHeader>
               <CardContent>
-                {isLoadingItems ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                    <span className="ml-2">Carregando itens...</span>
-                  </div>
-                ) : quoteItems.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Nenhum item encontrado nesta cotação.
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead>Quantidade</TableHead>
-                        <TableHead>Preço Unit. (Referência)</TableHead>
-                        <TableHead>Total (Referência)</TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Preço Unit. (Referência)</TableHead>
+                      <TableHead>Total (Referência)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quote.items.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{item.productName}</p>
+                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>
+                          {item.unitPrice ? `R$ ${item.unitPrice.toFixed(2)}` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {item.total ? `R$ ${item.total.toFixed(2)}` : '-'}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {quoteItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.product_name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.product_name}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                          <TableCell>
-                            {item.unit_price > 0 ? `R$ ${item.unit_price.toFixed(2)}` : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {item.total > 0 ? `R$ ${item.total.toFixed(2)}` : '-'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

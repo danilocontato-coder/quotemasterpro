@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { FileText, AlertTriangle, TrendingUp, Infinity } from 'lucide-react';
 import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 
 interface QuoteLimitsMetricProps {
   showUpgradeButton?: boolean;
@@ -19,7 +18,6 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
   compact = false 
 }) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { 
     currentUsage, 
     getUsagePercentage, 
@@ -29,11 +27,6 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
     isLoading: usageLoading
   } = useSupabaseSubscriptionGuard();
 
-  // Always call all hooks first - no early returns before this
-  const quotesResult = React.useMemo(() => checkLimit('CREATE_QUOTE', 0), [checkLimit]);
-  const percentage = React.useMemo(() => getUsagePercentage('CREATE_QUOTE'), [getUsagePercentage]);
-
-  // Now we can have early returns after all hooks are called
   if (!user) {
     return null;
   }
@@ -70,8 +63,12 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
       </Card>
     );
   }
+
+  const quotesResult = checkLimit('CREATE_QUOTE', 0);
+  const percentage = getUsagePercentage('CREATE_QUOTE');
   const isUnlimited = quotesResult.limit === -1;
-  const nearLimit = percentage >= 80;
+  const nearLimit = isNearLimit('CREATE_QUOTE', 80);
+  const canCreateOneMore = checkLimit('CREATE_QUOTE', 1).allowed;
   const remaining = isUnlimited ? Number.POSITIVE_INFINITY : Math.max(0, quotesResult.limit - quotesResult.currentUsage);
 
   const getProgressColor = (percentage: number) => {
@@ -199,7 +196,7 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => navigate('/admin/plans')}
+              onClick={() => window.location.href = '/admin/plans'}
             >
               <TrendingUp className="h-4 w-4 mr-2" />
               Ver Planos e Fazer Upgrade

@@ -709,32 +709,15 @@ export function useSupabaseUsers() {
     };
   }, []); // Empty dependency array to prevent subscription recreation
 
-  // Update current user's last access
-  const updateCurrentUserLastAccess = useCallback(async () => {
-    try {
-      if (currentAuthUserId) {
-        await supabase
-          .from('users')
-          .update({ last_access: new Date().toISOString() })
-          .eq('auth_user_id', currentAuthUserId);
-        console.log('✅ Last access updated for current user');
-      }
-    } catch (error) {
-      console.error('Error updating last access:', error);
-    }
-  }, [currentAuthUserId]);
-
   // Initial load
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       await Promise.all([fetchUsers(), fetchGroups()]);
-      // Update current user's last access after loading
-      await updateCurrentUserLastAccess();
       setLoading(false);
     };
     loadData();
-  }, [currentAuthUserId]); // Depend on currentAuthUserId to trigger when it's available
+  }, []);
 
   return {
     users: filteredUsers,
@@ -751,7 +734,6 @@ export function useSupabaseUsers() {
     generateTemporaryPassword,
     resetPassword,
     fetchUsers,
-    fetchGroups,
-    updateCurrentUserLastAccess
+    fetchGroups
   };
 }

@@ -5,17 +5,16 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RoleBasedNotificationDropdown } from "./RoleBasedNotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
-
+import { NotificationToast } from "@/components/common/NotificationToast";
 
 export function SupplierLayout() {
   // Mock data for supplier - In production this would come from auth/Supabase
   const supplierName = "Materiais Santos Ltda";
   const planDisplayName = "Premium";
 
-  console.log('🔍 [SUPPLIER-LAYOUT] Component rendering without NotificationToast');
-
   return (
     <>
+      <NotificationToast />
       <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <SupplierSidebar />

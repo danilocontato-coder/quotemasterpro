@@ -1,7 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Eye, Send, FileText, Package, X, Brain } from 'lucide-react';
-import { getStatusText } from '@/utils/statusUtils';
+import { CheckCircle2, Clock, Eye, Send, FileText, Package, X } from 'lucide-react';
 
 interface StatusProgressIndicatorProps {
   status: string;
@@ -12,13 +11,10 @@ const statusSteps = [
   { key: 'draft', label: 'Rascunho', icon: FileText },
   { key: 'sent', label: 'Enviada', icon: Send },
   { key: 'receiving', label: 'Recebendo', icon: Package },
-  { key: 'received', label: 'Recebida', icon: CheckCircle2 },
-  { key: 'ai_analyzing', label: 'IA Analisando', icon: Brain },
+  { key: 'received', label: 'Recebido', icon: CheckCircle2 },
   { key: 'under_review', label: 'Em Análise', icon: Eye },
   { key: 'approved', label: 'Aprovada', icon: CheckCircle2 },
   { key: 'rejected', label: 'Rejeitada', icon: X },
-  { key: 'cancelled', label: 'Cancelada', icon: X },
-  { key: 'finalized', label: 'Finalizada', icon: CheckCircle2 },
 ];
 
 const getStatusVariant = (status: string) => {
@@ -31,18 +27,12 @@ const getStatusVariant = (status: string) => {
       return 'secondary';
     case 'received':
       return 'secondary';
-    case 'ai_analyzing':
-      return 'default';
     case 'under_review':
       return 'secondary';
     case 'approved':
-      return 'default';
+      return 'secondary';
     case 'rejected':
       return 'destructive';
-    case 'cancelled':
-      return 'destructive';
-    case 'finalized':
-      return 'default';
     default:
       return 'secondary';
   }
@@ -52,17 +42,8 @@ export function StatusProgressIndicator({ status, showProgress = false }: Status
   const currentStepIndex = statusSteps.findIndex(step => step.key === status);
   
   if (!showProgress) {
-    // Find the status in our predefined steps
-    let currentStep = statusSteps.find(step => step.key === status);
-    
-    // If not found, create a fallback display using the status text utility
-    if (!currentStep) {
-      currentStep = {
-        key: status,
-        label: getStatusText(status),
-        icon: Clock
-      };
-    }
+    const currentStep = statusSteps.find(step => step.key === status);
+    if (!currentStep) return null;
     
     const Icon = currentStep.icon;
     const variant = getStatusVariant(status) as any;
@@ -101,23 +82,14 @@ export function StatusProgressIndicator({ status, showProgress = false }: Status
             case 'received':
               stepClasses = 'bg-green-100 text-green-800';
               break;
-            case 'ai_analyzing':
-              stepClasses = 'bg-purple-100 text-purple-800';
-              break;
             case 'under_review':
-              stepClasses = 'bg-yellow-100 text-yellow-800';
+              stepClasses = 'bg-purple-100 text-purple-800';
               break;
             case 'approved':
               stepClasses = 'bg-green-100 text-green-800';
               break;
             case 'rejected':
               stepClasses = 'bg-red-100 text-red-800';
-              break;
-            case 'cancelled':
-              stepClasses = 'bg-gray-100 text-gray-800';
-              break;
-            case 'finalized':
-              stepClasses = 'bg-purple-100 text-purple-800';
               break;
             default:
               stepClasses = 'bg-blue-100 text-blue-800';

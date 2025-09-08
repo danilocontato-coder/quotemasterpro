@@ -191,14 +191,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: profile.role
         });
 
-        // Atualizar last_access na tabela users quando usuário faz login
-        if (userRecord) {
-          await supabase
-            .from('users')
-            .update({ last_access: new Date().toISOString() })
-            .eq('auth_user_id', supabaseUser.id);
-        }
-
         const userProfile: User = {
           id: profile.id,
           email: profile.email,

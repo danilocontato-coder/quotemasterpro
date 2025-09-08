@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Notification {
@@ -78,79 +77,25 @@ export function useSupabaseNotifications() {
     fetchNotifications();
   }, [user]);
 
-  // Subscribe to real-time updates with immediate toast notifications
+  // Subscribe to real-time updates
   useEffect(() => {
     if (!user) return;
 
     console.log('🔔 [NOTIFICATIONS] Setting up real-time subscription for user:', user.id);
 
-    // Use a unique channel name to avoid conflicts
     const channel = supabase
-      .channel(`notifications-main-${user.id}`)
+      .channel('notifications-changes')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('🔔 [NOTIFICATIONS] New notification received:', payload);
-          
-          const newNotification = payload.new as any;
-          
-          // Show immediate toast for new notification
-          toast(newNotification.title, {
-            description: newNotification.message,
-            duration: newNotification.priority === 'high' ? 8000 : 5000,
-            action: newNotification.action_url ? {
-              label: 'Ver',
-              onClick: () => {
-                if (newNotification.action_url) {
-                  // Use custom event to trigger navigation
-                  window.dispatchEvent(new CustomEvent('navigate-to', { detail: newNotification.action_url }));
-                }
-              }
-            } : undefined
-          });
-
-          // Add notification to state immediately
-          const formattedNotification = {
-            id: newNotification.id,
-            title: newNotification.title,
-            message: newNotification.message,
-            type: newNotification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
-            created_at: newNotification.created_at,
-            read: false,
-            priority: newNotification.priority as 'low' | 'normal' | 'high',
-            action_url: newNotification.action_url,
-            metadata: newNotification.metadata,
-          };
-
-          setNotifications(prev => [formattedNotification, ...prev]);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('🔔 [NOTIFICATIONS] Notification updated:', payload);
-          
-          // Update specific notification instead of refetching all
-          const updatedNotification = payload.new as any;
-          setNotifications(prev => 
-            prev.map(n => 
-              n.id === updatedNotification.id 
-                ? { ...n, read: updatedNotification.read }
-                : n
-            )
-          );
+          console.log('🔔 [NOTIFICATIONS] Real-time update received:', payload);
+          fetchNotifications();
         }
       )
       .subscribe((status) => {
@@ -161,7 +106,7 @@ export function useSupabaseNotifications() {
       console.log('🔔 [NOTIFICATIONS] Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, [user?.id]); // Changed dependency to be more specific
+  }, [user]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -203,36 +148,6 @@ export function useSupabaseNotifications() {
     }
   };
 
-  // Create notification helper
-  const createNotification = async (notificationData: {
-    title: string;
-    message: string;
-    type?: 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket';
-    priority?: 'low' | 'normal' | 'high';
-    action_url?: string;
-    metadata?: Record<string, any>;
-    client_id?: string;
-    supplier_id?: string;
-    notify_all_client_users?: boolean;
-  }) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('create-notification', {
-        body: {
-          user_id: user?.id,
-          ...notificationData
-        }
-      });
-
-      if (error) throw error;
-
-      console.log('✅ Notification created successfully:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error creating notification:', error);
-      throw error;
-    }
-  };
-
   const formatTime = (created_at: string) => {
     const now = new Date();
     const notificationTime = new Date(created_at);
@@ -262,7 +177,6 @@ export function useSupabaseNotifications() {
     error,
     markAsRead,
     markAllAsRead,
-    createNotification,
     refetch: fetchNotifications,
   };
 }

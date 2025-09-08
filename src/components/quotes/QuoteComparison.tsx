@@ -10,8 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Save, Download, Trophy, TrendingUp, TrendingDown, BarChart3, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ItemAnalysisModal } from './ItemAnalysisModal';
-import type { ItemAnalysisData } from '@/hooks/useItemAnalysis';
+import { MarketAnalysisModal } from './MarketAnalysisModal';
 
 export interface QuoteProposal {
   id: string;
@@ -65,50 +64,7 @@ export function QuoteComparison({
   const [matrixName, setMatrixName] = useState('');
   const [isMarketAnalysisOpen, setIsMarketAnalysisOpen] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
-  const [itemsForAnalysis, setItemsForAnalysis] = useState<ItemAnalysisData[]>([]);
-  const [isLoadingItems, setIsLoadingItems] = useState(false);
   const { toast } = useToast();
-
-  const handleOpenMarketAnalysis = async () => {
-    try {
-      setIsLoadingItems(true);
-      const quoteId = proposals[0]?.quoteId;
-      if (!quoteId) {
-        toast({
-          title: 'Sem itens',
-          description: 'Não foi possível identificar a cotação para buscar os itens.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('quote_items')
-        .select('product_name, quantity, unit_price')
-        .eq('quote_id', quoteId);
-
-      if (error) throw error;
-
-      const items: ItemAnalysisData[] = (data || []).map((row: any) => ({
-        productName: row.product_name || 'Item',
-        category: 'Geral',
-        supplierPrice: row.unit_price ?? undefined,
-        quantity: row.quantity ?? 1,
-      }));
-
-      setItemsForAnalysis(items);
-      setIsMarketAnalysisOpen(true);
-    } catch (err) {
-      console.error('Erro ao carregar itens da cotação:', err);
-      toast({
-        title: 'Erro ao carregar itens',
-        description: 'Tente novamente em instantes.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoadingItems(false);
-    }
-  };
 
   // Normalize scores (0-100 scale)
   const normalizedScores = useMemo(() => {
@@ -346,12 +302,11 @@ export function QuoteComparison({
                   </p>
                 </div>
                 <Button
-                  onClick={handleOpenMarketAnalysis}
-                  disabled={isLoadingItems}
+                  onClick={() => setIsMarketAnalysisOpen(true)}
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  {isLoadingItems ? 'Carregando itens...' : 'Analisar Mercado'}
+                  Analisar Mercado
                 </Button>
               </div>
               <div className="mt-3 p-3 bg-green-100 rounded-lg">
@@ -569,12 +524,17 @@ export function QuoteComparison({
             </div>
           </div>
 
-          {/* Market Analysis Modal (Analyzing Items with ItemAnalysisModal) */}
-          <ItemAnalysisModal
+          {/* Market Analysis Modal */}
+          <MarketAnalysisModal
             open={isMarketAnalysisOpen}
             onClose={() => setIsMarketAnalysisOpen(false)}
-            items={itemsForAnalysis}
-            title={`Análise de Mercado - Itens da Cotação`}
+            productName={quoteTitle}
+            category="Produtos Gerais"
+            proposals={proposals.map(p => ({
+              id: p.id,
+              supplierName: p.supplierName,
+              price: p.price
+            }))}
           />
         </div>
       </DialogContent>

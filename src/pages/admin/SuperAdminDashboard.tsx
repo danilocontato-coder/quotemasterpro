@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   Building2, 
@@ -26,7 +25,6 @@ import { PaginatedActivities } from '@/components/admin/PaginatedActivities';
 
 export const SuperAdminDashboard = () => {
   console.log('SuperAdminDashboard component rendering');
-  const navigate = useNavigate();
   const { metrics, activities, systemStatus, financialSummary, isLoading, error } = useSuperAdminDashboard();
 
   const getStatusColor = (status: string) => {
@@ -63,7 +61,7 @@ export const SuperAdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">{error}</p>
-            <Button onClick={() => navigate(0)} className="mt-4">
+            <Button onClick={() => window.location.reload()} className="mt-4">
               Tentar Novamente
             </Button>
           </CardContent>

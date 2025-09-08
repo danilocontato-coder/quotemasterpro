@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle, Key } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ interface SupplierStats {
 }
 
 export const SuppliersManagement = () => {
-  const { suppliers, isLoading, refetch, createSupplierWithUser, updateSupplier, deleteSupplier, resetSupplierPassword } = useSupabaseAdminSuppliers();
+  const { suppliers, isLoading, refetch, createSupplierWithUser, updateSupplier, deleteSupplier } = useSupabaseAdminSuppliers();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -450,15 +450,6 @@ export const SuppliersManagement = () => {
                                   Ativar
                                 </>
                               )}
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem 
-                              onClick={async () => {
-                                await resetSupplierPassword(supplier.id, supplier.email);
-                              }}
-                            >
-                              <Key className="h-4 w-4 mr-2" />
-                              Resetar Senha
                             </DropdownMenuItem>
                             
                             <DropdownMenuItem 

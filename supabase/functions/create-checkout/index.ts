@@ -93,16 +93,13 @@ serve(async (req) => {
                 supabase_plan_id: planId
               }
             },
-            unit_amount: Math.round(plan.monthly_price * 100),
+            unit_amount: Math.round(plan.monthly_price * 100), // Converter para centavos
             recurring: { interval: "month" },
           },
           quantity: 1,
         },
       ],
       mode: "subscription",
-      payment_method_types: ["card"],
-      billing_address_collection: "auto",
-      locale: "pt-BR",
       success_url: `${origin}/plans?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/plans?canceled=true`,
       metadata: {
