@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, Building2, Users, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
-import { LoginDebug } from '@/components/debug/LoginDebug';
+
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -284,9 +284,6 @@ const Login: React.FC = () => {
           © 2025 QuoteMaster Pro. Todos os direitos reservados.
         </div>
       </div>
-      
-      {/* Debug component */}
-      <LoginDebug />
     </div>
   );
 };
