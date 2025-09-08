@@ -112,8 +112,7 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
   return { success: false, error: `${lastError} (last: ${lastEndpoint})`, tried_endpoints: endpoints }
 }
 
-// Resolve Evolution config from DB (client→global) or env fallback
-// Resolve Evolution config from DB with flexible priority
+// Resolve Evolution config with ENV priority for stability
 export async function resolveEvolutionConfig(
   supabase: any,
   clientId?: string | null,
@@ -124,9 +123,23 @@ export async function resolveEvolutionConfig(
   let token: string | null = null
   let scope: EvoScope = 'env'
 
+  // Priority: ENV vars first for stability
+  apiUrl = Deno.env.get('EVOLUTION_API_URL') || ''
+  token = Deno.env.get('EVOLUTION_API_TOKEN') || ''
+  instance = Deno.env.get('EVOLUTION_INSTANCE') || null
+  
+  if (apiUrl && token) {
+    return { 
+      apiUrl: apiUrl.replace(/\/+$/, ''), 
+      token, 
+      instance, 
+      scope: 'env' 
+    }
+  }
+
+  // Fallback to DB integrations if ENV not available
   try {
     if (preferGlobal) {
-      // 1) Try SuperAdmin (global) first - legacy table
       const { data: evoGlobalInt } = await supabase
         .from('integrations')
         .select('configuration')
@@ -136,65 +149,12 @@ export async function resolveEvolutionConfig(
         .maybeSingle()
       const gcfg = evoGlobalInt?.configuration || null
       if (gcfg) {
-        instance = (gcfg.instance ?? gcfg['evolution_instance']) || null
-        apiUrl = (gcfg.api_url ?? gcfg['evolution_api_url']) || null
-        token = (gcfg.token ?? gcfg['evolution_token']) || null
+        instance = instance || (gcfg.instance ?? gcfg['evolution_instance']) || null
+        apiUrl = apiUrl || (gcfg.api_url ?? gcfg['evolution_api_url']) || null
+        token = token || (gcfg.token ?? gcfg['evolution_token']) || null
         scope = 'global'
       }
-      // 1b) Fallback to api_integrations (global)
-      if (!apiUrl || !token) {
-        const { data: evoGlobalAI } = await supabase
-          .from('api_integrations')
-          .select('settings, api_key_encrypted')
-          .eq('type', 'whatsapp')
-          .eq('active', true)
-          .eq('scope', 'global')
-          .maybeSingle()
-        const g2 = (evoGlobalAI as any)?.settings || null
-        if (g2) {
-          instance = instance || (g2.instance ?? g2['evolution_instance']) || null
-          apiUrl = apiUrl || (g2.api_url ?? g2['evolution_api_url']) || null
-          token = token || (g2.token ?? g2['evolution_token'] ?? (evoGlobalAI as any)?.api_key_encrypted) || null
-          scope = 'global'
-        }
-      }
-      // 2) Then client-specific (to allow overrides)
-      if ((!apiUrl || !token) && clientId) {
-        const { data: evoClientInt } = await supabase
-          .from('integrations')
-          .select('configuration')
-          .eq('integration_type', 'whatsapp_evolution')
-          .eq('active', true)
-          .eq('client_id', clientId)
-          .maybeSingle()
-        const ccfg = evoClientInt?.configuration || null
-        if (ccfg) {
-          instance = instance || (ccfg.instance ?? ccfg['evolution_instance']) || null
-          apiUrl = apiUrl || (ccfg.api_url ?? ccfg['evolution_api_url']) || null
-          token = token || (ccfg.token ?? ccfg['evolution_token']) || null
-          scope = apiUrl && token ? (scope === 'global' ? 'global' : 'client') : scope
-        }
-        // 2b) Fallback api_integrations (client)
-        if (!apiUrl || !token) {
-          const { data: evoClientAI } = await supabase
-            .from('api_integrations')
-            .select('settings, api_key_encrypted')
-            .eq('type', 'whatsapp')
-            .eq('active', true)
-            .eq('scope', 'client')
-            .eq('target_id', clientId)
-            .maybeSingle()
-          const c2 = (evoClientAI as any)?.settings || null
-          if (c2) {
-            instance = instance || (c2.instance ?? c2['evolution_instance']) || null
-            apiUrl = apiUrl || (c2.api_url ?? c2['evolution_api_url']) || null
-            token = token || (c2.token ?? c2['evolution_token'] ?? (evoClientAI as any)?.api_key_encrypted) || null
-            scope = 'client'
-          }
-        }
-      }
     } else {
-      // Default behavior: client → global
       if (clientId) {
         const { data: evoClientInt } = await supabase
           .from('integrations')
@@ -209,24 +169,6 @@ export async function resolveEvolutionConfig(
           apiUrl = (cfg.api_url ?? cfg['evolution_api_url']) || null
           token = (cfg.token ?? cfg['evolution_token']) || null
           scope = 'client'
-        }
-        // client via api_integrations
-        if (!apiUrl || !token) {
-          const { data: evoClientAI } = await supabase
-            .from('api_integrations')
-            .select('settings, api_key_encrypted')
-            .eq('type', 'whatsapp')
-            .eq('active', true)
-            .eq('scope', 'client')
-            .eq('target_id', clientId)
-            .maybeSingle()
-          const c2 = (evoClientAI as any)?.settings || null
-          if (c2) {
-            instance = instance || (c2.instance ?? c2['evolution_instance']) || null
-            apiUrl = apiUrl || (c2.api_url ?? c2['evolution_api_url']) || null
-            token = token || (c2.token ?? c2['evolution_token'] ?? (evoClientAI as any)?.api_key_encrypted) || null
-            scope = 'client'
-          }
         }
       }
       if (!apiUrl || !token) {
@@ -244,32 +186,14 @@ export async function resolveEvolutionConfig(
           token = token || (cfg.token ?? cfg['evolution_token']) || null
           scope = scope === 'client' ? 'client' : 'global'
         }
-        // global via api_integrations
-        if (!apiUrl || !token) {
-          const { data: evoGlobalAI } = await supabase
-            .from('api_integrations')
-            .select('settings, api_key_encrypted')
-            .eq('type', 'whatsapp')
-            .eq('active', true)
-            .eq('scope', 'global')
-            .maybeSingle()
-          const g2 = (evoGlobalAI as any)?.settings || null
-          if (g2) {
-            instance = instance || (g2.instance ?? g2['evolution_instance']) || null
-            apiUrl = apiUrl || (g2.api_url ?? g2['evolution_api_url']) || null
-            token = token || (g2.token ?? g2['evolution_token'] ?? (evoGlobalAI as any)?.api_key_encrypted) || null
-            scope = scope === 'client' ? 'client' : 'global'
-          }
-        }
       }
     }
   } catch (_) {}
 
-  // Env fallbacks (only if DB didn’t provide)
-  apiUrl = Deno.env.get('EVOLUTION_API_URL') || apiUrl || ''
-  token = Deno.env.get('EVOLUTION_API_TOKEN') || token || ''
-  instance = instance || Deno.env.get('EVOLUTION_INSTANCE') || null
-  if (!apiUrl || !token) scope = scope || 'env'
-
-  return { apiUrl: apiUrl!, token: token!, instance, scope }
+  return { 
+    apiUrl: (apiUrl || '').replace(/\/+$/, ''), 
+    token: token || '', 
+    instance, 
+    scope 
+  }
 }
