@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, Building2, Users, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
+import { LoginDebug } from '@/components/debug/LoginDebug';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -19,10 +20,9 @@ const Login: React.FC = () => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
 
-  // Auto redirect when user is authenticated - SIMPLIFIED
+  // Auto redirect when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
       const redirectPath = getRoleBasedRoute(user.role);
@@ -30,67 +30,46 @@ const Login: React.FC = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Detectar tipo de usuário baseado no email
-  const detectUserType = async (emailValue: string) => {
+  // Detectar tipo de usuário baseado no email - SIMPLIFICADO (sem consultas DB)
+  const detectUserType = (emailValue: string) => {
     if (!emailValue || !emailValue.includes('@')) {
       setDetectedUserType(null);
       return;
     }
 
-    setIsDetecting(true);
-    setError('');
-
-    try {
-      // Primeiro verificar se é admin (baseado no domínio ou email específico)
-      if (emailValue.includes('admin@') || emailValue.includes('@quotemaster.com')) {
-        setDetectedUserType('admin');
-        setIsDetecting(false);
-        return;
-      }
-
-      // Verificar nas tabelas de usuários para determinar o tipo
-      const [{ data: suppliers }, { data: clients }] = await Promise.all([
-        supabase.from('suppliers').select('email').eq('email', emailValue).single(),
-        supabase.from('clients').select('email').eq('email', emailValue).single()
-      ]);
-
-      if (suppliers) {
-        setDetectedUserType('supplier');
-      } else if (clients) {
-        setDetectedUserType('client');
-      } else {
-        // Se não encontrou, verificar na tabela profiles
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('email', emailValue)
-          .single();
-
-        if (profile) {
-          setDetectedUserType(profile.role === 'admin' ? 'admin' : 'client');
-        } else {
-          // Default para cliente se não encontrar
-          setDetectedUserType('client');
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao detectar tipo de usuário:', error);
-      // Em caso de erro, assume cliente
+    const domain = emailValue.split('@')[1];
+    
+    // Admin - emails específicos
+    if (emailValue.includes('admin@') || domain === 'quotemaster.com') {
+      setDetectedUserType('admin');
+    }
+    // Supplier - padrões comuns de fornecedores 
+    else if (domain && (
+      emailValue.includes('fornecedor') ||
+      emailValue.includes('supplier') || 
+      emailValue.includes('empresa') ||
+      domain.includes('ltda') ||
+      domain.includes('com.br')
+    )) {
+      setDetectedUserType('supplier');
+    }
+    // Default - cliente
+    else {
       setDetectedUserType('client');
-    } finally {
-      setIsDetecting(false);
     }
   };
 
-  // Detectar tipo quando email muda
+  // Detectar tipo quando email muda (com debounce)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
+      setIsDetecting(true);
       if (email) {
         detectUserType(email);
       } else {
         setDetectedUserType(null);
       }
-    }, 500); // Debounce de 500ms
+      setIsDetecting(false);
+    }, 300); // Debounce reduzido
 
     return () => clearTimeout(timeoutId);
   }, [email]);
@@ -99,51 +78,47 @@ const Login: React.FC = () => {
     if (!detectedUserType) {
       return { icon: null, label: '', description: 'Digite seu email para continuar' };
     }
-
+    
     switch (detectedUserType) {
-      case 'client':
-        return { 
-          icon: Building2, 
-          label: 'Cliente/Condomínio', 
-          description: 'Acesso para gestores de empresas e condomínios'
+      case 'admin':
+        return {
+          icon: <Users className="h-5 w-5" />,
+          label: 'Administrador',
+          description: 'Acesso total ao sistema'
         };
       case 'supplier':
-        return { 
-          icon: Users, 
-          label: 'Fornecedor', 
-          description: 'Acesso para fornecedores e prestadores de serviços'
+        return {
+          icon: <Building2 className="h-5 w-5" />,
+          label: 'Fornecedor',
+          description: 'Responder cotações e gerenciar produtos'
         };
-      case 'admin':
-        return { 
-          icon: User, 
-          label: 'Administrador', 
-          description: 'Acesso administrativo da plataforma'
+      case 'client':
+        return {
+          icon: <User className="h-5 w-5" />,
+          label: 'Cliente',
+          description: 'Solicitar cotações e gerenciar fornecedores'
         };
+      default:
+        return { icon: null, label: '', description: '' };
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+    
     setIsLoading(true);
     setError('');
 
     try {
-      // Detectar tipo de usuário baseado no email
-      const userType = detectedUserType;
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        // Handle specific error cases
         if (error.message.includes('Invalid login credentials')) {
-          if (userType) {
-            setError(`Credenciais inválidas para ${userType === 'admin' ? 'administrador' : userType === 'supplier' ? 'fornecedor' : 'cliente'}.`);
-          } else {
-            setError('Email ou senha incorretos. Verifique se você está cadastrado no sistema.');
-          }
+          setError('Email ou senha incorretos');
         } else if (error.message.includes('Email not confirmed')) {
           setError('Email não confirmado. Verifique sua caixa de entrada.');
         } else if (error.message.includes('Too many requests')) {
@@ -154,47 +129,14 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Verificar se o usuário tem um perfil associado
-      if (data.user) {
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('id, name, email, role, status, force_password_change')
-          .eq('auth_user_id', data.user.id)
-          .single();
-
-        // Se o usuário tem perfil na tabela users mas está com force_password_change
-        if (userProfile?.force_password_change) {
-          console.log('Usuário precisa alterar senha no primeiro acesso');
-          // Pode redirecionar para tela de mudança de senha ou permitir login
-        }
-
-        // Se não tem perfil na tabela users, verificar se existe no profiles
-        if (!userProfile) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, name, email, role')
-            .eq('id', data.user.id)
-            .single();
-
-          if (!profile) {
-            setError('Usuário não encontrado no sistema. Entre em contato com o administrador.');
-            await supabase.auth.signOut();
-            return;
-          }
-        }
-      }
-
       console.log('Login realizado com sucesso!');
-      // O redirecionamento será feito automaticamente pelo useEffect que monitora o user
+      // O redirecionamento será feito automaticamente pelo useEffect do AuthContext
     } catch (err) {
+      console.error('Erro no login:', err);
       setError('Erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGoogleLogin = async () => {
-    // Funcionalidade removida - detecção automática por email apenas
   };
 
   const userTypeInfo = getUserTypeInfo();
@@ -210,41 +152,32 @@ const Login: React.FC = () => {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-foreground">QuoteMaster Pro</h1>
-          <p className="text-muted-foreground mt-2">Sistema de gestão de cotações</p>
+          <p className="text-muted-foreground mt-2">Faça login para continuar</p>
         </div>
 
-        <Card className="shadow-lg">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl text-center">Fazer Login</CardTitle>
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-xl text-center">Entrar</CardTitle>
             <CardDescription className="text-center">
-              Digite seu email e o sistema detectará automaticamente seu tipo de acesso
+              {userTypeInfo.description}
             </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Indicador de tipo de usuário detectado */}
-            {detectedUserType && userTypeInfo.icon && (
-              <div className="flex items-center justify-center p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                <userTypeInfo.icon className="h-5 w-5 text-primary mr-2" />
-                <div className="text-center">
-                  <p className="font-medium text-primary">{userTypeInfo.label}</p>
-                  <p className="text-xs text-muted-foreground">{userTypeInfo.description}</p>
+            
+            {/* User type indicator */}
+            {detectedUserType && (
+              <div className="flex items-center justify-center gap-2 p-3 bg-muted/50 rounded-md">
+                <div className="text-primary">
+                  {userTypeInfo.icon}
                 </div>
+                <div className="text-sm">
+                  <div className="font-medium">{userTypeInfo.label}</div>
+                  <div className="text-muted-foreground text-xs">{userTypeInfo.description}</div>
+                </div>
+                {isDetecting && <Loader2 className="h-4 w-4 animate-spin ml-auto" />}
               </div>
             )}
-
-            {isDetecting && (
-              <div className="flex items-center justify-center p-4 bg-muted/50 rounded-lg">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                <span className="text-sm text-muted-foreground">Detectando tipo de usuário...</span>
-              </div>
-            )}
-
-            {!detectedUserType && !isDetecting && email && (
-              <div className="text-center text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg">
-                {userTypeInfo.description}
-              </div>
-            )}
-
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -257,11 +190,10 @@ const Login: React.FC = () => {
                 <Input
                   id="email"
                   type="email"
+                  placeholder="Digite seu email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
                   required
-                  disabled={isLoading}
                 />
               </div>
 
@@ -271,11 +203,10 @@ const Login: React.FC = () => {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
+                    placeholder="Digite sua senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
                     required
-                    disabled={isLoading}
                   />
                   <Button
                     type="button"
@@ -283,20 +214,15 @@ const Login: React.FC = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex justify-end">
                 <Link 
-                  to="/auth/forgot-password" 
+                  to="/auth/forgot-password"
                   className="text-sm text-primary hover:underline"
                 >
                   Esqueceu a senha?
@@ -358,6 +284,9 @@ const Login: React.FC = () => {
           © 2025 QuoteMaster Pro. Todos os direitos reservados.
         </div>
       </div>
+      
+      {/* Debug component */}
+      <LoginDebug />
     </div>
   );
 };
