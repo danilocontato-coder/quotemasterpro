@@ -29,34 +29,34 @@ import {
 } from "@/components/ui/sidebar";
 
 const navigationItems = [
-  { title: "Dashboard", url: "/app/dashboard", icon: Home },
-  { title: "Cotações", url: "/app/quotes", icon: FileText },
-  { title: "Fornecedores", url: "/app/suppliers", icon: Users },
-  { title: "Itens", url: "/app/products", icon: Package },
+  { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "Cotações", url: "/quotes", icon: FileText },
+  { title: "Fornecedores", url: "/suppliers", icon: Users },
+  { title: "Itens", url: "/products", icon: Package },
 ];
 
 const approvalItems = [
-  { title: "Aprovações", url: "/app/approvals", icon: CheckCircle },
-  { title: "Níveis de Aprovação", url: "/app/approval-levels", icon: Layers },
-  { title: "Negociações IA", url: "/app/ai-negotiations", icon: Brain },
+  { title: "Aprovações", url: "/approvals", icon: CheckCircle },
+  { title: "Níveis de Aprovação", url: "/approval-levels", icon: Layers },
+  { title: "Negociações IA", url: "/ai-negotiations", icon: Brain },
 ];
 
 const financialItems = [
-  { title: "Pagamentos", url: "/app/payments", icon: CreditCard },
+  { title: "Pagamentos", url: "/payments", icon: CreditCard },
 ];
 
 const communicationItems = [
-  { title: "Comunicação", url: "/app/communication", icon: Mail },
+  { title: "Comunicação", url: "/communication", icon: Mail },
 ];
 
 // Removed admin items section
 
 const systemItems = [
-  { title: "Usuários", url: "/app/users", icon: UserCog },
-  { title: "Permissões", url: "/app/permissions", icon: Shield },
-  { title: "Relatórios", url: "/app/reports", icon: BarChart3 },
-  { title: "Planos", url: "/app/plans", icon: Crown },
-  { title: "Configurações", url: "/app/settings", icon: Settings },
+  { title: "Usuários", url: "/users", icon: UserCog },
+  { title: "Permissões", url: "/permissions", icon: Shield },
+  { title: "Relatórios", url: "/reports", icon: BarChart3 },
+  { title: "Planos", url: "/plans", icon: Crown },
+  { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

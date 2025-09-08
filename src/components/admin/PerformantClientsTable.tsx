@@ -1,4 +1,5 @@
 import React, { memo, useMemo, useCallback } from 'react';
+import { withPerformanceOptimization } from '@/hooks/usePerformanceOptimization';
 import { VirtualizedList, OptimizedTable } from '@/components/ui/optimized-components';
 import { useSupabaseAdminClients } from '@/hooks/useSupabaseAdminClients';
 
@@ -180,5 +181,8 @@ const OptimizedClientsTable = memo(({
   );
 });
 
-// Export the optimized table directly
-export const PerformantClientsTable = OptimizedClientsTable;
+// Aplicar HOC de otimização
+export const PerformantClientsTable = withPerformanceOptimization(OptimizedClientsTable, {
+  displayName: 'PerformantClientsTable',
+  trackRenders: true
+});
