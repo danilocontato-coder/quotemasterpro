@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, AlertTriangle, TrendingUp, Infinity } from 'lucide-react';
 import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface QuoteLimitsMetricProps {
   showUpgradeButton?: boolean;
@@ -18,6 +19,7 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
   compact = false 
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { 
     currentUsage, 
     getUsagePercentage, 
@@ -197,7 +199,7 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => window.location.href = '/admin/plans'}
+              onClick={() => navigate('/admin/plans')}
             >
               <TrendingUp className="h-4 w-4 mr-2" />
               Ver Planos e Fazer Upgrade
