@@ -18,8 +18,10 @@ import MainLayout from '@/components/layout/MainLayout';
 import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
 import SupplierLayout from '@/components/layout/SupplierLayout';
 
+// Dashboard import estático para resolver erro de dynamic import
+import Dashboard from '@/pages/Dashboard';
+
 // Client/Tenant pages com lazy loading otimizado
-const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Quotes = lazy(() => import('@/pages/Quotes'));
 const Suppliers = lazy(() => import('@/pages/Suppliers'));
 const Products = lazy(() => import('@/pages/Products'));
