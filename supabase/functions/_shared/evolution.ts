@@ -196,8 +196,8 @@ export async function resolveEvolutionConfig(
   } catch (_) {}
 
   // Env fallbacks (only if DB didn’t provide)
-  apiUrl = (apiUrl || Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/+$/, '')
-  token = token || Deno.env.get('EVOLUTION_API_TOKEN') || ''
+  apiUrl = Deno.env.get('EVOLUTION_API_URL') || apiUrl || ''
+  token = Deno.env.get('EVOLUTION_API_TOKEN') || token || ''
   instance = instance || Deno.env.get('EVOLUTION_INSTANCE') || null
   if (!apiUrl || !token) scope = scope || 'env'
 
