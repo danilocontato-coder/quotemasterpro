@@ -191,6 +191,8 @@ export const useAuthTenant = () => {
   };
 
   const ensureBound = (): boolean => {
+    // Admin sempre bound (não precisa de client_id)
+    if (user?.role === 'admin') return true;
     return tenantState.onboardingCompleted && !!tenantState.clientId;
   };
 

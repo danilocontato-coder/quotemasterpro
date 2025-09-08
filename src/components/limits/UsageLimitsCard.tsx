@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface UsageLimitsCardProps {
   showTitle?: boolean;
@@ -29,6 +30,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
   compact = false 
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { 
     currentUsage, 
     getUsagePercentage, 
@@ -295,7 +297,7 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => window.location.href = '/admin/plans'}
+              onClick={() => navigate('/admin/plans')}
             >
               <TrendingUp className="h-4 w-4 mr-2" />
               Ver Planos e Fazer Upgrade

@@ -11,6 +11,7 @@ interface CreateUserRequest {
   name: string;
   role: string;
   clientId?: string;
+  supplierId?: string;
   temporaryPassword?: boolean;
   action?: 'create' | 'reset_password';
 }
@@ -110,7 +111,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { email, password, name, role, clientId, temporaryPassword, action = 'create' } = requestBody;
+const { email, password, name, role, clientId, supplierId, temporaryPassword, action = 'create' } = requestBody;
 
     console.log('🔍 DEBUG: Dados extraídos:', {
       email,
@@ -173,7 +174,7 @@ Deno.serve(async (req) => {
         }
 
         // Update force_password_change in users table
-        if (clientId) {
+        if (clientId || supplierId) {
           await supabaseAdmin
             .from('users')
             .update({ force_password_change: temporaryPassword ?? true })
@@ -240,8 +241,8 @@ if (authError) {
 
         if (existingUserId) {
           try {
-            if (clientId) {
-              // Ensure profile exists and is linked
+            if (clientId || supplierId) {
+              // Ensure profile exists and is linked to client and/or supplier
               await supabaseAdmin
                 .from('profiles')
                 .upsert({
@@ -249,8 +250,11 @@ if (authError) {
                   email,
                   name,
                   role,
-                  client_id: clientId,
+                  client_id: clientId ?? null,
+                  supplier_id: supplierId ?? null,
                   company_name: name,
+                  tenant_type: supplierId ? 'supplier' : 'client',
+                  onboarding_completed: supplierId ? true : undefined,
                 }, { onConflict: 'id' });
 
               // Upsert into public.users by auth_user_id
@@ -260,38 +264,44 @@ if (authError) {
                 .eq('auth_user_id', existingUserId)
                 .maybeSingle();
 
+              const userPayload: any = {
+                name,
+                email,
+                role,
+                status: 'active',
+                client_id: clientId ?? null,
+                supplier_id: supplierId ?? null,
+                force_password_change: temporaryPassword ?? true,
+              };
+
               if (existingUserRow?.id) {
                 await supabaseAdmin
                   .from('users')
-                  .update({
-                    name,
-                    email,
-                    role,
-                    status: 'active',
-                    client_id: clientId,
-                    force_password_change: temporaryPassword ?? true,
-                  })
+                  .update(userPayload)
                   .eq('id', existingUserRow.id);
               } else {
                 await supabaseAdmin
                   .from('users')
                   .insert({
-                    name,
-                    email,
-                    role,
-                    status: 'active',
-                    client_id: clientId,
+                    ...userPayload,
                     auth_user_id: existingUserId,
-                    force_password_change: temporaryPassword ?? true,
                   });
               }
             }
+
+            // If a password was provided, update it for the existing auth user
+            if (password) {
+              const { error: updatePwdErr } = await supabaseAdmin.auth.admin.updateUserById(existingUserId, { password });
+              if (updatePwdErr) {
+                console.error('Error updating existing user password:', updatePwdErr);
+              }
+            }
           } catch (linkErr) {
-            console.error('Error linking existing user to client:', linkErr);
+            console.error('Error linking existing user:', linkErr);
           }
 
           return new Response(
-            JSON.stringify({ success: true, auth_user_id: existingUserId, email, linked_existing: true }),
+            JSON.stringify({ success: true, auth_user_id: existingUserId, email, linked_existing: true, password_updated: !!password }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         }
@@ -322,7 +332,7 @@ if (authError) {
     const newUserId = authData.user?.id as string | undefined;
     console.log('🔗 DEBUG: Iniciando vinculação ao cliente', { newUserId, clientId });
     
-    if (clientId && newUserId) {
+    if ((clientId || supplierId) && newUserId) {
       try {
         console.log('👤 DEBUG: Criando/atualizando profile');
         await supabaseAdmin
@@ -332,8 +342,11 @@ if (authError) {
             email, 
             name, 
             role, 
-            client_id: clientId, 
-            company_name: name 
+            client_id: clientId ?? null, 
+            supplier_id: supplierId ?? null,
+            company_name: name,
+            tenant_type: supplierId ? 'supplier' : 'client',
+            onboarding_completed: supplierId ? true : undefined,
           }, { onConflict: 'id' });
 
         console.log('✅ DEBUG: Profile criado/atualizado');
@@ -346,18 +359,21 @@ if (authError) {
 
         console.log('👥 DEBUG: Usuário existente encontrado:', existingUserRow);
 
+        const userPayload: any = { 
+          name, 
+          email, 
+          role, 
+          status: 'active', 
+          client_id: clientId ?? null, 
+          supplier_id: supplierId ?? null,
+          force_password_change: temporaryPassword ?? true 
+        };
+
         if (existingUserRow?.id) {
           console.log('🔄 DEBUG: Atualizando usuário existente');
           await supabaseAdmin
             .from('users')
-            .update({ 
-              name, 
-              email, 
-              role, 
-              status: 'active', 
-              client_id: clientId, 
-              force_password_change: temporaryPassword ?? true 
-            })
+            .update(userPayload)
             .eq('id', existingUserRow.id);
           console.log('✅ DEBUG: Usuário atualizado');
         } else {
@@ -365,31 +381,28 @@ if (authError) {
           await supabaseAdmin
             .from('users')
             .insert({ 
-              name, 
-              email, 
-              role, 
-              status: 'active', 
-              client_id: clientId, 
+              ...userPayload,
               auth_user_id: newUserId, 
-              force_password_change: temporaryPassword ?? true 
             });
           console.log('✅ DEBUG: Novo usuário criado');
         }
 
-        // Verificar se o cliente existe e tem plano
-        const { data: clientData } = await supabaseAdmin
-          .from('clients')
-          .select('id, subscription_plan_id')
-          .eq('id', clientId)
-          .maybeSingle();
+        if (clientId) {
+          // Verificar se o cliente existe e tem plano
+          const { data: clientData } = await supabaseAdmin
+            .from('clients')
+            .select('id, subscription_plan_id')
+            .eq('id', clientId)
+            .maybeSingle();
 
-        console.log('🏢 DEBUG: Dados do cliente:', clientData);
+          console.log('🏢 DEBUG: Dados do cliente:', clientData);
+        }
         
       } catch (dbErr) {
-        console.error('❌ DEBUG: Erro ao vincular usuário ao cliente:', dbErr);
+        console.error('❌ DEBUG: Erro ao vincular usuário:', dbErr);
       }
     } else {
-      console.log('⚠️ DEBUG: Não vinculando ao cliente (clientId ou newUserId ausente)');
+      console.log('⚠️ DEBUG: Não vinculando (ids ausentes)');
     }
 
     // Return the created user data

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useSupabaseQuotes } from '@/hooks/useSupabaseQuotes';
+import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, Clock } from 'lucide-react';
 
 interface QuoteMarkAsReceivedButtonProps {
@@ -17,15 +17,19 @@ export function QuoteMarkAsReceivedButton({
 }: QuoteMarkAsReceivedButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { markQuoteAsUnderReview } = useSupabaseQuotes();
 
   const handleMarkAsReceived = async () => {
     setIsLoading(true);
     try {
-      await markQuoteAsUnderReview(quoteId);
+      // Marcar como 'received' para trigger automático da IA
+      await supabase
+        .from('quotes')
+        .update({ status: 'received' })
+        .eq('id', quoteId);
+
       toast({
         title: 'Status atualizado',
-        description: 'Cotação marcada como "Em Análise"',
+        description: 'Cotação marcada como "Recebida" - IA irá analisar automaticamente',
       });
     } catch (error) {
       toast({

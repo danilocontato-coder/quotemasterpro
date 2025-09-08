@@ -12,6 +12,7 @@ import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ShortLinkDisplay } from "@/components/ui/short-link-display";
 import { selectBestSupplier, createSupplierResponseLink, generateQuoteToken } from "@/lib/supplierDeduplication";
 
 interface SendQuoteToSuppliersModalProps {
@@ -28,6 +29,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [customMessage, setCustomMessage] = useState('');
   const [resolvedWebhookUrl, setResolvedWebhookUrl] = useState<string | null>(null);
   const [evolutionConfigured, setEvolutionConfigured] = useState(false);
+  const [generatedShortLinks, setGeneratedShortLinks] = useState<any[]>([]);
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
   const { updateQuoteStatus } = useSupabaseQuotes();
@@ -44,6 +46,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       return true;
     }
   });
+  
+  // Debug: Verify function import
+  console.log('🔍 DEBUG: selectBestSupplier function:', selectBestSupplier);
   
   // Group suppliers by CNPJ to handle potential duplicates
   const supplierGroups = activeSuppliers.reduce((groups, supplier) => {
@@ -85,12 +90,19 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         setSelectedSuppliers(deduplicatedSuppliers.map(s => s.id));
       }
     }
-  }, [deduplicatedSuppliers, quote?.selected_supplier_ids]);
+  }, [deduplicatedSuppliers.length, quote?.selected_supplier_ids?.join(',')]); // Optimized dependencies
 
   // Resolve configured webhook URL and Evolution API
   useEffect(() => {
+    if (!open || !quote?.id) return;
+
+    let isMounted = true;
+    
     const resolveIntegrations = async () => {
       try {
+        // Prevent state updates if component unmounted
+        if (!isMounted) return;
+        
         setResolvedWebhookUrl(null);
         setEvolutionConfigured(false);
 
@@ -100,8 +112,10 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           .select('configuration')
           .eq('integration_type', 'n8n_webhook')
           .eq('active', true)
-          .eq('client_id', quote?.client_id || null)
+          .eq('client_id', quote.client_id || null)
           .maybeSingle();
+
+        if (!isMounted) return;
 
         let webhookUrl = (clientInt?.configuration as any)?.webhook_url || null;
 
@@ -116,6 +130,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           webhookUrl = (globalInt?.configuration as any)?.webhook_url || null;
         }
 
+        if (!isMounted) return;
         setResolvedWebhookUrl(webhookUrl);
 
         // Check Evolution API configuration
@@ -124,8 +139,10 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           .select('configuration')
           .eq('integration_type', 'whatsapp_evolution')
           .eq('active', true)
-          .eq('client_id', quote?.client_id || null)
+          .eq('client_id', quote.client_id || null)
           .maybeSingle();
+
+        if (!isMounted) return;
 
         let evoCfg = evoClientInt?.configuration;
         if (!evoCfg) {
@@ -140,7 +157,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         }
 
         // Check if Evolution is properly configured
-        if (evoCfg && typeof evoCfg === 'object') {
+        if (isMounted && evoCfg && typeof evoCfg === 'object') {
           const cfg = evoCfg as any;
           const hasInstance = cfg.instance || cfg.evolution_instance;
           const hasApiUrl = cfg.api_url || cfg.evolution_api_url;
@@ -150,15 +167,19 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
 
       } catch (e) {
         console.warn('Falha ao resolver integrações');
-        setResolvedWebhookUrl(null);
-        setEvolutionConfigured(false);
+        if (isMounted) {
+          setResolvedWebhookUrl(null);
+          setEvolutionConfigured(false);
+        }
       }
     };
 
-    if (open && quote?.id) {
-      resolveIntegrations();
-    }
-  }, [open, quote?.id, quote?.client_id]);
+    resolveIntegrations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open, quote?.id]); // Removido quote?.client_id para evitar loops
 
   const handleToggleSupplier = (supplierId: string) => {
     setSelectedSuppliers(prev => 
@@ -203,6 +224,33 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         };
       });
 
+      // Generate short links for each supplier
+      const shortLinks = await Promise.all(
+        selectedSuppliers.map(async (supplierId) => {
+          try {
+            const { data } = await supabase.functions.invoke('generate-quote-token', {
+              body: { quote_id: quote.id }
+            });
+            
+            if (data?.success) {
+              return {
+                supplier_id: supplierId,
+                short_link: data.short_url,
+                full_link: data.full_url,
+                short_code: data.short_code,
+                full_token: data.full_token
+              };
+            }
+            return null;
+          } catch (error) {
+            console.error('Error generating short link for supplier:', supplierId, error);
+            return null;
+          }
+        })
+      );
+
+      const validShortLinks = shortLinks.filter(Boolean);
+
       const { data, error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: {
           quote_id: quote.id,
@@ -212,6 +260,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           custom_message: customMessage.trim(),
           send_via: sendVia,
           supplier_links: supplierLinks,
+          short_links: validShortLinks,
           frontend_base_url: window.location.origin
         }
       });
@@ -230,15 +279,24 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         // Atualizar status da cotação para 'sent'
         await updateQuoteStatus(quote.id, 'sent');
         
+        // Store generated short links for display
+        setGeneratedShortLinks(validShortLinks);
+        
         // Log dos links dos fornecedores selecionados
         console.log('Fornecedores selecionados e links enviados:');
-        supplierLinks.forEach(({ supplier_id, link }) => {
-          const supplier = deduplicatedSuppliers.find(s => s.id === supplier_id);
-          const badge = supplier?.type === 'certified' ? '🏆 CERTIFICADO' : '📍 LOCAL';
-          console.log(`${badge} ${supplier?.name || 'Fornecedor'}: ${link}`);
+        validShortLinks.forEach((linkData, index) => {
+          const supplierLink = supplierLinks[index];
+          if (linkData && supplierLink) {
+            const supplier = deduplicatedSuppliers.find(s => s.id === linkData.supplier_id);
+            const badge = supplier?.type === 'certified' ? '🏆 CERTIFICADO' : '📍 LOCAL';
+            console.log(`${badge} ${supplier?.name || 'Fornecedor'}:`);
+            console.log(`  Link curto: ${linkData.short_link}`);
+            console.log(`  Link completo: ${linkData.full_link}`);
+          }
         });
         
-        setOpen(false);
+        // Don't close modal immediately - show generated links
+        // setOpen(false);
       } else {
         const evo = data?.resolved_evolution;
         const evoInfo = evo ? `\nInstância: ${evo.instance || '—'}\nAPI URL: ${evo.api_url_defined ? 'OK' : 'faltando'} (${evo.source?.api_url || '-'})\nToken: ${evo.token_defined ? 'OK' : 'faltando'} (${evo.source?.token || '-'})` : '';
@@ -437,6 +495,50 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
               )}
             </CardContent>
           </Card>
+
+          {/* Generated Short Links Display */}
+          {generatedShortLinks.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base text-green-600">✅ Links Gerados com Sucesso</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {generatedShortLinks.map((linkData) => {
+                  const supplier = deduplicatedSuppliers.find(s => s.id === linkData.supplier_id);
+                  return (
+                    <ShortLinkDisplay
+                      key={linkData.supplier_id}
+                      quoteId={quote?.id}
+                      quoteTitle={`${supplier?.name || 'Fornecedor'} - ${quote?.title}`}
+                      shortLink={linkData.short_link}
+                      fullLink={linkData.full_link}
+                    />
+                  );
+                })}
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    onClick={() => {
+                      setGeneratedShortLinks([]);
+                      setOpen(false);
+                    }}
+                    className="flex-1"
+                  >
+                    Fechar
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      const allLinks = generatedShortLinks.map(link => link.short_link).join('\n');
+                      navigator.clipboard.writeText(allLinks);
+                      toast.success('Todos os links copiados!');
+                    }}
+                  >
+                    Copiar Todos
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Custom Message */}
           <Card>

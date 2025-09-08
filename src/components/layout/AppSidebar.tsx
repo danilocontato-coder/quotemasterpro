@@ -11,7 +11,8 @@ import {
   Shield,
   CheckCircle,
   Layers,
-  Crown
+  Crown,
+  Brain
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -37,6 +38,7 @@ const navigationItems = [
 const approvalItems = [
   { title: "Aprovações", url: "/approvals", icon: CheckCircle },
   { title: "Níveis de Aprovação", url: "/approval-levels", icon: Layers },
+  { title: "Negociações IA", url: "/ai-negotiations", icon: Brain },
 ];
 
 const financialItems = [

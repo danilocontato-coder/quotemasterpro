@@ -9,9 +9,15 @@ export const RoleBasedRedirect: React.FC = () => {
   const mountTimeRef = useRef(Date.now());
   const renderCountRef = useRef(0);
   
+  const debug = (msg: string, data?: any) => {
+    if (typeof window !== 'undefined' && (window as any).__DEBUG__) {
+      console.log(msg, data);
+    }
+  };
+
   renderCountRef.current++;
   
-  console.log('🔍 [DEBUG-REDIRECT] RoleBasedRedirect render:', {
+  debug('🔍 [DEBUG-REDIRECT] RoleBasedRedirect render:', {
     renderCount: renderCountRef.current,
     isLoading,
     userId: user?.id,
@@ -21,9 +27,9 @@ export const RoleBasedRedirect: React.FC = () => {
   });
   
   useEffect(() => {
-    console.log('🔍 [DEBUG-REDIRECT] RoleBasedRedirect mounted');
+    debug('🔍 [DEBUG-REDIRECT] RoleBasedRedirect mounted');
     return () => {
-      console.log('🔍 [DEBUG-REDIRECT] RoleBasedRedirect unmounting after:', Date.now() - mountTimeRef.current, 'ms');
+      debug('🔍 [DEBUG-REDIRECT] RoleBasedRedirect unmounting after:', Date.now() - mountTimeRef.current + ' ms');
     };
   }, []);
 
@@ -40,11 +46,11 @@ export const RoleBasedRedirect: React.FC = () => {
   }
 
   if (!user) {
-    console.log('🔍 [DEBUG-REDIRECT] No user - redirecting to login');
+    debug('🔍 [DEBUG-REDIRECT] No user - redirecting to login');
     return <Navigate to="/auth/login" replace />;
   }
 
   const targetRoute = getRoleBasedRoute(user.role);
-  console.log('🔍 [DEBUG-REDIRECT] Redirecting to:', targetRoute);
+  debug('🔍 [DEBUG-REDIRECT] Redirecting to:', targetRoute);
   return <Navigate to={targetRoute} replace />;
 };

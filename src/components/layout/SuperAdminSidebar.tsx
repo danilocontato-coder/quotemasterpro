@@ -25,7 +25,8 @@ import {
   Key,
   Activity,
   BarChart3,
-  Server
+  Server,
+  Bot
 } from 'lucide-react';
 
 const navigation = [
@@ -96,6 +97,12 @@ const navigation = [
         href: '/admin/database',
         icon: Database,
         description: 'Gerenciamento DB'
+      },
+      {
+        name: 'Configuração IA',
+        href: '/admin/ai-config',
+        icon: Bot,
+        description: 'Negociação automática'
       }
     ]
   },

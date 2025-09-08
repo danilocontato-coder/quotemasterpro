@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOptimizedCache } from './useOptimizedCache';
 import { toast } from 'sonner';
 
 // Quote interface matching the database structure
@@ -30,41 +31,42 @@ export const useSupabaseQuotes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const { getCache, setCache } = useOptimizedCache();
   
-  // Estabilizar dependências para evitar re-renders desnecessários
-  const userId = user?.id;
-  const userRole = user?.role;
-  const clientId = user?.clientId;
+  // Memoizar valores estáveis para evitar re-renders desnecessários
+  const stableUser = useMemo(() => ({
+    id: user?.id,
+    role: user?.role,
+    clientId: user?.clientId,
+    supplierId: user?.supplierId
+  }), [user?.id, user?.role, user?.clientId, user?.supplierId]);
 
-  console.log('🔍 [DEBUG-QUOTES] useSupabaseQuotes hook initialized');
-  console.log('🔍 [DEBUG-QUOTES] user from useAuth:', userId, userRole, clientId);
+  const fetchQuotes = useCallback(async () => {
+    if (!user) {
+      setQuotes([]);
+      setIsLoading(false);
+      return;
+    }
 
-  const fetchQuotes = async () => {
+    // Verificar cache primeiro
+    const cacheKey = `quotes_${user.role}_${user.clientId || user.supplierId || user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      setQuotes(cached);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
-      
-      if (!user) {
-        console.log('⚠️ No user available for fetching quotes');
-        setQuotes([]);
-        return;
-      }
 
-      // Verify current session before making any requests
+      // Verificar sessão apenas se necessário
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error('❌ Session error:', sessionError);
-        setError('Erro de autenticação. Faça login novamente.');
-        return;
-      }
-
-      if (!session) {
-        console.error('❌ No valid session found');
+      if (sessionError || !session) {
         setError('Sessão inválida. Faça login novamente.');
         return;
       }
-
-      console.log('✅ Valid session found, proceeding with quotes fetch');
 
       let query = supabase
         .from('quotes')
@@ -151,7 +153,7 @@ export const useSupabaseQuotes = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]); // Dependência estabilizada
 
   const createQuote = async (quoteData: any) => {
     try {
@@ -249,7 +251,28 @@ export const useSupabaseQuotes = () => {
         console.log('✅ Quote items inserted successfully');
       }
 
-      // Step 4: Fetch the complete quote
+      // Step 4: CRÍTICO - Registrar fornecedores específicos selecionados
+      if (quoteData.supplier_ids && quoteData.supplier_ids.length > 0) {
+        const quoteSuppliers = quoteData.supplier_ids.map((supplierId: string) => ({
+          quote_id: quoteId,
+          supplier_id: supplierId
+        }));
+
+        console.log('🔍 DEBUG: Registrando fornecedores específicos:', quoteSuppliers);
+
+        const { error: suppliersError } = await supabase
+          .from('quote_suppliers')
+          .insert(quoteSuppliers);
+
+        if (suppliersError) {
+          console.error('❌ Error inserting quote suppliers:', suppliersError);
+          throw suppliersError;
+        }
+
+        console.log('✅ Fornecedores específicos registrados para a cotação');
+      }
+
+      // Step 5: Fetch the complete quote
       const { data: completeQuote, error: fetchError } = await supabase
         .from('quotes')
         .select('*')
@@ -260,6 +283,8 @@ export const useSupabaseQuotes = () => {
         console.error('❌ Error fetching complete quote:', fetchError);
         throw fetchError;
       }
+
+      // Notification will be created by NotificationHelpers
 
       console.log('✅ Quote created successfully:', quoteId);
       await fetchQuotes(); // Refresh the list
@@ -297,15 +322,42 @@ export const useSupabaseQuotes = () => {
 
   const deleteQuote = async (quoteId: string) => {
     try {
-      const { error } = await supabase
+      console.log('🗑️ Attempting to delete quote:', quoteId);
+
+      const { data, error } = await supabase
         .from('quotes')
         .delete()
-        .eq('id', quoteId);
+        .eq('id', quoteId)
+        .select()
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Delete error from Supabase:', error);
+        throw error;
+      }
 
-      console.log('✅ Quote deleted successfully:', quoteId);
-      setQuotes(prev => prev.filter(quote => quote.id !== quoteId));
+      if (!data) {
+        // If nothing returned, verify if it still exists (detect silent RLS/no-op)
+        const { data: stillThere } = await supabase
+          .from('quotes')
+          .select('id')
+          .eq('id', quoteId)
+          .maybeSingle();
+
+        if (stillThere) {
+          console.error('❌ Delete appears blocked by RLS or constraints. Quote still exists:', quoteId);
+          throw new Error('Não foi possível excluir a cotação (permissões ou vínculo).');
+        }
+      }
+
+      console.log('✅ Quote deleted successfully in database:', quoteId);
+
+      // Remove from local state immediately
+      setQuotes(prev => {
+        const filtered = prev.filter(quote => quote.id !== quoteId);
+        console.log('🔍 Local state updated, remaining quotes:', filtered.length);
+        return filtered;
+      });
     } catch (error) {
       console.error('❌ Error deleting quote:', error);
       throw error;
@@ -342,16 +394,16 @@ export const useSupabaseQuotes = () => {
     let responsesSubscription: any = null;
 
     const setupRealtime = () => {
-      if (!userId) {
+      if (!stableUser.id) {
         console.log('🔍 [DEBUG-QUOTES] ⚠️ Sem usuário para subscription');
         return;
       }
 
-      console.log('🔍 [DEBUG-QUOTES] 🔥 Setting up realtime subscription for quotes', { userId, userRole });
+      console.log('🔍 [DEBUG-QUOTES] 🔥 Setting up realtime subscription for quotes', { userId: stableUser.id, userRole: stableUser.role });
 
       // Set up real-time subscription for quotes com ID único por user
       quotesSubscription = supabase
-        .channel(`quotes_realtime_${userId}`)
+        .channel(`quotes_realtime_${stableUser.id}`)
         .on(
           'postgres_changes',
           {
@@ -380,10 +432,10 @@ export const useSupabaseQuotes = () => {
               console.log('🔍 [DEBUG-QUOTES] 📝 Adding new quote in real-time:', newQuote.id);
               
               // Check if this quote should be visible to current user
-              const shouldShow = userRole === 'admin' || 
-                (userRole !== 'supplier' && newQuote.client_id === clientId) ||
-                (userRole === 'supplier' && (
-                  newQuote.supplier_id === userId ||
+              const shouldShow = stableUser.role === 'admin' || 
+                (stableUser.role !== 'supplier' && newQuote.client_id === stableUser.clientId) ||
+                (stableUser.role === 'supplier' && (
+                  newQuote.supplier_id === stableUser.id ||
                   newQuote.supplier_scope === 'all' ||
                   newQuote.supplier_scope === 'global'
                 ));
@@ -395,8 +447,12 @@ export const useSupabaseQuotes = () => {
                 });
               }
             } else if (payload.eventType === 'DELETE') {
-              console.log('🔍 [DEBUG-QUOTES] 📝 Removing quote in real-time:', payload.old.id);
-              setQuotes(prev => prev.filter(quote => quote.id !== payload.old.id));
+              console.log('🔍 [DEBUG-QUOTES] 🗑️ DELETE event received for quote:', payload.old.id);
+              setQuotes(prev => {
+                const filtered = prev.filter(quote => quote.id !== payload.old.id);
+                console.log('🔍 [DEBUG-QUOTES] Quote removed from real-time, remaining:', filtered.length);
+                return filtered;
+              });
             }
           }
         )
@@ -404,7 +460,7 @@ export const useSupabaseQuotes = () => {
 
       // Set up real-time subscription for quote responses
       responsesSubscription = supabase
-        .channel(`quote_responses_realtime_${userId}`)
+        .channel(`quote_responses_realtime_${stableUser.id}`)
         .on(
           'postgres_changes',
           {
@@ -450,19 +506,19 @@ export const useSupabaseQuotes = () => {
     setupRealtime();
 
     return () => {
-      console.log('🔍 [DEBUG-QUOTES] 🔄 Cleaning up real-time subscriptions');
+      // Cleanup real-time subscriptions
       if (quotesSubscription) quotesSubscription.unsubscribe();
       if (responsesSubscription) responsesSubscription.unsubscribe();
     };
-  }, [userId]); // CRÍTICO: usar apenas userId estável
+  }, [stableUser.id]); // CRÍTICO: usar apenas userId estável
 
   // Initial fetch - usando dependência estável
   useEffect(() => {
-    console.log('🔄 useSupabaseQuotes - Initial fetch effect triggered');
-    if (userId) {
+    // Initial fetch - usando dependência estável
+    if (stableUser.id) {
       fetchQuotes();
     }
-  }, [userId]); // Dependência estável
+  }, [stableUser.id, fetchQuotes]); // Dependências estabilizadas
 
   return {
     quotes,

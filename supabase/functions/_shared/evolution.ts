@@ -5,6 +5,8 @@ export interface EvolutionConfig {
   token: string
   instance?: string | null
   scope: EvoScope
+  // Optional explicit send endpoint override (absolute URL or path supporting {instance})
+  sendEndpoint?: string | null
 }
 
 // Normalize to digits and ensure default country code
@@ -15,13 +17,26 @@ export function normalizePhone(input: string, defaultCountry = '55'): string {
 }
 
 export function buildEndpoints(cfg: EvolutionConfig): string[] {
-  const baseRaw = cfg.apiUrl.replace(/\/+$/, '')
+  const baseRaw = (cfg.apiUrl || '').replace(/\/+$/, '')
   const endpoints: string[] = []
   const instance = cfg.instance ? encodeURIComponent(cfg.instance) : null
 
-  // Based on https://evolution.iadc.cloud, try these specific patterns:
+  // 1) Explicit override via env/config (supports absolute URL or relative path and {instance} placeholder)
+  const override = (cfg as any).sendEndpoint as string | null | undefined
+  if (override && override.trim()) {
+    let target = override.trim()
+    if (target.includes('{instance}')) {
+      target = target.replace('{instance}', instance ?? '')
+    }
+    if (!/^https?:\/\//i.test(target)) {
+      target = `${baseRaw}/${target.replace(/^\/+/, '')}`
+    }
+    endpoints.push(target.replace(/([^:]\/)\/+/g, '$1'))
+    return endpoints
+  }
+
+  // 2) Heuristics with and without instance
   if (instance) {
-    // Most common Evolution API patterns
     endpoints.push(
       `${baseRaw}/message/sendText/${instance}`,
       `${baseRaw}/message/send/${instance}`,
@@ -39,7 +54,6 @@ export function buildEndpoints(cfg: EvolutionConfig): string[] {
     )
   }
 
-  // Fallback without instance
   endpoints.push(
     `${baseRaw}/message/sendText`,
     `${baseRaw}/message/send`,
@@ -112,31 +126,45 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
   return { success: false, error: `${lastError} (last: ${lastEndpoint})`, tried_endpoints: endpoints }
 }
 
-// Resolve Evolution config from DB (client→global) or env fallback
-export async function resolveEvolutionConfig(supabase: any, clientId?: string | null): Promise<EvolutionConfig> {
+// Resolve Evolution config with ENV priority for stability
+export async function resolveEvolutionConfig(
+  supabase: any,
+  clientId?: string | null,
+  preferGlobal: boolean = false
+): Promise<EvolutionConfig> {
   let instance: string | null = null
   let apiUrl: string | null = null
   let token: string | null = null
   let scope: EvoScope = 'env'
+  let sendEndpoint: string | null = null
 
-  try {
-    if (clientId) {
-      const { data: evoClientInt } = await supabase
-        .from('integrations')
-        .select('configuration')
-        .eq('integration_type', 'whatsapp_evolution')
-        .eq('active', true)
-        .eq('client_id', clientId)
-        .maybeSingle()
-      const cfg = evoClientInt?.configuration || null
-      if (cfg) {
-        instance = (cfg.instance ?? cfg['evolution_instance']) || null
-        apiUrl = (cfg.api_url ?? cfg['evolution_api_url']) || null
-        token = (cfg.token ?? cfg['evolution_token']) || null
-        scope = 'client'
-      }
+  // Priority: ENV vars first for stability
+  apiUrl = Deno.env.get('EVOLUTION_API_URL') || ''
+  token = Deno.env.get('EVOLUTION_API_TOKEN') || ''
+  instance = Deno.env.get('EVOLUTION_INSTANCE') || null
+  sendEndpoint = Deno.env.get('EVOLUTION_SEND_ENDPOINT') || null
+  
+  if (apiUrl && token) {
+    return { 
+      apiUrl: apiUrl.replace(/\/+$/, ''), 
+      token, 
+      instance, 
+      scope: 'env',
+      sendEndpoint
     }
-    if (!apiUrl || !token) {
+  }
+
+  // Fallback to DB integrations if ENV not available
+  try {
+    const pickCfgFields = (cfg: any) => {
+      if (!cfg) return
+      instance = instance || (cfg.instance ?? cfg['evolution_instance']) || null
+      apiUrl = apiUrl || (cfg.api_url ?? cfg['evolution_api_url']) || null
+      token = token || (cfg.token ?? cfg['evolution_token']) || null
+      sendEndpoint = sendEndpoint || (cfg.send_endpoint ?? cfg['evolution_send_endpoint']) || null
+    }
+
+    if (preferGlobal) {
       const { data: evoGlobalInt } = await supabase
         .from('integrations')
         .select('configuration')
@@ -144,21 +172,42 @@ export async function resolveEvolutionConfig(supabase: any, clientId?: string | 
         .eq('active', true)
         .is('client_id', null)
         .maybeSingle()
-      const cfg = evoGlobalInt?.configuration || null
-      if (cfg) {
-        instance = instance || (cfg.instance ?? cfg['evolution_instance']) || null
-        apiUrl = apiUrl || (cfg.api_url ?? cfg['evolution_api_url']) || null
-        token = token || (cfg.token ?? cfg['evolution_token']) || null
-        scope = scope === 'client' ? 'client' : 'global'
+      const gcfg = evoGlobalInt?.configuration || null
+      pickCfgFields(gcfg)
+      if (apiUrl && token) scope = 'global'
+    } else {
+      if (clientId) {
+        const { data: evoClientInt } = await supabase
+          .from('integrations')
+          .select('configuration')
+          .eq('integration_type', 'whatsapp_evolution')
+          .eq('active', true)
+          .eq('client_id', clientId)
+          .maybeSingle()
+        const ccfg = evoClientInt?.configuration || null
+        pickCfgFields(ccfg)
+        if (apiUrl && token) scope = 'client'
+      }
+      if (!apiUrl || !token) {
+        const { data: evoGlobalInt } = await supabase
+          .from('integrations')
+          .select('configuration')
+          .eq('integration_type', 'whatsapp_evolution')
+          .eq('active', true)
+          .is('client_id', null)
+          .maybeSingle()
+        const gcfg = evoGlobalInt?.configuration || null
+        pickCfgFields(gcfg)
+        if (apiUrl && token && scope !== 'client') scope = 'global'
       }
     }
   } catch (_) {}
 
-  // Env fallbacks
-  apiUrl = (apiUrl || Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/+$/, '')
-  token = token || Deno.env.get('EVOLUTION_API_TOKEN') || ''
-  instance = instance || Deno.env.get('EVOLUTION_INSTANCE') || null
-  if (!apiUrl || !token) scope = scope || 'env'
-
-  return { apiUrl: apiUrl!, token: token!, instance, scope }
+  return { 
+    apiUrl: (apiUrl || '').replace(/\/+$/, ''), 
+    token: token || '', 
+    instance, 
+    scope,
+    sendEndpoint
+  }
 }

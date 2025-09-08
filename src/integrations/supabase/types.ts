@@ -14,6 +14,267 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_negotiation_settings: {
+        Row: {
+          active: boolean
+          category: string
+          client_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_negotiation_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_negotiations: {
+        Row: {
+          ai_analysis: Json | null
+          approved_by: string | null
+          completed_at: string | null
+          conversation_log: Json | null
+          created_at: string
+          discount_percentage: number | null
+          human_approved: boolean | null
+          human_feedback: string | null
+          id: string
+          negotiated_amount: number | null
+          negotiation_strategy: Json | null
+          original_amount: number
+          quote_id: string
+          selected_response_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          approved_by?: string | null
+          completed_at?: string | null
+          conversation_log?: Json | null
+          created_at?: string
+          discount_percentage?: number | null
+          human_approved?: boolean | null
+          human_feedback?: string | null
+          id?: string
+          negotiated_amount?: number | null
+          negotiation_strategy?: Json | null
+          original_amount: number
+          quote_id: string
+          selected_response_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          approved_by?: string | null
+          completed_at?: string | null
+          conversation_log?: Json | null
+          created_at?: string
+          discount_percentage?: number | null
+          human_approved?: boolean | null
+          human_feedback?: string | null
+          id?: string
+          negotiated_amount?: number | null
+          negotiation_strategy?: Json | null
+          original_amount?: number
+          quote_id?: string
+          selected_response_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_negotiations_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_negotiations_selected_response_id_fkey"
+            columns: ["selected_response_id"]
+            isOneToOne: false
+            referencedRelation: "quote_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_prompts: {
+        Row: {
+          active: boolean | null
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean | null
+          prompt_content: string
+          prompt_name: string
+          prompt_type: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          active?: boolean | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean | null
+          prompt_content: string
+          prompt_name: string
+          prompt_type: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          active?: boolean | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean | null
+          prompt_content?: string
+          prompt_name?: string
+          prompt_type?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_prompts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_settings: {
+        Row: {
+          aggressiveness: string
+          auto_analysis: boolean
+          auto_negotiation: boolean
+          created_at: string
+          enabled: boolean
+          id: string
+          market_analysis_provider: string
+          max_discount_percent: number
+          min_negotiation_amount: number
+          negotiation_provider: string
+          openai_model: string
+          perplexity_model: string
+          updated_at: string
+        }
+        Insert: {
+          aggressiveness?: string
+          auto_analysis?: boolean
+          auto_negotiation?: boolean
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          market_analysis_provider?: string
+          max_discount_percent?: number
+          min_negotiation_amount?: number
+          negotiation_provider?: string
+          openai_model?: string
+          perplexity_model?: string
+          updated_at?: string
+        }
+        Update: {
+          aggressiveness?: string
+          auto_analysis?: boolean
+          auto_negotiation?: boolean
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          market_analysis_provider?: string
+          max_discount_percent?: number
+          min_negotiation_amount?: number
+          negotiation_provider?: string
+          openai_model?: string
+          perplexity_model?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_training_data: {
+        Row: {
+          actual_output: Json | null
+          approved_by: string | null
+          created_at: string
+          expected_output: Json
+          feedback: string | null
+          id: string
+          input_data: Json
+          quote_id: string | null
+          success_score: number | null
+          training_type: string
+        }
+        Insert: {
+          actual_output?: Json | null
+          approved_by?: string | null
+          created_at?: string
+          expected_output: Json
+          feedback?: string | null
+          id?: string
+          input_data: Json
+          quote_id?: string | null
+          success_score?: number | null
+          training_type: string
+        }
+        Update: {
+          actual_output?: Json | null
+          approved_by?: string | null
+          created_at?: string
+          expected_output?: Json
+          feedback?: string | null
+          id?: string
+          input_data?: Json
+          quote_id?: string | null
+          success_score?: number | null
+          training_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_training_data_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -249,6 +510,48 @@ export type Database = {
           id?: string
           is_system?: boolean
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      client_ai_settings: {
+        Row: {
+          ai_negotiation_enabled: boolean
+          auto_start_analysis: boolean | null
+          auto_start_negotiation: boolean | null
+          client_id: string
+          created_at: string
+          custom_prompts: Json | null
+          id: string
+          max_discount_percentage: number | null
+          min_order_value_for_ai: number | null
+          negotiation_style: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_negotiation_enabled?: boolean
+          auto_start_analysis?: boolean | null
+          auto_start_negotiation?: boolean | null
+          client_id: string
+          created_at?: string
+          custom_prompts?: Json | null
+          id?: string
+          max_discount_percentage?: number | null
+          min_order_value_for_ai?: number | null
+          negotiation_style?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_negotiation_enabled?: boolean
+          auto_start_analysis?: boolean | null
+          auto_start_negotiation?: boolean | null
+          client_id?: string
+          created_at?: string
+          custom_prompts?: Json | null
+          id?: string
+          max_discount_percentage?: number | null
+          min_order_value_for_ai?: number | null
+          negotiation_style?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -948,7 +1251,9 @@ export type Database = {
           created_at: string | null
           delivery_time: number | null
           id: string
+          items: Json | null
           notes: string | null
+          payment_terms: string | null
           quote_id: string | null
           status: string | null
           supplier_id: string
@@ -959,7 +1264,9 @@ export type Database = {
           created_at?: string | null
           delivery_time?: number | null
           id?: string
+          items?: Json | null
           notes?: string | null
+          payment_terms?: string | null
           quote_id?: string | null
           status?: string | null
           supplier_id: string
@@ -970,7 +1277,9 @@ export type Database = {
           created_at?: string | null
           delivery_time?: number | null
           id?: string
+          items?: Json | null
           notes?: string | null
+          payment_terms?: string | null
           quote_id?: string | null
           status?: string | null
           supplier_id?: string
@@ -1026,6 +1335,47 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_tokens: {
+        Row: {
+          access_count: number
+          created_at: string
+          expires_at: string
+          full_token: string
+          id: string
+          quote_id: string
+          short_code: string
+          used_at: string | null
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          expires_at?: string
+          full_token: string
+          id?: string
+          quote_id: string
+          short_code: string
+          used_at?: string | null
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          expires_at?: string
+          full_token?: string
+          id?: string
+          quote_id?: string
+          short_code?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_tokens_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
