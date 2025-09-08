@@ -71,6 +71,7 @@ const SupplierDeliveries = lazy(() => import('@/pages/supplier/SupplierDeliverie
 const SupplierAuth = lazy(() => import('@/pages/supplier/SupplierAuth'));
 const SupplierQuoteResponse = lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierResponseSuccess = lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
+const ShortLinkRedirect = lazy(() => import('@/pages/ShortLinkRedirect'));
 
 // Query client otimizado para carregamento inicial rápido
 const queryClient = new QueryClient({
@@ -144,6 +145,13 @@ function App() {
 
                 {/* Redirect root */}
                 <Route path="/" element={<RoleBasedRedirect />} />
+
+                {/* Short link redirect */}
+                <Route path="/s/:shortCode" element={
+                  <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
+                    <ShortLinkRedirect />
+                  </SuspenseWithTransition>
+                } />
 
                 {/* Rotas do SuperAdmin */}
                 <Route path="/admin/*" element={

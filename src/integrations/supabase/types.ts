@@ -1339,6 +1339,47 @@ export type Database = {
           },
         ]
       }
+      quote_tokens: {
+        Row: {
+          access_count: number
+          created_at: string
+          expires_at: string
+          full_token: string
+          id: string
+          quote_id: string
+          short_code: string
+          used_at: string | null
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          expires_at?: string
+          full_token: string
+          id?: string
+          quote_id: string
+          short_code: string
+          used_at?: string | null
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          expires_at?: string
+          full_token?: string
+          id?: string
+          quote_id?: string
+          short_code?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_tokens_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           client_id: string
