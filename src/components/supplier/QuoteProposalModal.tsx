@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Upload, FileText, X, Send, Save } from 'lucide-react';
+import { Plus, Trash2, Upload, FileText, X, Send, Save, Loader2 } from 'lucide-react';
 import { SupplierQuote, ProposalItem, useSupabaseSupplierQuotes } from '@/hooks/useSupabaseSupplierQuotes';
+import { supabase } from '@/integrations/supabase/client';
 
 interface QuoteProposalModalProps {
   quote: SupplierQuote | null;
@@ -21,22 +22,66 @@ interface QuoteProposalModalProps {
 
 export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalModalProps) {
   const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment } = useSupabaseSupplierQuotes();
-  const [proposalItems, setProposalItems] = useState<ProposalItem[]>(
-    quote?.proposal?.items || quote?.items.map(item => ({
-      id: item.id,
-      productName: item.productName,
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice || 0,
-      total: (item.unitPrice || 0) * item.quantity,
-      brand: '',
-      specifications: '',
-    })) || []
-  );
+  const [quoteItems, setQuoteItems] = useState<any[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
   const [deliveryTime, setDeliveryTime] = useState(quote?.proposal?.deliveryTime || 7);
   const [paymentTerms, setPaymentTerms] = useState(quote?.proposal?.paymentTerms || '30 dias');
   const [observations, setObservations] = useState(quote?.proposal?.observations || '');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Load quote items when modal opens
+  useEffect(() => {
+    if (open && quote && (!quoteItems.length || quoteItems[0]?.quote_id !== quote.id)) {
+      loadQuoteItems();
+    }
+  }, [open, quote]);
+
+  // Initialize proposal items when quote items are loaded
+  useEffect(() => {
+    if (quoteItems.length > 0) {
+      const initialItems = quoteItems.map(item => ({
+        id: item.id,
+        productName: item.product_name,
+        description: item.product_name,
+        quantity: item.quantity,
+        unitPrice: item.unit_price || 0,
+        total: (item.unit_price || 0) * item.quantity,
+        brand: '',
+        specifications: '',
+      }));
+      setProposalItems(quote?.proposal?.items || initialItems);
+    }
+  }, [quoteItems, quote?.proposal?.items]);
+
+  const loadQuoteItems = async () => {
+    if (!quote) return;
+    
+    setIsLoadingItems(true);
+    try {
+      const { data: items, error } = await supabase
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quote.id);
+
+      if (error) {
+        console.error('Error loading quote items:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os itens da cotação.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('📋 Quote items loaded:', items?.length || 0);
+      setQuoteItems(items || []);
+    } catch (error) {
+      console.error('Error in loadQuoteItems:', error);
+    } finally {
+      setIsLoadingItems(false);
+    }
+  };
 
   if (!quote) return null;
 
@@ -243,35 +288,48 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 <CardTitle>Itens Solicitados</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Preço Unit. (Referência)</TableHead>
-                      <TableHead>Total (Referência)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {quote.items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{item.productName}</p>
-                            <p className="text-sm text-muted-foreground">{item.description}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>
-                          {item.unitPrice ? `R$ ${item.unitPrice.toFixed(2)}` : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {item.total ? `R$ ${item.total.toFixed(2)}` : '-'}
-                        </TableCell>
+                {isLoadingItems ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <span className="ml-2">Carregando itens...</span>
+                  </div>
+                ) : quoteItems.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhum item encontrado nesta cotação.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Quantidade</TableHead>
+                        <TableHead>Preço Unit. (Referência)</TableHead>
+                        <TableHead>Total (Referência)</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {quoteItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.product_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {item.product_name}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>
+                            {item.unit_price > 0 ? `R$ ${item.unit_price.toFixed(2)}` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {item.total > 0 ? `R$ ${item.total.toFixed(2)}` : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
