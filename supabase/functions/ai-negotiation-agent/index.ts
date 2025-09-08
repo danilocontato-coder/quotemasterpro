@@ -432,8 +432,8 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     const globalCfg = await resolveEvolutionConfig(sb, null, true);
     const attempts: Array<{scope: string, apiUrl: string | null, error?: string}> = [];
 
-    // Tentar envio com config do cliente primeiro
-    let usedCfg = clientCfg.apiUrl && clientCfg.token ? clientCfg : null;
+    // Tentar envio com config do cliente primeiro (mesma estratégia do módulo Enviar para fornecedores)
+    let usedCfg = clientCfg.apiUrl ? clientCfg : null;
     let result: any = { success: false };
 
     if (usedCfg) {
@@ -443,7 +443,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     }
 
     // Se falhar, tentar com config global (SuperAdmin)
-    if (!result.success && globalCfg.apiUrl && globalCfg.token) {
+    if (!result.success && globalCfg.apiUrl) {
       usedCfg = globalCfg;
       attempts.push({ scope: globalCfg.scope, apiUrl: globalCfg.apiUrl });
       const retry = await sendEvolutionWhatsApp(globalCfg, normalizedPhone, aiMessage);
