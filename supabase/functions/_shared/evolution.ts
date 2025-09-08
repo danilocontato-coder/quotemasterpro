@@ -136,23 +136,34 @@ export async function resolveEvolutionConfig(
   let apiUrl: string | null = null
   let token: string | null = null
   let scope: EvoScope = 'env'
+  let sendEndpoint: string | null = null
 
   // Priority: ENV vars first for stability
   apiUrl = Deno.env.get('EVOLUTION_API_URL') || ''
   token = Deno.env.get('EVOLUTION_API_TOKEN') || ''
   instance = Deno.env.get('EVOLUTION_INSTANCE') || null
+  sendEndpoint = Deno.env.get('EVOLUTION_SEND_ENDPOINT') || null
   
   if (apiUrl && token) {
     return { 
       apiUrl: apiUrl.replace(/\/+$/, ''), 
       token, 
       instance, 
-      scope: 'env' 
+      scope: 'env',
+      sendEndpoint
     }
   }
 
   // Fallback to DB integrations if ENV not available
   try {
+    const pickCfgFields = (cfg: any) => {
+      if (!cfg) return
+      instance = instance || (cfg.instance ?? cfg['evolution_instance']) || null
+      apiUrl = apiUrl || (cfg.api_url ?? cfg['evolution_api_url']) || null
+      token = token || (cfg.token ?? cfg['evolution_token']) || null
+      sendEndpoint = sendEndpoint || (cfg.send_endpoint ?? cfg['evolution_send_endpoint']) || null
+    }
+
     if (preferGlobal) {
       const { data: evoGlobalInt } = await supabase
         .from('integrations')
@@ -162,12 +173,8 @@ export async function resolveEvolutionConfig(
         .is('client_id', null)
         .maybeSingle()
       const gcfg = evoGlobalInt?.configuration || null
-      if (gcfg) {
-        instance = instance || (gcfg.instance ?? gcfg['evolution_instance']) || null
-        apiUrl = apiUrl || (gcfg.api_url ?? gcfg['evolution_api_url']) || null
-        token = token || (gcfg.token ?? gcfg['evolution_token']) || null
-        scope = 'global'
-      }
+      pickCfgFields(gcfg)
+      if (apiUrl && token) scope = 'global'
     } else {
       if (clientId) {
         const { data: evoClientInt } = await supabase
@@ -177,13 +184,9 @@ export async function resolveEvolutionConfig(
           .eq('active', true)
           .eq('client_id', clientId)
           .maybeSingle()
-        const cfg = evoClientInt?.configuration || null
-        if (cfg) {
-          instance = (cfg.instance ?? cfg['evolution_instance']) || null
-          apiUrl = (cfg.api_url ?? cfg['evolution_api_url']) || null
-          token = (cfg.token ?? cfg['evolution_token']) || null
-          scope = 'client'
-        }
+        const ccfg = evoClientInt?.configuration || null
+        pickCfgFields(ccfg)
+        if (apiUrl && token) scope = 'client'
       }
       if (!apiUrl || !token) {
         const { data: evoGlobalInt } = await supabase
@@ -193,13 +196,9 @@ export async function resolveEvolutionConfig(
           .eq('active', true)
           .is('client_id', null)
           .maybeSingle()
-        const cfg = evoGlobalInt?.configuration || null
-        if (cfg) {
-          instance = instance || (cfg.instance ?? cfg['evolution_instance']) || null
-          apiUrl = apiUrl || (cfg.api_url ?? cfg['evolution_api_url']) || null
-          token = token || (cfg.token ?? cfg['evolution_token']) || null
-          scope = scope === 'client' ? 'client' : 'global'
-        }
+        const gcfg = evoGlobalInt?.configuration || null
+        pickCfgFields(gcfg)
+        if (apiUrl && token && scope !== 'client') scope = 'global'
       }
     }
   } catch (_) {}
@@ -208,6 +207,7 @@ export async function resolveEvolutionConfig(
     apiUrl: (apiUrl || '').replace(/\/+$/, ''), 
     token: token || '', 
     instance, 
-    scope 
+    scope,
+    sendEndpoint
   }
 }
