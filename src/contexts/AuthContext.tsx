@@ -76,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         
         if (error) {
-          console.error('❌ Error getting initial session:', error);
+          console.error('Error getting initial session:', error);
           setIsLoading(false);
           return;
         }
@@ -88,38 +88,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('❌ Error initializing auth:', error);
+        console.error('Error initializing auth:', error);
         if (isMounted) setIsLoading(false);
       }
     };
 
     initializeAuth();
 
-    // Listen for auth changes - optimized to prevent loops
+    // Listen for auth changes - simplified
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return;
-        
-        // Throttled logging
-        if (process.env.NODE_ENV === 'development') {
-          const now = Date.now();
-          const lastLog = (window as any).__lastAuthLog || 0;
-          if (now - lastLog > 2000) {
-            console.log('🔍 [DEBUG-AUTH] Auth state changed:', { event, hasSession: !!session });
-            (window as any).__lastAuthLog = now;
-          }
-        }
-        
-        // Ignore token refreshes if user is the same
-        if (event === 'TOKEN_REFRESHED' && session?.user?.id === user?.id) {
-          setSession(session);
-          return;
-        }
-        
-        // Skip processing if page is hidden
-        if (document.hidden && event === 'SIGNED_IN') {
-          return;
-        }
         
         setSession(session);
         
@@ -182,22 +161,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (profile) {
-        console.log('✅ Profile encontrado:', {
-          id: profile.id,
-          email: profile.email,
-          client_id: profile.client_id,
-          onboarding_completed: profile.onboarding_completed,
-          role: profile.role
-        });
-
-        // Atualizar last_access na tabela users quando usuário faz login
-        if (userRecord) {
-          await supabase
-            .from('users')
-            .update({ last_access: new Date().toISOString() })
-            .eq('auth_user_id', supabaseUser.id);
-        }
-
         const userProfile: User = {
           id: profile.id,
           email: profile.email,
@@ -211,7 +174,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(userProfile);
       } else {
-        console.log('⚠️ Profile não encontrado, criando usuário básico');
         // Profile doesn't exist, create a basic user
         const basicUser = {
           id: supabaseUser.id,
@@ -242,9 +204,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setForcePasswordChange(false);
   };
 
-  // Listen for profile updates from settings - only if user exists and hasn't changed
+  // Simplified profile update listeners
   useEffect(() => {
-    if (!user?.id) return; // Early return if no user
+    if (!user?.id) return;
 
     const handleProfileUpdate = (event: any) => {
       if (user && event.detail) {
@@ -257,30 +219,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    const handleAvatarUpdate = (event: any) => {
-      if (user && event.detail?.avatar_url) {
-        setUser(prevUser => prevUser ? { ...prevUser, avatar: event.detail.avatar_url } : null);
-      }
-    };
-
-    // Listen for the custom event we dispatch from useRealtimeDataSync
-    const handleProfileReload = () => {
-      if (user?.id && session?.user) {
-        // Use existing session user instead of making another API call
-        fetchUserProfile(session.user);
-      }
-    };
-
     window.addEventListener('userProfileUpdated', handleProfileUpdate);
-    window.addEventListener('userAvatarUpdated', handleAvatarUpdate);
-    window.addEventListener('user-profile-updated', handleProfileReload);
 
     return () => {
       window.removeEventListener('userProfileUpdated', handleProfileUpdate);
-      window.removeEventListener('userAvatarUpdated', handleAvatarUpdate);
-      window.removeEventListener('user-profile-updated', handleProfileReload);
     };
-  }, [user?.id]); // Only depend on user ID to prevent unnecessary re-runs
+  }, [user?.id]);
 
   const logout = async (): Promise<void> => {
     await supabase.auth.signOut();
