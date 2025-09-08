@@ -50,10 +50,14 @@ serve(async (req) => {
 async function analyzeQuote(quoteId: string) {
   console.log(`Analisando cotação: ${quoteId}`);
   
-  // Buscar cotação e suas respostas
+  // Buscar cotação, itens e respostas
   const { data: quote, error: quoteError } = await supabase
     .from('quotes')
-    .select('*, quote_responses(*)')
+    .select(`
+      *,
+      quote_items (*),
+      quote_responses (*)
+    `)
     .eq('id', quoteId)
     .single();
 
@@ -63,6 +67,10 @@ async function analyzeQuote(quoteId: string) {
 
   if (!quote.quote_responses || quote.quote_responses.length === 0) {
     throw new Error('Nenhuma proposta encontrada para análise');
+  }
+
+  if (!quote.quote_items || quote.quote_items.length === 0) {
+    throw new Error('Nenhum item encontrado na cotação para análise');
   }
 
   // Encontrar a melhor proposta (menor valor)
@@ -98,6 +106,11 @@ async function analyzeQuote(quoteId: string) {
 Você é um especialista em negociações comerciais brasileiras. Analise esta situação:
 
 Cotação: ${quote.title || quote.description}
+
+Itens solicitados:
+${quote.quote_items.map((item: any) => 
+  `- ${item.product_name} (Qtd: ${item.quantity}, Preço estimado: R$ ${item.unit_price || 0})`
+).join('\n')}
 Melhor proposta atual: R$ ${bestResponse.total_amount.toLocaleString('pt-BR')}
 Fornecedor: ${bestResponse.supplier_name}
 Preço médio das propostas: R$ ${averagePrice.toLocaleString('pt-BR')}

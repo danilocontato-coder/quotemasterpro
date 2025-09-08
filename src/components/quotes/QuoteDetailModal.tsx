@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { QuoteComparison } from './QuoteComparison';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
 import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
+import { QuoteItemsList } from './QuoteItemsList';
 import { getStatusText } from "@/utils/statusUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -403,22 +404,11 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                 </CardHeader>
                 <CardContent>
                   <p>{quote.description}</p>
-                  
-                  {/* Simplified item display since items are not in the Quote interface */}
-                  <div className="mt-4">
-                    <h4 className="font-semibold mb-2">Itens Solicitados:</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center p-2 bg-muted rounded">
-                        <div>
-                          <p className="font-medium">Total de itens: {quote.items_count}</p>
-                          <p className="text-sm text-muted-foreground">Ver detalhes dos itens no sistema</p>
-                        </div>
-                        <p className="font-semibold">R$ {(quote.total || 0).toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
+
+              {/* Items Display */}
+              <QuoteItemsList quoteId={quote.id} />
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2">
