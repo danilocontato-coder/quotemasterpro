@@ -39,15 +39,12 @@ export const useSupabaseQuotes = () => {
     supplierId: user?.supplierId
   }), [user?.id, user?.role, user?.clientId, user?.supplierId]);
 
-  // Debug removido para evitar spam de logs
-
   const fetchQuotes = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       
       if (!user) {
-        console.log('⚠️ No user available for fetching quotes');
         setQuotes([]);
         return;
       }
