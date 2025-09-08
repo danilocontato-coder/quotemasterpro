@@ -8,7 +8,7 @@ import { Brain, TrendingUp, DollarSign, MessageSquare } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 export default function AINegotiations() {
-  const { negotiations, isLoading } = useAINegotiation();
+  const { negotiations, isLoading, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
 
   // Estatísticas
   const stats = React.useMemo(() => {
@@ -157,7 +157,13 @@ export default function AINegotiations() {
           {negotiationsByStatus.active.length > 0 ? (
             <div className="grid gap-4">
               {negotiationsByStatus.active.map((negotiation) => (
-                <AINegotiationCard key={negotiation.id} negotiation={negotiation} />
+                <AINegotiationCard 
+                  key={negotiation.id} 
+                  negotiation={negotiation}
+                  onStartNegotiation={startNegotiation}
+                  onApproveNegotiation={approveNegotiation}
+                  onRejectNegotiation={rejectNegotiation}
+                />
               ))}
             </div>
           ) : (
@@ -177,7 +183,13 @@ export default function AINegotiations() {
           {negotiationsByStatus.pending.length > 0 ? (
             <div className="grid gap-4">
               {negotiationsByStatus.pending.map((negotiation) => (
-                <AINegotiationCard key={negotiation.id} negotiation={negotiation} />
+                <AINegotiationCard 
+                  key={negotiation.id} 
+                  negotiation={negotiation}
+                  onStartNegotiation={startNegotiation}
+                  onApproveNegotiation={approveNegotiation}
+                  onRejectNegotiation={rejectNegotiation}
+                />
               ))}
             </div>
           ) : (
@@ -197,7 +209,13 @@ export default function AINegotiations() {
           {negotiationsByStatus.completed.length > 0 ? (
             <div className="grid gap-4">
               {negotiationsByStatus.completed.map((negotiation) => (
-                <AINegotiationCard key={negotiation.id} negotiation={negotiation} />
+                <AINegotiationCard 
+                  key={negotiation.id} 
+                  negotiation={negotiation}
+                  onStartNegotiation={startNegotiation}
+                  onApproveNegotiation={approveNegotiation}
+                  onRejectNegotiation={rejectNegotiation}
+                />
               ))}
             </div>
           ) : (
@@ -217,7 +235,13 @@ export default function AINegotiations() {
           {negotiations.length > 0 ? (
             <div className="grid gap-4">
               {negotiations.map((negotiation) => (
-                <AINegotiationCard key={negotiation.id} negotiation={negotiation} />
+                <AINegotiationCard 
+                  key={negotiation.id} 
+                  negotiation={negotiation}
+                  onStartNegotiation={startNegotiation}
+                  onApproveNegotiation={approveNegotiation}
+                  onRejectNegotiation={rejectNegotiation}
+                />
               ))}
             </div>
           ) : (

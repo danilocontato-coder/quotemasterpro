@@ -8,6 +8,9 @@ import { formatCurrency } from '@/lib/utils';
 
 interface AINegotiationCardProps {
   negotiation: AINegotiation;
+  onStartNegotiation?: (id: string) => Promise<void>;
+  onApproveNegotiation?: (id: string) => Promise<void>;
+  onRejectNegotiation?: (id: string) => Promise<void>;
 }
 
 const statusConfig = {
@@ -19,21 +22,31 @@ const statusConfig = {
   rejected: { label: 'Rejeitada', color: 'bg-gray-500', icon: X }
 };
 
-export function AINegotiationCard({ negotiation }: AINegotiationCardProps) {
-  const { startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
+export function AINegotiationCard({ 
+  negotiation, 
+  onStartNegotiation,
+  onApproveNegotiation,
+  onRejectNegotiation 
+}: AINegotiationCardProps) {
   const config = statusConfig[negotiation.status];
   const IconComponent = config.icon;
 
   const handleStartNegotiation = async () => {
-    await startNegotiation(negotiation.id);
+    if (onStartNegotiation) {
+      await onStartNegotiation(negotiation.id);
+    }
   };
 
   const handleApprove = async () => {
-    await approveNegotiation(negotiation.id);
+    if (onApproveNegotiation) {
+      await onApproveNegotiation(negotiation.id);
+    }
   };
 
   const handleReject = async () => {
-    await rejectNegotiation(negotiation.id);
+    if (onRejectNegotiation) {
+      await onRejectNegotiation(negotiation.id);
+    }
   };
 
   const savings = negotiation.negotiated_amount 

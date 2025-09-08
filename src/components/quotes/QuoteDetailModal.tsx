@@ -180,7 +180,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
   const [proposals, setProposals] = useState<QuoteProposal[]>([]);
   const [isLoadingProposals, setIsLoadingProposals] = useState(false);
   const { toast } = useToast();
-  const { getNegotiationByQuoteId } = useAINegotiation();
+  const { getNegotiationByQuoteId, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
 
   // Fetch real proposals from Supabase
   const fetchProposals = async () => {
@@ -518,7 +518,12 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
               {/* Negociação IA */}
               {negotiation && (
                 <div className="mb-6">
-                  <AINegotiationCard negotiation={negotiation} />
+                  <AINegotiationCard 
+                    negotiation={negotiation}
+                    onStartNegotiation={startNegotiation}
+                    onApproveNegotiation={approveNegotiation}
+                    onRejectNegotiation={rejectNegotiation}
+                  />
                 </div>
               )}
 
