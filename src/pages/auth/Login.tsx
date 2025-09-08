@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff, Building2, Users, User } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Building2, Users, User, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
 
@@ -211,12 +211,18 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <div className="w-full max-w-md">
-        {/* Logo and Title */}
+        {/* Back button and Logo */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Building2 className="h-8 w-8 text-primary" />
+          <div className="flex items-center justify-between mb-4">
+            <Link to="/landing" className="text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div className="flex items-center space-x-2">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <Building2 className="h-8 w-8 text-primary" />
+              </div>
             </div>
+            <div className="w-5" /> {/* Spacer for center alignment */}
           </div>
           <h1 className="text-2xl font-bold text-foreground">QuoteMaster Pro</h1>
           <p className="text-muted-foreground mt-2">Sistema de gestão de cotações</p>

@@ -18,6 +18,9 @@ import MainLayout from '@/components/layout/MainLayout';
 import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
 import SupplierLayout from '@/components/layout/SupplierLayout';
 
+// Landing page
+const LandingPage = lazy(() => import('@/pages/LandingPage'));
+
 // Client/Tenant pages com lazy loading otimizado
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Quotes = lazy(() => import('@/pages/Quotes'));
@@ -116,6 +119,13 @@ function App() {
             <DebugWrapper>
               <Router>
               <Routes>
+                {/* Landing page pública */}
+                <Route path="/landing" element={
+                  <SuspenseWithTransition lines={5} className="min-h-screen">
+                    <LandingPage />
+                  </SuspenseWithTransition>
+                } />
+                
                 {/* Rotas públicas de autenticação */}
                 <Route path="/auth/login" element={
                   <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
