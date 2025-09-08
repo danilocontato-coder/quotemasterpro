@@ -349,19 +349,35 @@ export const useSupabaseQuotes = () => {
   const deleteQuote = async (quoteId: string) => {
     try {
       console.log('🗑️ Attempting to delete quote:', quoteId);
-      
-      const { error } = await supabase
+
+      const { data, error } = await supabase
         .from('quotes')
         .delete()
-        .eq('id', quoteId);
+        .eq('id', quoteId)
+        .select()
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Delete error from Supabase:', error);
         throw error;
       }
 
+      if (!data) {
+        // If nothing returned, verify if it still exists (detect silent RLS/no-op)
+        const { data: stillThere } = await supabase
+          .from('quotes')
+          .select('id')
+          .eq('id', quoteId)
+          .maybeSingle();
+
+        if (stillThere) {
+          console.error('❌ Delete appears blocked by RLS or constraints. Quote still exists:', quoteId);
+          throw new Error('Não foi possível excluir a cotação (permissões ou vínculo).');
+        }
+      }
+
       console.log('✅ Quote deleted successfully in database:', quoteId);
-      
+
       // Remove from local state immediately
       setQuotes(prev => {
         const filtered = prev.filter(quote => quote.id !== quoteId);

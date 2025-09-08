@@ -125,6 +125,7 @@ export default function Quotes() {
         console.log('🗑️ [QUOTES-PAGE] Starting delete process for quote:', quoteToDelete.id);
         
         await deleteQuote(quoteToDelete.id);
+        await refetch();
         
         const action = quoteToDelete.status === 'draft' ? 'excluída' : 'cancelada';
         toast.success(`Cotação ${action} com sucesso!`);
