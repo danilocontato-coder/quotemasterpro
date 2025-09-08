@@ -348,15 +348,26 @@ export const useSupabaseQuotes = () => {
 
   const deleteQuote = async (quoteId: string) => {
     try {
+      console.log('🗑️ Attempting to delete quote:', quoteId);
+      
       const { error } = await supabase
         .from('quotes')
         .delete()
         .eq('id', quoteId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Delete error from Supabase:', error);
+        throw error;
+      }
 
-      console.log('✅ Quote deleted successfully:', quoteId);
-      setQuotes(prev => prev.filter(quote => quote.id !== quoteId));
+      console.log('✅ Quote deleted successfully in database:', quoteId);
+      
+      // Remove from local state immediately
+      setQuotes(prev => {
+        const filtered = prev.filter(quote => quote.id !== quoteId);
+        console.log('🔍 Local state updated, remaining quotes:', filtered.length);
+        return filtered;
+      });
     } catch (error) {
       console.error('❌ Error deleting quote:', error);
       throw error;
@@ -446,8 +457,12 @@ export const useSupabaseQuotes = () => {
                 });
               }
             } else if (payload.eventType === 'DELETE') {
-              console.log('🔍 [DEBUG-QUOTES] 📝 Removing quote in real-time:', payload.old.id);
-              setQuotes(prev => prev.filter(quote => quote.id !== payload.old.id));
+              console.log('🔍 [DEBUG-QUOTES] 🗑️ DELETE event received for quote:', payload.old.id);
+              setQuotes(prev => {
+                const filtered = prev.filter(quote => quote.id !== payload.old.id);
+                console.log('🔍 [DEBUG-QUOTES] Quote removed from real-time, remaining:', filtered.length);
+                return filtered;
+              });
             }
           }
         )

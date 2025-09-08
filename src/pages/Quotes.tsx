@@ -122,11 +122,18 @@ export default function Quotes() {
   const handleDeleteConfirm = async (reason?: string) => {
     if (quoteToDelete) {
       try {
+        console.log('🗑️ [QUOTES-PAGE] Starting delete process for quote:', quoteToDelete.id);
+        
         await deleteQuote(quoteToDelete.id);
+        
         const action = quoteToDelete.status === 'draft' ? 'excluída' : 'cancelada';
         toast.success(`Cotação ${action} com sucesso!`);
         setQuoteToDelete(null);
+        setIsDeleteModalOpen(false);
+        
+        console.log('✅ [QUOTES-PAGE] Delete process completed successfully');
       } catch (error) {
+        console.error('❌ [QUOTES-PAGE] Error in delete process:', error);
         toast.error("Erro ao excluir cotação");
       }
     }
