@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { useAuthTenant } from '@/hooks/useAuthTenant';
@@ -16,11 +16,21 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   redirectTo = '/auth/login'
 }) => {
+  // ✅ TODOS OS HOOKS DEVEM VIR PRIMEIRO - ANTES DE QUALQUER RETURN
   const { user, isLoading: authLoading } = useAuth();
   const { needsOnboarding, isLoading: tenantLoading, isReady } = useAuthTenant();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const location = useLocation();
 
+  // ✅ useEffect SEMPRE executado, independente das condições
+  useEffect(() => {
+    if (needsOnboarding && !showOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, [needsOnboarding, showOnboarding]);
+
+  // ✅ AGORA SIM podemos fazer returns condicionais
+  
   // Loading states
   if (authLoading || tenantLoading) {
     return (
@@ -38,13 +48,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (!user) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
-
-  // Auto-show onboarding modal when needed
-  React.useEffect(() => {
-    if (needsOnboarding && !showOnboarding) {
-      setShowOnboarding(true);
-    }
-  }, [needsOnboarding, showOnboarding]);
 
   // Check if user needs onboarding (tenant binding)
   if (needsOnboarding) {
