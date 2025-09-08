@@ -181,7 +181,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
   const [proposals, setProposals] = useState<QuoteProposal[]>([]);
   const [isLoadingProposals, setIsLoadingProposals] = useState(false);
   const { toast } = useToast();
-  const { getNegotiationByQuoteId, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
+  const { getNegotiationByQuoteId, startNegotiation, approveNegotiation, rejectNegotiation, startAnalysis } = useAINegotiation();
 
   // Fetch real proposals from Supabase
   const fetchProposals = async () => {
@@ -513,6 +513,7 @@ export function QuoteDetailModal({ open, onClose, quote, onStatusChange }: Quote
                     onStartNegotiation={startNegotiation}
                     onApproveNegotiation={approveNegotiation}
                     onRejectNegotiation={rejectNegotiation}
+                    onStartAnalysis={startAnalysis}
                   />
                 </div>
               )}

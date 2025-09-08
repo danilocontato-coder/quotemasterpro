@@ -13,7 +13,7 @@ export interface AINegotiation {
   negotiation_strategy: any;
   conversation_log: any[];
   ai_analysis: any;
-  status: 'analyzing' | 'negotiating' | 'completed' | 'failed' | 'approved' | 'rejected';
+  status: 'analyzing' | 'analyzed' | 'not_viable' | 'negotiating' | 'completed' | 'failed' | 'approved' | 'rejected';
   human_approved?: boolean;
   human_feedback?: string;
   approved_by?: string;
@@ -126,11 +126,15 @@ export function useAINegotiation() {
   }, []);
 
   const startAnalysis = async (quoteId: string) => {
-    // Prevent multiple analyses for the same quote
+    // Prevent unnecessary duplicate analyses, but allow retry if stuck
     const existingNegotiation = negotiations.find(n => n.quote_id === quoteId);
-    if (existingNegotiation && existingNegotiation.status !== 'failed') {
-      console.log('🤖 [AI-NEGOTIATION] Análise já existe para cotação:', quoteId);
-      return existingNegotiation;
+    if (existingNegotiation) {
+      // If already completed/approved/rejected/negotiating, just return it
+      if (!['analyzing', 'failed'].includes(existingNegotiation.status)) {
+        console.log('🤖 [AI-NEGOTIATION] Análise já existe para cotação:', quoteId, 'status:', existingNegotiation.status);
+        return existingNegotiation;
+      }
+      console.log('🤖 [AI-NEGOTIATION] Reexecutando análise para cotação em status:', existingNegotiation.status);
     }
 
     try {

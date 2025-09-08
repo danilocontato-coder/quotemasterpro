@@ -11,6 +11,7 @@ interface AINegotiationCardProps {
   onStartNegotiation?: (id: string) => Promise<void>;
   onApproveNegotiation?: (id: string) => Promise<void>;
   onRejectNegotiation?: (id: string) => Promise<void>;
+  onStartAnalysis?: (quoteId: string) => Promise<void>;
 }
 
 const statusConfig = {
@@ -26,7 +27,8 @@ export function AINegotiationCard({
   negotiation, 
   onStartNegotiation,
   onApproveNegotiation,
-  onRejectNegotiation 
+  onRejectNegotiation,
+  onStartAnalysis
 }: AINegotiationCardProps) {
   const config = statusConfig[negotiation.status];
   const IconComponent = config.icon;
@@ -34,6 +36,12 @@ export function AINegotiationCard({
   const handleStartNegotiation = async () => {
     if (onStartNegotiation) {
       await onStartNegotiation(negotiation.id);
+    }
+  };
+
+  const handleStartAnalysis = async () => {
+    if (onStartAnalysis) {
+      await onStartAnalysis(negotiation.quote_id);
     }
   };
 
@@ -169,6 +177,17 @@ export function AINegotiationCard({
 
         {/* Ações */}
         <div className="flex gap-2 pt-2">
+          {negotiation.status === 'analyzing' && onStartAnalysis && (
+            <Button 
+              size="sm"
+              onClick={handleStartAnalysis}
+              className="flex-1"
+            >
+              <Brain className="h-4 w-4 mr-2" />
+              Executar análise agora
+            </Button>
+          )}
+
           {negotiation.status === 'completed' && !negotiation.human_approved && (
             <>
               <Button 
