@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { mockAINegotiations, type MockAINegotiation } from '@/data/mockAINegotiations';
@@ -29,7 +29,7 @@ export function useAINegotiation() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const fetchNegotiations = async () => {
+  const fetchNegotiations = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -42,7 +42,6 @@ export function useAINegotiation() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.log('Using mock data for AI negotiations');
         // Use mock data when Supabase fails or table doesn't exist yet
         const transformedMockData: AINegotiation[] = mockAINegotiations.map(item => ({
           id: item.id,
@@ -122,7 +121,7 @@ export function useAINegotiation() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const startAnalysis = async (quoteId: string) => {
     try {
@@ -137,8 +136,8 @@ export function useAINegotiation() {
         description: 'A IA está analisando as propostas...',
       });
 
-      // Refetch negotiations
-      await fetchNegotiations();
+      // Fetch negotiations on demand, not automatically
+      setTimeout(() => fetchNegotiations(), 500);
       
       return data;
     } catch (error) {
@@ -165,7 +164,7 @@ export function useAINegotiation() {
         description: 'A IA começou a negociar com o fornecedor',
       });
 
-      await fetchNegotiations();
+      setTimeout(() => fetchNegotiations(), 500);
       return data;
     } catch (error) {
       console.error('Error starting negotiation:', error);
@@ -191,7 +190,7 @@ export function useAINegotiation() {
         description: 'A negociação foi aprovada com sucesso',
       });
 
-      await fetchNegotiations();
+      setTimeout(() => fetchNegotiations(), 500);
       return data;
     } catch (error) {
       console.error('Error approving negotiation:', error);
@@ -217,7 +216,7 @@ export function useAINegotiation() {
         description: 'A negociação foi rejeitada',
       });
 
-      await fetchNegotiations();
+      setTimeout(() => fetchNegotiations(), 500);
       return data;
     } catch (error) {
       console.error('Error rejecting negotiation:', error);
@@ -234,9 +233,11 @@ export function useAINegotiation() {
     return negotiations.find(n => n.quote_id === quoteId);
   };
 
-  // Real-time subscriptions
+  // Real-time subscriptions with throttling
   useEffect(() => {
     fetchNegotiations();
+
+    let timeoutId: NodeJS.Timeout;
 
     const channel = supabase
       .channel('ai_negotiations_changes')
@@ -248,16 +249,20 @@ export function useAINegotiation() {
           table: 'ai_negotiations'
         },
         (payload) => {
-          console.log('AI Negotiation change received:', payload);
-          fetchNegotiations();
+          // Throttle realtime updates to avoid excessive re-renders
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            fetchNegotiations();
+          }, 1000); // Wait 1 second before refetching
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchNegotiations]);
 
   return {
     negotiations,
