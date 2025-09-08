@@ -444,6 +444,45 @@ const handler = async (req: Request): Promise<Response> => {
           console.error('Failed to update quote status:', statusError);
         } else {
           console.log(`Quote ${quote_id} status updated to 'sent'`);
+          
+          // Create notifications for suppliers that received the quote
+          try {
+            console.log('Creating notifications for suppliers...');
+            const supplierNotifications = suppliers.map((supplier: any) => ({
+              title: 'Nova Cotação Recebida',
+              message: `Você recebeu uma nova cotação: ${quote.title} (${quote.id})`,
+              type: 'quote',
+              priority: 'normal',
+              action_url: `/supplier/quotes`,
+              metadata: {
+                quote_id: quote.id,
+                quote_title: quote.title,
+                client_name: client.name,
+                deadline: quote.deadline
+              },
+              supplier_id: supplier.id,
+              notify_all_supplier_users: true
+            }));
+
+            // Create notifications for all suppliers
+            for (const notificationData of supplierNotifications) {
+              try {
+                const { error: notificationError } = await supabase.functions.invoke('create-notification', {
+                  body: notificationData
+                });
+
+                if (notificationError) {
+                  console.error('Failed to create supplier notification:', notificationError);
+                } else {
+                  console.log(`Created notification for supplier: ${notificationData.supplier_id}`);
+                }
+              } catch (notifyError) {
+                console.error('Error creating supplier notification:', notifyError);
+              }
+            }
+          } catch (error) {
+            console.error('Error creating supplier notifications:', error);
+          }
         }
       } catch (error) {
         console.error('Error updating quote status:', error);
@@ -653,6 +692,45 @@ const handler = async (req: Request): Promise<Response> => {
             console.error('Failed to update quote status:', statusError);
           } else {
             console.log(`Quote ${quoteId} status updated to 'sent'`);
+            
+            // Create notifications for suppliers that received the quote (direct method)
+            try {
+              console.log('Creating notifications for suppliers (direct method)...');
+              const supplierNotifications = suppliers.map((supplier: any) => ({
+                title: 'Nova Cotação Recebida',
+                message: `Você recebeu uma nova cotação: ${templateVariables.quote_title} (${quoteId})`,
+                type: 'quote',
+                priority: 'normal',
+                action_url: `/supplier/quotes`,
+                metadata: {
+                  quote_id: quoteId,
+                  quote_title: templateVariables.quote_title,
+                  client_name: templateVariables.client_name,
+                  deadline: templateVariables.deadline_formatted
+                },
+                supplier_id: supplier.id,
+                notify_all_supplier_users: true
+              }));
+
+              // Create notifications for all suppliers
+              for (const notificationData of supplierNotifications) {
+                try {
+                  const { error: notificationError } = await supabase.functions.invoke('create-notification', {
+                    body: notificationData
+                  });
+
+                  if (notificationError) {
+                    console.error('Failed to create supplier notification:', notificationError);
+                  } else {
+                    console.log(`Created notification for supplier: ${notificationData.supplier_id}`);
+                  }
+                } catch (notifyError) {
+                  console.error('Error creating supplier notification:', notifyError);
+                }
+              }
+            } catch (error) {
+              console.error('Error creating supplier notifications:', error);
+            }
           }
         } catch (error) {
           console.error('Error updating quote status:', error);

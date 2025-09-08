@@ -13,6 +13,7 @@ interface NotificationRequest {
   action_url?: string
   metadata?: Record<string, any>
   notify_all_client_users?: boolean
+  notify_all_supplier_users?: boolean
 }
 
 serve(async (req) => {
@@ -38,7 +39,8 @@ serve(async (req) => {
       priority = 'normal',
       action_url,
       metadata,
-      notify_all_client_users = false
+      notify_all_client_users = false,
+      notify_all_supplier_users = false
     } = body
 
     console.log('🔔 Creating notification:', { 
@@ -47,7 +49,8 @@ serve(async (req) => {
       supplier_id, 
       title, 
       type, 
-      notify_all_client_users 
+      notify_all_client_users,
+      notify_all_supplier_users
     })
 
     let targetUserIds: string[] = []
@@ -67,8 +70,8 @@ serve(async (req) => {
 
       targetUserIds = clientUsers?.map(user => user.id) || []
       console.log('👥 Found client users:', targetUserIds.length)
-    } else if (supplier_id) {
-      // Buscar usuários do fornecedor
+    } else if (notify_all_supplier_users && supplier_id) {
+      // Buscar todos os usuários do fornecedor
       const { data: supplierUsers, error: supplierUsersError } = await supabaseClient
         .from('profiles')
         .select('id')
@@ -81,7 +84,22 @@ serve(async (req) => {
       }
 
       targetUserIds = supplierUsers?.map(user => user.id) || []
-      console.log('🏭 Found supplier users:', targetUserIds.length)
+      console.log('🏭 Found supplier users for notifications:', targetUserIds.length)
+    } else if (supplier_id && !notify_all_supplier_users) {
+      // Buscar usuários do fornecedor (modo individual)
+      const { data: supplierUsers, error: supplierUsersError } = await supabaseClient
+        .from('profiles')
+        .select('id')
+        .eq('supplier_id', supplier_id)
+        .eq('active', true)
+
+      if (supplierUsersError) {
+        console.error('❌ Error fetching supplier users:', supplierUsersError)
+        throw supplierUsersError
+      }
+
+      targetUserIds = supplierUsers?.map(user => user.id) || []
+      console.log('🏭 Found supplier users (individual):', targetUserIds.length)
     } else if (user_id) {
       targetUserIds = [user_id]
     } else {
