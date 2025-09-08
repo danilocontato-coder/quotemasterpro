@@ -30,6 +30,8 @@ export function useAINegotiation() {
   const { toast } = useToast();
 
   const fetchNegotiations = useCallback(async () => {
+    if (isLoading) return; // Prevent multiple simultaneous calls
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -124,6 +126,13 @@ export function useAINegotiation() {
   }, []);
 
   const startAnalysis = async (quoteId: string) => {
+    // Prevent multiple analyses for the same quote
+    const existingNegotiation = negotiations.find(n => n.quote_id === quoteId);
+    if (existingNegotiation && existingNegotiation.status !== 'failed') {
+      console.log('🤖 [AI-NEGOTIATION] Análise já existe para cotação:', quoteId);
+      return existingNegotiation;
+    }
+
     try {
       console.log('🤖 [AI-NEGOTIATION] Iniciando análise para cotação:', quoteId);
       
@@ -143,8 +152,8 @@ export function useAINegotiation() {
         description: 'A IA está analisando as propostas...',
       });
 
-      // Fetch negotiations on demand, not automatically
-      setTimeout(() => fetchNegotiations(), 500);
+      // Fetch negotiations after delay to allow database update
+      setTimeout(() => fetchNegotiations(), 1000);
       
       return data;
     } catch (error) {
@@ -240,11 +249,12 @@ export function useAINegotiation() {
     return negotiations.find(n => n.quote_id === quoteId);
   };
 
-  // Real-time subscriptions with throttling
+  // Real-time subscriptions with throttling and debouncing
   useEffect(() => {
     fetchNegotiations();
 
     let timeoutId: NodeJS.Timeout;
+    let isSubscribed = true;
 
     const channel = supabase
       .channel('ai_negotiations_changes')
@@ -256,16 +266,21 @@ export function useAINegotiation() {
           table: 'ai_negotiations'
         },
         (payload) => {
-          // Throttle realtime updates to avoid excessive re-renders
+          if (!isSubscribed) return;
+          
+          // Debounce realtime updates to avoid excessive re-renders
           clearTimeout(timeoutId);
           timeoutId = setTimeout(() => {
-            fetchNegotiations();
-          }, 1000); // Wait 1 second before refetching
+            if (isSubscribed) {
+              fetchNegotiations();
+            }
+          }, 2000); // Aumentado para 2 segundos para reduzir carga
         }
       )
       .subscribe();
 
     return () => {
+      isSubscribed = false;
       clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };

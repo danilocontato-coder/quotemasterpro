@@ -85,12 +85,19 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         setSelectedSuppliers(deduplicatedSuppliers.map(s => s.id));
       }
     }
-  }, [deduplicatedSuppliers, quote?.selected_supplier_ids]);
+  }, [deduplicatedSuppliers.length, quote?.selected_supplier_ids?.join(',')]); // Optimized dependencies
 
   // Resolve configured webhook URL and Evolution API
   useEffect(() => {
+    if (!open || !quote?.id) return;
+
+    let isMounted = true;
+    
     const resolveIntegrations = async () => {
       try {
+        // Prevent state updates if component unmounted
+        if (!isMounted) return;
+        
         setResolvedWebhookUrl(null);
         setEvolutionConfigured(false);
 
@@ -100,8 +107,10 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           .select('configuration')
           .eq('integration_type', 'n8n_webhook')
           .eq('active', true)
-          .eq('client_id', quote?.client_id || null)
+          .eq('client_id', quote.client_id || null)
           .maybeSingle();
+
+        if (!isMounted) return;
 
         let webhookUrl = (clientInt?.configuration as any)?.webhook_url || null;
 
@@ -116,6 +125,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           webhookUrl = (globalInt?.configuration as any)?.webhook_url || null;
         }
 
+        if (!isMounted) return;
         setResolvedWebhookUrl(webhookUrl);
 
         // Check Evolution API configuration
@@ -124,8 +134,10 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           .select('configuration')
           .eq('integration_type', 'whatsapp_evolution')
           .eq('active', true)
-          .eq('client_id', quote?.client_id || null)
+          .eq('client_id', quote.client_id || null)
           .maybeSingle();
+
+        if (!isMounted) return;
 
         let evoCfg = evoClientInt?.configuration;
         if (!evoCfg) {
@@ -140,7 +152,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         }
 
         // Check if Evolution is properly configured
-        if (evoCfg && typeof evoCfg === 'object') {
+        if (isMounted && evoCfg && typeof evoCfg === 'object') {
           const cfg = evoCfg as any;
           const hasInstance = cfg.instance || cfg.evolution_instance;
           const hasApiUrl = cfg.api_url || cfg.evolution_api_url;
@@ -150,15 +162,19 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
 
       } catch (e) {
         console.warn('Falha ao resolver integrações');
-        setResolvedWebhookUrl(null);
-        setEvolutionConfigured(false);
+        if (isMounted) {
+          setResolvedWebhookUrl(null);
+          setEvolutionConfigured(false);
+        }
       }
     };
 
-    if (open && quote?.id) {
-      resolveIntegrations();
-    }
-  }, [open, quote?.id, quote?.client_id]);
+    resolveIntegrations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open, quote?.id]); // Removido quote?.client_id para evitar loops
 
   const handleToggleSupplier = (supplierId: string) => {
     setSelectedSuppliers(prev => 
