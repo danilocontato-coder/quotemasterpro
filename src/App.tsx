@@ -31,16 +31,39 @@ const Reports = React.lazy(() => import('@/pages/Reports').then(m => ({ default:
 const Users = React.lazy(() => import('@/pages/Users'));
 const Notifications = React.lazy(() => import('@/pages/Notifications'));
 const Settings = React.lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
+const Communication = React.lazy(() => import('@/pages/Communication'));
+const Profiles = React.lazy(() => import('@/pages/Profiles').then(m => ({ default: m.Profiles })));
+const Permissions = React.lazy(() => import('@/pages/Permissions'));
+const ApprovalLevels = React.lazy(() => import('@/pages/ApprovalLevels').then(m => ({ default: m.ApprovalLevels })));
+const AINegotiations = React.lazy(() => import('@/pages/AINegotiations'));
+const AdminSuppliers = React.lazy(() => import('@/pages/AdminSuppliers'));
+const NotificationsTesting = React.lazy(() => import('@/pages/NotificationsTesting'));
+const PlansPage = React.lazy(() => import('@/pages/client/PlansPage'));
 
 // Admin pages
 const SuperAdminDashboard = React.lazy(() => import('@/pages/admin/SuperAdminDashboard'));
 const ClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManagement'));
 const SuppliersManagement = React.lazy(() => import('@/pages/admin/SuppliersManagement'));
+const AccountsManagement = React.lazy(() => import('@/pages/admin/AccountsManagement'));
+const SystemSettings = React.lazy(() => import('@/pages/admin/SystemSettings'));
+const CouponsManagement = React.lazy(() => import('@/pages/admin/CouponsManagement'));
+const PlansManagement = React.lazy(() => import('@/pages/admin/PlansManagement'));
+const IntegrationsManagement = React.lazy(() => import('@/pages/admin/IntegrationsManagement'));
+const WhatsAppTemplates = React.lazy(() => import('@/pages/admin/WhatsAppTemplates'));
+const AdminDashboard = React.lazy(() => import('@/pages/dashboards/AdminDashboard'));
+const SupportDashboard = React.lazy(() => import('@/pages/dashboards/SupportDashboard'));
+const AuditLogs = React.lazy(() => import('@/pages/admin/AuditLogs'));
+const AIConfigurationManagement = React.lazy(() => import('@/pages/admin/AIConfigurationManagement'));
+const CommunicationManagement = React.lazy(() => import('@/pages/admin/CommunicationManagement'));
+const ApiConfiguration = React.lazy(() => import('@/pages/admin/ApiConfiguration'));
 
 // Supplier pages
 const SupplierDashboard = React.lazy(() => import('@/pages/supplier/SupplierDashboard'));
 const SupplierQuotes = React.lazy(() => import('@/pages/supplier/SupplierQuotes'));
 const SupplierProducts = React.lazy(() => import('@/pages/supplier/SupplierProducts'));
+const SupplierFinancial = React.lazy(() => import('@/pages/supplier/SupplierFinancial'));
+const SupplierHistory = React.lazy(() => import('@/pages/supplier/SupplierHistory'));
+const SupplierDeliveries = React.lazy(() => import('@/pages/supplier/SupplierDeliveries'));
 const SupplierAuth = React.lazy(() => import('@/pages/supplier/SupplierAuth'));
 const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
@@ -126,6 +149,36 @@ function App() {
                       <SuperAdminDashboard />
                     </Suspense>
                   } />
+                  <Route path="accounts" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <AccountsManagement />
+                    </Suspense>
+                  } />
+                  <Route path="system" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <SystemSettings />
+                    </Suspense>
+                  } />
+                  <Route path="coupons" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <CouponsManagement />
+                    </Suspense>
+                  } />
+                  <Route path="plans" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <PlansManagement />
+                    </Suspense>
+                  } />
+                  <Route path="integrations" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <IntegrationsManagement />
+                    </Suspense>
+                  } />
+                  <Route path="whatsapp" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <WhatsAppTemplates />
+                    </Suspense>
+                  } />
                   <Route path="clients" element={
                     <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <ClientsManagement />
@@ -136,9 +189,39 @@ function App() {
                       <SuppliersManagement />
                     </Suspense>
                   } />
+                  <Route path="admin-dashboard" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <AdminDashboard />
+                    </Suspense>
+                  } />
+                  <Route path="support" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <SupportDashboard />
+                    </Suspense>
+                  } />
+                  <Route path="audit" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <AuditLogs />
+                    </Suspense>
+                  } />
+                  <Route path="ai-config" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <AIConfigurationManagement />
+                    </Suspense>
+                  } />
+                  <Route path="communication" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <CommunicationManagement />
+                    </Suspense>
+                  } />
+                  <Route path="api" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <ApiConfiguration />
+                    </Suspense>
+                  } />
                 </Route>
 
-                {/* Rotas do Cliente/Manager */}
+                {/* Rotas do Cliente/Manager - /app/* e também /* para compatibilidade */}
                 <Route path="/app/*" element={
                   <ProtectedRoute allowedRoles={['manager', 'collaborator']}>
                     <MainLayout />
@@ -169,6 +252,16 @@ function App() {
                       <Approvals />
                     </Suspense>
                   } />
+                  <Route path="approval-levels" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <ApprovalLevels />
+                    </Suspense>
+                  } />
+                  <Route path="ai-negotiations" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <AINegotiations />
+                    </Suspense>
+                  } />
                   <Route path="payments" element={
                     <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Payments />
@@ -189,9 +282,137 @@ function App() {
                       <Notifications />
                     </Suspense>
                   } />
+                  <Route path="notification-testing" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <NotificationsTesting />
+                    </Suspense>
+                  } />
+                  <Route path="profiles" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Profiles />
+                    </Suspense>
+                  } />
+                  <Route path="permissions" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Permissions />
+                    </Suspense>
+                  } />
+                  <Route path="communication" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Communication />
+                    </Suspense>
+                  } />
                   <Route path="settings" element={
                     <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Settings />
+                    </Suspense>
+                  } />
+                  <Route path="plans" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <PlansPage />
+                    </Suspense>
+                  } />
+                  <Route path="admin-suppliers" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <AdminSuppliers />
+                    </Suspense>
+                  } />
+                </Route>
+
+                {/* Rotas compatíveis antigas - /* sem /app */}
+                <Route path="/*" element={
+                  <ProtectedRoute allowedRoles={['manager', 'collaborator']}>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route path="dashboard" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Dashboard />
+                    </Suspense>
+                  } />
+                  <Route path="quotes" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Quotes />
+                    </Suspense>
+                  } />
+                  <Route path="suppliers" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Suppliers />
+                    </Suspense>
+                  } />
+                  <Route path="products" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Products />
+                    </Suspense>
+                  } />
+                  <Route path="approvals" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Approvals />
+                    </Suspense>
+                  } />
+                  <Route path="approval-levels" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <ApprovalLevels />
+                    </Suspense>
+                  } />
+                  <Route path="ai-negotiations" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <AINegotiations />
+                    </Suspense>
+                  } />
+                  <Route path="payments" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Payments />
+                    </Suspense>
+                  } />
+                  <Route path="reports" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Reports />
+                    </Suspense>
+                  } />
+                  <Route path="users" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Users />
+                    </Suspense>
+                  } />
+                  <Route path="notifications" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Notifications />
+                    </Suspense>
+                  } />
+                  <Route path="notification-testing" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <NotificationsTesting />
+                    </Suspense>
+                  } />
+                  <Route path="profiles" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Profiles />
+                    </Suspense>
+                  } />
+                  <Route path="permissions" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Permissions />
+                    </Suspense>
+                  } />
+                  <Route path="communication" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Communication />
+                    </Suspense>
+                  } />
+                  <Route path="settings" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <Settings />
+                    </Suspense>
+                  } />
+                  <Route path="plans" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <PlansPage />
+                    </Suspense>
+                  } />
+                  <Route path="admin-suppliers" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <AdminSuppliers />
                     </Suspense>
                   } />
                 </Route>
@@ -215,6 +436,21 @@ function App() {
                   <Route path="products" element={
                     <Suspense fallback={<LoadingFallback className="p-4" />}>
                       <SupplierProducts />
+                    </Suspense>
+                  } />
+                  <Route path="history" element={
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
+                      <SupplierHistory />
+                    </Suspense>
+                  } />
+                  <Route path="financial" element={
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
+                      <SupplierFinancial />
+                    </Suspense>
+                  } />
+                  <Route path="deliveries" element={
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
+                      <SupplierDeliveries />
                     </Suspense>
                   } />
                 </Route>
