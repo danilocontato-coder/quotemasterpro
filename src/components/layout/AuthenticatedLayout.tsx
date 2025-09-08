@@ -11,9 +11,15 @@ export const AuthenticatedLayout: React.FC = () => {
   const mountTimeRef = useRef(Date.now());
   const renderCountRef = useRef(0);
   
+  const debug = (msg: string, data?: any) => {
+    if (typeof window !== 'undefined' && (window as any).__DEBUG__) {
+      console.log(msg, data);
+    }
+  };
+
   renderCountRef.current++;
   
-  console.log('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout render:', {
+  debug('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout render:', {
     renderCount: renderCountRef.current,
     isLoading,
     userId: user?.id,
@@ -23,9 +29,9 @@ export const AuthenticatedLayout: React.FC = () => {
   });
   
   useEffect(() => {
-    console.log('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout mounted');
+    debug('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout mounted');
     return () => {
-      console.log('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout unmounting after:', Date.now() - mountTimeRef.current, 'ms');
+      debug('🔍 [DEBUG-AUTH-LAYOUT] AuthenticatedLayout unmounting after:', Date.now() - mountTimeRef.current + ' ms');
     };
   }, []);
 
