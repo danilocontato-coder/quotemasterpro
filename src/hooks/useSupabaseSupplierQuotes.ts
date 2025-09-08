@@ -455,7 +455,15 @@ export const useSupabaseSupplierQuotes = () => {
 
     try {
       const attachmentId = crypto.randomUUID();
-      const fileName = `${user.supplierId}/${quoteId}/${attachmentId}_${file.name}`;
+      
+      // Normalizar nome do arquivo removendo caracteres especiais
+      const normalizedFileName = file.name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+        .replace(/[^a-zA-Z0-9._-]/g, '_') // Substitui caracteres especiais por underscore
+        .replace(/_{2,}/g, '_'); // Remove underscores múltiplos
+      
+      const fileName = `${user.supplierId}/${quoteId}/${attachmentId}_${normalizedFileName}`;
       
       console.log('📎 Uploading attachment:', fileName);
 
