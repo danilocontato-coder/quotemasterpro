@@ -430,31 +430,62 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     // Resolver config Evolution: cliente primeiro, depois global
     const clientCfg = await resolveEvolutionConfig(sb, quote.client_id, false);
     const globalCfg = await resolveEvolutionConfig(sb, null, true);
-    const attempts: Array<{scope: string, apiUrl: string | null, error?: string}> = [];
+    const attempts: Array<{ scope: string, apiUrl: string | null, hasToken: boolean, hasInstance: boolean, error?: string, preflight?: { ok: boolean, status?: number } }> = [];
 
-    // Tentar envio com config do cliente primeiro (mesma estratégia do módulo Enviar para fornecedores)
-    let usedCfg = clientCfg.apiUrl ? clientCfg : null;
+    // Selecionar candidatos na ordem cliente -> global e só tentar envios reais com config completa
+    const candidates = [clientCfg, globalCfg];
+
     let result: any = { success: false };
 
-    if (usedCfg) {
-      attempts.push({ scope: clientCfg.scope, apiUrl: clientCfg.apiUrl });
-      result = await sendEvolutionWhatsApp(usedCfg, normalizedPhone, aiMessage);
-      if (!result.success) attempts[attempts.length - 1].error = result.error;
-    }
+    for (const cfg of candidates) {
+      if (!cfg || !cfg.apiUrl) continue;
+      const hasToken = !!cfg.token;
+      const hasInstance = !!cfg.instance;
+      attempts.push({ scope: cfg.scope, apiUrl: cfg.apiUrl || null, hasToken, hasInstance });
 
-    // Se falhar, tentar com config global (SuperAdmin)
-    if (!result.success && globalCfg.apiUrl) {
-      usedCfg = globalCfg;
-      attempts.push({ scope: globalCfg.scope, apiUrl: globalCfg.apiUrl });
-      const retry = await sendEvolutionWhatsApp(globalCfg, normalizedPhone, aiMessage);
-      result = retry;
-      if (!result.success) attempts[attempts.length - 1].error = result.error;
+      if (!(hasToken && hasInstance)) {
+        attempts[attempts.length - 1].error = 'Config incompleta (token/instance ausentes)';
+        continue;
+      }
+
+      // Preflight igual ao módulo "Enviar para fornecedores"
+      try {
+        const base = cfg.apiUrl.replace(/\/+$/, '');
+        const bases = Array.from(new Set([base, `${base}/api`]));
+        const headerVariants: Record<string, string>[] = [
+          { apikey: cfg.token },
+          { Authorization: `Bearer ${cfg.token}` },
+        ];
+        let preflightOk = false;
+        let lastStatus = 0;
+        for (const b of bases) {
+          for (const headers of headerVariants) {
+            const cs = await fetch(`${b}/instance/connectionState/${encodeURIComponent(cfg.instance as string)}`, { headers });
+            lastStatus = cs.status;
+            if (cs.ok) { preflightOk = true; break; }
+          }
+          if (preflightOk) break;
+        }
+        attempts[attempts.length - 1].preflight = { ok: preflightOk, status: lastStatus };
+        if (!preflightOk) {
+          attempts[attempts.length - 1].error = `Preflight falhou (status ${lastStatus})`;
+          continue;
+        }
+      } catch (e: any) {
+        attempts[attempts.length - 1].error = `Preflight erro: ${e?.message || String(e)}`;
+        continue;
+      }
+
+      const sent = await sendEvolutionWhatsApp(cfg, normalizedPhone, aiMessage);
+      result = sent;
+      if (sent.success) break;
+      attempts[attempts.length - 1].error = sent.error;
     }
 
     // Se ainda falhar: simular apenas se não houver nenhuma config válida
     if (!result.success) {
-      const hasClientValid = !!(clientCfg.apiUrl && clientCfg.token);
-      const hasGlobalValid = !!(globalCfg.apiUrl && globalCfg.token);
+      const hasClientValid = !!(clientCfg.apiUrl && clientCfg.token && clientCfg.instance);
+      const hasGlobalValid = !!(globalCfg.apiUrl && globalCfg.token && globalCfg.instance);
 
       if (!hasClientValid && !hasGlobalValid) {
         const simulatedMessageId = `sim_${Date.now()}`;
@@ -471,7 +502,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       }
 
       return new Response(
-        JSON.stringify({ success: false, error: 'Falha ao enviar WhatsApp', debug: { supplier_name: supplier.name, phone: normalizedPhone, attempts, config: { client: { apiUrl: clientCfg.apiUrl || null, hasToken: !!clientCfg.token }, global: { apiUrl: globalCfg.apiUrl || null, hasToken: !!globalCfg.token } }, tried_endpoints: result.tried_endpoints || [] } }),
+        JSON.stringify({ success: false, error: 'Falha ao enviar WhatsApp', debug: { supplier_name: supplier.name, phone: normalizedPhone, attempts, config: { client: { apiUrl: clientCfg.apiUrl || null, hasToken: !!clientCfg.token, hasInstance: !!clientCfg.instance }, global: { apiUrl: globalCfg.apiUrl || null, hasToken: !!globalCfg.token, hasInstance: !!globalCfg.instance } }, tried_endpoints: result.tried_endpoints || [] } }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
