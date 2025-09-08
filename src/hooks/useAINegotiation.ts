@@ -125,11 +125,18 @@ export function useAINegotiation() {
 
   const startAnalysis = async (quoteId: string) => {
     try {
+      console.log('🤖 [AI-NEGOTIATION] Iniciando análise para cotação:', quoteId);
+      
       const { data, error } = await supabase.functions.invoke('ai-negotiation-agent', {
         body: { action: 'analyze', quoteId }
       });
 
-      if (error) throw error;
+      console.log('🤖 [AI-NEGOTIATION] Resposta da edge function:', { data, error });
+
+      if (error) {
+        console.error('🤖 [AI-NEGOTIATION] Erro na edge function:', error);
+        throw error;
+      }
 
       toast({
         title: 'Análise Iniciada',
@@ -141,7 +148,7 @@ export function useAINegotiation() {
       
       return data;
     } catch (error) {
-      console.error('Error starting analysis:', error);
+      console.error('🤖 [AI-NEGOTIATION] Error starting analysis:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao iniciar análise da IA',
