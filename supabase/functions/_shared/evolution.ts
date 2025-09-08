@@ -126,7 +126,7 @@ export async function resolveEvolutionConfig(
 
   try {
     if (preferGlobal) {
-      // 1) Try SuperAdmin (global) first
+      // 1) Try SuperAdmin (global) first - legacy table
       const { data: evoGlobalInt } = await supabase
         .from('integrations')
         .select('configuration')
@@ -140,6 +140,23 @@ export async function resolveEvolutionConfig(
         apiUrl = (gcfg.api_url ?? gcfg['evolution_api_url']) || null
         token = (gcfg.token ?? gcfg['evolution_token']) || null
         scope = 'global'
+      }
+      // 1b) Fallback to api_integrations (global)
+      if (!apiUrl || !token) {
+        const { data: evoGlobalAI } = await supabase
+          .from('api_integrations')
+          .select('settings, api_key_encrypted')
+          .eq('type', 'whatsapp')
+          .eq('active', true)
+          .eq('scope', 'global')
+          .maybeSingle()
+        const g2 = (evoGlobalAI as any)?.settings || null
+        if (g2) {
+          instance = instance || (g2.instance ?? g2['evolution_instance']) || null
+          apiUrl = apiUrl || (g2.api_url ?? g2['evolution_api_url']) || null
+          token = token || (g2.token ?? g2['evolution_token'] ?? (evoGlobalAI as any)?.api_key_encrypted) || null
+          scope = 'global'
+        }
       }
       // 2) Then client-specific (to allow overrides)
       if ((!apiUrl || !token) && clientId) {
@@ -156,6 +173,24 @@ export async function resolveEvolutionConfig(
           apiUrl = apiUrl || (ccfg.api_url ?? ccfg['evolution_api_url']) || null
           token = token || (ccfg.token ?? ccfg['evolution_token']) || null
           scope = apiUrl && token ? (scope === 'global' ? 'global' : 'client') : scope
+        }
+        // 2b) Fallback api_integrations (client)
+        if (!apiUrl || !token) {
+          const { data: evoClientAI } = await supabase
+            .from('api_integrations')
+            .select('settings, api_key_encrypted')
+            .eq('type', 'whatsapp')
+            .eq('active', true)
+            .eq('scope', 'client')
+            .eq('target_id', clientId)
+            .maybeSingle()
+          const c2 = (evoClientAI as any)?.settings || null
+          if (c2) {
+            instance = instance || (c2.instance ?? c2['evolution_instance']) || null
+            apiUrl = apiUrl || (c2.api_url ?? c2['evolution_api_url']) || null
+            token = token || (c2.token ?? c2['evolution_token'] ?? (evoClientAI as any)?.api_key_encrypted) || null
+            scope = 'client'
+          }
         }
       }
     } else {
@@ -175,6 +210,24 @@ export async function resolveEvolutionConfig(
           token = (cfg.token ?? cfg['evolution_token']) || null
           scope = 'client'
         }
+        // client via api_integrations
+        if (!apiUrl || !token) {
+          const { data: evoClientAI } = await supabase
+            .from('api_integrations')
+            .select('settings, api_key_encrypted')
+            .eq('type', 'whatsapp')
+            .eq('active', true)
+            .eq('scope', 'client')
+            .eq('target_id', clientId)
+            .maybeSingle()
+          const c2 = (evoClientAI as any)?.settings || null
+          if (c2) {
+            instance = instance || (c2.instance ?? c2['evolution_instance']) || null
+            apiUrl = apiUrl || (c2.api_url ?? c2['evolution_api_url']) || null
+            token = token || (c2.token ?? c2['evolution_token'] ?? (evoClientAI as any)?.api_key_encrypted) || null
+            scope = 'client'
+          }
+        }
       }
       if (!apiUrl || !token) {
         const { data: evoGlobalInt } = await supabase
@@ -190,6 +243,23 @@ export async function resolveEvolutionConfig(
           apiUrl = apiUrl || (cfg.api_url ?? cfg['evolution_api_url']) || null
           token = token || (cfg.token ?? cfg['evolution_token']) || null
           scope = scope === 'client' ? 'client' : 'global'
+        }
+        // global via api_integrations
+        if (!apiUrl || !token) {
+          const { data: evoGlobalAI } = await supabase
+            .from('api_integrations')
+            .select('settings, api_key_encrypted')
+            .eq('type', 'whatsapp')
+            .eq('active', true)
+            .eq('scope', 'global')
+            .maybeSingle()
+          const g2 = (evoGlobalAI as any)?.settings || null
+          if (g2) {
+            instance = instance || (g2.instance ?? g2['evolution_instance']) || null
+            apiUrl = apiUrl || (g2.api_url ?? g2['evolution_api_url']) || null
+            token = token || (g2.token ?? g2['evolution_token'] ?? (evoGlobalAI as any)?.api_key_encrypted) || null
+            scope = scope === 'client' ? 'client' : 'global'
+          }
         }
       }
     }
