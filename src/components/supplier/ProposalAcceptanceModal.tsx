@@ -54,55 +54,45 @@ export function ProposalAcceptanceModal({
 
       if (responseError) throw responseError;
 
-      // 2. Criar registro de entrega
-      const { error: deliveryError } = await supabase
-        .from('deliveries')
-        .insert({
-          quote_id: quote.id,
-          supplier_id: quote.supplierId,
-          client_id: quote.clientId,
-          scheduled_date: deliveryDate.toISOString(),
-          status: 'scheduled',
-          delivery_address: quote.deliveryAddress || 'Endereço a confirmar',
-          notes: observations
-        });
-
-      if (deliveryError) throw deliveryError;
-
-      // 3. Criar notificação para o cliente
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: quote.clientId,
-          title: '📦 Entrega Confirmada',
-          message: `O fornecedor confirmou a entrega para ${format(deliveryDate, 'dd/MM/yyyy', { locale: ptBR })} - Cotação: ${quote.title}`,
-          type: 'delivery_scheduled',
-          priority: 'normal',
-          metadata: {
-            quote_id: quote.id,
-            delivery_date: deliveryDate.toISOString(),
-            response_id: responseId
+      // 2. Criar notificação para o cliente usando Edge Function
+      try {
+        await supabase.functions.invoke('create-notification', {
+          body: {
+            client_id: quote.clientId,
+            notify_all_client_users: true,
+            title: '📦 Entrega Confirmada',
+            message: `O fornecedor confirmou a entrega para ${format(deliveryDate, 'dd/MM/yyyy', { locale: ptBR })} - Cotação: ${quote.title}`,
+            type: 'delivery_scheduled',
+            priority: 'normal',
+            metadata: {
+              quote_id: quote.id,
+              delivery_date: deliveryDate.toISOString(),
+              response_id: responseId
+            }
           }
         });
-
-      if (notificationError) {
+      } catch (notificationError) {
         console.error('Error creating notification:', notificationError);
       }
 
-      // 4. Log de auditoria
-      await supabase.from('audit_logs').insert({
-        user_id: quote.supplierId,
-        action: 'PROPOSAL_ACCEPTED',
-        entity_type: 'quote_response',
-        entity_id: responseId,
-        panel_type: 'supplier',
-        details: {
-          quote_id: quote.id,
-          delivery_date: deliveryDate.toISOString(),
-          observations: observations,
-          additional_costs: additionalCosts
-        }
-      });
+      // 3. Log de auditoria
+      try {
+        await supabase.from('audit_logs').insert({
+          user_id: quote.supplierId,
+          action: 'PROPOSAL_ACCEPTED',
+          entity_type: 'quote_response',
+          entity_id: responseId,
+          panel_type: 'supplier',
+          details: {
+            quote_id: quote.id,
+            delivery_date: deliveryDate.toISOString(),
+            observations: observations,
+            additional_costs: additionalCosts
+          }
+        });
+      } catch (auditError) {
+        console.error('Error creating audit log:', auditError);
+      }
 
       toast({
         title: '✅ Proposta Aceita!',
