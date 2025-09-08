@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -31,15 +31,17 @@ export const useSupabaseQuotes = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   
-  // Estabilizar dependências para evitar re-renders desnecessários
-  const userId = user?.id;
-  const userRole = user?.role;
-  const clientId = user?.clientId;
+  // Memoizar valores estáveis para evitar re-renders desnecessários
+  const stableUser = useMemo(() => ({
+    id: user?.id,
+    role: user?.role,
+    clientId: user?.clientId,
+    supplierId: user?.supplierId
+  }), [user?.id, user?.role, user?.clientId, user?.supplierId]);
 
-  console.log('🔍 [DEBUG-QUOTES] useSupabaseQuotes hook initialized');
-  console.log('🔍 [DEBUG-QUOTES] user from useAuth:', userId, userRole, clientId);
+  // Debug removido para evitar spam de logs
 
-  const fetchQuotes = async () => {
+  const fetchQuotes = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -151,7 +153,7 @@ export const useSupabaseQuotes = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]); // Dependência estabilizada
 
   const createQuote = async (quoteData: any) => {
     try {
@@ -391,16 +393,16 @@ export const useSupabaseQuotes = () => {
     let responsesSubscription: any = null;
 
     const setupRealtime = () => {
-      if (!userId) {
+      if (!stableUser.id) {
         console.log('🔍 [DEBUG-QUOTES] ⚠️ Sem usuário para subscription');
         return;
       }
 
-      console.log('🔍 [DEBUG-QUOTES] 🔥 Setting up realtime subscription for quotes', { userId, userRole });
+      console.log('🔍 [DEBUG-QUOTES] 🔥 Setting up realtime subscription for quotes', { userId: stableUser.id, userRole: stableUser.role });
 
       // Set up real-time subscription for quotes com ID único por user
       quotesSubscription = supabase
-        .channel(`quotes_realtime_${userId}`)
+        .channel(`quotes_realtime_${stableUser.id}`)
         .on(
           'postgres_changes',
           {
@@ -429,10 +431,10 @@ export const useSupabaseQuotes = () => {
               console.log('🔍 [DEBUG-QUOTES] 📝 Adding new quote in real-time:', newQuote.id);
               
               // Check if this quote should be visible to current user
-              const shouldShow = userRole === 'admin' || 
-                (userRole !== 'supplier' && newQuote.client_id === clientId) ||
-                (userRole === 'supplier' && (
-                  newQuote.supplier_id === userId ||
+              const shouldShow = stableUser.role === 'admin' || 
+                (stableUser.role !== 'supplier' && newQuote.client_id === stableUser.clientId) ||
+                (stableUser.role === 'supplier' && (
+                  newQuote.supplier_id === stableUser.id ||
                   newQuote.supplier_scope === 'all' ||
                   newQuote.supplier_scope === 'global'
                 ));
@@ -453,7 +455,7 @@ export const useSupabaseQuotes = () => {
 
       // Set up real-time subscription for quote responses
       responsesSubscription = supabase
-        .channel(`quote_responses_realtime_${userId}`)
+        .channel(`quote_responses_realtime_${stableUser.id}`)
         .on(
           'postgres_changes',
           {
@@ -499,19 +501,19 @@ export const useSupabaseQuotes = () => {
     setupRealtime();
 
     return () => {
-      console.log('🔍 [DEBUG-QUOTES] 🔄 Cleaning up real-time subscriptions');
+      // Cleanup real-time subscriptions
       if (quotesSubscription) quotesSubscription.unsubscribe();
       if (responsesSubscription) responsesSubscription.unsubscribe();
     };
-  }, [userId]); // CRÍTICO: usar apenas userId estável
+  }, [stableUser.id]); // CRÍTICO: usar apenas userId estável
 
   // Initial fetch - usando dependência estável
   useEffect(() => {
-    console.log('🔄 useSupabaseQuotes - Initial fetch effect triggered');
-    if (userId) {
+    // Initial fetch - usando dependência estável
+    if (stableUser.id) {
       fetchQuotes();
     }
-  }, [userId]); // Dependência estável
+  }, [stableUser.id, fetchQuotes]); // Dependências estabilizadas
 
   return {
     quotes,
