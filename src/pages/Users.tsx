@@ -45,7 +45,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 
 
 export default function Users() {
-  const { users, groups, loading, searchTerm, setSearchTerm } = useSupabaseUsers();
+  const { users, groups, loading, searchTerm, setSearchTerm, updateCurrentUserLastAccess, fetchUsers } = useSupabaseUsers();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [groupManagerOpen, setGroupManagerOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -159,6 +159,15 @@ export default function Users() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={async () => {
+              await updateCurrentUserLastAccess();
+              await fetchUsers();
+            }}
+          >
+            Atualizar Last Access
+          </Button>
           <Button onClick={() => setCreateModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Usuário
