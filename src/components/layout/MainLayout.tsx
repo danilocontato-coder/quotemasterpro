@@ -6,34 +6,13 @@ import { Input } from "@/components/ui/input";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 import { SystemStatusHeader } from "./SystemStatusHeader";
-
 import { useStableRealtime } from "@/hooks/useStableRealtime";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useRef } from "react";
 
 export function MainLayout() {
   const { user } = useAuth();
-  const mountTimeRef = useRef(Date.now());
-  const renderCountRef = useRef(0);
   
-  renderCountRef.current++;
-  
-  console.log('🔍 [DEBUG-LAYOUT] MainLayout render:', {
-    renderCount: renderCountRef.current,
-    userId: user?.id,
-    userRole: user?.role,
-    timeSinceMount: Date.now() - mountTimeRef.current,
-    timestamp: new Date().toISOString()
-  });
-  
-  useEffect(() => {
-    console.log('🔍 [DEBUG-LAYOUT] MainLayout mounted at:', new Date().toISOString());
-    return () => {
-      console.log('🔍 [DEBUG-LAYOUT] MainLayout unmounting after:', Date.now() - mountTimeRef.current, 'ms');
-    };
-  }, []);
-  
-  // Hook de realtime unificado e estável
+  // Hook de realtime otimizado
   useStableRealtime();
 
   return (

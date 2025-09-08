@@ -66,11 +66,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
   useEffect(() => {
-    console.log('🔍 [DEBUG-AUTH] AuthProvider useEffect triggered for session initialization');
+    let isMounted = true;
+    
     // Get initial session
     const initializeAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         if (error) {
           console.error('❌ Error getting initial session:', error);
@@ -78,73 +81,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         
-        console.log('🔍 Initial session check:', { hasSession: !!session, userId: session?.user?.id });
-        
         setSession(session);
         if (session?.user) {
-          fetchUserProfile(session.user);
+          await fetchUserProfile(session.user);
         } else {
           setIsLoading(false);
         }
       } catch (error) {
         console.error('❌ Error initializing auth:', error);
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     initializeAuth();
 
-    // Listen for auth changes - com filtros para evitar reloads desnecessários
+    // Listen for auth changes - optimized to prevent loops
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('🔍 [DEBUG-AUTH] Auth state changed:', {
-          event,
-          hasSession: !!session,
-          userId: session?.user?.id,
-          currentUserId: user?.id,
-          timestamp: new Date().toISOString(),
-          pageHidden: document.hidden
-        });
+      async (event, session) => {
+        if (!isMounted) return;
         
-        // Ignorar eventos que não requerem ação (evitar loops)
+        // Throttled logging
+        if (process.env.NODE_ENV === 'development') {
+          const now = Date.now();
+          const lastLog = (window as any).__lastAuthLog || 0;
+          if (now - lastLog > 2000) {
+            console.log('🔍 [DEBUG-AUTH] Auth state changed:', { event, hasSession: !!session });
+            (window as any).__lastAuthLog = now;
+          }
+        }
+        
+        // Ignore token refreshes if user is the same
         if (event === 'TOKEN_REFRESHED' && session?.user?.id === user?.id) {
-          console.log('🔍 [DEBUG-AUTH] Token refresh - mantendo estado atual');
+          setSession(session);
           return;
         }
         
-        // Verificar se página está visível antes de processar mudanças
+        // Skip processing if page is hidden
         if (document.hidden && event === 'SIGNED_IN') {
-          console.log('🔍 [DEBUG-AUTH] Sign in detectado com página oculta - adiando processamento');
           return;
         }
         
-        console.log('🔍 [DEBUG-AUTH] Processando mudança de auth state...');
         setSession(session);
         
         if (session?.user) {
-          // Use setTimeout para evitar bloquear mudança de estado de auth
-          setTimeout(() => {
-            console.log('🔍 [DEBUG-AUTH] Chamando fetchUserProfile...');
-            fetchUserProfile(session.user);
-          }, 0);
+          await fetchUserProfile(session.user);
         } else {
-          console.log('🔍 [DEBUG-AUTH] Sem sessão - limpando user state');
           setUser(null);
-          setForcePasswordChange(false);
           setIsLoading(false);
+          setForcePasswordChange(false);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []); // Run only once
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
-    console.log('🔍 [DEBUG-AUTH] fetchUserProfile called for user:', supabaseUser.id);
     setIsLoading(true);
     
     try {
-      // Fetch both profile and user record to check force_password_change
+      // Fetch both profile and user record
       const [profileResult, userResult] = await Promise.all([
         supabase
           .from('profiles')

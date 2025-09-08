@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,166 +16,144 @@ interface ClientInfo {
   updated_at: string;
 }
 
-// Cache global para evitar chamadas repetitivas
-let clientCache: { data: ClientInfo | null; time: number; userId: string | null } = { 
-  data: null, 
-  time: 0, 
-  userId: null 
-};
+// Cache global com TTL otimizado
+const CLIENT_CACHE = new Map<string, { data: ClientInfo; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 export function useSupabaseCurrentClient() {
   const { user } = useAuth();
   const [client, setClient] = useState<ClientInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchingRef = useRef(false);
+  const lastUserIdRef = useRef<string | null>(null);
 
-  const fetchClientInfo = useCallback(async () => {
-    if (!user) {
-      setClient(null);
-      setIsLoading(false);
-      return;
-    }
-
-    // Verificar cache (válido por 3 minutos para o mesmo usuário)
-    const cacheAge = Date.now() - clientCache.time;
-    if (clientCache.data && clientCache.userId === user.id && cacheAge < 3 * 60 * 1000) {
-      setClient(clientCache.data);
-      setIsLoading(false);
-      return;
-    }
-
-    // Admin não tem client_id específico
-    if (user.role === 'admin') {
-      setClient(null);
-      setIsLoading(false);
-      return;
-    }
-
-    if (!user.clientId) {
-      // Fallback para dados do usuário se não há clientId
-      const fallbackClient = {
-        id: user.id,
-        name: user.companyName || user.name,
-        email: user.email,
-        cnpj: '',
-        company_name: user.companyName,
-        subscription_plan_id: 'basic',
-        status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+  // Função otimizada para buscar cliente
+  const fetchClientInfo = useMemo(() => {
+    return async (userId: string, clientId?: string | null, userRole?: string) => {
+      // Prevenir múltiplas chamadas simultâneas
+      if (fetchingRef.current) return;
       
-      // Atualizar cache
-      clientCache = { data: fallbackClient, time: Date.now(), userId: user.id };
-      setClient(fallbackClient);
-      setIsLoading(false);
-      return;
-    }
+      const cacheKey = `${userId}-${clientId}`;
+      const cached = CLIENT_CACHE.get(cacheKey);
+      
+      // Verificar cache válido
+      if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+        setClient(cached.data);
+        setIsLoading(false);
+        return;
+      }
 
-    try {
+      // Admin não precisa de cliente específico
+      if (userRole === 'admin') {
+        setClient(null);
+        setIsLoading(false);
+        return;
+      }
+
+      fetchingRef.current = true;
       setIsLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', user.clientId)
-        .maybeSingle();
+      try {
+        if (!clientId) {
+          // Criar cliente fallback baseado no usuário
+          const fallbackClient: ClientInfo = {
+            id: userId,
+            name: user?.companyName || user?.name || 'Cliente',
+            email: user?.email || '',
+            cnpj: '',
+            company_name: user?.companyName,
+            subscription_plan_id: 'plan-basic',
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          
+          CLIENT_CACHE.set(cacheKey, { data: fallbackClient, timestamp: Date.now() });
+          setClient(fallbackClient);
+        } else {
+          const { data, error } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', clientId)
+            .maybeSingle();
 
-      if (error) throw error;
+          if (error) throw error;
 
-      if (data) {
-        // Atualizar cache
-        clientCache = { data, time: Date.now(), userId: user.id };
-        setClient(data);
-      } else {
-        // Fallback se cliente não encontrado
-        const fallbackClient = {
-          id: user.id,
-          name: user.companyName || user.name,
-          email: user.email,
+          const clientData = data || {
+            id: userId,
+            name: user?.companyName || user?.name || 'Cliente',
+            email: user?.email || '',
+            cnpj: '',
+            company_name: user?.companyName,
+            subscription_plan_id: 'plan-basic',
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+          CLIENT_CACHE.set(cacheKey, { data: clientData, timestamp: Date.now() });
+          setClient(clientData);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar cliente:', err);
+        setError(err instanceof Error ? err.message : 'Erro ao buscar cliente');
+        
+        // Fallback em caso de erro
+        const errorClient: ClientInfo = {
+          id: userId,
+          name: user?.companyName || user?.name || 'Cliente',
+          email: user?.email || '',
           cnpj: '',
-          company_name: user.companyName,
-          subscription_plan_id: 'basic',
+          company_name: user?.companyName,
+          subscription_plan_id: 'plan-basic',
           status: 'active',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
         
-        clientCache = { data: fallbackClient, time: Date.now(), userId: user.id };
-        setClient(fallbackClient);
+        CLIENT_CACHE.set(cacheKey, { data: errorClient, timestamp: Date.now() });
+        setClient(errorClient);
+      } finally {
+        setIsLoading(false);
+        fetchingRef.current = false;
       }
-    } catch (err) {
-      console.error('Erro ao buscar informações do cliente:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao buscar informações do cliente');
-      
-      // Fallback em caso de erro
-      const errorFallbackClient = {
-        id: user.id,
-        name: user.companyName || user.name,
-        email: user.email,
-        cnpj: '',
-        company_name: user.companyName,
-        subscription_plan_id: 'basic',
-        status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      clientCache = { data: errorFallbackClient, time: Date.now(), userId: user.id };
-      setClient(errorFallbackClient);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id, user?.clientId, user?.role, user?.companyName, user?.name, user?.email]);
+    };
+  }, [user]);
 
+  // Effect otimizado que só executa quando necessário
   useEffect(() => {
-    // Só buscar se o usuário mudou ou se não há dados no cache
-    const shouldFetch = !client || clientCache.userId !== user?.id;
-    if (user && shouldFetch) {
-      fetchClientInfo();
-    } else if (!user) {
+    if (!user?.id) {
       setClient(null);
       setIsLoading(false);
+      lastUserIdRef.current = null;
+      return;
     }
-  }, [user?.id, fetchClientInfo, client]);
 
-  const updateClient = async (updates: Partial<ClientInfo>) => {
-    if (!client || !user?.clientId) return;
-
-    try {
-      setIsLoading(true);
-      
-      const { error } = await supabase
-        .from('clients')
-        .update(updates)
-        .eq('id', user.clientId);
-
-      if (error) throw error;
-
-      const updatedClient = { ...client, ...updates };
-      
-      // Atualizar cache e estado
-      clientCache = { data: updatedClient, time: Date.now(), userId: user.id };
-      setClient(updatedClient);
-    } catch (err) {
-      console.error('Error updating client:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao atualizar cliente');
-      throw err;
-    } finally {
-      setIsLoading(false);
+    // Só buscar se o usuário mudou
+    if (lastUserIdRef.current !== user.id) {
+      lastUserIdRef.current = user.id;
+      fetchClientInfo(user.id, user.clientId, user.role);
     }
-  };
+  }, [user?.id, user?.clientId, user?.role, fetchClientInfo]);
 
   return {
-    client,
+    client: client || null,
+    data: client || null, // Compatibilidade com o hook original
     isLoading,
     error,
-    updateClient,
-    refetch: fetchClientInfo,
-    // Dados derivados para facilitar o uso
+    refetch: () => {
+      if (user?.id) {
+        // Limpar cache para forçar nova busca
+        const cacheKey = `${user.id}-${user.clientId}`;
+        CLIENT_CACHE.delete(cacheKey);
+        fetchClientInfo(user.id, user.clientId, user.role);
+      }
+    },
+    // Dados derivados
     clientName: client?.name || client?.company_name || user?.companyName || user?.name || '',
-    subscriptionPlan: client?.subscription_plan_id || 'basic',
+    subscriptionPlan: client?.subscription_plan_id || 'plan-basic',
     clientStatus: client?.status || 'active',
     clientEmail: client?.email || user?.email || '',
   };
