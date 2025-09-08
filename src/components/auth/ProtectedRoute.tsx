@@ -39,13 +39,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  // Check if user needs onboarding (tenant binding)
-  if (needsOnboarding) {
-    // Auto-show onboarding if not shown yet
-    if (!showOnboarding) {
+  // Auto-show onboarding modal when needed
+  React.useEffect(() => {
+    if (needsOnboarding && !showOnboarding) {
       setShowOnboarding(true);
     }
+  }, [needsOnboarding, showOnboarding]);
 
+  // Check if user needs onboarding (tenant binding)
+  if (needsOnboarding) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
         <TenantOnboarding 

@@ -148,33 +148,43 @@ export function useSupabaseSubscriptionGuard() {
     }
   }, [currentClient?.id]);
 
+  // Remove excessive effect triggers
   useEffect(() => {
-    if (currentClient && !clientLoading && !clientUsage) {
-      fetchClientUsage();
+    // Throttle loading to prevent excessive calls
+    let timeoutId: NodeJS.Timeout;
+    
+    if (currentClient && !clientLoading && !clientUsage && !isLoading) {
+      timeoutId = setTimeout(() => {
+        fetchClientUsage();
+      }, 200); // Small delay to batch requests
     }
-  }, [currentClient, clientLoading, clientUsage, fetchClientUsage]);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [currentClient?.id, clientLoading]); // Remove clientUsage dependency to prevent loops
 
   // getPlanById usando useMemo para evitar recálculo
   const getPlanById = useCallback((planId: string) => {
     return subscriptionPlans.find(p => p.id === planId);
   }, [subscriptionPlans]);
 
-  const checkLimit = useCallback((action: string, additionalCount: number = 1): LimitCheckResult => {
+  const checkLimit = useCallback((action: string, additionalCount: number = 0): LimitCheckResult => {
     if (!user || !currentClient || !clientUsage) {
-      return { allowed: false, reason: 'Dados não carregados', currentUsage: 0, limit: 0 };
+      return { allowed: true, currentUsage: 0, limit: -1 }; // Default to allowed when loading
     }
 
-    const planId = currentClient.subscription_plan_id || 'basic';
+    const planId = currentClient.subscription_plan_id || 'plan-basic';
     const userPlan = getPlanById(planId);
     
     if (!userPlan) {
-      return { allowed: false, reason: 'Plano não encontrado', currentUsage: 0, limit: 0 };
+      return { allowed: true, currentUsage: 0, limit: -1 }; // Default to allowed if plan not found
     }
 
     switch (action) {
       case 'CREATE_QUOTE':
-        const maxQuotes = userPlan?.max_quotes_per_month || 0;
-        const currentQuotes = clientUsage.quotes_this_month;
+        const maxQuotes = userPlan?.max_quotes_per_month || 50;
+        const currentQuotes = clientUsage.quotes_this_month + additionalCount;
         
         return {
           allowed: currentQuotes < maxQuotes,
@@ -186,8 +196,8 @@ export function useSupabaseSubscriptionGuard() {
 
       case 'ADD_USER':
       case 'CREATE_USER':
-        const maxUsers = userPlan?.max_users_per_client || 0;
-        const currentUsers = clientUsage.users_count;
+        const maxUsers = userPlan?.max_users_per_client || 10;
+        const currentUsers = clientUsage.users_count + additionalCount;
         
         return {
           allowed: currentUsers < maxUsers,
@@ -230,10 +240,10 @@ export function useSupabaseSubscriptionGuard() {
     }
   }, []);
 
-  const enforceLimit = useCallback((action: string, additionalCount: number = 1): boolean => {
+  const enforceLimit = useCallback((action: string, additionalCount: number = 0): boolean => {
     const result = checkLimit(action, additionalCount);
     
-    if (!result.allowed) {
+    if (!result.allowed && result.upgradeRequired) {
       showUpgradeToast(result);
       return false;
     }

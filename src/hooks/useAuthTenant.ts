@@ -33,11 +33,17 @@ export const useAuthTenant = () => {
         onboardingCompleted: false,
         isLoading: false
       });
+      setAvailableClients([]);
       return;
     }
 
-    checkTenantStatus();
-  }, [user?.id, session]);
+    // Throttle para evitar múltiplas chamadas
+    const timeoutId = setTimeout(() => {
+      checkTenantStatus();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [user?.id, session?.access_token]);
 
   const checkTenantStatus = async () => {
     if (!user?.id) return;
