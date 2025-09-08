@@ -18,26 +18,19 @@ export interface User {
 }
 
 export const getRoleBasedRoute = (role: UserRole): string => {
-  console.log('getRoleBasedRoute called with role:', role);
   switch (role) {
     case 'admin':
-      console.log('Redirecting admin to /admin/superadmin');
-      return '/admin/superadmin';
+      return '/app/admin';
     case 'manager':
-      console.log('Redirecting manager to /dashboard');
-      return '/dashboard';
     case 'client':
-      console.log('Redirecting client to /dashboard');
-      return '/dashboard';
+    case 'collaborator':
+      return '/app/dashboard';
     case 'supplier':
-      console.log('Redirecting supplier to /supplier');
-      return '/supplier';
+      return '/app/supplier';
     case 'support':
-      console.log('Redirecting support to /support');
-      return '/support';
+      return '/app/dashboard';
     default:
-      console.log('Unknown role', role, 'redirecting to /dashboard');
-      return '/dashboard';
+      return '/app/dashboard';
   }
 };
 
@@ -68,7 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let isMounted = true;
     
-    // Get initial session
     const initializeAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -76,7 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         
         if (error) {
-          console.error('Error getting initial session:', error);
           setIsLoading(false);
           return;
         }
@@ -88,14 +79,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
         if (isMounted) setIsLoading(false);
       }
     };
 
     initializeAuth();
 
-    // Listen for auth changes - simplified
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return;
@@ -116,13 +105,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []); // Run only once
+  }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
     setIsLoading(true);
     
     try {
-      // Fetch both profile and user record
       const [profileResult, userResult] = await Promise.all([
         supabase
           .from('profiles')
@@ -139,7 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: profile, error: profileError } = profileResult;
       const { data: userRecord } = userResult;
 
-      // Check if password change is required
       if (userRecord?.force_password_change === true) {
         setForcePasswordChange(true);
       } else {
@@ -147,8 +134,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        // Create a basic user even if profile fetch fails
         const fallbackUser = {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
@@ -174,7 +159,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(userProfile);
       } else {
-        // Profile doesn't exist, create a basic user
         const basicUser = {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
@@ -185,8 +169,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(basicUser);
       }
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-      // Fallback user creation
       const errorFallbackUser = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
@@ -249,7 +231,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser({ ...user, ...updates });
     } catch (error) {
-      console.error('Error updating profile:', error);
       throw error;
     } finally {
       setIsLoading(false);
