@@ -1,5 +1,5 @@
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,81 +8,55 @@ import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
-import { OptimizedSkeleton } from '@/components/ui/optimized-components';
-
-import { DebugWrapper } from '@/components/debug/DebugWrapper';
-import { SuspenseWithTransition } from '@/components/layout/SuspenseWithTransition';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
-import { useGlobalNavigation } from '@/hooks/useGlobalNavigation';
 
-// Layouts principais - import estático para evitar erro de dynamic import
+// Layouts principais
 import MainLayout from '@/components/layout/MainLayout';
 import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
 import SupplierLayout from '@/components/layout/SupplierLayout';
 
-// Dashboard import estático para resolver erro de dynamic import
+// Dashboard import estático
 import Dashboard from '@/pages/Dashboard';
 
-// Client/Tenant pages com lazy loading otimizado
-const Quotes = lazy(() => import('@/pages/Quotes'));
-const Suppliers = lazy(() => import('@/pages/Suppliers'));
-const Products = lazy(() => import('@/pages/Products'));
-const Approvals = lazy(() => import('@/pages/Approvals').then(m => ({ default: m.Approvals })));
-const Payments = lazy(() => import('@/pages/Payments'));
-const Reports = lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
-const Login = lazy(() => import('@/pages/auth/Login'));
-const Register = lazy(() => import('@/pages/auth/Register'));
-const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword'));
-const SuperAdminDashboard = lazy(() => import('@/pages/admin/SuperAdminDashboard'));
-const AccountsManagement = lazy(() => import('@/pages/admin/AccountsManagement'));
-const SystemSettings = lazy(() => import('@/pages/admin/SystemSettings'));
-const CouponsManagement = lazy(() => import('@/pages/admin/CouponsManagement'));
-const PlansManagement = lazy(() => import('@/pages/admin/PlansManagement'));
-const IntegrationsManagement = lazy(() => import('@/pages/admin/IntegrationsManagement'));
-const WhatsAppTemplates = lazy(() => import('@/pages/admin/WhatsAppTemplates'));
-const ClientsManagement = lazy(() => import('@/pages/admin/ClientsManagement'));
-const SuppliersManagement = lazy(() => import('@/pages/admin/SuppliersManagement'));
-const AdminDashboard = lazy(() => import('@/pages/dashboards/AdminDashboard'));
-const SupportDashboard = lazy(() => import('@/pages/dashboards/SupportDashboard'));
-const AuditLogs = lazy(() => import('@/pages/admin/AuditLogs'));
-const PlansPage = lazy(() => import('@/pages/client/PlansPage'));
-const NotificationsTesting = lazy(() => import('@/pages/NotificationsTesting'));
-const AIConfigurationManagement = lazy(() => import('@/pages/admin/AIConfigurationManagement'));
-const CommunicationManagement = lazy(() => import('@/pages/admin/CommunicationManagement'));
-const ApiConfiguration = lazy(() => import('@/pages/admin/ApiConfiguration'));
-const ApprovalLevels = lazy(() => import('@/pages/ApprovalLevels').then(m => ({ default: m.ApprovalLevels })));
-const AINegotiations = lazy(() => import('@/pages/AINegotiations'));
-const Users = lazy(() => import('@/pages/Users'));
-const Notifications = lazy(() => import('@/pages/Notifications'));
-const Profiles = lazy(() => import('@/pages/Profiles').then(m => ({ default: m.Profiles })));
-const Permissions = lazy(() => import('@/pages/Permissions'));
-const Communication = lazy(() => import('@/pages/Communication'));
-const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
-const AdminSuppliers = lazy(() => import('@/pages/AdminSuppliers'));
-const NotFound = lazy(() => import('@/pages/NotFound'));
+// Lazy loading de páginas
+const LoginPage = React.lazy(() => import('@/pages/auth/Login'));
+const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
+const ForgotPasswordPage = React.lazy(() => import('@/pages/auth/ForgotPassword'));
+const Quotes = React.lazy(() => import('@/pages/Quotes'));
+const Suppliers = React.lazy(() => import('@/pages/Suppliers'));
+const Products = React.lazy(() => import('@/pages/Products'));
+const Approvals = React.lazy(() => import('@/pages/Approvals').then(m => ({ default: m.Approvals })));
+const Payments = React.lazy(() => import('@/pages/Payments'));
+const Reports = React.lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
+const Users = React.lazy(() => import('@/pages/Users'));
+const Notifications = React.lazy(() => import('@/pages/Notifications'));
+const Settings = React.lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
 
-// Supplier pages com lazy loading
-const SupplierDashboard = lazy(() => import('@/pages/supplier/SupplierDashboard'));
-const SupplierQuotes = lazy(() => import('@/pages/supplier/SupplierQuotes'));
-const SupplierProducts = lazy(() => import('@/pages/supplier/SupplierProducts'));
-const SupplierFinancial = lazy(() => import('@/pages/supplier/SupplierFinancial'));
-const SupplierHistory = lazy(() => import('@/pages/supplier/SupplierHistory'));
-const SupplierDeliveries = lazy(() => import('@/pages/supplier/SupplierDeliveries'));
-const SupplierAuth = lazy(() => import('@/pages/supplier/SupplierAuth'));
-const SupplierQuoteResponse = lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
-const SupplierResponseSuccess = lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
-const ShortLinkRedirect = lazy(() => import('@/pages/ShortLinkRedirect'));
+// Admin pages
+const SuperAdminDashboard = React.lazy(() => import('@/pages/admin/SuperAdminDashboard'));
+const ClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManagement'));
+const SuppliersManagement = React.lazy(() => import('@/pages/admin/SuppliersManagement'));
 
-// Query client otimizado para carregamento inicial rápido
+// Supplier pages
+const SupplierDashboard = React.lazy(() => import('@/pages/supplier/SupplierDashboard'));
+const SupplierQuotes = React.lazy(() => import('@/pages/supplier/SupplierQuotes'));
+const SupplierProducts = React.lazy(() => import('@/pages/supplier/SupplierProducts'));
+const SupplierAuth = React.lazy(() => import('@/pages/supplier/SupplierAuth'));
+const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
+const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
+const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
+const NotFound = React.lazy(() => import('@/pages/NotFound'));
+
+// Query client otimizado
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10 * 60 * 1000, // 10 minutos
-      gcTime: 20 * 60 * 1000, // 20 minutos no cache
+      staleTime: 10 * 60 * 1000,
+      gcTime: 20 * 60 * 1000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
-      retry: 0, // Sem retry na primeira carga
-      networkMode: 'online', // Só executar quando online
+      retry: 0,
+      networkMode: 'online',
     },
     mutations: {
       retry: 1,
@@ -91,37 +65,44 @@ const queryClient = new QueryClient({
   },
 });
 
+// Fallback loading component
+const LoadingFallback = ({ className = "" }: { className?: string }) => (
+  <div className={`min-h-screen flex items-center justify-center ${className}`}>
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+      <p>Carregando...</p>
+    </div>
+  </div>
+);
+
 function App() {
   console.log('🚀 [APP] Application starting...');
-
-  console.log('🎯 [APP] Rendering application structure');
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-            <DebugWrapper>
-              <Router>
-                <GlobalNavigationProvider />
+            <Router>
+              <GlobalNavigationProvider />
               <Routes>
                 {/* Rotas públicas de autenticação */}
                 <Route path="/auth/login" element={
-                  <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
-                    <Login />
-                  </SuspenseWithTransition>
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LoginPage />
+                  </Suspense>
                 } />
                 
                 <Route path="/auth/register" element={
-                  <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
-                    <Register />
-                  </SuspenseWithTransition>
+                  <Suspense fallback={<LoadingFallback />}>
+                    <RegisterPage />
+                  </Suspense>
                 } />
                 
                 <Route path="/auth/forgot-password" element={
-                  <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
-                    <ForgotPassword />
-                  </SuspenseWithTransition>
+                  <Suspense fallback={<LoadingFallback />}>
+                    <ForgotPasswordPage />
+                  </Suspense>
                 } />
 
                 {/* Redirect root */}
@@ -129,227 +110,112 @@ function App() {
 
                 {/* Short link redirect */}
                 <Route path="/s/:shortCode" element={
-                  <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
+                  <Suspense fallback={<LoadingFallback />}>
                     <ShortLinkRedirect />
-                  </SuspenseWithTransition>
+                  </Suspense>
                 } />
 
                 {/* Rotas do SuperAdmin */}
                 <Route path="/admin/*" element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['admin']}>
                     <SuperAdminLayout />
                   </ProtectedRoute>
                 }>
                   <Route index element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <SuperAdminDashboard />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="accounts" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <AccountsManagement />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="system" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <SystemSettings />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="coupons" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <CouponsManagement />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="plans" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <PlansManagement />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="integrations" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <IntegrationsManagement />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="whatsapp" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <WhatsAppTemplates />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="clients" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <ClientsManagement />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="suppliers" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <SuppliersManagement />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="admin-dashboard" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <AdminDashboard />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="support" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <SupportDashboard />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="audit" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <AuditLogs />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="ai-config" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <AIConfigurationManagement />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="communication" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <CommunicationManagement />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="api" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <ApiConfiguration />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                 </Route>
 
                 {/* Rotas do Cliente/Manager */}
-                <Route path="/*" element={
-                  <ProtectedRoute>
+                <Route path="/app/*" element={
+                  <ProtectedRoute allowedRoles={['manager', 'collaborator']}>
                     <MainLayout />
                   </ProtectedRoute>
                 }>
                   <Route path="dashboard" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Dashboard />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="quotes" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Quotes />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="suppliers" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Suppliers />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="products" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Products />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="approvals" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Approvals />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="approval-levels" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <ApprovalLevels />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="ai-negotiations" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <AINegotiations />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="payments" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Payments />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="reports" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Reports />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="users" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Users />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="notifications" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Notifications />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="notification-testing" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <NotificationsTesting />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="profiles" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <Profiles />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="permissions" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <Permissions />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="communication" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <Communication />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="settings" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <Settings />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="plans" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <PlansPage />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="admin-suppliers" element={
-                    <SuspenseWithTransition lines={5} className="p-6">
-                      <AdminSuppliers />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                 </Route>
 
                 {/* Rotas do Fornecedor */}
                 <Route path="/supplier/*" element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['supplier']}>
                     <SupplierLayout />
                   </ProtectedRoute>
                 }>
                   <Route path="dashboard" element={
-                    <SuspenseWithTransition lines={5} className="p-4">
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
                       <SupplierDashboard />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="quotes" element={
-                    <SuspenseWithTransition lines={5} className="p-4">
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
                       <SupplierQuotes />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                   <Route path="products" element={
-                    <SuspenseWithTransition lines={5} className="p-4">
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
                       <SupplierProducts />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="history" element={
-                    <SuspenseWithTransition lines={5} className="p-4">
-                      <SupplierHistory />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="financial" element={
-                    <SuspenseWithTransition lines={5} className="p-4">
-                      <SupplierFinancial />
-                    </SuspenseWithTransition>
-                  } />
-                  <Route path="deliveries" element={
-                    <SuspenseWithTransition lines={5} className="p-4">
-                      <SupplierDeliveries />
-                    </SuspenseWithTransition>
+                    </Suspense>
                   } />
                 </Route>
 
@@ -358,13 +224,18 @@ function App() {
                 <Route path="/supplier/quote/:quoteId/response/:token" element={<SupplierQuoteResponse />} />
                 <Route path="/supplier/response-success" element={<SupplierResponseSuccess />} />
 
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
+                {/* Catch all - 404 */}
+                <Route path="*" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <NotFound />
+                  </Suspense>
+                } />
               </Routes>
-              <Toaster />
-              <Sonner />
-              </Router>
-            </DebugWrapper>
+            </Router>
+            
+            {/* Toast notifications */}
+            <Toaster />
+            <Sonner />
           </AuthProvider>
         </ThemeProvider>
       </TooltipProvider>
