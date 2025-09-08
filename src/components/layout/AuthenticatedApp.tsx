@@ -40,11 +40,11 @@ const AuthenticatedApp: React.FC = () => {
   const getDefaultRoute = () => {
     switch (user.role) {
       case 'admin':
-        return '/app/admin';
+        return 'admin';
       case 'supplier': 
-        return '/app/supplier';
+        return 'supplier';
       default:
-        return '/app/dashboard';
+        return 'dashboard';
     }
   };
 
@@ -55,7 +55,7 @@ const AuthenticatedApp: React.FC = () => {
 
       {/* Rotas do Admin */}
       {user.role === 'admin' && (
-        <Route path="/admin/*" element={<SuperAdminLayout />}>
+        <Route path="admin/*" element={<SuperAdminLayout />}>
           <Route index element={
             <Suspense fallback={<div>Carregando...</div>}>
               <SuperAdminDashboard />
@@ -66,7 +66,7 @@ const AuthenticatedApp: React.FC = () => {
 
       {/* Rotas do Supplier */}
       {user.role === 'supplier' && (
-        <Route path="/supplier/*" element={<SupplierLayout />}>
+        <Route path="supplier/*" element={<SupplierLayout />}>
           <Route index element={
             <Suspense fallback={<div>Carregando...</div>}>
               <SupplierDashboard />
@@ -78,7 +78,7 @@ const AuthenticatedApp: React.FC = () => {
       {/* Rotas do Cliente/Manager/Collaborator */}
       {['client', 'manager', 'collaborator'].includes(user.role) && (
         <>
-          <Route path="/dashboard" element={<MainLayout />}>
+          <Route path="dashboard" element={<MainLayout />}>
             <Route index element={
               <Suspense fallback={<div>Carregando...</div>}>
                 <Dashboard />
@@ -86,7 +86,7 @@ const AuthenticatedApp: React.FC = () => {
             } />
           </Route>
 
-          <Route path="/quotes" element={<MainLayout />}>
+          <Route path="quotes" element={<MainLayout />}>
             <Route index element={
               <Suspense fallback={<div>Carregando...</div>}>
                 <Quotes />
@@ -94,7 +94,7 @@ const AuthenticatedApp: React.FC = () => {
             } />
           </Route>
 
-          <Route path="/suppliers" element={<MainLayout />}>
+          <Route path="suppliers" element={<MainLayout />}>
             <Route index element={
               <Suspense fallback={<div>Carregando...</div>}>
                 <Suppliers />
@@ -102,7 +102,7 @@ const AuthenticatedApp: React.FC = () => {
             } />
           </Route>
 
-          <Route path="/products" element={<MainLayout />}>
+          <Route path="products" element={<MainLayout />}>
             <Route index element={
               <Suspense fallback={<div>Carregando...</div>}>
                 <Products />
