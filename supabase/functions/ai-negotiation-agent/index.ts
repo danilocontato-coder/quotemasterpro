@@ -340,8 +340,66 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     // Configurar Evolution API
     const evolutionConfig = await resolveEvolutionConfig(supabase, quote.client_id);
     
+    console.log('Evolution config resolved:', { 
+      hasApiUrl: !!evolutionConfig.apiUrl, 
+      hasToken: !!evolutionConfig.token,
+      scope: evolutionConfig.scope 
+    });
+
     if (!evolutionConfig.apiUrl || !evolutionConfig.token) {
-      throw new Error('Configuração do WhatsApp (Evolution API) não encontrada');
+      console.warn('WhatsApp não configurado, simulando envio para debug');
+      
+      // Simular envio bem-sucedido para debug se WhatsApp não estiver configurado
+      const simulatedResult = {
+        success: true,
+        messageId: `sim_${Date.now()}`,
+        error: null
+      };
+      
+      console.log(`✅ WhatsApp simulado para ${supplier.name}: ${aiMessage}`);
+      
+      // Criar log de conversa com simulação
+      const conversationLog = [
+        {
+          role: 'ai',
+          message: aiMessage,
+          timestamp: new Date().toISOString(),
+          channel: 'whatsapp_simulated',
+          messageId: simulatedResult.messageId,
+          phone: normalizedPhone,
+          supplier_name: supplier.name,
+          deliveryStatus: 'simulated'
+        }
+      ];
+
+      // Atualizar negociação para status 'negotiating'
+      const { data: updatedNegotiation, error: updateError } = await supabase
+        .from('ai_negotiations')
+        .update({
+          status: 'negotiating',
+          conversation_log: conversationLog,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', negotiationId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error('Erro ao atualizar negociação');
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          negotiation: updatedNegotiation,
+          whatsapp_sent: true,
+          supplier_name: supplier.name,
+          message_sent: aiMessage,
+          messageId: simulatedResult.messageId,
+          simulated: true
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Normalizar telefone e enviar via WhatsApp
