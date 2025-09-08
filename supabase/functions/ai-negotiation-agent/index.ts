@@ -9,7 +9,8 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -77,17 +78,32 @@ async function analyzeQuote(quoteId: string) {
   const negotiationPotential = ((bestResponse.total_amount - averagePrice * 0.85) / bestResponse.total_amount) * 100;
   const shouldNegotiate = negotiationPotential > 5; // Se há mais de 5% de margem
 
-  // Criar análise da IA usando GPT-5
+  // Buscar configurações de IA
+  const { data: aiSettings } = await supabase
+    .from('ai_settings')
+    .select('*')
+    .limit(1)
+    .single();
+
+  const usePerplexity = aiSettings?.negotiation_provider === 'perplexity';
+  const apiKey = usePerplexity ? perplexityApiKey : openAIApiKey;
+  const model = usePerplexity ? 'llama-3.1-sonar-large-128k-online' : (aiSettings?.openai_model || 'gpt-5-2025-08-07');
+
+  if (!apiKey) {
+    throw new Error(`Chave da API ${usePerplexity ? 'Perplexity' : 'OpenAI'} não configurada`);
+  }
+
+  // Criar análise da IA
   const analysisPrompt = `
-Você é um especialista em negociações comerciais. Analise esta situação:
+Você é um especialista em negociações comerciais brasileiras. Analise esta situação:
 
 Cotação: ${quote.title || quote.description}
 Melhor proposta atual: R$ ${bestResponse.total_amount.toLocaleString('pt-BR')}
 Fornecedor: ${bestResponse.supplier_name}
-Preço médio do mercado: R$ ${averagePrice.toLocaleString('pt-BR')}
+Preço médio das propostas: R$ ${averagePrice.toLocaleString('pt-BR')}
 Margem de negociação estimada: ${negotiationPotential.toFixed(1)}%
 
-Forneça uma análise em português com:
+${usePerplexity ? 'Baseando-se em dados atuais do mercado brasileiro,' : ''} forneça uma análise em português com:
 1. Razão para negociar (máximo 150 caracteres)
 2. Estratégia de negociação (máximo 200 caracteres)
 3. Desconto objetivo realista (percentual entre 3-15%)
@@ -100,17 +116,30 @@ Responda APENAS no formato JSON:
 }`;
 
   try {
-    const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const apiUrl = usePerplexity 
+      ? 'https://api.perplexity.ai/chat/completions'
+      : 'https://api.openai.com/v1/chat/completions';
+
+    const requestBody = usePerplexity 
+      ? {
+          model,
+          messages: [{ role: 'user', content: analysisPrompt }],
+          temperature: 0.2,
+          max_tokens: 500,
+        }
+      : {
+          model,
+          messages: [{ role: 'user', content: analysisPrompt }],
+          max_completion_tokens: 500,
+        };
+
+    const analysisResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
-        messages: [{ role: 'user', content: analysisPrompt }],
-        max_completion_tokens: 500,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const analysisData = await analysisResponse.json();

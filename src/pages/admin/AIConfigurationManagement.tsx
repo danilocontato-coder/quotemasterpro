@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAIConfiguration } from '@/hooks/useAIConfiguration';
-import { Bot, Settings, MessageSquare, TrendingUp, Shield, Database } from 'lucide-react';
+import { Bot, Settings, MessageSquare, TrendingUp, Shield, Database, Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AIConfigurationManagement() {
   const { toast } = useToast();
@@ -31,7 +32,10 @@ export default function AIConfigurationManagement() {
     autoNegotiation: false,
     maxDiscountPercent: 15,
     minNegotiationAmount: 1000,
-    aggressiveness: 'moderate'
+    aggressiveness: 'moderate',
+    negotiationProvider: 'openai',
+    marketAnalysisProvider: 'perplexity',
+    openaiModel: 'gpt-5-2025-08-07'
   });
   const [analysisPrompt, setAnalysisPrompt] = useState('');
   const [negotiationPrompt, setNegotiationPrompt] = useState('');
@@ -114,18 +118,105 @@ export default function AIConfigurationManagement() {
         {/* Configurações Gerais */}
         <TabsContent value="settings" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Configurações Básicas */}
+            {/* Configurações de IA */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bot className="h-5 w-5" />
-                  Configurações Básicas
+                  Configurações de IA
                 </CardTitle>
                 <CardDescription>
-                  Controles principais do sistema de negociação IA
+                  Configure qual IA usar para cada funcionalidade
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
+                {/* Negociação */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">IA para Negociação</Label>
+                  <Select
+                    value={activeSettings.negotiationProvider || 'openai'}
+                    onValueChange={(value) => 
+                      setActiveSettings(prev => ({ ...prev, negotiationProvider: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="openai">
+                        <div className="flex items-center gap-2">
+                          <Bot className="h-4 w-4" />
+                          OpenAI (Recomendado para conversação)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="perplexity">
+                        <div className="flex items-center gap-2">
+                          <Search className="h-4 w-4" />
+                          Perplexity (Melhor para análise de mercado)
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    OpenAI é melhor para conversação e estratégias. Perplexity é melhor para análise de mercado em tempo real.
+                  </p>
+                </div>
+
+                {/* Análise de Mercado */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">IA para Análise de Mercado</Label>
+                  <Select
+                    value={activeSettings.marketAnalysisProvider || 'perplexity'}
+                    onValueChange={(value) => 
+                      setActiveSettings(prev => ({ ...prev, marketAnalysisProvider: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="perplexity">
+                        <div className="flex items-center gap-2">
+                          <Search className="h-4 w-4" />
+                          Perplexity (Recomendado - dados atualizados)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="openai">
+                        <div className="flex items-center gap-2">
+                          <Bot className="h-4 w-4" />
+                          OpenAI
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Perplexity tem acesso a dados de mercado atualizados e é melhor para análise de preços.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Modelo OpenAI</Label>
+                  <Select
+                    value={activeSettings.openaiModel || 'gpt-5-2025-08-07'}
+                    onValueChange={(value) => 
+                      setActiveSettings(prev => ({ ...prev, openaiModel: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gpt-5-2025-08-07">GPT-5 (Recomendado)</SelectItem>
+                      <SelectItem value="gpt-4.1-2025-04-14">GPT-4.1</SelectItem>
+                      <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                      <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                {/* Configurações Básicas */}
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Sistema de IA Habilitado</Label>
