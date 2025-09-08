@@ -27,6 +27,11 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
     isLoading: usageLoading
   } = useSupabaseSubscriptionGuard();
 
+  // Always call all hooks first - no early returns before this
+  const quotesResult = React.useMemo(() => checkLimit('CREATE_QUOTE', 0), [checkLimit]);
+  const percentage = React.useMemo(() => getUsagePercentage('CREATE_QUOTE'), [getUsagePercentage]);
+
+  // Now we can have early returns after all hooks are called
   if (!user) {
     return null;
   }
@@ -63,10 +68,6 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
       </Card>
     );
   }
-
-  // Fazer todas as verificações uma única vez
-  const quotesResult = React.useMemo(() => checkLimit('CREATE_QUOTE', 0), [checkLimit]);
-  const percentage = React.useMemo(() => getUsagePercentage('CREATE_QUOTE'), [getUsagePercentage]);
   const isUnlimited = quotesResult.limit === -1;
   const nearLimit = percentage >= 80;
   const remaining = isUnlimited ? Number.POSITIVE_INFINITY : Math.max(0, quotesResult.limit - quotesResult.currentUsage);
