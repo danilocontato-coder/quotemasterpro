@@ -710,7 +710,7 @@ export function useSupabaseUsers() {
   }, []); // Empty dependency array to prevent subscription recreation
 
   // Update current user's last access
-  const updateCurrentUserLastAccess = async () => {
+  const updateCurrentUserLastAccess = useCallback(async () => {
     try {
       if (currentAuthUserId) {
         await supabase
@@ -722,7 +722,7 @@ export function useSupabaseUsers() {
     } catch (error) {
       console.error('Error updating last access:', error);
     }
-  };
+  }, [currentAuthUserId]);
 
   // Initial load
   useEffect(() => {
