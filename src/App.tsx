@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy, startTransition } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -93,22 +93,6 @@ const queryClient = new QueryClient({
 
 function App() {
   console.log('🚀 [APP] Application starting...');
-
-  // Error boundary para lazy loading
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      if (event.message.includes('Loading chunk')) {
-        console.warn('🔄 [APP] Chunk loading error, reloading...', event.error);
-        // Recarregar a página em caso de erro de chunk loading
-        startTransition(() => {
-          window.location.reload();
-        });
-      }
-    };
-
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, []);
 
   console.log('🎯 [APP] Rendering application structure');
 
