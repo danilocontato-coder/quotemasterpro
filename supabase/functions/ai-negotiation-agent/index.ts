@@ -249,16 +249,18 @@ async function startNegotiation(negotiationId: string) {
   if (negotiation.selected_response_id) {
     const { data: response, error: responseError } = await supabase
       .from('quote_responses')
-      .select(`
-        *,
-        suppliers!inner(name, phone, whatsapp)
-      `)
+      .select('*')
       .eq('id', negotiation.selected_response_id)
       .single();
 
     if (!responseError && response) {
       selectedResponse = response;
-      supplier = response.suppliers;
+      const { data: supplierData } = await supabase
+        .from('suppliers')
+        .select('id, name, phone, whatsapp')
+        .eq('id', response.supplier_id)
+        .maybeSingle();
+      supplier = supplierData;
     }
   }
 
@@ -266,21 +268,26 @@ async function startNegotiation(negotiationId: string) {
   if (!selectedResponse) {
     const { data: responses, error: responsesError } = await supabase
       .from('quote_responses')
-      .select(`
-        *,
-        suppliers!inner(name, phone, whatsapp)
-      `)
+      .select('*')
       .eq('quote_id', negotiation.quote_id)
       .order('total_amount', { ascending: true });
 
     if (responsesError || !responses || responses.length === 0) {
-      throw new Error('Nenhuma proposta encontrada para a cotação');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Nenhuma proposta encontrada para a cotação' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     selectedResponse = responses[0];
-    supplier = responses[0].suppliers;
 
-    // Atualizar a negociação com o response selecionado
+    const { data: supplierData } = await supabase
+      .from('suppliers')
+      .select('id, name, phone, whatsapp')
+      .eq('id', selectedResponse.supplier_id)
+      .maybeSingle();
+    supplier = supplierData;
+
     await supabase
       .from('ai_negotiations')
       .update({ 
@@ -289,8 +296,12 @@ async function startNegotiation(negotiationId: string) {
       })
       .eq('id', negotiationId);
   }
+
   if (!supplier || (!supplier.whatsapp && !supplier.phone)) {
-    throw new Error('WhatsApp do fornecedor não encontrado');
+    return new Response(
+      JSON.stringify({ success: false, error: 'WhatsApp do fornecedor não encontrado' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   const supplierPhone = supplier.whatsapp || supplier.phone;
