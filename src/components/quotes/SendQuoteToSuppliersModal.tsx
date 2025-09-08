@@ -12,8 +12,8 @@ import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { selectBestSupplier, createSupplierResponseLink, generateQuoteToken } from "@/lib/supplierDeduplication";
 import { ShortLinkDisplay } from "@/components/ui/short-link-display";
+import { selectBestSupplier, createSupplierResponseLink, generateQuoteToken } from "@/lib/supplierDeduplication";
 
 interface SendQuoteToSuppliersModalProps {
   quote: any;
@@ -46,6 +46,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       return true;
     }
   });
+  
+  // Debug: Verify function import
+  console.log('🔍 DEBUG: selectBestSupplier function:', selectBestSupplier);
   
   // Group suppliers by CNPJ to handle potential duplicates
   const supplierGroups = activeSuppliers.reduce((groups, supplier) => {
