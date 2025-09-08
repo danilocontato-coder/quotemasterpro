@@ -97,29 +97,37 @@ export const useSupabaseSupplierDashboard = () => {
 
       console.log('Fetching dashboard data for supplier:', user.supplierId);
 
-      // Buscar cotações direcionadas para este fornecedor especificamente
-      console.log('🎯 CRÍTICO: Buscando APENAS cotações direcionadas especificamente para:', user.supplierId);
+      // Buscar cotações direcionadas para este fornecedor através da tabela quote_suppliers
+      console.log('🎯 CRÍTICO: Buscando cotações através de quote_suppliers para:', user.supplierId);
       
-      const { data: quotesData, error: quotesError } = await supabase
-        .from('quotes')
+      const { data: quoteSuppliersData, error: quotesError } = await supabase
+        .from('quote_suppliers')
         .select(`
-          id,
-          title,
-          client_name,
-          status,
-          total,
-          deadline,
-          created_at,
-          updated_at
+          quote_id,
+          quotes!inner (
+            id,
+            title,
+            client_name,
+            status,
+            total,
+            deadline,
+            created_at,
+            updated_at
+          )
         `)
         .eq('supplier_id', user.supplierId);
 
       if (quotesError) throw quotesError;
 
+      if (quotesError) throw quotesError;
+
+      // Extrair os dados das cotações do join
+      const quotesData = quoteSuppliersData?.map(item => item.quotes) || [];
+      
       console.log('🎯 Cotações direcionadas encontradas:', quotesData?.length || 0);
 
       // Transform to recent quotes format
-      const transformedRecentQuotes: RecentSupplierQuote[] = (quotesData || []).map(quote => {
+      const transformedRecentQuotes: RecentSupplierQuote[] = quotesData.map(quote => {
         return {
           id: quote.id,
           title: quote.title,
