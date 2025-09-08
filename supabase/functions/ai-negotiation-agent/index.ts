@@ -13,7 +13,12 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const createSupabaseClient = (req: Request) => {
+  const authHeader = req.headers.get('Authorization') || '';
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,24 +27,28 @@ serve(async (req) => {
 
   try {
     const { action, quoteId, negotiationId } = await req.json();
+    const sb = createSupabaseClient(req);
     console.log(`AI Negotiation Agent - Action: ${action}, Quote: ${quoteId}, Negotiation: ${negotiationId}`);
 
     switch (action) {
       case 'analyze':
-        return await analyzeQuote(quoteId);
+        return await analyzeQuote(sb, quoteId);
       case 'negotiate':
-        return await startNegotiation(negotiationId);
+        return await startNegotiation(sb, negotiationId);
       case 'approve':
-        return await approveNegotiation(negotiationId);
+        return await approveNegotiation(sb, negotiationId);
       case 'reject':
-        return await rejectNegotiation(negotiationId);
+        return await rejectNegotiation(sb, negotiationId);
       default:
-        throw new Error('Ação inválida');
+        return new Response(
+          JSON.stringify({ error: 'Ação inválida' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro na edge function AI Negotiation:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error?.message || 'Erro inesperado' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -48,11 +57,11 @@ serve(async (req) => {
   }
 });
 
-async function analyzeQuote(quoteId: string) {
+async function analyzeQuote(sb: any, quoteId: string) {
   console.log(`Analisando cotação: ${quoteId}`);
   
   // Buscar cotação, itens e respostas
-  const { data: quote, error: quoteError } = await supabase
+  const { data: quote, error: quoteError } = await sb
     .from('quotes')
     .select(`
       *,
@@ -88,20 +97,47 @@ async function analyzeQuote(quoteId: string) {
   const negotiationPotential = ((marketPrice - averagePrice * 0.85) / marketPrice) * 100;
   const shouldNegotiate = negotiationPotential > 5; // Se há mais de 5% de margem
 
-  // Buscar configurações de IA
-  const { data: aiSettings } = await supabase
-    .from('ai_settings')
-    .select('*')
+// Buscar configurações de IA com fallback seguro
+let usePerplexity = false;
+let model = 'gpt-5-2025-08-07';
+try {
+  // Tenta tabela canônica do projeto
+  const { data: s1 } = await sb
+    .from('ai_negotiation_settings')
+    .select('setting_value')
+    .eq('active', true)
     .limit(1)
-    .single();
-
-  const usePerplexity = aiSettings?.negotiation_provider === 'perplexity';
-  const apiKey = usePerplexity ? perplexityApiKey : openAIApiKey;
-  const model = usePerplexity ? (aiSettings?.perplexity_model || 'llama-3.1-sonar-large-128k-online') : (aiSettings?.openai_model || 'gpt-5-2025-08-07');
-
-  if (!apiKey) {
-    throw new Error(`Chave da API ${usePerplexity ? 'Perplexity' : 'OpenAI'} não configurada`);
+    .maybeSingle();
+  if (s1?.setting_value) {
+    usePerplexity = s1.setting_value?.negotiation_provider === 'perplexity';
+    model = usePerplexity
+      ? (s1.setting_value?.perplexity_model || 'llama-3.1-sonar-large-128k-online')
+      : (s1.setting_value?.openai_model || 'gpt-5-2025-08-07');
+  } else {
+    // Fallback para tabela antiga, se existir
+    const { data: s2 } = await sb
+      .from('ai_settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+    if (s2) {
+      usePerplexity = s2?.negotiation_provider === 'perplexity';
+      model = usePerplexity
+        ? (s2?.perplexity_model || 'llama-3.1-sonar-large-128k-online')
+        : (s2?.openai_model || 'gpt-5-2025-08-07');
+    }
   }
+} catch (_) {
+  // Mantém defaults
+}
+
+const apiKey = usePerplexity ? perplexityApiKey : openAIApiKey;
+if (!apiKey) {
+  return new Response(
+    JSON.stringify({ error: `Chave da API ${usePerplexity ? 'Perplexity' : 'OpenAI'} não configurada` }),
+    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
   // Criar análise da IA baseada nas propostas reais dos fornecedores
   const analysisPrompt = `
@@ -178,12 +214,12 @@ Responda APENAS no formato JSON:
     }
 
     // Criar registro de negociação
-      const { data: negotiation, error: negotiationError } = await supabase
-        .from('ai_negotiations')
-        .insert({
-          quote_id: quoteId,
-          selected_response_id: bestResponse.id,
-          original_amount: bestResponse.total_amount, // Usar valor da melhor proposta
+    const { data: negotiation, error: negotiationError } = await sb
+      .from('ai_negotiations')
+      .insert({
+        quote_id: quoteId,
+        selected_response_id: bestResponse.id,
+        original_amount: bestResponse.total_amount && bestResponse.total_amount > 0 ? bestResponse.total_amount : averagePrice,
         ai_analysis: aiAnalysis,
         negotiation_strategy: {
           reason: aiAnalysis.reason,
@@ -200,7 +236,11 @@ Responda APENAS no formato JSON:
       .single();
 
     if (negotiationError) {
-      throw new Error('Erro ao criar registro de negociação');
+      console.error('Erro ao criar registro de negociação (Supabase):', negotiationError);
+      return new Response(
+        JSON.stringify({ error: 'Erro ao criar registro de negociação', details: negotiationError?.message || negotiationError }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log(`Análise concluída para cotação ${quoteId}:`, aiAnalysis);
@@ -222,11 +262,11 @@ Responda APENAS no formato JSON:
   }
 }
 
-async function startNegotiation(negotiationId: string) {
+async function startNegotiation(sb: any, negotiationId: string) {
   console.log(`Iniciando negociação via WhatsApp: ${negotiationId}`);
   
   // Buscar negociação primeiro
-  const { data: negotiation, error: negotiationError } = await supabase
+  const { data: negotiation, error: negotiationError } = await sb
     .from('ai_negotiations')
     .select('*')
     .eq('id', negotiationId)
@@ -237,8 +277,8 @@ async function startNegotiation(negotiationId: string) {
     throw new Error('Negociação não encontrada');
   }
 
-  // Buscar cotação relacionada
-  const { data: quote, error: quoteError } = await supabase
+// Buscar cotação relacionada
+  const { data: quote, error: quoteError } = await sb
     .from('quotes')
     .select('*')
     .eq('id', negotiation.quote_id)
@@ -253,8 +293,8 @@ async function startNegotiation(negotiationId: string) {
   let selectedResponse = null;
   let supplier = null;
 
-  if (negotiation.selected_response_id) {
-    const { data: response, error: responseError } = await supabase
+if (negotiation.selected_response_id) {
+    const { data: response, error: responseError } = await sb
       .from('quote_responses')
       .select('*')
       .eq('id', negotiation.selected_response_id)
@@ -262,7 +302,7 @@ async function startNegotiation(negotiationId: string) {
 
     if (!responseError && response) {
       selectedResponse = response;
-      const { data: supplierData } = await supabase
+      const { data: supplierData } = await sb
         .from('suppliers')
         .select('id, name, phone, whatsapp')
         .eq('id', response.supplier_id)
@@ -272,8 +312,8 @@ async function startNegotiation(negotiationId: string) {
   }
 
   // Se não tem selected_response_id, buscar a melhor resposta (menor valor)
-  if (!selectedResponse) {
-    const { data: responses, error: responsesError } = await supabase
+if (!selectedResponse) {
+    const { data: responses, error: responsesError } = await sb
       .from('quote_responses')
       .select('*')
       .eq('quote_id', negotiation.quote_id)
@@ -288,14 +328,14 @@ async function startNegotiation(negotiationId: string) {
 
     selectedResponse = responses[0];
 
-    const { data: supplierData } = await supabase
+const { data: supplierData } = await sb
       .from('suppliers')
       .select('id, name, phone, whatsapp')
       .eq('id', selectedResponse.supplier_id)
       .maybeSingle();
     supplier = supplierData;
 
-    await supabase
+    await sb
       .from('ai_negotiations')
       .update({ 
         selected_response_id: selectedResponse.id,
@@ -360,8 +400,8 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
 
 
     // Resolver config Evolution: cliente primeiro, depois global
-    const clientCfg = await resolveEvolutionConfig(supabase, quote.client_id, false);
-    const globalCfg = await resolveEvolutionConfig(supabase, null, true);
+    const clientCfg = await resolveEvolutionConfig(sb, quote.client_id, false);
+    const globalCfg = await resolveEvolutionConfig(sb, null, true);
     const attempts: Array<{scope: string, apiUrl: string | null, error?: string}> = [];
 
     // Tentar envio com config do cliente primeiro
@@ -390,7 +430,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
         const conversationLog = [
           { role: 'ai', message: aiMessage, timestamp: new Date().toISOString(), channel: 'whatsapp_simulated', messageId: simulatedMessageId, phone: normalizedPhone, supplier_name: supplier.name, deliveryStatus: 'simulated' }
         ];
-        const { data: updatedNegotiation } = await supabase
+        const { data: updatedNegotiation } = await sb
           .from('ai_negotiations')
           .update({ status: 'negotiating', conversation_log: conversationLog, updated_at: new Date().toISOString() })
           .eq('id', negotiationId)
@@ -415,7 +455,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
         message: aiMessage,
         timestamp: new Date().toISOString(),
         channel: 'whatsapp',
-        messageId: whatsappResult.messageId,
+        messageId: result.messageId,
         phone: normalizedPhone,
         supplier_name: supplier.name,
         deliveryStatus: 'sent'
@@ -461,13 +501,13 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
   }
 }
 
-async function approveNegotiation(negotiationId: string) {
-  const { data, error } = await supabase
+async function approveNegotiation(sb: any, negotiationId: string) {
+  const { data, error } = await sb
     .from('ai_negotiations')
     .update({
       status: 'approved',
       human_approved: true,
-      approved_by: 'current_user' // Em produção, pegar do auth
+      approved_by: 'current_user' // TODO: capturar do JWT
     })
     .eq('id', negotiationId)
     .select()
