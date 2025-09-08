@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: supabaseUser.id,
           email: supabaseUser.email || '',
           name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-          role: 'collaborator' as UserRole,
+          role: (supabaseUser.user_metadata?.role as UserRole) || 'collaborator' as UserRole,
           active: true,
         };
         setUser(fallbackUser);
@@ -159,11 +159,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(userProfile);
       } else {
+        // Usar role do user_metadata se existir, senão 'collaborator' como fallback
+        const metadataRole = supabaseUser.user_metadata?.role as UserRole;
         const basicUser = {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
           name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-          role: 'collaborator' as UserRole,
+          role: metadataRole || 'collaborator' as UserRole,
           active: true,
         };
         setUser(basicUser);
@@ -173,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: supabaseUser.id,
         email: supabaseUser.email || '',
         name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-        role: 'collaborator' as UserRole,
+        role: (supabaseUser.user_metadata?.role as UserRole) || 'collaborator' as UserRole,
         active: true,
       };
       setUser(errorFallbackUser);
