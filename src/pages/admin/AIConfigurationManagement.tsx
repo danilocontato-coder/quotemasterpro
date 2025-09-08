@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAIConfiguration } from '@/hooks/useAIConfiguration';
+import { supabase } from '@/integrations/supabase/client';
 import { Bot, Settings, MessageSquare, TrendingUp, Shield, Database, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -40,12 +41,39 @@ export default function AIConfigurationManagement() {
   const [analysisPrompt, setAnalysisPrompt] = useState('');
   const [negotiationPrompt, setNegotiationPrompt] = useState('');
 
-  // Carregar configurações do Supabase quando disponível
+  // Carregar configurações do Supabase quando o componente monta
+  React.useEffect(() => {
+    const loadAISettings = async () => {
+      try {
+        const { data, error } = await supabase.from('ai_settings').select('*').limit(1).single();
+        
+        if (data && !error) {
+          setActiveSettings({
+            enabled: data.enabled,
+            autoAnalysis: data.auto_analysis,
+            autoNegotiation: data.auto_negotiation,
+            maxDiscountPercent: data.max_discount_percent,
+            minNegotiationAmount: Number(data.min_negotiation_amount),
+            aggressiveness: data.aggressiveness,
+            negotiationProvider: data.negotiation_provider,
+            marketAnalysisProvider: data.market_analysis_provider,
+            openaiModel: data.openai_model
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configurações de IA:', error);
+      }
+    };
+
+    loadAISettings();
+  }, []);
+
+  // Carregar configurações do Supabase quando disponível (fallback)
   React.useEffect(() => {
     if (settings.length > 0) {
       const generalConfig = settings.find(s => s.setting_key === 'general_config');
       if (generalConfig && generalConfig.setting_value) {
-        setActiveSettings(generalConfig.setting_value);
+        setActiveSettings(prev => ({ ...prev, ...generalConfig.setting_value }));
       }
     }
   }, [settings]);
@@ -62,12 +90,29 @@ export default function AIConfigurationManagement() {
 
   const handleSaveSettings = async () => {
     try {
-      await updateSettings('general', activeSettings);
+      // Salvar na tabela ai_settings do Supabase
+      const { error } = await supabase.from('ai_settings').upsert({
+        negotiation_provider: activeSettings.negotiationProvider,
+        market_analysis_provider: activeSettings.marketAnalysisProvider,
+        openai_model: activeSettings.openaiModel,
+        max_discount_percent: activeSettings.maxDiscountPercent,
+        min_negotiation_amount: activeSettings.minNegotiationAmount,
+        aggressiveness: activeSettings.aggressiveness,
+        auto_analysis: activeSettings.autoAnalysis,
+        auto_negotiation: activeSettings.autoNegotiation,
+        enabled: activeSettings.enabled
+      });
+
+      if (error) {
+        throw error;
+      }
+
       toast({
         title: 'Configurações salvas',
         description: 'As configurações da IA foram atualizadas com sucesso.',
       });
     } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao salvar configurações.',
