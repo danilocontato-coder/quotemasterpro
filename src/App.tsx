@@ -116,20 +116,20 @@ function App() {
             <DebugWrapper>
               <Router>
               <Routes>
-                {/* Rotas públicas */}
-                <Route path="/login" element={
+                {/* Rotas públicas de autenticação */}
+                <Route path="/auth/login" element={
                   <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
                     <Login />
                   </SuspenseWithTransition>
                 } />
                 
-                <Route path="/register" element={
+                <Route path="/auth/register" element={
                   <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
                     <Register />
                   </SuspenseWithTransition>
                 } />
                 
-                <Route path="/forgot-password" element={
+                <Route path="/auth/forgot-password" element={
                   <SuspenseWithTransition lines={3} className="min-h-screen flex items-center justify-center">
                     <ForgotPassword />
                   </SuspenseWithTransition>
