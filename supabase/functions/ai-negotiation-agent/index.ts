@@ -453,7 +453,10 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
 
     // Se ainda falhar: simular apenas se não houver nenhuma config válida
     if (!result.success) {
-      if (!clientCfg.apiUrl && !globalCfg.apiUrl) {
+      const hasClientValid = !!(clientCfg.apiUrl && clientCfg.token);
+      const hasGlobalValid = !!(globalCfg.apiUrl && globalCfg.token);
+
+      if (!hasClientValid && !hasGlobalValid) {
         const simulatedMessageId = `sim_${Date.now()}`;
         const conversationLog = [
           { role: 'ai', message: aiMessage, timestamp: new Date().toISOString(), channel: 'whatsapp_simulated', messageId: simulatedMessageId, phone: normalizedPhone, supplier_name: supplier.name, deliveryStatus: 'simulated' }
@@ -468,7 +471,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       }
 
       return new Response(
-        JSON.stringify({ success: false, error: 'Falha ao enviar WhatsApp', debug: { supplier_name: supplier.name, phone: normalizedPhone, attempts, tried_endpoints: result.tried_endpoints || [] } }),
+        JSON.stringify({ success: false, error: 'Falha ao enviar WhatsApp', debug: { supplier_name: supplier.name, phone: normalizedPhone, attempts, config: { client: { apiUrl: clientCfg.apiUrl || null, hasToken: !!clientCfg.token }, global: { apiUrl: globalCfg.apiUrl || null, hasToken: !!globalCfg.token } }, tried_endpoints: result.tried_endpoints || [] } }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
