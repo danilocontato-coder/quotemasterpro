@@ -1,22 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
-import { CreateQuoteModalSupabase } from "@/components/quotes/CreateQuoteModalSupabase";
-import { DeleteConfirmationModal } from "@/components/quotes/DeleteConfirmationModal";
-import { QuoteComparisonButton } from "@/components/quotes/QuoteComparisonButton";
-import { DecisionMatrixManager } from "@/components/quotes/DecisionMatrixManager";
-import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
-import { StatusProgressIndicator } from "@/components/quotes/StatusProgressIndicator";
-import { EconomyNotification, useEconomyAlerts } from "@/components/quotes/EconomyNotification";
-import { SendQuoteToSuppliersModal } from "@/components/quotes/SendQuoteToSuppliersModal";
+import { OptimizedSkeleton } from "@/components/ui/optimized-components";
+import { InitialLoader } from "@/components/layout/InitialLoader";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { toast } from "sonner";
+
+// Lazy load modais pesados
+const CreateQuoteModalSupabase = lazy(() => import("@/components/quotes/CreateQuoteModalSupabase").then(m => ({ default: m.CreateQuoteModalSupabase })));
+const DeleteConfirmationModal = lazy(() => import("@/components/quotes/DeleteConfirmationModal").then(m => ({ default: m.DeleteConfirmationModal })));
+const QuoteComparisonButton = lazy(() => import("@/components/quotes/QuoteComparisonButton").then(m => ({ default: m.QuoteComparisonButton })));
+const DecisionMatrixManager = lazy(() => import("@/components/quotes/DecisionMatrixManager").then(m => ({ default: m.DecisionMatrixManager })));
+const QuoteDetailModal = lazy(() => import("@/components/quotes/QuoteDetailModal").then(m => ({ default: m.QuoteDetailModal })));
+const StatusProgressIndicator = lazy(() => import("@/components/quotes/StatusProgressIndicator").then(m => ({ default: m.StatusProgressIndicator })));
+const EconomyNotification = lazy(() => import("@/components/quotes/EconomyNotification").then(m => ({ default: m.EconomyNotification, useEconomyAlerts: m.useEconomyAlerts })));
+const SendQuoteToSuppliersModal = lazy(() => import("@/components/quotes/SendQuoteToSuppliersModal").then(m => ({ default: m.SendQuoteToSuppliersModal })));
 
 export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,14 +33,27 @@ export default function Quotes() {
   const [editingQuote, setEditingQuote] = useState<any | null>(null);
   const [viewingQuote, setViewingQuote] = useState<any | null>(null);
   const [quoteToDelete, setQuoteToDelete] = useState<any | null>(null);
+  const [isInitialRender, setIsInitialRender] = useState(true);
   
   // Paginação
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; // 6 cotações por página para visualização confortável
+  const itemsPerPage = 6;
   
   const { quotes, createQuote, updateQuote, deleteQuote, isLoading, error, markQuoteAsReceived, refetch } = useSupabaseQuotes();
   const { enforceLimit } = useSupabaseSubscriptionGuard();
-  const { alerts, addAlert, markAsRead, dismissAlert } = useEconomyAlerts();
+
+  // Carregar alerts apenas quando necessário
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
+  
+  useEffect(() => {
+    // Habilitar alerts após carregamento inicial
+    const timer = setTimeout(() => {
+      setAlertsEnabled(true);
+      setIsInitialRender(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Debug: verificar se o hook está sendo chamado
   console.log('🎯 Quotes page - Hook results:', {

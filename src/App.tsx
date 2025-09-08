@@ -70,18 +70,20 @@ const SupplierAuth = lazy(() => import('@/pages/supplier/SupplierAuth'));
 const SupplierQuoteResponse = lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierResponseSuccess = lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
 
-// Query client otimizado para evitar refreshes automáticos
+// Query client otimizado para carregamento inicial rápido
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 15 * 60 * 1000, // 15 minutos para evitar refetch frequente
-      gcTime: 30 * 60 * 1000, // 30 minutos no cache (novo nome no React Query v5)
-      refetchOnWindowFocus: false, // Não refazer queries ao focar na janela
-      refetchOnMount: false, // Não refazer queries ao montar componente
-      retry: 1, // Tentar apenas 1 vez em caso de erro
+      staleTime: 10 * 60 * 1000, // 10 minutos
+      gcTime: 20 * 60 * 1000, // 20 minutos no cache
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      retry: 0, // Sem retry na primeira carga
+      networkMode: 'online', // Só executar quando online
     },
     mutations: {
-      retry: 1, // Apenas 1 tentativa para mutations
+      retry: 1,
+      networkMode: 'online',
     },
   },
 });
