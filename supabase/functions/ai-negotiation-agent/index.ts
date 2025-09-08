@@ -338,7 +338,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     const aiMessage = messageData.choices[0].message.content.trim();
 
     // Configurar Evolution API
-    const evolutionConfig = await resolveEvolutionConfig(supabase, quote.client_id);
+    const evolutionConfig = await resolveEvolutionConfig(supabase, quote.client_id, true);
     
     console.log('Evolution config resolved:', { 
       hasApiUrl: !!evolutionConfig.apiUrl, 

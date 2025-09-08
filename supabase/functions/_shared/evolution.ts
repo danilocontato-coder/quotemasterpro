@@ -113,30 +113,20 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
 }
 
 // Resolve Evolution config from DB (client→global) or env fallback
-export async function resolveEvolutionConfig(supabase: any, clientId?: string | null): Promise<EvolutionConfig> {
+// Resolve Evolution config from DB with flexible priority
+export async function resolveEvolutionConfig(
+  supabase: any,
+  clientId?: string | null,
+  preferGlobal: boolean = false
+): Promise<EvolutionConfig> {
   let instance: string | null = null
   let apiUrl: string | null = null
   let token: string | null = null
   let scope: EvoScope = 'env'
 
   try {
-    if (clientId) {
-      const { data: evoClientInt } = await supabase
-        .from('integrations')
-        .select('configuration')
-        .eq('integration_type', 'whatsapp_evolution')
-        .eq('active', true)
-        .eq('client_id', clientId)
-        .maybeSingle()
-      const cfg = evoClientInt?.configuration || null
-      if (cfg) {
-        instance = (cfg.instance ?? cfg['evolution_instance']) || null
-        apiUrl = (cfg.api_url ?? cfg['evolution_api_url']) || null
-        token = (cfg.token ?? cfg['evolution_token']) || null
-        scope = 'client'
-      }
-    }
-    if (!apiUrl || !token) {
+    if (preferGlobal) {
+      // 1) Try SuperAdmin (global) first
       const { data: evoGlobalInt } = await supabase
         .from('integrations')
         .select('configuration')
@@ -144,17 +134,68 @@ export async function resolveEvolutionConfig(supabase: any, clientId?: string | 
         .eq('active', true)
         .is('client_id', null)
         .maybeSingle()
-      const cfg = evoGlobalInt?.configuration || null
-      if (cfg) {
-        instance = instance || (cfg.instance ?? cfg['evolution_instance']) || null
-        apiUrl = apiUrl || (cfg.api_url ?? cfg['evolution_api_url']) || null
-        token = token || (cfg.token ?? cfg['evolution_token']) || null
-        scope = scope === 'client' ? 'client' : 'global'
+      const gcfg = evoGlobalInt?.configuration || null
+      if (gcfg) {
+        instance = (gcfg.instance ?? gcfg['evolution_instance']) || null
+        apiUrl = (gcfg.api_url ?? gcfg['evolution_api_url']) || null
+        token = (gcfg.token ?? gcfg['evolution_token']) || null
+        scope = 'global'
+      }
+      // 2) Then client-specific (to allow overrides)
+      if ((!apiUrl || !token) && clientId) {
+        const { data: evoClientInt } = await supabase
+          .from('integrations')
+          .select('configuration')
+          .eq('integration_type', 'whatsapp_evolution')
+          .eq('active', true)
+          .eq('client_id', clientId)
+          .maybeSingle()
+        const ccfg = evoClientInt?.configuration || null
+        if (ccfg) {
+          instance = instance || (ccfg.instance ?? ccfg['evolution_instance']) || null
+          apiUrl = apiUrl || (ccfg.api_url ?? ccfg['evolution_api_url']) || null
+          token = token || (ccfg.token ?? ccfg['evolution_token']) || null
+          scope = apiUrl && token ? (scope === 'global' ? 'global' : 'client') : scope
+        }
+      }
+    } else {
+      // Default behavior: client → global
+      if (clientId) {
+        const { data: evoClientInt } = await supabase
+          .from('integrations')
+          .select('configuration')
+          .eq('integration_type', 'whatsapp_evolution')
+          .eq('active', true)
+          .eq('client_id', clientId)
+          .maybeSingle()
+        const cfg = evoClientInt?.configuration || null
+        if (cfg) {
+          instance = (cfg.instance ?? cfg['evolution_instance']) || null
+          apiUrl = (cfg.api_url ?? cfg['evolution_api_url']) || null
+          token = (cfg.token ?? cfg['evolution_token']) || null
+          scope = 'client'
+        }
+      }
+      if (!apiUrl || !token) {
+        const { data: evoGlobalInt } = await supabase
+          .from('integrations')
+          .select('configuration')
+          .eq('integration_type', 'whatsapp_evolution')
+          .eq('active', true)
+          .is('client_id', null)
+          .maybeSingle()
+        const cfg = evoGlobalInt?.configuration || null
+        if (cfg) {
+          instance = instance || (cfg.instance ?? cfg['evolution_instance']) || null
+          apiUrl = apiUrl || (cfg.api_url ?? cfg['evolution_api_url']) || null
+          token = token || (cfg.token ?? cfg['evolution_token']) || null
+          scope = scope === 'client' ? 'client' : 'global'
+        }
       }
     }
   } catch (_) {}
 
-  // Env fallbacks
+  // Env fallbacks (only if DB didn’t provide)
   apiUrl = (apiUrl || Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/+$/, '')
   token = token || Deno.env.get('EVOLUTION_API_TOKEN') || ''
   instance = instance || Deno.env.get('EVOLUTION_INSTANCE') || null
