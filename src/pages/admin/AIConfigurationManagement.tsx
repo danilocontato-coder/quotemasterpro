@@ -140,8 +140,12 @@ export default function AIConfigurationManagement() {
         </Badge>
       </div>
 
-      <Tabs defaultValue="settings" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="providers" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="providers" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            Provedores
+          </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Configurações
@@ -159,6 +163,11 @@ export default function AIConfigurationManagement() {
             Analytics
           </TabsTrigger>
         </TabsList>
+
+        {/* Configuração de Provedores */}
+        <TabsContent value="providers" className="space-y-6">
+          <AIProviderSelector />
+        </TabsContent>
 
         {/* Configurações Gerais */}
         <TabsContent value="settings" className="space-y-6">

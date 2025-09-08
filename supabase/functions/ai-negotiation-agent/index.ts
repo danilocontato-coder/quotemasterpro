@@ -87,7 +87,7 @@ async function analyzeQuote(quoteId: string) {
 
   const usePerplexity = aiSettings?.negotiation_provider === 'perplexity';
   const apiKey = usePerplexity ? perplexityApiKey : openAIApiKey;
-  const model = usePerplexity ? 'llama-3.1-sonar-large-128k-online' : (aiSettings?.openai_model || 'gpt-5-2025-08-07');
+  const model = usePerplexity ? (aiSettings?.perplexity_model || 'llama-3.1-sonar-large-128k-online') : (aiSettings?.openai_model || 'gpt-5-2025-08-07');
 
   if (!apiKey) {
     throw new Error(`Chave da API ${usePerplexity ? 'Perplexity' : 'OpenAI'} não configurada`);
@@ -169,7 +169,9 @@ Responda APENAS no formato JSON:
           strategy: aiAnalysis.strategy,
           targetDiscount: aiAnalysis.targetDiscount,
           marketAverage: averagePrice,
-          negotiationPotential: negotiationPotential
+          negotiationPotential: negotiationPotential,
+          provider: usePerplexity ? 'perplexity' : 'openai',
+          model: model
         },
         status: shouldNegotiate ? 'analyzed' : 'not_viable'
       })
@@ -187,7 +189,8 @@ Responda APENAS no formato JSON:
         success: true, 
         negotiation,
         shouldNegotiate,
-        analysis: aiAnalysis
+        analysis: aiAnalysis,
+        provider: usePerplexity ? 'perplexity' : 'openai'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
