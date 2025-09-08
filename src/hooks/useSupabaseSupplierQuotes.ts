@@ -146,7 +146,10 @@ export const useSupabaseSupplierQuotes = () => {
             responses_count,
             deadline,
             created_at,
-            updated_at
+            updated_at,
+            clients!inner (
+              name
+            )
           )
         `)
         .eq('supplier_id', user.supplierId);
@@ -177,7 +180,10 @@ export const useSupabaseSupplierQuotes = () => {
             responses_count,
             deadline,
             created_at,
-            updated_at
+            updated_at,
+            clients!inner (
+              name
+            )
           )
         `)
         .eq('supplier_id', user.supplierId);
@@ -217,11 +223,14 @@ export const useSupabaseSupplierQuotes = () => {
       // Transform to SupplierQuote format
       const transformedQuotes: SupplierQuote[] = uniqueQuotesArray.map(quote => {
         const response = responsesMap.get(quote.id);
+        // Usar o nome da tabela clients se disponível, senão usar client_name
+        const clientName = quote.clients?.name || quote.client_name || 'Cliente não informado';
+        
         return {
           id: quote.id,
           title: quote.title,
           description: quote.description || '',
-          client: quote.client_name,
+          client: clientName,
           clientId: quote.client_id,
           status: response ? getSupplierStatus(response.status) : 'pending',
           deadline: quote.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
