@@ -1203,7 +1203,9 @@ export type Database = {
           created_at: string | null
           delivery_time: number | null
           id: string
+          items: Json | null
           notes: string | null
+          payment_terms: string | null
           quote_id: string | null
           status: string | null
           supplier_id: string
@@ -1214,7 +1216,9 @@ export type Database = {
           created_at?: string | null
           delivery_time?: number | null
           id?: string
+          items?: Json | null
           notes?: string | null
+          payment_terms?: string | null
           quote_id?: string | null
           status?: string | null
           supplier_id: string
@@ -1225,7 +1229,9 @@ export type Database = {
           created_at?: string | null
           delivery_time?: number | null
           id?: string
+          items?: Json | null
           notes?: string | null
+          payment_terms?: string | null
           quote_id?: string | null
           status?: string | null
           supplier_id?: string

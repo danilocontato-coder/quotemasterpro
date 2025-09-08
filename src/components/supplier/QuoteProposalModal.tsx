@@ -106,14 +106,15 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
       if (existingDraft) {
         console.log('📋 Loading existing draft:', existingDraft);
         
-        // Carregar dados do rascunho
-        setDeliveryTime(existingDraft.delivery_time || 7);
-        setPaymentTerms(existingDraft.payment_terms || '30 dias');
-        setObservations(existingDraft.notes || '');
+        // Carregar dados do rascunho (campos opcionais que podem não existir nos tipos gerados)
+        const draft: any = existingDraft as any;
+        setDeliveryTime((draft?.delivery_time as number) || 7);
+        setPaymentTerms((draft?.payment_terms as string) || '30 dias');
+        setObservations((draft?.notes as string) || '');
         
-        // Carregar itens do rascunho
-        if (existingDraft.items && Array.isArray(existingDraft.items)) {
-          const draftItems = existingDraft.items.map((item: any) => ({
+        // Carregar itens do rascunho (quando existirem)
+        if (Array.isArray(draft?.items)) {
+          const draftItems = (draft.items as any[]).map((item: any) => ({
             id: crypto.randomUUID(),
             productName: item.product_name || '',
             description: item.product_name || '',
