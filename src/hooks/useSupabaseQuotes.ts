@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOptimizedCache } from './useOptimizedCache';
 import { toast } from 'sonner';
 
 // Quote interface matching the database structure
@@ -30,6 +31,7 @@ export const useSupabaseQuotes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const { getCache, setCache } = useOptimizedCache();
   
   // Memoizar valores estáveis para evitar re-renders desnecessários
   const stableUser = useMemo(() => ({
@@ -40,30 +42,31 @@ export const useSupabaseQuotes = () => {
   }), [user?.id, user?.role, user?.clientId, user?.supplierId]);
 
   const fetchQuotes = useCallback(async () => {
+    if (!user) {
+      setQuotes([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Verificar cache primeiro
+    const cacheKey = `quotes_${user.role}_${user.clientId || user.supplierId || user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      setQuotes(cached);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
-      
-      if (!user) {
-        setQuotes([]);
-        return;
-      }
 
-      // Verify current session before making any requests
+      // Verificar sessão apenas se necessário
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error('❌ Session error:', sessionError);
-        setError('Erro de autenticação. Faça login novamente.');
-        return;
-      }
-
-      if (!session) {
-        console.error('❌ No valid session found');
+      if (sessionError || !session) {
         setError('Sessão inválida. Faça login novamente.');
         return;
       }
-
-      console.log('✅ Valid session found, proceeding with quotes fetch');
 
       let query = supabase
         .from('quotes')

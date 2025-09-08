@@ -33,8 +33,19 @@ export function useSupabaseSubscriptionGuard() {
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch planos apenas uma vez
+  // Cache planos por 5 minutos para evitar chamadas desnecessárias
   const fetchSubscriptionPlans = useCallback(async () => {
+    const cached = sessionStorage.getItem('subscription_plans');
+    const cacheTime = sessionStorage.getItem('subscription_plans_time');
+    
+    if (cached && cacheTime) {
+      const age = Date.now() - parseInt(cacheTime);
+      if (age < 5 * 60 * 1000) { // 5 minutos
+        setSubscriptionPlans(JSON.parse(cached));
+        return;
+      }
+    }
+
     try {
       const { data, error } = await supabase
         .from('subscription_plans')
@@ -47,20 +58,37 @@ export function useSupabaseSubscriptionGuard() {
       }
 
       setSubscriptionPlans(data || []);
+      sessionStorage.setItem('subscription_plans', JSON.stringify(data || []));
+      sessionStorage.setItem('subscription_plans_time', Date.now().toString());
     } catch (error) {
       console.error('Erro ao carregar planos:', error);
     }
   }, []);
 
   useEffect(() => {
-    fetchSubscriptionPlans();
-  }, [fetchSubscriptionPlans]);
+    if (!subscriptionPlans.length) {
+      fetchSubscriptionPlans();
+    }
+  }, [fetchSubscriptionPlans, subscriptionPlans.length]);
 
-  // Fetch client usage controlado
+  // Cache usage por 2 minutos
   const fetchClientUsage = useCallback(async () => {
     if (!currentClient?.id) {
       setIsLoading(false);
       return;
+    }
+
+    const cacheKey = `client_usage_${currentClient.id}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    const cacheTime = sessionStorage.getItem(`${cacheKey}_time`);
+    
+    if (cached && cacheTime) {
+      const age = Date.now() - parseInt(cacheTime);
+      if (age < 2 * 60 * 1000) { // 2 minutos
+        setClientUsage(JSON.parse(cached));
+        setIsLoading(false);
+        return;
+      }
     }
 
     try {
@@ -107,9 +135,12 @@ export function useSupabaseSubscriptionGuard() {
         };
 
         setClientUsage(mockUsage);
+        sessionStorage.setItem(cacheKey, JSON.stringify(mockUsage));
       } else {
         setClientUsage(usage);
+        sessionStorage.setItem(cacheKey, JSON.stringify(usage));
       }
+      sessionStorage.setItem(`${cacheKey}_time`, Date.now().toString());
     } catch (error) {
       console.error('Erro ao carregar dados de uso:', error);
     } finally {
@@ -118,10 +149,10 @@ export function useSupabaseSubscriptionGuard() {
   }, [currentClient?.id]);
 
   useEffect(() => {
-    if (currentClient && !clientLoading) {
+    if (currentClient && !clientLoading && !clientUsage) {
       fetchClientUsage();
     }
-  }, [currentClient, clientLoading, fetchClientUsage]);
+  }, [currentClient, clientLoading, clientUsage, fetchClientUsage]);
 
   // getPlanById usando useMemo para evitar recálculo
   const getPlanById = useCallback((planId: string) => {
