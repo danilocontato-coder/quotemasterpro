@@ -97,36 +97,36 @@ export const useSupabaseSupplierDashboard = () => {
 
       console.log('Fetching dashboard data for supplier:', user.supplierId);
 
-      // Fetch active quotes (quotes where supplier has responded or been assigned)
+      // Buscar cotações direcionadas para este fornecedor especificamente
+      console.log('🎯 CRÍTICO: Buscando APENAS cotações direcionadas especificamente para:', user.supplierId);
+      
       const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
         .select(`
-          *,
-          quote_responses!inner (
-            id,
-            supplier_id,
-            total_amount,
-            status,
-            created_at
-          )
+          id,
+          title,
+          client_name,
+          status,
+          total,
+          deadline,
+          created_at,
+          updated_at
         `)
-        .eq('quote_responses.supplier_id', user.supplierId)
-        .in('status', ['sent', 'receiving', 'under_review', 'approved'])
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .eq('supplier_id', user.supplierId);
 
       if (quotesError) throw quotesError;
 
+      console.log('🎯 Cotações direcionadas encontradas:', quotesData?.length || 0);
+
       // Transform to recent quotes format
       const transformedRecentQuotes: RecentSupplierQuote[] = (quotesData || []).map(quote => {
-        const response = quote.quote_responses[0];
         return {
           id: quote.id,
           title: quote.title,
-          client: quote.client_name,
-          status: getSupplierStatusFromResponse(response.status),
+          client: quote.client_name || 'Cliente não informado',
+          status: getSupplierStatusFromQuoteStatus(quote.status),
           deadline: quote.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          estimatedValue: response.total_amount || quote.total || 0,
+          estimatedValue: quote.total || 0,
         };
       });
 
@@ -139,74 +139,82 @@ export const useSupabaseSupplierDashboard = () => {
       // Active quotes count
       const activeQuotes = quotesData?.length || 0;
       
-      // Pending proposals (responses with 'pending' status)
+      // Pending proposals (quotes with status 'sent' or 'receiving')
       const pendingProposals = quotesData?.filter(q => 
-        q.quote_responses.some((r: any) => r.status === 'pending')
+        ['sent', 'receiving'].includes(q.status)
       ).length || 0;
 
       // Monthly revenue (approved quotes this month)
-      const { data: monthlyRevenueData, error: revenueError } = await supabase
-        .from('quote_responses')
-        .select('total_amount, created_at')
-        .eq('supplier_id', user.supplierId)
-        .eq('status', 'approved')
-        .gte('created_at', new Date(currentYear, currentMonth, 1).toISOString())
-        .lt('created_at', new Date(currentYear, currentMonth + 1, 1).toISOString());
+      const monthlyQuotes = quotesData?.filter(q => {
+        const quoteDate = new Date(q.created_at);
+        return q.status === 'approved' && 
+               quoteDate.getMonth() === currentMonth && 
+               quoteDate.getFullYear() === currentYear;
+      }) || [];
+      
+      const monthlyRevenue = monthlyQuotes.reduce((sum, quote) => 
+        sum + (quote.total || 0), 0
+      );
 
-      if (revenueError) throw revenueError;
-
-      const monthlyRevenue = monthlyRevenueData?.reduce((sum, response) => 
-        sum + (response.total_amount || 0), 0
-      ) || 0;
-
-      // Previous month revenue for growth calculation
-      const { data: prevMonthRevenueData } = await supabase
-        .from('quote_responses')
-        .select('total_amount')
-        .eq('supplier_id', user.supplierId)
-        .eq('status', 'approved')
-        .gte('created_at', new Date(currentYear, currentMonth - 1, 1).toISOString())
-        .lt('created_at', new Date(currentYear, currentMonth, 1).toISOString());
-
-      const prevMonthRevenue = prevMonthRevenueData?.reduce((sum, response) => 
-        sum + (response.total_amount || 0), 0
-      ) || 0;
+      // Previous month for growth calculation
+      const prevMonthQuotes = quotesData?.filter(q => {
+        const quoteDate = new Date(q.created_at);
+        return q.status === 'approved' && 
+               quoteDate.getMonth() === currentMonth - 1 && 
+               quoteDate.getFullYear() === currentYear;
+      }) || [];
+      
+      const prevMonthRevenue = prevMonthQuotes.reduce((sum, quote) => 
+        sum + (quote.total || 0), 0
+      );
 
       const revenueGrowth = prevMonthRevenue > 0 
         ? ((monthlyRevenue - prevMonthRevenue) / prevMonthRevenue) * 100 
         : 0;
 
-      // Approval rate calculation
-      const { data: allResponsesData, error: allResponsesError } = await supabase
-        .from('quote_responses')
-        .select('status')
-        .eq('supplier_id', user.supplierId)
-        .in('status', ['approved', 'rejected']);
-
-      if (allResponsesError) throw allResponsesError;
-
-      const totalResponses = allResponsesData?.length || 0;
-      const approvedResponses = allResponsesData?.filter(r => r.status === 'approved').length || 0;
-      const approvalRate = totalResponses > 0 ? (approvedResponses / totalResponses) * 100 : 0;
-
-      // Previous period approval rate for growth calculation
-      const lastMonth = new Date();
-      lastMonth.setMonth(lastMonth.getMonth() - 1);
+      // Approval rate calculation (simplified)
+      const allQuotes = quotesData || [];
+      const completedQuotes = allQuotes.filter(q => ['approved', 'rejected'].includes(q.status));
+      const approvedQuotes = allQuotes.filter(q => q.status === 'approved');
       
-      const { data: prevApprovalData } = await supabase
-        .from('quote_responses')
-        .select('status')
-        .eq('supplier_id', user.supplierId)
-        .in('status', ['approved', 'rejected'])
-        .lt('created_at', new Date(currentYear, currentMonth, 1).toISOString());
-
-      const prevTotalResponses = prevApprovalData?.length || 0;
-      const prevApprovedResponses = prevApprovalData?.filter(r => r.status === 'approved').length || 0;
-      const prevApprovalRate = prevTotalResponses > 0 ? (prevApprovedResponses / prevTotalResponses) * 100 : 0;
-      
-      const approvalGrowth = prevApprovalRate > 0 
-        ? approvalRate - prevApprovalRate 
+      const approvalRate = completedQuotes.length > 0 
+        ? (approvedQuotes.length / completedQuotes.length) * 100 
         : 0;
+
+      // Simple approval growth (last 30 days vs previous 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+      const recentCompletedQuotes = allQuotes.filter(q => 
+        ['approved', 'rejected'].includes(q.status) && 
+        new Date(q.created_at) >= thirtyDaysAgo
+      );
+      const recentApprovedQuotes = allQuotes.filter(q => 
+        q.status === 'approved' && 
+        new Date(q.created_at) >= thirtyDaysAgo
+      );
+      
+      const prevCompletedQuotes = allQuotes.filter(q => 
+        ['approved', 'rejected'].includes(q.status) && 
+        new Date(q.created_at) >= sixtyDaysAgo && 
+        new Date(q.created_at) < thirtyDaysAgo
+      );
+      const prevApprovedQuotes = allQuotes.filter(q => 
+        q.status === 'approved' && 
+        new Date(q.created_at) >= sixtyDaysAgo && 
+        new Date(q.created_at) < thirtyDaysAgo
+      );
+
+      const recentApprovalRate = recentCompletedQuotes.length > 0 
+        ? (recentApprovedQuotes.length / recentCompletedQuotes.length) * 100 
+        : 0;
+      const prevApprovalRate = prevCompletedQuotes.length > 0 
+        ? (prevApprovedQuotes.length / prevCompletedQuotes.length) * 100 
+        : 0;
+      
+      const approvalGrowth = recentApprovalRate - prevApprovalRate;
 
       setMetrics({
         activeQuotes,
@@ -230,11 +238,12 @@ export const useSupabaseSupplierDashboard = () => {
     }
   }, [user, toast]);
 
-  const getSupplierStatusFromResponse = (responseStatus: string): RecentSupplierQuote['status'] => {
-    switch (responseStatus) {
-      case 'pending':
-        return 'pending';
+  const getSupplierStatusFromQuoteStatus = (quoteStatus: string): RecentSupplierQuote['status'] => {
+    switch (quoteStatus) {
       case 'sent':
+      case 'receiving':
+        return 'pending';
+      case 'under_review':
         return 'proposal_sent';
       case 'approved':
         return 'approved';
