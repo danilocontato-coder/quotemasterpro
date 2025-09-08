@@ -218,54 +218,98 @@ Responda APENAS no formato JSON:
 async function startNegotiation(negotiationId: string) {
   console.log(`Iniciando negociação via WhatsApp: ${negotiationId}`);
   
-  // Buscar negociação e dados relacionados
+  // Buscar negociação primeiro
   const { data: negotiation, error: negotiationError } = await supabase
     .from('ai_negotiations')
-    .select(`
-      *, 
-      quotes!inner(*),
-      quote_responses!inner(
-        *,
-        suppliers!inner(name, phone, whatsapp)
-      )
-    `)
+    .select('*')
     .eq('id', negotiationId)
     .single();
 
   if (negotiationError || !negotiation) {
+    console.error('Erro ao buscar negociação:', negotiationError);
     throw new Error('Negociação não encontrada');
   }
 
-  // Buscar o fornecedor da melhor resposta
-  const selectedResponse = negotiation.quote_responses.find(
-    (r: any) => r.id === negotiation.selected_response_id
-  );
-  
-  if (!selectedResponse || !selectedResponse.suppliers) {
-    throw new Error('Fornecedor da proposta selecionada não encontrado');
+  // Buscar cotação relacionada
+  const { data: quote, error: quoteError } = await supabase
+    .from('quotes')
+    .select('*')
+    .eq('id', negotiation.quote_id)
+    .single();
+
+  if (quoteError || !quote) {
+    console.error('Erro ao buscar cotação:', quoteError);
+    throw new Error('Cotação relacionada não encontrada');
   }
 
-  const supplier = selectedResponse.suppliers;
-  const supplierPhone = supplier.whatsapp || supplier.phone;
-  
-  if (!supplierPhone) {
+  // Buscar a melhor resposta se tiver selected_response_id
+  let selectedResponse = null;
+  let supplier = null;
+
+  if (negotiation.selected_response_id) {
+    const { data: response, error: responseError } = await supabase
+      .from('quote_responses')
+      .select(`
+        *,
+        suppliers!inner(name, phone, whatsapp)
+      `)
+      .eq('id', negotiation.selected_response_id)
+      .single();
+
+    if (!responseError && response) {
+      selectedResponse = response;
+      supplier = response.suppliers;
+    }
+  }
+
+  // Se não tem selected_response_id, buscar a melhor resposta (menor valor)
+  if (!selectedResponse) {
+    const { data: responses, error: responsesError } = await supabase
+      .from('quote_responses')
+      .select(`
+        *,
+        suppliers!inner(name, phone, whatsapp)
+      `)
+      .eq('quote_id', negotiation.quote_id)
+      .order('total_amount', { ascending: true });
+
+    if (responsesError || !responses || responses.length === 0) {
+      throw new Error('Nenhuma proposta encontrada para a cotação');
+    }
+
+    selectedResponse = responses[0];
+    supplier = responses[0].suppliers;
+
+    // Atualizar a negociação com o response selecionado
+    await supabase
+      .from('ai_negotiations')
+      .update({ 
+        selected_response_id: selectedResponse.id,
+        original_amount: selectedResponse.total_amount
+      })
+      .eq('id', negotiationId);
+  }
+  if (!supplier || (!supplier.whatsapp && !supplier.phone)) {
     throw new Error('WhatsApp do fornecedor não encontrado');
   }
 
-  const targetDiscount = negotiation.negotiation_strategy.targetDiscount || 8;
-  const proposedAmount = negotiation.original_amount * (1 - targetDiscount / 100);
+  const supplierPhone = supplier.whatsapp || supplier.phone;
+  const originalAmount = negotiation.original_amount || selectedResponse.total_amount;
+
+  const targetDiscount = negotiation.negotiation_strategy?.targetDiscount || 8;
+  const proposedAmount = originalAmount * (1 - targetDiscount / 100);
 
   // Gerar mensagem de negociação usando GPT-5
   const negotiationPrompt = `
 Você é um assistente de compras profissional iniciando uma negociação via WhatsApp.
 
 Contexto:
-- Cotação: ${negotiation.quotes.title}
+- Cotação: ${quote.title}
 - Fornecedor: ${supplier.name}
-- Proposta atual: R$ ${negotiation.original_amount.toLocaleString('pt-BR')}
+- Proposta atual: R$ ${originalAmount.toLocaleString('pt-BR')}
 - Valor proposto: R$ ${proposedAmount.toLocaleString('pt-BR')}
-- Estratégia: ${negotiation.negotiation_strategy.strategy}
-- Razão: ${negotiation.negotiation_strategy.reason}
+- Estratégia: ${negotiation.negotiation_strategy?.strategy || 'Negociação colaborativa'}
+- Razão: ${negotiation.negotiation_strategy?.reason || 'Buscar melhor preço'}
 
 Escreva UMA mensagem WhatsApp profissional em português:
 - Máximo 300 caracteres
@@ -294,7 +338,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     const aiMessage = messageData.choices[0].message.content.trim();
 
     // Configurar Evolution API
-    const evolutionConfig = await resolveEvolutionConfig(supabase, negotiation.quotes.client_id);
+    const evolutionConfig = await resolveEvolutionConfig(supabase, quote.client_id);
     
     if (!evolutionConfig.apiUrl || !evolutionConfig.token) {
       throw new Error('Configuração do WhatsApp (Evolution API) não encontrada');
