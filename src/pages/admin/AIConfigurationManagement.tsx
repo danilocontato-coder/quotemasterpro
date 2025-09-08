@@ -13,6 +13,7 @@ import { useAIConfiguration } from '@/hooks/useAIConfiguration';
 import { supabase } from '@/integrations/supabase/client';
 import { Bot, Settings, MessageSquare, TrendingUp, Shield, Database, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AIProviderSelector } from '@/components/admin/AIProviderSelector';
 
 export default function AIConfigurationManagement() {
   const { toast } = useToast();
