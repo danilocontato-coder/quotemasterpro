@@ -178,6 +178,9 @@ export function useAINegotiation() {
       });
 
       if (error) throw error;
+      if (data && data.success === false) {
+        throw new Error(data.error || 'Falha na negociação via WhatsApp');
+      }
 
       toast({
         title: 'Negociação Iniciada',

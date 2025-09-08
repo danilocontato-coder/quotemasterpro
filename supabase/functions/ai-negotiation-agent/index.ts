@@ -275,7 +275,7 @@ async function startNegotiation(negotiationId: string) {
     if (responsesError || !responses || responses.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'Nenhuma proposta encontrada para a cotação' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -300,7 +300,7 @@ async function startNegotiation(negotiationId: string) {
   if (!supplier || (!supplier.whatsapp && !supplier.phone)) {
     return new Response(
       JSON.stringify({ success: false, error: 'WhatsApp do fornecedor não encontrado' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
@@ -347,6 +347,10 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
 
     const messageData = await messageResponse.json();
     const aiMessage = messageData.choices[0].message.content.trim();
+
+    // Normalizar telefone uma única vez
+    const normalizedPhone = normalizePhone(supplierPhone);
+
 
     // Configurar Evolution API
     const evolutionConfig = await resolveEvolutionConfig(supabase, quote.client_id, true);
@@ -413,8 +417,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       );
     }
 
-    // Normalizar telefone e enviar via WhatsApp
-    const normalizedPhone = normalizePhone(supplierPhone);
+    // Enviar via WhatsApp
     console.log(`Enviando negociação para ${supplier.name} via WhatsApp: ${normalizedPhone}`);
     
     const whatsappResult = await sendEvolutionWhatsApp(
@@ -423,9 +426,43 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       aiMessage
     );
 
-    if (!whatsappResult.success) {
-      throw new Error(`Falha ao enviar WhatsApp: ${whatsappResult.error}`);
+    let finalResult = whatsappResult;
+
+    // Fallback: tentar config do cliente se global falhar
+    if (!finalResult.success) {
+      console.warn('Envio via Evolution falhou com config global. Tentando config do cliente...');
+      const clientCfg = await resolveEvolutionConfig(supabase, quote.client_id, false);
+      if (clientCfg.apiUrl && clientCfg.token) {
+        const retry = await sendEvolutionWhatsApp(clientCfg, normalizedPhone, aiMessage);
+        if (retry.success) {
+          finalResult = retry;
+        } else {
+          console.error('Falha também com config do cliente:', retry.error);
+        }
+      }
     }
+
+    if (!finalResult.success) {
+      // Não retornar 500 - enviar detalhes para debug no frontend
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Falha ao enviar WhatsApp',
+          debug: {
+            supplier_name: supplier.name,
+            phone: normalizedPhone,
+            scope_used: evolutionConfig.scope,
+            attempts: [
+              { scope: evolutionConfig.scope, apiUrl: evolutionConfig.apiUrl },
+            ],
+            last_error: finalResult.error,
+            tried_endpoints: finalResult.tried_endpoints || []
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
 
     console.log(`✅ WhatsApp enviado com sucesso para ${supplier.name}:`, whatsappResult.messageId);
 
@@ -475,7 +512,10 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
 
   } catch (apiError) {
     console.error('Erro na negociação via WhatsApp:', apiError);
-    throw new Error(`Erro ao realizar negociação: ${apiError.message}`);
+    return new Response(
+      JSON.stringify({ success: false, error: apiError?.message || 'Erro ao realizar negociação' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 }
 
