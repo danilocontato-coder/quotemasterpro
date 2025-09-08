@@ -482,27 +482,23 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       attempts[attempts.length - 1].error = sent.error;
     }
 
-    // Se ainda falhar: simular apenas se não houver nenhuma config válida
+    // Envio deve ser sempre real: sem simulação
     if (!result.success) {
-      const hasClientValid = !!(clientCfg.apiUrl && clientCfg.token && clientCfg.instance);
-      const hasGlobalValid = !!(globalCfg.apiUrl && globalCfg.token && globalCfg.instance);
-
-      if (!hasClientValid && !hasGlobalValid) {
-        const simulatedMessageId = `sim_${Date.now()}`;
-        const conversationLog = [
-          { role: 'ai', message: aiMessage, timestamp: new Date().toISOString(), channel: 'whatsapp_simulated', messageId: simulatedMessageId, phone: normalizedPhone, supplier_name: supplier.name, deliveryStatus: 'simulated' }
-        ];
-        const { data: updatedNegotiation } = await sb
-          .from('ai_negotiations')
-          .update({ status: 'negotiating', conversation_log: conversationLog, updated_at: new Date().toISOString() })
-          .eq('id', negotiationId)
-          .select()
-          .single();
-        return new Response(JSON.stringify({ success: true, negotiation: updatedNegotiation, whatsapp_sent: true, simulated: true, message_sent: aiMessage, messageId: simulatedMessageId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-
       return new Response(
-        JSON.stringify({ success: false, error: 'Falha ao enviar WhatsApp', debug: { supplier_name: supplier.name, phone: normalizedPhone, attempts, config: { client: { apiUrl: clientCfg.apiUrl || null, hasToken: !!clientCfg.token, hasInstance: !!clientCfg.instance }, global: { apiUrl: globalCfg.apiUrl || null, hasToken: !!globalCfg.token, hasInstance: !!globalCfg.instance } }, tried_endpoints: result.tried_endpoints || [] } }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Falha ao enviar WhatsApp', 
+          debug: { 
+            supplier_name: supplier.name, 
+            phone: normalizedPhone, 
+            attempts, 
+            config: { 
+              client: { apiUrl: clientCfg.apiUrl || null, hasToken: !!clientCfg.token, hasInstance: !!clientCfg.instance }, 
+              global: { apiUrl: globalCfg.apiUrl || null, hasToken: !!globalCfg.token, hasInstance: !!globalCfg.instance } 
+            } 
+          }, 
+          tried_endpoints: result.tried_endpoints || [] 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
