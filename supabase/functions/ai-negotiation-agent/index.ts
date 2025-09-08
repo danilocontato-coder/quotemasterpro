@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { resolveEvolutionConfig, normalizePhone, sendEvolutionWhatsApp } from '../_shared/evolution.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -215,12 +216,19 @@ Responda APENAS no formato JSON:
 }
 
 async function startNegotiation(negotiationId: string) {
-  console.log(`Iniciando negociação: ${negotiationId}`);
+  console.log(`Iniciando negociação via WhatsApp: ${negotiationId}`);
   
-  // Buscar negociação
+  // Buscar negociação e dados relacionados
   const { data: negotiation, error: negotiationError } = await supabase
     .from('ai_negotiations')
-    .select('*, quote_responses(*)')
+    .select(`
+      *, 
+      quotes!inner(*),
+      quote_responses!inner(
+        *,
+        suppliers!inner(name, phone, whatsapp)
+      )
+    `)
     .eq('id', negotiationId)
     .single();
 
@@ -228,24 +236,43 @@ async function startNegotiation(negotiationId: string) {
     throw new Error('Negociação não encontrada');
   }
 
+  // Buscar o fornecedor da melhor resposta
+  const selectedResponse = negotiation.quote_responses.find(
+    (r: any) => r.id === negotiation.selected_response_id
+  );
+  
+  if (!selectedResponse || !selectedResponse.suppliers) {
+    throw new Error('Fornecedor da proposta selecionada não encontrado');
+  }
+
+  const supplier = selectedResponse.suppliers;
+  const supplierPhone = supplier.whatsapp || supplier.phone;
+  
+  if (!supplierPhone) {
+    throw new Error('WhatsApp do fornecedor não encontrado');
+  }
+
   const targetDiscount = negotiation.negotiation_strategy.targetDiscount || 8;
   const proposedAmount = negotiation.original_amount * (1 - targetDiscount / 100);
 
-  // Gerar mensagem inicial de negociação usando GPT-5
+  // Gerar mensagem de negociação usando GPT-5
   const negotiationPrompt = `
-Você é um assistente de compras profissional iniciando uma negociação comercial.
+Você é um assistente de compras profissional iniciando uma negociação via WhatsApp.
 
 Contexto:
+- Cotação: ${negotiation.quotes.title}
+- Fornecedor: ${supplier.name}
 - Proposta atual: R$ ${negotiation.original_amount.toLocaleString('pt-BR')}
 - Valor proposto: R$ ${proposedAmount.toLocaleString('pt-BR')}
 - Estratégia: ${negotiation.negotiation_strategy.strategy}
 - Razão: ${negotiation.negotiation_strategy.reason}
 
-Escreva UMA mensagem de abertura de negociação em português, sendo:
-- Profissional e respeitosa
-- Máximo 200 caracteres
-- Enfatizando parceria de longo prazo
-- Propondo o valor específico
+Escreva UMA mensagem WhatsApp profissional em português:
+- Máximo 300 caracteres
+- Tom amigável mas profissional
+- Mencione parceria de longo prazo
+- Proponha o valor específico
+- Use emojis apropriados
 
 Responda APENAS a mensagem, sem aspas ou formatação.`;
 
@@ -259,51 +286,54 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       body: JSON.stringify({
         model: 'gpt-5-2025-08-07',
         messages: [{ role: 'user', content: negotiationPrompt }],
-        max_completion_tokens: 300,
+        max_completion_tokens: 400,
       }),
     });
 
     const messageData = await messageResponse.json();
     const aiMessage = messageData.choices[0].message.content.trim();
 
-    // Simular resposta do fornecedor (para demonstração)
-    const supplierResponses = [
-      `Entendo a proposta. Posso trabalhar com R$ ${(proposedAmount * 1.03).toLocaleString('pt-BR')} considerando o relacionamento.`,
-      `O valor está apertado. Minha contraproposta é R$ ${(proposedAmount * 1.05).toLocaleString('pt-BR')}.`,
-      `Vou aceitar R$ ${proposedAmount.toLocaleString('pt-BR')} para garantir esta parceria.`,
-      `Preciso de R$ ${(proposedAmount * 1.02).toLocaleString('pt-BR')} para manter a qualidade.`
-    ];
-
-    const supplierResponse = supplierResponses[Math.floor(Math.random() * supplierResponses.length)];
+    // Configurar Evolution API
+    const evolutionConfig = await resolveEvolutionConfig(supabase, negotiation.quotes.client_id);
     
-    // Extrair valor da resposta do fornecedor
-    const supplierAmountMatch = supplierResponse.match(/R\$\s*([\d.,]+)/);
-    const finalAmount = supplierAmountMatch ? 
-      parseFloat(supplierAmountMatch[1].replace(/[.,]/g, m => m === ',' ? '.' : '')) : 
-      proposedAmount;
+    if (!evolutionConfig.apiUrl || !evolutionConfig.token) {
+      throw new Error('Configuração do WhatsApp (Evolution API) não encontrada');
+    }
 
+    // Normalizar telefone e enviar via WhatsApp
+    const normalizedPhone = normalizePhone(supplierPhone);
+    console.log(`Enviando negociação para ${supplier.name} via WhatsApp: ${normalizedPhone}`);
+    
+    const whatsappResult = await sendEvolutionWhatsApp(
+      evolutionConfig, 
+      normalizedPhone, 
+      aiMessage
+    );
+
+    if (!whatsappResult.success) {
+      throw new Error(`Falha ao enviar WhatsApp: ${whatsappResult.error}`);
+    }
+
+    console.log(`✅ WhatsApp enviado com sucesso para ${supplier.name}:`, whatsappResult.messageId);
+
+    // Criar log de conversa inicial
     const conversationLog = [
       {
         role: 'ai',
         message: aiMessage,
-        timestamp: new Date().toISOString()
-      },
-      {
-        role: 'supplier',
-        message: supplierResponse,
-        timestamp: new Date(Date.now() + 300000).toISOString() // 5 min depois
+        timestamp: new Date().toISOString(),
+        channel: 'whatsapp',
+        messageId: whatsappResult.messageId
       }
     ];
 
-    // Atualizar negociação
+    // Atualizar negociação para status 'negotiating'
     const { data: updatedNegotiation, error: updateError } = await supabase
       .from('ai_negotiations')
       .update({
-        status: 'completed',
-        negotiated_amount: finalAmount,
-        discount_percentage: ((negotiation.original_amount - finalAmount) / negotiation.original_amount) * 100,
+        status: 'negotiating',
         conversation_log: conversationLog,
-        completed_at: new Date().toISOString()
+        updated_at: new Date().toISOString()
       })
       .eq('id', negotiationId)
       .select()
@@ -313,20 +343,23 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       throw new Error('Erro ao atualizar negociação');
     }
 
-    console.log(`Negociação ${negotiationId} concluída. Valor final: R$ ${finalAmount}`);
+    console.log(`Negociação ${negotiationId} iniciada via WhatsApp. Aguardando resposta do fornecedor.`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         negotiation: updatedNegotiation,
-        savings: negotiation.original_amount - finalAmount
+        whatsapp_sent: true,
+        supplier_name: supplier.name,
+        message_sent: aiMessage,
+        messageId: whatsappResult.messageId
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (apiError) {
-    console.error('Erro na negociação:', apiError);
-    throw new Error('Erro ao realizar negociação');
+    console.error('Erro na negociação via WhatsApp:', apiError);
+    throw new Error(`Erro ao realizar negociação: ${apiError.message}`);
   }
 }
 

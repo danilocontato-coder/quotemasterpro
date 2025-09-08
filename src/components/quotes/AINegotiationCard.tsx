@@ -16,7 +16,9 @@ interface AINegotiationCardProps {
 
 const statusConfig = {
   analyzing: { label: 'Analisando', color: 'bg-blue-500', icon: Brain },
-  negotiating: { label: 'Negociando', color: 'bg-yellow-500', icon: MessageSquare },
+  analyzed: { label: 'Analisada', color: 'bg-green-500', icon: Check },
+  not_viable: { label: 'Não Viável', color: 'bg-gray-500', icon: X },
+  negotiating: { label: 'Negociando via WhatsApp', color: 'bg-yellow-500', icon: MessageSquare },
   completed: { label: 'Concluída', color: 'bg-green-500', icon: Check },
   failed: { label: 'Falhou', color: 'bg-red-500', icon: X },
   approved: { label: 'Aprovada', color: 'bg-emerald-500', icon: Check },
@@ -188,15 +190,15 @@ export function AINegotiationCard({
             </Button>
           )}
 
-          {negotiation.status === 'completed' && !negotiation.human_approved && (
+          {(negotiation.status === 'analyzed' || negotiation.status === 'completed') && !negotiation.human_approved && (
             <>
               <Button 
                 size="sm" 
                 onClick={handleStartNegotiation}
-                className="flex-1"
+                className="flex-1 bg-green-600 hover:bg-green-700"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
-                Iniciar Negociação
+                Negociar via WhatsApp
               </Button>
             </>
           )}
