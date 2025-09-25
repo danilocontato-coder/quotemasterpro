@@ -40,6 +40,7 @@ const AINegotiations = React.lazy(() => import('@/pages/AINegotiations'));
 const AdminSuppliers = React.lazy(() => import('@/pages/AdminSuppliers'));
 const NotificationsTesting = React.lazy(() => import('@/pages/NotificationsTesting'));
 const PlansPage = React.lazy(() => import('@/pages/client/PlansPage'));
+const BrandingSettings = React.lazy(() => import('@/pages/BrandingSettings'));
 
 // Admin pages
 const SuperAdminDashboard = React.lazy(() => import('@/pages/admin/SuperAdminDashboard'));
@@ -324,6 +325,11 @@ function App() {
                       <Settings />
                     </Suspense>
                   } />
+                  <Route path="branding" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <BrandingSettings />
+                    </Suspense>
+                  } />
                   <Route path="plans" element={
                     <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <PlansPage />
@@ -422,6 +428,11 @@ function App() {
                       <Settings />
                     </Suspense>
                   } />
+                  <Route path="branding" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <BrandingSettings />
+                    </Suspense>
+                  } />
                   <Route path="plans" element={
                     <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <PlansPage />
@@ -483,6 +494,11 @@ function App() {
                   <Route path="settings" element={
                     <Suspense fallback={<LoadingFallback className="p-4" />}>
                       <SupplierSettings />
+                    </Suspense>
+                  } />
+                  <Route path="branding" element={
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
+                      <BrandingSettings />
                     </Suspense>
                   } />
                   <Route path="users" element={

@@ -481,6 +481,72 @@ export type Database = {
         }
         Relationships: []
       }
+      branding_settings: {
+        Row: {
+          accent_color: string | null
+          client_id: string | null
+          company_name: string | null
+          created_at: string | null
+          custom_css: string | null
+          favicon_url: string | null
+          footer_text: string | null
+          id: string
+          login_page_title: string | null
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          supplier_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          custom_css?: string | null
+          favicon_url?: string | null
+          footer_text?: string | null
+          id?: string
+          login_page_title?: string | null
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          client_id?: string | null
+          company_name?: string | null
+          created_at?: string | null
+          custom_css?: string | null
+          favicon_url?: string | null
+          footer_text?: string | null
+          id?: string
+          login_page_title?: string | null
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branding_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branding_settings_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: true
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string | null

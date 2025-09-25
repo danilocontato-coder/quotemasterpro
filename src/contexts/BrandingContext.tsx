@@ -52,91 +52,147 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Carregar configurações do banco
+  // Carregar configurações baseado no usuário atual
   const loadSettings = useCallback(async () => {
     try {
       setIsLoading(true);
-      
-      console.log('🎨 [BRANDING] Carregando configurações do banco...');
-      
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('setting_key, setting_value')
-        .in('setting_key', [
-          'company_name', 'company_logo', 'primary_color', 'secondary_color', 
-          'accent_color', 'favicon', 'footer_text', 'login_page_title',
-          'login_page_subtitle', 'dashboard_welcome_message', 'custom_css'
-        ]);
+      console.log('🎨 [BRANDING] Carregando configurações de branding...');
 
-      if (error) {
-        console.error('🎨 [BRANDING] Erro ao carregar configurações:', error);
-        // Em caso de erro, usar configurações padrão
-        console.log('🎨 [BRANDING] Usando configurações padrão devido ao erro');
+      // Buscar usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.log('🎨 [BRANDING] Usuário não autenticado, usando configurações padrão');
         setSettings(defaultSettings);
         applyBrandingToDOM(defaultSettings);
         return;
       }
 
-      console.log('🎨 [BRANDING] Dados carregados do banco:', data);
+      // Buscar perfil do usuário para identificar client_id ou supplier_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id, supplier_id, role')
+        .eq('id', user.id)
+        .single();
 
-      if (data && data.length > 0) {
-        const newSettings = { ...defaultSettings };
-        
-        data.forEach(item => {
-          const value = (item.setting_value as any)?.value || 
-                       (item.setting_value as any)?.url || 
-                       (item.setting_value as any)?.color || 
-                       (item.setting_value as any)?.text || 
-                       item.setting_value;
+      if (!profile) {
+        console.log('🎨 [BRANDING] Perfil não encontrado, usando configurações padrão');
+        setSettings(defaultSettings);
+        applyBrandingToDOM(defaultSettings);
+        return;
+      }
 
-          switch (item.setting_key) {
-            case 'company_name':
-              newSettings.companyName = value || defaultSettings.companyName;
-              break;
-            case 'company_logo':
-              newSettings.logo = value || defaultSettings.logo;
-              break;
-            case 'primary_color':
-              newSettings.primaryColor = value || defaultSettings.primaryColor;
-              break;
-            case 'secondary_color':
-              newSettings.secondaryColor = value || defaultSettings.secondaryColor;
-              break;
-            case 'accent_color':
-              newSettings.accentColor = value || defaultSettings.accentColor;
-              break;
-            case 'favicon':
-              newSettings.favicon = value || defaultSettings.favicon;
-              break;
-            case 'footer_text':
-              newSettings.footerText = value || defaultSettings.footerText;
-              break;
-            case 'login_page_title':
-              newSettings.loginPageTitle = value || defaultSettings.loginPageTitle;
-              break;
-            case 'login_page_subtitle':
-              newSettings.loginPageSubtitle = value || defaultSettings.loginPageSubtitle;
-              break;
-            case 'dashboard_welcome_message':
-              newSettings.dashboardWelcomeMessage = value || defaultSettings.dashboardWelcomeMessage;
-              break;
-            case 'custom_css':
-              newSettings.customCss = value;
-              break;
-          }
-        });
-        
-        console.log('🎨 [BRANDING] Configurações processadas:', newSettings);
+      let brandingSettings = null;
+
+      // Se é um cliente, buscar branding do cliente
+      if (profile.client_id) {
+        const { data } = await supabase
+          .from('branding_settings')
+          .select('*')
+          .eq('client_id', profile.client_id)
+          .single();
+        brandingSettings = data;
+        console.log('🎨 [BRANDING] Configurações do cliente:', brandingSettings);
+      }
+      
+      // Se é um fornecedor, buscar branding do fornecedor
+      else if (profile.supplier_id) {
+        const { data } = await supabase
+          .from('branding_settings')
+          .select('*')
+          .eq('supplier_id', profile.supplier_id)
+          .single();
+        brandingSettings = data;
+        console.log('🎨 [BRANDING] Configurações do fornecedor:', brandingSettings);
+      }
+
+      // Se não encontrou configurações específicas, buscar configurações globais (admin)
+      if (!brandingSettings && profile.role === 'admin') {
+        const { data: systemData } = await supabase
+          .from('system_settings')
+          .select('setting_key, setting_value')
+          .in('setting_key', [
+            'company_name', 'company_logo', 'primary_color', 'secondary_color', 
+            'accent_color', 'favicon', 'footer_text', 'login_page_title',
+            'login_page_subtitle', 'dashboard_welcome_message', 'custom_css'
+          ]);
+
+        if (systemData && systemData.length > 0) {
+          brandingSettings = { ...defaultSettings };
+          
+          systemData.forEach(item => {
+            const value = (item.setting_value as any)?.value || 
+                         (item.setting_value as any)?.url || 
+                         (item.setting_value as any)?.color || 
+                         (item.setting_value as any)?.text || 
+                         item.setting_value;
+
+            switch (item.setting_key) {
+              case 'company_name':
+                brandingSettings.companyName = value || defaultSettings.companyName;
+                break;
+              case 'company_logo':
+                brandingSettings.logo = value || defaultSettings.logo;
+                break;
+              case 'primary_color':
+                brandingSettings.primaryColor = value || defaultSettings.primaryColor;
+                break;
+              case 'secondary_color':
+                brandingSettings.secondaryColor = value || defaultSettings.secondaryColor;
+                break;
+              case 'accent_color':
+                brandingSettings.accentColor = value || defaultSettings.accentColor;
+                break;
+              case 'favicon':
+                brandingSettings.favicon = value || defaultSettings.favicon;
+                break;
+              case 'footer_text':
+                brandingSettings.footerText = value || defaultSettings.footerText;
+                break;
+              case 'login_page_title':
+                brandingSettings.loginPageTitle = value || defaultSettings.loginPageTitle;
+                break;
+              case 'login_page_subtitle':
+                brandingSettings.loginPageSubtitle = value || defaultSettings.loginPageSubtitle;
+                break;
+              case 'dashboard_welcome_message':
+                brandingSettings.dashboardWelcomeMessage = value || defaultSettings.dashboardWelcomeMessage;
+                break;
+              case 'custom_css':
+                brandingSettings.customCss = value;
+                break;
+            }
+          });
+          console.log('🎨 [BRANDING] Configurações globais (admin):', brandingSettings);
+        }
+      }
+
+      // Aplicar configurações encontradas ou usar padrão
+      if (brandingSettings) {
+        const newSettings = {
+          companyName: brandingSettings.company_name || brandingSettings.companyName || defaultSettings.companyName,
+          logo: brandingSettings.logo_url || brandingSettings.logo || defaultSettings.logo,
+          primaryColor: brandingSettings.primary_color || brandingSettings.primaryColor || defaultSettings.primaryColor,
+          secondaryColor: brandingSettings.secondary_color || brandingSettings.secondaryColor || defaultSettings.secondaryColor,
+          accentColor: brandingSettings.accent_color || brandingSettings.accentColor || defaultSettings.accentColor,
+          favicon: brandingSettings.favicon_url || brandingSettings.favicon || defaultSettings.favicon,
+          footerText: brandingSettings.footer_text || brandingSettings.footerText || defaultSettings.footerText,
+          loginPageTitle: brandingSettings.login_page_title || brandingSettings.loginPageTitle || defaultSettings.loginPageTitle,
+          loginPageSubtitle: brandingSettings.loginPageSubtitle || defaultSettings.loginPageSubtitle,
+          dashboardWelcomeMessage: brandingSettings.dashboardWelcomeMessage || defaultSettings.dashboardWelcomeMessage,
+          customCss: brandingSettings.custom_css || brandingSettings.customCss || defaultSettings.customCss,
+        };
         setSettings(newSettings);
         applyBrandingToDOM(newSettings);
+        console.log('🎨 [BRANDING] Configurações aplicadas:', newSettings);
       } else {
-        console.log('🎨 [BRANDING] Nenhuma configuração encontrada, usando padrões');
+        console.log('🎨 [BRANDING] Nenhuma configuração encontrada, usando padrão');
         setSettings(defaultSettings);
         applyBrandingToDOM(defaultSettings);
       }
+
     } catch (error) {
       console.error('🎨 [BRANDING] Erro ao carregar configurações:', error);
-      // Em caso de erro crítico, usar configurações padrão
       setSettings(defaultSettings);
       applyBrandingToDOM(defaultSettings);
     } finally {
@@ -207,102 +263,156 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Atualizar configurações
   const updateSettings = async (newSettings: Partial<BrandingSettings>) => {
     try {
+      console.log('🎨 [BRANDING] Atualizando configurações:', newSettings);
+
+      // Buscar usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      // Buscar perfil do usuário para identificar client_id ou supplier_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id, supplier_id, role')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile) {
+        throw new Error('Perfil não encontrado');
+      }
+
       const updatedSettings = { ...settings, ...newSettings };
-      setSettings(updatedSettings);
 
-      console.log('🎨 [BRANDING] Iniciando atualização das configurações:', newSettings);
+      // Preparar dados para inserir/atualizar
+      const brandingData = {
+        company_name: updatedSettings.companyName,
+        logo_url: updatedSettings.logo,
+        primary_color: updatedSettings.primaryColor,
+        secondary_color: updatedSettings.secondaryColor,
+        accent_color: updatedSettings.accentColor,
+        favicon_url: updatedSettings.favicon,
+        footer_text: updatedSettings.footerText,
+        login_page_title: updatedSettings.loginPageTitle,
+        custom_css: updatedSettings.customCss,
+      };
 
-      // Salvar no banco
-      const updates = Object.entries(newSettings).map(([key, value]) => {
-        let settingKey = '';
-        let settingValue: any = {};
+      let error = null;
 
-        switch (key) {
-          case 'companyName':
-            settingKey = 'company_name';
-            settingValue = { value };
-            break;
-          case 'logo':
-            settingKey = 'company_logo';
-            settingValue = { url: value };
-            break;
-          case 'primaryColor':
-            settingKey = 'primary_color';
-            settingValue = { color: value };
-            break;
-          case 'secondaryColor':
-            settingKey = 'secondary_color';
-            settingValue = { color: value };
-            break;
-          case 'accentColor':
-            settingKey = 'accent_color';
-            settingValue = { color: value };
-            break;
-          case 'favicon':
-            settingKey = 'favicon';
-            settingValue = { url: value };
-            break;
-          case 'footerText':
-            settingKey = 'footer_text';
-            settingValue = { text: value };
-            break;
-          case 'loginPageTitle':
-            settingKey = 'login_page_title';
-            settingValue = { text: value };
-            break;
-          case 'loginPageSubtitle':
-            settingKey = 'login_page_subtitle';
-            settingValue = { text: value };
-            break;
-          case 'dashboardWelcomeMessage':
-            settingKey = 'dashboard_welcome_message';
-            settingValue = { text: value };
-            break;
-          case 'customCss':
-            settingKey = 'custom_css';
-            settingValue = { text: value };
-            break;
-        }
+      // Se é um cliente, atualizar branding do cliente
+      if (profile.client_id) {
+        const { error: upsertError } = await supabase
+          .from('branding_settings')
+          .upsert({
+            ...brandingData,
+            client_id: profile.client_id,
+          });
+        error = upsertError;
+      }
+      
+      // Se é um fornecedor, atualizar branding do fornecedor
+      else if (profile.supplier_id) {
+        const { error: upsertError } = await supabase
+          .from('branding_settings')
+          .upsert({
+            ...brandingData,
+            supplier_id: profile.supplier_id,
+          });
+        error = upsertError;
+      }
+      
+      // Se é admin, atualizar configurações globais (compatibilidade com sistema antigo)
+      else if (profile.role === 'admin') {
+        const updates = Object.entries(newSettings).map(([key, value]) => {
+          let settingKey = '';
+          let settingValue: any = {};
 
-        return {
-          setting_key: settingKey,
-          setting_value: settingValue,
-          description: `Configuração de branding: ${key}`
-        };
-      });
+          switch (key) {
+            case 'companyName':
+              settingKey = 'company_name';
+              settingValue = { value };
+              break;
+            case 'logo':
+              settingKey = 'company_logo';
+              settingValue = { url: value };
+              break;
+            case 'primaryColor':
+              settingKey = 'primary_color';
+              settingValue = { color: value };
+              break;
+            case 'secondaryColor':
+              settingKey = 'secondary_color';
+              settingValue = { color: value };
+              break;
+            case 'accentColor':
+              settingKey = 'accent_color';
+              settingValue = { color: value };
+              break;
+            case 'favicon':
+              settingKey = 'favicon';
+              settingValue = { url: value };
+              break;
+            case 'footerText':
+              settingKey = 'footer_text';
+              settingValue = { text: value };
+              break;
+            case 'loginPageTitle':
+              settingKey = 'login_page_title';
+              settingValue = { text: value };
+              break;
+            case 'loginPageSubtitle':
+              settingKey = 'login_page_subtitle';
+              settingValue = { text: value };
+              break;
+            case 'dashboardWelcomeMessage':
+              settingKey = 'dashboard_welcome_message';
+              settingValue = { text: value };
+              break;
+            case 'customCss':
+              settingKey = 'custom_css';
+              settingValue = { text: value };
+              break;
+          }
 
-      console.log('🎨 [BRANDING] Enviando updates para o banco:', updates);
+          return {
+            setting_key: settingKey,
+            setting_value: settingValue,
+            description: `Configuração de branding: ${key}`
+          };
+        });
 
-      for (const update of updates) {
-        console.log(`🎨 [BRANDING] Salvando ${update.setting_key}...`);
-        
-        const { error } = await supabase
-          .from('system_settings')
-          .upsert(update, { onConflict: 'setting_key' });
+        for (const update of updates) {
+          const { error: systemError } = await supabase
+            .from('system_settings')
+            .upsert(update, { onConflict: 'setting_key' });
 
-        if (error) {
-          console.error(`🎨 [BRANDING] Erro ao salvar ${update.setting_key}:`, error);
-          throw error;
-        } else {
-          console.log(`🎨 [BRANDING] ✅ ${update.setting_key} salvo com sucesso`);
+          if (systemError) {
+            error = systemError;
+            break;
+          }
         }
       }
 
-      // Aplicar imediatamente
+      if (error) {
+        throw error;
+      }
+
+      // Atualizar estado local
+      setSettings(updatedSettings);
+      
+      // Aplicar branding imediatamente
       applyBrandingToDOM(updatedSettings);
-
-      console.log('🎨 [BRANDING] ✅ Todas as configurações foram salvas com sucesso!');
-
+      
       toast({
         title: "Branding atualizado!",
         description: "As configurações foram salvas e aplicadas com sucesso."
       });
 
+      console.log('🎨 [BRANDING] Configurações atualizadas com sucesso');
+
     } catch (error: any) {
-      console.error('🎨 [BRANDING] ❌ Erro ao atualizar branding:', error);
-      
-      // Reverter estado local em caso de erro
-      setSettings(settings);
+      console.error('🎨 [BRANDING] Erro ao atualizar:', error);
       
       let errorMessage = "Não foi possível atualizar as configurações.";
       
@@ -329,28 +439,76 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const resetToDefaults = async () => {
     try {
-      // Deletar todas as configurações de branding
-      const { error } = await supabase
-        .from('system_settings')
-        .delete()
-        .in('setting_key', [
-          'company_name', 'company_logo', 'primary_color', 'secondary_color',
-          'accent_color', 'favicon', 'footer_text', 'login_page_title',
-          'login_page_subtitle', 'dashboard_welcome_message', 'custom_css'
-        ]);
+      console.log('🎨 [BRANDING] Resetando configurações para padrão');
 
-      if (error) throw error;
+      // Buscar usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
 
+      // Buscar perfil do usuário para identificar client_id ou supplier_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id, supplier_id, role')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile) {
+        throw new Error('Perfil não encontrado');
+      }
+
+      let error = null;
+
+      // Se é um cliente, deletar branding do cliente
+      if (profile.client_id) {
+        const { error: deleteError } = await supabase
+          .from('branding_settings')
+          .delete()
+          .eq('client_id', profile.client_id);
+        error = deleteError;
+      }
+      
+      // Se é um fornecedor, deletar branding do fornecedor
+      else if (profile.supplier_id) {
+        const { error: deleteError } = await supabase
+          .from('branding_settings')
+          .delete()
+          .eq('supplier_id', profile.supplier_id);
+        error = deleteError;
+      }
+      
+      // Se é admin, deletar configurações globais
+      else if (profile.role === 'admin') {
+        const { error: deleteError } = await supabase
+          .from('system_settings')
+          .delete()
+          .in('setting_key', [
+            'company_name', 'company_logo', 'primary_color', 'secondary_color',
+            'accent_color', 'favicon', 'footer_text', 'login_page_title',
+            'login_page_subtitle', 'dashboard_welcome_message', 'custom_css'
+          ]);
+        error = deleteError;
+      }
+
+      if (error) {
+        throw error;
+      }
+
+      // Resetar para configurações padrão
       setSettings(defaultSettings);
       applyBrandingToDOM(defaultSettings);
-
+      
       toast({
         title: "Branding restaurado!",
         description: "Todas as configurações foram restauradas aos valores padrão."
       });
 
+      console.log('🎨 [BRANDING] Configurações resetadas com sucesso');
+
     } catch (error: any) {
-      console.error('Erro ao resetar branding:', error);
+      console.error('🎨 [BRANDING] Erro ao resetar:', error);
       toast({
         title: "Erro",
         description: "Não foi possível restaurar as configurações padrão.",

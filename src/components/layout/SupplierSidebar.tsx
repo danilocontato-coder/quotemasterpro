@@ -8,7 +8,8 @@ import {
   MessageSquare,
   DollarSign,
   History,
-  Users
+  Users,
+  Palette
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -39,6 +40,7 @@ const systemItems = [
   { title: "Usuários", url: "/supplier/users", icon: Users },
   { title: "Histórico", url: "/supplier/history", icon: History },
   { title: "Configurações", url: "/supplier/settings", icon: Settings },
+  { title: "Branding", url: "/supplier/branding", icon: Palette },
 ];
 
 export function SupplierSidebar() {
