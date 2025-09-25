@@ -1088,11 +1088,14 @@ export type Database = {
         Row: {
           auto_billing_enabled: boolean | null
           auto_suspend_enabled: boolean | null
+          billing_day: number | null
           boleto_config: Json | null
           boleto_provider: string | null
           created_at: string | null
           days_before_suspension: number | null
           days_grace_period: number | null
+          default_billing_cycle: string | null
+          due_days: number | null
           id: string
           late_fee_percentage: number | null
           reminder_intervals: Json | null
@@ -1102,11 +1105,14 @@ export type Database = {
         Insert: {
           auto_billing_enabled?: boolean | null
           auto_suspend_enabled?: boolean | null
+          billing_day?: number | null
           boleto_config?: Json | null
           boleto_provider?: string | null
           created_at?: string | null
           days_before_suspension?: number | null
           days_grace_period?: number | null
+          default_billing_cycle?: string | null
+          due_days?: number | null
           id?: string
           late_fee_percentage?: number | null
           reminder_intervals?: Json | null
@@ -1116,11 +1122,14 @@ export type Database = {
         Update: {
           auto_billing_enabled?: boolean | null
           auto_suspend_enabled?: boolean | null
+          billing_day?: number | null
           boleto_config?: Json | null
           boleto_provider?: string | null
           created_at?: string | null
           days_before_suspension?: number | null
           days_grace_period?: number | null
+          default_billing_cycle?: string | null
+          due_days?: number | null
           id?: string
           late_fee_percentage?: number | null
           reminder_intervals?: Json | null

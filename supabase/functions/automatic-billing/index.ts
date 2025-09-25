@@ -255,8 +255,18 @@ async function handleDailyBilling(supabaseClient: any) {
       );
     }
 
-    // Find subscriptions that need billing
+    // Check if today is billing day
     const today = new Date();
+    const billingDay = settings.billing_day || 1;
+    
+    if (today.getDate() !== billingDay) {
+      return new Response(
+        JSON.stringify({ message: `Not billing day. Billing day is ${billingDay}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Find subscriptions that need billing
     const { data: subscriptions, error: subscriptionsError } = await supabaseClient
       .from('subscriptions')
       .select(`
@@ -278,7 +288,8 @@ async function handleDailyBilling(supabaseClient: any) {
         : plan.yearly_price;
 
       const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30);
+      const dueDays = settings.due_days || 30;
+      dueDate.setDate(dueDate.getDate() + dueDays);
 
       // Generate boleto if configured
       let boletoData = {};
@@ -309,14 +320,25 @@ async function handleDailyBilling(supabaseClient: any) {
 
       if (invoiceError) throw invoiceError;
 
-      // Update subscription period
+      // Update subscription period based on billing cycle
       const nextPeriodStart = new Date(subscription.current_period_end);
       const nextPeriodEnd = new Date(nextPeriodStart);
       
-      if (subscription.billing_cycle === 'monthly') {
-        nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
-      } else {
-        nextPeriodEnd.setFullYear(nextPeriodEnd.getFullYear() + 1);
+      switch (subscription.billing_cycle || settings.default_billing_cycle) {
+        case 'monthly':
+          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
+          break;
+        case 'quarterly':
+          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 3);
+          break;
+        case 'semiannual':
+          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 6);
+          break;
+        case 'yearly':
+          nextPeriodEnd.setFullYear(nextPeriodEnd.getFullYear() + 1);
+          break;
+        default:
+          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
       }
 
       await supabaseClient

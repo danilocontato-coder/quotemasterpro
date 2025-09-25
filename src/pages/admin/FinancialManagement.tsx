@@ -45,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useSupabaseFinancial, Subscription, Invoice } from '@/hooks/useSupabaseFinancial';
+import { CouponIntegrationPanel } from '@/components/admin/CouponIntegrationPanel';
 import { toast } from 'sonner';
 
 export const FinancialManagement = () => {
@@ -283,6 +284,28 @@ export const FinancialManagement = () => {
                   </div>
 
                   <div>
+                    <label className="text-sm font-medium">Dia do faturamento</label>
+                    <Select 
+                      value={settings.billing_day?.toString() || '1'} 
+                      onValueChange={(value) => updateSettings({ billing_day: parseInt(value) })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Selecione o dia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                          <SelectItem key={day} value={day.toString()}>
+                            Dia {day}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Dia do mês para gerar faturas automaticamente
+                    </p>
+                  </div>
+
+                  <div>
                     <label className="text-sm font-medium">Taxa de multa (%)</label>
                     <Input
                       type="number"
@@ -294,10 +317,60 @@ export const FinancialManagement = () => {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Dias para vencimento</label>
+                    <Input
+                      type="number"
+                      value={settings.due_days || 30}
+                      onChange={(e) => 
+                        updateSettings({ due_days: parseInt(e.target.value) })
+                      }
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Quantos dias após a geração a fatura vence
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Ciclo de faturamento padrão</label>
+                    <Select 
+                      value={settings.default_billing_cycle || 'monthly'} 
+                      onValueChange={(value) => updateSettings({ default_billing_cycle: value })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Selecione o ciclo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="quarterly">Trimestral</SelectItem>
+                        <SelectItem value="semiannual">Semestral</SelectItem>
+                        <SelectItem value="yearly">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Período de carência (dias)</label>
+                    <Input
+                      type="number"
+                      value={settings.days_grace_period}
+                      onChange={(e) => 
+                        updateSettings({ days_grace_period: parseInt(e.target.value) })
+                      }
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Gestão de Cupons (quando configurações expandidas) */}
+        {showSettings && <CouponIntegrationPanel />}
 
         <Tabs defaultValue="subscriptions" className="space-y-6">
           <div className="flex items-center justify-between">

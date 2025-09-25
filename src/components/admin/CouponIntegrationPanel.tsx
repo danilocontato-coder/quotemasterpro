@@ -66,7 +66,7 @@ export function CouponIntegrationPanel() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCoupons(data || []);
+      setCoupons(data as Coupon[] || []);
     } catch (error) {
       console.error('Error loading coupons:', error);
       toast.error('Erro ao carregar cupons');
@@ -100,6 +100,7 @@ export function CouponIntegrationPanel() {
     try {
       const couponData = {
         ...formData,
+        name: formData.code, // Adding required name field
         expires_at: formData.expires_at || null,
         usage_limit: formData.usage_limit || null,
         max_discount_amount: formData.max_discount_amount || null
@@ -116,7 +117,7 @@ export function CouponIntegrationPanel() {
       } else {
         const { error } = await supabase
           .from('coupons')
-          .insert([couponData]);
+          .insert(couponData);
         
         if (error) throw error;
         toast.success('Cupom criado com sucesso');

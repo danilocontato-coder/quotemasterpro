@@ -49,6 +49,9 @@ export interface FinancialSettings {
   stripe_webhook_secret?: string;
   boleto_provider: string;
   boleto_config: Record<string, any>;
+  billing_day?: number;
+  due_days?: number;
+  default_billing_cycle?: string;
   created_at: string;
   updated_at: string;
 }
