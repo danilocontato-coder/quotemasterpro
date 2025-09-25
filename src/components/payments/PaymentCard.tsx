@@ -101,6 +101,11 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails }
                   <span className="font-medium">Descrição:</span> {payment.quotes.title}
                 </p>
               )}
+              {payment.clients?.name && (
+                <p>
+                  <span className="font-medium">Cliente:</span> {payment.clients.name}
+                </p>
+              )}
               {payment.suppliers?.name && (
                 <p>
                   <span className="font-medium">Fornecedor:</span> {payment.suppliers.name}

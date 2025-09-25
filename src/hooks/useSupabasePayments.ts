@@ -23,6 +23,10 @@ export interface Payment {
     id: string;
     name: string;
   };
+  clients?: {
+    id: string;
+    name: string;
+  };
 }
 
 export const useSupabasePayments = () => {
@@ -38,7 +42,8 @@ export const useSupabasePayments = () => {
         .select(`
           *,
           quotes(id, title, client_name),
-          suppliers(id, name)
+          suppliers(id, name),
+          clients(id, name)
         `)
         .order('created_at', { ascending: false });
 

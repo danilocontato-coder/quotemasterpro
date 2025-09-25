@@ -171,8 +171,8 @@ export function PaymentDetailModal({
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Cotação</p>
-                    <p className="font-medium">{payment.quoteName}</p>
-                    <p className="text-sm text-muted-foreground font-mono">{payment.quoteId}</p>
+                    <p className="font-medium">{payment.quotes?.title || 'Cotação não informada'}</p>
+                    <p className="text-sm text-muted-foreground font-mono">{payment.quote_id}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Valor</p>
@@ -212,7 +212,7 @@ export function PaymentDetailModal({
                     <div className="text-sm">
                       <span className="text-blue-700">Liberação automática em: </span>
                       <span className="font-medium text-blue-900">
-                        {formatDate(payment.escrowReleaseDate)}
+                        {payment.escrow_release_date ? formatDate(payment.escrow_release_date) : 'Data não definida'}
                       </span>
                     </div>
                   </div>
@@ -232,8 +232,8 @@ export function PaymentDetailModal({
               </CardHeader>
               <CardContent>
                 <div>
-                  <p className="font-medium">{payment.clientName}</p>
-                  <p className="text-sm text-muted-foreground">ID: {payment.clientId}</p>
+                  <p className="font-medium">{payment.clients?.name || payment.quotes?.client_name || 'Cliente não informado'}</p>
+                  <p className="text-sm text-muted-foreground">ID: {payment.client_id}</p>
                 </div>
               </CardContent>
             </Card>
@@ -247,8 +247,8 @@ export function PaymentDetailModal({
               </CardHeader>
               <CardContent>
                 <div>
-                  <p className="font-medium">{payment.supplierName}</p>
-                  <p className="text-sm text-muted-foreground">ID: {payment.supplierId}</p>
+                  <p className="font-medium">{payment.suppliers?.name || 'Fornecedor não informado'}</p>
+                  <p className="text-sm text-muted-foreground">ID: {payment.supplier_id}</p>
                 </div>
               </CardContent>
             </Card>
