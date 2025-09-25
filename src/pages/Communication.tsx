@@ -10,7 +10,7 @@ import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
 import { ContextualQA } from "@/components/communication/ContextualQA";
 import { ClientAnnouncementsList } from "@/components/communication/client/ClientAnnouncementsList";
 import { ClientTicketsManager } from "@/components/communication/client/ClientTicketsManager";
-import { CreateTestConversation } from "@/components/communication/CreateTestConversation";
+
 import { useEffect } from "react";
 
 export default function Communication() {
@@ -136,8 +136,7 @@ export default function Communication() {
 
           <CardContent className="p-0">
             <TabsContent value="chats" className="m-0">
-              <div className="p-6 space-y-6">
-                <CreateTestConversation />
+              <div className="p-6">
                 <ContextualQA />
               </div>
             </TabsContent>
