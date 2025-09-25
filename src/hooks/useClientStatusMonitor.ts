@@ -18,7 +18,7 @@ export const useClientStatusMonitor = () => {
     let channel: any = null;
     let timer: NodeJS.Timeout | null = null;
     
-    // Aguardar um pouco para evitar conflitos com useStableRealtime
+    // Aguardar um pouco para evitar conflitos com sistema centralizado
     timer = setTimeout(() => {
       // Escutar mudanças em tempo real na tabela clients
       channel = supabase

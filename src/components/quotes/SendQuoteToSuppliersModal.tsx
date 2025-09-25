@@ -47,8 +47,8 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     }
   });
   
-  // Debug: Verify function import
-  console.log('🔍 DEBUG: selectBestSupplier function:', selectBestSupplier);
+  // Debug desabilitado para melhorar performance
+  // console.log('🔍 DEBUG: selectBestSupplier function:', selectBestSupplier);
   
   // Group suppliers by CNPJ to handle potential duplicates
   const supplierGroups = activeSuppliers.reduce((groups, supplier) => {

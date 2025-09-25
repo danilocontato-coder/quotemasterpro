@@ -38,7 +38,7 @@ function App() {
           <BrandingProvider>
             <AuthProvider>
               <Router>
-                <GlobalNavigationProvider />
+                {/* GlobalNavigationProvider removido - integrado no AppWithProviders */}
                 <AppWithProviders />
                 
                 {/* Toast notifications */}

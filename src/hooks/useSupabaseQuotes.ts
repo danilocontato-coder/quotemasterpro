@@ -399,7 +399,8 @@ export const useSupabaseQuotes = () => {
         return;
       }
 
-      console.log('🔍 [DEBUG-QUOTES] 🔥 Setting up realtime subscription for quotes', { userId: stableUser.id, userRole: stableUser.role });
+      // REAL-TIME TEMPORARIAMENTE DESABILITADO
+      return; // Early return para desabilitar toda a subscrição real-time
 
       // Set up real-time subscription for quotes com ID único por user
       quotesSubscription = supabase

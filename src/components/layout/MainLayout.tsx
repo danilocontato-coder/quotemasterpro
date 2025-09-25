@@ -7,7 +7,7 @@ import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 import { SystemStatusHeader } from "./SystemStatusHeader";
 
-import { useStableRealtime } from "@/hooks/useStableRealtime";
+// useStableRealtime removido - usando sistema centralizado
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useRef } from "react";
 import { useClientStatusMonitor } from "@/hooks/useClientStatusMonitor";
@@ -19,8 +19,8 @@ export function MainLayout() {
   // Monitorar status do cliente em tempo real
   useClientStatusMonitor();
   
-  // Hook de realtime unificado e estável
-  useStableRealtime();
+  // Real-time centralizado ativo via AppWithProviders
+  // useStableRealtime(); // Removido
 
   return (
     <>

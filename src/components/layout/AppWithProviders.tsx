@@ -1,6 +1,8 @@
 import React, { Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useRefreshPrevention } from '@/hooks/useRefreshPrevention';
+import { useCentralizedRealtime } from '@/hooks/useCentralizedRealtime';
+import { useGlobalNavigation } from '@/hooks/useGlobalNavigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 
@@ -88,6 +90,12 @@ const LoadingFallback = ({ className = "" }: { className?: string }) => (
 export const AppWithProviders: React.FC = () => {
   // Aplicar prevenção de refreshes automáticos
   useRefreshPrevention();
+  
+  // Usar sistema de real-time centralizado
+  useCentralizedRealtime();
+  
+  // Navegação global
+  useGlobalNavigation();
 
   return (
     <Routes>
