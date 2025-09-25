@@ -29,7 +29,7 @@ import {
   PieChart,
   BarChart3
 } from "lucide-react";
-import { useSupplierFinancial } from "@/hooks/useSupplierFinancial";
+import { useSupplierFinancialReal } from "@/hooks/useSupplierFinancialReal";
 
 export default function SupplierFinancial() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,13 +45,14 @@ export default function SupplierFinancial() {
     getTotalEarnings,
     getPendingPayments,
     getMonthlyStats
-  } = useSupplierFinancial();
+  } = useSupplierFinancialReal();
 
   const filteredPayments = useMemo(() => {
     return payments.filter(payment => {
       const matchesSearch = 
         payment.quoteId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+        payment.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        payment.quoteName.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
       
@@ -76,7 +77,7 @@ export default function SupplierFinancial() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'paid':
+      case 'completed':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
           <CheckCircle className="h-3 w-3 mr-1" />
           Recebido
@@ -91,10 +92,25 @@ export default function SupplierFinancial() {
           <TrendingUp className="h-3 w-3 mr-1" />
           Processando
         </Badge>;
+      case 'in_escrow':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+          <Clock className="h-3 w-3 mr-1" />
+          Em Custódia
+        </Badge>;
+      case 'manual_confirmation':
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+          <Clock className="h-3 w-3 mr-1" />
+          Aguardando Confirmação
+        </Badge>;
       case 'failed':
         return <Badge variant="destructive">
           <XCircle className="h-3 w-3 mr-1" />
           Falhou
+        </Badge>;
+      case 'cancelled':
+        return <Badge variant="outline">
+          <XCircle className="h-3 w-3 mr-1" />
+          Cancelado
         </Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -137,9 +153,13 @@ export default function SupplierFinancial() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Recebido</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalEarnings)}
-                </p>
+                {isLoading ? (
+                  <div className="h-8 w-24 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(totalEarnings)}
+                  </p>
+                )}
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />
             </div>
@@ -151,9 +171,13 @@ export default function SupplierFinancial() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pendente</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {formatCurrency(pendingPayments)}
-                </p>
+                {isLoading ? (
+                  <div className="h-8 w-24 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {formatCurrency(pendingPayments)}
+                  </p>
+                )}
               </div>
               <Clock className="h-8 w-8 text-yellow-600" />
             </div>
@@ -165,9 +189,13 @@ export default function SupplierFinancial() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Este Mês</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(monthlyStats.thisMonth)}
-                </p>
+                {isLoading ? (
+                  <div className="h-8 w-24 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(monthlyStats.thisMonth)}
+                  </p>
+                )}
               </div>
               <TrendingUp className="h-8 w-8 text-blue-600" />
             </div>
@@ -179,9 +207,13 @@ export default function SupplierFinancial() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Crescimento</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {monthlyStats.growth >= 0 ? '+' : ''}{monthlyStats.growth.toFixed(1)}%
-                </p>
+                {isLoading ? (
+                  <div className="h-8 w-24 bg-muted animate-pulse rounded mt-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-purple-600">
+                    {monthlyStats.growth >= 0 ? '+' : ''}{monthlyStats.growth.toFixed(1)}%
+                  </p>
+                )}
               </div>
               {monthlyStats.growth >= 0 ? (
                 <TrendingUp className="h-8 w-8 text-purple-600" />
@@ -220,10 +252,13 @@ export default function SupplierFinancial() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os Status</SelectItem>
-                    <SelectItem value="paid">Recebido</SelectItem>
+                    <SelectItem value="completed">Recebido</SelectItem>
                     <SelectItem value="pending">Pendente</SelectItem>
                     <SelectItem value="processing">Processando</SelectItem>
+                    <SelectItem value="in_escrow">Em Custódia</SelectItem>
+                    <SelectItem value="manual_confirmation">Aguardando Confirmação</SelectItem>
                     <SelectItem value="failed">Falhou</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
                   </SelectContent>
                 </Select>
                   <Select value={dateRange} onValueChange={setDateRange}>
@@ -264,58 +299,77 @@ export default function SupplierFinancial() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cotação</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Data do Pagamento</TableHead>
-                      <TableHead>Método</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentPayments.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="font-mono text-sm">
-                          {payment.quoteId}
-                        </TableCell>
-                        <TableCell>{payment.clientName}</TableCell>
-                        <TableCell className="font-medium">
-                          {formatCurrency(payment.amount)}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                        <TableCell>
-                          {new Date(payment.paidAt || payment.createdAt).toLocaleDateString('pt-BR')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            {payment.paymentMethod}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            Ver Detalhes
-                          </Button>
-                        </TableCell>
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-12 bg-muted animate-pulse rounded" />
+                  ))}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cotação</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Data do Pagamento</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Ações</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                
-                {filteredPayments.length === 0 && (
-                  <div className="text-center py-8">
-                    <DollarSign className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <p className="text-muted-foreground mt-2">
-                      Nenhum pagamento encontrado
-                    </p>
-                  </div>
-                )}
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {currentPayments.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-mono text-sm">
+                            {payment.quoteId}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{payment.clientName}</div>
+                              <div className="text-sm text-muted-foreground">{payment.quoteName}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {formatCurrency(payment.amount)}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                          <TableCell>
+                            {payment.paidAt 
+                              ? new Date(payment.paidAt).toLocaleDateString('pt-BR')
+                              : new Date(payment.createdAt).toLocaleDateString('pt-BR')
+                            }
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="h-4 w-4" />
+                              {payment.paymentMethod}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm">
+                              Ver Detalhes
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {filteredPayments.length === 0 && !isLoading && (
+                    <div className="text-center py-8">
+                      <DollarSign className="mx-auto h-12 w-12 text-muted-foreground" />
+                      <p className="text-muted-foreground mt-2">
+                        {searchTerm || statusFilter !== 'all' 
+                          ? 'Nenhum pagamento encontrado com os filtros aplicados'
+                          : 'Nenhum pagamento vinculado às suas cotações ainda'
+                        }
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Pagination */}
               {totalPages > 1 && (
