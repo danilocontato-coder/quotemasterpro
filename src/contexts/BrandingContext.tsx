@@ -62,10 +62,81 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Buscar usuário atual
       const { data: { user } } = await supabase.auth.getUser();
       
+      // Função auxiliar para carregar configurações globais
+      const loadGlobalSettings = async () => {
+        const { data: systemData } = await supabase
+          .from('system_settings')
+          .select('setting_key, setting_value')
+          .in('setting_key', [
+            'company_name', 'company_logo', 'primary_color', 'secondary_color', 
+            'accent_color', 'favicon', 'footer_text', 'login_page_title',
+            'login_page_subtitle', 'dashboard_welcome_message', 'custom_css'
+          ]);
+
+        if (systemData && systemData.length > 0) {
+          const globalSettings = { ...defaultSettings };
+          
+          systemData.forEach(item => {
+            const value = (item.setting_value as any)?.value || 
+                         (item.setting_value as any)?.url || 
+                         (item.setting_value as any)?.color || 
+                         (item.setting_value as any)?.text || 
+                         item.setting_value;
+
+            switch (item.setting_key) {
+              case 'company_name':
+                globalSettings.companyName = value || defaultSettings.companyName;
+                break;
+              case 'company_logo':
+                globalSettings.logo = value || defaultSettings.logo;
+                break;
+              case 'primary_color':
+                globalSettings.primaryColor = value || defaultSettings.primaryColor;
+                break;
+              case 'secondary_color':
+                globalSettings.secondaryColor = value || defaultSettings.secondaryColor;
+                break;
+              case 'accent_color':
+                globalSettings.accentColor = value || defaultSettings.accentColor;
+                break;
+              case 'favicon':
+                globalSettings.favicon = value || defaultSettings.favicon;
+                break;
+              case 'footer_text':
+                globalSettings.footerText = value || defaultSettings.footerText;
+                break;
+              case 'login_page_title':
+                globalSettings.loginPageTitle = value || defaultSettings.loginPageTitle;
+                break;
+              case 'login_page_subtitle':
+                globalSettings.loginPageSubtitle = value || defaultSettings.loginPageSubtitle;
+                break;
+              case 'dashboard_welcome_message':
+                globalSettings.dashboardWelcomeMessage = value || defaultSettings.dashboardWelcomeMessage;
+                break;
+              case 'custom_css':
+                globalSettings.customCss = value;
+                break;
+            }
+          });
+          return globalSettings;
+        }
+        return null;
+      };
+
+      // Sempre tentar carregar configurações globais primeiro
+      const globalSettings = await loadGlobalSettings();
+      
       if (!user) {
-        console.log('🎨 [BRANDING] Usuário não autenticado, usando configurações padrão');
-        setSettings(defaultSettings);
-        applyBrandingToDOM(defaultSettings);
+        console.log('🎨 [BRANDING] Usuário não autenticado, aplicando configurações globais');
+        if (globalSettings) {
+          setSettings(globalSettings);
+          applyBrandingToDOM(globalSettings);
+          console.log('🎨 [BRANDING] Configurações globais aplicadas:', globalSettings);
+        } else {
+          setSettings(defaultSettings);
+          applyBrandingToDOM(defaultSettings);
+        }
         return;
       }
 
@@ -107,65 +178,10 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.log('🎨 [BRANDING] Configurações do fornecedor:', brandingSettings);
       }
 
-      // Se não encontrou configurações específicas, buscar configurações globais (admin)
-      if (!brandingSettings && profile.role === 'admin') {
-        const { data: systemData } = await supabase
-          .from('system_settings')
-          .select('setting_key, setting_value')
-          .in('setting_key', [
-            'company_name', 'company_logo', 'primary_color', 'secondary_color', 
-            'accent_color', 'favicon', 'footer_text', 'login_page_title',
-            'login_page_subtitle', 'dashboard_welcome_message', 'custom_css'
-          ]);
-
-        if (systemData && systemData.length > 0) {
-          brandingSettings = { ...defaultSettings };
-          
-          systemData.forEach(item => {
-            const value = (item.setting_value as any)?.value || 
-                         (item.setting_value as any)?.url || 
-                         (item.setting_value as any)?.color || 
-                         (item.setting_value as any)?.text || 
-                         item.setting_value;
-
-            switch (item.setting_key) {
-              case 'company_name':
-                brandingSettings.companyName = value || defaultSettings.companyName;
-                break;
-              case 'company_logo':
-                brandingSettings.logo = value || defaultSettings.logo;
-                break;
-              case 'primary_color':
-                brandingSettings.primaryColor = value || defaultSettings.primaryColor;
-                break;
-              case 'secondary_color':
-                brandingSettings.secondaryColor = value || defaultSettings.secondaryColor;
-                break;
-              case 'accent_color':
-                brandingSettings.accentColor = value || defaultSettings.accentColor;
-                break;
-              case 'favicon':
-                brandingSettings.favicon = value || defaultSettings.favicon;
-                break;
-              case 'footer_text':
-                brandingSettings.footerText = value || defaultSettings.footerText;
-                break;
-              case 'login_page_title':
-                brandingSettings.loginPageTitle = value || defaultSettings.loginPageTitle;
-                break;
-              case 'login_page_subtitle':
-                brandingSettings.loginPageSubtitle = value || defaultSettings.loginPageSubtitle;
-                break;
-              case 'dashboard_welcome_message':
-                brandingSettings.dashboardWelcomeMessage = value || defaultSettings.dashboardWelcomeMessage;
-                break;
-              case 'custom_css':
-                brandingSettings.customCss = value;
-                break;
-            }
-          });
-          console.log('🎨 [BRANDING] Configurações globais (admin):', brandingSettings);
-        }
+      // Se não encontrou configurações específicas, usar configurações globais
+      if (!brandingSettings) {
+        brandingSettings = globalSettings;
+        console.log('🎨 [BRANDING] Usando configurações globais para usuário logado:', brandingSettings);
       }
 
       // Aplicar configurações encontradas ou usar padrão
