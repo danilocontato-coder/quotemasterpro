@@ -514,7 +514,7 @@ export default function Reports() {
 
           {/* Análise de Fornecedores */}
           <TabsContent value="suppliers">
-            <SupplierPerformanceChart data={reportData.savingsAnalysis.monthlySavings} />
+            <SupplierPerformanceChart suppliers={reportData.supplierMetrics} timeRange="Período selecionado" />
           </TabsContent>
 
           {/* Análise de Produtos */}

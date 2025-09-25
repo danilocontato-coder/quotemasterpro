@@ -35,6 +35,9 @@ export interface ReportData {
     totalSavings: number;
     totalProducts: number;
     totalCategories: number;
+    avgDeliveryTime: number;
+    topSupplier: string;
+    topProduct: string;
   };
   financial: {
     totalSpent: number;
