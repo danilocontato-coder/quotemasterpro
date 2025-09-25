@@ -35,9 +35,9 @@ export function RatingPrompts() {
         <SupplierRatingModal
           open={!!selectedPrompt}
           onClose={() => setSelectedPrompt(null)}
-          supplierId={selectedPrompt.supplierId}
-          supplierName={selectedPrompt.supplierName}
-          quoteId={selectedPrompt.quoteId}
+          supplierId={selectedPrompt.supplier_id}
+          supplierName={selectedPrompt.supplier_name}
+          quoteId={selectedPrompt.quote_id}
           onRatingSubmitted={() => setSelectedPrompt(null)}
         />
       )}

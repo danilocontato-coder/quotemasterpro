@@ -11,29 +11,11 @@ interface RatingPromptCardProps {
 
 export function RatingPromptCard({ prompt, onRate, onDismiss }: RatingPromptCardProps) {
   const getPromptMessage = () => {
-    switch (prompt.type) {
-      case 'payment_confirmed':
-        return 'Seu pagamento foi confirmado! Que tal avaliar este fornecedor?';
-      case 'quote_completed':
-        return 'Cotação finalizada! Avalie a experiência com este fornecedor.';
-      case 'delivery_received':
-        return 'Entrega recebida! Compartilhe sua experiência com este fornecedor.';
-      default:
-        return 'Avalie este fornecedor.';
-    }
+    return 'Avalie a qualidade do serviço prestado pelo fornecedor.';
   };
 
   const getPromptTitle = () => {
-    switch (prompt.type) {
-      case 'payment_confirmed':
-        return 'Pagamento Confirmado';
-      case 'quote_completed':
-        return 'Cotação Finalizada';
-      case 'delivery_received':
-        return 'Entrega Recebida';
-      default:
-        return 'Avaliar Fornecedor';
-    }
+    return 'Avaliar Fornecedor';
   };
 
   return (
@@ -57,22 +39,22 @@ export function RatingPromptCard({ prompt, onRate, onDismiss }: RatingPromptCard
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{prompt.supplierName}</span>
+          <span className="font-medium">{prompt.supplier_name}</span>
         </div>
         
         <p className="text-sm text-muted-foreground">
           {getPromptMessage()}
         </p>
 
-        {prompt.quoteId && (
+        {prompt.quote_id && (
           <p className="text-xs text-muted-foreground">
-            Cotação: {prompt.quoteId}
+            Cotação: {prompt.quote_id}
           </p>
         )}
 
-        {prompt.paymentId && (
+        {prompt.payment_id && (
           <p className="text-xs text-muted-foreground">
-            Pagamento: {prompt.paymentId}
+            Pagamento: {prompt.payment_id}
           </p>
         )}
 

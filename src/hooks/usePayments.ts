@@ -1,12 +1,10 @@
 import { useState, useCallback } from 'react';
 import { mockPayments, Payment, PaymentTransaction } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
-import { useSupplierRatings } from '@/hooks/useSupplierRatings';
 
 export const usePayments = () => {
   const [payments, setPayments] = useState<Payment[]>(mockPayments);
   const { toast } = useToast();
-  const { createRatingPrompt } = useSupplierRatings();
 
   const confirmDelivery = useCallback((paymentId: string, notes?: string) => {
     let confirmedPayment: Payment | undefined;
@@ -49,17 +47,7 @@ export const usePayments = () => {
       title: "Entrega confirmada",
       description: "O pagamento foi liberado para o fornecedor.",
     });
-
-    // Create rating prompt after payment confirmation
-    if (confirmedPayment) {
-      createRatingPrompt({
-        type: 'payment_confirmed',
-        supplierId: confirmedPayment.supplierId,
-        supplierName: confirmedPayment.supplierName,
-        paymentId: confirmedPayment.id,
-      });
-    }
-  }, [toast, createRatingPrompt]);
+  }, [toast]);
 
   const reportDelay = useCallback((paymentId: string, reason: string) => {
     setPayments(prev => prev.map(payment => {
