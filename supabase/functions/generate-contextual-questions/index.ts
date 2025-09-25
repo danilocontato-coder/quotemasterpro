@@ -70,6 +70,14 @@ Retorne um JSON com este formato:
 }
 `;
 
+    // Verificar chave da OpenAI
+    if (!openAIApiKey) {
+      console.error('OPENAI_API_KEY não configurada nas secrets do Supabase Functions');
+      return new Response(JSON.stringify({
+        error: 'OPENAI_API_KEY não configurada',
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const isModernModel = /^(gpt-5|gpt-4\.1|o3|o4)/.test(aiModel);
 
     const baseMessages = [
@@ -80,31 +88,46 @@ Retorne um JSON com este formato:
       { role: 'user', content: prompt }
     ];
 
-    const payload: Record<string, unknown> = {
-      model: aiModel,
-      messages: baseMessages,
-    };
-
-    if (isModernModel) {
-      payload.max_completion_tokens = 1000; // modelos novos
-    } else {
-      payload.max_tokens = 1000; // modelos legados
-      payload.temperature = 0.7;
+    const buildPayload = (model: string, modern: boolean) => {
+      const p: Record<string, unknown> = { model, messages: baseMessages };
+      if (modern) {
+        p.max_completion_tokens = 800;
+      } else {
+        p.max_tokens = 800;
+        p.temperature = 0.7;
+      }
+      return p;
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Primeira tentativa com o modelo configurado
+    let response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(buildPayload(aiModel, isModernModel)),
     });
 
+    // Fallback se o modelo falhar
     if (!response.ok) {
       const errText = await response.text();
-      console.error('OpenAI API error details:', errText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('OpenAI API error (primary model) details:', errText);
+      const fallbackModel = 'gpt-4o-mini';
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(buildPayload(fallbackModel, false)),
+      });
+
+      if (!response.ok) {
+        const errText2 = await response.text();
+        console.error('OpenAI API error (fallback model) details:', errText2);
+        throw new Error(`OpenAI API error (fallback): ${response.status}`);
+      }
     }
 
     const data = await response.json();
