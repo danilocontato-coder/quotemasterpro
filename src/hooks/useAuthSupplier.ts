@@ -57,6 +57,30 @@ export const useAuthSupplier = () => {
         throw error;
       }
 
+      // Se tem supplier_id, verificar se o fornecedor está ativo
+      if (profile?.supplier_id) {
+        const { data: supplierData, error: supplierError } = await supabase
+          .from('suppliers')
+          .select('status')
+          .eq('id', profile.supplier_id)
+          .maybeSingle();
+
+        if (supplierError) {
+          console.error('Erro ao verificar status do fornecedor:', supplierError);
+          throw supplierError;
+        }
+
+        if (supplierData && supplierData.status !== 'active') {
+          console.log('⚠️ Fornecedor inativo encontrado');
+          setSupplierState({
+            supplierId: null,
+            onboardingCompleted: false,
+            isLoading: false
+          });
+          return;
+        }
+      }
+
       const hasSupplierId = !!profile?.supplier_id;
       
       // Se tem supplier_id mas onboarding não foi marcado como completed, auto-completar

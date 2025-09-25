@@ -214,6 +214,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
+        // Verificar se é usuário de fornecedor e se o fornecedor está ativo
+        if (profile.supplier_id) {
+          const { data: supplierData, error: supplierError } = await supabase
+            .from('suppliers')
+            .select('status')
+            .eq('id', profile.supplier_id)
+            .maybeSingle();
+
+          if (supplierError) {
+            console.error('Erro ao verificar status do fornecedor:', supplierError);
+          } else if (supplierData && supplierData.status !== 'active') {
+            console.log('⚠️ Fornecedor inativo, fazendo logout do usuário');
+            setError('Sua conta de fornecedor foi desativada. Entre em contato com o administrador.');
+            setUser(null);
+            setIsLoading(false);
+            await supabase.auth.signOut();
+            return;
+          }
+        }
+
         // Atualizar last_access na tabela users quando usuário faz login
         if (userRecord) {
           await supabase
