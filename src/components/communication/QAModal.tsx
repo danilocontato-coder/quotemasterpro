@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { 
   HelpCircle, 
   Clock, 
@@ -19,7 +21,6 @@ import {
   FileText
 } from "lucide-react";
 import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
-import { useToast } from "@/hooks/use-toast";
 
 interface QAModalProps {
   conversation: any;
@@ -263,21 +264,28 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
     setIsGeneratingQuestions(true);
     try {
       // Chamar edge function para gerar perguntas contextuais
-      const response = await fetch('https://bpsqyaxdhqejozmlejcb.supabase.co/functions/v1/generate-contextual-questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('generate-contextual-questions', {
+        body: {
           quote_id: conversation.quote_id,
           quote_title: conversation.quote_title,
           existing_questions: qaMessages.length
-        })
+        }
       });
       
-      if (response.ok) {
-        const data = await response.json();
+      if (error) {
+        console.error('Erro ao gerar perguntas:', error);
+        toast({
+          title: "Erro",
+          description: "Erro ao gerar perguntas contextuais",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data?.suggestions) {
         toast({ 
           title: "Perguntas IA", 
-          description: `${data.suggestions?.length || 0} perguntas contextuais sugeridas pela IA.` 
+          description: `${data.suggestions.length} perguntas contextuais sugeridas pela IA.` 
         });
       }
     } catch (error) {
