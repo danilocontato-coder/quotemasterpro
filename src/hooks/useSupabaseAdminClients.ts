@@ -143,9 +143,9 @@ export function useSupabaseAdminClients() {
 
         const mapped: AdminClient[] = (clientsResult.data || []).map((c) => ({
           id: c.id,
-          companyName: c.name,
-          cnpj: c.cnpj,
-          email: c.email,
+          companyName: c.name || '',
+          cnpj: c.cnpj || '',
+          email: c.email || '',
           phone: c.phone ?? "",
           address: typeof c.address === 'string' ? c.address : formatAddressToText(parseAddress(c.address ?? undefined)),
           contacts: [],
@@ -182,10 +182,11 @@ export function useSupabaseAdminClients() {
 
   const filteredClients = useMemo(() => {
     return clients.filter((client) => {
+      const searchTermLower = searchTerm.toLowerCase();
       const matchesSearch =
-        client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.cnpj.includes(searchTerm) ||
-        client.email.toLowerCase().includes(searchTerm.toLowerCase());
+        (client.companyName || '').toLowerCase().includes(searchTermLower) ||
+        (client.cnpj || '').includes(searchTerm) ||
+        (client.email || '').toLowerCase().includes(searchTermLower);
 
       const matchesGroup = filterGroup === "all" || client.groupId === filterGroup;
       const matchesStatus = filterStatus === "all" || client.status === filterStatus;
