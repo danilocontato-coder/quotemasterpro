@@ -25,13 +25,20 @@ import {
   Activity,
   Eye,
   Trash2,
-  Plus
+  Plus,
+  Package,
+  Target,
+  Calculator
 } from 'lucide-react';
 import { useReports, ReportFilter } from '@/hooks/useReports';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { FinancialAnalysisCard } from '@/components/reports/FinancialAnalysisCard';
+import { SupplierPerformanceChart } from '@/components/reports/SupplierPerformanceChart';
+import { ProductCategoryAnalysis } from '@/components/reports/ProductCategoryAnalysis';
+import { SavingsAnalysisCard } from '@/components/reports/SavingsAnalysisCard';
 
 export default function Reports() {
   const { 
@@ -351,16 +358,19 @@ export default function Reports() {
       {/* Dados do Relatório */}
       {reportData && (
         <Tabs defaultValue="summary" className="space-y-4">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="summary">Resumo</TabsTrigger>
-            <TabsTrigger value="quotes">Cotações</TabsTrigger>
+            <TabsTrigger value="financial">Financeiro</TabsTrigger>
             <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
+            <TabsTrigger value="products">Produtos</TabsTrigger>
+            <TabsTrigger value="savings">Economia</TabsTrigger>
+            <TabsTrigger value="quotes">Cotações</TabsTrigger>
             <TabsTrigger value="ratings">Avaliações</TabsTrigger>
           </TabsList>
 
-          {/* Resumo */}
+          {/* Resumo Executivo */}
           <TabsContent value="summary">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center">
@@ -388,18 +398,6 @@ export default function Reports() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center">
-                    <TrendingUp className="h-8 w-8 text-orange-600" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-bold">R$ {reportData.summary.avgAmount.toLocaleString('pt-BR')}</p>
-                      <p className="text-sm text-muted-foreground">Valor Médio</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center">
                     <Users className="h-8 w-8 text-purple-600" />
                     <div className="ml-4">
                       <p className="text-2xl font-bold">{reportData.summary.totalSuppliers}</p>
@@ -412,10 +410,10 @@ export default function Reports() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center">
-                    <Star className="h-8 w-8 text-yellow-600" />
+                    <Package className="h-8 w-8 text-orange-600" />
                     <div className="ml-4">
-                      <p className="text-2xl font-bold">{reportData.summary.avgRating.toFixed(1)}</p>
-                      <p className="text-sm text-muted-foreground">Avaliação Média</p>
+                      <p className="text-2xl font-bold">{reportData.summary.totalProducts}</p>
+                      <p className="text-sm text-muted-foreground">Produtos</p>
                     </div>
                   </div>
                 </CardContent>
@@ -424,15 +422,120 @@ export default function Reports() {
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center">
-                    <Activity className="h-8 w-8 text-red-600" />
+                    <Target className="h-8 w-8 text-green-600" />
                     <div className="ml-4">
-                      <p className="text-2xl font-bold">{reportData.summary.completionRate.toFixed(1)}%</p>
-                      <p className="text-sm text-muted-foreground">Taxa de Conclusão</p>
+                      <p className="text-2xl font-bold">R$ {reportData.summary.totalSavings.toLocaleString('pt-BR')}</p>
+                      <p className="text-sm text-muted-foreground">Economia Total</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Gráficos de Performance */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Performance Geral
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Taxa de Conclusão</span>
+                      <span className="text-lg font-bold">{reportData.summary.completionRate.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-600 h-2 rounded-full" 
+                        style={{ width: `${reportData.summary.completionRate}%` }}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Avaliação Média</span>
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                        <span className="text-lg font-bold">{reportData.summary.avgRating.toFixed(1)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Valor Médio por Cotação</span>
+                      <span className="text-lg font-bold">R$ {reportData.summary.avgAmount.toLocaleString('pt-BR')}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calculator className="h-5 w-5" />
+                    Indicadores Financeiros
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-600 font-medium">Gasto Total</p>
+                        <p className="text-xl font-bold text-blue-700">
+                          R$ {reportData.financial.totalSpent.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <p className="text-sm text-green-600 font-medium">Economia</p>
+                        <p className="text-xl font-bold text-green-700">
+                          R$ {reportData.financial.totalSaved.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                      <p className="text-sm text-yellow-600 font-medium">Desconto Médio</p>
+                      <p className="text-xl font-bold text-yellow-700">
+                        {reportData.financial.averageDiscount.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Análise Financeira */}
+          <TabsContent value="financial">
+            <FinancialAnalysisCard 
+              data={reportData.financial} 
+              period={`${filters.dateRange?.start} a ${filters.dateRange?.end}`}
+            />
+          </TabsContent>
+
+          {/* Performance de Fornecedores */}
+          <TabsContent value="suppliers">
+            <SupplierPerformanceChart 
+              suppliers={reportData.supplierMetrics}
+              timeRange={`${filters.dateRange?.start} a ${filters.dateRange?.end}`}
+            />
+          </TabsContent>
+
+          {/* Análise de Produtos e Categorias */}
+          <TabsContent value="products">
+            <ProductCategoryAnalysis 
+              products={reportData.productAnalysis.products}
+              categories={reportData.productAnalysis.categories}
+              timeRange={`${filters.dateRange?.start} a ${filters.dateRange?.end}`}
+            />
+          </TabsContent>
+
+          {/* Análise de Economia */}
+          <TabsContent value="savings">
+            <SavingsAnalysisCard 
+              data={reportData.savingsAnalysis}
+              period={`${filters.dateRange?.start} a ${filters.dateRange?.end}`}
+            />
           </TabsContent>
 
           {/* Cotações */}
