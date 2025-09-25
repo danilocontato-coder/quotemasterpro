@@ -1646,6 +1646,7 @@ export type Database = {
           created_at: string
           delivery_rating: number | null
           id: string
+          payment_id: string | null
           price_rating: number | null
           quality_rating: number | null
           quote_id: string
@@ -1653,6 +1654,7 @@ export type Database = {
           rating: number
           supplier_id: string
           updated_at: string
+          user_id: string | null
           would_recommend: boolean | null
         }
         Insert: {
@@ -1662,6 +1664,7 @@ export type Database = {
           created_at?: string
           delivery_rating?: number | null
           id?: string
+          payment_id?: string | null
           price_rating?: number | null
           quality_rating?: number | null
           quote_id: string
@@ -1669,6 +1672,7 @@ export type Database = {
           rating: number
           supplier_id: string
           updated_at?: string
+          user_id?: string | null
           would_recommend?: boolean | null
         }
         Update: {
@@ -1678,6 +1682,7 @@ export type Database = {
           created_at?: string
           delivery_rating?: number | null
           id?: string
+          payment_id?: string | null
           price_rating?: number | null
           quality_rating?: number | null
           quote_id?: string
@@ -1685,6 +1690,7 @@ export type Database = {
           rating?: number
           supplier_id?: string
           updated_at?: string
+          user_id?: string | null
           would_recommend?: boolean | null
         }
         Relationships: []
