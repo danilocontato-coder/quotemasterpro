@@ -43,7 +43,7 @@ export const useSupabasePayments = () => {
         .from('payments')
         .select(`
           *,
-          quotes(id, title, client_name),
+          quotes(id, title, client_name, supplier_id, suppliers(id, name)),
           suppliers(id, name),
           clients(id, name)
         `)

@@ -246,7 +246,11 @@ export function PaymentDetailModal({
               </CardHeader>
               <CardContent>
                 <div>
-                  <p className="font-medium">{payment.suppliers?.name || 'Fornecedor não informado'}</p>
+                  <p className="font-medium">
+                    {payment.suppliers?.name || 
+                     payment.quotes?.suppliers?.name || 
+                     'Fornecedor não informado'}
+                  </p>
                 </div>
               </CardContent>
             </Card>

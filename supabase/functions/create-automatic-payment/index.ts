@@ -20,7 +20,36 @@ serve(async (req) => {
 
     const { quote_id, client_id, supplier_id, amount } = await req.json()
 
-    // Validate required fields (supplier_id pode ser null)
+    // Buscar informações da cotação para obter o supplier_id se não foi fornecido
+    let finalSupplierId = supplier_id;
+    
+    if (!finalSupplierId) {
+      // Buscar o supplier_id da cotação ou da resposta aprovada
+      const { data: quote } = await supabase
+        .from('quotes')
+        .select('supplier_id')
+        .eq('id', quote_id)
+        .single()
+      
+      if (quote?.supplier_id) {
+        finalSupplierId = quote.supplier_id;
+      } else {
+        // Se não tem supplier_id na cotação, buscar na resposta mais recente
+        const { data: response } = await supabase
+          .from('quote_responses')
+          .select('supplier_id')
+          .eq('quote_id', quote_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+        
+        if (response?.supplier_id) {
+          finalSupplierId = response.supplier_id;
+        }
+      }
+    }
+
+    // Validate required fields
     if (!quote_id || !client_id || !amount) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: quote_id, client_id, amount' }),
@@ -54,7 +83,7 @@ serve(async (req) => {
       .insert({
         quote_id,
         client_id,
-        supplier_id: supplier_id || null, // Permitir supplier_id null
+        supplier_id: finalSupplierId || null,
         amount,
         status: 'pending'
       })
