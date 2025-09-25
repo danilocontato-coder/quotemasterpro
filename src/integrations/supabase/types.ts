@@ -2778,6 +2778,10 @@ export type Database = {
         Args: { user_email: string }
         Returns: boolean
       }
+      create_default_cost_centers: {
+        Args: { p_client_id: string }
+        Returns: undefined
+      }
       create_notification: {
         Args: {
           p_action_url?: string

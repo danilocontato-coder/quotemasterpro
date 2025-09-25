@@ -14,7 +14,7 @@ export default function CostCenters() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCostCenter, setEditingCostCenter] = useState<any>(null);
   const { currentClient: client } = useCurrentClient();
-  const { costCenters, spending, isLoading, fetchHierarchy, fetchSpending, deleteCostCenter } = useCostCenters();
+  const { costCenters, spending, isLoading, fetchHierarchy, fetchSpending, deleteCostCenter, createDefaultCostCenters } = useCostCenters();
 
   // Fetch hierarchy and spending data automatically on mount
   useEffect(() => {
@@ -62,10 +62,17 @@ export default function CostCenters() {
           <h1 className="text-3xl font-bold">Centros de Custo</h1>
           <p className="text-muted-foreground">Gerencie os centros de custo e analise os gastos</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Centro de Custo
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Centro de Custo
+          </Button>
+          {costCenters.length === 0 && (
+            <Button variant="outline" onClick={createDefaultCostCenters}>
+              Criar Centros Padrão
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Analytics Cards */}
@@ -192,11 +199,22 @@ export default function CostCenters() {
 
             {costCenters.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhum centro de custo encontrado.
-                <br />
-                <Button variant="link" onClick={() => setShowCreateModal(true)}>
-                  Criar primeiro centro de custo
-                </Button>
+                <div className="space-y-4">
+                  <p>Nenhum centro de custo encontrado.</p>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button variant="link" onClick={() => setShowCreateModal(true)}>
+                      Criar primeiro centro de custo
+                    </Button>
+                    <span className="text-muted-foreground">ou</span>
+                    <Button variant="link" onClick={createDefaultCostCenters}>
+                      Criar centros padrão
+                    </Button>
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-4">
+                    <p><strong>Centros padrão incluem:</strong></p>
+                    <p>Administração • Manutenção • Limpeza • Segurança • Jardim • Emergência</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

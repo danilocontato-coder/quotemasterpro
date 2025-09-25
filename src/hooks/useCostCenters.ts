@@ -267,9 +267,44 @@ export function useCostCenters() {
     }
   };
 
+  const createDefaultCostCenters = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error('No client associated with user');
+
+      const { error } = await supabase.rpc('create_default_cost_centers', {
+        p_client_id: profile.client_id,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Centros de custo padrão criados com sucesso',
+      });
+
+      fetchCostCenters();
+    } catch (err) {
+      console.error('Error creating default cost centers:', err);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao criar centros de custo padrão',
+        variant: 'destructive',
+      });
+    }
+  }, [toast, fetchCostCenters]);
+
   useEffect(() => {
     fetchCostCenters();
-  }, []);
+  }, [fetchCostCenters]);
 
   return {
     costCenters,
@@ -282,5 +317,6 @@ export function useCostCenters() {
     createCostCenter,
     updateCostCenter,
     deleteCostCenter,
+    createDefaultCostCenters,
   };
 }
