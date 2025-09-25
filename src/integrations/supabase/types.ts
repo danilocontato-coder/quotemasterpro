@@ -586,6 +586,38 @@ export type Database = {
         }
         Relationships: []
       }
+      client_payment_counters: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          current_counter: number
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          current_counter?: number
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          current_counter?: number
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_payment_counters_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_quote_counters: {
         Row: {
           client_id: string
@@ -2314,6 +2346,10 @@ export type Database = {
       link_user_to_client: {
         Args: { target_client_id: string; user_id: string }
         Returns: boolean
+      }
+      next_payment_id_by_client: {
+        Args: { p_client_id: string; prefix?: string }
+        Returns: string
       }
       next_product_code: {
         Args: { prefix?: string }

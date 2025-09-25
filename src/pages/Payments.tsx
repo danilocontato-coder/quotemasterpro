@@ -151,10 +151,10 @@ export default function Payments() {
                 const { data, error } = await supabase
                   .from('payments')
                   .insert({
-                    id: 'PAY-' + Date.now().toString(),
+                    id: '', // Será gerado automaticamente pelo trigger
                     quote_id: quoteId,
                     client_id: quote.client_id,
-                    supplier_id: quote.supplier_id || null, // Permitir null para supplier_id
+                    supplier_id: quote.supplier_id || null,
                     amount: amount,
                     status: 'pending'
                   })

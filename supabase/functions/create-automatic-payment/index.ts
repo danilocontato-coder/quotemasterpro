@@ -48,14 +48,10 @@ serve(async (req) => {
       )
     }
 
-    // Generate PGT ID
-    const pgtNumber = Date.now().toString().slice(-6);
-    const paymentId = `PGT${pgtNumber.padStart(6, '0')}`;
-    
+    // O ID será gerado automaticamente pelo trigger
     const { data: payment, error } = await supabase
       .from('payments')
       .insert({
-        id: paymentId,
         quote_id,
         client_id,
         supplier_id: supplier_id || null, // Permitir supplier_id null
@@ -82,7 +78,7 @@ serve(async (req) => {
       .insert({
         action: 'PAYMENT_AUTO_CREATED',
         entity_type: 'payments',
-        entity_id: paymentId,
+        entity_id: payment.id,
         panel_type: 'system',
         details: {
           quote_id,
@@ -91,12 +87,12 @@ serve(async (req) => {
         }
       })
 
-    console.log(`Automatic payment created: ${paymentId} for quote: ${quote_id}`)
+    console.log(`Automatic payment created: ${payment.id} for quote: ${quote_id}`)
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        payment_id: paymentId,
+        payment_id: payment.id,
         message: 'Automatic payment created successfully'
       }),
       { 
