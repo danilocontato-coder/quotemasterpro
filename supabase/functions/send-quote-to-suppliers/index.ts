@@ -430,8 +430,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // If we reach here, the N8N webhook was successful
-    // Update quote status to 'sent' using EdgeRuntime.waitUntil for background processing
-    EdgeRuntime.waitUntil((async () => {
+    // Update quote status to 'sent' in background
+    (async () => {
       try {
         const { error: statusError } = await supabase
           .from('quotes')
@@ -489,10 +489,10 @@ const handler = async (req: Request): Promise<Response> => {
       } catch (error) {
         console.error('Error updating quote status:', error);
       }
-    })());
+    })().catch(err => console.error('Background update error:', err));
 
     // Log the activity (also in background)
-    EdgeRuntime.waitUntil((async () => {
+    (async () => {
       try {
         const { error: logError } = await supabase
           .from('audit_logs')
@@ -516,7 +516,7 @@ const handler = async (req: Request): Promise<Response> => {
       } catch (error) {
         console.error('Error logging activity:', error);
       }
-    })());
+    })().catch(err => console.error('Background log error:', err));
 
     console.log('Quote sent successfully to N8N');
 
@@ -694,7 +694,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Direct Evolution sending completed: ${successCount} success, ${errorCount} errors`);
 
       // Update quote status in background
-      EdgeRuntime.waitUntil((async () => {
+      (async () => {
         try {
           const { error: statusError } = await supabase
             .from('quotes')
@@ -752,10 +752,10 @@ const handler = async (req: Request): Promise<Response> => {
         } catch (error) {
           console.error('Error updating quote status:', error);
         }
-      })());
+      })().catch(err => console.error('Background status update error:', err));
 
       // Log the activity in background
-      EdgeRuntime.waitUntil((async () => {
+      (async () => {
         try {
           const { error: logError } = await supabase
             .from('audit_logs')
@@ -780,7 +780,7 @@ const handler = async (req: Request): Promise<Response> => {
         } catch (error) {
           console.error('Error logging activity:', error);
         }
-      })());
+      })().catch(err => console.error('Background activity log error:', err));
 
       const responseMessage = successCount > 0 
         ? `Cotação enviada com sucesso para ${successCount} fornecedor(es)${errorCount > 0 ? `. ${errorCount} erro(s) encontrado(s)` : ''}`

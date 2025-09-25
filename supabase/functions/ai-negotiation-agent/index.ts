@@ -551,7 +551,7 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
   } catch (apiError) {
     console.error('Erro na negociação via WhatsApp:', apiError);
     return new Response(
-      JSON.stringify({ success: false, error: apiError?.message || 'Erro ao realizar negociação' }),
+      JSON.stringify({ success: false, error: (apiError as any)?.message || 'Erro ao realizar negociação' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

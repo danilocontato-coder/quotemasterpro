@@ -110,7 +110,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         valid: false, 
-        error: error.message 
+        error: (error as any)?.message || 'Unknown error' 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

@@ -129,7 +129,7 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: (error as any)?.message || 'Unknown error' 
       }),
       { 
         status: 400,

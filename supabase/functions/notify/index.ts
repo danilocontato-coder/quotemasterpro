@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
           `*QuoteMaster Pro - Conectando negócios*`
         const sent = await sendEvolutionWhatsApp(cfg, phone, text)
         if (sent.success) {
-          result = { success: true, method: 'whatsapp', ...sent }
+          result = { method: 'whatsapp', ...sent, success: true }
         } else {
           console.warn('[CERTIFICATION] Falha ao enviar WhatsApp:', sent.error)
         }
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
 
       const sent = await sendEvolutionWhatsApp(cfg, number, text)
       result = sent.success
-        ? { success: true, ...sent, number, config_scope: cfg.scope }
+        ? { ...sent, number, config_scope: cfg.scope, success: true }
         : { success: false, error: `Falha na Evolution API. Escopo=${cfg.scope}. Último erro: ${sent.error}`, tried_endpoints: sent.tried_endpoints, number, evo_scope: cfg.scope }
 
       try {
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
 
       const sent = await sendEvolutionWhatsApp(cfg, number, text)
       result = sent.success
-        ? { success: true, ...sent }
+        ? { ...sent, success: true }
         : { success: false, error: `Falha na Evolution API: ${sent.error}` }
 
       await supabase.from('audit_logs').insert({
