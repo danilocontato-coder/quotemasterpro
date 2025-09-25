@@ -244,14 +244,14 @@ export function EditSupplierUserModal({ open, onClose, user }: EditSupplierUserM
                     <Select 
                       value={formData.permission_profile_id} 
                       onValueChange={(value) => 
-                        setFormData(prev => ({ ...prev, permission_profile_id: value }))
+                        setFormData(prev => ({ ...prev, permission_profile_id: value === 'none' ? '' : value }))
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um perfil de permissão" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum perfil específico</SelectItem>
+                        <SelectItem value="none">Nenhum perfil específico</SelectItem>
                         {permissionProfiles.map((profile) => (
                           <SelectItem key={profile.id} value={profile.id}>
                             {profile.name}

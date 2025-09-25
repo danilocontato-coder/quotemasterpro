@@ -19,7 +19,7 @@ export function EditCostCenterModal({ open, onOpenChange, costCenter, parentOpti
     name: '',
     code: '',
     description: '',
-    parent_id: '',
+    parent_id: undefined as string | undefined,
     budget_monthly: '',
     budget_annual: '',
   });
@@ -33,7 +33,7 @@ export function EditCostCenterModal({ open, onOpenChange, costCenter, parentOpti
         name: costCenter.name,
         code: costCenter.code,
         description: costCenter.description || '',
-        parent_id: costCenter.parent_id || '',
+        parent_id: costCenter.parent_id || undefined,
         budget_monthly: costCenter.budget_monthly.toString(),
         budget_annual: costCenter.budget_annual.toString(),
       });
@@ -105,12 +105,12 @@ export function EditCostCenterModal({ open, onOpenChange, costCenter, parentOpti
 
           <div className="space-y-2">
             <Label htmlFor="parent_id">Centro Pai</Label>
-            <Select value={formData.parent_id} onValueChange={(value) => setFormData(prev => ({ ...prev, parent_id: value }))}>
+            <Select value={formData.parent_id} onValueChange={(value) => setFormData(prev => ({ ...prev, parent_id: value === 'none' ? undefined : value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um centro pai (opcional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum (Centro raiz)</SelectItem>
+                <SelectItem value="none">Nenhum (Centro raiz)</SelectItem>
                 {parentOptions.map((parent) => (
                   <SelectItem key={parent.id} value={parent.id}>
                     {parent.name} ({parent.code})
