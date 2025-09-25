@@ -64,7 +64,7 @@ const SupplierDashboard = React.lazy(() => import('@/pages/supplier/SupplierDash
 const SupplierReports = React.lazy(() => import('@/pages/supplier/SupplierReports'));
 const SupplierQuotes = React.lazy(() => import('@/pages/supplier/SupplierQuotes'));
 const SupplierProducts = React.lazy(() => import('@/pages/supplier/SupplierProducts'));
-const SupplierFinancial = React.lazy(() => import('@/pages/supplier/SupplierFinancial'));
+const SupplierReceivables = React.lazy(() => import('@/pages/supplier/SupplierReceivables'));
 const SupplierHistory = React.lazy(() => import('@/pages/supplier/SupplierHistory'));
 const SupplierDeliveries = React.lazy(() => import('@/pages/supplier/SupplierDeliveries'));
 const SupplierAuth = React.lazy(() => import('@/pages/supplier/SupplierAuth'));
@@ -461,9 +461,9 @@ function App() {
                       <SupplierHistory />
                     </Suspense>
                   } />
-                  <Route path="financial" element={
+                  <Route path="receivables" element={
                     <Suspense fallback={<LoadingFallback className="p-4" />}>
-                      <SupplierFinancial />
+                      <SupplierReceivables />
                     </Suspense>
                   } />
                   <Route path="reports" element={

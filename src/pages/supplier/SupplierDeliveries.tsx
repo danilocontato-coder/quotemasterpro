@@ -391,7 +391,7 @@ export default function SupplierDeliveries() {
             <Package className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhuma entrega encontrada</h3>
             <p className="text-muted-foreground text-center">
-              Quando houver pagamentos confirmados, as entregas aparecerão aqui.
+              Quando houver recebimentos confirmados, as entregas aparecerão aqui.
             </p>
           </CardContent>
         </Card>
