@@ -70,6 +70,7 @@ export default function Reports() {
   });
 
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const [saveReportData, setSaveReportData] = useState({
     name: '',
     description: '',
@@ -168,62 +169,72 @@ export default function Reports() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Relatórios Avançados</h1>
           <p className="text-muted-foreground">
-            Análises detalhadas e relatórios personalizados
+            Análises detalhadas e relatórios personalizados para tomada de decisão
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            {showFilters ? 'Ocultar' : 'Mostrar'} Filtros
+          </Button>
           <Button variant="outline" onClick={() => setShowSaveModal(true)} disabled={!reportData}>
             <Save className="h-4 w-4 mr-2" />
             Salvar Relatório
-          </Button>
-          <Button onClick={handleGenerateReport} disabled={isLoading}>
-            <BarChart3 className="h-4 w-4 mr-2" />
-            {isLoading ? 'Gerando...' : 'Gerar Relatório'}
           </Button>
         </div>
       </div>
 
       {/* Filtros Avançados */}
-      <Card>
+      {showFilters && (
+      <Card className="border-2 border-primary/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filtros Avançados
+            Filtros de Relatório
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Período */}
-            <div className="space-y-2">
-              <Label>Período</Label>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">📅 Período</Label>
               <div className="space-y-2">
-                <Input
-                  type="date"
-                  value={filters.dateRange?.start || ''}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    dateRange: { ...prev.dateRange!, start: e.target.value }
-                  }))}
-                  placeholder="Data inicial"
-                />
-                <Input
-                  type="date"
-                  value={filters.dateRange?.end || ''}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    dateRange: { ...prev.dateRange!, end: e.target.value }
-                  }))}
-                  placeholder="Data final"
-                />
+                <div>
+                  <Label className="text-sm text-muted-foreground">Data inicial</Label>
+                  <Input
+                    type="date"
+                    value={filters.dateRange?.start || ''}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      dateRange: { ...prev.dateRange!, start: e.target.value }
+                    }))}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Data final</Label>
+                  <Input
+                    type="date"
+                    value={filters.dateRange?.end || ''}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      dateRange: { ...prev.dateRange!, end: e.target.value }
+                    }))}
+                    className="mt-1"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Status */}
-            <div className="space-y-2">
-              <Label>Status das Cotações</Label>
-              <div className="space-y-2">
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">📊 Status das Cotações</Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
                 {['draft', 'sent', 'receiving', 'received', 'approved', 'rejected', 'cancelled'].map(status => (
                   <div key={status} className="flex items-center space-x-2">
                     <Checkbox
@@ -243,7 +254,7 @@ export default function Reports() {
                         }
                       }}
                     />
-                    <Label htmlFor={status} className="text-sm">
+                    <Label htmlFor={status} className="text-sm cursor-pointer">
                       {getStatusText(status)}
                     </Label>
                   </div>
@@ -252,108 +263,159 @@ export default function Reports() {
             </div>
 
             {/* Fornecedores */}
-            <div className="space-y-2">
-              <Label>Fornecedores</Label>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {suppliers.map(supplier => (
-                  <div key={supplier.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={supplier.id}
-                      checked={filters.suppliers?.includes(supplier.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setFilters(prev => ({
-                            ...prev,
-                            suppliers: [...(prev.suppliers || []), supplier.id]
-                          }));
-                        } else {
-                          setFilters(prev => ({
-                            ...prev,
-                            suppliers: prev.suppliers?.filter(s => s !== supplier.id)
-                          }));
-                        }
-                      }}
-                    />
-                    <Label htmlFor={supplier.id} className="text-sm">
-                      {supplier.name}
-                    </Label>
-                  </div>
-                ))}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">🏢 Fornecedores</Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                {suppliers && suppliers.length > 0 ? (
+                  suppliers.map(supplier => (
+                    <div key={supplier.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={supplier.id}
+                        checked={filters.suppliers?.includes(supplier.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFilters(prev => ({
+                              ...prev,
+                              suppliers: [...(prev.suppliers || []), supplier.id]
+                            }));
+                          } else {
+                            setFilters(prev => ({
+                              ...prev,
+                              suppliers: prev.suppliers?.filter(s => s !== supplier.id)
+                            }));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={supplier.id} className="text-sm cursor-pointer">
+                        {supplier.name}
+                      </Label>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nenhum fornecedor encontrado</p>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Valores */}
-            <div className="space-y-2">
-              <Label>Faixa de Valores</Label>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">💰 Faixa de Valores</Label>
               <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="Valor mínimo"
-                  value={filters.minAmount || ''}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    minAmount: e.target.value ? Number(e.target.value) : undefined
-                  }))}
-                />
-                <Input
-                  type="number"
-                  placeholder="Valor máximo"
-                  value={filters.maxAmount || ''}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    maxAmount: e.target.value ? Number(e.target.value) : undefined
-                  }))}
-                />
+                <div className="flex-1">
+                  <Label className="text-sm text-muted-foreground">Valor mínimo</Label>
+                  <Input
+                    type="number"
+                    placeholder="R$ 0,00"
+                    value={filters.minAmount || ''}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      minAmount: e.target.value ? Number(e.target.value) : undefined
+                    }))}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-sm text-muted-foreground">Valor máximo</Label>
+                  <Input
+                    type="number"
+                    placeholder="R$ 999.999,99"
+                    value={filters.maxAmount || ''}
+                    onChange={(e) => setFilters(prev => ({
+                      ...prev,
+                      maxAmount: e.target.value ? Number(e.target.value) : undefined
+                    }))}
+                    className="mt-1"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Avaliações */}
-            <div className="space-y-2">
-              <Label>Faixa de Avaliações</Label>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">⭐ Faixa de Avaliações</Label>
               <div className="flex gap-2">
-                <Select
-                  value={filters.ratings?.min?.toString() || ''}
-                  onValueChange={(value) => setFilters(prev => ({
-                    ...prev,
-                    ratings: { ...prev.ratings!, min: Number(value) }
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Mín" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5].map(rating => (
-                      <SelectItem key={rating} value={rating.toString()}>
-                        {rating} ⭐
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={filters.ratings?.max?.toString() || ''}
-                  onValueChange={(value) => setFilters(prev => ({
-                    ...prev,
-                    ratings: { ...prev.ratings!, max: Number(value) }
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Máx" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5].map(rating => (
-                      <SelectItem key={rating} value={rating.toString()}>
-                        {rating} ⭐
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex-1">
+                  <Label className="text-sm text-muted-foreground">Mínimo</Label>
+                  <Select
+                    value={filters.ratings?.min?.toString() || ''}
+                    onValueChange={(value) => setFilters(prev => ({
+                      ...prev,
+                      ratings: { ...prev.ratings!, min: Number(value) }
+                    }))}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="1 ⭐" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map(rating => (
+                        <SelectItem key={rating} value={rating.toString()}>
+                          {rating} ⭐
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <Label className="text-sm text-muted-foreground">Máximo</Label>
+                  <Select
+                    value={filters.ratings?.max?.toString() || ''}
+                    onValueChange={(value) => setFilters(prev => ({
+                      ...prev,
+                      ratings: { ...prev.ratings!, max: Number(value) }
+                    }))}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="5 ⭐" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map(rating => (
+                        <SelectItem key={rating} value={rating.toString()}>
+                          {rating} ⭐
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Botões de Ação */}
+          <div className="flex gap-3 pt-4 border-t">
+            <Button 
+              onClick={handleGenerateReport} 
+              disabled={isLoading}
+              className="flex-1"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              {isLoading ? 'Gerando Relatório...' : 'Gerar Relatório'}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setFilters({
+                  dateRange: {
+                    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    end: new Date().toISOString().split('T')[0]
+                  },
+                  status: [],
+                  suppliers: [],
+                  clients: [],
+                  minAmount: undefined,
+                  maxAmount: undefined,
+                  categories: [],
+                  ratings: undefined
+                });
+              }}
+            >
+              Limpar Filtros
+            </Button>
+          </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Dados do Relatório */}
       {reportData && (
