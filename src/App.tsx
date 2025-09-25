@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { BrandingProvider } from '@/contexts/BrandingContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
@@ -110,10 +111,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AuthProvider>
-            <Router>
-              <GlobalNavigationProvider />
-              <Routes>
+          <BrandingProvider>
+            <AuthProvider>
+              <Router>
+                <GlobalNavigationProvider />
+                <Routes>
                 {/* Rotas públicas de autenticação */}
                 <Route path="/auth/login" element={
                   <Suspense fallback={<LoadingFallback />}>
@@ -508,10 +510,11 @@ function App() {
             <Toaster />
             <Sonner />
           </AuthProvider>
-        </ThemeProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
+        </BrandingProvider>
+      </ThemeProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 }
 
 export default App;

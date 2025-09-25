@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +11,7 @@ import { Loader2, Eye, EyeOff, Building2, Users, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
 import { InactiveClientAlert } from '@/components/auth/InactiveClientAlert';
+import { BrandedHeader } from '@/components/common/BrandedHeader';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -22,6 +24,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoading: authLoading, error: authError } = useAuth();
+  const { settings: brandingSettings } = useBranding();
 
   const from = location.state?.from?.pathname || getRoleBasedRoute('client');
 
@@ -94,132 +97,105 @@ const Login: React.FC = () => {
 
   // Detectar tipo quando email muda
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (email) {
+    if (email) {
+      const timeoutId = setTimeout(() => {
         detectUserType(email);
-      } else {
-        setDetectedUserType(null);
-      }
-    }, 500); // Debounce de 500ms
-
-    return () => clearTimeout(timeoutId);
+      }, 800);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setDetectedUserType(null);
+    }
   }, [email]);
 
   const getUserTypeInfo = () => {
-    if (!detectedUserType) {
-      return { icon: null, label: '', description: 'Digite seu email para continuar' };
-    }
-
     switch (detectedUserType) {
-      case 'client':
-        return { 
-          icon: Building2, 
-          label: 'Cliente/Condomínio', 
-          description: 'Acesso para gestores de empresas e condomínios'
+      case 'admin':
+        return {
+          label: 'Administrador do Sistema',
+          description: 'Acesso completo ao sistema de administração',
+          icon: User,
+          color: 'text-purple-600'
         };
       case 'supplier':
-        return { 
-          icon: Users, 
-          label: 'Fornecedor', 
-          description: 'Acesso para fornecedores e prestadores de serviços'
+        return {
+          label: 'Fornecedor',
+          description: 'Acesso para responder cotações e gerenciar produtos',
+          icon: Building2,
+          color: 'text-green-600'
         };
-      case 'admin':
-        return { 
-          icon: User, 
-          label: 'Administrador', 
-          description: 'Acesso administrativo da plataforma'
+      case 'client':
+        return {
+          label: 'Cliente/Condomínio',
+          description: 'Acesso para criar cotações e gerenciar compras',
+          icon: Users,
+          color: 'text-blue-600'
+        };
+      default:
+        return {
+          label: 'Usuário',
+          description: 'Digite seu email para identificar o tipo de acesso',
+          icon: null,
+          color: 'text-muted-foreground'
         };
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || isDetecting) return;
+
     setIsLoading(true);
     setError('');
 
     try {
-      // Detectar tipo de usuário baseado no email
-      const userType = detectedUserType;
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      console.log('Attempting login for:', email);
+
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password
       });
 
-      if (error) {
-        // Handle specific error cases
-        if (error.message.includes('Invalid login credentials')) {
-          if (userType) {
-            setError(`Credenciais inválidas para ${userType === 'admin' ? 'administrador' : userType === 'supplier' ? 'fornecedor' : 'cliente'}.`);
-          } else {
-            setError('Email ou senha incorretos. Verifique se você está cadastrado no sistema.');
-          }
-        } else if (error.message.includes('Email not confirmed')) {
-          setError('Email não confirmado. Verifique sua caixa de entrada.');
-        } else if (error.message.includes('Too many requests')) {
+      if (signInError) {
+        console.error('Supabase sign in error:', signInError);
+        
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError('Email ou senha incorretos. Verifique suas credenciais.');
+        } else if (signInError.message.includes('too_many_requests')) {
           setError('Muitas tentativas de login. Tente novamente em alguns minutos.');
+        } else if (signInError.message.includes('email_not_confirmed')) {
+          setError('Email não confirmado. Verifique sua caixa de entrada.');
         } else {
-          setError(error.message);
+          setError(signInError.message);
         }
         return;
       }
 
-      // Verificar se o usuário tem um perfil associado
-      if (data.user) {
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('id, name, email, role, status, force_password_change, client_id')
-          .eq('auth_user_id', data.user.id)
+      if (data?.user) {
+        // Verificar se usuário existe no profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, name, email, role, client_id')
+          .eq('id', data.user.id)
           .single();
 
-        // Verificar se usuário tem client_id e se o cliente está ativo
-        if (userProfile?.client_id) {
+        if (!profile) {
+          setError('Usuário não encontrado no sistema. Entre em contato com o administrador.');
+          await supabase.auth.signOut();
+          return;
+        }
+
+        // Verificar se perfil tem client_id e se o cliente está ativo
+        if (profile.client_id) {
           const { data: clientData } = await supabase
             .from('clients')
             .select('status')
-            .eq('id', userProfile.client_id)
+            .eq('id', profile.client_id)
             .maybeSingle();
 
           if (clientData && clientData.status !== 'active') {
             setError('Sua conta foi desativada. Entre em contato com o administrador.');
             await supabase.auth.signOut();
             return;
-          }
-        }
-
-        // Se o usuário tem perfil na tabela users mas está com force_password_change
-        if (userProfile?.force_password_change) {
-          console.log('Usuário precisa alterar senha no primeiro acesso');
-          // Pode redirecionar para tela de mudança de senha ou permitir login
-        }
-
-        // Se não tem perfil na tabela users, verificar se existe no profiles
-        if (!userProfile) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, name, email, role, client_id')
-            .eq('id', data.user.id)
-            .single();
-
-          if (!profile) {
-            setError('Usuário não encontrado no sistema. Entre em contato com o administrador.');
-            await supabase.auth.signOut();
-            return;
-          }
-
-          // Verificar se perfil tem client_id e se o cliente está ativo
-          if (profile.client_id) {
-            const { data: clientData } = await supabase
-              .from('clients')
-              .select('status')
-              .eq('id', profile.client_id)
-              .maybeSingle();
-
-            if (clientData && clientData.status !== 'active') {
-              setError('Sua conta foi desativada. Entre em contato com o administrador.');
-              await supabase.auth.signOut();
-              return;
-            }
           }
         }
       }
@@ -233,10 +209,6 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    // Funcionalidade removida - detecção automática por email apenas
-  };
-
   const userTypeInfo = getUserTypeInfo();
 
   return (
@@ -245,12 +217,10 @@ const Login: React.FC = () => {
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Building2 className="h-8 w-8 text-primary" />
-            </div>
+            <BrandedHeader className="justify-center" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">QuoteMaster Pro</h1>
-          <p className="text-muted-foreground mt-2">Sistema de gestão de cotações</p>
+          <h1 className="text-2xl font-bold text-foreground">{brandingSettings.loginPageTitle}</h1>
+          <p className="text-muted-foreground mt-2">{brandingSettings.loginPageSubtitle}</p>
         </div>
 
         <Card className="shadow-lg">
@@ -266,7 +236,7 @@ const Login: React.FC = () => {
               <div className="flex items-center justify-center p-4 bg-primary/5 border border-primary/20 rounded-lg">
                 <userTypeInfo.icon className="h-5 w-5 text-primary mr-2" />
                 <div className="text-center">
-                  <p className="font-medium text-primary">{userTypeInfo.label}</p>
+                  <p className="font-medium text-sm">{userTypeInfo.label}</p>
                   <p className="text-xs text-muted-foreground">{userTypeInfo.description}</p>
                 </div>
               </div>
@@ -399,7 +369,7 @@ const Login: React.FC = () => {
         </Card>
 
         <div className="text-center mt-6 text-xs text-muted-foreground">
-          © 2025 QuoteMaster Pro. Todos os direitos reservados.
+          {brandingSettings.footerText}
         </div>
       </div>
     </div>
