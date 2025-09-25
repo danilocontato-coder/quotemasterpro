@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Clock, User } from "lucide-react";
-import { useCommunication } from "@/hooks/useCommunication";
+import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
 import { ChatModal } from "./ChatModal";
 
 export function ChatSection() {
-  const { chats } = useCommunication();
+  const { conversations, loading } = useSupabaseQuoteChats();
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [chatModalOpen, setChatModalOpen] = useState(false);
 
@@ -30,21 +30,31 @@ export function ChatSection() {
     }
   };
 
-  const handleOpenChat = (chat: any) => {
-    setSelectedChat(chat);
+  const handleOpenChat = (conversation: any) => {
+    setSelectedChat(conversation);
     setChatModalOpen(true);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Conversas com Fornecedores</h3>
         <Badge variant="outline" className="text-sm">
-          {chats.length} conversas ativas
+          {conversations.length} conversas ativas
         </Badge>
       </div>
 
-      {chats.length === 0 ? (
+      {conversations.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <MessageCircle className="h-12 w-12 text-muted-foreground mb-4" />
@@ -56,45 +66,45 @@ export function ChatSection() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {chats.map((chat) => (
+          {conversations.map((conversation) => (
             <Card 
-              key={chat.id} 
+              key={conversation.id} 
               className="transition-all duration-200 hover:shadow-md cursor-pointer border-l-4 border-l-blue-500"
-              onClick={() => handleOpenChat(chat)}
+              onClick={() => handleOpenChat(conversation)}
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold text-base">{chat.supplierName}</h4>
+                      <h4 className="font-semibold text-base">{conversation.supplier_name}</h4>
                       <Badge variant="outline" className="text-xs">
-                        {chat.quoteName}
+                        {conversation.quote_title}
                       </Badge>
-                      {chat.unreadCount > 0 && (
+                      {(conversation.unread_count || 0) > 0 && (
                         <Badge className="bg-red-500 text-white text-xs">
-                          {chat.unreadCount}
+                          {conversation.unread_count}
                         </Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                      {chat.lastMessage}
+                      {conversation.last_message}
                     </p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {formatDate(chat.lastMessageTime)}
+                        {formatDate(conversation.last_message_at)}
                       </div>
                       <div className="flex items-center gap-1">
                         <MessageCircle className="h-3 w-3" />
-                        {chat.messages.length} mensagens
+                        {conversation.messages_count || 0} mensagens
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <Badge 
-                      className={chat.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}
+                      className={conversation.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}
                     >
-                      {chat.status === 'active' ? 'Ativa' : 'Fechada'}
+                      {conversation.status === 'active' ? 'Ativa' : 'Fechada'}
                     </Badge>
                   </div>
                 </div>

@@ -1541,6 +1541,39 @@ export type Database = {
           },
         ]
       }
+      quote_conversations: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          last_message_at: string | null
+          quote_id: string
+          status: string
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          quote_id: string
+          status?: string
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          quote_id?: string
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       quote_items: {
         Row: {
           created_at: string | null
@@ -1585,6 +1618,47 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_messages: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+          sender_type: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+          sender_type: string
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "quote_conversations"
             referencedColumns: ["id"]
           },
         ]

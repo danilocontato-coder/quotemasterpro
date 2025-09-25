@@ -6,9 +6,11 @@ import { MessageCircle, Bell, Headphones } from "lucide-react";
 import { useSupabaseAnnouncements } from "@/hooks/useSupabaseAnnouncements";
 import { useSupabaseTickets } from "@/hooks/useSupabaseTickets";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
+import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
 import { ChatSection } from "@/components/communication/ChatSection";
 import { ClientAnnouncementsList } from "@/components/communication/client/ClientAnnouncementsList";
 import { ClientTicketsManager } from "@/components/communication/client/ClientTicketsManager";
+import { CreateTestConversation } from "@/components/communication/CreateTestConversation";
 import { useEffect } from "react";
 
 export default function Communication() {
@@ -17,6 +19,7 @@ export default function Communication() {
   
   const { announcements, fetchAnnouncements, getUnreadAnnouncementsCount } = useSupabaseAnnouncements();
   const { tickets, fetchTickets, getOpenTicketsCount } = useSupabaseTickets();
+  const { getUnreadChatsCount } = useSupabaseQuoteChats();
 
   useEffect(() => {
     if (client?.id) {
@@ -25,7 +28,7 @@ export default function Communication() {
     }
   }, [client?.id, fetchAnnouncements, fetchTickets]);
 
-  const unreadChats = 0; // Chats will be implemented separately
+  const unreadChats = getUnreadChatsCount();
   const unreadAnnouncements = getUnreadAnnouncementsCount();
   const openTickets = getOpenTicketsCount();
 
@@ -51,7 +54,7 @@ export default function Communication() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Conversas Ativas</p>
-                <p className="text-2xl font-bold">0</p>
+                <p className="text-2xl font-bold">{getUnreadChatsCount()}</p>
               </div>
             </div>
             {unreadChats > 0 && (
@@ -133,7 +136,10 @@ export default function Communication() {
 
           <CardContent className="p-0">
             <TabsContent value="chats" className="m-0">
-              <ChatSection />
+              <div className="p-6 space-y-6">
+                <CreateTestConversation />
+                <ChatSection />
+              </div>
             </TabsContent>
             
             <TabsContent value="announcements" className="m-0 p-6">

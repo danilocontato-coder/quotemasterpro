@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, Paperclip, Clock, User, Building } from "lucide-react";
-import { useCommunication } from "@/hooks/useCommunication";
+import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
 
 interface ChatModalProps {
   chat: any;
@@ -17,7 +17,9 @@ export function ChatModal({ chat, open, onOpenChange }: ChatModalProps) {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage, markChatAsRead } = useCommunication();
+  const { sendMessage, markMessagesAsRead, fetchMessages, messages } = useSupabaseQuoteChats();
+  
+  const chatMessages = chat ? messages[chat.id] || [] : [];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -25,14 +27,15 @@ export function ChatModal({ chat, open, onOpenChange }: ChatModalProps) {
 
   useEffect(() => {
     if (open && chat) {
-      markChatAsRead(chat.id);
+      markMessagesAsRead(chat.id);
+      fetchMessages(chat.id);
       scrollToBottom();
     }
-  }, [open, chat, markChatAsRead]);
+  }, [open, chat, markMessagesAsRead, fetchMessages]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [chat?.messages]);
+  }, [chatMessages]);
 
   const handleSendMessage = async () => {
     if (!message.trim() || !chat || isLoading) return;
@@ -75,8 +78,8 @@ export function ChatModal({ chat, open, onOpenChange }: ChatModalProps) {
   if (!chat) return null;
 
   // Group messages by date
-  const messagesByDate = chat.messages.reduce((groups: any, message: any) => {
-    const date = formatDate(message.timestamp);
+  const messagesByDate = chatMessages.reduce((groups: any, message: any) => {
+    const date = formatDate(message.created_at);
     if (!groups[date]) {
       groups[date] = [];
     }
@@ -92,14 +95,14 @@ export function ChatModal({ chat, open, onOpenChange }: ChatModalProps) {
             <div className="flex items-center gap-3">
               <Avatar>
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {getInitials(chat.supplierName)}
+                  {getInitials(chat.supplier_name || 'Fornecedor')}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <DialogTitle>{chat.supplierName}</DialogTitle>
+                <DialogTitle>{chat.supplier_name}</DialogTitle>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs">
-                    {chat.quoteName}
+                    {chat.quote_title}
                   </Badge>
                   <Badge className={chat.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}>
                     {chat.status === 'active' ? 'Ativa' : 'Fechada'}
@@ -125,34 +128,34 @@ export function ChatModal({ chat, open, onOpenChange }: ChatModalProps) {
               {messages.map((msg: any) => (
                 <div 
                   key={msg.id} 
-                  className={`flex gap-3 mb-4 ${msg.senderType === 'client' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex gap-3 mb-4 ${msg.sender_type === 'client' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {msg.senderType !== 'client' && (
+                  {msg.sender_type !== 'client' && (
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                        {getInitials(msg.senderName)}
+                        {getInitials(msg.sender_name || 'Fornecedor')}
                       </AvatarFallback>
                     </Avatar>
                   )}
                   
-                  <div className={`max-w-[70%] ${msg.senderType === 'client' ? 'order-first' : ''}`}>
+                  <div className={`max-w-[70%] ${msg.sender_type === 'client' ? 'order-first' : ''}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-medium">
-                        {msg.senderName}
+                        {msg.sender_name}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {formatTime(msg.timestamp)}
+                        {formatTime(msg.created_at)}
                       </span>
-                      {msg.senderType === 'client' && (
+                      {msg.sender_type === 'client' && (
                         <Building className="h-3 w-3 text-blue-600" />
                       )}
-                      {msg.senderType === 'supplier' && (
+                      {msg.sender_type === 'supplier' && (
                         <User className="h-3 w-3 text-green-600" />
                       )}
                     </div>
                     
                     <div className={`p-3 rounded-lg ${
-                      msg.senderType === 'client' 
+                      msg.sender_type === 'client' 
                         ? 'bg-primary text-primary-foreground ml-auto' 
                         : 'bg-muted'
                     }`}>
@@ -171,10 +174,10 @@ export function ChatModal({ chat, open, onOpenChange }: ChatModalProps) {
                     </div>
                   </div>
 
-                  {msg.senderType === 'client' && (
+                  {msg.sender_type === 'client' && (
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                        {getInitials(msg.senderName)}
+                        {getInitials(msg.sender_name || 'Cliente')}
                       </AvatarFallback>
                     </Avatar>
                   )}
