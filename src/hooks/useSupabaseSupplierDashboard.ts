@@ -36,15 +36,26 @@ export const useSupabaseSupplierDashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  console.log('🔍 [SUPPLIER-DASHBOARD] Hook initialized with user:', {
+    hasUser: !!user,
+    userId: user?.id,
+    role: user?.role,
+    supplierId: user?.supplierId,
+    email: user?.email
+  });
+
   const fetchDashboardData = useCallback(async () => {
+    console.log('🔍 [SUPPLIER-DASHBOARD] fetchDashboardData called', { user: !!user, supplierId: user?.supplierId });
+    
     if (!user) {
+      console.log('🔍 [SUPPLIER-DASHBOARD] No user, setting loading to false');
       setIsLoading(false);
       return;
     }
 
     // Handle supplier without supplierId - try to find supplier record
     if (!user.supplierId) {
-      console.log('⚠️ User missing supplierId, attempting to find supplier record...');
+      console.log('⚠️ [SUPPLIER-DASHBOARD] User missing supplierId, attempting to find supplier record for:', user.email);
       
       try {
         const { data: supplierData, error: supplierError } = await supabase
@@ -54,11 +65,14 @@ export const useSupabaseSupplierDashboard = () => {
           .maybeSingle();
 
         if (supplierError) {
-          console.error('Error finding supplier:', supplierError);
+          console.error('❌ Error finding supplier:', supplierError);
+          setError('Erro ao buscar dados do fornecedor');
+          setIsLoading(false);
+          return;
         }
 
         if (!supplierData) {
-          console.log('No supplier record found for user:', user.email);
+          console.log('⚠️ No supplier record found for user:', user.email);
           setIsLoading(false);
           setMetrics({
             activeQuotes: 0,
@@ -72,20 +86,12 @@ export const useSupabaseSupplierDashboard = () => {
           return;
         }
 
-        // Update profile with found supplier_id
-        await supabase
-          .from('profiles')
-          .update({ supplier_id: supplierData.id })
-          .eq('id', user.id);
-
-        // Reload user data - dispatch event for AuthContext to catch
-        window.dispatchEvent(new CustomEvent('user-profile-updated'));
-        
-        console.log('✅ Supplier ID updated in profile:', supplierData.id);
+        console.log('✅ Found supplier record:', supplierData.id);
         setIsLoading(false);
         return;
       } catch (error) {
-        console.error('Error in supplier lookup:', error);
+        console.error('❌ Error in supplier lookup:', error);
+        setError('Erro ao verificar dados do fornecedor');
         setIsLoading(false);
         return;
       }
@@ -95,39 +101,35 @@ export const useSupabaseSupplierDashboard = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('Fetching dashboard data for supplier:', user.supplierId);
+      console.log('🔍 [SUPPLIER-DASHBOARD] Fetching dashboard data for supplier:', user.supplierId);
+      console.log('🔍 [SUPPLIER-DASHBOARD] User data:', {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        supplierId: user.supplierId
+      });
 
-      // Buscar cotações direcionadas para este fornecedor através da tabela quote_suppliers
-      console.log('🎯 CRÍTICO: Buscando cotações através de quote_suppliers para:', user.supplierId);
+      // Buscar cotações disponíveis para este fornecedor
+      console.log('🎯 CRÍTICO: Buscando cotações para fornecedor:', user.supplierId);
       
-      const { data: quoteSuppliersData, error: quotesError } = await supabase
-        .from('quote_suppliers')
-        .select(`
-          quote_id,
-          quotes!inner (
-            id,
-            title,
-            client_name,
-            status,
-            total,
-            deadline,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('supplier_id', user.supplierId);
+      // Buscar cotações através de múltiplas fontes
+      const { data: quotesData, error: quotesError } = await supabase
+        .from('quotes')
+        .select('*')
+        .or(`supplier_id.eq.${user.supplierId},and(supplier_scope.in.(global,all),status.in.(sent,receiving)),and(supplier_scope.eq.local,status.in.(sent,receiving),supplier_id.is.null),selected_supplier_ids.cs.{${user.supplierId}}`)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-      if (quotesError) throw quotesError;
-
-      if (quotesError) throw quotesError;
-
-      // Extrair os dados das cotações do join
-      const quotesData = quoteSuppliersData?.map(item => item.quotes) || [];
+      if (quotesError) {
+        console.error('Erro ao buscar cotações:', quotesError);
+        throw quotesError;
+      }
       
-      console.log('🎯 Cotações direcionadas encontradas:', quotesData?.length || 0);
+      console.log('🎯 Cotações encontradas:', quotesData?.length || 0);
+      console.log('📋 Dados das cotações:', quotesData);
 
       // Transform to recent quotes format
-      const transformedRecentQuotes: RecentSupplierQuote[] = quotesData.map(quote => {
+      const transformedRecentQuotes: RecentSupplierQuote[] = (quotesData || []).map(quote => {
         return {
           id: quote.id,
           title: quote.title,
@@ -264,10 +266,19 @@ export const useSupabaseSupplierDashboard = () => {
 
   // Fetch data on mount and when user changes
   useEffect(() => {
+    console.log('🔍 [SUPPLIER-DASHBOARD] useEffect triggered', {
+      userRole: user?.role,
+      supplierId: user?.supplierId,
+      hasUser: !!user
+    });
+    
     if (user?.role === 'supplier') {
+      console.log('🔍 [SUPPLIER-DASHBOARD] Calling fetchDashboardData...');
       fetchDashboardData();
+    } else {
+      console.log('🔍 [SUPPLIER-DASHBOARD] User is not a supplier, skipping fetch');
     }
-  }, [user?.role, user?.supplierId]); // Removed fetchDashboardData to prevent infinite loops
+  }, [user?.role, user?.supplierId, fetchDashboardData]);
 
   return {
     metrics,

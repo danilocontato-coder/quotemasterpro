@@ -12,7 +12,7 @@ import {
   Eye
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useSupabaseSupplierDashboard } from "@/hooks/useSupabaseSupplierDashboard";
+import { useSimpleSupplierDashboard } from "@/hooks/useSimpleSupplierDashboard";
 import { SupplierDebugPanel } from "@/components/supplier/SupplierDebugPanel";
 
 interface MetricCardProps {
@@ -48,7 +48,7 @@ function MetricCard({ title, value, icon: Icon, trend, color = "text-primary" }:
 }
 
 export default function SupplierDashboard() {
-  const { metrics, recentQuotes, isLoading } = useSupabaseSupplierDashboard();
+  const { metrics, recentQuotes, isLoading } = useSimpleSupplierDashboard();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -103,14 +103,14 @@ export default function SupplierDashboard() {
             value={`R$ ${metrics.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
             icon={DollarSign}
             color="text-green-600"
-            trend={`${metrics.revenueGrowth > 0 ? '+' : ''}${metrics.revenueGrowth.toFixed(1)}% vs mês anterior`}
+            trend="Em desenvolvimento"
           />
           <MetricCard
             title="Taxa de Aprovação"
             value={`${metrics.approvalRate.toFixed(0)}%`}
             icon={CheckCircle}
             color="text-blue-600"
-            trend={`${metrics.approvalGrowth > 0 ? '+' : ''}${metrics.approvalGrowth.toFixed(1)}% vs anterior`}
+            trend="Em desenvolvimento"
           />
         </div>
       )}
