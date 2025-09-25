@@ -1,176 +1,170 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Clock, CheckCircle, AlertTriangle, Package, Receipt } from "lucide-react";
-import { Payment } from "@/hooks/useSupabasePayments";
-import { OfflinePaymentModal } from "./OfflinePaymentModal";
+import { Badge } from "@/components/ui/badge";
+import { 
+  CreditCard, 
+  Clock, 
+  Eye, 
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  DollarSign
+} from "lucide-react";
 
 interface PaymentCardProps {
-  payment: Payment;
-  onPay?: (paymentId: string) => void;
-  onConfirmDelivery?: (paymentId: string) => void;
-  onViewDetails?: (payment: Payment) => void;
-  userRole?: string;
+  payment: any;
+  onPay: (paymentId: string) => void;
+  onConfirmDelivery: (paymentId: string) => void;
+  onViewDetails: (payment: any) => void;
 }
 
-export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, userRole }: PaymentCardProps) {
-  const [showOfflineModal, setShowOfflineModal] = useState(false);
+const getStatusInfo = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return { 
+        label: 'Pendente', 
+        variant: 'secondary' as const,
+        icon: Clock,
+        color: 'text-yellow-600'
+      };
+    case 'processing':
+      return { 
+        label: 'Processando', 
+        variant: 'default' as const,
+        icon: CreditCard,
+        color: 'text-blue-600'
+      };
+    case 'in_escrow':
+      return { 
+        label: 'Em Garantia', 
+        variant: 'default' as const,
+        icon: CheckCircle2,
+        color: 'text-green-600'
+      };
+    case 'completed':
+      return { 
+        label: 'Concluído', 
+        variant: 'default' as const,
+        icon: CheckCircle2,
+        color: 'text-green-600'
+      };
+    case 'failed':
+      return { 
+        label: 'Falhou', 
+        variant: 'destructive' as const,
+        icon: AlertCircle,
+        color: 'text-red-600'
+      };
+    case 'disputed':
+      return { 
+        label: 'Disputado', 
+        variant: 'destructive' as const,
+        icon: AlertCircle,
+        color: 'text-red-600'
+      };
+    default:
+      return { 
+        label: status, 
+        variant: 'outline' as const,
+        icon: Clock,
+        color: 'text-gray-600'
+      };
+  }
+};
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-gray-500';
-      case 'processing': return 'bg-blue-500';
-      case 'in_escrow': return 'bg-yellow-500';
-      case 'manual_confirmation': return 'bg-orange-500';
-      case 'completed': return 'bg-green-500';
-      case 'failed': return 'bg-red-500';
-      case 'disputed': return 'bg-orange-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending': return 'Pendente';
-      case 'processing': return 'Processando';
-      case 'in_escrow': return 'Em Garantia';
-      case 'manual_confirmation': return 'Análise Manual';
-      case 'completed': return 'Concluído';
-      case 'failed': return 'Falhou';
-      case 'disputed': return 'Contestado';
-      default: return status;
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock className="h-4 w-4" />;
-      case 'processing': return <CreditCard className="h-4 w-4" />;
-      case 'in_escrow': return <Package className="h-4 w-4" />;
-      case 'manual_confirmation': return <Receipt className="h-4 w-4" />;
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      case 'failed': case 'disputed': return <AlertTriangle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
-    }
-  };
+export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails }: PaymentCardProps) {
+  const statusInfo = getStatusInfo(payment.status);
+  const StatusIcon = statusInfo.icon;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-BR', {
+    return amount.toLocaleString('pt-BR', {
       style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
-  };
-
-  const getDaysUntilRelease = (releaseDate: string) => {
-    const release = new Date(releaseDate);
-    const now = new Date();
-    const diffTime = release.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+      currency: 'BRL',
+    });
   };
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            {getStatusIcon(payment.status)}
-            Pagamento #{payment.id.slice(-6)}
-          </CardTitle>
-          <Badge className={`${getStatusColor(payment.status)} text-white`}>
-            {getStatusText(payment.status)}
-          </Badge>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        {/* Informações básicas */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <p className="text-muted-foreground">Cotação</p>
-            <p className="font-medium">#{payment.quote_id}</p>
-            {payment.quotes && (
-              <p className="text-sm text-muted-foreground">{payment.quotes.title}</p>
-            )}
-          </div>
-          <div>
-            <p className="text-muted-foreground">Valor</p>
-            <p className="font-bold text-lg">{formatCurrency(payment.amount)}</p>
-          </div>
-        </div>
-
-        {/* Informações de prazo para escrow */}
-        {payment.status === 'in_escrow' && payment.escrow_release_date && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center gap-2 text-yellow-800">
-              <Package className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                Aguardando confirmação de entrega
-              </span>
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-lg">Pagamento #{payment.id}</h3>
             </div>
-            <p className="text-xs text-yellow-700 mt-1">
-              Liberação automática em {getDaysUntilRelease(payment.escrow_release_date)} dias
-            </p>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p>
+                <span className="font-medium">Cotação:</span> #{payment.quote_id}
+              </p>
+              {payment.quotes?.title && (
+                <p>
+                  <span className="font-medium">Descrição:</span> {payment.quotes.title}
+                </p>
+              )}
+              {payment.suppliers?.name && (
+                <p>
+                  <span className="font-medium">Fornecedor:</span> {payment.suppliers.name}
+                </p>
+              )}
+            </div>
           </div>
-        )}
+          <div className="text-right">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant={statusInfo.variant} className="gap-1">
+                <StatusIcon className="h-3 w-3" />
+                {statusInfo.label}
+              </Badge>
+            </div>
+            <div className="text-lg font-bold text-primary">
+              {formatCurrency(payment.amount)}
+            </div>
+          </div>
+        </div>
 
-        {/* Ações baseadas no status e papel do usuário */}
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 flex-wrap">
           {payment.status === 'pending' && (
-            <>
-              <Button 
-                onClick={() => onPay?.(payment.id)}
-                className="flex-1"
-                size="sm"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Pagar Online
-              </Button>
-              <Button 
-                onClick={() => setShowOfflineModal(true)}
-                variant="outline"
-                className="flex-1"
-                size="sm"
-              >
-                <Receipt className="h-4 w-4 mr-2" />
-                Pagar Offline
-              </Button>
-            </>
+            <Button 
+              onClick={() => onPay(payment.id)}
+              className="flex-1 min-w-[120px]"
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              Pagar Online
+            </Button>
           )}
-
-          {payment.status === 'in_escrow' && onConfirmDelivery && userRole !== 'supplier' && (
+          
+          {payment.status === 'in_escrow' && (
             <Button 
               onClick={() => onConfirmDelivery(payment.id)}
               variant="outline"
-              className="flex-1"
-              size="sm"
+              className="flex-1 min-w-[120px]"
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle2 className="h-4 w-4 mr-2" />
               Confirmar Entrega
             </Button>
           )}
 
           <Button 
-            onClick={() => onViewDetails?.(payment)}
+            onClick={() => onViewDetails(payment)}
             variant="outline"
             size="sm"
           >
+            <Eye className="h-4 w-4 mr-1" />
             Ver Detalhes
           </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+          >
+            <FileText className="h-4 w-4 mr-1" />
+            Pagar Offline
+          </Button>
+        </div>
+
+        <div className="mt-4 pt-4 border-t text-xs text-muted-foreground">
+          Criado em {new Date(payment.created_at).toLocaleDateString('pt-BR')}
         </div>
       </CardContent>
-
-      {/* Modal de pagamento offline */}
-      <OfflinePaymentModal
-        payment={payment}
-        open={showOfflineModal}
-        onOpenChange={setShowOfflineModal}
-        onConfirm={() => {
-          // Refresh would be handled by parent component
-          window.location.reload();
-        }}
-      />
     </Card>
   );
 }

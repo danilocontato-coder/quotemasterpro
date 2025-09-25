@@ -48,8 +48,9 @@ serve(async (req) => {
       )
     }
 
-    // Create automatic payment
-    const paymentId = `PAY-${quote_id}-${Date.now()}`
+    // Generate PGT ID
+    const pgtNumber = Date.now().toString().slice(-6);
+    const paymentId = `PGT${pgtNumber.padStart(6, '0')}`;
     
     const { data: payment, error } = await supabase
       .from('payments')

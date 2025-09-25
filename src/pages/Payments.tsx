@@ -22,7 +22,7 @@ import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
-import { ApprovedQuotesSection } from "@/components/payments/ApprovedQuotesSection";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAutomaticPayments } from "@/hooks/useAutomaticPayments";
@@ -42,7 +42,7 @@ export default function Payments() {
     payments,
     isLoading,
     refetch,
-    createPaymentIntent,
+    createCheckoutSession,
     confirmDelivery
   } = useSupabasePayments();
   
@@ -128,8 +128,6 @@ export default function Payments() {
 
   return (
     <div className="space-y-6">
-      {/* Seção de Cotações Aprovadas Pendentes */}
-      <ApprovedQuotesSection />
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -262,16 +260,17 @@ export default function Payments() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentPayments.map((payment) => (
               <PaymentCard
                 key={payment.id}
                 payment={payment}
                 onPay={async (paymentId) => {
                   try {
-                    const result = await createPaymentIntent(paymentId);
-                    // Aqui integraria com Stripe
-                    console.log('Payment intent created:', result);
+                    const result = await createCheckoutSession(paymentId);
+                    if (result?.url) {
+                      window.location.href = result.url;
+                    }
                   } catch (error) {
                     console.error('Payment error:', error);
                   }
