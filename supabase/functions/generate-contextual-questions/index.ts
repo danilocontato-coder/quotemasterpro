@@ -70,27 +70,40 @@ Retorne um JSON com este formato:
 }
 `;
 
+    const isModernModel = /^(gpt-5|gpt-4\.1|o3|o4)/.test(aiModel);
+
+    const baseMessages = [
+      { 
+        role: 'system', 
+        content: 'Você é um especialista em aquisições corporativas que gera perguntas contextuais para esclarecimentos entre clientes e fornecedores. Sempre retorne JSON válido.' 
+      },
+      { role: 'user', content: prompt }
+    ];
+
+    const payload: Record<string, unknown> = {
+      model: aiModel,
+      messages: baseMessages,
+    };
+
+    if (isModernModel) {
+      payload.max_completion_tokens = 1000; // modelos novos
+    } else {
+      payload.max_tokens = 1000; // modelos legados
+      payload.temperature = 0.7;
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: aiModel,
-        messages: [
-          { 
-            role: 'system', 
-            content: 'Você é um especialista em aquisições corporativas que gera perguntas contextuais para esclarecimentos entre clientes e fornecedores. Sempre retorne JSON válido.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
+      const errText = await response.text();
+      console.error('OpenAI API error details:', errText);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
