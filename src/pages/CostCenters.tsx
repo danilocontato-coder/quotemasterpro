@@ -16,13 +16,11 @@ export default function CostCenters() {
   const { currentClient: client } = useCurrentClient();
   const { costCenters, spending, isLoading, fetchHierarchy, fetchSpending, deleteCostCenter } = useCostCenters();
 
-  // Fetch hierarchy and spending data when client is available
+  // Fetch hierarchy and spending data automatically on mount
   useEffect(() => {
-    if (client?.id) {
-      fetchHierarchy(client.id);
-      fetchSpending(client.id);
-    }
-  }, [client?.id, fetchHierarchy, fetchSpending]);
+    fetchHierarchy();
+    fetchSpending();
+  }, [fetchHierarchy, fetchSpending]);
 
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja remover este centro de custo?')) {

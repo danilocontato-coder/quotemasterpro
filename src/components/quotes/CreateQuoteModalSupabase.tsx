@@ -58,6 +58,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
   const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { products, addProduct, isLoading: productsLoading } = useSupabaseProducts();
   const { suppliers, isLoading: suppliersLoading } = useSupabaseSuppliers();
+  const { costCenters } = useCostCenters();
   const { toast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(1);

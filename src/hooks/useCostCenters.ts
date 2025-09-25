@@ -43,9 +43,26 @@ export function useCostCenters() {
       setIsLoading(true);
       setError(null);
 
+      // Get current user's client_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.client_id) {
+        throw new Error('No client associated with user');
+      }
+
       const { data, error } = await supabase
         .from('cost_centers')
         .select('*')
+        .eq('client_id', profile.client_id)
         .eq('active', true)
         .order('name');
 
@@ -65,12 +82,29 @@ export function useCostCenters() {
     }
   };
 
-  const fetchHierarchy = async (clientId: string) => {
+  const fetchHierarchy = async (clientId?: string) => {
     try {
       setIsLoading(true);
       
+      let targetClientId = clientId;
+      
+      // If no clientId provided, get from current user
+      if (!targetClientId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!profile?.client_id) throw new Error('No client associated with user');
+        targetClientId = profile.client_id;
+      }
+
       const { data, error } = await supabase.rpc('get_cost_center_hierarchy', {
-        p_client_id: clientId,
+        p_client_id: targetClientId,
       });
 
       if (error) throw error;
@@ -78,7 +112,7 @@ export function useCostCenters() {
       // Map the hierarchy data to include missing fields
       const hierarchyData = (data || []).map((item: any) => ({
         ...item,
-        client_id: clientId,
+        client_id: targetClientId,
         active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -93,12 +127,29 @@ export function useCostCenters() {
     }
   };
 
-  const fetchSpending = async (clientId: string, startDate?: string, endDate?: string) => {
+  const fetchSpending = async (clientId?: string, startDate?: string, endDate?: string) => {
     try {
       setIsLoading(true);
       
+      let targetClientId = clientId;
+      
+      // If no clientId provided, get from current user
+      if (!targetClientId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!profile?.client_id) throw new Error('No client associated with user');
+        targetClientId = profile.client_id;
+      }
+
       const { data, error } = await supabase.rpc('get_cost_center_spending', {
-        p_client_id: clientId,
+        p_client_id: targetClientId,
         p_start_date: startDate,
         p_end_date: endDate,
       });
@@ -116,9 +167,26 @@ export function useCostCenters() {
 
   const createCostCenter = async (costCenter: Omit<CostCenter, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Get current user's client_id if not provided
+      let targetClientId = costCenter.client_id;
+      
+      if (!targetClientId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .single();
+
+        if (!profile?.client_id) throw new Error('No client associated with user');
+        targetClientId = profile.client_id;
+      }
+
       const { data, error } = await supabase
         .from('cost_centers')
-        .insert([costCenter])
+        .insert([{ ...costCenter, client_id: targetClientId }])
         .select()
         .single();
 

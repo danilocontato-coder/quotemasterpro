@@ -26,16 +26,15 @@ export function CreateCostCenterModal({ open, onOpenChange, parentOptions }: Cre
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { createCostCenter } = useCostCenters();
-  const { currentClient: client } = useCurrentClient();
+  // Note: We don't need currentClient here anymore as createCostCenter will get it automatically
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!client?.id) return;
 
     setIsSubmitting(true);
     try {
       await createCostCenter({
-        client_id: client.id,
+        client_id: '', // This will be automatically filled by createCostCenter
         name: formData.name,
         code: formData.code,
         description: formData.description || undefined,
