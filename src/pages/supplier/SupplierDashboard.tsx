@@ -9,10 +9,11 @@ import {
   TrendingUp,
   Package,
   MessageSquare,
-  Eye
+  Eye,
+  AlertTriangle
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useSimpleSupplierDashboard } from "@/hooks/useSimpleSupplierDashboard";
+import { useSupabaseSupplierDashboard } from "@/hooks/useSupabaseSupplierDashboard";
 
 interface MetricCardProps {
   title: string;
@@ -47,7 +48,7 @@ function MetricCard({ title, value, icon: Icon, trend, color = "text-primary" }:
 }
 
 export default function SupplierDashboard() {
-  const { metrics, recentQuotes, isLoading } = useSimpleSupplierDashboard();
+  const { metrics, recentQuotes, isLoading, error, refetch } = useSupabaseSupplierDashboard();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -61,6 +62,39 @@ export default function SupplierDashboard() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard do Fornecedor</h1>
+          <p className="text-muted-foreground">
+            Acompanhe suas cotações, propostas e desempenho
+          </p>
+        </div>
+        
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <div>
+                <p className="font-medium text-destructive">Erro ao carregar dados</p>
+                <p className="text-sm text-muted-foreground mt-1">{error}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={refetch}
+                  className="mt-3"
+                >
+                  Tentar novamente
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
