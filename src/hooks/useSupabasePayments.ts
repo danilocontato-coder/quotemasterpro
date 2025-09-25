@@ -8,11 +8,21 @@ export interface Payment {
   client_id: string;
   supplier_id: string;
   amount: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'disputed' | 'refunded';
+  status: 'pending' | 'processing' | 'in_escrow' | 'completed' | 'failed' | 'disputed' | 'refunded';
+  stripe_payment_intent_id?: string;
   stripe_session_id?: string;
   escrow_release_date?: string;
   created_at: string;
   updated_at: string;
+  quotes?: {
+    id: string;
+    title: string;
+    client_name: string;
+  };
+  suppliers?: {
+    id: string;
+    name: string;
+  };
 }
 
 export const useSupabasePayments = () => {
@@ -25,7 +35,11 @@ export const useSupabasePayments = () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('payments')
-        .select('*')
+        .select(`
+          *,
+          quotes!inner(id, title, client_name),
+          suppliers!inner(id, name)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -43,6 +57,57 @@ export const useSupabasePayments = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const createPaymentIntent = async (paymentId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+        body: { paymentId }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating payment intent:', error);
+      toast({
+        title: "Erro ao processar pagamento",
+        description: "Não foi possível iniciar o pagamento.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
+  const confirmDelivery = async (paymentId: string, notes?: string) => {
+    try {
+      // Simular confirmação de entrega por enquanto
+      const { error } = await supabase
+        .from('payments')
+        .update({
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', paymentId)
+        .eq('status', 'in_escrow');
+
+      if (error) throw error;
+
+      toast({
+        title: "Entrega confirmada",
+        description: "Pagamento liberado para o fornecedor.",
+      });
+      
+      fetchPayments(); // Refresh list
+      return { success: true };
+    } catch (error) {
+      console.error('Error confirming delivery:', error);
+      toast({
+        title: "Erro ao confirmar entrega",
+        description: "Não foi possível confirmar a entrega.",
+        variant: "destructive"
+      });
+      throw error;
     }
   };
 
@@ -73,6 +138,8 @@ export const useSupabasePayments = () => {
   return {
     payments,
     isLoading,
-    refetch: fetchPayments
+    refetch: fetchPayments,
+    createPaymentIntent,
+    confirmDelivery
   };
 };
