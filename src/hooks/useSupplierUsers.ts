@@ -114,8 +114,8 @@ export const useSupplierUsers = () => {
     }
   };
 
-  // Create user
-  const createUser = async (userData: Partial<SupplierUser>) => {
+  // Create user with auth
+  const createUser = async (userData: Partial<SupplierUser> & { password?: string }) => {
     try {
       const supplierId = await getCurrentSupplierID();
       
@@ -123,27 +123,25 @@ export const useSupplierUsers = () => {
         throw new Error('Supplier ID não encontrado');
       }
 
-      // Create user in our users table
-      const { data, error } = await supabase
-        .from('users')
-        .insert({
-          name: userData.name!,
+      // Create authentication user via Edge Function
+      const { data: authResponse, error: authError } = await supabase.functions.invoke('create-auth-user', {
+        body: {
+          action: 'create',
           email: userData.email!,
-          phone: userData.phone,
-          role: userData.role!,
-          permission_profile_id: userData.permission_profile_id,
-          supplier_id: supplierId,
-          status: 'active',
-          force_password_change: true
-        })
-        .select()
-        .single();
+          password: userData.password || `temp${Math.random().toString(36).slice(-8)}`,
+          name: userData.name,
+          role: userData.role || 'supplier',
+          supplierId: supplierId,
+          forcePasswordChange: true
+        }
+      });
 
-      if (error) throw error;
+      if (authError) throw authError;
+      if (!authResponse.success) throw new Error(authResponse.error || 'Erro ao criar autenticação');
 
       toast.success('Usuário criado com sucesso!');
       fetchUsers();
-      return data;
+      return authResponse.user;
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
       toast.error('Erro ao criar usuário');
@@ -216,7 +214,7 @@ export const useSupplierUsers = () => {
           name: profileData.name!,
           description: profileData.description,
           permissions: profileData.permissions!,
-          client_id: supplierId,
+          client_id: supplierId, // Usando supplier_id no campo client_id
           active: true
         })
         .select()

@@ -43,7 +43,8 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
     email: '',
     phone: '',
     role: 'collaborator' as 'manager' | 'collaborator' | 'supplier',
-    permission_profile_id: ''
+    permission_profile_id: '',
+    password: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -51,8 +52,13 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email) {
+    if (!formData.name || !formData.email || !formData.password) {
       toast.error('Por favor, preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
       return;
     }
 
@@ -70,7 +76,8 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
         email: formData.email,
         phone: formData.phone || null,
         role: formData.role,
-        permission_profile_id: formData.permission_profile_id || null
+        permission_profile_id: formData.permission_profile_id || null,
+        password: formData.password
       });
       
       onClose();
@@ -79,7 +86,8 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
         email: '',
         phone: '',
         role: 'collaborator',
-        permission_profile_id: ''
+        permission_profile_id: '',
+        password: ''
       });
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
@@ -94,7 +102,8 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
       email: '',
       phone: '',
       role: 'collaborator',
-      permission_profile_id: ''
+      permission_profile_id: '',
+      password: ''
     });
     onClose();
   };
@@ -195,6 +204,23 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
                           <SelectItem value="supplier">Fornecedor</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="password">
+                        Senha Inicial <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="Digite uma senha inicial (mín. 6 caracteres)"
+                        value={formData.password}
+                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                        required
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        O usuário será obrigado a alterar a senha no primeiro login
+                      </p>
                     </div>
                   </div>
                 </CardContent>
