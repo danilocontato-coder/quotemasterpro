@@ -598,8 +598,6 @@ export const FinancialManagement = () => {
                   <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: '/admin/integrations' }))}>
                     Ir para Integrações
                   </Button>
-                    Ir para Integrações
-                  </Button>
                 </div>
               </CardContent>
             </Card>
