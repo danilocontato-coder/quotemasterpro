@@ -10,34 +10,21 @@ import { SystemStatusHeader } from "./SystemStatusHeader";
 import { useStableRealtime } from "@/hooks/useStableRealtime";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useRef } from "react";
+import { useClientStatusMonitor } from "@/hooks/useClientStatusMonitor";
+import { ClientStatusToast } from "@/components/auth/ClientStatusToast";
 
 export function MainLayout() {
   const { user } = useAuth();
-  const mountTimeRef = useRef(Date.now());
-  const renderCountRef = useRef(0);
   
-  renderCountRef.current++;
-  
-  console.log('🔍 [DEBUG-LAYOUT] MainLayout render:', {
-    renderCount: renderCountRef.current,
-    userId: user?.id,
-    userRole: user?.role,
-    timeSinceMount: Date.now() - mountTimeRef.current,
-    timestamp: new Date().toISOString()
-  });
-  
-  useEffect(() => {
-    console.log('🔍 [DEBUG-LAYOUT] MainLayout mounted at:', new Date().toISOString());
-    return () => {
-      console.log('🔍 [DEBUG-LAYOUT] MainLayout unmounting after:', Date.now() - mountTimeRef.current, 'ms');
-    };
-  }, []);
+  // Monitorar status do cliente em tempo real
+  useClientStatusMonitor();
   
   // Hook de realtime unificado e estável
   useStableRealtime();
 
   return (
     <>
+      <ClientStatusToast />
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-background">
           <AppSidebar />

@@ -48,10 +48,11 @@ export const getRoleBasedRoute = (
   }
 };
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  error: string | null;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
 }
@@ -70,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
   useEffect(() => {
@@ -198,6 +200,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: profile.role
         });
 
+        // Verificar se é usuário de cliente e se o cliente está ativo
+        if (profile.client_id) {
+          const { data: clientData, error: clientError } = await supabase
+            .from('clients')
+            .select('status')
+            .eq('id', profile.client_id)
+            .maybeSingle();
+
+          if (clientError) {
+            console.error('Erro ao verificar status do cliente:', clientError);
+          } else if (clientData && clientData.status !== 'active') {
+            console.log('⚠️ Cliente inativo, fazendo logout do usuário');
+            setError('Sua conta foi desativada. Entre em contato com o administrador.');
+            setUser(null);
+            setIsLoading(false);
+            await supabase.auth.signOut();
+            return;
+          }
+        }
+
         // Atualizar last_access na tabela users quando usuário faz login
         if (userRecord) {
           await supabase
@@ -324,6 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     session,
     isLoading,
+    error,
     logout,
     updateProfile,
   };

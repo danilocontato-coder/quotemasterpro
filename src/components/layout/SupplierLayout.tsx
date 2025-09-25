@@ -6,15 +6,21 @@ import { Input } from "@/components/ui/input";
 import { RoleBasedNotificationDropdown } from "./RoleBasedNotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 import { useSupplierData } from "@/hooks/useSupplierData";
+import { useClientStatusMonitor } from "@/hooks/useClientStatusMonitor";
+import { ClientStatusToast } from "@/components/auth/ClientStatusToast";
 
 export function SupplierLayout() {
   const { supplierData, isLoading } = useSupplierData();
+  
+  // Monitorar status do cliente em tempo real (se fornecedor tiver client_id)
+  useClientStatusMonitor();
   
   const supplierName = supplierData?.name || "Carregando...";
   const planDisplayName = supplierData?.planDisplayName || "Basic";
 
   return (
     <>
+      <ClientStatusToast />
       <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <SupplierSidebar />

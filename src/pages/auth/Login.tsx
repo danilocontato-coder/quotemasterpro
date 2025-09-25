@@ -9,6 +9,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, Building2, Users, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
+import { InactiveClientAlert } from '@/components/auth/InactiveClientAlert';
+import { useClientStatusMonitor } from '@/hooks/useClientStatusMonitor';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +22,10 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, error: authError } = useAuth();
+
+  // Monitorar status do cliente em tempo real
+  useClientStatusMonitor();
 
   const from = location.state?.from?.pathname || getRoleBasedRoute('client');
 
@@ -167,9 +172,24 @@ const Login: React.FC = () => {
       if (data.user) {
         const { data: userProfile } = await supabase
           .from('users')
-          .select('id, name, email, role, status, force_password_change')
+          .select('id, name, email, role, status, force_password_change, client_id')
           .eq('auth_user_id', data.user.id)
           .single();
+
+        // Verificar se usuário tem client_id e se o cliente está ativo
+        if (userProfile?.client_id) {
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('status')
+            .eq('id', userProfile.client_id)
+            .maybeSingle();
+
+          if (clientData && clientData.status !== 'active') {
+            setError('Sua conta foi desativada. Entre em contato com o administrador.');
+            await supabase.auth.signOut();
+            return;
+          }
+        }
 
         // Se o usuário tem perfil na tabela users mas está com force_password_change
         if (userProfile?.force_password_change) {
@@ -181,7 +201,7 @@ const Login: React.FC = () => {
         if (!userProfile) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('id, name, email, role')
+            .select('id, name, email, role, client_id')
             .eq('id', data.user.id)
             .single();
 
@@ -189,6 +209,21 @@ const Login: React.FC = () => {
             setError('Usuário não encontrado no sistema. Entre em contato com o administrador.');
             await supabase.auth.signOut();
             return;
+          }
+
+          // Verificar se perfil tem client_id e se o cliente está ativo
+          if (profile.client_id) {
+            const { data: clientData } = await supabase
+              .from('clients')
+              .select('status')
+              .eq('id', profile.client_id)
+              .maybeSingle();
+
+            if (clientData && clientData.status !== 'active') {
+              setError('Sua conta foi desativada. Entre em contato com o administrador.');
+              await supabase.auth.signOut();
+              return;
+            }
           }
         }
       }
@@ -254,11 +289,13 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            {error && (
+            {(error || authError) && (
               <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{error || authError}</AlertDescription>
               </Alert>
             )}
+
+            <InactiveClientAlert />
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
