@@ -24,6 +24,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+import { useBranding } from '@/contexts/BrandingContext';
+
 const navigationItems = [
   { title: "Dashboard", url: "/supplier", icon: Home },
   { title: "Cotações", url: "/supplier/quotes", icon: FileText },
@@ -44,6 +46,7 @@ export function SupplierSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
+  const { settings } = useBranding();
 
   const isActive = (path: string) => currentPath === path;
 
@@ -57,7 +60,7 @@ export function SupplierSidebar() {
           </div>
           {!isCollapsed && (
             <div>
-              <h1 className="text-lg font-semibold text-sidebar-foreground">QuoteMaster</h1>
+              <h1 className="text-lg font-semibold text-sidebar-foreground">{settings.companyName || 'QuoteMaster Pro'}</h1>
               <p className="text-xs text-sidebar-foreground/70">Fornecedor</p>
             </div>
           )}
