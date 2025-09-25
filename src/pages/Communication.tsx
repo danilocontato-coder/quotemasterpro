@@ -7,7 +7,7 @@ import { useSupabaseAnnouncements } from "@/hooks/useSupabaseAnnouncements";
 import { useSupabaseTickets } from "@/hooks/useSupabaseTickets";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
-import { ChatSection } from "@/components/communication/ChatSection";
+import { ContextualQA } from "@/components/communication/ContextualQA";
 import { ClientAnnouncementsList } from "@/components/communication/client/ClientAnnouncementsList";
 import { ClientTicketsManager } from "@/components/communication/client/ClientTicketsManager";
 import { CreateTestConversation } from "@/components/communication/CreateTestConversation";
@@ -39,7 +39,7 @@ export default function Communication() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Comunicação</h1>
           <p className="text-muted-foreground">
-            Chat com fornecedores, comunicados e suporte técnico
+            Esclarecimentos estruturados, comunicados e suporte técnico
           </p>
         </div>
       </div>
@@ -53,7 +53,7 @@ export default function Communication() {
                 <MessageCircle className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Conversas Ativas</p>
+                <p className="text-sm text-muted-foreground">Esclarecimentos</p>
                 <p className="text-2xl font-bold">{getUnreadChatsCount()}</p>
               </div>
             </div>
@@ -106,7 +106,7 @@ export default function Communication() {
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="chats" className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
-                <span>Conversas</span>
+                <span>Esclarecimentos</span>
                 {unreadChats > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs">
                     {unreadChats}
@@ -138,7 +138,7 @@ export default function Communication() {
             <TabsContent value="chats" className="m-0">
               <div className="p-6 space-y-6">
                 <CreateTestConversation />
-                <ChatSection />
+                <ContextualQA />
               </div>
             </TabsContent>
             
