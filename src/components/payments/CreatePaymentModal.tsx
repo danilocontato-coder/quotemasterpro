@@ -5,10 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, CreditCard } from "lucide-react";
-import { mockQuotes } from "@/data/mockData";
+import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 
 interface CreatePaymentModalProps {
-  onPaymentCreate: (quoteId: string, amount: number) => string;
+  onPaymentCreate: (quoteId: string, amount: number) => Promise<string>;
   trigger?: React.ReactNode;
 }
 
@@ -17,9 +17,11 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
   const [selectedQuoteId, setSelectedQuoteId] = useState("");
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { quotes } = useSupabaseQuotes();
 
   // Filter only approved quotes for payment
-  const approvedQuotes = mockQuotes.filter(quote => quote.status === 'approved');
+  const approvedQuotes = quotes.filter(quote => quote.status === 'approved');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +29,7 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
 
     setIsLoading(true);
     try {
-      const paymentId = onPaymentCreate(selectedQuoteId, parseFloat(amount));
+      const paymentId = await onPaymentCreate(selectedQuoteId, parseFloat(amount));
       
       // Reset form
       setSelectedQuoteId("");
@@ -48,7 +50,7 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
     setSelectedQuoteId(quoteId);
     const quote = approvedQuotes.find(q => q.id === quoteId);
     if (quote) {
-      setAmount(quote.total.toString());
+      setAmount((quote.total || 0).toString());
     }
   };
 
@@ -83,8 +85,8 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
                   <SelectItem key={quote.id} value={quote.id}>
                     <div className="flex flex-col">
                       <span className="font-medium">{quote.title}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {quote.id} • {quote.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                       <span className="text-sm text-muted-foreground">
+                        {quote.id} • {(quote.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
                     </div>
                   </SelectItem>
@@ -101,9 +103,9 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
           {selectedQuote && (
             <div className="p-3 bg-muted rounded-lg space-y-2">
               <p className="font-medium text-sm">Detalhes da Cotação:</p>
-              <p className="text-sm">• Cliente: {selectedQuote.clientName}</p>
-              <p className="text-sm">• Fornecedor: {selectedQuote.supplierName || "Não definido"}</p>
-              <p className="text-sm">• Itens: {selectedQuote.itemsCount}</p>
+              <p className="text-sm">• Cliente: {selectedQuote.client_name}</p>
+              <p className="text-sm">• Fornecedor: {selectedQuote.supplier_name || "Não definido"}</p>
+              <p className="text-sm">• Itens: {selectedQuote.items_count || 0}</p>
             </div>
           )}
 

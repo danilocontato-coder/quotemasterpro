@@ -17,10 +17,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { useSupabasePayments } from "@/hooks/useSupabasePayments";
+import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAutomaticPayments } from "@/hooks/useAutomaticPayments";
 
 export default function Payments() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,9 +39,15 @@ export default function Payments() {
   const {
     payments,
     isLoading,
+    refetch,
     createPaymentIntent,
     confirmDelivery
   } = useSupabasePayments();
+  
+  const { quotes } = useSupabaseQuotes();
+  
+  // Enable automatic payment creation for approved quotes
+  useAutomaticPayments();
 
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = 
@@ -126,9 +136,38 @@ export default function Payments() {
         </div>
         <div className="flex gap-2">
           <CreatePaymentModal
-            onPaymentCreate={(quoteId: string, amount: number) => {
-              console.log('Payment created:', quoteId, amount);
-              return 'PAY' + Date.now();
+            onPaymentCreate={async (quoteId: string, amount: number) => {
+              try {
+                // Buscar dados da cotação
+                const quote = quotes.find(q => q.id === quoteId);
+                if (!quote) {
+                  toast.error('Cotação não encontrada');
+                  throw new Error('Quote not found');
+                }
+
+                const { data, error } = await supabase
+                  .from('payments')
+                  .insert({
+                    id: 'PAY-' + Date.now().toString(),
+                    quote_id: quoteId,
+                    client_id: quote.client_id,
+                    supplier_id: quote.supplier_id,
+                    amount: amount,
+                    status: 'pending'
+                  })
+                  .select()
+                  .single();
+                
+                if (error) throw error;
+                
+                toast.success('Pagamento criado com sucesso!');
+                refetch();
+                return data.id;
+              } catch (error) {
+                console.error('Error creating payment:', error);
+                toast.error('Erro ao criar pagamento');
+                throw error;
+              }
             }}
             trigger={
               <Button className="btn-corporate">
