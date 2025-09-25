@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { OptimizedSkeleton } from "@/components/ui/optimized-components";
 import { InitialLoader } from "@/components/layout/InitialLoader";
-import LinkTester from '@/components/debug/LinkTester';
+
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
@@ -683,11 +683,6 @@ export default function Quotes() {
           </CardContent>
         </Card>
       )}
-      
-      {/* Debug: Link Tester - temporário */}
-      <div className="mt-8">
-        <LinkTester />
-      </div>
     </div>
   );
 }
