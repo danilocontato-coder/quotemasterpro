@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-export function SupplierSettings() {
+function SupplierSettings() {
   const { 
     settings, 
     currentUser, 
