@@ -22,6 +22,10 @@ export default function CostCenters() {
     fetchSpending();
   }, [fetchHierarchy, fetchSpending]);
 
+  const handleCreateDefaults = async () => {
+    await createDefaultCostCenters();
+  };
+
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja remover este centro de custo?')) {
       await deleteCostCenter(id);
@@ -210,9 +214,16 @@ export default function CostCenters() {
                       Criar centros padrão
                     </Button>
                   </div>
-                  <div className="text-sm text-muted-foreground mt-4">
+                  <div className="text-sm text-muted-foreground mt-4 space-y-2">
                     <p><strong>Centros padrão incluem:</strong></p>
-                    <p>Administração • Manutenção • Limpeza • Segurança • Jardim • Emergência</p>
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      <span>• Administração (R$ 5.000/mês)</span>
+                      <span>• Manutenção (R$ 8.000/mês)</span>
+                      <span>• Limpeza (R$ 3.000/mês)</span>
+                      <span>• Segurança (R$ 4.000/mês)</span>
+                      <span>• Jardim (R$ 2.000/mês)</span>
+                      <span>• Emergência (R$ 1.000/mês)</span>
+                    </div>
                   </div>
                 </div>
               </div>
