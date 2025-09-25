@@ -57,6 +57,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       setIsLoading(true);
       
+      console.log('🎨 [BRANDING] Carregando configurações do banco...');
+      
       const { data, error } = await supabase
         .from('system_settings')
         .select('setting_key, setting_value')
@@ -67,9 +69,15 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         ]);
 
       if (error) {
-        console.error('Erro ao carregar configurações de branding:', error);
+        console.error('🎨 [BRANDING] Erro ao carregar configurações:', error);
+        // Em caso de erro, usar configurações padrão
+        console.log('🎨 [BRANDING] Usando configurações padrão devido ao erro');
+        setSettings(defaultSettings);
+        applyBrandingToDOM(defaultSettings);
         return;
       }
+
+      console.log('🎨 [BRANDING] Dados carregados do banco:', data);
 
       if (data && data.length > 0) {
         const newSettings = { ...defaultSettings };
@@ -118,11 +126,19 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
         });
         
+        console.log('🎨 [BRANDING] Configurações processadas:', newSettings);
         setSettings(newSettings);
         applyBrandingToDOM(newSettings);
+      } else {
+        console.log('🎨 [BRANDING] Nenhuma configuração encontrada, usando padrões');
+        setSettings(defaultSettings);
+        applyBrandingToDOM(defaultSettings);
       }
     } catch (error) {
-      console.error('Erro ao carregar configurações:', error);
+      console.error('🎨 [BRANDING] Erro ao carregar configurações:', error);
+      // Em caso de erro crítico, usar configurações padrão
+      setSettings(defaultSettings);
+      applyBrandingToDOM(defaultSettings);
     } finally {
       setIsLoading(false);
     }
@@ -194,6 +210,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const updatedSettings = { ...settings, ...newSettings };
       setSettings(updatedSettings);
 
+      console.log('🎨 [BRANDING] Iniciando atualização das configurações:', newSettings);
+
       // Salvar no banco
       const updates = Object.entries(newSettings).map(([key, value]) => {
         let settingKey = '';
@@ -253,19 +271,27 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
       });
 
+      console.log('🎨 [BRANDING] Enviando updates para o banco:', updates);
+
       for (const update of updates) {
+        console.log(`🎨 [BRANDING] Salvando ${update.setting_key}...`);
+        
         const { error } = await supabase
           .from('system_settings')
           .upsert(update, { onConflict: 'setting_key' });
 
         if (error) {
-          console.error('Erro ao salvar configuração:', error);
+          console.error(`🎨 [BRANDING] Erro ao salvar ${update.setting_key}:`, error);
           throw error;
+        } else {
+          console.log(`🎨 [BRANDING] ✅ ${update.setting_key} salvo com sucesso`);
         }
       }
 
       // Aplicar imediatamente
       applyBrandingToDOM(updatedSettings);
+
+      console.log('🎨 [BRANDING] ✅ Todas as configurações foram salvas com sucesso!');
 
       toast({
         title: "Branding atualizado!",
@@ -273,10 +299,24 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
 
     } catch (error: any) {
-      console.error('Erro ao atualizar branding:', error);
+      console.error('🎨 [BRANDING] ❌ Erro ao atualizar branding:', error);
+      
+      // Reverter estado local em caso de erro
+      setSettings(settings);
+      
+      let errorMessage = "Não foi possível atualizar as configurações.";
+      
+      if (error.message?.includes('permission')) {
+        errorMessage = "Você não tem permissão para alterar as configurações de branding.";
+      } else if (error.message?.includes('network')) {
+        errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
+      } else if (error.message) {
+        errorMessage = `Erro: ${error.message}`;
+      }
+      
       toast({
-        title: "Erro",
-        description: "Não foi possível atualizar as configurações.",
+        title: "Erro ao salvar",
+        description: errorMessage,
         variant: "destructive"
       });
       throw error;
