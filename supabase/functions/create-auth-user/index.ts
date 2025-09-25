@@ -114,12 +114,18 @@ Deno.serve(async (req) => {
 
 const { email, password, name, role, clientId, supplierId, temporaryPassword, action = 'create' } = requestBody;
 
+    // Para criadores com papel de fornecedor, sempre forçar o supplier_id do criador
+    const effectiveSupplierId = isSupplier ? (profile as any)?.supplier_id : supplierId;
+    const effectiveRole = isSupplier ? 'supplier' : role;
+
     console.log('🔍 DEBUG: Dados extraídos:', {
       email,
       name,
       role,
       clientId,
       supplierId,
+      effectiveSupplierId,
+      effectiveRole,
       temporaryPassword,
       action
     });
@@ -176,7 +182,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
         }
 
         // Update force_password_change in users table
-        if (clientId || supplierId) {
+        if (clientId || effectiveSupplierId) {
           await supabaseAdmin
             .from('users')
             .update({ force_password_change: temporaryPassword ?? true })
@@ -211,7 +217,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       email_confirm: true, // Auto-confirm email for admin-created users
       user_metadata: {
         name,
-        role
+        role: effectiveRole
       }
     });
 
@@ -243,7 +249,7 @@ if (authError) {
 
         if (existingUserId) {
           try {
-            if (clientId || supplierId) {
+            if (clientId || effectiveSupplierId) {
               // Ensure profile exists and is linked to client and/or supplier
               await supabaseAdmin
                 .from('profiles')
@@ -251,12 +257,12 @@ if (authError) {
                   id: existingUserId,
                   email,
                   name,
-                  role,
+                  role: effectiveRole,
                   client_id: clientId ?? null,
-                  supplier_id: supplierId ?? null,
+                  supplier_id: effectiveSupplierId ?? null,
                   company_name: name,
-                  tenant_type: supplierId ? 'supplier' : 'client',
-                  onboarding_completed: supplierId ? true : undefined,
+                  tenant_type: effectiveSupplierId ? 'supplier' : 'client',
+                  onboarding_completed: effectiveSupplierId ? true : undefined,
                 }, { onConflict: 'id' });
 
               // Upsert into public.users by auth_user_id
@@ -269,10 +275,10 @@ if (authError) {
               const userPayload: any = {
                 name,
                 email,
-                role,
+                role: effectiveRole,
                 status: 'active',
                 client_id: clientId ?? null,
-                supplier_id: supplierId ?? null,
+                supplier_id: effectiveSupplierId ?? null,
                 force_password_change: temporaryPassword ?? true,
               };
 
@@ -334,7 +340,7 @@ if (authError) {
     const newUserId = authData.user?.id as string | undefined;
     console.log('🔗 DEBUG: Iniciando vinculação ao cliente', { newUserId, clientId });
     
-    if ((clientId || supplierId) && newUserId) {
+    if ((clientId || effectiveSupplierId) && newUserId) {
       try {
         console.log('👤 DEBUG: Criando/atualizando profile');
         await supabaseAdmin
@@ -343,12 +349,12 @@ if (authError) {
             id: newUserId, 
             email, 
             name, 
-            role, 
+            role: effectiveRole, 
             client_id: clientId ?? null, 
-            supplier_id: supplierId ?? null,
+            supplier_id: effectiveSupplierId ?? null,
             company_name: name,
-            tenant_type: supplierId ? 'supplier' : 'client',
-            onboarding_completed: supplierId ? true : undefined,
+            tenant_type: effectiveSupplierId ? 'supplier' : 'client',
+            onboarding_completed: effectiveSupplierId ? true : undefined,
           }, { onConflict: 'id' });
 
         console.log('✅ DEBUG: Profile criado/atualizado');
@@ -364,10 +370,10 @@ if (authError) {
         const userPayload: any = { 
           name, 
           email, 
-          role, 
+          role: effectiveRole, 
           status: 'active', 
           client_id: clientId ?? null, 
-          supplier_id: supplierId ?? null,
+          supplier_id: effectiveSupplierId ?? null,
           force_password_change: temporaryPassword ?? true 
         };
 

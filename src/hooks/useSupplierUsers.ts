@@ -131,7 +131,7 @@ export const useSupplierUsers = () => {
           password: userData.password || `temp${Math.random().toString(36).slice(-8)}`,
           name: userData.name,
           role: userData.role, // Use the actual role selected
-          supplierId: supplierId, // Pass the current supplier ID
+          // supplierId: inferido automaticamente pela função (criador é o fornecedor)
           temporaryPassword: true
         }
       });

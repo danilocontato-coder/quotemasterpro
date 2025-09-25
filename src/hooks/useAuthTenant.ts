@@ -68,12 +68,11 @@ export const useAuthTenant = () => {
         throw error;
       }
 
-      // Para suppliers, verificar supplier_id ao invés de client_id
+      // Para suppliers, NÃO exigir vinculação/cliente
       if (user.role === 'supplier') {
-        const hasSupplierBinding = !!user.supplierId;
         setTenantState({
-          clientId: user.supplierId || null,
-          onboardingCompleted: hasSupplierBinding,
+          clientId: null,
+          onboardingCompleted: true,
           isLoading: false
         });
         return;
