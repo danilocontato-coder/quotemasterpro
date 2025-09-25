@@ -79,6 +79,8 @@ export default function SupplierQuotes() {
         return <Badge variant="default">Proposta Enviada</Badge>;
       case 'approved':
         return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Aprovada</Badge>;
+      case 'paid':
+        return <Badge variant="default" className="bg-blue-600 text-white">💰 Pagamento Confirmado</Badge>;
       case 'rejected':
         return <Badge variant="destructive">Reprovada</Badge>;
       case 'expired':

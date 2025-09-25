@@ -63,18 +63,46 @@ export interface ProposalItem {
   specifications?: string;
 }
 
-const getSupplierStatus = (responseStatus: string): SupplierQuote['status'] => {
-  switch (responseStatus) {
-    case 'pending':
-      return 'pending';
+const getSupplierStatus = (quoteStatus: string, responseStatus?: string): SupplierQuote['status'] => {
+  // Se a cotação está paga, retornar 'paid'
+  if (quoteStatus === 'paid') {
+    return 'paid';
+  }
+  
+  // Se a cotação está aprovada, retornar 'approved'
+  if (quoteStatus === 'approved') {
+    return 'approved';
+  }
+  
+  // Se há resposta do fornecedor, usar o status da resposta
+  if (responseStatus) {
+    switch (responseStatus) {
+      case 'pending':
+        return 'pending';
+      case 'sent':
+        return 'proposal_sent';
+      case 'approved':
+        return 'approved';
+      case 'rejected':
+        return 'rejected';
+      case 'expired':
+        return 'expired';
+      default:
+        return 'pending';
+    }
+  }
+  
+  // Caso contrário, usar o status da cotação principal
+  switch (quoteStatus) {
     case 'sent':
+    case 'receiving':
+      return 'pending';
+    case 'received':
       return 'proposal_sent';
     case 'approved':
       return 'approved';
     case 'rejected':
       return 'rejected';
-    case 'expired':
-      return 'expired';
     default:
       return 'pending';
   }
@@ -226,7 +254,7 @@ export const useSupabaseSupplierQuotes = () => {
           description: quote.description || '',
           client: clientName,
           clientId: quote.client_id,
-          status: response ? getSupplierStatus(response.status) : 'pending',
+          status: getSupplierStatus(quote.status, response?.status),
           deadline: quote.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           estimatedValue: quote.total > 0 ? quote.total : undefined,
           createdAt: quote.created_at,
@@ -517,6 +545,29 @@ export const useSupabaseSupplierQuotes = () => {
   // Load quotes on mount
   useEffect(() => {
     fetchSupplierQuotes();
+    
+    // Subscribe to real-time quote updates
+    const channel = supabase
+      .channel('supplier-quotes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quotes',
+          filter: 'status=eq.paid'
+        },
+        (payload) => {
+          console.log('Quote payment confirmed:', payload);
+          // Refetch quotes when payment is confirmed
+          fetchSupplierQuotes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchSupplierQuotes]);
 
   return {
