@@ -63,8 +63,29 @@ serve(async (req) => {
       console.error('Error updating token access:', updateError)
     }
 
-    // Return the full URL for redirection
-    const baseUrl = req.headers.get('origin') || 'https://your-app.com'
+    // Get base URL from system settings
+    let baseUrl = req.headers.get('origin') || 'https://bcadcdb0-8f04-4a14-8998-22e01e1b27d7.lovableproject.com'
+    
+    try {
+      const { data: settingsData } = await supabaseClient
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'base_url')
+        .single()
+      
+      if (settingsData?.setting_value) {
+        const settingValue = typeof settingsData.setting_value === 'string' 
+          ? settingsData.setting_value.replace(/"/g, '')
+          : String(settingsData.setting_value || '').replace(/"/g, '')
+        
+        if (settingValue) {
+          baseUrl = settingValue
+        }
+      }
+    } catch (error) {
+      console.log('Could not fetch base URL from settings, using fallback:', baseUrl)
+    }
+    
     const fullUrl = `${baseUrl}/supplier/auth/${tokenData.quote_id}/${tokenData.full_token}`
 
     return new Response(

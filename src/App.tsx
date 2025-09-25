@@ -56,6 +56,7 @@ const AuditLogs = React.lazy(() => import('@/pages/admin/AuditLogs'));
 const AIConfigurationManagement = React.lazy(() => import('@/pages/admin/AIConfigurationManagement'));
 const CommunicationManagement = React.lazy(() => import('@/pages/admin/CommunicationManagement'));
 const ApiConfiguration = React.lazy(() => import('@/pages/admin/ApiConfiguration'));
+const DomainSettings = React.lazy(() => import('@/pages/admin/DomainSettings'));
 
 // Supplier pages
 const SupplierDashboard = React.lazy(() => import('@/pages/supplier/SupplierDashboard'));
@@ -217,6 +218,11 @@ function App() {
                   <Route path="api" element={
                     <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <ApiConfiguration />
+                    </Suspense>
+                  } />
+                  <Route path="domain" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <DomainSettings />
                     </Suspense>
                   } />
                 </Route>

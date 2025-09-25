@@ -26,7 +26,8 @@ import {
   Activity,
   BarChart3,
   Server,
-  Bot
+  Bot,
+  Globe
 } from 'lucide-react';
 
 const navigation = [
@@ -103,6 +104,12 @@ const navigation = [
         href: '/admin/ai-config',
         icon: Bot,
         description: 'Negociação automática'
+      },
+      {
+        name: 'Configuração de Domínio',
+        href: '/admin/domain',
+        icon: Globe,
+        description: 'URL base para links'
       }
     ]
   },
@@ -181,7 +188,7 @@ const navigation = [
       },
       {
         name: 'Configuração de APIs',
-        href: '/admin/api-config',
+        href: '/admin/api',
         icon: Key,
         description: 'Chaves de API e integrações'
       }

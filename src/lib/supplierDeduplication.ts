@@ -96,7 +96,22 @@ export const generateQuoteToken = (): string => {
 
 /**
  * Creates a supplier response link for quotes
+ * @deprecated Use createSupplierResponseLinkAsync instead for system configuration support
  */
 export const createSupplierResponseLink = (quoteId: string, token: string): string => {
   return `${window.location.origin}/supplier/auth/${quoteId}/${token}`;
+};
+
+/**
+ * Creates a supplier response link for quotes using system configuration
+ */
+export const createSupplierResponseLinkAsync = async (quoteId: string, token: string): Promise<string> => {
+  try {
+    const { getCachedBaseUrl } = await import('@/utils/systemConfig');
+    const baseUrl = await getCachedBaseUrl();
+    return `${baseUrl}/supplier/auth/${quoteId}/${token}`;
+  } catch (error) {
+    console.warn('Erro ao buscar URL base, usando fallback:', error);
+    return `${window.location.origin}/supplier/auth/${quoteId}/${token}`;
+  }
 };

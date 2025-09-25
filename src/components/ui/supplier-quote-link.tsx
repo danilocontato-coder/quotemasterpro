@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Copy, ExternalLink, Building2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { getCachedBaseUrl } from '@/utils/systemConfig';
 
 interface SupplierQuoteLinkProps {
   quoteId: string;
@@ -13,10 +14,33 @@ interface SupplierQuoteLinkProps {
 
 const SupplierQuoteLink: React.FC<SupplierQuoteLinkProps> = ({ quoteId, quoteTitle }) => {
   const { toast } = useToast();
-  const token = crypto.randomUUID();
-  const supplierLink = `${window.location.origin}/supplier/auth/${quoteId}/${token}`;
+  const [supplierLink, setSupplierLink] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const generateLink = async () => {
+      try {
+        const baseUrl = await getCachedBaseUrl();
+        const token = crypto.randomUUID();
+        const link = `${baseUrl}/supplier/auth/${quoteId}/${token}`;
+        setSupplierLink(link);
+      } catch (error) {
+        console.error('Erro ao gerar link:', error);
+        // Fallback para URL atual
+        const token = crypto.randomUUID();
+        const link = `${window.location.origin}/supplier/auth/${quoteId}/${token}`;
+        setSupplierLink(link);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    generateLink();
+  }, [quoteId]);
 
   const copyToClipboard = async () => {
+    if (!supplierLink) return;
+    
     try {
       await navigator.clipboard.writeText(supplierLink);
       toast({
@@ -34,7 +58,9 @@ const SupplierQuoteLink: React.FC<SupplierQuoteLinkProps> = ({ quoteId, quoteTit
   };
 
   const openInNewTab = () => {
-    window.open(supplierLink, '_blank');
+    if (supplierLink) {
+      window.open(supplierLink, '_blank');
+    }
   };
 
   return (
@@ -65,7 +91,7 @@ const SupplierQuoteLink: React.FC<SupplierQuoteLinkProps> = ({ quoteId, quoteTit
           <div className="flex gap-2 mt-1">
             <Input
               id="supplierLink"
-              value={supplierLink}
+              value={isLoading ? "Gerando link..." : supplierLink}
               readOnly
               className="flex-1 font-mono text-xs"
             />
@@ -74,6 +100,7 @@ const SupplierQuoteLink: React.FC<SupplierQuoteLinkProps> = ({ quoteId, quoteTit
               size="icon"
               onClick={copyToClipboard}
               title="Copiar link"
+              disabled={isLoading || !supplierLink}
             >
               <Copy className="w-4 h-4" />
             </Button>
@@ -82,6 +109,7 @@ const SupplierQuoteLink: React.FC<SupplierQuoteLinkProps> = ({ quoteId, quoteTit
               size="icon"
               onClick={openInNewTab}
               title="Abrir em nova aba"
+              disabled={isLoading || !supplierLink}
             >
               <ExternalLink className="w-4 h-4" />
             </Button>
