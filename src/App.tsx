@@ -27,7 +27,7 @@ const Suppliers = React.lazy(() => import('@/pages/Suppliers'));
 const Products = React.lazy(() => import('@/pages/Products'));
 const Approvals = React.lazy(() => import('@/pages/Approvals').then(m => ({ default: m.Approvals })));
 const Payments = React.lazy(() => import('@/pages/Payments'));
-const Reports = React.lazy(() => import('@/pages/Reports').then(m => ({ default: m.Reports })));
+const Reports = React.lazy(() => import('@/pages/Reports'));
 const Users = React.lazy(() => import('@/pages/Users'));
 const Notifications = React.lazy(() => import('@/pages/Notifications'));
 const Settings = React.lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));

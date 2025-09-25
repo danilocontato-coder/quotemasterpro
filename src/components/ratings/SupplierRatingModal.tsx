@@ -1,112 +1,73 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, User, Package, Truck, DollarSign, Headphones } from "lucide-react";
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Star, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SupplierRatingModalProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
+  quoteId: string;
   supplierId: string;
   supplierName: string;
-  quoteId?: string;
-  paymentId?: string;
-  onSubmit: (rating: {
-    supplierId: string;
-    supplierName: string;
-    quoteId?: string;
-    paymentId?: string;
-    clientId: string;
-    clientName: string;
-    rating: number;
-    qualityRating: number;
-    deliveryRating: number;
-    serviceRating: number;
-    priceRating: number;
-    comment?: string;
-  }) => void;
+  onRatingSubmitted?: () => void;
 }
 
-export function SupplierRatingModal({
+interface RatingCriteria {
+  overall: number;
+  quality: number;
+  delivery: number;
+  communication: number;
+  price: number;
+}
+
+const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
   open,
-  onOpenChange,
+  onClose,
+  quoteId,
   supplierId,
   supplierName,
-  quoteId,
-  paymentId,
-  onSubmit,
-}: SupplierRatingModalProps) {
-  const [qualityRating, setQualityRating] = useState(0);
-  const [deliveryRating, setDeliveryRating] = useState(0);
-  const [serviceRating, setServiceRating] = useState(0);
-  const [priceRating, setPriceRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  onRatingSubmitted
+}) => {
+  const [ratings, setRatings] = useState<RatingCriteria>({
+    overall: 0,
+    quality: 0,
+    delivery: 0,
+    communication: 0,
+    price: 0
+  });
+  const [comments, setComments] = useState('');
+  const [wouldRecommend, setWouldRecommend] = useState<boolean | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!qualityRating || !deliveryRating || !serviceRating || !priceRating) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const overallRating = (qualityRating + deliveryRating + serviceRating + priceRating) / 4;
-      
-      await onSubmit({
-        supplierId,
-        supplierName,
-        quoteId,
-        paymentId,
-        clientId: '1', // Mock client ID
-        clientName: 'Condomínio Jardim das Flores', // Mock client name
-        rating: overallRating,
-        qualityRating,
-        deliveryRating,
-        serviceRating,
-        priceRating,
-        comment: comment.trim() || undefined,
-      });
-
-      // Reset form
-      setQualityRating(0);
-      setDeliveryRating(0);
-      setServiceRating(0);
-      setPriceRating(0);
-      setComment("");
-      onOpenChange(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const renderStarRating = (
-    rating: number,
-    setRating: (rating: number) => void,
-    label: string,
-    icon: React.ReactNode
-  ) => (
+  const StarRating = ({ 
+    value, 
+    onChange, 
+    label 
+  }: { 
+    value: number; 
+    onChange: (rating: number) => void; 
+    label: string;
+  }) => (
     <div className="space-y-2">
-      <Label className="flex items-center gap-2">
-        {icon}
-        {label}
-      </Label>
+      <label className="text-sm font-medium">{label}</label>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
-            onClick={() => setRating(star)}
+            onClick={() => onChange(star)}
             className="focus:outline-none"
           >
             <Star
-              className={`h-6 w-6 transition-colors ${
-                star <= rating
-                  ? "text-yellow-400 fill-yellow-400"
-                  : "text-gray-300 hover:text-yellow-200"
+              className={`w-5 h-5 ${
+                star <= value 
+                  ? 'fill-yellow-400 text-yellow-400' 
+                  : 'text-gray-300'
               }`}
             />
           </button>
@@ -115,117 +76,204 @@ export function SupplierRatingModal({
     </div>
   );
 
+  const handleSubmit = async () => {
+    if (ratings.overall === 0) {
+      toast({
+        title: "Erro",
+        description: "Por favor, forneça uma avaliação geral.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (wouldRecommend === null) {
+      toast({
+        title: "Erro", 
+        description: "Por favor, indique se recomendaria este fornecedor.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (!profile?.client_id) {
+        throw new Error('Cliente não encontrado');
+      }
+
+      const { error } = await supabase
+        .from('supplier_ratings')
+        .insert({
+          quote_id: quoteId,
+          supplier_id: supplierId,
+          client_id: profile.client_id,
+          rater_id: (await supabase.auth.getUser()).data.user?.id,
+          rating: ratings.overall,
+          quality_rating: ratings.quality || null,
+          delivery_rating: ratings.delivery || null,
+          communication_rating: ratings.communication || null,
+          price_rating: ratings.price || null,
+          comments: comments || null,
+          would_recommend: wouldRecommend
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso!",
+        description: "Avaliação enviada com sucesso."
+      });
+
+      onRatingSubmitted?.();
+      onClose();
+      
+      // Reset form
+      setRatings({
+        overall: 0,
+        quality: 0,
+        delivery: 0,
+        communication: 0,
+        price: 0
+      });
+      setComments('');
+      setWouldRecommend(null);
+
+    } catch (error: any) {
+      console.error('Erro ao enviar avaliação:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao enviar avaliação.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Avaliar Fornecedor
-          </DialogTitle>
+          <DialogTitle>Avaliar Fornecedor</DialogTitle>
+          <p className="text-muted-foreground">
+            Avalie sua experiência com {supplierName}
+          </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
+          {/* Avaliação Geral */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">{supplierName}</CardTitle>
-              {quoteId && (
-                <p className="text-sm text-muted-foreground">Cotação: {quoteId}</p>
-              )}
-              {paymentId && (
-                <p className="text-sm text-muted-foreground">Pagamento: {paymentId}</p>
-              )}
+              <CardTitle className="text-lg">Avaliação Geral *</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {renderStarRating(
-                  qualityRating,
-                  setQualityRating,
-                  "Qualidade dos Produtos",
-                  <Package className="h-4 w-4" />
-                )}
-
-                {renderStarRating(
-                  deliveryRating,
-                  setDeliveryRating,
-                  "Prazo de Entrega",
-                  <Truck className="h-4 w-4" />
-                )}
-
-                {renderStarRating(
-                  serviceRating,
-                  setServiceRating,
-                  "Atendimento",
-                  <Headphones className="h-4 w-4" />
-                )}
-
-                {renderStarRating(
-                  priceRating,
-                  setPriceRating,
-                  "Preço Competitivo",
-                  <DollarSign className="h-4 w-4" />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="comment">Comentários (opcional)</Label>
-                <Textarea
-                  id="comment"
-                  placeholder="Compartilhe sua experiência com este fornecedor..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  rows={4}
-                />
-              </div>
-
-              {/* Overall Rating Display */}
-              {qualityRating && deliveryRating && serviceRating && priceRating && (
-                <div className="p-4 bg-muted rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Avaliação Geral:</span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`h-5 w-5 ${
-                              star <= (qualityRating + deliveryRating + serviceRating + priceRating) / 4
-                                ? "text-yellow-400 fill-yellow-400"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="font-bold">
-                        {((qualityRating + deliveryRating + serviceRating + priceRating) / 4).toFixed(1)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <CardContent>
+              <StarRating
+                label="Como você avalia este fornecedor no geral?"
+                value={ratings.overall}
+                onChange={(rating) => setRatings(prev => ({ ...prev, overall: rating }))}
+              />
             </CardContent>
           </Card>
 
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !qualityRating || !deliveryRating || !serviceRating || !priceRating}
-              className="flex-1"
-            >
-              {isLoading ? "Enviando..." : "Enviar Avaliação"}
-            </Button>
-          </div>
-        </form>
+          {/* Critérios Específicos */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Critérios Específicos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <StarRating
+                label="Qualidade dos Produtos/Serviços"
+                value={ratings.quality}
+                onChange={(rating) => setRatings(prev => ({ ...prev, quality: rating }))}
+              />
+              
+              <StarRating
+                label="Prazo de Entrega"
+                value={ratings.delivery}
+                onChange={(rating) => setRatings(prev => ({ ...prev, delivery: rating }))}
+              />
+              
+              <StarRating
+                label="Comunicação"
+                value={ratings.communication}
+                onChange={(rating) => setRatings(prev => ({ ...prev, communication: rating }))}
+              />
+              
+              <StarRating
+                label="Preço/Custo-Benefício"
+                value={ratings.price}
+                onChange={(rating) => setRatings(prev => ({ ...prev, price: rating }))}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Recomendação */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Recomendação *</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Você recomendaria este fornecedor para outros clientes?
+              </p>
+              <div className="flex gap-4">
+                <Button
+                  variant={wouldRecommend === true ? "default" : "outline"}
+                  onClick={() => setWouldRecommend(true)}
+                  className="flex items-center gap-2"
+                >
+                  <ThumbsUp className="w-4 h-4" />
+                  Sim, recomendo
+                </Button>
+                <Button
+                  variant={wouldRecommend === false ? "destructive" : "outline"}
+                  onClick={() => setWouldRecommend(false)}
+                  className="flex items-center gap-2"
+                >
+                  <ThumbsDown className="w-4 h-4" />
+                  Não recomendo
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Comentários */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Comentários Adicionais</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Compartilhe detalhes sobre sua experiência com este fornecedor..."
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                rows={4}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting || ratings.overall === 0 || wouldRecommend === null}
+          >
+            {isSubmitting ? 'Enviando...' : 'Enviar Avaliação'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
+};
+
+export default SupplierRatingModal;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSupplierRatings } from "@/hooks/useSupplierRatings";
 import { RatingPromptCard } from "./RatingPromptCard";
-import { SupplierRatingModal } from "./SupplierRatingModal";
+import SupplierRatingModal from "./SupplierRatingModal";
 
 export function RatingPrompts() {
   const { ratingPrompts, createRating, dismissPrompt } = useSupplierRatings();
@@ -34,12 +34,11 @@ export function RatingPrompts() {
       {selectedPrompt && (
         <SupplierRatingModal
           open={!!selectedPrompt}
-          onOpenChange={(open) => !open && setSelectedPrompt(null)}
+          onClose={() => setSelectedPrompt(null)}
           supplierId={selectedPrompt.supplierId}
           supplierName={selectedPrompt.supplierName}
           quoteId={selectedPrompt.quoteId}
-          paymentId={selectedPrompt.paymentId}
-          onSubmit={handleSubmitRating}
+          onRatingSubmitted={() => setSelectedPrompt(null)}
         />
       )}
     </>

@@ -1458,6 +1458,51 @@ export type Database = {
           },
         ]
       }
+      saved_reports: {
+        Row: {
+          client_id: string | null
+          columns: Json
+          created_at: string
+          created_by: string
+          description: string | null
+          filters: Json
+          id: string
+          is_public: boolean | null
+          name: string
+          report_type: string
+          schedule: Json | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          columns?: Json
+          created_at?: string
+          created_by: string
+          description?: string | null
+          filters?: Json
+          id?: string
+          is_public?: boolean | null
+          name: string
+          report_type: string
+          schedule?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          columns?: Json
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          filters?: Json
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          report_type?: string
+          schedule?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -1590,6 +1635,57 @@ export type Database = {
           total_revenue?: number | null
           updated_at?: string | null
           yearly_price?: number
+        }
+        Relationships: []
+      }
+      supplier_ratings: {
+        Row: {
+          client_id: string
+          comments: string | null
+          communication_rating: number | null
+          created_at: string
+          delivery_rating: number | null
+          id: string
+          price_rating: number | null
+          quality_rating: number | null
+          quote_id: string
+          rater_id: string
+          rating: number
+          supplier_id: string
+          updated_at: string
+          would_recommend: boolean | null
+        }
+        Insert: {
+          client_id: string
+          comments?: string | null
+          communication_rating?: number | null
+          created_at?: string
+          delivery_rating?: number | null
+          id?: string
+          price_rating?: number | null
+          quality_rating?: number | null
+          quote_id: string
+          rater_id: string
+          rating: number
+          supplier_id: string
+          updated_at?: string
+          would_recommend?: boolean | null
+        }
+        Update: {
+          client_id?: string
+          comments?: string | null
+          communication_rating?: number | null
+          created_at?: string
+          delivery_rating?: number | null
+          id?: string
+          price_rating?: number | null
+          quality_rating?: number | null
+          quote_id?: string
+          rater_id?: string
+          rating?: number
+          supplier_id?: string
+          updated_at?: string
+          would_recommend?: boolean | null
         }
         Relationships: []
       }
@@ -2155,6 +2251,18 @@ export type Database = {
           updated_at: string | null
           user_id: string
         }
+      }
+      get_supplier_average_rating: {
+        Args: { supplier_uuid: string }
+        Returns: {
+          avg_communication: number
+          avg_delivery: number
+          avg_price: number
+          avg_quality: number
+          avg_rating: number
+          recommendation_rate: number
+          total_ratings: number
+        }[]
       }
       get_user_role: {
         Args: Record<PropertyKey, never>
