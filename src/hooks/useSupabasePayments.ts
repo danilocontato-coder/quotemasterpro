@@ -37,6 +37,8 @@ export const useSupabasePayments = () => {
   const fetchPayments = async () => {
     try {
       setIsLoading(true);
+      console.log('Fetching payments...');
+      
       const { data, error } = await supabase
         .from('payments')
         .select(`
@@ -47,12 +49,15 @@ export const useSupabasePayments = () => {
         `)
         .order('created_at', { ascending: false });
 
+      console.log('Payments query result:', { data, error });
+
       if (error) {
         console.error('Payments fetch error:', error);
         throw error;
       }
       
       setPayments((data as Payment[]) || []);
+      console.log('Payments set to state:', data);
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast({
@@ -86,9 +91,14 @@ export const useSupabasePayments = () => {
 
   const createCheckoutSession = async (paymentId: string) => {
     try {
+      console.log('Creating checkout session for payment:', paymentId);
+      
       const { data, error } = await supabase.functions.invoke('create-payment-checkout', {
         body: { paymentId }
       });
+      
+      console.log('Checkout session response:', { data, error });
+      
       if (error) throw error;
       return data; // expects { url, session_id }
     } catch (error) {
