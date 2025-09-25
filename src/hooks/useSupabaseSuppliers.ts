@@ -64,13 +64,42 @@ export const useSupabaseSuppliers = () => {
       if (profile?.role !== 'admin') {
         // Non-admin users should only see suppliers from their client context
         if (profile?.client_id) {
-          console.log('Filtering suppliers by client_id + public active (certified)');
-          // Local suppliers for this client OR certified/public active suppliers (client_id IS NULL)
-          query = query.or(`client_id.eq.${profile.client_id},and(client_id.is.null,status.eq.active)`);
+          console.log('Filtering suppliers by client_id + certified from same region');
+          
+          // Get client information to filter certified suppliers by region
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('address')
+            .eq('id', profile.client_id)
+            .single();
+
+          console.log('Client address data:', clientData);
+          
+          // Extract state from client address (formats: "São Paulo/SP", "Feira de Santana - BA", etc)
+          let clientState = null;
+          if (clientData?.address) {
+            const addressText = clientData.address;
+            // Try to extract state abbreviation (SP, BA, RJ, etc)
+            const stateMatch = addressText.match(/[/-]\s*([A-Z]{2})\s*$/i);
+            if (stateMatch) {
+              clientState = stateMatch[1].toUpperCase();
+            }
+          }
+
+          console.log('Extracted client state:', clientState);
+          
+          // Build query: Local suppliers for this client OR certified suppliers from same state
+          if (clientState) {
+            query = query.or(`client_id.eq.${profile.client_id},and(client_id.is.null,status.eq.active,is_certified.eq.true,state.ilike.${clientState})`);
+          } else {
+            // Fallback: only local suppliers if no client state found
+            console.log('No client state found, showing only local suppliers');
+            query = query.eq('client_id', profile.client_id);
+          }
         } else {
-          // If user has no client_id context, only show active public suppliers
-          console.log('No client context, showing only active public suppliers');
-          query = query.eq('status', 'active').is('client_id', null);
+          // If user has no client_id context, show no suppliers
+          console.log('No client context, showing no suppliers');
+          query = query.eq('id', '00000000-0000-0000-0000-000000000000'); // Impossible ID
         }
       }
       // Admin users see all suppliers
