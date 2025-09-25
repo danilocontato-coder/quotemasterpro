@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserDropdown } from "./UserDropdown";
 import { SystemStatusHeader } from "./SystemStatusHeader";
+import { useRefreshPrevention } from "@/hooks/useRefreshPrevention";
 
 // useStableRealtime removido - usando sistema centralizado
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +16,9 @@ import { ClientStatusToast } from "@/components/auth/ClientStatusToast";
 
 export function MainLayout() {
   const { user } = useAuth();
+  
+  // Aplicar prevenção de refreshes automáticos
+  useRefreshPrevention();
   
   // Monitorar status do cliente em tempo real
   useClientStatusMonitor();

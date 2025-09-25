@@ -43,15 +43,15 @@ export const useSupplierStatusMonitor = () => {
               // Disparar evento customizado para mostrar toast
               window.dispatchEvent(new CustomEvent('supplierDeactivated', {
                 detail: {
-                  message: 'Sua conta de fornecedor foi desativada',
+                  message: 'Sua conta de fornecedor foi desativada. Entre em contato com o administrador.',
                   supplierName: newSupplier.name
                 }
               }));
               
-              // Aguardar um pouco para o toast ser exibido antes do logout
+              // Aguardar mais tempo para o toast ser bem visível antes do logout
               setTimeout(() => {
                 logout();
-              }, 1000);
+              }, 3000);
             }
           }
         )

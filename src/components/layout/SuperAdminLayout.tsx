@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { SuperAdminSidebar } from './SuperAdminSidebar';
 import { UserDropdown } from './UserDropdown';
 import { RoleBasedNotificationDropdown } from './RoleBasedNotificationDropdown';
+import { useRefreshPrevention } from '@/hooks/useRefreshPrevention';
 
 import { SystemMetricsBar } from '@/components/admin/SystemMetricsBar';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,9 @@ import { Input } from '@/components/ui/input';
 
 export const SuperAdminLayout = () => {
   console.log('SuperAdminLayout component rendering');
+
+  // Aplicar prevenção de refreshes automáticos
+  useRefreshPrevention();
 
   return (
     <>
