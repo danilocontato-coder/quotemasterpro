@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -15,9 +16,32 @@ serve(async (req) => {
   }
 
   try {
+    // Conectar ao Supabase para buscar configurações de IA
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
     const { quote_id, quote_title, existing_questions } = await req.json();
 
     console.log('Generating contextual questions for:', { quote_id, quote_title, existing_questions });
+
+    // Buscar configurações de IA do superadmin
+    let aiModel = 'gpt-4o-mini'; // padrão
+    try {
+      const { data: aiSettings } = await supabase
+        .from('ai_settings')
+        .select('openai_model, negotiation_provider')
+        .limit(1)
+        .single();
+      
+      if (aiSettings?.openai_model && aiSettings?.negotiation_provider === 'openai') {
+        aiModel = aiSettings.openai_model;
+        console.log('Using AI model from settings:', aiModel);
+      }
+    } catch (error) {
+      console.log('Using default AI model, settings not found:', error);
+    }
 
     const prompt = `
 Como especialista em aquisições corporativas, analise esta cotação e sugira 3-5 perguntas contextuais estruturadas que um cliente deveria fazer ao fornecedor.
@@ -53,7 +77,7 @@ Retorne um JSON com este formato:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: aiModel,
         messages: [
           { 
             role: 'system', 
