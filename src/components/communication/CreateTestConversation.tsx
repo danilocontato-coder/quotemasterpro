@@ -19,16 +19,28 @@ export function CreateTestConversation() {
 
     setLoading(true);
     try {
-      // 1. Criar uma cotação de teste
+      // 1. Verificar se o usuário tem client_id no perfil
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !userProfile?.client_id) {
+        throw new Error('Usuário não tem client_id configurado no perfil');
+      }
+
+      // 2. Criar uma cotação de teste (sem especificar ID, deixar o trigger gerar)
+      const testQuoteId = `TEST-${Date.now()}`;
       const { data: quote, error: quoteError } = await supabase
         .from('quotes')
         .insert({
-          id: `RFQ-TEST-${Date.now()}`,
+          id: testQuoteId,
           title: 'Material de Limpeza - Teste Chat',
-          description: 'Cotação de teste para demonstrar o sistema de chat',
-          client_id: client.id,
+          description: 'Cotação de teste para demonstrar o sistema de chat - Material de Limpeza',
+          client_id: userProfile.client_id, // Usar o client_id do perfil
           client_name: client.name,
-          status: 'sent',
+          status: 'draft', // Começar com draft
           created_by: user.id
         })
         .select()
@@ -36,7 +48,7 @@ export function CreateTestConversation() {
 
       if (quoteError) throw quoteError;
 
-      // 2. Criar um fornecedor de teste (se não existir)
+      // 3. Criar um fornecedor de teste (se não existir)
       const { data: existingSupplier } = await supabase
         .from('suppliers')
         .select('id')
@@ -62,12 +74,12 @@ export function CreateTestConversation() {
         supplierId = supplier.id;
       }
 
-      // 3. Criar conversa
+      // 4. Criar conversa
       const { data: conversation, error: conversationError } = await supabase
         .from('quote_conversations')
         .insert({
           quote_id: quote.id,
-          client_id: client.id,
+          client_id: userProfile.client_id, // Usar o client_id do perfil
           supplier_id: supplierId,
           status: 'active'
         })
@@ -76,7 +88,7 @@ export function CreateTestConversation() {
 
       if (conversationError) throw conversationError;
 
-      // 4. Criar algumas mensagens de exemplo
+      // 5. Criar algumas mensagens de exemplo
       const messages = [
         {
           conversation_id: conversation.id,
