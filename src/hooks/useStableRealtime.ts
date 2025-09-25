@@ -10,10 +10,21 @@ export function useStableRealtime() {
   const { user } = useAuth();
   const channelRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
+  const currentUserIdRef = useRef<string | null>(null);
   
   useEffect(() => {
-    // Evita múltiplas inicializações
-    if (!user?.id || isInitializedRef.current) return;
+    // Evita múltiplas inicializações para o mesmo usuário
+    if (!user?.id || currentUserIdRef.current === user.id) return;
+    
+    // Limpar conexão anterior se usuário mudou
+    if (channelRef.current && currentUserIdRef.current !== user.id) {
+      console.log('🔄 [REALTIME] Limpando conexão anterior');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+      isInitializedRef.current = false;
+    }
+    
+    currentUserIdRef.current = user.id;
     
     
     
@@ -69,12 +80,13 @@ export function useStableRealtime() {
     subscribeWithRetry();
     
     return () => {
-      
+      console.log('🔄 [REALTIME] Limpando conexão realtime');
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
       isInitializedRef.current = false;
+      currentUserIdRef.current = null;
     };
   }, [user?.id]); // Dependência mínima
   

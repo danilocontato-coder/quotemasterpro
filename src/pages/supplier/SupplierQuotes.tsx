@@ -417,8 +417,8 @@ export default function SupplierQuotes() {
         open={isDeliveryModalOpen}
         onOpenChange={setIsDeliveryModalOpen}
         onDeliveryScheduled={() => {
-          // Refresh quotes list or update status
-          window.location.reload();
+          // Atualizar lista de cotações via evento
+          window.dispatchEvent(new CustomEvent('quotes-updated'));
         }}
       />
     </div>

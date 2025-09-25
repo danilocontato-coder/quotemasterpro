@@ -188,14 +188,8 @@ export const IndividualBrandingManager = () => {
         description: `Branding de ${selectedEntity.name} salvo com sucesso.`
       });
 
-      // Recarregar configurações de branding
-      if (window.parent && window.parent.location) {
-        // Se estivermos em um iframe, recarregar a página pai
-        window.parent.location.reload();
-      } else {
-        // Senão, recarregar a página atual
-        window.location.reload();
-      }
+      // Aplicar novas configurações de branding sem recarregar
+      window.dispatchEvent(new CustomEvent('branding-updated'));
     } catch (error) {
       console.error('Erro ao salvar:', error);
       toast({
@@ -230,14 +224,8 @@ export const IndividualBrandingManager = () => {
         description: `Branding personalizado de ${selectedEntity.name} removido. Agora usará o branding global.`
       });
 
-      // Recarregar configurações de branding
-      if (window.parent && window.parent.location) {
-        // Se estivermos em um iframe, recarregar a página pai
-        window.parent.location.reload();
-      } else {
-        // Senão, recarregar a página atual
-        window.location.reload();
-      }
+      // Aplicar novas configurações de branding sem recarregar
+      window.dispatchEvent(new CustomEvent('branding-updated'));
     } catch (error) {
       console.error('Erro ao deletar:', error);
       toast({

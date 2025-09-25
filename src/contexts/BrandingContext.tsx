@@ -592,6 +592,20 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadSettings();
   }, []); // Remove dependency on loadSettings to prevent infinite reloads
 
+  // Escutar eventos de atualização de branding
+  useEffect(() => {
+    const handleBrandingUpdate = () => {
+      console.log('🎨 [BRANDING] Evento de atualização de branding recebido');
+      loadSettings(); // Recarregar configurações quando há atualizações
+    };
+
+    window.addEventListener('branding-updated', handleBrandingUpdate);
+
+    return () => {
+      window.removeEventListener('branding-updated', handleBrandingUpdate);
+    };
+  }, []); // Sem dependências para evitar recriação
+
   return (
     <BrandingContext.Provider value={{
       settings,

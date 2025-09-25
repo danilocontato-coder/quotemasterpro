@@ -121,12 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         
-        // Verificar se página está visível antes de processar mudanças
-        if (document.hidden && event === 'SIGNED_IN') {
-          console.log('🔍 [DEBUG-AUTH] Sign in detectado com página oculta - adiando processamento');
-          return;
-        }
-        
         console.log('🔍 [DEBUG-AUTH] Processando mudança de auth state...');
         setSession(session);
         
