@@ -10,13 +10,13 @@ import { useClientStatusMonitor } from "@/hooks/useClientStatusMonitor";
 import { useSupplierStatusMonitor } from "@/hooks/useSupplierStatusMonitor";
 import { ClientStatusToast } from "@/components/auth/ClientStatusToast";
 import { SupplierStatusToast } from "@/components/auth/SupplierStatusToast";
-import { useRefreshPrevention } from "@/hooks/useRefreshPrevention";
+import { useSimpleRefreshPrevention } from "@/hooks/useSimpleRefreshPrevention";
 
 export function SupplierLayout() {
   const { supplierData, isLoading } = useSupplierData();
   
-  // Aplicar prevenção de refreshes automáticos
-  useRefreshPrevention();
+  // Prevenção simples de refresh que não interfere com auth
+  useSimpleRefreshPrevention();
   
   // Monitorar status do cliente em tempo real (se fornecedor tiver client_id)
   useClientStatusMonitor();

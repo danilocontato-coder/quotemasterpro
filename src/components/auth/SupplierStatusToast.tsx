@@ -9,7 +9,7 @@ export const SupplierStatusToast: React.FC = () => {
       
       toast.error(message, {
         description: 'Você será redirecionado para a página de login.',
-        duration: 5000,
+        duration: 8000,
         icon: <AlertTriangle className="h-4 w-4" />
       });
     };

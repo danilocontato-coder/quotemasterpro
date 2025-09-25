@@ -40,7 +40,7 @@ export const useSupplierStatusMonitor = () => {
             if (newSupplier.status !== 'active') {
               console.log('🔐 [SUPPLIER-STATUS] Fornecedor desativado, fazendo logout...');
               
-              // Disparar evento customizado para mostrar toast
+              // Disparar evento customizado para mostrar toast - mensagem mais clara
               window.dispatchEvent(new CustomEvent('supplierDeactivated', {
                 detail: {
                   message: 'Sua conta de fornecedor foi desativada. Entre em contato com o administrador.',
@@ -48,10 +48,10 @@ export const useSupplierStatusMonitor = () => {
                 }
               }));
               
-              // Aguardar mais tempo para o toast ser bem visível antes do logout
+              // Aguardar 5 segundos para mensagem ser bem visível
               setTimeout(() => {
                 logout();
-              }, 3000);
+              }, 5000);
             }
           }
         )
