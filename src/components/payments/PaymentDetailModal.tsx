@@ -452,7 +452,7 @@ export function PaymentDetailModal({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {payment.transactions.map((transaction: any, index: number) => (
+                {payment.transactions?.length > 0 ? payment.transactions.map((transaction: any, index: number) => (
                   <div key={transaction.id} className="flex items-start gap-3">
                     <div className="mt-1">
                       {getTransactionIcon(transaction.type)}
@@ -487,7 +487,11 @@ export function PaymentDetailModal({
                       <div className="absolute left-6 mt-8 w-px h-8 bg-border" />
                     )}
                   </div>
-                ))}
+                )) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    Nenhuma transação encontrada
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
