@@ -22,6 +22,7 @@ interface BrandingContextType {
   updateSettings: (newSettings: Partial<BrandingSettings>) => Promise<void>;
   applyBranding: () => void;
   resetToDefaults: () => Promise<void>;
+  reloadSettings: () => void;
 }
 
 const defaultSettings: BrandingSettings = {
@@ -199,6 +200,11 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsLoading(false);
     }
   }, []);
+
+  // Função pública para recarregar configurações
+  const reloadSettings = useCallback(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   // Aplicar branding no DOM
   const applyBrandingToDOM = useCallback((brandingSettings: BrandingSettings) => {
@@ -527,7 +533,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isLoading,
       updateSettings,
       applyBranding,
-      resetToDefaults
+      resetToDefaults,
+      reloadSettings
     }}>
       {children}
     </BrandingContext.Provider>

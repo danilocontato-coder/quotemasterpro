@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Building2, Truck, Edit, Trash2, Plus, Save, 
-  RotateCcw, Palette, Eye, Settings2 
+  RotateCcw, Palette, Eye, Settings2, Upload 
 } from 'lucide-react';
 
 interface BrandingSettings {
@@ -61,6 +61,7 @@ export const IndividualBrandingManager = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Carregar clientes e fornecedores
   useEffect(() => {
@@ -180,12 +181,21 @@ export const IndividualBrandingManager = () => {
         if (error) throw error;
       }
 
+      console.log('🎨 [INDIVIDUAL-BRANDING] Configurações salvas com sucesso');
+
       toast({
         title: "Sucesso!",
         description: `Branding de ${selectedEntity.name} salvo com sucesso.`
       });
 
-      setIsDialogOpen(false);
+      // Recarregar configurações de branding
+      if (window.parent && window.parent.location) {
+        // Se estivermos em um iframe, recarregar a página pai
+        window.parent.location.reload();
+      } else {
+        // Senão, recarregar a página atual
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Erro ao salvar:', error);
       toast({
@@ -220,8 +230,14 @@ export const IndividualBrandingManager = () => {
         description: `Branding personalizado de ${selectedEntity.name} removido. Agora usará o branding global.`
       });
 
-      setBrandingSettings(defaultSettings);
-      setIsDialogOpen(false);
+      // Recarregar configurações de branding
+      if (window.parent && window.parent.location) {
+        // Se estivermos em um iframe, recarregar a página pai
+        window.parent.location.reload();
+      } else {
+        // Senão, recarregar a página atual
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Erro ao deletar:', error);
       toast({
@@ -231,6 +247,53 @@ export const IndividualBrandingManager = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>, 
+    type: 'logo' | 'favicon'
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      
+      // Upload para o storage do Supabase
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${type}-${selectedEntity?.id}-${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('attachments')
+        .upload(`branding/${fileName}`, file);
+
+      if (error) throw error;
+
+      // Obter URL pública
+      const { data: publicUrl } = supabase.storage
+        .from('attachments')
+        .getPublicUrl(`branding/${fileName}`);
+
+      setBrandingSettings(prev => ({ 
+        ...prev, 
+        [type]: publicUrl.publicUrl 
+      }));
+
+      toast({
+        title: "Sucesso!",
+        description: `${type === 'logo' ? 'Logo' : 'Favicon'} carregado com sucesso.`
+      });
+
+    } catch (error: any) {
+      console.error('Erro ao fazer upload:', error);
+      toast({
+        title: "Erro",
+        description: `Erro ao carregar ${type === 'logo' ? 'logo' : 'favicon'}.`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -347,15 +410,35 @@ export const IndividualBrandingManager = () => {
                   </div>
 
                   <div>
-                    <Label>URL do Logo</Label>
-                    <Input
-                      value={brandingSettings.logo}
-                      onChange={(e) => setBrandingSettings(prev => ({ 
-                        ...prev, 
-                        logo: e.target.value 
-                      }))}
-                      placeholder="/placeholder.svg"
-                    />
+                    <Label>Logo da Empresa</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="logo-upload-modal"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileUpload(e, 'logo')}
+                        className="hidden"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => document.getElementById('logo-upload-modal')?.click()}
+                        disabled={isSaving || isUploading}
+                        size="sm"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Logo
+                      </Button>
+                      {brandingSettings.logo && brandingSettings.logo !== '/placeholder.svg' && (
+                        <Button
+                          variant="outline"
+                          onClick={() => window.open(brandingSettings.logo, '_blank')}
+                          size="sm"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -429,8 +512,26 @@ export const IndividualBrandingManager = () => {
                   className="rounded-lg p-4 text-white"
                   style={{ backgroundColor: brandingSettings.primaryColor }}
                 >
-                  <h5 className="font-bold">{brandingSettings.companyName}</h5>
-                  <p className="text-sm opacity-90">{brandingSettings.loginPageTitle}</p>
+                  <div className="flex items-center gap-3">
+                    {brandingSettings.logo && brandingSettings.logo !== '/placeholder.svg' ? (
+                      <img 
+                        src={brandingSettings.logo} 
+                        alt="Logo" 
+                        className="h-8 w-auto object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                        }}
+                      />
+                    ) : (
+                      <div className="h-8 w-16 bg-white/20 rounded flex items-center justify-center">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                    )}
+                    <div>
+                      <h5 className="font-bold">{brandingSettings.companyName}</h5>
+                      <p className="text-sm opacity-90">{brandingSettings.loginPageTitle}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -458,7 +559,7 @@ export const IndividualBrandingManager = () => {
                   </Button>
                   <Button
                     onClick={saveBrandingSettings}
-                    disabled={isSaving}
+                    disabled={isSaving || isUploading}
                   >
                     <Save className="h-4 w-4 mr-2" />
                     {isSaving ? 'Salvando...' : 'Salvar'}
