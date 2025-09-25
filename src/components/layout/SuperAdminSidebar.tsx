@@ -77,9 +77,15 @@ const navigation = [
     items: [
       {
         name: 'Configurações',
-        href: '/admin/settings',
+        href: '/admin/system',
         icon: Settings,
         description: 'Config. do sistema'
+      },
+      {
+        name: 'Marca',
+        href: '/admin/brand',
+        icon: Building2,
+        description: 'Logo e identidade'
       },
       {
         name: 'Integrações',

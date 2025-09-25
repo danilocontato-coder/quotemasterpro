@@ -46,6 +46,7 @@ const ClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManageme
 const SuppliersManagement = React.lazy(() => import('@/pages/admin/SuppliersManagement'));
 const AccountsManagement = React.lazy(() => import('@/pages/admin/AccountsManagement'));
 const SystemSettings = React.lazy(() => import('@/pages/admin/SystemSettings'));
+const BrandSettings = React.lazy(() => import('@/pages/admin/BrandSettings'));
 const CouponsManagement = React.lazy(() => import('@/pages/admin/CouponsManagement'));
 const PlansManagement = React.lazy(() => import('@/pages/admin/PlansManagement'));
 const IntegrationsManagement = React.lazy(() => import('@/pages/admin/IntegrationsManagement'));
@@ -158,6 +159,11 @@ function App() {
                   <Route path="system" element={
                     <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <SystemSettings />
+                    </Suspense>
+                  } />
+                  <Route path="brand" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <BrandSettings />
                     </Suspense>
                   } />
                   <Route path="coupons" element={
