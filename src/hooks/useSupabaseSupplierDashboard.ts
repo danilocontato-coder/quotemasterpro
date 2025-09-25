@@ -109,14 +109,14 @@ export const useSupabaseSupplierDashboard = () => {
         supplierId: user.supplierId
       });
 
-      // Buscar cotações disponíveis para este fornecedor
-      console.log('🎯 CRÍTICO: Buscando cotações para fornecedor:', user.supplierId);
+      // Buscar cotações disponíveis APENAS para este fornecedor específico
+      console.log('🎯 CRÍTICO: Buscando cotações EXCLUSIVAS para fornecedor:', user.supplierId);
       
-      // Buscar cotações através de múltiplas fontes
+      // CORREÇÃO DE SEGURANÇA: Buscar apenas cotações específicas do fornecedor
       const { data: quotesData, error: quotesError } = await supabase
         .from('quotes')
         .select('*')
-        .or(`supplier_id.eq.${user.supplierId},and(supplier_scope.in.(global,all),status.in.(sent,receiving)),and(supplier_scope.eq.local,status.in.(sent,receiving),supplier_id.is.null),selected_supplier_ids.cs.{${user.supplierId}}`)
+        .or(`supplier_id.eq.${user.supplierId},selected_supplier_ids.cs.{${user.supplierId}}`)
         .order('created_at', { ascending: false })
         .limit(10);
 
