@@ -19,7 +19,7 @@ export function CreateCostCenterModal({ open, onOpenChange, parentOptions }: Cre
     name: '',
     code: '',
     description: '',
-    parent_id: '',
+    parent_id: undefined as string | undefined,
     budget_monthly: '',
     budget_annual: '',
   });
@@ -48,7 +48,7 @@ export function CreateCostCenterModal({ open, onOpenChange, parentOptions }: Cre
         name: '',
         code: '',
         description: '',
-        parent_id: '',
+        parent_id: undefined,
         budget_monthly: '',
         budget_annual: '',
       });
