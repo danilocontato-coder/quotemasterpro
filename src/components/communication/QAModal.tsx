@@ -19,6 +19,7 @@ import {
   FileText
 } from "lucide-react";
 import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
+import { useToast } from "@/hooks/use-toast";
 
 interface QAModalProps {
   conversation: any;
@@ -158,17 +159,38 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [userRole, setUserRole] = useState<'client' | 'supplier'>('client'); // Detectar papel do usuário
+  const [userRole, setUserRole] = useState<'client' | 'supplier'>('client');
+  const [pendingQuestions, setPendingQuestions] = useState<any[]>([]);
+  const [selectedPendingQuestion, setSelectedPendingQuestion] = useState<any>(null);
+  const [supplierResponse, setSupplierResponse] = useState('');
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const { sendMessage, markMessagesAsRead, fetchMessages, messages } = useSupabaseQuoteChats();
+  const { toast } = useToast();
   
   const qaMessages = conversation ? messages[conversation.id] || [] : [];
 
-  // Simular detecção de papel do usuário (implementar lógica real depois)
+  // Detectar papel do usuário e buscar perguntas pendentes
   useEffect(() => {
-    // TODO: Implementar detecção real do papel do usuário baseado na autenticação
-    // Por enquanto, assumindo que é cliente se não tem supplier_id
-    setUserRole('client');
-  }, []);
+    // TODO: Implementar detecção real do papel do usuário
+    setUserRole('client'); // Por enquanto assumindo cliente
+    
+    if (userRole === 'supplier') {
+      // Buscar perguntas não respondidas do cliente
+      const questions = qaMessages
+        .filter(msg => msg.content.includes('**PERGUNTA**') && msg.sender_type === 'client')
+        .map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          created_at: msg.created_at,
+          answered: qaMessages.some(reply => 
+            reply.content.includes(msg.id) && reply.sender_type === 'supplier'
+          )
+        }))
+        .filter(q => !q.answered);
+      
+      setPendingQuestions(questions);
+    }
+  }, [userRole, qaMessages]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -217,6 +239,56 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
     const question = category?.questions.find(q => q.id === questionId);
     setSelectedQuestion(question || null);
     setResponse('');
+  };
+
+  const handleSupplierResponse = async () => {
+    if (!selectedPendingQuestion || !supplierResponse.trim() || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const formattedMessage = `**RESPOSTA**\n\n**Referência:** ${selectedPendingQuestion.id}\n**Resposta:** ${supplierResponse.trim()}`;
+      
+      await sendMessage(conversation.id, formattedMessage);
+      setSupplierResponse('');
+      setSelectedPendingQuestion(null);
+      toast({ title: "Resposta enviada", description: "Sua resposta foi enviada com sucesso." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const generateAIQuestions = async () => {
+    if (!conversation || isGeneratingQuestions) return;
+
+    setIsGeneratingQuestions(true);
+    try {
+      // Chamar edge function para gerar perguntas contextuais
+      const response = await fetch('https://bpsqyaxdhqejozmlejcb.supabase.co/functions/v1/generate-contextual-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quote_id: conversation.quote_id,
+          quote_title: conversation.quote_title,
+          existing_questions: qaMessages.length
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        toast({ 
+          title: "Perguntas IA", 
+          description: `${data.suggestions?.length || 0} perguntas contextuais sugeridas pela IA.` 
+        });
+      }
+    } catch (error) {
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível gerar perguntas com IA.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsGeneratingQuestions(false);
+    }
   };
 
   if (!conversation) return null;
@@ -319,22 +391,99 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
                     {isLoading ? 'Enviando...' : 'Enviar Pergunta'}
                   </Button>
                 )}
+
+                <div className="pt-2 border-t">
+                  <Button
+                    onClick={generateAIQuestions}
+                    disabled={isGeneratingQuestions}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {isGeneratingQuestions ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    ) : (
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                    )}
+                    {isGeneratingQuestions ? 'Gerando...' : 'IA: Sugerir Perguntas Contextuais'}
+                  </Button>
+                </div>
               </div>
             ) : (
-              // FORNECEDOR: Visualiza perguntas pendentes e pode responder
-              <Card className="border-blue-200 bg-blue-50/50">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              // FORNECEDOR: Responde perguntas do cliente
+              <div className="space-y-4">
+                {pendingQuestions.length > 0 ? (
+                  <>
                     <div>
-                      <h4 className="font-medium text-blue-800 mb-1">Aguardando Perguntas</h4>
-                      <p className="text-sm text-blue-700">
-                        O cliente pode enviar perguntas que aparecerão aqui para você responder.
-                      </p>
+                      <Label htmlFor="pending-questions">Perguntas Pendentes ({pendingQuestions.length})</Label>
+                      <Select 
+                        value={selectedPendingQuestion?.id || ''} 
+                        onValueChange={(questionId) => {
+                          const question = pendingQuestions.find(q => q.id === questionId);
+                          setSelectedPendingQuestion(question || null);
+                          setSupplierResponse('');
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma pergunta para responder" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pendingQuestions.map((question) => (
+                            <SelectItem key={question.id} value={question.id}>
+                              <div className="max-w-xs truncate">
+                                {question.content.split('\n')[2]?.replace('**Pergunta:** ', '') || 'Pergunta'}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+
+                    {selectedPendingQuestion && (
+                      <div>
+                        <Label htmlFor="supplier-response">
+                          Sua Resposta ({supplierResponse.length}/300)
+                        </Label>
+                        <Textarea
+                          id="supplier-response"
+                          placeholder="Digite sua resposta estruturada..."
+                          value={supplierResponse}
+                          onChange={(e) => {
+                            if (e.target.value.length <= 300) {
+                              setSupplierResponse(e.target.value);
+                            }
+                          }}
+                          className="resize-none"
+                          rows={4}
+                          maxLength={300}
+                        />
+                        
+                        <Button
+                          onClick={handleSupplierResponse}
+                          disabled={!supplierResponse.trim() || isLoading || conversation.status !== 'active'}
+                          className="w-full mt-2"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          {isLoading ? 'Enviando...' : 'Enviar Resposta'}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Card className="border-blue-200 bg-blue-50/50">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-blue-800 mb-1">Nenhuma Pergunta Pendente</h4>
+                          <p className="text-sm text-blue-700">
+                            Aguardando o cliente enviar perguntas sobre esta cotação.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
           </div>
 
