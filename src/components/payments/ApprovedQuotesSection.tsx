@@ -10,7 +10,7 @@ export function ApprovedQuotesSection() {
   const { quotes } = useSupabaseQuotes();
   const { payments, createPaymentIntent } = useSupabasePayments();
 
-  // Filter approved quotes that don't have payments yet
+  // Filter approved quotes that don't have payments yet and have value > 0
   const approvedQuotesWithoutPayments = quotes.filter(quote => {
     const hasPayment = payments.some(payment => payment.quote_id === quote.id);
     return quote.status === 'approved' && !hasPayment && quote.total && quote.total > 0;
@@ -39,7 +39,7 @@ export function ApprovedQuotesSection() {
                 </div>
                 <p className="text-sm font-medium">{quote.title}</p>
                 <p className="text-sm text-muted-foreground">
-                  Cliente: {quote.client_name}
+                  Cliente: {quote.client_name} {quote.supplier_name && `• Fornecedor: ${quote.supplier_name}`}
                 </p>
                 <p className="text-sm font-medium text-green-600">
                   R$ {quote.total?.toFixed(2) || '0,00'}

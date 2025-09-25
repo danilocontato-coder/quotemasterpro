@@ -986,7 +986,7 @@ export type Database = {
           reviewed_by: string | null
           status: string | null
           stripe_session_id: string | null
-          supplier_id: string
+          supplier_id: string | null
           transaction_id: string | null
           updated_at: string | null
         }
@@ -1005,7 +1005,7 @@ export type Database = {
           reviewed_by?: string | null
           status?: string | null
           stripe_session_id?: string | null
-          supplier_id: string
+          supplier_id?: string | null
           transaction_id?: string | null
           updated_at?: string | null
         }
@@ -1024,7 +1024,7 @@ export type Database = {
           reviewed_by?: string | null
           status?: string | null
           stripe_session_id?: string | null
-          supplier_id?: string
+          supplier_id?: string | null
           transaction_id?: string | null
           updated_at?: string | null
         }

@@ -128,6 +128,9 @@ export default function Payments() {
 
   return (
     <div className="space-y-6">
+      {/* Seção de Cotações Aprovadas Pendentes */}
+      <ApprovedQuotesSection />
+      
       {/* Componente de Teste (remover em produção) */}
       <TestAutomaticPayments />
       
