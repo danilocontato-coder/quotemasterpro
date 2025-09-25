@@ -420,7 +420,7 @@ export function NewIntegrationModal({ open, onOpenChange, onIntegrationCreate, e
               <div>
                 <label className="text-sm font-medium mb-2 block">Nome Remetente *</label>
                 <Input
-                  placeholder="QuoteMaster Pro"
+                  placeholder="Sistema de Cotações"
                   value={formData.settings.fromName || ""}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,

@@ -100,7 +100,7 @@ export function NegotiationLogModal({ open, onClose, negotiation }: NegotiationL
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'ai':
-        return 'QuoteMaster IA';
+        return 'Sistema IA';
       case 'supplier':
         return 'Fornecedor';
       case 'system':

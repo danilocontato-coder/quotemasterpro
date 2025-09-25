@@ -62,7 +62,7 @@ export function SupplierSidebar() {
           </div>
           {!isCollapsed && (
             <div>
-              <h1 className="text-lg font-semibold text-sidebar-foreground">{settings.companyName || 'QuoteMaster Pro'}</h1>
+              <h1 className="text-lg font-semibold text-sidebar-foreground">{settings.companyName}</h1>
               <p className="text-xs text-sidebar-foreground/70">Fornecedor</p>
             </div>
           )}

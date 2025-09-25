@@ -104,7 +104,7 @@ export default function Reports() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
   const [brandSettings, setBrandSettings] = useState({
-    companyName: 'QuoteMaster Pro',
+    companyName: 'Sistema de Cotações',
     logo: '/placeholder.svg'
   });
 
@@ -138,7 +138,7 @@ export default function Reports() {
         const settings: any = {};
         data.forEach(item => {
           if (item.setting_key === 'company_name') {
-            settings.companyName = (item.setting_value as any)?.value || 'QuoteMaster Pro';
+            settings.companyName = (item.setting_value as any)?.value || 'Sistema de Cotações';
           }
           if (item.setting_key === 'company_logo') {
             settings.logo = (item.setting_value as any)?.url || '/placeholder.svg';

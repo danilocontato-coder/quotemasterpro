@@ -45,7 +45,7 @@ const SupplierResponseSuccess = () => {
               </Button>
               <Button 
                 variant="outline"
-                onClick={() => window.open('mailto:contato@quotemaster.com', '_blank')}
+                onClick={() => window.open('mailto:contato@sistemacotacoes.com', '_blank')}
                 className="flex items-center gap-2"
               >
                 <Mail className="w-4 h-4" />
@@ -56,8 +56,8 @@ const SupplierResponseSuccess = () => {
             <div className="text-xs text-muted-foreground border-t pt-4">
               <p>
                 Dúvidas? Entre em contato conosco através do email: 
-                <a href="mailto:contato@quotemaster.com" className="text-primary hover:underline ml-1">
-                  contato@quotemaster.com
+                <a href="mailto:contato@sistemacotacoes.com" className="text-primary hover:underline ml-1">
+                  contato@sistemacotacoes.com
                 </a>
               </p>
             </div>

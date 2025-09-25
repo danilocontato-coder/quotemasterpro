@@ -78,7 +78,7 @@ export const SuperAdminDashboard = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">SuperAdmin Dashboard</h1>
-            <p className="text-muted-foreground">Controle total da plataforma QuoteMaster Pro</p>
+            <p className="text-muted-foreground">Controle total da plataforma de cotações</p>
           </div>
           <div className="flex items-center gap-4">
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">

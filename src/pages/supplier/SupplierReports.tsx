@@ -37,7 +37,7 @@ export default function SupplierReports() {
   const [showFilters, setShowFilters] = useState(true);
   const [availableClients, setAvailableClients] = useState<string[]>([]);
   const [brandSettings, setBrandSettings] = useState({
-    companyName: 'QuoteMaster Pro',
+    companyName: 'Sistema de Cotações',
     logo: '/placeholder.svg'
   });
 
@@ -70,7 +70,7 @@ export default function SupplierReports() {
         const settings: any = {};
         data.forEach(item => {
           if (item.setting_key === 'company_name') {
-            settings.companyName = (item.setting_value as any)?.value || 'QuoteMaster Pro';
+            settings.companyName = (item.setting_value as any)?.value || 'Sistema de Cotações';
           }
           if (item.setting_key === 'company_logo') {
             settings.logo = (item.setting_value as any)?.url || '/placeholder.svg';

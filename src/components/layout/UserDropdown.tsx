@@ -97,7 +97,7 @@ export function UserDropdown() {
 
   const handleHelp = () => {
     // Open help or documentation
-    window.open("https://docs.quotemaster.pro", "_blank");
+    window.open("https://docs.sistemacotacoes.com", "_blank");
   };
 
   const handleLogout = async () => {

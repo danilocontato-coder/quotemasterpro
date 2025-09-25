@@ -57,7 +57,7 @@ export const SuperAdminLayout = () => {
         {/* Footer */}
         <footer className="h-12 bg-card border-t flex items-center justify-between px-6 text-sm text-muted-foreground flex-shrink-0">
           <div className="flex items-center gap-4">
-            <span>© 2024 QuoteMaster Pro - SuperAdmin Panel</span>
+            <span>© 2024 Sistema de Cotações - SuperAdmin Panel</span>
             <Badge variant="outline" className="text-xs">
               <Shield className="h-3 w-3 mr-1" />
               Ambiente Seguro

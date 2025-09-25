@@ -55,7 +55,7 @@ const Login: React.FC = () => {
 
     try {
       // Primeiro verificar se é admin (baseado no domínio ou email específico)
-      if (emailValue.includes('admin@') || emailValue.includes('@quotemaster.com')) {
+      if (emailValue.includes('admin@') || emailValue.includes(`@${brandingSettings.companyName.toLowerCase().replace(/\s+/g, '')}.com`)) {
         setDetectedUserType('admin');
         setIsDetecting(false);
         return;
@@ -329,42 +329,9 @@ const Login: React.FC = () => {
 
             <div className="text-center">
               <span className="text-sm text-muted-foreground">
-                Não tem uma conta? 
+                Precisa de acesso? Entre em contato com o administrador.
               </span>
-              <Link 
-                to="/auth/register" 
-                className="text-sm text-primary hover:underline ml-1"
-              >
-                Cadastre-se
-              </Link>
             </div>
-
-            {/* Dados de teste baseados no tipo detectado */}
-            {detectedUserType && (
-              <div className="mt-6 text-xs text-muted-foreground text-center border-t pt-4">
-                <p className="mb-2 font-medium">Dados para teste ({userTypeInfo.label}):</p>
-                <div className="bg-muted/50 rounded p-3 space-y-1">
-                  {detectedUserType === 'admin' && (
-                    <>
-                      <p><strong>Email:</strong> admin@quotemaster.com</p>
-                      <p><strong>Senha:</strong> 123456</p>
-                    </>
-                  )}
-                  {detectedUserType === 'client' && (
-                    <>
-                      <p><strong>Email:</strong> cliente@condominio.com</p>
-                      <p><strong>Senha:</strong> 123456</p>
-                    </>
-                  )}
-                  {detectedUserType === 'supplier' && (
-                    <>
-                      <p><strong>Email:</strong> fornecedor@empresa.com</p>
-                      <p><strong>Senha:</strong> 123456</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 

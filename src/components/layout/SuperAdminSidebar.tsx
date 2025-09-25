@@ -302,7 +302,7 @@ export const SuperAdminSidebar = () => {
       {/* Footer */}
       <div className="border-t p-4">
         <div className="text-center text-xs text-muted-foreground">
-          <p>QuoteMaster Pro</p>
+          <p>Sistema de Cotações</p>
           <p>Admin Panel v2.0</p>
         </div>
       </div>

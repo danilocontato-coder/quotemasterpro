@@ -41,14 +41,14 @@ interface Supplier {
 }
 
 const defaultSettings: BrandingSettings = {
-  companyName: 'QuoteMaster Pro',
+  companyName: 'Sistema de Cotações',
   logo: '/placeholder.svg',
   favicon: '/favicon.ico',
   primaryColor: '#003366',
   secondaryColor: '#F5F5F5',
   accentColor: '#0066CC',
-  loginPageTitle: 'Bem-vindo ao QuoteMaster Pro',
-  footerText: '© 2025 QuoteMaster Pro. Todos os direitos reservados.',
+  loginPageTitle: 'Bem-vindo ao Sistema de Cotações',
+  footerText: '© 2025 Sistema de Cotações. Todos os direitos reservados.',
   customCss: ''
 };
 

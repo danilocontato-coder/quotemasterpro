@@ -257,7 +257,7 @@ const SupplierAuth = () => {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <Building2 className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-primary mb-2">QuoteMaster Pro</h1>
+          <h1 className="text-2xl font-bold text-primary mb-2">Sistema de Cotações</h1>
           <p className="text-muted-foreground">Acesso para Fornecedores</p>
         </div>
 

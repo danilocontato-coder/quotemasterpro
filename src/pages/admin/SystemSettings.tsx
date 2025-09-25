@@ -33,7 +33,7 @@ export const SystemSettings = () => {
 
   // Estados para configurações
   const [systemConfig, setSystemConfig] = useState({
-    systemName: 'QuoteMaster Pro',
+    systemName: 'Sistema de Cotações',
     systemDescription: 'Plataforma corporativa de gestão de cotações',
     maintenanceMode: false,
     registrationEnabled: true,
