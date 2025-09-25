@@ -64,7 +64,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       // Função auxiliar para carregar configurações globais
       const loadGlobalSettings = async () => {
-        const { data: systemData } = await supabase
+        console.log('🎨 [BRANDING] Carregando configurações globais do system_settings...');
+        const { data: systemData, error } = await supabase
           .from('system_settings')
           .select('setting_key, setting_value')
           .in('setting_key', [
@@ -73,19 +74,33 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             'login_page_subtitle', 'dashboard_welcome_message', 'custom_css'
           ]);
 
+        if (error) {
+          console.error('🎨 [BRANDING] Erro ao carregar system_settings:', error);
+          return null;
+        }
+
         if (systemData && systemData.length > 0) {
+          console.log('🎨 [BRANDING] Dados encontrados no system_settings:', systemData);
           const globalSettings = { ...defaultSettings };
           
           systemData.forEach(item => {
-            const value = (item.setting_value as any)?.value || 
-                         (item.setting_value as any)?.url || 
-                         (item.setting_value as any)?.color || 
-                         (item.setting_value as any)?.text || 
-                         item.setting_value;
+            const settingValue = item.setting_value as any;
+            const value = settingValue?.value || 
+                         settingValue?.url || 
+                         settingValue?.color || 
+                         settingValue?.text || 
+                         settingValue;
+
+            console.log('🎨 [BRANDING] Processando:', item.setting_key, '- Raw:', settingValue, '- Extracted:', value);
 
             switch (item.setting_key) {
               case 'company_name':
-                globalSettings.companyName = value || defaultSettings.companyName;
+                if (value && value.trim()) {
+                  globalSettings.companyName = value.trim();
+                  console.log('🎨 [BRANDING] ✅ Company name definido como:', value.trim());
+                } else {
+                  console.log('🎨 [BRANDING] ⚠️ Company name vazio, usando padrão');
+                }
                 break;
               case 'company_logo':
                 globalSettings.logo = value || defaultSettings.logo;
@@ -119,6 +134,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 break;
             }
           });
+          
+          console.log('🎨 [BRANDING] Configurações globais processadas:', globalSettings);
           return globalSettings;
         }
         return null;
@@ -130,10 +147,11 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!user) {
         console.log('🎨 [BRANDING] Usuário não autenticado, aplicando configurações globais');
         if (globalSettings) {
+          console.log('🎨 [BRANDING] Aplicando configurações globais para usuário não autenticado:', globalSettings);
           setSettings(globalSettings);
           applyBrandingToDOM(globalSettings);
-          console.log('🎨 [BRANDING] Configurações globais aplicadas:', globalSettings);
         } else {
+          console.log('🎨 [BRANDING] Nenhuma configuração global encontrada, usando padrão');
           setSettings(defaultSettings);
           applyBrandingToDOM(defaultSettings);
         }
@@ -153,6 +171,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         applyBrandingToDOM(defaultSettings);
         return;
       }
+
+      console.log('🎨 [BRANDING] Perfil do usuário:', profile);
 
       let brandingSettings = null;
 
@@ -199,9 +219,9 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           dashboardWelcomeMessage: brandingSettings.dashboardWelcomeMessage || defaultSettings.dashboardWelcomeMessage,
           customCss: brandingSettings.custom_css || brandingSettings.customCss || defaultSettings.customCss,
         };
+        console.log('🎨 [BRANDING] ✅ Configurações finais aplicadas:', newSettings);
         setSettings(newSettings);
         applyBrandingToDOM(newSettings);
-        console.log('🎨 [BRANDING] Configurações aplicadas:', newSettings);
       } else {
         console.log('🎨 [BRANDING] Nenhuma configuração encontrada, usando padrão');
         setSettings(defaultSettings);
@@ -219,11 +239,13 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Função pública para recarregar configurações
   const reloadSettings = useCallback(() => {
+    console.log('🎨 [BRANDING] Recarregamento manual solicitado');
     loadSettings();
   }, [loadSettings]);
 
   // Aplicar branding no DOM
   const applyBrandingToDOM = useCallback((brandingSettings: BrandingSettings) => {
+    console.log('🎨 [BRANDING] Aplicando branding no DOM:', brandingSettings);
     const root = document.documentElement;
     
     // Converter hex para HSL
@@ -262,6 +284,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Atualizar título da página
     document.title = brandingSettings.companyName;
+    console.log('🎨 [BRANDING] Título da página atualizado para:', brandingSettings.companyName);
 
     // Atualizar favicon
     const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
@@ -541,7 +564,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+  }, []); // Remove dependency on loadSettings to prevent infinite reloads
 
   return (
     <BrandingContext.Provider value={{
