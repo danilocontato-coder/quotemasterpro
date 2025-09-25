@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Package, Truck, Calendar, MapPin, Clock, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Delivery {
   id: string;
@@ -35,19 +36,34 @@ export default function SupplierDeliveries() {
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchDeliveries = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      if (!user?.supplierId) {
+        console.log('No supplier ID found');
+        setDeliveries([]);
+        return;
+      }
+      
+      // Buscar entregas com informações relacionadas através do quote_id
+      const { data: deliveriesData, error } = await supabase
         .from('deliveries')
         .select(`
-          *,
-          payments!inner(
-            amount,
-            quotes!inner(title, client_name)
-          )
+          id,
+          quote_id,
+          status,
+          scheduled_date,
+          actual_delivery_date,
+          tracking_code,
+          notes,
+          created_at,
+          updated_at,
+          quotes!inner(title, client_name, total)
         `)
+        .eq('supplier_id', user.supplierId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -55,7 +71,29 @@ export default function SupplierDeliveries() {
         throw error;
       }
       
-      setDeliveries((data as any) || []);
+      // Buscar informações de pagamento para cada cotação
+      const deliveriesWithPayments = await Promise.all(
+        (deliveriesData || []).map(async (delivery: any) => {
+          const { data: paymentData } = await supabase
+            .from('payments')
+            .select('amount')
+            .eq('quote_id', delivery.quote_id)
+            .single();
+
+          return {
+            ...delivery,
+            payments: paymentData ? {
+              amount: paymentData.amount,
+              quotes: delivery.quotes
+            } : {
+              amount: delivery.quotes?.total || 0,
+              quotes: delivery.quotes
+            }
+          };
+        })
+      );
+      
+      setDeliveries(deliveriesWithPayments);
     } catch (error) {
       console.error('Error fetching deliveries:', error);
       toast({
@@ -120,7 +158,7 @@ export default function SupplierDeliveries() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user?.supplierId]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
