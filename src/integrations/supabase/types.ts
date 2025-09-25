@@ -834,6 +834,56 @@ export type Database = {
           },
         ]
       }
+      cost_centers: {
+        Row: {
+          active: boolean
+          budget_annual: number | null
+          budget_monthly: number | null
+          client_id: string
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          budget_annual?: number | null
+          budget_monthly?: number | null
+          client_id: string
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          budget_annual?: number | null
+          budget_monthly?: number | null
+          client_id?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_centers_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupon_usages: {
         Row: {
           client_id: string | null
@@ -1293,6 +1343,7 @@ export type Database = {
         Row: {
           amount: number
           client_id: string
+          cost_center_id: string | null
           created_at: string | null
           escrow_release_date: string | null
           id: string
@@ -1312,6 +1363,7 @@ export type Database = {
         Insert: {
           amount: number
           client_id: string
+          cost_center_id?: string | null
           created_at?: string | null
           escrow_release_date?: string | null
           id: string
@@ -1331,6 +1383,7 @@ export type Database = {
         Update: {
           amount?: number
           client_id?: string
+          cost_center_id?: string | null
           created_at?: string | null
           escrow_release_date?: string | null
           id?: string
@@ -1353,6 +1406,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
           {
@@ -1576,6 +1636,7 @@ export type Database = {
       }
       quote_items: {
         Row: {
+          cost_center_id: string | null
           created_at: string | null
           id: string
           product_id: string | null
@@ -1586,6 +1647,7 @@ export type Database = {
           unit_price: number | null
         }
         Insert: {
+          cost_center_id?: string | null
           created_at?: string | null
           id?: string
           product_id?: string | null
@@ -1596,6 +1658,7 @@ export type Database = {
           unit_price?: number | null
         }
         Update: {
+          cost_center_id?: string | null
           created_at?: string | null
           id?: string
           product_id?: string | null
@@ -1606,6 +1669,13 @@ export type Database = {
           unit_price?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quote_items_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quote_items_product_id_fkey"
             columns: ["product_id"]
@@ -1801,6 +1871,7 @@ export type Database = {
         Row: {
           client_id: string
           client_name: string
+          cost_center_id: string | null
           created_at: string | null
           created_by: string | null
           deadline: string | null
@@ -1821,6 +1892,7 @@ export type Database = {
         Insert: {
           client_id: string
           client_name: string
+          cost_center_id?: string | null
           created_at?: string | null
           created_by?: string | null
           deadline?: string | null
@@ -1841,6 +1913,7 @@ export type Database = {
         Update: {
           client_id?: string
           client_name?: string
+          cost_center_id?: string | null
           created_at?: string | null
           created_by?: string | null
           deadline?: string | null
@@ -1864,6 +1937,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
           {
@@ -2721,6 +2801,39 @@ export type Database = {
       generate_delivery_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_cost_center_hierarchy: {
+        Args: { p_client_id: string }
+        Returns: {
+          budget_annual: number
+          budget_monthly: number
+          code: string
+          description: string
+          id: string
+          level: number
+          name: string
+          parent_id: string
+          path: string
+        }[]
+      }
+      get_cost_center_spending: {
+        Args: {
+          p_client_id: string
+          p_end_date?: string
+          p_start_date?: string
+        }
+        Returns: {
+          budget_annual: number
+          budget_monthly: number
+          budget_variance_annual: number
+          budget_variance_monthly: number
+          cost_center_code: string
+          cost_center_id: string
+          cost_center_name: string
+          payment_count: number
+          quote_count: number
+          total_spent: number
+        }[]
       }
       get_current_user_client_id: {
         Args: Record<PropertyKey, never>

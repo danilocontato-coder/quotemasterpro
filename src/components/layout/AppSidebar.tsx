@@ -12,7 +12,8 @@ import {
   CheckCircle,
   Layers,
   Crown,
-  Brain
+  Brain,
+  TreePine
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -45,6 +46,7 @@ const approvalItems = [
 
 const financialItems = [
   { title: "Pagamentos", url: "/payments", icon: CreditCard },
+  { title: "Centros de Custo", url: "/cost-centers", icon: TreePine },
 ];
 
 const communicationItems = [

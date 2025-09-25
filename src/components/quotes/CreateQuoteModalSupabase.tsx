@@ -17,11 +17,15 @@ import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { supabase } from "@/integrations/supabase/client";
+import { useCostCenters } from "@/hooks/useCostCenters";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface QuoteFormData {
   title: string;
   description: string;
   deadline: string;
+  cost_center_id?: string;
   items: Array<{
     product_name: string;
     quantity: number;
@@ -64,6 +68,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     title: "",
     description: "",
     deadline: "",
+    cost_center_id: "",
     items: [],
     supplier_ids: [],
     communicationMethods: {
@@ -125,6 +130,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
           title: "",
           description: "",
           deadline: "",
+          cost_center_id: "",
           items: [],
           supplier_ids: [],
           communicationMethods: {
@@ -341,6 +347,24 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
                 onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
                 min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
               />
+            </div>
+            <div>
+              <Label htmlFor="cost_center">Centro de Custo (opcional)</Label>
+              <Select 
+                value={formData.cost_center_id} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, cost_center_id: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um centro de custo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {costCenters?.map((center) => (
+                    <SelectItem key={center.id} value={center.id}>
+                      {center.name} ({center.code})
+                    </SelectItem>
+                  )) || []}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         );
