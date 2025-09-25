@@ -173,19 +173,45 @@ export const useSupplierUsers = () => {
 
   // Delete user
   const deleteUser = async (userId: string) => {
+    console.log('🗑️ [SUPPLIER-USERS] Iniciando exclusão de usuário:', userId);
+    
     try {
-      const { error } = await supabase
+      // Primeiro buscar os dados do usuário para garantir que existe
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (userError) {
+        console.error('🗑️ [SUPPLIER-USERS] Erro ao buscar usuário:', userError);
+        throw userError;
+      }
+
+      if (!userData) {
+        console.error('🗑️ [SUPPLIER-USERS] Usuário não encontrado:', userId);
+        throw new Error('Usuário não encontrado');
+      }
+
+      console.log('🗑️ [SUPPLIER-USERS] Dados do usuário encontrado:', userData);
+
+      // Agora tentar excluir
+      const { error: deleteError } = await supabase
         .from('users')
         .delete()
         .eq('id', userId);
 
-      if (error) throw error;
+      if (deleteError) {
+        console.error('🗑️ [SUPPLIER-USERS] Erro ao excluir usuário:', deleteError);
+        throw deleteError;
+      }
 
+      console.log('✅ [SUPPLIER-USERS] Usuário excluído com sucesso');
       toast.success('Usuário removido com sucesso!');
       fetchUsers();
     } catch (error) {
-      console.error('Erro ao remover usuário:', error);
-      toast.error('Erro ao remover usuário');
+      console.error('❌ [SUPPLIER-USERS] Erro completo ao remover usuário:', error);
+      toast.error(`Erro ao remover usuário: ${error.message || 'Erro desconhecido'}`);
       throw error;
     }
   };

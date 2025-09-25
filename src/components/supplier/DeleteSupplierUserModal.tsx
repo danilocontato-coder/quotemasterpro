@@ -23,15 +23,23 @@ export function DeleteSupplierUserModal({ open, onClose, user }: DeleteSupplierU
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('❌ [DELETE-MODAL] Nenhum usuário selecionado');
+      return;
+    }
 
+    console.log('🗑️ [DELETE-MODAL] Iniciando exclusão do usuário:', user);
     setLoading(true);
+    
     try {
       await deleteUser(user.id);
+      console.log('✅ [DELETE-MODAL] Exclusão bem-sucedida, fechando modal');
       onClose();
     } catch (error) {
-      console.error('Erro ao remover usuário:', error);
+      console.error('❌ [DELETE-MODAL] Erro ao remover usuário:', error);
+      // Toast já é exibido no hook, não precisa duplicar aqui
     } finally {
+      console.log('🔄 [DELETE-MODAL] Finalizando loading state');
       setLoading(false);
     }
   };
