@@ -68,8 +68,9 @@ export const useAuthTenant = () => {
         throw error;
       }
 
-      // Para suppliers, NÃO exigir vinculação/cliente
-      if (user.role === 'supplier') {
+      // Contexto de fornecedor: se o perfil indicar tenant_type 'supplier' OU tiver supplier_id, não exige vinculação
+      const isSupplierContext = profile?.tenant_type === 'supplier' || !!(profile as any)?.supplier_id;
+      if (isSupplierContext) {
         setTenantState({
           clientId: null,
           onboardingCompleted: true,
