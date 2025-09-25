@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export const InactiveClientAlert: React.FC = () => {
   const { error } = useAuth();
 
+  // Só mostrar se for especificamente erro de cliente desativado
   if (!error || !error.includes('desativada')) {
     return null;
   }

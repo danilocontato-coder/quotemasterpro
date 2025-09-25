@@ -139,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           console.log('🔍 [DEBUG-AUTH] Sem sessão - limpando user state');
           setUser(null);
+          setError(null); // Limpar erro ao fazer logout
           setForcePasswordChange(false);
           setIsLoading(false);
         }
@@ -240,6 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           supplierId: profile.supplier_id,
         };
         setUser(userProfile);
+        setError(null); // Limpar qualquer erro anterior ao fazer login com sucesso
       } else {
         console.log('⚠️ Profile não encontrado, criando usuário básico');
         // Profile doesn't exist, create a basic user
@@ -251,6 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           active: true,
         };
         setUser(basicUser);
+        setError(null); // Limpar qualquer erro anterior ao fazer login com sucesso
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
@@ -263,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         active: true,
       };
       setUser(errorFallbackUser);
+      setError(null); // Limpar qualquer erro anterior mesmo em caso de fallback
     } finally {
       setIsLoading(false);
     }

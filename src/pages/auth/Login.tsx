@@ -10,7 +10,6 @@ import { Loader2, Eye, EyeOff, Building2, Users, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
 import { InactiveClientAlert } from '@/components/auth/InactiveClientAlert';
-import { useClientStatusMonitor } from '@/hooks/useClientStatusMonitor';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -23,9 +22,6 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoading: authLoading, error: authError } = useAuth();
-
-  // Monitorar status do cliente em tempo real
-  useClientStatusMonitor();
 
   const from = location.state?.from?.pathname || getRoleBasedRoute('client');
 
@@ -289,13 +285,15 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            {(error || authError) && (
+            {/* Mostrar erro de cliente inativo via componente específico */}
+            <InactiveClientAlert />
+            
+            {/* Mostrar outros erros que não sejam de cliente inativo */}
+            {(error && !error.includes('desativada')) && (
               <Alert variant="destructive">
-                <AlertDescription>{error || authError}</AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-
-            <InactiveClientAlert />
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
