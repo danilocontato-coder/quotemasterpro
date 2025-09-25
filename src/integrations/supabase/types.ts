@@ -2474,10 +2474,6 @@ export type Database = {
           visibility_scope: string
         }[]
       }
-      test_branding_permissions: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       validate_coupon: {
         Args: {
           coupon_code: string
