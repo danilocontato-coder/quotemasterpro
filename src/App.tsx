@@ -435,6 +435,11 @@ function App() {
                     <SupplierLayout />
                   </ProtectedRoute>
                 }>
+                  <Route index element={
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
+                      <SupplierDashboard />
+                    </Suspense>
+                  } />
                   <Route path="dashboard" element={
                     <Suspense fallback={<LoadingFallback className="p-4" />}>
                       <SupplierDashboard />
