@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Clock, CheckCircle, AlertTriangle, Package } from "lucide-react";
+import { CreditCard, Clock, CheckCircle, AlertTriangle, Package, Receipt } from "lucide-react";
 import { Payment } from "@/hooks/useSupabasePayments";
+import { OfflinePaymentModal } from "./OfflinePaymentModal";
 
 interface PaymentCardProps {
   payment: Payment;
@@ -13,11 +15,14 @@ interface PaymentCardProps {
 }
 
 export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, userRole }: PaymentCardProps) {
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-gray-500';
       case 'processing': return 'bg-blue-500';
       case 'in_escrow': return 'bg-yellow-500';
+      case 'manual_confirmation': return 'bg-orange-500';
       case 'completed': return 'bg-green-500';
       case 'failed': return 'bg-red-500';
       case 'disputed': return 'bg-orange-500';
@@ -30,6 +35,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
       case 'pending': return 'Pendente';
       case 'processing': return 'Processando';
       case 'in_escrow': return 'Em Garantia';
+      case 'manual_confirmation': return 'Análise Manual';
       case 'completed': return 'Concluído';
       case 'failed': return 'Falhou';
       case 'disputed': return 'Contestado';
@@ -42,6 +48,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
       case 'pending': return <Clock className="h-4 w-4" />;
       case 'processing': return <CreditCard className="h-4 w-4" />;
       case 'in_escrow': return <Package className="h-4 w-4" />;
+      case 'manual_confirmation': return <Receipt className="h-4 w-4" />;
       case 'completed': return <CheckCircle className="h-4 w-4" />;
       case 'failed': case 'disputed': return <AlertTriangle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
@@ -110,15 +117,26 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
 
         {/* Ações baseadas no status e papel do usuário */}
         <div className="flex gap-2 pt-2">
-          {payment.status === 'pending' && onPay && (
-            <Button 
-              onClick={() => onPay(payment.id)}
-              className="flex-1"
-              size="sm"
-            >
-              <CreditCard className="h-4 w-4 mr-2" />
-              Pagar
-            </Button>
+          {payment.status === 'pending' && (
+            <>
+              <Button 
+                onClick={() => onPay?.(payment.id)}
+                className="flex-1"
+                size="sm"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Pagar Online
+              </Button>
+              <Button 
+                onClick={() => setShowOfflineModal(true)}
+                variant="outline"
+                className="flex-1"
+                size="sm"
+              >
+                <Receipt className="h-4 w-4 mr-2" />
+                Pagar Offline
+              </Button>
+            </>
           )}
 
           {payment.status === 'in_escrow' && onConfirmDelivery && userRole !== 'supplier' && (
@@ -142,6 +160,17 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
           </Button>
         </div>
       </CardContent>
+
+      {/* Modal de pagamento offline */}
+      <OfflinePaymentModal
+        payment={payment}
+        open={showOfflineModal}
+        onOpenChange={setShowOfflineModal}
+        onConfirm={() => {
+          // Refresh would be handled by parent component
+          window.location.reload();
+        }}
+      />
     </Card>
   );
 }

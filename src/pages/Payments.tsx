@@ -20,11 +20,13 @@ import { useSupabasePayments } from "@/hooks/useSupabasePayments";
 import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
+import { PaymentCard } from "@/components/payments/PaymentCard";
 
 export default function Payments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,7 +34,9 @@ export default function Payments() {
 
   const {
     payments,
-    isLoading
+    isLoading,
+    createPaymentIntent,
+    confirmDelivery
   } = useSupabasePayments();
 
   const filteredPayments = payments.filter(payment => {
@@ -121,10 +125,18 @@ export default function Payments() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button className="btn-corporate">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Pagamento
-          </Button>
+          <CreatePaymentModal
+            onPaymentCreate={(quoteId: string, amount: number) => {
+              console.log('Payment created:', quoteId, amount);
+              return 'PAY' + Date.now();
+            }}
+            trigger={
+              <Button className="btn-corporate">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Pagamento
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -194,59 +206,44 @@ export default function Payments() {
 
       {/* Payments Grid */}
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {currentPayments.map((payment) => {
-            const statusColor = getStatusColor(payment.status);
-            
-            return (
-              <Card key={payment.id} className="card-corporate hover:shadow-md transition-shadow">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <CardTitle className="text-lg">{payment.quote_id}</CardTitle>
-                        {getPaymentStatusIcon(payment.status)}
-                      </div>
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {payment.id}
-                      </p>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
-                      {getStatusText(payment.status)}
-                    </span>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  {/* Payment Info */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Valor:</span>
-                      <span className="font-semibold text-lg text-primary">
-                        {formatCurrency(payment.amount)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="pt-2 space-y-2">
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={() => handleViewPayment(payment)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Ver Detalhes
-                      </Button>
-                    </div>
-                  </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {currentPayments.map((payment) => (
+              <PaymentCard
+                key={payment.id}
+                payment={payment}
+                onPay={async (paymentId) => {
+                  try {
+                    const result = await createPaymentIntent(paymentId);
+                    // Aqui integraria com Stripe
+                    console.log('Payment intent created:', result);
+                  } catch (error) {
+                    console.error('Payment error:', error);
+                  }
+                }}
+                onConfirmDelivery={async (paymentId) => {
+                  try {
+                    await confirmDelivery(paymentId);
+                  } catch (error) {
+                    console.error('Delivery confirmation error:', error);
+                  }
+                }}
+                onViewDetails={handleViewPayment}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
