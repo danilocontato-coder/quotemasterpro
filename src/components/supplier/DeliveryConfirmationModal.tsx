@@ -77,12 +77,12 @@ export const DeliveryConfirmationModal = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-blue-900 mb-1">Como funciona?</p>
               <p className="text-blue-700">
-                O fornecedor compartilhará um código de 6 dígitos com você. 
+                O fornecedor compartilhará um código de 4 dígitos com você. 
                 Digite esse código abaixo para confirmar que recebeu a entrega.
                 Após a confirmação, o pagamento será liberado automaticamente.
               </p>
@@ -94,10 +94,10 @@ export const DeliveryConfirmationModal = ({
             <Input
               id="confirmationCode"
               type="text"
-              placeholder="Digite o código de 6 dígitos"
+              placeholder="Digite o código de 4 dígitos"
               value={confirmationCode}
               onChange={(e) => setConfirmationCode(e.target.value)}
-              maxLength={6}
+              maxLength={4}
               className="text-center text-lg font-mono tracking-wider"
             />
             <p className="text-xs text-muted-foreground">
