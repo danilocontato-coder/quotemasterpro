@@ -158,9 +158,17 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [userRole, setUserRole] = useState<'client' | 'supplier'>('client'); // Detectar papel do usuário
   const { sendMessage, markMessagesAsRead, fetchMessages, messages } = useSupabaseQuoteChats();
   
   const qaMessages = conversation ? messages[conversation.id] || [] : [];
+
+  // Simular detecção de papel do usuário (implementar lógica real depois)
+  useEffect(() => {
+    // TODO: Implementar detecção real do papel do usuário baseado na autenticação
+    // Por enquanto, assumindo que é cliente se não tem supplier_id
+    setUserRole('client');
+  }, []);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -189,15 +197,14 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
   }, [open, conversation, fetchMessages, markMessagesAsRead]);
 
   const handleSendQuestion = async () => {
-    if (!selectedQuestion || !response.trim() || !conversation || isLoading) return;
+    if (!selectedQuestion || !conversation || isLoading) return;
 
     setIsLoading(true);
     try {
       const questionText = selectedQuestion.text;
-      const formattedMessage = `**ESCLARECIMENTO**\n\n**Pergunta:** ${questionText}\n**Resposta:** ${response.trim()}`;
+      const formattedMessage = `**PERGUNTA**\n\n**Categoria:** ${questionCategories.find(c => c.id === selectedCategory)?.name}\n**Pergunta:** ${questionText}`;
       
       await sendMessage(conversation.id, formattedMessage);
-      setResponse('');
       setSelectedQuestion(null);
       setSelectedCategory('');
     } finally {
@@ -248,100 +255,87 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-orange-800 mb-1">Importante</h4>
+                    <h4 className="font-medium text-orange-800 mb-1">Sistema de Esclarecimentos</h4>
                     <p className="text-sm text-orange-700">
-                      Use apenas para esclarecimentos. Propostas devem ser enviadas via formulário oficial.
+                      {userRole === 'client' 
+                        ? 'Como cliente, você pode fazer perguntas estruturadas ao fornecedor sobre esta cotação.'
+                        : 'Como fornecedor, você responde às perguntas do cliente sobre esta cotação.'
+                      }
                     </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="category">Categoria do Esclarecimento</Label>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {questionCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        <div className="flex items-center gap-2">
-                          {category.icon}
-                          {category.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedCategory && (
+            {userRole === 'client' ? (
+              // CLIENTE: Pode fazer perguntas pré-definidas
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="question">Pergunta Específica</Label>
-                  <Select value={selectedQuestion?.id || ''} onValueChange={handleQuestionSelect}>
+                  <Label htmlFor="category">Categoria da Pergunta</Label>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma pergunta" />
+                      <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      {questionCategories
-                        .find(cat => cat.id === selectedCategory)
-                        ?.questions.map((question) => (
-                          <SelectItem key={question.id} value={question.id}>
-                            {question.text}
-                          </SelectItem>
-                        ))}
+                      {questionCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center gap-2">
+                            {category.icon}
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
 
-              {selectedQuestion && (
-                <div>
-                  <Label htmlFor="response">
-                    Sua Resposta ({response.length}/{selectedQuestion.maxChars})
-                  </Label>
-                  {selectedQuestion.responseType === 'select' && selectedQuestion.options ? (
-                    <Select value={response} onValueChange={setResponse}>
+                {selectedCategory && (
+                  <div>
+                    <Label htmlFor="question">Pergunta Específica</Label>
+                    <Select value={selectedQuestion?.id || ''} onValueChange={handleQuestionSelect}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma opção" />
+                        <SelectValue placeholder="Selecione uma pergunta" />
                       </SelectTrigger>
                       <SelectContent>
-                        {selectedQuestion.options.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
+                        {questionCategories
+                          .find(cat => cat.id === selectedCategory)
+                          ?.questions.map((question) => (
+                            <SelectItem key={question.id} value={question.id}>
+                              {question.text}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
-                  ) : (
-                    <Textarea
-                      id="response"
-                      placeholder="Digite sua resposta..."
-                      value={response}
-                      onChange={(e) => {
-                        if (e.target.value.length <= selectedQuestion.maxChars) {
-                          setResponse(e.target.value);
-                        }
-                      }}
-                      className="resize-none"
-                      rows={4}
-                      maxLength={selectedQuestion.maxChars}
-                    />
-                  )}
-                  
+                  </div>
+                )}
+
+                {selectedQuestion && (
                   <Button
                     onClick={handleSendQuestion}
-                    disabled={!response.trim() || isLoading || conversation.status !== 'active'}
-                    className="w-full mt-2"
+                    disabled={isLoading || conversation.status !== 'active'}
+                    className="w-full"
                   >
                     <HelpCircle className="h-4 w-4 mr-2" />
-                    {isLoading ? 'Enviando...' : 'Enviar Esclarecimento'}
+                    {isLoading ? 'Enviando...' : 'Enviar Pergunta'}
                   </Button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            ) : (
+              // FORNECEDOR: Visualiza perguntas pendentes e pode responder
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-800 mb-1">Aguardando Perguntas</h4>
+                      <p className="text-sm text-blue-700">
+                        O cliente pode enviar perguntas que aparecerão aqui para você responder.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Right Panel - Messages History */}
