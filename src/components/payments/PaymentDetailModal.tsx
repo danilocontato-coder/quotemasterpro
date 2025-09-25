@@ -188,11 +188,11 @@ export function PaymentDetailModal({
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Criado em</p>
-                    <p className="font-medium">{formatDate(payment.createdAt)}</p>
+                    <p className="font-medium">{formatDate(payment.created_at)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Atualizado em</p>
-                    <p className="font-medium">{formatDate(payment.updatedAt)}</p>
+                    <p className="font-medium">{formatDate(payment.updated_at)}</p>
                   </div>
                 </div>
               </div>
@@ -233,7 +233,6 @@ export function PaymentDetailModal({
               <CardContent>
                 <div>
                   <p className="font-medium">{payment.clients?.name || payment.quotes?.client_name || 'Cliente não informado'}</p>
-                  <p className="text-sm text-muted-foreground">ID: {payment.client_id}</p>
                 </div>
               </CardContent>
             </Card>
@@ -248,7 +247,6 @@ export function PaymentDetailModal({
               <CardContent>
                 <div>
                   <p className="font-medium">{payment.suppliers?.name || 'Fornecedor não informado'}</p>
-                  <p className="text-sm text-muted-foreground">ID: {payment.supplier_id}</p>
                 </div>
               </CardContent>
             </Card>
@@ -452,46 +450,104 @@ export function PaymentDetailModal({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {payment.transactions?.length > 0 ? payment.transactions.map((transaction: any, index: number) => (
-                  <div key={transaction.id} className="flex items-start gap-3">
+                {/* Transações básicas baseadas no status */}
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
                     <div className="mt-1">
-                      {getTransactionIcon(transaction.type)}
+                      <CreditCard className="h-4 w-4 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="font-medium text-sm">
-                          {getTransactionTypeText(transaction.type)}
-                        </p>
+                        <p className="font-medium text-sm">Pagamento Criado</p>
                         <p className="text-sm text-muted-foreground">
-                          {formatDate(transaction.createdAt)}
+                          {formatDate(payment.created_at)}
                         </p>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {transaction.description}
+                        Pagamento foi registrado no sistema
                       </p>
-                      {transaction.amount && (
-                        <p className="text-sm font-medium text-primary mt-1">
-                          {formatCurrency(transaction.amount)}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Por: {transaction.userName}
+                      <p className="text-sm font-medium text-primary mt-1">
+                        {formatCurrency(payment.amount)}
                       </p>
-                      {transaction.metadata && (
-                        <div className="mt-2 p-2 bg-muted rounded text-xs">
-                          <pre>{JSON.stringify(transaction.metadata, null, 2)}</pre>
-                        </div>
-                      )}
                     </div>
-                    {index < payment.transactions.length - 1 && (
-                      <div className="absolute left-6 mt-8 w-px h-8 bg-border" />
-                    )}
                   </div>
-                )) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    Nenhuma transação encontrada
-                  </p>
-                )}
+
+                  {payment.status === 'processing' && (
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        <Clock className="h-4 w-4 text-yellow-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm">Processando Pagamento</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatDate(payment.updated_at)}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Pagamento está sendo processado pelo Stripe
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {payment.status === 'in_escrow' && (
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm">Fundos em Garantia</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatDate(payment.updated_at)}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Valores retidos em segurança até confirmação da entrega
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {payment.status === 'completed' && (
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm">Pagamento Concluído</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatDate(payment.updated_at)}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Entrega confirmada e fundos liberados para o fornecedor
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {payment.status === 'failed' && (
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm">Pagamento Falhou</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatDate(payment.updated_at)}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Falha no processamento do pagamento
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
