@@ -32,6 +32,7 @@ export const useSupabaseSupplierProducts = () => {
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentSupplierId, setCurrentSupplierId] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -41,8 +42,10 @@ export const useSupabaseSupplierProducts = () => {
       return;
     }
 
+    let supplierId = user.supplierId || currentSupplierId;
+
     // Handle supplier without supplierId - try to find supplier record
-    if (!user.supplierId) {
+    if (!supplierId) {
       console.log('⚠️ User missing supplierId in products, attempting to find supplier record...');
       
       try {
@@ -59,9 +62,10 @@ export const useSupabaseSupplierProducts = () => {
           return;
         }
 
-        // Temporarily use the found supplier ID for this session
-        console.log('📦 Using found supplier ID for products:', supplierData.id);
-        user.supplierId = supplierData.id; // Temporary assignment
+        // Use the found supplier ID and store it in state
+        supplierId = supplierData.id;
+        setCurrentSupplierId(supplierId);
+        console.log('📦 Using found supplier ID for products:', supplierId);
       } catch (error) {
         console.error('Error in supplier lookup for products:', error);
         setIsLoading(false);
@@ -73,12 +77,12 @@ export const useSupabaseSupplierProducts = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('Fetching products for supplier:', user.supplierId);
+      console.log('Fetching products for supplier:', supplierId);
 
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('supplier_id', user.supplierId)
+        .eq('supplier_id', supplierId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -111,11 +115,12 @@ export const useSupabaseSupplierProducts = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, currentSupplierId, toast]);
 
   // Fetch stock movements
   const fetchStockMovements = useCallback(async () => {
-    if (!user || !user.supplierId) return;
+    const supplierId = user?.supplierId || currentSupplierId;
+    if (!user || !supplierId) return;
 
     try {
       // Since we don't have a stock_movements table, we'll create a simplified version
@@ -125,18 +130,19 @@ export const useSupabaseSupplierProducts = () => {
     } catch (err) {
       console.error('Error fetching stock movements:', err);
     }
-  }, [user]);
+  }, [user, currentSupplierId]);
 
   // Create product
   const createProduct = useCallback(async (productData: Omit<SupplierProduct, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!user || !user.supplierId) return null;
+    const supplierId = user?.supplierId || currentSupplierId;
+    if (!user || !supplierId) return null;
 
     try {
       const { data, error } = await supabase
         .from('products')
         .insert({
           ...productData,
-          supplier_id: user.supplierId,
+          supplier_id: supplierId,
         })
         .select()
         .single();
@@ -175,18 +181,19 @@ export const useSupabaseSupplierProducts = () => {
       });
       return null;
     }
-  }, [user, toast]);
+  }, [user, currentSupplierId, toast]);
 
   // Update product
   const updateProduct = useCallback(async (id: string, updates: Partial<SupplierProduct>) => {
-    if (!user) return null;
+    const supplierId = user?.supplierId || currentSupplierId;
+    if (!user || !supplierId) return null;
 
     try {
       const { data, error } = await supabase
         .from('products')
         .update(updates)
         .eq('id', id)
-        .eq('supplier_id', user.supplierId)
+        .eq('supplier_id', supplierId)
         .select()
         .single();
 
@@ -219,11 +226,12 @@ export const useSupabaseSupplierProducts = () => {
       });
       return null;
     }
-  }, [user, toast]);
+  }, [user, currentSupplierId, toast]);
 
   // Delete product
   const deleteProduct = useCallback(async (id: string) => {
-    if (!user) return false;
+    const supplierId = user?.supplierId || currentSupplierId;
+    if (!user || !supplierId) return false;
 
     try {
       const product = products.find(p => p.id === id);
@@ -232,7 +240,7 @@ export const useSupabaseSupplierProducts = () => {
         .from('products')
         .delete()
         .eq('id', id)
-        .eq('supplier_id', user.supplierId);
+        .eq('supplier_id', supplierId);
 
       if (error) throw error;
 
@@ -266,7 +274,7 @@ export const useSupabaseSupplierProducts = () => {
       });
       return false;
     }
-  }, [user, products, toast]);
+  }, [user, currentSupplierId, products, toast]);
 
   // Update stock (simplified - in real app would use proper stock management)
   const updateStock = useCallback(async (
@@ -275,7 +283,8 @@ export const useSupabaseSupplierProducts = () => {
     movementType: StockMovement['movement_type'],
     reason: string
   ) => {
-    if (!user) return false;
+    const supplierId = user?.supplierId || currentSupplierId;
+    if (!user || !supplierId) return false;
 
     try {
       const product = products.find(p => p.id === productId);
@@ -286,7 +295,7 @@ export const useSupabaseSupplierProducts = () => {
         .from('products')
         .update({ stock_quantity: newQuantity })
         .eq('id', productId)
-        .eq('supplier_id', user.supplierId)
+        .eq('supplier_id', supplierId)
         .select()
         .single();
 
@@ -338,7 +347,7 @@ export const useSupabaseSupplierProducts = () => {
       });
       return false;
     }
-  }, [user, products, toast]);
+  }, [user, currentSupplierId, products, toast]);
 
   // Get low stock products
   const getLowStockProducts = useCallback((threshold: number = 10) => {
@@ -355,7 +364,8 @@ export const useSupabaseSupplierProducts = () => {
 
   // Set up realtime subscription for products
   useEffect(() => {
-    if (!user?.role || user.role !== 'supplier' || !user.supplierId) return;
+    const supplierId = user?.supplierId || currentSupplierId;
+    if (!user || !supplierId) return;
 
     fetchProducts();
     fetchStockMovements();
@@ -369,7 +379,7 @@ export const useSupabaseSupplierProducts = () => {
           event: '*',
           schema: 'public',
           table: 'products',
-          filter: `supplier_id=eq.${user.supplierId}`,
+          filter: `supplier_id=eq.${supplierId}`,
         },
         (payload) => {
           console.log('📦 Product realtime update:', payload);
@@ -424,7 +434,7 @@ export const useSupabaseSupplierProducts = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.role, user?.supplierId]);
+  }, [user, currentSupplierId, fetchProducts, fetchStockMovements]);
 
   return {
     products,
