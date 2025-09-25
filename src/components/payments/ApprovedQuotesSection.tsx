@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabasePayments } from "@/hooks/useSupabasePayments";
 import { CheckCircle, Clock, CreditCard } from "lucide-react";
-import { CreatePaymentModal } from "./CreatePaymentModal";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -15,32 +15,37 @@ export function ApprovedQuotesSection() {
   // Todas as cotações aprovadas (independente de valor)
   const approvedQuotes = quotes.filter(quote => quote.status === 'approved');
 
-  // Handler local para criar pagamento a partir de uma cotação
-  const handleCreatePayment = async (quoteId: string, amount: number) => {
-    const quote = quotes.find(q => q.id === quoteId);
-    if (!quote) throw new Error('Cotação não encontrada');
+  // Handler para processar pagamento direto via Stripe
+  const handleProcessPayment = async (quote: any) => {
+    try {
+      // Primeiro criar o pagamento via edge function
+      const { data, error } = await supabase.functions.invoke('create-automatic-payment', {
+        body: {
+          quote_id: quote.id,
+          client_id: quote.client_id,
+          supplier_id: quote.supplier_id || null,
+          amount: quote.total
+        }
+      });
 
-    const { data, error } = await supabase
-      .from('payments')
-      .insert({
-        id: 'PAY-' + Date.now().toString(),
-        quote_id: quoteId,
-        client_id: quote.client_id,
-        supplier_id: quote.supplier_id || null, // supplier opcional
-        amount,
-        status: 'pending'
-      })
-      .select()
-      .single();
+      if (error) {
+        toast.error('Erro ao criar pagamento: ' + error.message);
+        return;
+      }
 
-    if (error) {
-      console.error('Error creating payment:', error);
-      toast.error('Erro ao criar pagamento');
-      throw error;
+      // Agora criar o payment intent e redirecionar para Stripe
+      const intentData = await createPaymentIntent(data.payment_id);
+      
+      if (intentData?.url) {
+        // Redirecionar para o Stripe
+        window.location.href = intentData.url;
+      } else {
+        toast.error('Erro ao processar pagamento');
+      }
+    } catch (error: any) {
+      console.error('Error processing payment:', error);
+      toast.error('Erro ao processar pagamento');
     }
-
-    toast.success('Pagamento criado com sucesso!');
-    return data.id as string;
   };
 
   // Se não há cotações aprovadas, mostrar mensagem
@@ -94,15 +99,14 @@ export function ApprovedQuotesSection() {
                   </p>
                 </div>
                 {canPay ? (
-                  <CreatePaymentModal
-                    onPaymentCreate={handleCreatePayment}
-                    trigger={
-                      <Button size="sm" className="ml-4">
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Pagar
-                      </Button>
-                    }
-                  />
+                  <Button 
+                    size="sm" 
+                    className="ml-4"
+                    onClick={() => handleProcessPayment(quote)}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Pagar
+                  </Button>
                 ) : hasPayment ? (
                   <Button size="sm" variant="outline" disabled className="ml-4">
                     Pagamento criado
