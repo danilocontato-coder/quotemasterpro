@@ -19,7 +19,7 @@ export function CreateTestConversation() {
 
     setLoading(true);
     try {
-      // 1. Verificar se o usuário tem client_id no perfil
+      // 1. Buscar o client_id do perfil do usuário
       const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
         .select('client_id')
@@ -27,33 +27,43 @@ export function CreateTestConversation() {
         .single();
 
       if (profileError || !userProfile?.client_id) {
-        throw new Error('Usuário não tem client_id configurado no perfil');
+        throw new Error('Perfil do usuário não encontrado ou sem client_id');
       }
 
-      // 2. Criar uma cotação de teste (sem especificar ID, deixar o trigger gerar)
+      console.log('User profile client_id:', userProfile.client_id);
+      console.log('Client id from hook:', client.id);
+      console.log('User id:', user.id);
+
+      // 2. Criar cotação com todos os campos obrigatórios
       const testQuoteId = `TEST-${Date.now()}`;
       const { data: quote, error: quoteError } = await supabase
         .from('quotes')
         .insert({
           id: testQuoteId,
-          title: 'Material de Limpeza - Teste Chat',
-          description: 'Cotação de teste para demonstrar o sistema de chat - Material de Limpeza',
-          client_id: userProfile.client_id, // Usar o client_id do perfil
+          title: 'Chat Test - Material de Limpeza',
+          description: 'Teste do sistema de chat interno',
+          client_id: userProfile.client_id, // OBRIGATÓRIO: client_id do perfil
           client_name: client.name,
-          status: 'draft', // Começar com draft
-          created_by: user.id
+          created_by: user.id, // OBRIGATÓRIO: usuário criador
+          status: 'draft'
         })
         .select()
         .single();
 
-      if (quoteError) throw quoteError;
+      if (quoteError) {
+        console.error('Erro detalhado ao criar cotação:', quoteError);
+        throw new Error(`Falha ao criar cotação: ${quoteError.message} (Code: ${quoteError.code})`);
+      }
 
-      // 3. Criar um fornecedor de teste (se não existir)
-      const { data: existingSupplier } = await supabase
+      console.log('Cotação criada:', quote);
+
+      // 3. Verificar/criar fornecedor
+      let { data: existingSupplier } = await supabase
         .from('suppliers')
         .select('id')
-        .eq('name', 'Fornecedor Chat Teste')
-        .single();
+        .eq('name', 'Fornecedor Teste Chat')
+        .eq('status', 'active')
+        .maybeSingle(); // Usar maybeSingle para evitar erro se não encontrar
 
       let supplierId = existingSupplier?.id;
 
@@ -61,17 +71,23 @@ export function CreateTestConversation() {
         const { data: supplier, error: supplierError } = await supabase
           .from('suppliers')
           .insert({
-            name: 'Fornecedor Chat Teste',
-            cnpj: '12345678000199',
-            email: 'teste@fornecedor.com',
+            name: 'Fornecedor Teste Chat',
+            cnpj: `${Math.floor(Math.random() * 100000000000000)}`,
+            email: 'teste.chat@fornecedor.com',
+            phone: '(11) 99999-0000',
             status: 'active',
-            type: 'local'
+            type: 'local',
+            client_id: userProfile.client_id // Vincular ao mesmo cliente
           })
           .select()
           .single();
 
-        if (supplierError) throw supplierError;
+        if (supplierError) {
+          console.error('Erro ao criar fornecedor:', supplierError);
+          throw new Error(`Falha ao criar fornecedor: ${supplierError.message}`);
+        }
         supplierId = supplier.id;
+        console.log('Fornecedor criado:', supplier);
       }
 
       // 4. Criar conversa
@@ -79,59 +95,63 @@ export function CreateTestConversation() {
         .from('quote_conversations')
         .insert({
           quote_id: quote.id,
-          client_id: userProfile.client_id, // Usar o client_id do perfil
+          client_id: userProfile.client_id,
           supplier_id: supplierId,
           status: 'active'
         })
         .select()
         .single();
 
-      if (conversationError) throw conversationError;
+      if (conversationError) {
+        console.error('Erro ao criar conversa:', conversationError);
+        throw new Error(`Falha ao criar conversa: ${conversationError.message}`);
+      }
 
-      // 5. Criar algumas mensagens de exemplo
-      const messages = [
+      console.log('Conversa criada:', conversation);
+
+      // 5. Criar mensagens
+      const testMessages = [
         {
           conversation_id: conversation.id,
           sender_id: user.id,
-          sender_type: 'client',
-          content: 'Olá! Gostaria de receber uma proposta para material de limpeza conforme especificado na cotação.'
+          sender_type: 'client' as const,
+          content: 'Olá! Gostaria de uma proposta para material de limpeza.'
         },
         {
           conversation_id: conversation.id,
-          sender_id: supplierId, // Simular mensagem do fornecedor
-          sender_type: 'supplier',
-          content: 'Olá! Recebemos sua solicitação. Vamos analisar os itens e enviar uma proposta em breve. Você tem alguma preferência de marca ou prazo específico?'
-        },
-        {
-          conversation_id: conversation.id,
-          sender_id: user.id,
-          sender_type: 'client',
-          content: 'Precisamos dos produtos até o final do mês. Marcas conhecidas seriam ideais para manter a qualidade.'
+          sender_id: user.id, // Simular como se fosse do fornecedor
+          sender_type: 'supplier' as const,
+          content: 'Oi! Recebemos sua cotação. Vamos analisar e enviar proposta em breve!'
         }
       ];
 
-      for (const message of messages) {
+      for (const message of testMessages) {
         const { error: messageError } = await supabase
           .from('quote_messages')
           .insert(message);
 
-        if (messageError) throw messageError;
+        if (messageError) {
+          console.error('Erro ao criar mensagem:', messageError);
+          throw new Error(`Falha ao criar mensagem: ${messageError.message}`);
+        }
       }
 
       toast({
-        title: 'Dados de teste criados!',
-        description: 'Uma conversa de exemplo foi criada com sucesso.'
+        title: 'Teste criado com sucesso!',
+        description: 'Conversa de exemplo criada. Confira na lista de conversas.',
+        duration: 5000
       });
 
       // Recarregar conversas
       await fetchConversations();
 
     } catch (error: any) {
-      console.error('Erro ao criar dados de teste:', error);
+      console.error('Erro detalhado completo:', error);
       toast({
-        title: 'Erro ao criar dados de teste',
-        description: error.message,
-        variant: 'destructive'
+        title: 'Erro ao criar teste',
+        description: error.message || 'Erro desconhecido',
+        variant: 'destructive',
+        duration: 8000
       });
     } finally {
       setLoading(false);
