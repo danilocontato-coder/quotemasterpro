@@ -50,7 +50,7 @@ export function TestAutomaticPayments() {
               body: {
                 quote_id: quote.id,
                 client_id: quote.client_id,
-                supplier_id: quote.supplier_id,
+                supplier_id: quote.supplier_id || null, // Permitir null
                 amount: quote.total
               }
             });
@@ -79,7 +79,7 @@ export function TestAutomaticPayments() {
             quote_title: quote.title,
             quote_total: quote.total || 0,
             status: 'NO_VALUE',
-            action: 'Quote has no value',
+            action: 'Quote has no value or value is zero',
             result: 'SKIPPED'
           });
         }

@@ -20,10 +20,10 @@ serve(async (req) => {
 
     const { quote_id, client_id, supplier_id, amount } = await req.json()
 
-    // Validate required fields
-    if (!quote_id || !client_id || !supplier_id || !amount) {
+    // Validate required fields (supplier_id pode ser null)
+    if (!quote_id || !client_id || !amount) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Missing required fields: quote_id, client_id, amount' }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -57,7 +57,7 @@ serve(async (req) => {
         id: paymentId,
         quote_id,
         client_id,
-        supplier_id,
+        supplier_id: supplier_id || null, // Permitir supplier_id null
         amount,
         status: 'pending'
       })

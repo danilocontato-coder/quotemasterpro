@@ -12,7 +12,7 @@ export function ApprovedQuotesSection() {
   const { quotes } = useSupabaseQuotes();
   const { payments, createPaymentIntent } = useSupabasePayments();
 
-  // Todas as cotações aprovadas (independente de já terem pagamento)
+  // Todas as cotações aprovadas (independente de valor)
   const approvedQuotes = quotes.filter(quote => quote.status === 'approved');
 
   // Handler local para criar pagamento a partir de uma cotação
@@ -43,12 +43,34 @@ export function ApprovedQuotesSection() {
     return data.id as string;
   };
 
+  // Se não há cotações aprovadas, mostrar mensagem
+  if (approvedQuotes.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-500" />
+            Cotações Aprovadas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="font-medium mb-1">Nenhuma cotação aprovada encontrada</p>
+            <p className="text-sm">
+              Aprove uma cotação para ver as opções de pagamento aqui.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-green-500" />
-          Cotações Aprovadas Pendentes de Pagamento
+          Cotações Aprovadas ({approvedQuotes.length})
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -85,9 +107,13 @@ export function ApprovedQuotesSection() {
                   <Button size="sm" variant="outline" disabled className="ml-4">
                     Pagamento criado
                   </Button>
+                ) : (quote.total || 0) === 0 ? (
+                  <Button size="sm" variant="outline" disabled className="ml-4">
+                    Valor R$ 0,00
+                  </Button>
                 ) : (
                   <Button size="sm" variant="outline" disabled className="ml-4">
-                    Sem valor
+                    Erro no valor
                   </Button>
                 )}
               </div>
