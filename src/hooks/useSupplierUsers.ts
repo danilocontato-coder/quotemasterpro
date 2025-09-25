@@ -130,9 +130,9 @@ export const useSupplierUsers = () => {
           email: userData.email!,
           password: userData.password || `temp${Math.random().toString(36).slice(-8)}`,
           name: userData.name,
-          role: userData.role || 'supplier',
-          supplierId: supplierId,
-          forcePasswordChange: true
+          role: userData.role, // Use the actual role selected
+          supplierId: supplierId, // Pass the current supplier ID
+          temporaryPassword: true
         }
       });
 
@@ -141,7 +141,7 @@ export const useSupplierUsers = () => {
 
       toast.success('Usuário criado com sucesso!');
       fetchUsers();
-      return authResponse.user;
+      return authResponse;
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
       toast.error('Erro ao criar usuário');
