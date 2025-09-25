@@ -595,7 +595,9 @@ export const FinancialManagement = () => {
                   <p className="text-muted-foreground mb-4">
                     Acesse a página de Integrações para configurar Stripe, boletos e webhooks
                   </p>
-                  <Button onClick={() => window.location.href = '/admin/integrations'}>
+                  <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: '/admin/integrations' }))}>
+                    Ir para Integrações
+                  </Button>
                     Ir para Integrações
                   </Button>
                 </div>

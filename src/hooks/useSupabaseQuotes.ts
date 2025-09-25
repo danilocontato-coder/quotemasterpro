@@ -414,12 +414,6 @@ export const useSupabaseQuotes = () => {
           (payload) => {
             console.log('🔍 [DEBUG-QUOTES] 📨 Real-time quote update received:', payload);
             
-            // Só processar se página estiver visível
-            if (document.hidden) {
-              console.log('🔍 [DEBUG-QUOTES] ⏸️ Página oculta - ignorando atualização realtime');
-              return;
-            }
-            
             if (payload.eventType === 'UPDATE') {
               const updatedQuote = payload.new as Quote;
               console.log('🔍 [DEBUG-QUOTES] 📝 Updating quote in real-time:', updatedQuote.id, 'new status:', updatedQuote.status);
@@ -470,11 +464,6 @@ export const useSupabaseQuotes = () => {
           },
           async (payload) => {
             console.log('🔍 [DEBUG-QUOTES] 📨 Quote response change received:', payload);
-            
-            if (document.hidden) {
-              console.log('🔍 [DEBUG-QUOTES] ⏸️ Página oculta - ignorando resposta realtime');
-              return;
-            }
             
             if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
               const response = payload.eventType === 'INSERT' ? payload.new : payload.old;
