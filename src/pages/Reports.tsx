@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DatePickerWithRange } from '@/components/ui/date-picker-with-range';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   BarChart3, 
@@ -169,9 +168,9 @@ export default function Reports() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Relatórios Avançados</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Relatórios de Gestão</h1>
           <p className="text-muted-foreground">
-            Análises detalhadas e relatórios personalizados para tomada de decisão
+            Análises detalhadas de compras, fornecedores e economia para tomada de decisão
           </p>
         </div>
         <div className="flex gap-2">
@@ -189,7 +188,7 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Filtros Avançados */}
+      {/* Filtros */}
       {showFilters && (
       <Card className="border-2 border-primary/20">
         <CardHeader>
@@ -331,55 +330,6 @@ export default function Reports() {
                 </div>
               </div>
             </div>
-
-            {/* Avaliações */}
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">⭐ Faixa de Avaliações</Label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label className="text-sm text-muted-foreground">Mínimo</Label>
-                  <Select
-                    value={filters.ratings?.min?.toString() || ''}
-                    onValueChange={(value) => setFilters(prev => ({
-                      ...prev,
-                      ratings: { ...prev.ratings!, min: Number(value) }
-                    }))}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="1 ⭐" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5].map(rating => (
-                        <SelectItem key={rating} value={rating.toString()}>
-                          {rating} ⭐
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1">
-                  <Label className="text-sm text-muted-foreground">Máximo</Label>
-                  <Select
-                    value={filters.ratings?.max?.toString() || ''}
-                    onValueChange={(value) => setFilters(prev => ({
-                      ...prev,
-                      ratings: { ...prev.ratings!, max: Number(value) }
-                    }))}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="5 ⭐" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5].map(rating => (
-                        <SelectItem key={rating} value={rating.toString()}>
-                          {rating} ⭐
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Botões de Ação */}
@@ -419,390 +369,209 @@ export default function Reports() {
 
       {/* Dados do Relatório */}
       {reportData && (
-        <Tabs defaultValue="summary" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="summary">Resumo</TabsTrigger>
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="financial">Financeiro</TabsTrigger>
             <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
             <TabsTrigger value="products">Produtos</TabsTrigger>
             <TabsTrigger value="savings">Economia</TabsTrigger>
-            <TabsTrigger value="quotes">Cotações</TabsTrigger>
-            <TabsTrigger value="ratings">Avaliações</TabsTrigger>
+            <TabsTrigger value="trends">Tendências</TabsTrigger>
           </TabsList>
 
-          {/* Resumo Executivo */}
-          <TabsContent value="summary">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center">
-                    <FileText className="h-8 w-8 text-blue-600" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-bold">{reportData.summary.totalQuotes}</p>
-                      <p className="text-sm text-muted-foreground">Total de Cotações</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center">
-                    <DollarSign className="h-8 w-8 text-green-600" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-bold">R$ {reportData.summary.totalAmount.toLocaleString('pt-BR')}</p>
-                      <p className="text-sm text-muted-foreground">Valor Total</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center">
-                    <Users className="h-8 w-8 text-purple-600" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-bold">{reportData.summary.totalSuppliers}</p>
-                      <p className="text-sm text-muted-foreground">Fornecedores</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center">
-                    <Package className="h-8 w-8 text-orange-600" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-bold">{reportData.summary.totalProducts}</p>
-                      <p className="text-sm text-muted-foreground">Produtos</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center">
-                    <Target className="h-8 w-8 text-green-600" />
-                    <div className="ml-4">
-                      <p className="text-2xl font-bold">R$ {reportData.summary.totalSavings.toLocaleString('pt-BR')}</p>
-                      <p className="text-sm text-muted-foreground">Economia Total</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Gráficos de Performance */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Performance Geral
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Taxa de Conclusão</span>
-                      <span className="text-lg font-bold">{reportData.summary.completionRate.toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-600 h-2 rounded-full" 
-                        style={{ width: `${reportData.summary.completionRate}%` }}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Avaliação Média</span>
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                        <span className="text-lg font-bold">{reportData.summary.avgRating.toFixed(1)}</span>
+          {/* Visão Geral Executiva */}
+          <TabsContent value="overview">
+            <div className="space-y-6">
+              {/* KPIs Principais */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center">
+                      <FileText className="h-8 w-8 text-blue-600" />
+                      <div className="ml-4">
+                        <p className="text-2xl font-bold">{reportData.summary.totalQuotes}</p>
+                        <p className="text-sm text-muted-foreground">Cotações</p>
                       </div>
                     </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Valor Médio por Cotação</span>
-                      <span className="text-lg font-bold">R$ {reportData.summary.avgAmount.toLocaleString('pt-BR')}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calculator className="h-5 w-5" />
-                    Indicadores Financeiros
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-sm text-blue-600 font-medium">Gasto Total</p>
-                        <p className="text-xl font-bold text-blue-700">
-                          R$ {reportData.financial.totalSpent.toLocaleString('pt-BR')}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-sm text-green-600 font-medium">Economia</p>
-                        <p className="text-xl font-bold text-green-700">
-                          R$ {reportData.financial.totalSaved.toLocaleString('pt-BR')}
-                        </p>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center">
+                      <DollarSign className="h-8 w-8 text-green-600" />
+                      <div className="ml-4">
+                        <p className="text-2xl font-bold">R$ {reportData.summary.totalAmount.toLocaleString('pt-BR')}</p>
+                        <p className="text-sm text-muted-foreground">Valor Cotado</p>
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                      <p className="text-sm text-yellow-600 font-medium">Desconto Médio</p>
-                      <p className="text-xl font-bold text-yellow-700">
-                        {reportData.financial.averageDiscount.toFixed(1)}%
-                      </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center">
+                      <Users className="h-8 w-8 text-purple-600" />
+                      <div className="ml-4">
+                        <p className="text-2xl font-bold">{reportData.summary.totalSuppliers}</p>
+                        <p className="text-sm text-muted-foreground">Fornecedores</p>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center">
+                      <Package className="h-8 w-8 text-orange-600" />
+                      <div className="ml-4">
+                        <p className="text-2xl font-bold">{reportData.summary.totalProducts}</p>
+                        <p className="text-sm text-muted-foreground">Produtos</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center">
+                      <Calculator className="h-8 w-8 text-emerald-600" />
+                      <div className="ml-4">
+                        <p className="text-2xl font-bold">R$ {reportData.summary.totalSavings.toLocaleString('pt-BR')}</p>
+                        <p className="text-sm text-muted-foreground">Economia</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center">
+                      <Target className="h-8 w-8 text-red-600" />
+                      <div className="ml-4">
+                        <p className="text-2xl font-bold">{reportData.summary.completionRate.toFixed(1)}%</p>
+                        <p className="text-sm text-muted-foreground">Taxa Sucesso</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Top Performers */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">🏆 Top Fornecedor</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold">{reportData.summary.topSupplier}</p>
+                      <p className="text-sm text-muted-foreground">Maior volume de negócios</p>
+                      <Badge variant="secondary" className="mt-2">
+                        {reportData.supplierMetrics[0]?.totalQuotes || 0} cotações
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">📦 Produto Mais Comprado</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold">{reportData.summary.topProduct}</p>
+                      <p className="text-sm text-muted-foreground">Maior volume em quantidade</p>
+                      <Badge variant="secondary" className="mt-2">
+                        {reportData.productAnalysis.products[0]?.totalQuantity || 0} unidades
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">⚡ Tempo Médio Entrega</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold">{reportData.summary.avgDeliveryTime.toFixed(0)} dias</p>
+                      <p className="text-sm text-muted-foreground">Prazo médio dos fornecedores</p>
+                      <Badge variant={reportData.summary.avgDeliveryTime <= 7 ? "default" : "destructive"} className="mt-2">
+                        {reportData.summary.avgDeliveryTime <= 7 ? "Excelente" : "Precisa melhorar"}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
 
           {/* Análise Financeira */}
           <TabsContent value="financial">
-            <FinancialAnalysisCard 
-              data={reportData.financial} 
-              period={`${filters.dateRange?.start} a ${filters.dateRange?.end}`}
-            />
+            <FinancialAnalysisCard data={reportData.financial} period="Período selecionado" />
           </TabsContent>
 
-          {/* Performance de Fornecedores */}
+          {/* Análise de Fornecedores */}
           <TabsContent value="suppliers">
-            <SupplierPerformanceChart 
-              suppliers={reportData.supplierMetrics}
-              timeRange={`${filters.dateRange?.start} a ${filters.dateRange?.end}`}
-            />
+            <SupplierPerformanceChart data={reportData.savingsAnalysis.monthlySavings} />
           </TabsContent>
 
-          {/* Análise de Produtos e Categorias */}
+          {/* Análise de Produtos */}
           <TabsContent value="products">
-            <ProductCategoryAnalysis 
-              products={reportData.productAnalysis.products}
-              categories={reportData.productAnalysis.categories}
-              timeRange={`${filters.dateRange?.start} a ${filters.dateRange?.end}`}
-            />
+            <ProductCategoryAnalysis products={reportData.productAnalysis.products} categories={reportData.productAnalysis.categories} timeRange="Período selecionado" />
           </TabsContent>
 
           {/* Análise de Economia */}
           <TabsContent value="savings">
-            <SavingsAnalysisCard 
-              data={reportData.savingsAnalysis}
-              period={`${filters.dateRange?.start} a ${filters.dateRange?.end}`}
-            />
+            <SavingsAnalysisCard data={reportData.savingsAnalysis} period="Período selecionado" />
           </TabsContent>
 
-          {/* Cotações */}
-          <TabsContent value="quotes">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cotações</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Título</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Respostas</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reportData.quotes.map((quote) => (
-                      <TableRow key={quote.id}>
-                        <TableCell className="font-medium">{quote.id}</TableCell>
-                        <TableCell>{quote.title}</TableCell>
-                        <TableCell>{quote.client_name}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(quote.status)}>
-                            {getStatusText(quote.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>R$ {(quote.total || 0).toLocaleString('pt-BR')}</TableCell>
-                        <TableCell>{new Date(quote.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                        <TableCell>{quote.responses_count || 0}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Fornecedores */}
-          <TabsContent value="suppliers">
-            <Card>
-              <CardHeader>
-                <CardTitle>Fornecedores</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>E-mail</TableHead>
-                      <TableHead>Telefone</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Avaliação Média</TableHead>
-                      <TableHead>Total de Avaliações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reportData.suppliers.map((supplier) => (
-                      <TableRow key={supplier.id}>
-                        <TableCell className="font-medium">{supplier.name}</TableCell>
-                        <TableCell>{supplier.email}</TableCell>
-                        <TableCell>{supplier.phone}</TableCell>
-                        <TableCell>
-                          <Badge variant={supplier.status === 'active' ? 'default' : 'secondary'}>
-                            {supplier.status === 'active' ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {supplier.supplier_ratings?.length > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              {(supplier.supplier_ratings.reduce((sum: number, rating: any) => sum + rating.rating, 0) / supplier.supplier_ratings.length).toFixed(1)}
+          {/* Tendências */}
+          <TabsContent value="trends">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>📈 Tendências de Mercado</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold mb-3">🔺 Produtos com Preços em Alta</h4>
+                      <div className="space-y-2">
+                        {reportData.productAnalysis.products
+                          .filter(p => p.trend === 'up')
+                          .slice(0, 5)
+                          .map(product => (
+                            <div key={product.id} className="flex justify-between items-center p-2 bg-red-50 rounded">
+                              <span className="text-sm">{product.name}</span>
+                              <Badge variant="destructive">+{product.trendPercentage.toFixed(1)}%</Badge>
                             </div>
-                          ) : (
-                            'N/A'
-                          )}
-                        </TableCell>
-                        <TableCell>{supplier.supplier_ratings?.length || 0}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Avaliações */}
-          <TabsContent value="ratings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Avaliações de Fornecedores</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fornecedor</TableHead>
-                      <TableHead>Cotação</TableHead>
-                      <TableHead>Avaliação Geral</TableHead>
-                      <TableHead>Qualidade</TableHead>
-                      <TableHead>Prazo</TableHead>
-                      <TableHead>Comunicação</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead>Recomenda</TableHead>
-                      <TableHead>Data</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reportData.ratings.map((rating) => (
-                      <TableRow key={rating.id}>
-                        <TableCell className="font-medium">{rating.suppliers?.name}</TableCell>
-                        <TableCell>{rating.quotes?.id}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            {rating.rating}
-                          </div>
-                        </TableCell>
-                        <TableCell>{rating.quality_rating || 'N/A'}</TableCell>
-                        <TableCell>{rating.delivery_rating || 'N/A'}</TableCell>
-                        <TableCell>{rating.communication_rating || 'N/A'}</TableCell>
-                        <TableCell>{rating.price_rating || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Badge variant={rating.would_recommend ? 'default' : 'secondary'}>
-                            {rating.would_recommend ? 'Sim' : 'Não'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(rating.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                          ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold mb-3">🔻 Oportunidades de Economia</h4>
+                      <div className="space-y-2">
+                        {reportData.productAnalysis.products
+                          .filter(p => p.trend === 'down')
+                          .slice(0, 5)
+                          .map(product => (
+                            <div key={product.id} className="flex justify-between items-center p-2 bg-green-50 rounded">
+                              <span className="text-sm">{product.name}</span>
+                              <Badge variant="default">{product.trendPercentage.toFixed(1)}%</Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       )}
-
-      {/* Relatórios Salvos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Relatórios Salvos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {savedReports.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Público</TableHead>
-                  <TableHead>Criado em</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {savedReports.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell className="font-medium">{report.name}</TableCell>
-                    <TableCell>{report.report_type}</TableCell>
-                    <TableCell>{report.description || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Badge variant={report.is_public ? 'default' : 'secondary'}>
-                        {report.is_public ? 'Sim' : 'Não'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(report.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => {
-                            setFilters(report.filters);
-                            generateReport(report.filters);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleDeleteReport(report.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">
-              Nenhum relatório salvo encontrado.
-            </p>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Modal Salvar Relatório */}
       <Dialog open={showSaveModal} onOpenChange={setShowSaveModal}>
@@ -863,7 +632,8 @@ export default function Reports() {
               onClick={handleSaveReport}
               disabled={!saveReportData.name.trim()}
             >
-              Salvar Relatório
+              <Save className="h-4 w-4 mr-2" />
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
