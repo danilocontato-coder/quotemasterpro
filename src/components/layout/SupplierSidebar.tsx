@@ -7,7 +7,8 @@ import {
   Truck,
   MessageSquare,
   DollarSign,
-  History
+  History,
+  Users
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -33,6 +34,7 @@ const navigationItems = [
 ];
 
 const systemItems = [
+  { title: "Usuários", url: "/supplier/users", icon: Users },
   { title: "Histórico", url: "/supplier/history", icon: History },
   { title: "Configurações", url: "/supplier/settings", icon: Settings },
 ];
