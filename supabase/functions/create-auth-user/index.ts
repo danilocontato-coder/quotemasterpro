@@ -100,13 +100,14 @@ Deno.serve(async (req) => {
     const userRole = profile?.role as string | undefined;
     console.log('User role:', userRole);
 
-    // Allow admins; allow managers to create non-admin users
+    // Allow admins; allow managers to create non-admin users; allow suppliers to create their own users  
     const isAdmin = userRole === 'admin';
     const isManager = userRole === 'manager';
-    if (!isAdmin && !isManager) {
+    const isSupplier = userRole === 'supplier';
+    if (!isAdmin && !isManager && !isSupplier) {
       console.error('User does not have permissions to create auth users');
       return new Response(
-        JSON.stringify({ success: false, error: 'Forbidden - admin or manager permissions required', error_code: 'forbidden' }),
+        JSON.stringify({ success: false, error: 'Forbidden - admin, manager, or supplier permissions required', error_code: 'forbidden' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
