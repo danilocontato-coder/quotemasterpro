@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -38,7 +38,7 @@ export function useCostCenters() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchCostCenters = async () => {
+  const fetchCostCenters = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -80,9 +80,9 @@ export function useCostCenters() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchHierarchy = async (clientId?: string) => {
+  const fetchHierarchy = useCallback(async (clientId?: string) => {
     try {
       setIsLoading(true);
       
@@ -125,9 +125,9 @@ export function useCostCenters() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchSpending = async (clientId?: string, startDate?: string, endDate?: string) => {
+  const fetchSpending = useCallback(async (clientId?: string, startDate?: string, endDate?: string) => {
     try {
       setIsLoading(true);
       
@@ -163,7 +163,7 @@ export function useCostCenters() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const createCostCenter = async (costCenter: Omit<CostCenter, 'id' | 'created_at' | 'updated_at'>) => {
     try {
