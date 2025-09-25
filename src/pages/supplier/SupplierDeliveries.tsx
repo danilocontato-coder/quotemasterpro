@@ -48,7 +48,7 @@ export default function SupplierDeliveries() {
         return;
       }
       
-      // Buscar entregas com informações relacionadas através do quote_id
+      // Buscar entregas (sem JOINs, pois não há FKs registradas para PostgREST)
       const { data: deliveriesData, error } = await supabase
         .from('deliveries')
         .select(`
@@ -60,8 +60,7 @@ export default function SupplierDeliveries() {
           tracking_code,
           notes,
           created_at,
-          updated_at,
-          quotes!inner(title, client_name, total)
+          updated_at
         `)
         .eq('supplier_id', user.supplierId)
         .order('created_at', { ascending: false });
@@ -70,29 +69,56 @@ export default function SupplierDeliveries() {
         console.error('Deliveries fetch error:', error);
         throw error;
       }
-      
-      // Buscar informações de pagamento para cada cotação
-      const deliveriesWithPayments = await Promise.all(
-        (deliveriesData || []).map(async (delivery: any) => {
-          const { data: paymentData } = await supabase
-            .from('payments')
-            .select('amount')
-            .eq('quote_id', delivery.quote_id)
-            .single();
 
-          return {
-            ...delivery,
-            payments: paymentData ? {
-              amount: paymentData.amount,
-              quotes: delivery.quotes
-            } : {
-              amount: delivery.quotes?.total || 0,
-              quotes: delivery.quotes
-            }
-          };
-        })
-      );
-      
+      const rows = deliveriesData || [];
+      if (rows.length === 0) {
+        setDeliveries([]);
+        return;
+      }
+
+      // Buscar dados relacionados em lote para evitar N+1
+      const quoteIds = Array.from(new Set(rows.map((d: any) => d.quote_id)));
+
+      const [quotesRes, paymentsRes] = await Promise.all([
+        supabase
+          .from('quotes')
+          .select('id, title, client_name, total')
+          .in('id', quoteIds),
+        supabase
+          .from('payments')
+          .select('quote_id, amount, status')
+          .in('quote_id', quoteIds)
+      ]);
+
+      const quotes = (quotesRes.data || []) as Array<{ id: string; title: string; client_name: string; total: number }>;
+      const payments = (paymentsRes.data || []) as Array<{ quote_id: string; amount: number; status: string }>;
+
+      const quoteMap = new Map(quotes.map((q) => [q.id, q]));
+
+      // Escolher o pagamento mais relevante por cotação (prioridade: completed > in_escrow > pending)
+      const priority: Record<string, number> = { completed: 3, in_escrow: 2, pending: 1 };
+      const paymentsMap = new Map<string, { amount: number; status: string }>();
+      for (const p of payments) {
+        const current = paymentsMap.get(p.quote_id);
+        if (!current || (priority[p.status] || 0) > (priority[current.status] || 0)) {
+          paymentsMap.set(p.quote_id, { amount: p.amount, status: p.status });
+        }
+      }
+
+      const deliveriesWithPayments: Delivery[] = rows.map((delivery: any) => {
+        const quote = quoteMap.get(delivery.quote_id);
+        const pay = paymentsMap.get(delivery.quote_id);
+        return {
+          ...delivery,
+          payments: quote
+            ? {
+                amount: pay?.amount ?? quote.total ?? 0,
+                quotes: { title: quote.title, client_name: quote.client_name }
+              }
+            : undefined
+        } as Delivery;
+      });
+
       setDeliveries(deliveriesWithPayments);
     } catch (error) {
       console.error('Error fetching deliveries:', error);
