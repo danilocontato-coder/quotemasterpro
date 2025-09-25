@@ -42,7 +42,7 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
     name: '',
     email: '',
     phone: '',
-    role: 'collaborator' as 'manager' | 'collaborator',
+    role: 'collaborator' as 'manager' | 'collaborator' | 'supplier',
     permission_profile_id: '',
     password: ''
   });
@@ -191,7 +191,7 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
                       </Label>
                       <Select 
                         value={formData.role} 
-                        onValueChange={(value: 'manager' | 'collaborator') => 
+                        onValueChange={(value: 'manager' | 'collaborator' | 'supplier') => 
                           setFormData(prev => ({ ...prev, role: value }))
                         }
                       >
@@ -199,6 +199,7 @@ export function CreateSupplierUserModal({ open, onClose }: CreateSupplierUserMod
                           <SelectValue placeholder="Selecione a função" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="supplier">Fornecedor Principal</SelectItem>
                           <SelectItem value="manager">Gerente</SelectItem>
                           <SelectItem value="collaborator">Colaborador</SelectItem>
                         </SelectContent>

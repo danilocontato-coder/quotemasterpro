@@ -116,7 +116,9 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
 
     // Para criadores com papel de fornecedor, sempre forçar o supplier_id do criador
     const effectiveSupplierId = isSupplier ? (profile as any)?.supplier_id : supplierId;
-    const effectiveRole = isSupplier ? 'supplier' : role;
+    // Se é fornecedor criando usuário E o role solicitado não é 'supplier', manter o role solicitado
+    // Se é fornecedor criando usuário E role é 'supplier', usar 'supplier'
+    const effectiveRole = isSupplier && role === 'supplier' ? 'supplier' : role;
 
     console.log('🔍 DEBUG: Dados extraídos:', {
       email,
@@ -126,6 +128,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       supplierId,
       effectiveSupplierId,
       effectiveRole,
+      isSupplier,
       temporaryPassword,
       action
     });
