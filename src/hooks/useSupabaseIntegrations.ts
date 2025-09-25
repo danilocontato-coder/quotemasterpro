@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ export function useSupabaseIntegrations() {
   const { user } = useAuth();
   const lastUserKeyRef = useRef<string>('');
 
-  const loadIntegrations = async () => {
+  const loadIntegrations = useCallback(async () => {
     try {
       setLoading(true);
       let query = supabase.from('integrations').select('*');
@@ -56,34 +56,58 @@ export function useSupabaseIntegrations() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.role, user?.clientId, user?.supplierId]);
 
   useEffect(() => {
-    // Create a stable key from user properties that matter for filtering
-    const userKey = `${user?.id}-${user?.role}-${user?.clientId}-${user?.supplierId}`;
+    if (!user) return;
     
-    // Only reload if user key actually changed
-    if (userKey !== lastUserKeyRef.current && user) {
+    // Create a stable key from user properties that matter for filtering
+    const userKey = `${user.id}-${user.role}-${user.clientId || 'null'}-${user.supplierId || 'null'}`;
+    
+    // Only reload if user key actually changed AND we have a user
+    if (userKey !== lastUserKeyRef.current) {
       console.log('User key changed, reloading integrations:', userKey);
       lastUserKeyRef.current = userKey;
       loadIntegrations();
     }
-  }, [user]);
+  }, [user?.id, user?.role, user?.clientId, user?.supplierId]);
 
-  const filteredIntegrations = integrations.filter(integration => {
-    const matchesSearch = 
-      integration.integration_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      JSON.stringify(integration.configuration).toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = filterType === 'all' || integration.integration_type === filterType;
-    const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'active' && integration.active) ||
-      (filterStatus === 'inactive' && !integration.active);
-    
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  const filteredIntegrations = useMemo(() => {
+    return integrations.filter(integration => {
+      const matchesSearch = 
+        integration.integration_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        JSON.stringify(integration.configuration).toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesType = filterType === 'all' || integration.integration_type === filterType;
+      const matchesStatus = filterStatus === 'all' || 
+        (filterStatus === 'active' && integration.active) ||
+        (filterStatus === 'inactive' && !integration.active);
+      
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [integrations, searchTerm, filterType, filterStatus]);
 
-  const createIntegration = async (integrationData: {
+  const getStats = useMemo((): IntegrationStats => {
+    const total = integrations.length;
+    const active = integrations.filter(int => int.active).length;
+    const inactive = total - active;
+    
+    // Count by type
+    const byType: Record<string, number> = {};
+    integrations.forEach(int => {
+      byType[int.integration_type] = (byType[int.integration_type] || 0) + 1;
+    });
+
+    return {
+      total,
+      active,
+      inactive,
+      testing: 0, // This would be tracked separately in a real implementation
+      byType
+    };
+  }, [integrations]);
+
+  const createIntegration = useCallback(async (integrationData: {
     integration_type: string;
     configuration: Record<string, any>;
     api_key_encrypted?: string;
@@ -113,9 +137,9 @@ export function useSupabaseIntegrations() {
       toast.error('Erro ao criar integração');
       throw error;
     }
-  };
+  }, [user?.clientId, user?.supplierId]);
 
-  const updateIntegration = async (id: string, updates: Partial<Integration>) => {
+  const updateIntegration = useCallback(async (id: string, updates: Partial<Integration>) => {
     try {
       const { data, error } = await supabase
         .from('integrations')
@@ -134,9 +158,9 @@ export function useSupabaseIntegrations() {
       toast.error('Erro ao atualizar integração');
       throw error;
     }
-  };
+  }, []);
 
-  const deleteIntegration = async (id: string) => {
+  const deleteIntegration = useCallback(async (id: string) => {
     try {
       console.log('Iniciando exclusão da integração:', id);
       
@@ -168,16 +192,16 @@ export function useSupabaseIntegrations() {
       }
       throw error;
     }
-  };
+  }, [integrations, loadIntegrations]);
 
-  const toggleIntegrationStatus = async (id: string) => {
+  const toggleIntegrationStatus = useCallback(async (id: string) => {
     const integration = integrations.find(int => int.id === id);
     if (!integration) return;
 
     await updateIntegration(id, { active: !integration.active });
-  };
+  }, [integrations, updateIntegration]);
 
-  const testIntegration = async (id: string): Promise<boolean> => {
+  const testIntegration = useCallback(async (id: string): Promise<boolean> => {
     const integration = integrations.find(int => int.id === id);
     if (!integration) return false;
 
@@ -208,27 +232,7 @@ export function useSupabaseIntegrations() {
       toast.error('Erro ao testar integração');
       return false;
     }
-  };
-
-  const getStats = (): IntegrationStats => {
-    const total = integrations.length;
-    const active = integrations.filter(int => int.active).length;
-    const inactive = total - active;
-    
-    // Count by type
-    const byType: Record<string, number> = {};
-    integrations.forEach(int => {
-      byType[int.integration_type] = (byType[int.integration_type] || 0) + 1;
-    });
-
-    return {
-      total,
-      active,
-      inactive,
-      testing: 0, // This would be tracked separately in a real implementation
-      byType
-    };
-  };
+  }, [integrations]);
 
   return {
     integrations: filteredIntegrations,
@@ -244,7 +248,7 @@ export function useSupabaseIntegrations() {
     deleteIntegration,
     toggleIntegrationStatus,
     testIntegration,
-    stats: getStats(),
+    stats: getStats,
     refetch: loadIntegrations
   };
 }
