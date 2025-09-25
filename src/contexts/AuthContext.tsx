@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChangeModal } from '@/components/auth/ForcePasswordChangeModal';
@@ -64,13 +64,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
+  const initialized = useRef(false);
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    console.log('🔍 [DEBUG-AUTH] AuthProvider useEffect triggered for session initialization');
+    if (initialized.current) return; // Evita execução dupla em StrictMode
+    initialized.current = true;
+    
+    console.log('🔍 [DEBUG-AUTH] AuthProvider initializing...');
+    
     // Get initial session
     const initializeAuth = async () => {
       try {
+        console.log('🔍 [DEBUG-AUTH] Getting initial session...');
         const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted.current) return;
         
         if (error) {
           console.error('❌ Error getting initial session:', error);
@@ -82,39 +91,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setSession(session);
         if (session?.user) {
-          fetchUserProfile(session.user);
+          await fetchUserProfile(session.user);
         } else {
           setIsLoading(false);
         }
       } catch (error) {
         console.error('❌ Error initializing auth:', error);
-        setIsLoading(false);
+        if (isMounted.current) {
+          setIsLoading(false);
+        }
       }
     };
 
     initializeAuth();
 
-    // Listen for auth changes - com filtros para evitar reloads desnecessários
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        if (!isMounted.current) return;
+        
         console.log('🔍 [DEBUG-AUTH] Auth state changed:', {
           event,
           hasSession: !!session,
           userId: session?.user?.id,
-          currentUserId: user?.id,
-          timestamp: new Date().toISOString(),
-          pageHidden: document.hidden
+          timestamp: new Date().toISOString()
         });
         
-        // Ignorar eventos que não requerem ação (evitar loops)
+        // Ignorar eventos que não requerem ação
         if (event === 'TOKEN_REFRESHED' && session?.user?.id === user?.id) {
           console.log('🔍 [DEBUG-AUTH] Token refresh - mantendo estado atual');
-          return;
-        }
-        
-        // Verificar se página está visível antes de processar mudanças
-        if (document.hidden && event === 'SIGNED_IN') {
-          console.log('🔍 [DEBUG-AUTH] Sign in detectado com página oculta - adiando processamento');
+          setSession(session); // Atualiza a sessão mas mantém o user
           return;
         }
         
@@ -122,11 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         
         if (session?.user) {
-          // Use setTimeout para evitar bloquear mudança de estado de auth
-          setTimeout(() => {
-            console.log('🔍 [DEBUG-AUTH] Chamando fetchUserProfile...');
-            fetchUserProfile(session.user);
-          }, 0);
+          await fetchUserProfile(session.user);
         } else {
           console.log('🔍 [DEBUG-AUTH] Sem sessão - limpando user state');
           setUser(null);
@@ -136,10 +138,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted.current = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
+    if (!isMounted.current) return;
+    
     console.log('🔍 [DEBUG-AUTH] fetchUserProfile called for user:', supabaseUser.id);
     setIsLoading(true);
     
@@ -157,6 +164,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('auth_user_id', supabaseUser.id)
           .maybeSingle()
       ]);
+
+      if (!isMounted.current) return;
 
       const { data: profile, error: profileError } = profileResult;
       const { data: userRecord } = userResult;
@@ -179,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           active: true,
         };
         setUser(fallbackUser);
+        setIsLoading(false);
         return;
       }
 
@@ -193,10 +203,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Atualizar last_access na tabela users quando usuário faz login
         if (userRecord) {
-          await supabase
+          supabase
             .from('users')
             .update({ last_access: new Date().toISOString() })
-            .eq('auth_user_id', supabaseUser.id);
+            .eq('auth_user_id', supabaseUser.id)
+            .then(() => console.log('✅ Last access updated'));
         }
 
         const userProfile: User = {
@@ -225,17 +236,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
-      // Fallback user creation
-      const errorFallbackUser = {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-        role: 'collaborator' as UserRole,
-        active: true,
-      };
-      setUser(errorFallbackUser);
+      if (isMounted.current) {
+        // Fallback user creation
+        const errorFallbackUser = {
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
+          role: 'collaborator' as UserRole,
+          active: true,
+        };
+        setUser(errorFallbackUser);
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
