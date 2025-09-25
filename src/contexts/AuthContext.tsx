@@ -111,8 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           hasSession: !!session,
           userId: session?.user?.id,
           currentUserId: user?.id,
-          timestamp: new Date().toISOString(),
-          pageHidden: document.hidden
+          timestamp: new Date().toISOString()
         });
         
         // Ignorar eventos que não requerem ação (evitar loops)
