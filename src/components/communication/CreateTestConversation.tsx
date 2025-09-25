@@ -34,25 +34,37 @@ export function CreateTestConversation() {
       console.log('Client id from hook:', client.id);
       console.log('User id:', user.id);
 
-      // 2. Criar cotação com todos os campos obrigatórios
-      const testQuoteId = `TEST-${Date.now()}`;
-      const { data: quote, error: quoteError } = await supabase
-        .from('quotes')
-        .insert({
-          id: testQuoteId,
-          title: 'Chat Test - Material de Limpeza',
-          description: 'Teste do sistema de chat interno',
-          client_id: userProfile.client_id, // OBRIGATÓRIO: client_id do perfil
-          client_name: client.name,
-          created_by: user.id, // OBRIGATÓRIO: usuário criador
-          status: 'draft'
-        })
-        .select()
-        .single();
+      // 2. Criar cotação (duas etapas para evitar RLS frágil)
+      const baseQuote = {
+        id: '', // trigger preencherá o ID automaticamente
+        title: 'Chat Test - Material de Limpeza',
+        client_id: userProfile.client_id,
+        client_name: client?.name ?? 'Cliente',
+        created_by: user.id,
+        status: 'draft' as const,
+      };
 
-      if (quoteError) {
-        console.error('Erro detalhado ao criar cotação:', quoteError);
-        throw new Error(`Falha ao criar cotação: ${quoteError.message} (Code: ${quoteError.code})`);
+      const { error: insertError } = await supabase
+        .from('quotes')
+        .insert(baseQuote);
+
+      if (insertError) {
+        console.error('Erro detalhado ao inserir cotação (passo 1):', insertError);
+        throw new Error(`Falha ao criar cotação: ${insertError.message} (Code: ${insertError.code})`);
+      }
+
+      // Buscar a última cotação criada por este usuário para obter o id
+      const { data: quote, error: fetchError } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError || !quote?.id) {
+        console.error('Erro ao buscar cotação recém-criada:', fetchError);
+        throw new Error('Cotação criada mas não foi possível recuperar o ID.');
       }
 
       console.log('Cotação criada:', quote);
