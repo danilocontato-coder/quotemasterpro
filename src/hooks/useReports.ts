@@ -162,9 +162,10 @@ export const useReports = () => {
   const generateReport = async (filters: ReportFilter) => {
     setIsLoading(true);
     setError(null);
+    
+    console.log('🔍 Iniciando geração de relatório com filtros:', filters);
 
     try {
-      // Buscar cotações com respostas e itens para análise completa
       let quotesQuery = supabase
         .from('quotes')
         .select(`
@@ -207,6 +208,7 @@ export const useReports = () => {
       }
 
       const { data: quotes, error: quotesError } = await quotesQuery;
+      console.log('📊 Cotações encontradas:', quotes?.length || 0, quotes);
       if (quotesError) throw quotesError;
 
       // Buscar pagamentos para análise financeira
@@ -228,6 +230,7 @@ export const useReports = () => {
       // Processar dados reais das cotações
       const allQuoteResponses = quotes?.flatMap(q => q.quote_responses || []) || [];
       const allQuoteItems = quotes?.flatMap(q => q.quote_items || []) || [];
+      console.log('📦 Itens de cotação encontrados:', allQuoteItems.length, allQuoteItems);
 
       // ANÁLISE DE PRODUTOS - Dados reais
       const productMap = new Map();

@@ -78,13 +78,16 @@ export default function Reports() {
   });
 
   const handleGenerateReport = async () => {
+    console.log('🚀 Gerando relatório...');
     try {
       await generateReport(filters);
+      console.log('✅ Relatório gerado com sucesso!');
       toast({
         title: "Sucesso!",
         description: "Relatório gerado com sucesso."
       });
     } catch (error) {
+      console.error('❌ Erro ao gerar relatório:', error);
       toast({
         title: "Erro",
         description: "Erro ao gerar relatório.",
