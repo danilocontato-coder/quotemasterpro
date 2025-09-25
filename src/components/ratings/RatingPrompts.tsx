@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSupplierRatings } from "@/hooks/useSupplierRatings";
 import { RatingPromptCard } from "./RatingPromptCard";
-import SupplierRatingModal from "./SupplierRatingModal";
+import { default as SupplierRatingModal } from "./SupplierRatingModal";
 
 export function RatingPrompts() {
   const { ratingPrompts, createRating, dismissPrompt } = useSupplierRatings();
