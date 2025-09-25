@@ -119,6 +119,8 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
     // Se é fornecedor criando usuário E o role solicitado não é 'supplier', manter o role solicitado
     // Se é fornecedor criando usuário E role é 'supplier', usar 'supplier'
     const effectiveRole = isSupplier && role === 'supplier' ? 'supplier' : role;
+    // Forçar isolamento: fornecedores nunca vinculam client_id
+    const effectiveClientId = isSupplier ? null : clientId;
 
     console.log('🔍 DEBUG: Dados extraídos:', {
       email,
@@ -261,7 +263,7 @@ if (authError) {
                   email,
                   name,
                   role: effectiveRole,
-                  client_id: clientId ?? null,
+                  client_id: effectiveClientId,
                   supplier_id: effectiveSupplierId ?? null,
                   company_name: name,
                   tenant_type: effectiveSupplierId ? 'supplier' : 'client',

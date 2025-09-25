@@ -41,16 +41,25 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
 
   // Check role-based access
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirecionar para dashboard apropriado baseado no role
-    const dashboardMap: Record<string, string> = {
-      admin: '/admin/superadmin',
-      client: '/dashboard',
-      supplier: '/supplier',
-      support: '/support'
-    };
-    
-    return <Navigate to={dashboardMap[user.role] || '/dashboard'} replace />;
+  const isSupplierContext = !!user.supplierId;
+  if (allowedRoles) {
+    // Special case: supplier context users (any role) can access supplier routes
+    if (allowedRoles.includes('supplier') && isSupplierContext) {
+      return <>{children}</>;
+    }
+
+    if (!allowedRoles.includes(user.role)) {
+      // Redirecionar para dashboard apropriado baseado no role/contexto
+      const dashboardMap: Record<string, string> = {
+        admin: '/admin/superadmin',
+        client: '/dashboard',
+        manager: '/dashboard',
+        collaborator: '/dashboard',
+        supplier: '/supplier',
+        support: '/support'
+      };
+      return <Navigate to={dashboardMap[user.role] || (isSupplierContext ? '/supplier' : '/dashboard')} replace />;
+    }
   }
 
   // All checks passed, render children

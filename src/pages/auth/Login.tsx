@@ -27,8 +27,8 @@ const Login: React.FC = () => {
   // Auto redirect when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
-      const redirectPath = getRoleBasedRoute(user.role);
-      console.log('Login: redirecting user', user.email, 'with role', user.role, 'to', redirectPath);
+      const redirectPath = getRoleBasedRoute(user.role, { supplierId: user.supplierId, clientId: user.clientId });
+      console.log('Login: redirecting user', user.email, 'with role', user.role, 'ctx', { supplierId: user.supplierId, clientId: user.clientId }, 'to', redirectPath);
       
       // Add small delay to prevent instant redirect during logout
       const timeoutId = setTimeout(() => {

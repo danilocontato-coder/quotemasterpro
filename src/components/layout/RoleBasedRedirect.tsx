@@ -50,7 +50,7 @@ export const RoleBasedRedirect: React.FC = () => {
     return <Navigate to="/auth/login" replace />;
   }
 
-  const targetRoute = getRoleBasedRoute(user.role);
-  debug('🔍 [DEBUG-REDIRECT] Redirecting to:', targetRoute);
+  const targetRoute = getRoleBasedRoute(user.role, { supplierId: user.supplierId, clientId: user.clientId });
+  debug('🔍 [DEBUG-REDIRECT] Redirecting to:', { targetRoute, role: user.role, supplierId: user.supplierId, clientId: user.clientId });
   return <Navigate to={targetRoute} replace />;
 };

@@ -17,26 +17,33 @@ export interface User {
   supplierId?: string;
 }
 
-export const getRoleBasedRoute = (role: UserRole): string => {
-  console.log('getRoleBasedRoute called with role:', role);
+export const getRoleBasedRoute = (
+  role: UserRole,
+  ctx?: { supplierId?: string | null; clientId?: string | null; tenantType?: string | null }
+): string => {
+  console.log('getRoleBasedRoute called with', { role, ctx });
+
+  // Admin and support have priority routes regardless of tenant
+  if (role === 'admin') {
+    return '/admin/superadmin';
+  }
+  if (role === 'support') {
+    return '/support';
+  }
+
+  // Supplier context wins over role when supplierId/tenantType indicate supplier
+  const isSupplierContext = ctx?.tenantType === 'supplier' || !!ctx?.supplierId;
+  if (isSupplierContext) {
+    return '/supplier';
+  }
+
+  // Default client-side dashboards
   switch (role) {
-    case 'admin':
-      console.log('Redirecting admin to /admin/superadmin');
-      return '/admin/superadmin';
     case 'manager':
-      console.log('Redirecting manager to /dashboard');
-      return '/dashboard';
     case 'client':
-      console.log('Redirecting client to /dashboard');
+    case 'collaborator':
       return '/dashboard';
-    case 'supplier':
-      console.log('Redirecting supplier to /supplier');
-      return '/supplier';
-    case 'support':
-      console.log('Redirecting support to /support');
-      return '/support';
     default:
-      console.log('Unknown role', role, 'redirecting to /dashboard');
       return '/dashboard';
   }
 };
