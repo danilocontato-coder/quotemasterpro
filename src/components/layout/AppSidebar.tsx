@@ -12,8 +12,7 @@ import {
   CheckCircle,
   Layers,
   Crown,
-  Brain,
-  Palette
+  Brain
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -60,7 +59,7 @@ const systemItems = [
   { title: "Relatórios", url: "/reports", icon: BarChart3 },
   { title: "Planos", url: "/plans", icon: Crown },
   { title: "Configurações", url: "/settings", icon: Settings },
-  { title: "Branding", url: "/branding", icon: Palette },
+  // Branding removido - só deve ser acessível por admins
 ];
 
 export function AppSidebar() {

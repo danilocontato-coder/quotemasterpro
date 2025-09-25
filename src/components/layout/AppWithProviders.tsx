@@ -35,7 +35,7 @@ const AINegotiations = React.lazy(() => import('@/pages/AINegotiations'));
 const AdminSuppliers = React.lazy(() => import('@/pages/AdminSuppliers'));
 const NotificationsTesting = React.lazy(() => import('@/pages/NotificationsTesting'));
 const PlansPage = React.lazy(() => import('@/pages/client/PlansPage'));
-const BrandingSettings = React.lazy(() => import('@/pages/BrandingSettings'));
+// BrandingSettings removido - só acessível por admins via /admin/brand
 
 // Admin pages
 const SuperAdminDashboard = React.lazy(() => import('@/pages/admin/SuperAdminDashboard'));
@@ -312,11 +312,7 @@ export const AppWithProviders: React.FC = () => {
             <Settings />
           </Suspense>
         } />
-        <Route path="branding" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <BrandingSettings />
-          </Suspense>
-        } />
+        {/* Branding removido - só acessível por admins */}
         <Route path="plans" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <PlansPage />
@@ -415,11 +411,7 @@ export const AppWithProviders: React.FC = () => {
             <Settings />
           </Suspense>
         } />
-        <Route path="branding" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <BrandingSettings />
-          </Suspense>
-        } />
+        {/* Branding removido - só acessível por admins */}
         <Route path="plans" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <PlansPage />
