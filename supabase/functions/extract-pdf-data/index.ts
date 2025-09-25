@@ -1,6 +1,4 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { PDFDocument } from "https://cdn.skypack.dev/pdf-lib@^1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,19 +24,8 @@ serve(async (req) => {
 
     console.log('Processing PDF extraction for:', filename);
 
-    // Convert PDF to text first
-    let pdfText = '';
-    try {
-      const pdfBytes = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-      const pages = pdfDoc.getPages();
-      
-      // For now, we'll use a simple approach - in production you might want to use a more sophisticated PDF text extraction
-      pdfText = `PDF Document with ${pages.length} pages. Content analysis needed.`;
-    } catch (pdfError) {
-      console.warn('PDF text extraction failed, using OCR approach:', pdfError.message);
-      pdfText = 'PDF content requires OCR processing.';
-    }
+    // Simplified PDF handling - just use filename and base for analysis
+    const pdfText = `PDF Document uploaded: ${filename}. Manual content analysis needed.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -128,11 +115,11 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in extract-pdf-data function:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: error?.message || 'Unknown error'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
