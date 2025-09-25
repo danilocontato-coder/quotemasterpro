@@ -163,8 +163,10 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
   const [userRole, setUserRole] = useState<'client' | 'supplier'>('client');
   const [pendingQuestions, setPendingQuestions] = useState<any[]>([]);
   const [selectedPendingQuestion, setSelectedPendingQuestion] = useState<any>(null);
-  const [supplierResponse, setSupplierResponse] = useState('');
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [supplierResponse, setSupplierResponse] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{category: string, question: string, reasoning: string}>>([]);
   const { sendMessage, markMessagesAsRead, fetchMessages, messages } = useSupabaseQuoteChats();
   const { toast } = useToast();
   
@@ -282,10 +284,18 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
         return;
       }
       
-      if (data?.suggestions) {
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setAiSuggestions(data.suggestions);
+        setShowAiSuggestions(true);
         toast({ 
-          title: "Perguntas IA", 
-          description: `${data.suggestions.length} perguntas contextuais sugeridas pela IA.` 
+          title: "Perguntas IA Geradas", 
+          description: `${data.suggestions.length} perguntas contextuais sugeridas. Clique em uma para usar.` 
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Resposta da IA inválida",
+          variant: "destructive",
         });
       }
     } catch (error) {
@@ -415,6 +425,69 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
                     {isGeneratingQuestions ? 'Gerando...' : 'IA: Sugerir Perguntas Contextuais'}
                   </Button>
                 </div>
+
+                {/* Sugestões da IA */}
+                {showAiSuggestions && aiSuggestions.length > 0 && (
+                  <Card className="border-blue-200 bg-blue-50/50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-blue-800">Perguntas Sugeridas pela IA</h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowAiSuggestions(false)}
+                          className="h-6 w-6 p-0"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {aiSuggestions.map((suggestion, index) => (
+                          <div
+                            key={index}
+                            className="p-3 bg-white rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-50 transition-colors"
+                            onClick={() => {
+                              // Automaticamente selecionar categoria e adicionar pergunta customizada
+                              const categoryMap: { [key: string]: string } = {
+                                'especificações': 'specifications',
+                                'logística': 'logistics', 
+                                'comercial': 'commercial',
+                                'operacional': 'operational'
+                              };
+                              
+                              const categoryId = categoryMap[suggestion.category.toLowerCase()];
+                              if (categoryId) {
+                                setSelectedCategory(categoryId);
+                                // Criar pergunta temporária para esta sugestão
+                                setSelectedQuestion({
+                                  id: `ai-${index}`,
+                                  text: suggestion.question,
+                                  maxChars: 300,
+                                  responseType: 'text'
+                                });
+                              }
+                              setShowAiSuggestions(false);
+                            }}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="font-medium text-sm text-gray-900 mb-1">
+                                  {suggestion.question}
+                                </p>
+                                <p className="text-xs text-gray-600 mb-1">
+                                  <strong>Categoria:</strong> {suggestion.category}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {suggestion.reasoning}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             ) : (
               // FORNECEDOR: Responde perguntas do cliente

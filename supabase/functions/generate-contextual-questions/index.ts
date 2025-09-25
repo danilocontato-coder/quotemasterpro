@@ -131,9 +131,34 @@ Retorne um JSON com este formato:
     }
 
     const data = await response.json();
-    const generatedContent = data.choices[0].message.content;
+    const generatedContent = data.choices?.[0]?.message?.content;
 
     console.log('Generated content:', generatedContent);
+
+    if (!generatedContent || generatedContent.trim() === '') {
+      console.error('AI returned empty content');
+      return new Response(JSON.stringify({
+        suggestions: [
+          {
+            category: "especificações",
+            question: "Qual o prazo de validade desta proposta?",
+            reasoning: "Importante definir o período de validade da oferta"
+          },
+          {
+            category: "logística", 
+            question: "Qual o prazo de entrega estimado?",
+            reasoning: "Essencial para planejamento de recebimento"
+          },
+          {
+            category: "comercial",
+            question: "Há possibilidade de desconto para pagamento à vista?", 
+            reasoning: "Importante avaliar condições comerciais"
+          }
+        ]
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Parse JSON response
     let suggestions;
@@ -141,12 +166,23 @@ Retorne um JSON com este formato:
       suggestions = JSON.parse(generatedContent);
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', parseError);
+      // Fallback com perguntas padrão
       suggestions = {
         suggestions: [
           {
             category: "especificações",
             question: "Qual o prazo de validade desta proposta?",
             reasoning: "Importante definir o período de validade da oferta"
+          },
+          {
+            category: "logística", 
+            question: "Qual o prazo de entrega estimado?",
+            reasoning: "Essencial para planejamento de recebimento"
+          },
+          {
+            category: "comercial",
+            question: "Há possibilidade de desconto para pagamento à vista?", 
+            reasoning: "Importante avaliar condições comerciais"
           }
         ]
       };
