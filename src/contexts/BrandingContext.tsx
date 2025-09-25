@@ -64,6 +64,32 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       // Função auxiliar para carregar configurações globais
       const loadGlobalSettings = async () => {
+        console.log('🎨 [BRANDING] Tentando carregar via Edge Function pública (public-branding)');
+        try {
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('public-branding');
+          if (!fnError && fnData?.success && fnData?.data) {
+            const d = fnData.data as any;
+            const globalSettings = {
+              companyName: d.companyName || defaultSettings.companyName,
+              logo: d.logo || defaultSettings.logo,
+              primaryColor: d.primaryColor || defaultSettings.primaryColor,
+              secondaryColor: d.secondaryColor || defaultSettings.secondaryColor,
+              accentColor: d.accentColor || defaultSettings.accentColor,
+              favicon: d.favicon || defaultSettings.favicon,
+              footerText: d.footerText || defaultSettings.footerText,
+              loginPageTitle: d.loginPageTitle || defaultSettings.loginPageTitle,
+              loginPageSubtitle: d.loginPageSubtitle || defaultSettings.loginPageSubtitle,
+              dashboardWelcomeMessage: d.dashboardWelcomeMessage || defaultSettings.dashboardWelcomeMessage,
+              customCss: d.customCss || undefined,
+            } as BrandingSettings;
+            console.log('🎨 [BRANDING] Global settings via function:', globalSettings);
+            return globalSettings;
+          }
+          console.warn('🎨 [BRANDING] Edge function falhou ou retornou vazio, caindo para consulta direta...', fnError);
+        } catch (err) {
+          console.warn('🎨 [BRANDING] Erro ao chamar edge function, caindo para consulta direta...', err);
+        }
+
         console.log('🎨 [BRANDING] Carregando configurações globais do system_settings...');
         const { data: systemData, error } = await supabase
           .from('system_settings')
@@ -136,7 +162,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           });
           
           console.log('🎨 [BRANDING] Configurações globais processadas:', globalSettings);
-          return globalSettings;
+          return globalSettings as BrandingSettings;
         }
         return null;
       };
