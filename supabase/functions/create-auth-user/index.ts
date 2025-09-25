@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     // Check if the requesting user has permission to create users
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, client_id')
+      .select('role, client_id, supplier_id')
       .eq('id', user.id)
       .single();
 
@@ -113,6 +113,9 @@ Deno.serve(async (req) => {
     }
 
 const { email, password, name, role, clientId, supplierId, temporaryPassword, action = 'create' } = requestBody;
+
+    // Derive supplier automatically for supplier creators when not provided
+    const effectiveSupplierId = supplierId ?? (isSupplier ? (profile as any)?.supplier_id : undefined);
 
     console.log('🔍 DEBUG: Dados extraídos:', {
       email,
@@ -175,7 +178,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
         }
 
         // Update force_password_change in users table
-        if (clientId || supplierId) {
+        if (clientId || effectiveSupplierId) {
           await supabaseAdmin
             .from('users')
             .update({ force_password_change: temporaryPassword ?? true })
@@ -242,7 +245,7 @@ if (authError) {
 
         if (existingUserId) {
           try {
-            if (clientId || supplierId) {
+            if (clientId || effectiveSupplierId) {
               // Ensure profile exists and is linked to client and/or supplier
               await supabaseAdmin
                 .from('profiles')
@@ -252,10 +255,10 @@ if (authError) {
                   name,
                   role,
                   client_id: clientId ?? null,
-                  supplier_id: supplierId ?? null,
+                  supplier_id: effectiveSupplierId ?? null,
                   company_name: name,
-                  tenant_type: supplierId ? 'supplier' : 'client',
-                  onboarding_completed: supplierId ? true : undefined,
+                  tenant_type: effectiveSupplierId ? 'supplier' : 'client',
+                  onboarding_completed: effectiveSupplierId ? true : undefined,
                 }, { onConflict: 'id' });
 
               // Upsert into public.users by auth_user_id
@@ -271,7 +274,7 @@ if (authError) {
                 role,
                 status: 'active',
                 client_id: clientId ?? null,
-                supplier_id: supplierId ?? null,
+                supplier_id: effectiveSupplierId ?? null,
                 force_password_change: temporaryPassword ?? true,
               };
 
@@ -344,10 +347,10 @@ if (authError) {
             name, 
             role, 
             client_id: clientId ?? null, 
-            supplier_id: supplierId ?? null,
+            supplier_id: effectiveSupplierId ?? null,
             company_name: name,
-            tenant_type: supplierId ? 'supplier' : 'client',
-            onboarding_completed: supplierId ? true : undefined,
+            tenant_type: effectiveSupplierId ? 'supplier' : 'client',
+            onboarding_completed: effectiveSupplierId ? true : undefined,
           }, { onConflict: 'id' });
 
         console.log('✅ DEBUG: Profile criado/atualizado');
@@ -366,7 +369,7 @@ if (authError) {
           role, 
           status: 'active', 
           client_id: clientId ?? null, 
-          supplier_id: supplierId ?? null,
+          supplier_id: effectiveSupplierId ?? null,
           force_password_change: temporaryPassword ?? true 
         };
 
