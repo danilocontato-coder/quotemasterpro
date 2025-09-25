@@ -361,17 +361,10 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                         <span className="text-sm font-medium text-green-900">Fornecedores</span>
                       </div>
                       <p className="text-2xl font-bold text-green-900">
-                        {quote.status === 'draft' 
-                          ? (quote.selected_supplier_ids?.length || quote.suppliers_sent_count || 0)
-                          : proposals.length
-                        }
+                        {Math.max(quote.suppliers_sent_count || 0, quote.selected_supplier_ids?.length || 0)}
                       </p>
-                      <p className="text-xs text-green-700 mt-1">
-                        {quote.status === 'draft' 
-                          ? 'Selecionados para envio'
-                          : 'Propostas recebidas'
-                        }
-                      </p>
+                      <p className="text-xs text-green-700 mt-1">Convidados</p>
+                      <p className="text-xs text-green-700">Propostas: {proposals.length}</p>
                     </div>
                     <div className="bg-purple-50 p-4 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
