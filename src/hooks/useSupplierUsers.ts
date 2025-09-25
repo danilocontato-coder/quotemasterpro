@@ -100,7 +100,7 @@ export const useSupplierUsers = () => {
       const { data, error } = await supabase
         .from('permission_profiles')
         .select('*')
-        .or(`client_id.eq.${supplierId},client_id.is.null`)
+        .or(`supplier_id.eq.${supplierId},supplier_id.is.null`)
         .eq('active', true)
         .order('name');
 
@@ -214,7 +214,7 @@ export const useSupplierUsers = () => {
           name: profileData.name!,
           description: profileData.description,
           permissions: profileData.permissions!,
-          client_id: supplierId, // Usando supplier_id no campo client_id
+          supplier_id: supplierId,
           active: true
         })
         .select()

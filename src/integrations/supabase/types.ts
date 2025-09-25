@@ -1148,6 +1148,7 @@ export type Database = {
           id: string
           name: string
           permissions: Json
+          supplier_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1158,6 +1159,7 @@ export type Database = {
           id?: string
           name: string
           permissions?: Json
+          supplier_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1168,14 +1170,15 @@ export type Database = {
           id?: string
           name?: string
           permissions?: Json
+          supplier_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "permission_profiles_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "permission_profiles_supplier_id_fkey"
+            columns: ["supplier_id"]
             isOneToOne: false
-            referencedRelation: "clients"
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
