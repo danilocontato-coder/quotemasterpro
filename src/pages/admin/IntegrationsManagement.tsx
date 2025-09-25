@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/select';
 import { IntegrationFormModal } from '@/components/admin/IntegrationFormModal';
 import { IntegrationDetailsModal } from '@/components/admin/IntegrationDetailsModal';
+import { StripeIntegrationPanel } from '@/components/admin/StripeIntegrationPanel';
 import { useSupabaseIntegrations, Integration } from '@/hooks/useSupabaseIntegrations';
 import { toast } from 'sonner';
 

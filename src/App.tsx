@@ -76,6 +76,7 @@ const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/Supplier
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
 const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
 const NotFound = React.lazy(() => import('@/pages/NotFound'));
+const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialManagement'));
 
 // Query client otimizado
 const queryClient = new QueryClient({
@@ -210,6 +211,11 @@ function App() {
                   <Route path="support" element={
                     <Suspense fallback={<LoadingFallback className="p-6" />}>
                       <SupportDashboard />
+                    </Suspense>
+                  } />
+                  <Route path="financial" element={
+                    <Suspense fallback={<LoadingFallback className="p-6" />}>
+                      <FinancialManagement />
                     </Suspense>
                   } />
                   <Route path="audit" element={

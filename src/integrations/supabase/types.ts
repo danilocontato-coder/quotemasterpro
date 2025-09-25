@@ -1048,6 +1048,87 @@ export type Database = {
           },
         ]
       }
+      financial_logs: {
+        Row: {
+          action: string
+          automated: boolean | null
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          automated?: boolean | null
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          automated?: boolean | null
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      financial_settings: {
+        Row: {
+          auto_billing_enabled: boolean | null
+          auto_suspend_enabled: boolean | null
+          boleto_config: Json | null
+          boleto_provider: string | null
+          created_at: string | null
+          days_before_suspension: number | null
+          days_grace_period: number | null
+          id: string
+          late_fee_percentage: number | null
+          reminder_intervals: Json | null
+          stripe_webhook_secret: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_billing_enabled?: boolean | null
+          auto_suspend_enabled?: boolean | null
+          boleto_config?: Json | null
+          boleto_provider?: string | null
+          created_at?: string | null
+          days_before_suspension?: number | null
+          days_grace_period?: number | null
+          id?: string
+          late_fee_percentage?: number | null
+          reminder_intervals?: Json | null
+          stripe_webhook_secret?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_billing_enabled?: boolean | null
+          auto_suspend_enabled?: boolean | null
+          boleto_config?: Json | null
+          boleto_provider?: string | null
+          created_at?: string | null
+          days_before_suspension?: number | null
+          days_grace_period?: number | null
+          id?: string
+          late_fee_percentage?: number | null
+          reminder_intervals?: Json | null
+          stripe_webhook_secret?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           active: boolean
@@ -1083,6 +1164,82 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount: number
+          boleto_barcode: string | null
+          boleto_url: string | null
+          client_id: string | null
+          created_at: string | null
+          currency: string | null
+          due_date: string
+          id: string
+          paid_at: string | null
+          payment_method: string | null
+          status: string
+          stripe_invoice_id: string | null
+          subscription_id: string | null
+          supplier_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          boleto_barcode?: string | null
+          boleto_url?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          due_date: string
+          id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          subscription_id?: string | null
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          boleto_barcode?: string | null
+          boleto_url?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          due_date?: string
+          id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          subscription_id?: string | null
+          supplier_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -1814,6 +1971,82 @@ export type Database = {
           yearly_price?: number
         }
         Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          billing_cycle: string
+          cancel_at_period_end: boolean | null
+          cancelled_at: string | null
+          client_id: string | null
+          created_at: string | null
+          current_period_end: string
+          current_period_start: string
+          id: string
+          plan_id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          supplier_id: string | null
+          trial_end: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          billing_cycle?: string
+          cancel_at_period_end?: boolean | null
+          cancelled_at?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          current_period_end: string
+          current_period_start?: string
+          id?: string
+          plan_id: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          supplier_id?: string | null
+          trial_end?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          billing_cycle?: string
+          cancel_at_period_end?: boolean | null
+          cancelled_at?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan_id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          supplier_id?: string | null
+          trial_end?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supplier_ratings: {
         Row: {
