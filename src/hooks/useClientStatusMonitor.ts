@@ -16,9 +16,10 @@ export const useClientStatusMonitor = () => {
     console.log('🔐 [CLIENT-STATUS] Monitorando status do cliente:', user.clientId);
     
     let channel: any = null;
+    let timer: NodeJS.Timeout | null = null;
     
     // Aguardar um pouco para evitar conflitos com useStableRealtime
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       // Escutar mudanças em tempo real na tabela clients
       channel = supabase
         .channel(`client-status-${user.clientId}`)
@@ -61,7 +62,9 @@ export const useClientStatusMonitor = () => {
     }, 1000); // Aguardar 1 segundo
 
     return () => {
-      clearTimeout(timer);
+      if (timer) {
+        clearTimeout(timer);
+      }
       console.log('🔐 [CLIENT-STATUS] Limpando monitoramento do cliente');
       if (channel) {
         supabase.removeChannel(channel);
