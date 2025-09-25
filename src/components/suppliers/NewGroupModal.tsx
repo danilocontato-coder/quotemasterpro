@@ -72,7 +72,7 @@ const predefinedGroups = [
 ];
 
 export function NewGroupModal({ open, onOpenChange, onGroupCreate, existingGroups, onGroupDelete }: NewGroupModalProps) {
-  const [showPredefined, setShowPredefined] = useState(true);
+  const [showCustomForm, setShowCustomForm] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -246,14 +246,14 @@ export function NewGroupModal({ open, onOpenChange, onGroupCreate, existingGroup
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setShowPredefined(!showPredefined)}
+                onClick={() => setShowCustomForm(!showCustomForm)}
                 className="text-xs"
               >
-                {showPredefined ? 'Ocultar' : 'Mostrar'} Formulário
+                {showCustomForm ? 'Ocultar' : 'Mostrar'} Formulário
               </Button>
             </div>
             
-            {!showPredefined && (
+            {showCustomForm && (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">
