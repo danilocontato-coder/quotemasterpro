@@ -977,10 +977,17 @@ export type Database = {
           created_at: string | null
           escrow_release_date: string | null
           id: string
+          offline_attachments: string[] | null
+          offline_notes: string | null
+          payment_method: string | null
           quote_id: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string | null
           stripe_session_id: string | null
           supplier_id: string
+          transaction_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -989,10 +996,17 @@ export type Database = {
           created_at?: string | null
           escrow_release_date?: string | null
           id: string
+          offline_attachments?: string[] | null
+          offline_notes?: string | null
+          payment_method?: string | null
           quote_id: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
           stripe_session_id?: string | null
           supplier_id: string
+          transaction_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1001,10 +1015,17 @@ export type Database = {
           created_at?: string | null
           escrow_release_date?: string | null
           id?: string
+          offline_attachments?: string[] | null
+          offline_notes?: string | null
+          payment_method?: string | null
           quote_id?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
           stripe_session_id?: string | null
           supplier_id?: string
+          transaction_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2193,6 +2214,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_offline_payment: {
+        Args: { p_approved: boolean; p_notes?: string; p_payment_id: string }
+        Returns: Json
+      }
       check_user_email_exists: {
         Args: { user_email: string }
         Returns: boolean
