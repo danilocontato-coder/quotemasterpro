@@ -6,13 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranding } from '@/contexts/BrandingContext';
 import { 
   Upload, Save, Eye, Building2, DollarSign, Palette, 
-  Type, Image as ImageIcon, Globe, RefreshCw, AlertTriangle 
+  Type, Image as ImageIcon, Globe, RefreshCw, AlertTriangle,
+  Users, Truck, Settings 
 } from 'lucide-react';
+
+import { IndividualBrandingManager } from '@/components/admin/IndividualBrandingManager';
 
 export default function BrandSettings() {
   const { toast } = useToast();
@@ -93,7 +97,7 @@ export default function BrandSettings() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Configurações de Marca</h1>
           <p className="text-muted-foreground">
-            Configure completamente a marca da sua plataforma para whitelabel
+            Configure o branding global do sistema e branding individual para clientes/fornecedores
           </p>
         </div>
         <Button 
@@ -106,13 +110,26 @@ export default function BrandSettings() {
         </Button>
       </div>
 
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          As alterações serão aplicadas globalmente em todo o sistema. 
-          Para ver todas as mudanças, recarregue a página após salvar.
-        </AlertDescription>
-      </Alert>
+      <Tabs defaultValue="global" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="global" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Branding Global
+          </TabsTrigger>
+          <TabsTrigger value="individual" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Branding Individual
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="global" className="space-y-6 mt-6">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              As alterações serão aplicadas globalmente em todo o sistema. 
+              Para ver todas as mudanças, recarregue a página após salvar.
+            </AlertDescription>
+          </Alert>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Identidade da Marca */}
@@ -409,24 +426,37 @@ export default function BrandSettings() {
         </CardContent>
       </Card>
 
-      {/* Botões de Ação */}
-      <div className="flex justify-end gap-4">
-        <Button 
-          variant="outline"
-          onClick={() => setLocalSettings(settings)}
-          disabled={brandingLoading}
-        >
-          Cancelar Alterações
-        </Button>
-        <Button 
-          onClick={handleSave} 
-          disabled={brandingLoading || isUploading}
-          className="min-w-32"
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {brandingLoading ? 'Salvando...' : 'Aplicar Branding'}
-        </Button>
-      </div>
+          {/* Botões de Ação */}
+          <div className="flex justify-end gap-4">
+            <Button 
+              variant="outline"
+              onClick={() => setLocalSettings(settings)}
+              disabled={brandingLoading}
+            >
+              Cancelar Alterações
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={brandingLoading || isUploading}
+              className="min-w-32"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {brandingLoading ? 'Salvando...' : 'Aplicar Branding'}
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="individual" className="space-y-6 mt-6">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Configure branding específico para clientes e fornecedores. Se não configurado, usarão o branding global.
+            </AlertDescription>
+          </Alert>
+          
+          <IndividualBrandingManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
