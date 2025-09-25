@@ -8,6 +8,7 @@ import { Plus, Search, Package, Edit, Trash2, AlertTriangle } from "lucide-react
 import { useSupabaseSupplierProducts } from "@/hooks/useSupabaseSupplierProducts";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreateProductModal } from "@/components/supplier/CreateProductModal";
 
 export default function SupplierProducts() {
   const { 
@@ -83,22 +84,15 @@ export default function SupplierProducts() {
         </div>
         
         <div className="flex gap-2">
-          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Produto
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Criar Novo Produto</DialogTitle>
-              </DialogHeader>
-              <div className="p-4">
-                <p>Formulário de criação de produto em desenvolvimento</p>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Produto
+          </Button>
+          
+          <CreateProductModal 
+            open={isCreateModalOpen} 
+            onOpenChange={setIsCreateModalOpen}
+          />
         </div>
       </div>
 
