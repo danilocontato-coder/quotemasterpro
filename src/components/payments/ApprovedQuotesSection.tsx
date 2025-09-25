@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 export function ApprovedQuotesSection() {
   const { quotes } = useSupabaseQuotes();
-  const { payments, createPaymentIntent } = useSupabasePayments();
+  const { payments, createCheckoutSession } = useSupabasePayments();
 
   // Todas as cotações aprovadas (independente de valor)
   const approvedQuotes = quotes.filter(quote => quote.status === 'approved');
@@ -33,12 +33,11 @@ export function ApprovedQuotesSection() {
         return;
       }
 
-      // Agora criar o payment intent e redirecionar para Stripe
-      const intentData = await createPaymentIntent(data.payment_id);
+      // Agora criar a sessão de checkout e redirecionar para Stripe
+      const sessionData = await createCheckoutSession(data.payment_id);
       
-      if (intentData?.url) {
-        // Redirecionar para o Stripe
-        window.location.href = intentData.url;
+      if (sessionData?.url) {
+        window.location.href = sessionData.url;
       } else {
         toast.error('Erro ao processar pagamento');
       }

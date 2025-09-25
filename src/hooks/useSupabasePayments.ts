@@ -37,8 +37,8 @@ export const useSupabasePayments = () => {
         .from('payments')
         .select(`
           *,
-          quotes!inner(id, title, client_name),
-          suppliers!inner(id, name)
+          quotes(id, title, client_name),
+          suppliers(id, name)
         `)
         .order('created_at', { ascending: false });
 
@@ -73,6 +73,24 @@ export const useSupabasePayments = () => {
       toast({
         title: "Erro ao processar pagamento",
         description: "Não foi possível iniciar o pagamento.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
+  const createCheckoutSession = async (paymentId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-payment-checkout', {
+        body: { paymentId }
+      });
+      if (error) throw error;
+      return data; // expects { url, session_id }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      toast({
+        title: "Erro ao iniciar pagamento",
+        description: "Não foi possível redirecionar para o Stripe.",
         variant: "destructive"
       });
       throw error;
@@ -140,6 +158,7 @@ export const useSupabasePayments = () => {
     isLoading,
     refetch: fetchPayments,
     createPaymentIntent,
+    createCheckoutSession,
     confirmDelivery
   };
 };
