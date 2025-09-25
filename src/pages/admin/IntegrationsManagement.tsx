@@ -53,6 +53,7 @@ import {
 import { IntegrationFormModal } from '@/components/admin/IntegrationFormModal';
 import { IntegrationDetailsModal } from '@/components/admin/IntegrationDetailsModal';
 import { StripeIntegrationPanel } from '@/components/admin/StripeIntegrationPanel';
+import { BoletoIntegrationPanel } from '@/components/admin/BoletoIntegrationPanel';
 import { useSupabaseIntegrations, Integration } from '@/hooks/useSupabaseIntegrations';
 import { toast } from 'sonner';
 
@@ -177,6 +178,18 @@ export const IntegrationsManagement = () => {
       </div>
 
       <div className="p-6 space-y-6">
+        {/* Integrações de Pagamento */}
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Integrações de Pagamento</h2>
+            <p className="text-muted-foreground">Configure métodos de pagamento para o sistema</p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <StripeIntegrationPanel />
+            <BoletoIntegrationPanel />
+          </div>
+        </div>
+
         {/* Estatísticas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>

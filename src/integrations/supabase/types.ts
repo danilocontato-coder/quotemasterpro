@@ -2607,6 +2607,10 @@ export type Database = {
         Args: { p_approved: boolean; p_notes?: string; p_payment_id: string }
         Returns: Json
       }
+      check_overdue_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       check_user_email_exists: {
         Args: { user_email: string }
         Returns: boolean
@@ -2749,6 +2753,10 @@ export type Database = {
         Returns: undefined
       }
       reset_monthly_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      run_automatic_billing: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
