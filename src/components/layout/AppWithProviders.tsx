@@ -430,6 +430,11 @@ export const AppWithProviders: React.FC = () => {
           <SupplierLayout />
         </ProtectedRoute>
       }>
+        <Route index element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <SupplierDashboard />
+          </Suspense>
+        } />
         <Route path="dashboard" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <SupplierDashboard />
