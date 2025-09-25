@@ -25,12 +25,15 @@ import {
   CheckCircle, 
   XCircle, 
   AlertTriangle,
-  FileCheck 
+  FileCheck,
+  Package,
+  CreditCard
 } from "lucide-react";
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
 import { ProposalAcceptanceModal } from "@/components/supplier/ProposalAcceptanceModal";
+import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,6 +41,7 @@ export default function SupplierQuotes() {
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [isAcceptanceModalOpen, setIsAcceptanceModalOpen] = useState(false);
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [selectedResponseId, setSelectedResponseId] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -331,6 +335,20 @@ export default function SupplierQuotes() {
                              <CheckCircle className="h-4 w-4" />
                            </Button>
                          )}
+                         {quote.status === 'paid' && (
+                           <Button 
+                             variant="ghost" 
+                             size="sm"
+                             onClick={() => {
+                               setSelectedQuote(quote);
+                               setIsDeliveryModalOpen(true);
+                             }}
+                             title="Agendar entrega"
+                             className="text-blue-600 hover:text-blue-700"
+                           >
+                             <Package className="h-4 w-4" />
+                           </Button>
+                         )}
                          <Button variant="ghost" size="sm" title="Mensagens">
                            <MessageSquare className="h-4 w-4" />
                          </Button>
@@ -412,6 +430,16 @@ export default function SupplierQuotes() {
         responseId={selectedResponseId}
         open={isAcceptanceModalOpen}
         onOpenChange={setIsAcceptanceModalOpen}
+      />
+
+      <ScheduleDeliveryModal
+        quote={selectedQuote}
+        open={isDeliveryModalOpen}
+        onOpenChange={setIsDeliveryModalOpen}
+        onDeliveryScheduled={() => {
+          // Refresh quotes list or update status
+          window.location.reload();
+        }}
       />
     </div>
   );

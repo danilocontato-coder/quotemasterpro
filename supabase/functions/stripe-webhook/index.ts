@@ -49,6 +49,18 @@ serve(async (req) => {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         
+        // Buscar informações do pagamento
+        const { data: payment, error: paymentError } = await supabase
+          .from('payments')
+          .select('id, quote_id, client_id, supplier_id')
+          .eq('id', paymentIntent.metadata.payment_id)
+          .single()
+
+        if (paymentError || !payment) {
+          console.error('Payment not found:', paymentError)
+          return new Response('Payment not found', { status: 404 })
+        }
+        
         // Atualizar pagamento para in_escrow
         const { error: updateError } = await supabase
           .from('payments')
@@ -57,11 +69,42 @@ serve(async (req) => {
             stripe_payment_intent_id: paymentIntent.id,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', paymentIntent.metadata.payment_id)
+          .eq('id', payment.id)
 
         if (updateError) {
           console.error('Error updating payment:', updateError)
           return new Response('Error updating payment', { status: 500 })
+        }
+
+        // Atualizar status da cotação para 'paid'
+        const { error: quoteError } = await supabase
+          .from('quotes')
+          .update({
+            status: 'paid',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', payment.quote_id)
+
+        if (quoteError) {
+          console.error('Error updating quote status:', quoteError)
+        }
+
+        // Notificar fornecedor sobre pagamento confirmado
+        if (payment.supplier_id) {
+          await supabase.functions.invoke('create-notification', {
+            body: {
+              user_ids: [payment.supplier_id],
+              title: 'Pagamento Confirmado',
+              message: `O pagamento da cotação #${payment.quote_id} foi confirmado. Prepare-se para a entrega.`,
+              type: 'payment_confirmed',
+              priority: 'high',
+              metadata: {
+                payment_id: payment.id,
+                quote_id: payment.quote_id,
+                action_url: '/supplier/quotes'
+              }
+            }
+          })
         }
 
         // Log de auditoria
@@ -70,15 +113,16 @@ serve(async (req) => {
           .insert({
             action: 'PAYMENT_CONFIRMED',
             entity_type: 'payments',
-            entity_id: paymentIntent.metadata.payment_id,
+            entity_id: payment.id,
             details: {
               stripe_payment_intent_id: paymentIntent.id,
               amount: paymentIntent.amount / 100,
               status: 'in_escrow',
+              quote_id: payment.quote_id
             },
           })
 
-        console.log('Payment moved to escrow:', paymentIntent.metadata.payment_id)
+        console.log('Payment moved to escrow and quote status updated:', payment.id)
         break
       }
 

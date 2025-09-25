@@ -9,7 +9,7 @@ export interface SupplierQuote {
   description: string;
   client: string;
   clientId: string;
-  status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired';
+  status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired' | 'paid' | 'delivering';
   deadline: string;
   estimatedValue?: number;
   sentAt?: string;
