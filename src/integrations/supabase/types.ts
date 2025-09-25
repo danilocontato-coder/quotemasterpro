@@ -2389,6 +2389,10 @@ export type Database = {
           total_ratings: number
         }[]
       }
+      get_user_created_at: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
