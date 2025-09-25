@@ -27,6 +27,7 @@ const navigationItems = [
   { title: "Dashboard", url: "/supplier", icon: Home },
   { title: "Cotações", url: "/supplier/quotes", icon: FileText },
   { title: "Meus Produtos", url: "/supplier/products", icon: Package2 },
+  { title: "Relatórios", url: "/supplier/reports", icon: BarChart3 },
   { title: "Financeiro", url: "/supplier/financial", icon: DollarSign },
   { title: "Entregas", url: "/supplier/deliveries", icon: Truck },
 ];

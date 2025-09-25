@@ -61,6 +61,7 @@ const DomainSettings = React.lazy(() => import('@/pages/admin/DomainSettings'));
 
 // Supplier pages
 const SupplierDashboard = React.lazy(() => import('@/pages/supplier/SupplierDashboard'));
+const SupplierReports = React.lazy(() => import('@/pages/supplier/SupplierReports'));
 const SupplierQuotes = React.lazy(() => import('@/pages/supplier/SupplierQuotes'));
 const SupplierProducts = React.lazy(() => import('@/pages/supplier/SupplierProducts'));
 const SupplierFinancial = React.lazy(() => import('@/pages/supplier/SupplierFinancial'));
@@ -463,6 +464,11 @@ function App() {
                   <Route path="financial" element={
                     <Suspense fallback={<LoadingFallback className="p-4" />}>
                       <SupplierFinancial />
+                    </Suspense>
+                  } />
+                  <Route path="reports" element={
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
+                      <SupplierReports />
                     </Suspense>
                   } />
                   <Route path="deliveries" element={
