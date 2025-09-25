@@ -32,7 +32,7 @@ import {
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
-import { ProposalAcceptanceModal } from "@/components/supplier/ProposalAcceptanceModal";
+
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
 
 export default function SupplierQuotes() {
@@ -40,9 +40,9 @@ export default function SupplierQuotes() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
-  const [isAcceptanceModalOpen, setIsAcceptanceModalOpen] = useState(false);
+  
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
-  const [selectedResponseId, setSelectedResponseId] = useState<string>("");
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
@@ -131,11 +131,6 @@ export default function SupplierQuotes() {
     setIsProposalModalOpen(true);
   };
 
-  const handleAcceptProposal = (quote: any) => {
-    setSelectedQuote(quote);
-    setSelectedResponseId(quote.proposal?.id || '');
-    setIsAcceptanceModalOpen(true);
-  };
 
   return (
     <div className="space-y-6">
@@ -326,17 +321,6 @@ export default function SupplierQuotes() {
                              <Send className="h-4 w-4" />
                            </Button>
                          )}
-                         {(quote.status === 'approved' && quote.proposal?.status !== 'accepted') && (
-                           <Button 
-                             variant="ghost" 
-                             size="sm"
-                             onClick={() => handleAcceptProposal(quote)}
-                             title="Aceitar proposta aprovada"
-                             className="text-green-600 hover:text-green-700"
-                           >
-                             <CheckCircle className="h-4 w-4" />
-                           </Button>
-                         )}
                          {quote.status === 'paid' && (
                            <Button 
                              variant="ghost" 
@@ -427,12 +411,6 @@ export default function SupplierQuotes() {
         onOpenChange={setIsProposalModalOpen}
       />
 
-      <ProposalAcceptanceModal
-        quote={selectedQuote}
-        responseId={selectedResponseId}
-        open={isAcceptanceModalOpen}
-        onOpenChange={setIsAcceptanceModalOpen}
-      />
 
       <ScheduleDeliveryModal
         quote={selectedQuote}
