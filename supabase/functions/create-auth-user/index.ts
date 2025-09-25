@@ -357,7 +357,7 @@ if (authError) {
             supplier_id: effectiveSupplierId ?? null,
             company_name: name,
             tenant_type: effectiveSupplierId ? 'supplier' : 'client',
-            onboarding_completed: effectiveSupplierId ? true : undefined,
+            onboarding_completed: true, // Sempre true para usuários criados via admin
           }, { onConflict: 'id' });
 
         console.log('✅ DEBUG: Profile criado/atualizado');
