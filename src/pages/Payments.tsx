@@ -22,9 +22,11 @@ import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
+import { ApprovedQuotesSection } from "@/components/payments/ApprovedQuotesSection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAutomaticPayments } from "@/hooks/useAutomaticPayments";
+import { TestAutomaticPayments } from "@/components/debug/TestAutomaticPayments";
 
 export default function Payments() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -126,6 +128,9 @@ export default function Payments() {
 
   return (
     <div className="space-y-6">
+      {/* Componente de Teste (remover em produção) */}
+      <TestAutomaticPayments />
+      
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
