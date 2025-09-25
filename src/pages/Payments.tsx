@@ -269,7 +269,15 @@ export default function Payments() {
                   try {
                     const result = await createCheckoutSession(paymentId);
                     if (result?.url) {
-                      window.location.href = result.url;
+                      try {
+                        if (window.top && window.top !== window.self) {
+                          window.top.location.href = result.url;
+                        } else {
+                          window.location.href = result.url;
+                        }
+                      } catch (e) {
+                        window.open(result.url, '_blank', 'noopener,noreferrer');
+                      }
                     }
                   } catch (error) {
                     console.error('Payment error:', error);

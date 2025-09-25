@@ -37,7 +37,15 @@ export function ApprovedQuotesSection() {
       const sessionData = await createCheckoutSession(data.payment_id);
       
       if (sessionData?.url) {
-        window.location.href = sessionData.url;
+        try {
+          if (window.top && window.top !== window.self) {
+            window.top.location.href = sessionData.url;
+          } else {
+            window.location.href = sessionData.url;
+          }
+        } catch (e) {
+          window.open(sessionData.url, '_blank', 'noopener,noreferrer');
+        }
       } else {
         toast.error('Erro ao processar pagamento');
       }
