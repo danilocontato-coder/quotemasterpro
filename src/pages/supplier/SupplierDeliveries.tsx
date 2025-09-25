@@ -5,10 +5,94 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Package, Truck, Calendar, MapPin, Clock, CheckCircle } from "lucide-react";
+import { Package, Truck, Calendar, MapPin, Clock, CheckCircle, Copy, Key } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+
+// Componente para mostrar código de confirmação
+const DeliveryCodeDisplay = ({ deliveryId }: { deliveryId: string }) => {
+  const [confirmationCode, setConfirmationCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchCode = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('delivery_confirmations')
+          .select('confirmation_code, expires_at, is_used')
+          .eq('delivery_id', deliveryId)
+          .eq('is_used', false)
+          .gt('expires_at', new Date().toISOString())
+          .single();
+
+        if (error || !data) {
+          console.error('Erro ao buscar código:', error);
+          setConfirmationCode(null);
+        } else {
+          setConfirmationCode(data.confirmation_code);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar código:', error);
+        setConfirmationCode(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCode();
+  }, [deliveryId]);
+
+  const copyToClipboard = () => {
+    if (confirmationCode) {
+      navigator.clipboard.writeText(confirmationCode);
+      toast({
+        title: "Código copiado!",
+        description: "Código de confirmação copiado para a área de transferência.",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Clock className="w-4 h-4" />
+        Carregando código...
+      </div>
+    );
+  }
+
+  if (!confirmationCode) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Key className="w-4 h-4" />
+        Código não disponível
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+      <Key className="w-4 h-4 text-primary" />
+      <div className="flex-1">
+        <div className="text-sm font-medium">Código de Confirmação</div>
+        <div className="text-lg font-mono font-bold text-primary">{confirmationCode}</div>
+        <div className="text-xs text-muted-foreground">
+          Compartilhe com o cliente para confirmar a entrega
+        </div>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={copyToClipboard}
+        className="ml-2"
+      >
+        <Copy className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+};
 
 interface Delivery {
   id: string;
@@ -253,7 +337,7 @@ export default function SupplierDeliveries() {
             Entregas
           </h1>
           <p className="text-muted-foreground">
-            Gerencie suas entregas e registre confirmações
+            Gerencie suas entregas e códigos de confirmação
           </p>
         </div>
       </div>
@@ -372,6 +456,11 @@ export default function SupplierDeliveries() {
                   </div>
                 )}
 
+                {/* Mostrar código de confirmação quando entrega estiver agendada ou em trânsito */}
+                {(delivery.status === 'scheduled' || delivery.status === 'in_transit') && (
+                  <DeliveryCodeDisplay deliveryId={delivery.id} />
+                )}
+
                 <div className="flex gap-2 pt-2">
                   {delivery.status === 'pending' && (
                     <Button
@@ -395,15 +484,11 @@ export default function SupplierDeliveries() {
                     </Button>
                   )}
 
-                  {delivery.status === 'in_transit' && (
-                    <Button
-                      onClick={() => setSelectedDelivery(delivery)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Marcar como Entregue
-                    </Button>
+                  {delivery.status === 'delivered' && (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Entrega confirmada pelo cliente</span>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -412,50 +497,32 @@ export default function SupplierDeliveries() {
         </div>
       )}
 
-      {/* Modal de agendamento/conclusão */}
-      {selectedDelivery && (
+      {/* Modal de agendamento */}
+      {selectedDelivery && selectedDelivery.status === 'pending' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle>
-                {selectedDelivery.status === 'pending' ? 'Agendar Entrega' : 'Concluir Entrega'}
-              </CardTitle>
+              <CardTitle>Agendar Entrega</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {selectedDelivery.status === 'pending' && (
-                <>
-                  <div>
-                    <Label htmlFor="scheduledDate">Data da Entrega</Label>
-                    <Input
-                      id="scheduledDate"
-                      type="datetime-local"
-                      value={scheduledDate}
-                      onChange={(e) => setScheduledDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="deliveryNotes">Observações</Label>
-                    <Textarea
-                      id="deliveryNotes"
-                      placeholder="Informações sobre a entrega..."
-                      value={deliveryNotes}
-                      onChange={(e) => setDeliveryNotes(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
-
-              {selectedDelivery.status === 'in_transit' && (
-                <div>
-                  <Label htmlFor="finalNotes">Observações da Entrega</Label>
-                  <Textarea
-                    id="finalNotes"
-                    placeholder="Detalhes sobre a entrega realizada..."
-                    value={deliveryNotes}
-                    onChange={(e) => setDeliveryNotes(e.target.value)}
-                  />
-                </div>
-              )}
+              <div>
+                <Label htmlFor="scheduledDate">Data da Entrega</Label>
+                <Input
+                  id="scheduledDate"
+                  type="datetime-local"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="deliveryNotes">Observações</Label>
+                <Textarea
+                  id="deliveryNotes"
+                  placeholder="Informações sobre a entrega..."
+                  value={deliveryNotes}
+                  onChange={(e) => setDeliveryNotes(e.target.value)}
+                />
+              </div>
 
               <div className="flex gap-2">
                 <Button
@@ -467,24 +534,17 @@ export default function SupplierDeliveries() {
                 </Button>
                 <Button
                   onClick={() => {
-                    if (selectedDelivery.status === 'pending') {
-                      updateDeliveryStatus(selectedDelivery.id, 'scheduled', {
-                        scheduled_date: scheduledDate || new Date().toISOString(),
-                        delivery_notes: deliveryNotes
-                      });
-                    } else {
-                      updateDeliveryStatus(selectedDelivery.id, 'delivered', {
-                        delivered_date: new Date().toISOString(),
-                        delivery_notes: deliveryNotes
-                      });
-                    }
+                    updateDeliveryStatus(selectedDelivery.id, 'scheduled', {
+                      scheduled_date: scheduledDate || new Date().toISOString(),
+                      delivery_notes: deliveryNotes
+                    });
                     setScheduledDate("");
                     setDeliveryNotes("");
                   }}
                   className="flex-1"
-                  disabled={selectedDelivery.status === 'pending' && !scheduledDate}
+                  disabled={!scheduledDate}
                 >
-                  {selectedDelivery.status === 'pending' ? 'Agendar' : 'Finalizar'}
+                  Agendar
                 </Button>
               </div>
             </CardContent>

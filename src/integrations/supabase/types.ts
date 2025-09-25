@@ -935,6 +935,53 @@ export type Database = {
           },
         ]
       }
+      delivery_confirmations: {
+        Row: {
+          confirmation_code: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          delivery_id: string
+          expires_at: string
+          generated_at: string
+          id: string
+          is_used: boolean
+          updated_at: string
+        }
+        Insert: {
+          confirmation_code: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          delivery_id: string
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          is_used?: boolean
+          updated_at?: string
+        }
+        Update: {
+          confirmation_code?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          delivery_id?: string
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          is_used?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_confirmations_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           active: boolean
@@ -2281,6 +2328,10 @@ export type Database = {
       current_user_can_see_quote: {
         Args: { quote_id_param: string }
         Returns: boolean
+      }
+      generate_delivery_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_current_user_client_id: {
         Args: Record<PropertyKey, never>
