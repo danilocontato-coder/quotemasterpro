@@ -67,6 +67,7 @@ const SupplierProducts = React.lazy(() => import('@/pages/supplier/SupplierProdu
 const SupplierReceivables = React.lazy(() => import('@/pages/supplier/SupplierReceivables'));
 const SupplierHistory = React.lazy(() => import('@/pages/supplier/SupplierHistory'));
 const SupplierDeliveries = React.lazy(() => import('@/pages/supplier/SupplierDeliveries'));
+const SupplierSettings = React.lazy(() => import('@/pages/supplier/SupplierSettings'));
 const SupplierAuth = React.lazy(() => import('@/pages/supplier/SupplierAuth'));
 const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
@@ -474,6 +475,11 @@ function App() {
                   <Route path="deliveries" element={
                     <Suspense fallback={<LoadingFallback className="p-4" />}>
                       <SupplierDeliveries />
+                    </Suspense>
+                  } />
+                  <Route path="settings" element={
+                    <Suspense fallback={<LoadingFallback className="p-4" />}>
+                      <SupplierSettings />
                     </Suspense>
                   } />
                 </Route>
