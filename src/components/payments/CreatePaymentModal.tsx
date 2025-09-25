@@ -21,7 +21,7 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
   
   const { quotes, isLoading: quotesLoading } = useSupabaseQuotes();
 
-  // Filter only approved quotes that don't have payments yet and have value > 0
+  // Filter only approved quotes that have value > 0 (supplier_id can be null)
   const approvedQuotes = quotes.filter(quote => 
     quote.status === 'approved' && 
     quote.total !== null && 

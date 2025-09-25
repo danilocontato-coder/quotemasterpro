@@ -156,7 +156,7 @@ export default function Payments() {
                     id: 'PAY-' + Date.now().toString(),
                     quote_id: quoteId,
                     client_id: quote.client_id,
-                    supplier_id: quote.supplier_id,
+                    supplier_id: quote.supplier_id || null, // Permitir null para supplier_id
                     amount: amount,
                     status: 'pending'
                   })
