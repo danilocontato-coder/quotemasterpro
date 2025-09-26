@@ -13,7 +13,7 @@ export interface SupplierSearchResult {
   address: any;
   specialties: string[];
   certification_status: string;
-  is_associated: boolean;
+  association_status: string;
 }
 
 export interface FindSupplierResult {
@@ -34,32 +34,51 @@ export function useSupplierAssociation() {
       });
 
       if (error) throw error;
-      return data || [];
+      
+      // Transformar is_associated em association_status
+      const transformedData = (data || []).map(supplier => ({
+        ...supplier,
+        association_status: supplier.is_associated ? 'associated' : 'not_associated'
+      }));
+      
+      return transformedData;
     } catch (error) {
       console.error('Erro ao buscar fornecedor por CNPJ:', error);
       throw error;
     }
   };
 
-  const findOrCreateSupplier = async (
-    cnpj: string,
-    name?: string,
-    email?: string,
-    phone?: string
-  ): Promise<FindSupplierResult> => {
+  const findSupplierByCNPJ = async (cnpj: string): Promise<SupplierSearchResult | null> => {
+    setIsLoading(true);
+    try {
+      const results = await searchSupplierByCNPJ(cnpj);
+      return results.length > 0 ? results[0] : null;
+    } catch (error) {
+      console.error('Erro ao buscar fornecedor:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createNewSupplier = async (supplierData: { name: string; cnpj: string; email?: string; phone?: string }): Promise<FindSupplierResult> => {
+    setIsLoading(true);
     try {
       const { data, error } = await supabase.rpc('find_or_create_supplier_by_cnpj', {
-        p_cnpj: cnpj,
-        p_name: name,
-        p_email: email,
-        p_phone: phone
+        p_cnpj: supplierData.cnpj,
+        p_name: supplierData.name,
+        p_email: supplierData.email || '',
+        p_phone: supplierData.phone || ''
       });
 
       if (error) throw error;
+
       return data[0];
     } catch (error) {
-      console.error('Erro ao buscar/criar fornecedor:', error);
+      console.error('Erro ao criar fornecedor:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -104,7 +123,8 @@ export function useSupplierAssociation() {
   return {
     isLoading,
     searchSupplierByCNPJ,
-    findOrCreateSupplier,
+    findSupplierByCNPJ,
+    createNewSupplier,
     associateSupplierToClient,
     getClientSuppliers
   };

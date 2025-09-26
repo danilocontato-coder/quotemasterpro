@@ -1,307 +1,319 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Building, CheckCircle, UserPlus } from 'lucide-react';
+import { CheckCircle, Search, Building2, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 import { useSupplierAssociation } from '@/hooks/useSupplierAssociation';
-
 
 interface SmartSupplierModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
-export function SmartSupplierModal({ isOpen, onClose, onSuccess }: SmartSupplierModalProps) {
-  const [cnpj, setCNPJ] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [website, setWebsite] = useState('');
-  const [specialties, setSpecialties] = useState('');
-  
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [step, setStep] = useState<'search' | 'found' | 'create'>('search');
-
+export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSupplierModalProps) {
+  const { toast } = useToast();
   const { 
-    searchSupplierByCNPJ, 
-    findOrCreateSupplier, 
-    associateSupplierToClient,
+    findSupplierByCNPJ, 
+    createNewSupplier, 
+    associateSupplierToClient, 
     isLoading 
   } = useSupplierAssociation();
 
-  const handleCNPJSearch = async (searchCnpj: string) => {
-    if (!searchCnpj || searchCnpj.length < 14) {
-      setSearchResults([]);
-      setStep('search');
-      return;
-    }
-    
+  const [step, setStep] = useState<'search' | 'create' | 'found'>('search');
+  const [foundSupplier, setFoundSupplier] = useState<any>(null);
+  const [searchCnpj, setSearchCnpj] = useState('');
+
+  const resetModal = () => {
+    setStep('search');
+    setFoundSupplier(null);
+    setSearchCnpj('');
+  };
+
+  const handleCNPJSearch = async (cnpj: string) => {
+    if (!cnpj.trim()) return;
+
     try {
-      const results = await searchSupplierByCNPJ(searchCnpj);
-      setSearchResults(results);
+      setSearchCnpj(cnpj);
+      const supplier = await findSupplierByCNPJ(cnpj);
       
-      if (results.length > 0) {
-        setStep('found');
-        // Auto-preencher campos do primeiro resultado
-        const firstResult = results[0];
-        setName(firstResult.name);
-        setEmail(firstResult.email);
-        setPhone(firstResult.phone || '');
-        setWhatsapp(firstResult.whatsapp || '');
-        setWebsite(firstResult.website || '');
-        setSpecialties(firstResult.specialties?.join(', ') || '');
+      if (supplier) {
+        setFoundSupplier(supplier);
+        
+        if (supplier.association_status === 'associated') {
+          toast({
+            title: "Fornecedor já associado",
+            description: `O fornecedor ${supplier.name} já está associado ao seu cliente.`,
+            variant: "default"
+          });
+          return;
+        } else {
+          setStep('found');
+        }
       } else {
+        // Não encontrou fornecedor, ir para tela de criação
         setStep('create');
       }
     } catch (error) {
-      console.error('Erro ao buscar fornecedor:', error);
-      setStep('create');
+      console.error('Erro na busca:', error);
+      toast({
+        title: "Erro na busca",
+        description: "Não foi possível buscar o fornecedor.",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleCNPJChange = (value: string) => {
-    const cleanCNPJ = value.replace(/\D/g, '');
-    const formattedCNPJ = cleanCNPJ.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-    setCNPJ(formattedCNPJ);
+  const handleAssociateSupplier = async () => {
+    if (!foundSupplier) return;
     
-    if (cleanCNPJ.length === 14) {
-      handleCNPJSearch(cleanCNPJ);
-    } else {
-      setSearchResults([]);
-      setStep('search');
-    }
-  };
-
-  const handleUseExisting = async (supplier: any) => {
-    if (supplier.is_associated) {
-      // Já está associado
-      return;
-    }
-
-    // Associar diretamente ao cliente
     try {
-      await associateSupplierToClient(supplier.id);
+      await associateSupplierToClient(foundSupplier.id);
       onSuccess?.();
-      onClose();
+      onOpenChange(false);
+      resetModal();
     } catch (error) {
       console.error('Erro ao associar fornecedor:', error);
     }
   };
 
-  const handleCreateNew = async () => {
-    if (!name || !cnpj) return;
-
+  const handleCreateSupplier = async (supplierData: any) => {
     try {
-      const result = await findOrCreateSupplier(cnpj, name, email, phone);
-      await associateSupplierToClient(result.supplier_id);
-      onSuccess?.();
-      onClose();
+      // Usar o CNPJ da busca se não foi fornecido
+      const cnpjToUse = supplierData.cnpj || searchCnpj;
+      
+      const result = await createNewSupplier({
+        cnpj: cnpjToUse,
+        name: supplierData.name,
+        email: supplierData.email,
+        phone: supplierData.phone
+      });
+      
+      if (result.supplier_id) {
+        // Associar o fornecedor ao cliente atual
+        await associateSupplierToClient(result.supplier_id);
+        
+        toast({
+          title: result.is_new ? "Fornecedor criado e associado" : "Fornecedor associado",
+          description: `${supplierData.name} foi ${result.is_new ? 'criado e ' : ''}associado com sucesso.`,
+          variant: "default"
+        });
+        
+        onSuccess?.();
+        onOpenChange(false);
+        resetModal();
+      }
     } catch (error) {
       console.error('Erro ao criar fornecedor:', error);
+      toast({
+        title: "Erro ao criar fornecedor",
+        description: "Não foi possível criar o fornecedor.",
+        variant: "destructive"
+      });
     }
   };
 
-  const resetForm = () => {
-    setCNPJ('');
-    setName('');
-    setEmail('');
-    setPhone('');
-    setWhatsapp('');
-    setWebsite('');
-    setSpecialties('');
-    setSearchResults([]);
-    setStep('search');
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            {step === 'create' ? 'Criar Novo Fornecedor' : 'Buscar Fornecedor'}
+          </DialogTitle>
+        </DialogHeader>
+
+        {step === 'search' && (
+          <CNPJSearch onSearch={handleCNPJSearch} isLoading={isLoading} />
+        )}
+
+        {step === 'found' && foundSupplier && (
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+              <h3 className="text-lg font-semibold">Fornecedor Encontrado!</h3>
+              <p className="text-sm text-muted-foreground">
+                Já existe um fornecedor cadastrado com este CNPJ. Deseja associá-lo ao seu cliente?
+              </p>
+            </div>
+            
+            <div className="bg-muted p-4 rounded-lg">
+              <div className="space-y-2">
+                <p><span className="font-medium">Nome:</span> {foundSupplier.name}</p>
+                <p><span className="font-medium">CNPJ:</span> {foundSupplier.cnpj}</p>
+                <p><span className="font-medium">Email:</span> {foundSupplier.email}</p>
+                <p><span className="font-medium">Status:</span> 
+                  <Badge variant={foundSupplier.certification_status === 'certified' ? 'default' : 'outline'} className="ml-2">
+                    {foundSupplier.certification_status === 'certified' ? 'Certificado' : 'Não Certificado'}
+                  </Badge>
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setStep('search')} 
+                className="flex-1"
+              >
+                Voltar
+              </Button>
+              <Button 
+                onClick={handleAssociateSupplier} 
+                disabled={isLoading}
+                className="flex-1"
+              >
+                {isLoading ? 'Associando...' : 'Associar Fornecedor'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'create' && (
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <Plus className="h-12 w-12 text-blue-500 mx-auto" />
+              <h3 className="text-lg font-semibold">Criar Novo Fornecedor</h3>
+              <p className="text-sm text-muted-foreground">
+                Nenhum fornecedor foi encontrado com este CNPJ. Preencha os dados para criar um novo.
+              </p>
+            </div>
+            
+            <SupplierForm 
+              onSubmit={handleCreateSupplier}
+              onCancel={() => setStep('search')}
+              isLoading={isLoading}
+              defaultCnpj={searchCnpj}
+            />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface CNPJSearchProps {
+  onSearch: (cnpj: string) => void;
+  isLoading: boolean;
+}
+
+function CNPJSearch({ onSearch, isLoading }: CNPJSearchProps) {
+  const [cnpj, setCNPJ] = useState('');
+
+  const handleCNPJChange = (value: string) => {
+    const cleanCNPJ = value.replace(/\D/g, '');
+    const formattedCNPJ = cleanCNPJ.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    setCNPJ(formattedCNPJ);
   };
 
-  const handleClose = () => {
-    resetForm();
-    onClose();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCNPJ = cnpj.replace(/\D/g, '');
+    if (cleanCNPJ.length === 14) {
+      onSearch(cleanCNPJ);
+    }
   };
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              {step === 'create' ? 'Novo Fornecedor' : 'Buscar/Associar Fornecedor'}
-            </DialogTitle>
-          </DialogHeader>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="text-center space-y-2">
+        <Search className="h-12 w-12 text-blue-500 mx-auto" />
+        <h3 className="text-lg font-semibold">Buscar Fornecedor</h3>
+        <p className="text-sm text-muted-foreground">
+          Digite o CNPJ para verificar se o fornecedor já existe no sistema
+        </p>
+      </div>
+      
+      <div>
+        <Label htmlFor="cnpj">CNPJ</Label>
+        <Input
+          id="cnpj"
+          placeholder="00.000.000/0000-00"
+          value={cnpj}
+          onChange={(e) => handleCNPJChange(e.target.value)}
+          maxLength={18}
+        />
+      </div>
+      
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={cnpj.replace(/\D/g, '').length !== 14 || isLoading}
+      >
+        {isLoading ? 'Buscando...' : 'Buscar Fornecedor'}
+      </Button>
+    </form>
+  );
+}
 
-          <div className="space-y-6">
-            {/* Campo CNPJ sempre visível */}
-            <div>
-              <Label htmlFor="cnpj">CNPJ *</Label>
-              <Input
-                id="cnpj"
-                placeholder="00.000.000/0000-00"
-                value={cnpj}
-                onChange={(e) => handleCNPJChange(e.target.value)}
-                maxLength={18}
-              />
-            </div>
+interface SupplierFormProps {
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
+  isLoading?: boolean;
+  defaultCnpj?: string;
+}
 
-            {/* Resultados da busca */}
-            {step === 'found' && searchResults.length > 0 && (
-              <Card className="border-blue-200 bg-blue-50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm text-blue-800 flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4" />
-                    Fornecedor encontrado no sistema
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0 space-y-3">
-                  {searchResults.map((supplier) => (
-                    <div key={supplier.id} className="bg-white p-4 rounded-lg border">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-medium">{supplier.name}</h4>
-                            <Badge variant={supplier.certification_status === 'certified' ? 'default' : 'outline'}>
-                              {supplier.certification_status === 'certified' ? 'Certificado' : 'Não Certificado'}
-                            </Badge>
-                            {supplier.is_associated && (
-                              <Badge variant="secondary">Já Associado</Badge>
-                            )}
-                          </div>
-                          <div className="text-sm text-muted-foreground space-y-1">
-                            <p>{supplier.email}</p>
-                            {supplier.phone && <p>Tel: {supplier.phone}</p>}
-                            {supplier.specialties && supplier.specialties.length > 0 && (
-                              <p>Especialidades: {supplier.specialties.join(', ')}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2 ml-4">
-                          {!supplier.is_associated && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleUseExisting(supplier)}
-                              disabled={isLoading}
-                            >
-                              Associar
-                            </Button>
-                          )}
-                          {supplier.is_associated && (
-                            <Badge variant="secondary" className="text-xs">
-                              Já em sua base
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      
-                    </div>
-                  ))}
-                  
-                  <div className="pt-3 border-t">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setStep('create')}
-                      className="w-full text-muted-foreground"
-                    >
-                      Criar novo fornecedor com este CNPJ
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+function SupplierForm({ onSubmit, onCancel, isLoading, defaultCnpj }: SupplierFormProps) {
+  const [formData, setFormData] = useState({
+    name: '',
+    cnpj: defaultCnpj || '',
+    email: '',
+    phone: ''
+  });
 
-            {/* Formulário de criação */}
-            {(step === 'create' || step === 'search') && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Nome/Razão Social *</Label>
-                    <Input
-                      id="name"
-                      placeholder="Nome do fornecedor"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="email@fornecedor.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      placeholder="(00) 00000-0000"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="whatsapp">WhatsApp</Label>
-                    <Input
-                      id="whatsapp"
-                      placeholder="(00) 00000-0000"
-                      value={whatsapp}
-                      onChange={(e) => setWhatsapp(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    placeholder="https://www.fornecedor.com"
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="specialties">Especialidades</Label>
-                  <Textarea
-                    id="specialties"
-                    placeholder="Ex: Materiais elétricos, Hidráulica, Pintura..."
-                    value={specialties}
-                    onChange={(e) => setSpecialties(e.target.value)}
-                    rows={2}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Botões de ação */}
-            {step === 'create' && (
-              <div className="flex gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={handleClose} className="flex-1">
-                  Cancelar
-                </Button>
-                <Button 
-                  onClick={handleCreateNew}
-                  disabled={!name || !cnpj || !email || isLoading}
-                  className="flex-1"
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Criar e Associar
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-    </>
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="name">Nome/Razão Social *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="email">Email *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+            required
+          />
+        </div>
+      </div>
+      
+      <div>
+        <Label htmlFor="phone">Telefone</Label>
+        <Input
+          id="phone"
+          value={formData.phone}
+          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+        />
+      </div>
+      
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+          Cancelar
+        </Button>
+        <Button 
+          type="submit" 
+          disabled={!formData.name || !formData.email || isLoading}
+          className="flex-1"
+        >
+          {isLoading ? 'Criando...' : 'Criar Fornecedor'}
+        </Button>
+      </div>
+    </form>
   );
 }
