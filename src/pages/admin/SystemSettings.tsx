@@ -36,7 +36,6 @@ export const SystemSettings = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Estados para configurações
   const [systemConfig, setSystemConfig] = useState({
     systemName: 'Sistema de Cotações',
     systemDescription: 'Plataforma corporativa de gestão de cotações',
@@ -50,45 +49,7 @@ export const SystemSettings = () => {
     logRetentionDays: 90
   });
 
-  const [whatsappMessages, setWhatsappMessages] = useState({
-    proposalReceivedMessage: `🎯 *Nova Proposta Recebida!*
-
-📋 *Cotação:* {{quote_title}} ({{quote_id}})
-🏢 *Fornecedor:* {{supplier_name}}
-💰 *Valor Total:* R$ {{total_value}}
-
-✅ Uma nova proposta foi enviada para sua cotação. Acesse o sistema para avaliar os detalhes.
-
-_QuoteMaster Pro - Gestão Inteligente de Cotações_`
-  });
-
-  // Carregar configurações salvas
-  React.useEffect(() => {
-    loadWhatsappMessages();
-  }, []);
-
-  const loadWhatsappMessages = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('system_settings')
-        .select('setting_value')
-        .eq('setting_key', 'whatsapp_proposal_message')
-        .single();
-      
-      if (data && data.setting_value && typeof data.setting_value === 'object') {
-        const settingValue = data.setting_value as { message?: string };
-        if (settingValue.message) {
-          setWhatsappMessages({
-            ...whatsappMessages,
-            proposalReceivedMessage: settingValue.message
-          });
-        }
-      }
-    } catch (error) {
-      // Se não encontrar configuração, usar padrão
-      console.log('Usando mensagem padrão');
-    }
-  };
+  // Carregar configurações salvas (removido carregamento de mensagens WhatsApp)
 
   const [integrationStatus, setIntegrationStatus] = useState({
     email: { connected: true, service: 'SendGrid', status: 'active' },
@@ -102,22 +63,8 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
     setIsLoading(true);
     
     try {
-      if (section === 'Mensagens') {
-        const { error } = await supabase
-          .from('system_settings')
-          .upsert({
-            setting_key: 'whatsapp_proposal_message',
-            setting_value: { message: whatsappMessages.proposalReceivedMessage },
-            description: 'Mensagem WhatsApp enviada quando fornecedor envia proposta'
-          }, {
-            onConflict: 'setting_key'
-          });
-        
-        if (error) throw error;
-      } else {
-        // Simular salvamento para outras seções
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+      // Simular salvamento para outras seções
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast({
         title: "Configurações salvas",
@@ -172,12 +119,11 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
 
       <div className="p-6">
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="ai">IA</TabsTrigger>
             <TabsTrigger value="security">Segurança</TabsTrigger>
             <TabsTrigger value="integrations">Integrações</TabsTrigger>
-            <TabsTrigger value="messages">Mensagens</TabsTrigger>
             <TabsTrigger value="notifications">Notificações</TabsTrigger>
             <TabsTrigger value="maintenance">Manutenção</TabsTrigger>
           </TabsList>
@@ -528,122 +474,6 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-
-          {/* Mensagens WhatsApp */}
-          <TabsContent value="messages" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Smartphone className="h-5 w-5" />
-                  Mensagens WhatsApp
-                </CardTitle>
-                <CardDescription>Personalize as mensagens enviadas automaticamente via WhatsApp</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="proposalMessage">Mensagem: Nova Proposta Recebida</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Mensagem enviada ao cliente quando um fornecedor envia uma nova proposta
-                    </p>
-                    <Textarea
-                      id="proposalMessage"
-                      value={whatsappMessages.proposalReceivedMessage}
-                      onChange={(e) => setWhatsappMessages({
-                        ...whatsappMessages, 
-                        proposalReceivedMessage: e.target.value
-                      })}
-                      rows={12}
-                      className="font-mono text-sm"
-                    />
-                    <div className="bg-muted p-3 rounded-md">
-                      <p className="text-sm font-medium mb-2">Variáveis disponíveis:</p>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <p><code>{'{{quote_title}}'}</code> - Título da cotação</p>
-                        <p><code>{'{{quote_id}}'}</code> - ID da cotação</p>
-                        <p><code>{'{{supplier_name}}'}</code> - Nome do fornecedor</p>
-                        <p><code>{'{{total_value}}'}</code> - Valor total formatado</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <Button onClick={() => handleSave('Mensagens')} disabled={isLoading}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Salvando...' : 'Salvar Mensagens'}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Chat com IA para Perguntas Contextuais */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Assistente IA para Esclarecimentos
-                </CardTitle>
-                <CardDescription>Configure as perguntas contextuais geradas pela IA para esclarecimentos de cotações</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="h-5 w-5 text-blue-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-blue-800 mb-2">IA Contextual Disponível</h4>
-                      <p className="text-sm text-blue-700 mb-3">
-                        O sistema já possui IA integrada que gera automaticamente perguntas contextuais para esclarecimentos entre clientes e fornecedores.
-                      </p>
-                      <div className="space-y-2 text-sm text-blue-700">
-                        <p>• <strong>Esclarecimentos Estruturados:</strong> Disponível em Comunicação → Esclarecimentos</p>
-                        <p>• <strong>Chat IA para Cotações:</strong> Geração automatizada de RFQs com base nas necessidades</p>
-                        <p>• <strong>Perguntas Contextuais:</strong> IA sugere perguntas relevantes baseadas no contexto da cotação</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <h5 className="font-medium mb-2">Acesso via Comunicação</h5>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Sistema de esclarecimentos com IA contextual já integrado na seção Comunicação.
-                    </p>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href="/communication" target="_blank">
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        Ver Esclarecimentos
-                      </a>
-                    </Button>
-                  </div>
-
-                  <div className="p-4 border rounded-lg">
-                    <h5 className="font-medium mb-2">Chat IA em Cotações</h5>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      IA integrada para criação de cotações com perguntas contextuais automáticas.
-                    </p>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href="/quotes" target="_blank">
-                        <Bot className="h-4 w-4 mr-2" />
-                        Ver Chat IA
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                  <div className="flex items-start gap-3">
-                    <Settings className="h-5 w-5 text-amber-600 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-amber-800 mb-1">Configurações Avançadas</h4>
-                      <p className="text-sm text-amber-700">
-                        As configurações de IA estão disponíveis na aba "IA" desta seção para ajustes de prompts e comportamento do assistente.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Notificações */}

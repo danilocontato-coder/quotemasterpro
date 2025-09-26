@@ -58,7 +58,7 @@ serve(async (req) => {
     // Try to resolve Evolution configuration for this client
     const evolutionConfig = await resolveEvolutionConfig(supabase, client.id)
     
-    // Get custom message template from system settings
+    // Get custom message template from templates
     let messageTemplate = `🎯 *Nova Proposta Recebida!*
 
 📋 *Cotação:* {{quote_title}} ({{quote_id}})
@@ -70,17 +70,19 @@ serve(async (req) => {
 _QuoteMaster Pro - Gestão Inteligente de Cotações_`
 
     try {
-      const { data: settingsData } = await supabase
-        .from('system_settings')
-        .select('setting_value')
-        .eq('setting_key', 'whatsapp_proposal_message')
+      // First try to find a client-specific template, then fall back to global template
+      const { data: templateData } = await supabase
+        .from('whatsapp_templates')
+        .select('message_content')
+        .eq('template_type', 'proposal_received_whatsapp')
+        .eq('active', true)
+        .or(`client_id.eq.${client.id},is_global.eq.true`)
+        .order('is_global', { ascending: true }) // Client-specific first, then global
+        .limit(1)
         .single()
 
-      if (settingsData?.setting_value && typeof settingsData.setting_value === 'object') {
-        const settingValue = settingsData.setting_value as { message?: string }
-        if (settingValue.message) {
-          messageTemplate = settingValue.message
-        }
+      if (templateData?.message_content) {
+        messageTemplate = templateData.message_content
       }
     } catch (error) {
       console.log('⚠️ Using default message template:', error)
