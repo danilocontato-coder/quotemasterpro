@@ -301,17 +301,15 @@ export default function Quotes() {
             <Archive className="h-4 w-4" />
             Matrizes de Decisão
           </Button>
-          {aiFeatureEnabled && (
-            <Button 
-              variant="outline" 
-              onClick={() => setIsAIModalOpen(true)} 
-              className="flex items-center gap-2"
-              disabled={!!error}
-            >
-              <Sparkles className="h-4 w-4" />
-              Gerar com IA
-            </Button>
-          )}
+          <Button 
+            variant="outline" 
+            onClick={() => setIsAIModalOpen(true)} 
+            className="flex items-center gap-2"
+            disabled={!!error}
+          >
+            <Sparkles className="h-4 w-4" />
+            Gerar com IA
+          </Button>
           <Button 
             className="btn-corporate flex items-center gap-2"
             onClick={() => {
@@ -718,15 +716,13 @@ export default function Quotes() {
       )}
 
       {/* AI Quote Generator Modal */}
-      {aiFeatureEnabled && (
-        <Suspense fallback={<div>Carregando...</div>}>
-          <AIQuoteGeneratorModal
-            open={isAIModalOpen}
-            onOpenChange={setIsAIModalOpen}
-            onQuoteGenerated={handleAIQuoteGenerated}
-          />
-        </Suspense>
-      )}
+      <Suspense fallback={<div>Carregando...</div>}>
+        <AIQuoteGeneratorModal
+          open={isAIModalOpen}
+          onOpenChange={setIsAIModalOpen}
+          onQuoteGenerated={handleAIQuoteGenerated}
+        />
+      </Suspense>
     </div>
   );
 }
