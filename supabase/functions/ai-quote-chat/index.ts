@@ -20,19 +20,36 @@ serve(async (req) => {
     );
 
     // Buscar chave da API do OpenAI das configurações do sistema (superadmin)
-    const { data: aiSettings, error: settingsError } = await supabaseClient
-      .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', 'openai_api_key')
-      .single();
+    const possibleKeys = ['openai_api_key', 'OPENAI_API_KEY', 'ai_openai_api_key'];
+    let aiSettings: any = null;
+    let settingsError: any = null;
 
-    if (settingsError || !aiSettings?.setting_value) {
-      console.error('OpenAI API key not found in settings:', settingsError);
+    for (const k of possibleKeys) {
+      const { data, error } = await supabaseClient
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', k)
+        .single();
+      if (data?.setting_value) { aiSettings = data; break; }
+      if (!settingsError) settingsError = error;
+    }
+
+    if (!aiSettings?.setting_value) {
+      // Fallback: usar secret OPENAI_API_KEY se existir
+      const envKey = Deno.env.get('OPENAI_API_KEY');
+      if (envKey) {
+        aiSettings = { setting_value: envKey } as any;
+      }
+    }
+
+    if (!aiSettings?.setting_value) {
+      console.error('OpenAI API key not found in settings or env');
       return new Response(
         JSON.stringify({ error: 'OpenAI API key not configured in system settings' }), 
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
 
     // Normaliza formato da chave (string direta, string JSON ou objeto)
     const rawKey = aiSettings.setting_value as unknown;
@@ -71,8 +88,12 @@ serve(async (req) => {
         }
       }
     }
+    console.log('[ai-quote-chat] Key source shape:', {
+      isString: typeof rawKey === 'string',
+      isObject: !!rawKey && typeof rawKey === 'object',
+      objectKeys: rawKey && typeof rawKey === 'object' ? Object.keys(rawKey as Record<string, unknown>) : undefined,
+    });
 
-    console.log('[ai-quote-chat] Resolved OpenAI key type:', { hasKey: !!openaiApiKey, keyLen: openaiApiKey?.length || 0 });
 
     if (!openaiApiKey) {
       console.error('OpenAI API key resolved to empty string. Check system_settings.openai_api_key format.');
