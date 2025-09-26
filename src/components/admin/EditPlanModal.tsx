@@ -116,6 +116,16 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
     setIsSubmitting(true);
 
     try {
+      console.log('Dados do plano sendo enviados:', {
+        planId: plan?.id,
+        formData,
+        selectedFeatures
+      });
+
+      if (!plan?.id) {
+        throw new Error('ID do plano não encontrado');
+      }
+
       const planData = {
         ...formData,
         features: selectedFeatures,
@@ -132,9 +142,10 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
       
       onClose();
     } catch (error) {
+      console.error('Erro detalhado ao atualizar plano:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar o plano",
+        description: error instanceof Error ? error.message : "Não foi possível atualizar o plano",
         variant: "destructive",
       });
     } finally {
