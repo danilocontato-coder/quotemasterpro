@@ -26,7 +26,7 @@ import {
 import { ApprovalDetailModal } from "@/components/approvals/ApprovalDetailModal";
 import { QuoteMarkAsReceivedButton } from "@/components/quotes/QuoteMarkAsReceivedButton";
 import { useSupabaseApprovals, type Approval } from "@/hooks/useSupabaseApprovals";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -112,6 +112,19 @@ export function Approvals() {
   const pendingCount = approvals.filter(a => a.status === "pending").length;
   const approvedCount = approvals.filter(a => a.status === "approved").length;
   const rejectedCount = approvals.filter(a => a.status === "rejected").length;
+
+  if (isLoading) {
+    return (
+      <PageLoader
+        hasHeader={true}
+        hasMetrics={true}
+        hasSearch={true}
+        hasTable={true}
+        metricsCount={4}
+        tableRows={8}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -220,20 +233,8 @@ export function Approvals() {
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                        </TableRow>
-                      ))
-                    ) : filteredApprovals.length === 0 ? (
+                   <TableBody>
+                     {filteredApprovals.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8">
                           <div className="flex flex-col items-center gap-2">

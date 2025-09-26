@@ -15,7 +15,7 @@ import { InvoiceImportModal } from "@/components/items/InvoiceImportModal";
 import { StockMovementLogModal } from "@/components/items/StockMovementLogModal";
 import { useSupabaseProducts } from "@/hooks/useSupabaseProducts";
 import { getStatusColor, getStatusText } from "@/data/mockData";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -267,25 +267,18 @@ export default function Products() {
       </Card>
 
       {/* Items Grid */}
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isLoading ? (
-            // Loading skeletons
-            Array.from({ length: 6 }).map((_, index) => (
-              <Card key={index} className="card-corporate">
-                <CardHeader>
-                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                  <div className="h-3 bg-gray-200 rounded animate-pulse w-2/3"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
-                    <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : currentItems.length > 0 ? (
+      {isLoading ? (
+        <PageLoader
+          hasHeader={false}
+          hasMetrics={false}
+          hasSearch={false}
+          hasGrid={true}
+          gridColumns={3}
+        />
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentItems.length > 0 ? (
             currentItems.map((item) => {
               const stockQuantity = item.stock_quantity || 0;
               const stockStatus = getStockStatus(stockQuantity);

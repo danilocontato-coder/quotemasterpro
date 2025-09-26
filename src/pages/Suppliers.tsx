@@ -10,8 +10,7 @@ import { ClientSupplierModal } from "@/components/suppliers/ClientSupplierModal"
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
-import { Skeleton } from "@/components/ui/skeleton";
-
+import { PageLoader } from "@/components/ui/page-loader";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Suppliers() {
@@ -271,26 +270,16 @@ export default function Suppliers() {
       </Card>
 
       {/* Suppliers Grid */}
-      <div className="space-y-6">
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Card key={index} className="card-corporate">
-                <CardHeader>
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
+      {isLoading ? (
+        <PageLoader
+          hasHeader={false}
+          hasMetrics={false}
+          hasSearch={false}
+          hasGrid={true}
+          gridColumns={3}
+        />
+      ) : (
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentSuppliers.map((supplier) => (
             <TooltipProvider key={supplier.id}>
@@ -390,7 +379,8 @@ export default function Suppliers() {
             </TooltipProvider>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
         {/* Paginação */}
         {totalPages > 1 && (

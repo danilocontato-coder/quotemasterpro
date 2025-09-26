@@ -33,9 +33,9 @@ import {
   TrendingDown,
   Award
 } from 'lucide-react';
-import { useReports, ReportFilter } from '@/hooks/useReports';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { useToast } from '@/hooks/use-toast';
+import { PageLoader } from '@/components/ui/page-loader';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
@@ -76,6 +76,20 @@ interface SupplierData {
   specialties: string[];
   rating: number;
   status: string;
+}
+
+interface ReportFilter {
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  status?: string[];
+  suppliers?: string[];
+  clients?: string[];
+  minAmount?: number;
+  maxAmount?: number;
+  categories?: string[];
+  ratings?: number;
 }
 
 interface ReportMetrics {
@@ -607,6 +621,19 @@ export default function Reports() {
     };
     return texts[status as keyof typeof texts] || status;
   };
+
+  if (isLoading) {
+    return (
+      <PageLoader
+        hasHeader={true}
+        hasMetrics={true}
+        hasSearch={true}
+        hasTable={true}
+        metricsCount={6}
+        tableRows={10}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

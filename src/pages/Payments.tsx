@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
+import { PageLoader } from "@/components/ui/page-loader";
 import { useSupabasePayments } from "@/hooks/useSupabasePayments";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { getStatusColor, getStatusText } from "@/data/mockData";
@@ -247,19 +248,16 @@ export default function Payments() {
       </Card>
 
       {/* Payments Grid */}
-      <div className="space-y-6">
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
+      {isLoading ? (
+        <PageLoader
+          hasHeader={false}
+          hasMetrics={false}
+          hasSearch={false}
+          hasGrid={true}
+          gridColumns={3}
+        />
+      ) : (
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentPayments.map((payment) => (
               <PaymentCard
@@ -294,7 +292,8 @@ export default function Payments() {
               />
             ))}
           </div>
-        )}
+        </div>
+      )}
 
         {/* Pagination */}
         {totalPages > 1 && (
