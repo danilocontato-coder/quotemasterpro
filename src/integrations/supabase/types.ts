@@ -734,6 +734,60 @@ export type Database = {
           },
         ]
       }
+      client_suppliers: {
+        Row: {
+          associated_at: string | null
+          client_id: string
+          created_at: string | null
+          id: string
+          invitation_accepted_at: string | null
+          invited_at: string | null
+          notes: string | null
+          status: string | null
+          supplier_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          associated_at?: string | null
+          client_id: string
+          created_at?: string | null
+          id?: string
+          invitation_accepted_at?: string | null
+          invited_at?: string | null
+          notes?: string | null
+          status?: string | null
+          supplier_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          associated_at?: string | null
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          invitation_accepted_at?: string | null
+          invited_at?: string | null
+          notes?: string | null
+          status?: string | null
+          supplier_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_suppliers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_suppliers_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_usage: {
         Row: {
           categories_count: number
@@ -2337,15 +2391,113 @@ export type Database = {
           business_info: Json | null
           certification_date: string | null
           certification_expires_at: string | null
+          certification_status: string | null
           city: string | null
-          client_id: string | null
           cnpj: string
           completed_orders: number | null
           created_at: string | null
           email: string
           id: string
+          invited_by_clients: string[] | null
           is_certified: boolean | null
+          last_invitation_sent: string | null
           name: string
+          phone: string | null
+          rating: number | null
+          region: string | null
+          specialties: string[] | null
+          state: string | null
+          status: string | null
+          subscription_plan_id: string | null
+          type: string | null
+          updated_at: string | null
+          visibility_scope: string | null
+          website: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: Json | null
+          business_info?: Json | null
+          certification_date?: string | null
+          certification_expires_at?: string | null
+          certification_status?: string | null
+          city?: string | null
+          cnpj: string
+          completed_orders?: number | null
+          created_at?: string | null
+          email: string
+          id?: string
+          invited_by_clients?: string[] | null
+          is_certified?: boolean | null
+          last_invitation_sent?: string | null
+          name: string
+          phone?: string | null
+          rating?: number | null
+          region?: string | null
+          specialties?: string[] | null
+          state?: string | null
+          status?: string | null
+          subscription_plan_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+          visibility_scope?: string | null
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: Json | null
+          business_info?: Json | null
+          certification_date?: string | null
+          certification_expires_at?: string | null
+          certification_status?: string | null
+          city?: string | null
+          cnpj?: string
+          completed_orders?: number | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          invited_by_clients?: string[] | null
+          is_certified?: boolean | null
+          last_invitation_sent?: string | null
+          name?: string
+          phone?: string | null
+          rating?: number | null
+          region?: string | null
+          specialties?: string[] | null
+          state?: string | null
+          status?: string | null
+          subscription_plan_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+          visibility_scope?: string | null
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers_backup: {
+        Row: {
+          address: Json | null
+          business_info: Json | null
+          certification_date: string | null
+          certification_expires_at: string | null
+          city: string | null
+          client_id: string | null
+          cnpj: string | null
+          completed_orders: number | null
+          created_at: string | null
+          email: string | null
+          id: string | null
+          is_certified: boolean | null
+          name: string | null
           phone: string | null
           rating: number | null
           region: string | null
@@ -2366,13 +2518,13 @@ export type Database = {
           certification_expires_at?: string | null
           city?: string | null
           client_id?: string | null
-          cnpj: string
+          cnpj?: string | null
           completed_orders?: number | null
           created_at?: string | null
-          email: string
-          id?: string
+          email?: string | null
+          id?: string | null
           is_certified?: boolean | null
-          name: string
+          name?: string | null
           phone?: string | null
           rating?: number | null
           region?: string | null
@@ -2393,13 +2545,13 @@ export type Database = {
           certification_expires_at?: string | null
           city?: string | null
           client_id?: string | null
-          cnpj?: string
+          cnpj?: string | null
           completed_orders?: number | null
           created_at?: string | null
-          email?: string
-          id?: string
+          email?: string | null
+          id?: string | null
           is_certified?: boolean | null
-          name?: string
+          name?: string | null
           phone?: string | null
           rating?: number | null
           region?: string | null
@@ -2413,22 +2565,7 @@ export type Database = {
           website?: string | null
           whatsapp?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "suppliers_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "suppliers_subscription_plan_id_fkey"
-            columns: ["subscription_plan_id"]
-            isOneToOne: false
-            referencedRelation: "subscription_plans"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       support_tickets: {
         Row: {
