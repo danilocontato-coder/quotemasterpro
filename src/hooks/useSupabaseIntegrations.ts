@@ -131,13 +131,19 @@ export function useSupabaseIntegrations() {
 
       setIntegrations(prev => [data as Integration, ...prev]);
       toast.success('Integração criada com sucesso!');
+      
+      // Force reload to ensure sync
+      setTimeout(() => {
+        loadIntegrations();
+      }, 500);
+      
       return data;
     } catch (error) {
       console.error('Erro ao criar integração:', error);
       toast.error('Erro ao criar integração');
       throw error;
     }
-  }, [user?.clientId, user?.supplierId]);
+  }, [user?.clientId, user?.supplierId, loadIntegrations]);
 
   const updateIntegration = useCallback(async (id: string, updates: Partial<Integration>) => {
     try {
@@ -183,8 +189,11 @@ export function useSupabaseIntegrations() {
 
       console.log('Integração excluída com sucesso:', id);
       toast.success('Integração excluída com sucesso!');
-      // Garantir sincronização com o backend
-      await loadIntegrations();
+      
+      // Force reload from database to ensure sync
+      setTimeout(() => {
+        loadIntegrations();
+      }, 500);
     } catch (error: any) {
       console.error('Erro ao excluir integração:', error);
       if (!error?.message) {
@@ -234,6 +243,12 @@ export function useSupabaseIntegrations() {
     }
   }, [integrations]);
 
+  const forceRefresh = useCallback(async () => {
+    console.log('Forçando refresh completo das integrações...');
+    lastUserKeyRef.current = ''; // Clear cache to force reload
+    await loadIntegrations();
+  }, [loadIntegrations]);
+
   return {
     integrations: filteredIntegrations,
     loading,
@@ -249,6 +264,7 @@ export function useSupabaseIntegrations() {
     toggleIntegrationStatus,
     testIntegration,
     stats: getStats,
-    refetch: loadIntegrations
+    refetch: loadIntegrations,
+    forceRefresh
   };
 }

@@ -195,7 +195,9 @@ export const IntegrationsAndApisManagement = () => {
     deleteIntegration,
     toggleIntegrationStatus,
     testIntegration,
-    stats
+    stats,
+    refetch,
+    forceRefresh
   } = useSupabaseIntegrations();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -322,7 +324,9 @@ export const IntegrationsAndApisManagement = () => {
 
   useEffect(() => {
     fetchConfigured();
-  }, []);
+    // Forçar refetch das integrações quando o componente monta
+    forceRefresh();
+  }, [forceRefresh]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -482,13 +486,27 @@ export const IntegrationsAndApisManagement = () => {
                 <h2 className="text-xl font-semibold text-foreground">Lista de Integrações</h2>
                 <p className="text-muted-foreground">Gerencie todas as integrações de APIs e serviços externos</p>
               </div>
-              <Button 
-                className="bg-primary hover:bg-primary/90"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Integração
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => forceRefresh()}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4 mr-2" />
+                  )}
+                  Atualizar
+                </Button>
+                <Button 
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Integração
+                </Button>
+              </div>
             </div>
 
             {/* Filtros e Pesquisa */}
