@@ -524,20 +524,30 @@ Formato da RFQ final:
         // Buscar client_id do usuário
         const { data: profile, error: profileError } = await supabaseClient
           .from('profiles')
-          .select('client_id')
+          .select('client_id, name, role')
           .eq('id', userId)
           .single();
 
         if (profileError) {
-          console.error('Erro ao buscar perfil:', profileError);
+          console.error('❌ Erro ao buscar perfil:', profileError);
           throw new Error(`Erro ao buscar perfil: ${profileError.message}`);
         }
 
         if (!profile?.client_id) {
+          console.error('❌ Cliente não encontrado no perfil');
           throw new Error('Cliente não encontrado no perfil do usuário');
         }
 
-        console.log('📋 Perfil encontrado:', { userId, clientId: profile.client_id });
+        console.log('✅ Perfil encontrado:', { userId, clientId: profile.client_id, name: profile.name });
+
+        // Buscar nome do cliente para usar na cotação
+        const { data: clientData } = await supabaseClient
+          .from('clients')
+          .select('name')
+          .eq('id', profile.client_id)
+          .single();
+
+        const clientDisplayName = clientData?.name || profile.name || 'Cliente';
 
         // Buscar fornecedores automaticamente se especificado
         let selectedSuppliers: any[] = [];
@@ -594,7 +604,7 @@ Formato da RFQ final:
             null,
           selected_supplier_ids: selectedSuppliers.map(s => s.id),
           suppliers_sent_count: selectedSuppliers.length,
-          client_name: clientInfo.name || 'Cliente'
+          client_name: clientDisplayName
         };
         
         console.log('📋 Payload da cotação:', quotePayload);
