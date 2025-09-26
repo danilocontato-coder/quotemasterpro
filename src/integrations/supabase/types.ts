@@ -3181,10 +3181,6 @@ export type Database = {
         Args: { prefix?: string }
         Returns: string
       }
-      next_quote_id: {
-        Args: { prefix?: string }
-        Returns: string
-      }
       next_quote_id_by_client: {
         Args: { p_client_id: string; prefix?: string }
         Returns: string
