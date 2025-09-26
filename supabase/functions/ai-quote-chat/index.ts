@@ -351,7 +351,15 @@ Formato da RFQ final:
       suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
     }
     if (aiResponse.includes('GERAR_RFQ:')) {
-      const jsonPart = aiResponse.split('GERAR_RFQ:')[1].trim();
+      let jsonPart = aiResponse.split('GERAR_RFQ:')[1].trim();
+      
+      // Remover blocos de código markdown se existirem
+      if (jsonPart.startsWith('```json')) {
+        jsonPart = jsonPart.replace(/```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonPart.startsWith('```')) {
+        jsonPart = jsonPart.replace(/```\s*/, '').replace(/\s*```$/, '');
+      }
+      
       try {
         const quoteData = JSON.parse(jsonPart);
         console.log('📝 Gerando RFQ no banco:', quoteData);
