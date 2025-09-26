@@ -28,6 +28,8 @@ export const SuperAdminDashboard = () => {
   console.log('SuperAdminDashboard component rendering');
   const navigate = useNavigate();
   const { metrics, activities, systemStatus, financialSummary, isLoading, error } = useSuperAdminDashboard();
+  
+  console.log('SuperAdminDashboard state:', { isLoading, error, metricsCount: Object.keys(metrics).length });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -73,7 +75,7 @@ export const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="w-full h-full bg-background">
       <div className="border-b bg-card px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -93,7 +95,7 @@ export const SuperAdminDashboard = () => {
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 overflow-auto">
         {/* Métricas Principais */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">

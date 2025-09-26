@@ -52,10 +52,8 @@ export const SuperAdminLayout = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto">
-            <Outlet />
-          </div>
+        <main className="flex-1 overflow-auto">
+          <Outlet />
         </main>
         
         {/* Footer */}
