@@ -45,7 +45,13 @@ export default function Quotes() {
   
   const { quotes, createQuote, updateQuote, deleteQuote, isLoading, error, markQuoteAsReceived, refetch } = useSupabaseQuotes();
   const { enforceLimit } = useSupabaseSubscriptionGuard();
-  const { isEnabled: aiFeatureEnabled } = useAIQuoteFeature();
+  const { isEnabled: aiFeatureEnabled, isLoading: aiFeatureLoading } = useAIQuoteFeature();
+
+  console.log('🤖 [QUOTES-PAGE] AI Feature Status:', { 
+    aiFeatureEnabled, 
+    aiFeatureLoading,
+    hookRan: true 
+  });
 
   // Carregar alerts apenas quando necessário
   const [alertsEnabled, setAlertsEnabled] = useState(false);

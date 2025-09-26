@@ -199,9 +199,16 @@ export const useSupabaseProducts = () => {
         }
       }
 
+      // Ensure types are correct for Supabase
+      const finalPayload = {
+        ...productPayload,
+        supplier_id: productPayload.supplier_id || null,
+        client_id: productPayload.client_id || null
+      } as any; // Type assertion to bypass strict typing
+
       const { data, error } = await supabase
         .from('products')
-        .insert([productPayload])
+        .insert(finalPayload)
         .select()
         .single();
 
