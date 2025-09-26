@@ -23,7 +23,7 @@ const QuoteDetailModal = lazy(() => import("@/components/quotes/QuoteDetailModal
 const StatusProgressIndicator = lazy(() => import("@/components/quotes/StatusProgressIndicator").then(m => ({ default: m.StatusProgressIndicator })));
 const EconomyNotification = lazy(() => import("@/components/quotes/EconomyNotification").then(m => ({ default: m.EconomyNotification, useEconomyAlerts: m.useEconomyAlerts })));
 const SendQuoteToSuppliersModal = lazy(() => import("@/components/quotes/SendQuoteToSuppliersModal").then(m => ({ default: m.SendQuoteToSuppliersModal })));
-const AIQuoteGeneratorModal = lazy(() => import("@/components/quotes/AIQuoteGeneratorModal").then(m => ({ default: m.AIQuoteGeneratorModal })));
+const DocumentUploadModal = lazy(() => import("@/components/quotes/DocumentUploadModal").then(m => ({ default: m.DocumentUploadModal })));
 const AIQuoteChat = lazy(() => import("@/components/quotes/AIQuoteChat").then(m => ({ default: m.AIQuoteChat })));
 
 export default function Quotes() {
@@ -34,7 +34,7 @@ export default function Quotes() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isMatrixManagerOpen, setIsMatrixManagerOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<any | null>(null);
   const [viewingQuote, setViewingQuote] = useState<any | null>(null);
@@ -306,12 +306,12 @@ export default function Quotes() {
           <div className="flex gap-1">
             <Button 
               variant="outline" 
-              onClick={() => setIsAIModalOpen(true)} 
+              onClick={() => setIsDocumentModalOpen(true)} 
               className="flex items-center gap-2"
               disabled={!!error}
             >
-              <Sparkles className="h-4 w-4" />
-              IA Rápida
+              <FileText className="h-4 w-4" />
+              Importar Documento
             </Button>
             <Button 
               variant="default" 
@@ -320,7 +320,7 @@ export default function Quotes() {
               disabled={!!error}
             >
               <Sparkles className="h-4 w-4" />
-              Chat IA
+              Cotação por IA
             </Button>
           </div>
           <Button 
@@ -727,15 +727,6 @@ export default function Quotes() {
           </CardContent>
         </Card>
       )}
-
-      {/* AI Quote Generator Modal */}
-      <Suspense fallback={<div>Carregando...</div>}>
-        <AIQuoteGeneratorModal
-          open={isAIModalOpen}
-          onOpenChange={setIsAIModalOpen}
-          onQuoteGenerated={handleAIQuoteGenerated}
-        />
-      </Suspense>
 
       {/* AI Quote Chat Modal */}
       {isAIChatOpen && (
