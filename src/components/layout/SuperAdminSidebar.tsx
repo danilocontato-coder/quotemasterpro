@@ -164,10 +164,10 @@ const navigation = [
         description: 'Campanhas de e-mail'
       },
       {
-        name: 'Templates WhatsApp',
-        href: '/admin/whatsapp-templates',
+        name: 'Templates & Mensagens',
+        href: '/admin/templates',
         icon: MessageSquare,
-        description: 'Modelos de mensagem'
+        description: 'WhatsApp, Email, SMS e Notificações'
       },
       {
         name: 'Gestão de Cupons',

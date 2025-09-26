@@ -47,7 +47,7 @@ const SystemSettings = React.lazy(() => import('@/pages/admin/SystemSettings'));
 const BrandSettings = React.lazy(() => import('@/pages/admin/BrandSettings'));
 const CouponsManagement = React.lazy(() => import('@/pages/admin/CouponsManagement'));
 const PlansManagement = React.lazy(() => import('@/pages/admin/PlansManagement'));
-const WhatsAppTemplates = React.lazy(() => import('@/pages/admin/WhatsAppTemplates'));
+const TemplatesManagement = React.lazy(() => import('@/pages/admin/TemplatesManagement'));
 const AdminDashboard = React.lazy(() => import('@/pages/dashboards/AdminDashboard'));
 const SupportDashboard = React.lazy(() => import('@/pages/dashboards/SupportDashboard'));
 const AuditLogs = React.lazy(() => import('@/pages/admin/AuditLogs'));
@@ -170,9 +170,9 @@ export const AppWithProviders: React.FC = () => {
             <IntegrationsAndApisManagement />
           </Suspense>
         } />
-        <Route path="whatsapp-templates" element={
+        <Route path="templates" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <WhatsAppTemplates />
+            <TemplatesManagement />
           </Suspense>
         } />
         <Route path="clients" element={
