@@ -27,6 +27,12 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId] = useState(() => crypto.randomUUID());
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Função para scroll automático
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
     // Mensagem de boas-vindas dinâmica
@@ -46,9 +52,7 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
   }, []);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    scrollToBottom();
   }, [messages]);
 
   const sendMessage = async (text: string) => {
@@ -110,11 +114,15 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
 
   const handleSuggestionClick = (suggestion: string) => {
     sendMessage(suggestion);
+    // Scroll automático após selecionar sugestão
+    setTimeout(() => scrollToBottom(), 100);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sendMessage(currentMessage);
+    // Scroll automático após enviar mensagem
+    setTimeout(() => scrollToBottom(), 100);
   };
 
   return (
@@ -189,6 +197,9 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
                 </div>
               </div>
             )}
+
+            {/* Elemento invisível para scroll automático */}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
