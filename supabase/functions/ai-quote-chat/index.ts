@@ -692,14 +692,18 @@ Formato da RFQ final:
                 .select('id')
                 .eq('name', item.product_name)
                 .eq('client_id', profile.client_id)
-                .single();
+                .maybeSingle();
 
               if (!existingProduct) {
                 console.log(`➕ Criando novo produto: ${item.product_name}`);
-                // Criar produto padrão
+                // Gerar código simples e único para o produto
+                let code = `PROD${Date.now().toString().slice(-6)}${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`;
+                
+                // Tentar inserir produto com código gerado
                 const { data: newProduct, error: insertError } = await supabaseClient
                   .from('products')
                   .insert({
+                    code,
                     name: item.product_name,
                     description: item.description || `Produto criado pela IA para RFQ #${newQuote.id}`,
                     category: 'Geral',
