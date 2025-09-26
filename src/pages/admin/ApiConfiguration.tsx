@@ -303,9 +303,10 @@ export const ApiConfiguration = () => {
                       </div>
                     </div>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
+                );
+              })}
+            </CardContent>
+          </Card>
           </TabsContent>
         ))}
       </Tabs>
