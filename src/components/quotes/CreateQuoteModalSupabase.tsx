@@ -50,8 +50,7 @@ const steps = [
   { id: 1, title: "Dados" },
   { id: 2, title: "Itens" },
   { id: 3, title: "Fornecedor" },
-  { id: 4, title: "Revisão" },
-  { id: 5, title: "Envio" }
+  { id: 4, title: "Revisão" }
 ];
 
 export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, editingQuote }: CreateQuoteModalSupabaseProps) {
@@ -286,10 +285,10 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       whatsappMethod: formData.communicationMethods.whatsapp
     });
     
-    // Sempre permitir se estivermos na última etapa
+    // Sempre permitir se estivermos na última etapa (Revisão)
     if (currentStep === steps.length) {
       const canProceedFinal = formData.title.trim() !== "" && formData.items.length > 0;
-      console.log('🔍 DEBUG canProceed - Step 5 result:', canProceedFinal);
+      console.log('🔍 DEBUG canProceed - Final step result:', canProceedFinal);
       return canProceedFinal;
     }
     
@@ -606,67 +605,13 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
                 )}
               </CardContent>
             </Card>
-          </div>
-        );
 
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold">Forma de Envio</h3>
-              <p className="text-sm text-muted-foreground">Escolha como enviar a cotação aos fornecedores</p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="email"
-                  checked={formData.communicationMethods.email}
-                  onCheckedChange={(checked) => 
-                    setFormData(prev => ({
-                      ...prev,
-                      communicationMethods: {
-                        ...prev.communicationMethods,
-                        email: checked === true
-                      }
-                    }))
-                  }
-                />
-                <label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  E-mail
-                </label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="whatsapp"
-                  checked={formData.communicationMethods.whatsapp}
-                  onCheckedChange={(checked) => 
-                    setFormData(prev => ({
-                      ...prev,
-                      communicationMethods: {
-                        ...prev.communicationMethods,
-                        whatsapp: checked === true
-                      }
-                    }))
-                  }
-                />
-                <label htmlFor="whatsapp" className="flex items-center gap-2">
-                  <MessageCircle className="h-4 w-4" />
-                  WhatsApp
-                </label>
-              </div>
-            </div>
-
-            {!formData.communicationMethods.email && !formData.communicationMethods.whatsapp && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Selecione pelo menos um método de comunicação para enviar a cotação.
-                </AlertDescription>
-              </Alert>
-            )}
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>Próximo passo:</strong> Após criar a cotação, você poderá enviá-la aos fornecedores selecionados através da tela de cotações.
+              </AlertDescription>
+            </Alert>
           </div>
         );
 
@@ -713,14 +658,14 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
             </Button>
 
             {currentStep === steps.length ? (
-              <Button
-                onClick={handleSubmit}
-                disabled={!canProceed()}
-                className="flex items-center gap-2"
-              >
-                <Send className="h-4 w-4" />
-                {editingQuote ? 'Atualizar' : 'Criar'} Cotação
-              </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!canProceed()}
+                  className="flex items-center gap-2"
+                >
+                  <Package className="h-4 w-4" />
+                  {editingQuote ? 'Atualizar' : 'Criar'} Cotação
+                </Button>
             ) : (
               <Button
                 onClick={handleNext}
