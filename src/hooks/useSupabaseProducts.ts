@@ -192,6 +192,8 @@ export const useSupabaseProducts = () => {
         if (!productPayload.client_id) {
           throw new Error('Perfil de usuário não está associado a um cliente');
         }
+        // Para clientes, o supplier_id pode ser null (produto criado pelo cliente)
+        productPayload.supplier_id = null;
       } else if (profile.role === 'supplier') {
         productPayload.supplier_id = profile.supplier_id || user?.supplierId || null;
         if (!productPayload.supplier_id) {
