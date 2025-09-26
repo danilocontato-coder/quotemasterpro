@@ -37,6 +37,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
 import { CreatePlanModalSupabase } from '@/components/admin/CreatePlanModalSupabase';
+import { EditPlanModal } from '@/components/admin/EditPlanModal';
+import { ViewPlanModal } from '@/components/admin/ViewPlanModal';
 
 export const PlansManagement = () => {
   const {
@@ -56,6 +58,9 @@ export const PlansManagement = () => {
   } = useSupabaseSubscriptionPlans();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -96,6 +101,16 @@ export const PlansManagement = () => {
         console.error('Erro ao excluir plano:', error);
       }
     }
+  };
+
+  const handleEdit = (plan: any) => {
+    setSelectedPlan(plan);
+    setShowEditModal(true);
+  };
+
+  const handleView = (plan: any) => {
+    setSelectedPlan(plan);
+    setShowViewModal(true);
   };
 
   const clientPlans = plans.filter(p => p.target_audience === 'clients' || p.target_audience === 'both');
@@ -197,11 +212,11 @@ export const PlansManagement = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-background border z-50">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleView(plan)}>
                           <Eye className="h-4 w-4 mr-2" />
                           Visualizar
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(plan)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Editar
                         </DropdownMenuItem>
@@ -341,6 +356,28 @@ export const PlansManagement = () => {
         onOpenChange={setShowCreateModal}
         onCreatePlan={createPlan}
       />
+
+      {selectedPlan && (
+        <EditPlanModal
+          plan={selectedPlan}
+          open={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedPlan(null);
+          }}
+        />
+      )}
+
+      {selectedPlan && (
+        <ViewPlanModal
+          plan={selectedPlan}
+          open={showViewModal}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedPlan(null);
+          }}
+        />
+      )}
     </div>
   );
 };
