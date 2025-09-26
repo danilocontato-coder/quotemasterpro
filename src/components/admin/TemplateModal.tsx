@@ -23,7 +23,9 @@ interface TemplateModalProps {
 
 const TEMPLATE_TYPES = [
   { value: 'quote_request', label: 'Solicitação de Cotação (WhatsApp)', icon: MessageSquare, category: 'whatsapp' },
+  { value: 'supplier_notification_whatsapp', label: 'Notificação para Fornecedor (WhatsApp)', icon: MessageSquare, category: 'whatsapp' },
   { value: 'email_quote', label: 'Solicitação de Cotação (Email)', icon: Mail, category: 'email' },
+  { value: 'supplier_notification_email', label: 'Notificação para Fornecedor (Email)', icon: Mail, category: 'email' },
   { value: 'notification_system', label: 'Notificação do Sistema', icon: Bell, category: 'notification' },
   { value: 'sms_quote', label: 'Solicitação de Cotação (SMS)', icon: Smartphone, category: 'sms' },
 ];
@@ -41,6 +43,17 @@ const DEFAULT_VARIABLES: Record<string, Record<string, string>> = {
     client_email: 'Email do cliente',
     client_phone: 'Telefone do cliente'
   },
+  supplier_notification_whatsapp: {
+    supplier_name: 'Nome do fornecedor',
+    client_name: 'Nome do cliente',
+    quote_title: 'Título da cotação',
+    quote_id: 'ID da cotação',
+    deadline_formatted: 'Data limite formatada',
+    items_count: 'Número total de itens',
+    items_list: 'Lista resumida de itens',
+    proposal_link: 'Link para resposta da proposta',
+    client_contact: 'Contato do cliente'
+  },
   email_quote: {
     client_name: 'Nome do cliente',
     quote_title: 'Título da cotação',
@@ -48,6 +61,18 @@ const DEFAULT_VARIABLES: Record<string, Record<string, string>> = {
     deadline_formatted: 'Data limite formatada',
     total_formatted: 'Valor total formatado',
     proposal_link: 'Link para envio de proposta'
+  },
+  supplier_notification_email: {
+    supplier_name: 'Nome do fornecedor',
+    client_name: 'Nome do cliente',
+    quote_title: 'Título da cotação',
+    quote_id: 'ID da cotação',
+    deadline_formatted: 'Data limite formatada',
+    items_count: 'Número total de itens',
+    items_list: 'Lista detalhada de itens',
+    proposal_link: 'Link para resposta da proposta',
+    client_contact: 'Contato do cliente',
+    company_name: 'Nome da empresa cliente'
   },
   notification_system: {
     user_name: 'Nome do usuário',

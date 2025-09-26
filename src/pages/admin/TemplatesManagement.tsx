@@ -46,8 +46,8 @@ const TEMPLATE_CATEGORIES = [
 ];
 
 const getTemplateCategory = (templateType: string) => {
-  if (templateType === 'quote_request') return 'whatsapp';
-  if (templateType.includes('email')) return 'email';
+  if (templateType === 'quote_request' || templateType === 'supplier_notification_whatsapp') return 'whatsapp';
+  if (templateType.includes('email') || templateType === 'supplier_notification_email') return 'email';
   if (templateType.includes('notification')) return 'notification';
   if (templateType.includes('sms')) return 'sms';
   return 'whatsapp';
@@ -67,7 +67,9 @@ const getTemplateTypeIcon = (templateType: string) => {
 const getTemplateTypeLabel = (templateType: string) => {
   const typeLabels: Record<string, string> = {
     'quote_request': 'Solicitação de Cotação (WhatsApp)',
+    'supplier_notification_whatsapp': 'Notificação para Fornecedor (WhatsApp)',
     'email_quote': 'Solicitação de Cotação (Email)',
+    'supplier_notification_email': 'Notificação para Fornecedor (Email)',
     'notification_system': 'Notificação do Sistema',
     'sms_quote': 'Solicitação de Cotação (SMS)',
   };
