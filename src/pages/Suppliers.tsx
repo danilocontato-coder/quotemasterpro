@@ -1,3 +1,4 @@
+// Página de Fornecedores - Atualizada em 26/09/2025 20:57
 import { useState, useEffect } from "react";
 import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -192,9 +193,12 @@ export default function Suppliers() {
         </div>
       </div>
 
-      {/* Debug Panel */}
+      {/* Debug Panel - Ferramenta de Teste */}
       {showDebugPanel && (
-        <div className="mb-6 space-y-4">
+        <div className="mb-6 space-y-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="text-sm text-yellow-700 font-medium mb-2">
+            🔧 Painel de Debug Ativo - Use os botões abaixo para testar o cadastro
+          </div>
           <SimpleSupplierTest />
           <SupplierDebugPanel />
         </div>
