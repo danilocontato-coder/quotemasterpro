@@ -88,10 +88,10 @@ const navigation = [
         description: 'Logo e identidade'
       },
       {
-        name: 'Integrações',
+        name: 'Integrações & APIs',
         href: '/admin/integrations',
         icon: Zap,
-        description: 'APIs externas'
+        description: 'APIs e integrações externas'
       },
       {
         name: 'Segurança',
