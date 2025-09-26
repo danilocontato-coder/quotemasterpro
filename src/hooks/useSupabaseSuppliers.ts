@@ -322,46 +322,39 @@ export const useSupabaseSuppliers = () => {
 
       // Implement soft delete logic based on user role
       if (profile?.role === 'admin') {
-        // Admin can do hard delete (permanent removal)
+        // Admin can do hard delete OR global soft delete (affects all clients)
         const { error } = await supabase
           .from('suppliers')
-          .delete()
+          .update({ status: 'inactive', updated_at: new Date().toISOString() })
           .eq('id', id);
 
         if (error) throw error;
 
         toast({
-          title: "Fornecedor removido permanentemente",
-          description: `O fornecedor "${name}" foi removido permanentemente do sistema.`,
+          title: "Fornecedor desativado globalmente",
+          description: `O fornecedor "${name}" foi desativado para todos os clientes.`,
         });
       } else {
-        // Non-admin users do soft delete (mark as inactive)
-        const { error: supplierError } = await supabase
-          .from('suppliers')
-          .update({ status: 'inactive', updated_at: new Date().toISOString() })
-          .eq('id', id);
+        // Non-admin users: only soft delete their client-supplier association
+        if (!profile?.client_id) {
+          throw new Error('Cliente não identificado');
+        }
 
-        if (supplierError) throw supplierError;
-
-        // Also soft delete the client-supplier association (preserve for potential reactivation)
         const { error: associationError } = await supabase
           .from('client_suppliers')
           .update({ status: 'inactive', updated_at: new Date().toISOString() })
           .eq('supplier_id', id)
-          .eq('client_id', profile?.client_id || '');
+          .eq('client_id', profile.client_id);
 
-        if (associationError) {
-          console.warn('Error updating client_suppliers association:', associationError);
-          // Don't fail the whole operation if association update fails
-        }
+        if (associationError) throw associationError;
 
         toast({
-          title: "Fornecedor desativado",
-          description: `O fornecedor "${name}" foi desativado. Os administradores podem reativá-lo e restaurar a associação quando necessário.`,
+          title: "Fornecedor removido da sua lista",
+          description: `O fornecedor "${name}" foi removido da sua lista, mas continua disponível para outros clientes.`,
         });
       }
 
-      // Update local state - remove from list for both cases since non-admins shouldn't see inactive suppliers
+      // Update local state - remove from list since user shouldn't see it anymore
       setSuppliers(prev => prev.filter(supplier => supplier.id !== id));
       
       // Ensure UI is in sync with DB (handles replication delays)
@@ -373,7 +366,7 @@ export const useSupabaseSuppliers = () => {
     } catch (error: any) {
       console.error('Error deleting/deactivating supplier:', error);
       const message = (error?.message?.includes('permission') || error?.code === '42501')
-        ? 'Permissão negada pelas políticas de acesso (RLS). Você só pode desativar fornecedores locais do seu cliente. Fornecedores certificados só podem ser gerenciados pelo Superadmin.'
+        ? 'Permissão negada pelas políticas de acesso (RLS). Você só pode remover fornecedores da sua lista. Fornecedores certificados só podem ser gerenciados pelo Superadmin.'
         : 'Não foi possível remover o fornecedor.';
       toast({
         title: "Erro ao remover fornecedor",
