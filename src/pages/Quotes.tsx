@@ -311,7 +311,7 @@ export default function Quotes() {
               disabled={!!error}
             >
               <FileText className="h-4 w-4" />
-              Importar Documento
+              Cotação por PDF
             </Button>
             <Button 
               variant="default" 

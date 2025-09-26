@@ -132,7 +132,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
-            Importar Documento para Cotação
+            Cotação por PDF
           </DialogTitle>
           <DialogDescription>
             Envie um documento PDF ou Word com a lista de produtos/serviços e a IA criará uma RFQ automaticamente.
