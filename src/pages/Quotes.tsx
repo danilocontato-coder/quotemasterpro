@@ -185,7 +185,7 @@ export default function Quotes() {
   };
 
   const handleAIQuoteGenerated = (aiQuote: any) => {
-    // Pré-preencher modal de criação com dados da IA
+    // Pré-preencher modal de criação com dados da IA (apenas para casos onde RFQ não foi criada no banco)
     setEditingQuote({
       title: aiQuote.title,
       description: aiQuote.description,

@@ -679,8 +679,51 @@ Formato da RFQ final:
           }
         }
 
+        // Padronizar produtos no catálogo
+        const standardizedProducts = [];
+        if (quoteData.items?.length > 0) {
+          for (const item of quoteData.items) {
+            try {
+              // Verificar se produto já existe
+              const { data: existingProduct } = await supabaseClient
+                .from('products')
+                .select('id')
+                .eq('name', item.product_name)
+                .eq('client_id', profile.client_id)
+                .single();
+
+              if (!existingProduct) {
+                // Criar produto padrão
+                const { data: newProduct } = await supabaseClient
+                  .from('products')
+                  .insert({
+                    name: item.product_name,
+                    description: item.description || `Produto criado pela IA para RFQ #${newQuote.id}`,
+                    unit: item.unit || 'un',
+                    client_id: profile.client_id,
+                    supplier_id: null, // Produto genérico do cliente
+                    price: null // Será preenchido pelos fornecedores
+                  })
+                  .select()
+                  .single();
+
+                if (newProduct) {
+                  standardizedProducts.push(newProduct.name);
+                  console.log(`✅ Produto padronizado: ${newProduct.name}`);
+                }
+              }
+            } catch (productError) {
+              console.warn(`⚠️ Erro ao padronizar produto ${item.product_name}:`, productError);
+            }
+          }
+        }
+
         // Mensagem de sucesso personalizada
         let successMessage = `🎉 Perfeito! Criei sua RFQ #${newQuote.id} com ${quoteData.items.length} itens${selectedSuppliers.length > 0 ? ` e ${selectedSuppliers.length} fornecedores selecionados` : ''}.${autoSendMessage}`;
+        
+        if (standardizedProducts.length > 0) {
+          successMessage += `\n\n📦 **Produtos padronizados:** Adicionei ${standardizedProducts.length} produtos ao seu catálogo para facilitar futuras cotações.`;
+        }
         
         if (historyContext && historyContext.totalRFQs > 0) {
           successMessage += `\n\n🎯 **Aprendizado personalizado:** Esta é sua ${historyContext.totalRFQs + 1}ª RFQ - usei seu histórico para otimizar as sugestões!`;
@@ -690,11 +733,13 @@ Formato da RFQ final:
 
         return new Response(JSON.stringify({
           response: successMessage,
-          quote: quoteData,
+          quote: null, // Não retornar quote para não abrir modal de edição
           quoteId: newQuote.id,
+          rfqCreated: true, // Flag para indicar que RFQ foi criada no banco
           suppliers: selectedSuppliers,
           autoSent: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend,
-          suggestions: ['Ver minha cotação', 'Criar outra RFQ', 'Acompanhar propostas'],
+          standardizedProducts: standardizedProducts,
+          suggestions: [], // Sem sugestões - conversa finalizada
           historyInsights: historyContext ? {
             totalPreviousRFQs: historyContext.totalRFQs,
             commonProducts: historyContext.commonProducts.slice(0, 3),

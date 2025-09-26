@@ -107,15 +107,32 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Se a IA gerou uma cotação completa
+      // Se a IA criou uma RFQ no banco de dados
+      if (data.rfqCreated) {
+        toast.success(`RFQ #${data.quoteId} criada com sucesso!`);
+        
+        if (data.standardizedProducts?.length > 0) {
+          toast.info(`${data.standardizedProducts.length} produtos adicionados ao catálogo`);
+        }
+        
+        // Fechar chat automaticamente após RFQ criada
+        setTimeout(() => {
+          onClose();
+          // Atualizar página para mostrar nova cotação
+          window.location.reload();
+        }, 2000);
+        
+        return;
+      }
+
+      // Se a IA gerou dados para o modal de criação (fluxo antigo)
       if (data.quote) {
-        // Verificar limite do plano antes de finalizar
         const canCreate = enforceLimit('CREATE_QUOTE');
         if (!canCreate) {
           return;
         }
 
-        toast.success("Cotação gerada com sucesso!");
+        toast.success("Dados preparados para criação!");
         onQuoteGenerated(data.quote);
       }
 
