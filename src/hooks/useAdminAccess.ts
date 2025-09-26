@@ -23,22 +23,32 @@ export const useAdminAccess = () => {
     setIsAccessingAs(true);
     
     try {
-      // Armazenar no localStorage que é modo admin
-      localStorage.setItem('adminAccessMode', JSON.stringify({
+      // Gerar token temporário para acesso admin
+      const adminToken = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Armazenar dados no sessionStorage para a nova aba
+      const adminAccessData = {
         originalRole: 'admin',
         targetClientId: clientId,
+        targetClientName: clientName,
         targetRole: 'manager',
-        isAdminMode: true
-      }));
+        isAdminMode: true,
+        adminToken,
+        timestamp: Date.now()
+      };
+
+      // Usar sessionStorage para que seja específico da sessão
+      sessionStorage.setItem(`adminAccess_${adminToken}`, JSON.stringify(adminAccessData));
 
       toast({
-        title: "Redirecionando",
+        title: "Abrindo nova aba",
         description: `Acessando como cliente: ${clientName}`,
         variant: "default"
       });
 
-      // Redirecionar para dashboard do cliente
-      navigate('/dashboard');
+      // Abrir em nova aba com parâmetro do token
+      const newTabUrl = `${window.location.origin}/dashboard?adminToken=${adminToken}`;
+      window.open(newTabUrl, '_blank');
       
     } catch (error) {
       console.error('Erro ao acessar como cliente:', error);
@@ -66,22 +76,32 @@ export const useAdminAccess = () => {
     setIsAccessingAs(true);
     
     try {
-      // Armazenar no localStorage que é modo admin
-      localStorage.setItem('adminAccessMode', JSON.stringify({
+      // Gerar token temporário para acesso admin
+      const adminToken = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Armazenar dados no sessionStorage para a nova aba
+      const adminAccessData = {
         originalRole: 'admin',
         targetSupplierId: supplierId,
+        targetSupplierName: supplierName,
         targetRole: 'supplier',
-        isAdminMode: true
-      }));
+        isAdminMode: true,
+        adminToken,
+        timestamp: Date.now()
+      };
+
+      // Usar sessionStorage para que seja específico da sessão
+      sessionStorage.setItem(`adminAccess_${adminToken}`, JSON.stringify(adminAccessData));
 
       toast({
-        title: "Redirecionando",
+        title: "Abrindo nova aba",
         description: `Acessando como fornecedor: ${supplierName}`,
         variant: "default"
       });
 
-      // Redirecionar para dashboard do fornecedor
-      navigate('/supplier');
+      // Abrir em nova aba com parâmetro do token
+      const newTabUrl = `${window.location.origin}/supplier?adminToken=${adminToken}`;
+      window.open(newTabUrl, '_blank');
       
     } catch (error) {
       console.error('Erro ao acessar como fornecedor:', error);
@@ -127,10 +147,44 @@ export const useAdminAccess = () => {
   // Verificar se estamos em modo admin
   const isInAdminMode = () => {
     try {
+      // Verificar localStorage (método antigo)
       const adminMode = localStorage.getItem('adminAccessMode');
-      return adminMode ? JSON.parse(adminMode).isAdminMode : false;
+      if (adminMode && JSON.parse(adminMode).isAdminMode) {
+        return true;
+      }
+
+      // Verificar se há token admin na URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminToken = urlParams.get('adminToken');
+      if (adminToken) {
+        const adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        return adminData ? JSON.parse(adminData).isAdminMode : false;
+      }
+
+      return false;
     } catch {
       return false;
+    }
+  };
+
+  // Obter dados do acesso admin
+  const getAdminAccessData = () => {
+    try {
+      // Verificar URL primeiro
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminToken = urlParams.get('adminToken');
+      if (adminToken) {
+        const adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        if (adminData) {
+          return JSON.parse(adminData);
+        }
+      }
+
+      // Fallback para localStorage (método antigo)
+      const adminMode = localStorage.getItem('adminAccessMode');
+      return adminMode ? JSON.parse(adminMode) : null;
+    } catch {
+      return null;
     }
   };
 
@@ -139,6 +193,7 @@ export const useAdminAccess = () => {
     accessAsSupplier,
     returnToAdmin,
     isAccessingAs,
-    isInAdminMode: isInAdminMode()
+    isInAdminMode: isInAdminMode(),
+    getAdminAccessData
   };
 };
