@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle, Key } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle, Key, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { CreateSupplierModal } from "@/components/suppliers/CreateSupplierModal"
 import { useSupabaseAdminSuppliers } from "@/hooks/useSupabaseAdminSuppliers";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 interface SupplierStats {
   total: number;
@@ -24,6 +25,7 @@ interface SupplierStats {
 
 export const SuppliersManagement = () => {
   const { suppliers, isLoading, refetch, createSupplierWithUser, updateSupplier, deleteSupplier, resetSupplierPassword } = useSupabaseAdminSuppliers();
+  const { accessAsSupplier, isAccessingAs } = useAdminAccess();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -34,6 +36,11 @@ export const SuppliersManagement = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [toggleStatusLoading, setToggleStatusLoading] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  const handleAccessAsSupplier = async (supplier: any) => {
+    console.log('Acessando como fornecedor:', supplier.id);
+    await accessAsSupplier(supplier.id, supplier.name);
+  };
 
   // Filter suppliers based on search and filters
   const filteredSuppliers = (suppliers || []).filter(supplier => {
@@ -485,17 +492,29 @@ export const SuppliersManagement = () => {
                                onClick={async () => {
                                  await resetSupplierPassword(supplier.id, supplier.email);
                                }}
-                             >
-                               <Key className="h-4 w-4 mr-2" />
-                               Resetar Senha
-                             </DropdownMenuItem>
-                             
-                             <DropdownMenuItem 
-                               onClick={() => setDeletingSupplier(supplier)}
-                               className="text-red-600"
-                             >
-                               <Trash2 className="h-4 w-4 mr-2" />
-                               Excluir
+                              >
+                                <Key className="h-4 w-4 mr-2" />
+                                Resetar Senha
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem 
+                                disabled={isAccessingAs}
+                                onClick={() => handleAccessAsSupplier(supplier)}
+                              >
+                                {isAccessingAs ? (
+                                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
+                                ) : (
+                                  <LogIn className="h-4 w-4 mr-2" />
+                                )}
+                                Acessar como Fornecedor
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem 
+                                onClick={() => setDeletingSupplier(supplier)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Excluir
                              </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

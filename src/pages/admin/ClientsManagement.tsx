@@ -23,7 +23,8 @@ import {
   Tag,
   FileText,
   Shield,
-  CreditCard
+  CreditCard,
+  LogIn
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -52,9 +53,11 @@ import { EditClientModal } from '@/components/admin/EditClientModal';
 import { ClientCredentialsModal } from '@/components/admin/ClientCredentialsModal';
 import { ClientDocumentsModal } from '@/components/admin/ClientDocumentsModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 export const ClientsManagement = () => {
   const { trackAsyncOperation } = usePerformanceDebug('ClientsManagement');
+  const { accessAsClient, isAccessingAs } = useAdminAccess();
   console.log('ClientsManagement component rendering');
   const {
     clients,
@@ -279,6 +282,11 @@ export const ClientsManagement = () => {
     setSelectedClient(client);
     setShowDeleteModal(true);
   }, []);
+
+  const handleAccessAsClient = useCallback(async (client: any) => {
+    console.log('Acessando como cliente:', client.id);
+    await accessAsClient(client.id, client.companyName || client.name);
+  }, [accessAsClient]);
 
   return (
     <div className="h-full flex flex-col">
@@ -570,17 +578,32 @@ export const ClientsManagement = () => {
                                e.stopPropagation();
                                handleClientCredentials(client);
                              }}
-                           >
-                             <Shield className="h-4 w-4 mr-2" />
-                             Credenciais
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             disabled={statusUpdating.has(client.id)}
-                             onClick={(e) => {
-                               e.preventDefault();
-                               e.stopPropagation();
-                               handleToggleClientStatus(client);
-                             }}
+                            >
+                              <Shield className="h-4 w-4 mr-2" />
+                              Credenciais
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              disabled={isAccessingAs}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleAccessAsClient(client);
+                              }}
+                            >
+                              {isAccessingAs ? (
+                                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
+                              ) : (
+                                <LogIn className="h-4 w-4 mr-2" />
+                              )}
+                              Acessar como Cliente
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              disabled={statusUpdating.has(client.id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleToggleClientStatus(client);
+                              }}
                            >
                              {statusUpdating.has(client.id) ? (
                                <>

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useSupabaseDashboard } from "@/hooks/useSupabaseDashboard";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { useSupabasePlanDetails } from '@/hooks/useSupabaseSubscriptionPlans';
+import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator';
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
@@ -52,6 +53,9 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="space-y-6">
+        {/* Admin Mode Indicator */}
+        <AdminModeIndicator />
+        
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
@@ -84,6 +88,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Admin Mode Indicator */}
+      <AdminModeIndicator />
+      
       {/* Page Header */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
