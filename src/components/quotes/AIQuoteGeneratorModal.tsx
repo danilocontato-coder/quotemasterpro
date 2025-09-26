@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
+import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 
 interface AIQuoteGeneratorModalProps {
   open: boolean;
@@ -22,6 +23,7 @@ export const AIQuoteGeneratorModal: React.FC<AIQuoteGeneratorModalProps> = ({
 }) => {
   const { toast } = useToast();
   const { client, clientName } = useSupabaseCurrentClient();
+  const { enforceLimit } = useSupabaseSubscriptionGuard();
   const [isGenerating, setIsGenerating] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
@@ -36,6 +38,12 @@ export const AIQuoteGeneratorModal: React.FC<AIQuoteGeneratorModalProps> = ({
         description: 'Por favor, descreva o que precisa para a cotação.',
         variant: 'destructive'
       });
+      return;
+    }
+
+    // Verificar limite do plano antes de gerar
+    const canCreate = enforceLimit('CREATE_QUOTE');
+    if (!canCreate) {
       return;
     }
 

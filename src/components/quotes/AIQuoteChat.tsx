@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Send, Bot, User, CheckCircle } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 
 interface Message {
   id: string;
@@ -22,6 +23,7 @@ interface AIQuoteChatProps {
 }
 
 export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onClose }) => {
+  const { enforceLimit } = useSupabaseSubscriptionGuard();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -92,6 +94,12 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
 
       // Se a IA gerou uma cotação completa
       if (data.quote) {
+        // Verificar limite do plano antes de finalizar
+        const canCreate = enforceLimit('CREATE_QUOTE');
+        if (!canCreate) {
+          return;
+        }
+
         toast.success("Cotação gerada com sucesso!");
         onQuoteGenerated(data.quote);
       }

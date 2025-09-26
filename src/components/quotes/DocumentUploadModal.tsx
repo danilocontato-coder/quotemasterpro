@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { FileText, Upload, Loader2, CheckCircle } from 'lucide-react';
 import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
+import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 
 interface DocumentUploadModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 }) => {
   const { toast } = useToast();
   const { client, clientName } = useSupabaseCurrentClient();
+  const { enforceLimit } = useSupabaseSubscriptionGuard();
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
@@ -76,6 +78,12 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         description: 'Por favor, selecione um arquivo primeiro.',
         variant: 'destructive'
       });
+      return;
+    }
+
+    // Verificar limite do plano antes de processar
+    const canCreate = enforceLimit('CREATE_QUOTE');
+    if (!canCreate) {
       return;
     }
 

@@ -306,7 +306,12 @@ export default function Quotes() {
           <div className="flex gap-1">
             <Button 
               variant="outline" 
-              onClick={() => setIsDocumentModalOpen(true)} 
+              onClick={() => {
+                const canCreate = enforceLimit('CREATE_QUOTE');
+                if (canCreate) {
+                  setIsDocumentModalOpen(true);
+                }
+              }} 
               className="flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
@@ -314,7 +319,12 @@ export default function Quotes() {
             </Button>
             <Button 
               variant="default" 
-              onClick={() => setIsAIChatOpen(true)} 
+              onClick={() => {
+                const canCreate = enforceLimit('CREATE_QUOTE');
+                if (canCreate) {
+                  setIsAIChatOpen(true);
+                }
+              }} 
               className="flex items-center gap-2"
               disabled={!!error}
             >
