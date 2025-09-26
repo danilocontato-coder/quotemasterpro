@@ -294,7 +294,7 @@ export const SuppliersManagement = () => {
             >
               <option value="all">Todos os status</option>
               <option value="active">Ativo</option>
-              <option value="inactive">Inativo</option>
+              <option value="inactive">Inativo (Prospects)</option>
               <option value="pending">Pendente</option>
               <option value="suspended">Suspenso</option>
             </select>
@@ -309,6 +309,19 @@ export const SuppliersManagement = () => {
               <option value="local">Locais</option>
             </select>
           </div>
+          
+          {stats.inactive > 0 && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-800">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-medium">Oportunidades de Prospecção</span>
+              </div>
+              <p className="text-sm text-blue-700 mt-1">
+                Existem <strong>{stats.inactive}</strong> fornecedores inativos que foram desativados por clientes. 
+                Estes são candidatos ideais para certificação e expansão da rede global.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -429,45 +442,40 @@ export const SuppliersManagement = () => {
                               )}
                             </DropdownMenuItem>
                             
-                            <DropdownMenuItem 
-                              onClick={() => handleToggleStatus(supplier)}
-                              disabled={toggleStatusLoading === supplier.id}
-                              className={supplier.status === 'active' ? 'text-red-600' : 'text-green-600'}
-                            >
-                              {toggleStatusLoading === supplier.id ? (
-                                <>
-                                  <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                  Processando...
-                                </>
-                              ) : supplier.status === 'active' ? (
-                                <>
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Desativar
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Ativar
-                                </>
-                              )}
-                            </DropdownMenuItem>
+                             <DropdownMenuItem 
+                               onClick={() => handleToggleStatus(supplier)}
+                               disabled={toggleStatusLoading === supplier.id}
+                               className={supplier.status === 'active' ? 'text-red-600' : 'text-green-600'}
+                             >
+                               {supplier.status === 'active' ? (
+                                 <>
+                                   <XCircle className="h-4 w-4 mr-2" />
+                                   {toggleStatusLoading === supplier.id ? 'Desativando...' : 'Desativar'}
+                                 </>
+                               ) : (
+                                 <>
+                                   <CheckCircle className="h-4 w-4 mr-2" />
+                                   {toggleStatusLoading === supplier.id ? 'Reativando...' : 'Reativar'}
+                                 </>
+                               )}
+                              </DropdownMenuItem>
 
-                            <DropdownMenuItem 
-                              onClick={async () => {
-                                await resetSupplierPassword(supplier.id, supplier.email);
-                              }}
-                            >
-                              <Key className="h-4 w-4 mr-2" />
-                              Resetar Senha
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuItem 
-                              onClick={() => setDeletingSupplier(supplier)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
+                             <DropdownMenuItem 
+                               onClick={async () => {
+                                 await resetSupplierPassword(supplier.id, supplier.email);
+                               }}
+                             >
+                               <Key className="h-4 w-4 mr-2" />
+                               Resetar Senha
+                             </DropdownMenuItem>
+                             
+                             <DropdownMenuItem 
+                               onClick={() => setDeletingSupplier(supplier)}
+                               className="text-red-600"
+                             >
+                               <Trash2 className="h-4 w-4 mr-2" />
+                               Excluir
+                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

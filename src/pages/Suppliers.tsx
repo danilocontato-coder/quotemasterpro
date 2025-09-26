@@ -110,7 +110,15 @@ export default function Suppliers() {
       });
       return;
     }
-    if (!window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) return;
+
+    // Show confirmation dialog with soft delete explanation
+    const confirmed = window.confirm(
+      `Tem certeza que deseja desativar o fornecedor "${supplier.name}"?\n\n` +
+      `O fornecedor será removido da sua lista, mas permanecerá disponível ` +
+      `no sistema para possível reativação pelos administradores.`
+    );
+    
+    if (!confirmed) return;
     await deleteSupplier(supplier.id, supplier.name);
   };
   

@@ -85,17 +85,20 @@ export const useSupabaseSuppliers = () => {
         .select('*')
         .order('name', { ascending: true });
 
-      // Apply supplier ID filter for non-admin users
+      // Apply filters based on user role
       if (profile?.role !== 'admin') {
+        // Non-admin users: only see active suppliers they're associated with
         if (supplierIds.length > 0) {
-          query = query.in('id', supplierIds);
+          query = query.in('id', supplierIds).eq('status', 'active');
         } else {
           // No associated suppliers, return empty
           setSuppliers([]);
           return;
         }
+      } else {
+        // Admin users see all suppliers (including inactive for prospecting)
+        console.log('Admin user: showing all suppliers including inactive');
       }
-      // Admin users see all suppliers
 
       const { data, error } = await query;
 
@@ -307,13 +310,46 @@ export const useSupabaseSuppliers = () => {
 
   const deleteSupplier = async (id: string, name: string) => {
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', id);
+      // Get current user profile to check role
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Usuário não autenticado');
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authUser.id)
+        .single();
 
-      if (error) throw error;
+      // Implement soft delete logic based on user role
+      if (profile?.role === 'admin') {
+        // Admin can do hard delete (permanent removal)
+        const { error } = await supabase
+          .from('suppliers')
+          .delete()
+          .eq('id', id);
 
+        if (error) throw error;
+
+        toast({
+          title: "Fornecedor removido permanentemente",
+          description: `O fornecedor "${name}" foi removido permanentemente do sistema.`,
+        });
+      } else {
+        // Non-admin users do soft delete (mark as inactive)
+        const { error } = await supabase
+          .from('suppliers')
+          .update({ status: 'inactive', updated_at: new Date().toISOString() })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Fornecedor desativado",
+          description: `O fornecedor "${name}" foi desativado. Os administradores ainda podem reativá-lo se necessário.`,
+        });
+      }
+
+      // Update local state - remove from list for both cases since non-admins shouldn't see inactive suppliers
       setSuppliers(prev => prev.filter(supplier => supplier.id !== id));
       
       // Ensure UI is in sync with DB (handles replication delays)
@@ -321,15 +357,11 @@ export const useSupabaseSuppliers = () => {
         fetchSuppliers();
       }, 150);
       
-      toast({
-        title: "Fornecedor removido",
-        description: `O fornecedor "${name}" foi removido com sucesso.`,
-      });
       return true;
     } catch (error: any) {
-      console.error('Error deleting supplier:', error);
+      console.error('Error deleting/deactivating supplier:', error);
       const message = (error?.message?.includes('permission') || error?.code === '42501')
-        ? 'Permissão negada pelas políticas de acesso (RLS). Você só pode excluir fornecedores locais do seu cliente. Fornecedores certificados (globais) só podem ser removidos pelo Superadmin.'
+        ? 'Permissão negada pelas políticas de acesso (RLS). Você só pode desativar fornecedores locais do seu cliente. Fornecedores certificados só podem ser gerenciados pelo Superadmin.'
         : 'Não foi possível remover o fornecedor.';
       toast({
         title: "Erro ao remover fornecedor",
