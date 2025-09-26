@@ -170,7 +170,7 @@ export const AppWithProviders: React.FC = () => {
             <IntegrationsAndApisManagement />
           </Suspense>
         } />
-        <Route path="whatsapp" element={
+        <Route path="whatsapp-templates" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <WhatsAppTemplates />
           </Suspense>
