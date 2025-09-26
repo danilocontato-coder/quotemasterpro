@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Bell, Headphones } from "lucide-react";
+import { MessageCircle, Bell, Headphones, Sparkles } from "lucide-react";
 import { useSupabaseAnnouncements } from "@/hooks/useSupabaseAnnouncements";
 import { useSupabaseTickets } from "@/hooks/useSupabaseTickets";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
@@ -10,6 +10,7 @@ import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
 import { ContextualQA } from "@/components/communication/ContextualQA";
 import { ClientAnnouncementsList } from "@/components/communication/client/ClientAnnouncementsList";
 import { ClientTicketsManager } from "@/components/communication/client/ClientTicketsManager";
+import { AIContextualAssistant } from "@/components/communication/AIContextualAssistant";
 
 import { useEffect } from "react";
 
@@ -136,7 +137,23 @@ export default function Communication() {
 
           <CardContent className="p-0">
             <TabsContent value="chats" className="m-0">
-              <div className="p-6">
+              <div className="p-6 space-y-6">
+                {/* Assistente IA - Novo componente integrado */}
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-full">
+                      <Sparkles className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-blue-900">Assistente IA Contextual</h3>
+                      <p className="text-sm text-blue-700">
+                        Obtenha perguntas contextuais e sugestões inteligentes para suas cotações
+                      </p>
+                    </div>
+                  </div>
+                  <AIContextualAssistant />
+                </div>
+                
                 <ContextualQA />
               </div>
             </TabsContent>

@@ -24,7 +24,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Sparkles
+  Sparkles,
+  MessageCircle,
+  Bot
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AIQuoteFeatureToggle } from '@/components/admin/AIQuoteFeatureToggle';
@@ -571,6 +573,75 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
                   <Save className="h-4 w-4 mr-2" />
                   {isLoading ? 'Salvando...' : 'Salvar Mensagens'}
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* Chat com IA para Perguntas Contextuais */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  Assistente IA para Esclarecimentos
+                </CardTitle>
+                <CardDescription>Configure as perguntas contextuais geradas pela IA para esclarecimentos de cotações</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-800 mb-2">IA Contextual Disponível</h4>
+                      <p className="text-sm text-blue-700 mb-3">
+                        O sistema já possui IA integrada que gera automaticamente perguntas contextuais para esclarecimentos entre clientes e fornecedores.
+                      </p>
+                      <div className="space-y-2 text-sm text-blue-700">
+                        <p>• <strong>Esclarecimentos Estruturados:</strong> Disponível em Comunicação → Esclarecimentos</p>
+                        <p>• <strong>Chat IA para Cotações:</strong> Geração automatizada de RFQs com base nas necessidades</p>
+                        <p>• <strong>Perguntas Contextuais:</strong> IA sugere perguntas relevantes baseadas no contexto da cotação</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <h5 className="font-medium mb-2">Acesso via Comunicação</h5>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Sistema de esclarecimentos com IA contextual já integrado na seção Comunicação.
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="/communication" target="_blank">
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Ver Esclarecimentos
+                      </a>
+                    </Button>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <h5 className="font-medium mb-2">Chat IA em Cotações</h5>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      IA integrada para criação de cotações com perguntas contextuais automáticas.
+                    </p>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="/quotes" target="_blank">
+                        <Bot className="h-4 w-4 mr-2" />
+                        Ver Chat IA
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                  <div className="flex items-start gap-3">
+                    <Settings className="h-5 w-5 text-amber-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-amber-800 mb-1">Configurações Avançadas</h4>
+                      <p className="text-sm text-amber-700">
+                        As configurações de IA estão disponíveis na aba "IA" desta seção para ajustes de prompts e comportamento do assistente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

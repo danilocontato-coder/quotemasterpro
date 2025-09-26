@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, HelpCircle, CheckCircle, Clock } from "lucide-react";
 import { useSupabaseQuoteChats } from "@/hooks/useSupabaseQuoteChats";
 import { QAModal } from "./QAModal";
+import { AIContextualAssistant } from "./AIContextualAssistant";
 
 export function ContextualQA() {
   const { conversations, loading } = useSupabaseQuoteChats();
@@ -120,24 +121,31 @@ export function ContextualQA() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Badge 
-                      className={conversation.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}
-                    >
-                      {conversation.status === 'active' ? 'Disponível' : 'Encerrado'}
-                    </Badge>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenQA(conversation);
-                      }}
-                    >
-                      <MessageCircle className="h-3 w-3 mr-1" />
-                      Esclarecimentos
-                    </Button>
-                  </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge 
+                        className={conversation.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}
+                      >
+                        {conversation.status === 'active' ? 'Disponível' : 'Encerrado'}
+                      </Badge>
+                      <div className="flex gap-2">
+                        <AIContextualAssistant 
+                          quoteId={conversation.quote_id}
+                          quotetitle={conversation.quote_title}
+                          supplierName={conversation.supplier_name}
+                        />
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenQA(conversation);
+                          }}
+                        >
+                          <MessageCircle className="h-3 w-3 mr-1" />
+                          Esclarecimentos
+                        </Button>
+                      </div>
+                    </div>
                 </div>
               </CardContent>
             </Card>
