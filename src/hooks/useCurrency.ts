@@ -34,7 +34,12 @@ export const useCurrency = () => {
   const currency = settings?.preferences?.currency || 'BRL';
   const currencyInfo = currencyMap[currency] || currencyMap.BRL;
   
-  const formatCurrency = (value: number): string => {
+  const formatCurrency = (value: number | null | undefined): string => {
+    // Handle null, undefined, or NaN values
+    if (value === null || value === undefined || isNaN(value)) {
+      return currencyInfo.symbol + ' 0,00';
+    }
+    
     return value.toLocaleString(currencyInfo.locale, {
       style: 'currency',
       currency: currencyInfo.code,
