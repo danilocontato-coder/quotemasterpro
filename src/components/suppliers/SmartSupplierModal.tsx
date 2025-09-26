@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSupplierAssociation } from '@/hooks/useSupplierAssociation';
-import { SupplierInviteModal } from './SupplierInviteModal';
+
 
 interface SmartSupplierModalProps {
   isOpen: boolean;
@@ -26,9 +26,7 @@ export function SmartSupplierModal({ isOpen, onClose, onSuccess }: SmartSupplier
   const [specialties, setSpecialties] = useState('');
   
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
-  const [step, setStep] = useState<'search' | 'found' | 'create' | 'invite'>('search');
+  const [step, setStep] = useState<'search' | 'found' | 'create'>('search');
 
   const { 
     searchSupplierByCNPJ, 
@@ -86,19 +84,13 @@ export function SmartSupplierModal({ isOpen, onClose, onSuccess }: SmartSupplier
       return;
     }
 
-    if (supplier.certification_status === 'pending') {
-      // Não certificado - mostrar opções
-      setSelectedSupplier(supplier);
-      setShowInviteModal(true);
-    } else {
-      // Certificado - associar diretamente
-      try {
-        await associateSupplierToClient(supplier.id);
-        onSuccess?.();
-        onClose();
-      } catch (error) {
-        console.error('Erro ao associar fornecedor:', error);
-      }
+    // Associar diretamente ao cliente
+    try {
+      await associateSupplierToClient(supplier.id);
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      console.error('Erro ao associar fornecedor:', error);
     }
   };
 
@@ -193,9 +185,8 @@ export function SmartSupplierModal({ isOpen, onClose, onSuccess }: SmartSupplier
                               size="sm"
                               onClick={() => handleUseExisting(supplier)}
                               disabled={isLoading}
-                              variant={supplier.certification_status === 'certified' ? 'default' : 'outline'}
                             >
-                              {supplier.certification_status === 'certified' ? 'Associar' : 'Convidar'}
+                              Associar
                             </Button>
                           )}
                           {supplier.is_associated && (
@@ -206,14 +197,6 @@ export function SmartSupplierModal({ isOpen, onClose, onSuccess }: SmartSupplier
                         </div>
                       </div>
                       
-                      {supplier.certification_status === 'pending' && !supplier.is_associated && (
-                        <div className="mt-3 p-3 bg-orange-50 rounded border border-orange-200">
-                          <p className="text-xs text-orange-700">
-                            <strong>Recomendação:</strong> Convidar para certificação garantirá 
-                            resposta mais rápida e maior confiabilidade.
-                          </p>
-                        </div>
-                      )}
                     </div>
                   ))}
                   
@@ -319,21 +302,6 @@ export function SmartSupplierModal({ isOpen, onClose, onSuccess }: SmartSupplier
         </DialogContent>
       </Dialog>
 
-      {/* Modal de convite */}
-      {selectedSupplier && (
-        <SupplierInviteModal
-          isOpen={showInviteModal}
-          onClose={() => {
-            setShowInviteModal(false);
-            setSelectedSupplier(null);
-          }}
-          supplier={selectedSupplier}
-          onInviteSent={() => {
-            onSuccess?.();
-            handleClose();
-          }}
-        />
-      )}
     </>
   );
 }

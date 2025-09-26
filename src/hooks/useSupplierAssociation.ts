@@ -89,44 +89,6 @@ export function useSupplierAssociation() {
     }
   };
 
-  const inviteSupplierCertification = async (supplierId: string, message?: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('invite_supplier_certification', {
-        p_supplier_id: supplierId,
-        p_message: message
-      });
-
-      if (error) throw error;
-
-      const result = data as { success: boolean; message?: string; error?: string };
-      
-      if (result.success) {
-        toast({
-          title: "Convite enviado",
-          description: result.message || "O fornecedor foi convidado a se certificar.",
-        });
-        return true;
-      } else {
-        toast({
-          title: "Erro no convite",
-          description: result.error || "Não foi possível enviar o convite.",
-          variant: "destructive",
-        });
-        return false;
-      }
-    } catch (error: any) {
-      console.error('Erro ao enviar convite:', error);
-      toast({
-        title: "Erro no convite",
-        description: "Não foi possível enviar o convite. Tente novamente.",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const getClientSuppliers = async () => {
     try {
@@ -144,7 +106,6 @@ export function useSupplierAssociation() {
     searchSupplierByCNPJ,
     findOrCreateSupplier,
     associateSupplierToClient,
-    inviteSupplierCertification,
     getClientSuppliers
   };
 }
