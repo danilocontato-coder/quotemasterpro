@@ -462,6 +462,7 @@ export default function SupplierQuotes() {
                   quoteId={messageQuote.id}
                   quotetitle={messageQuote.title}
                   supplierName={user?.name}
+                  userRole="supplier"
                 />
               </div>
             </div>

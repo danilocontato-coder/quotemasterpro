@@ -20,9 +20,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { quote_id, quote_title, existing_questions } = await req.json();
+    const { quote_id, quote_title, user_role, existing_questions } = await req.json();
 
-    console.log('Generating contextual questions for:', { quote_id, quote_title, existing_questions });
+    console.log('Generating contextual questions for:', { quote_id, quote_title, user_role, existing_questions });
 
     // Buscar configurações de IA do superadmin
     let aiModel = 'gpt-4o-mini'; // padrão
@@ -41,7 +41,40 @@ serve(async (req) => {
       console.log('Using default AI model, settings not found:', error);
     }
 
-    const prompt = `
+    const prompt = user_role === 'supplier' 
+      ? `
+Como especialista em gestão de fornecedores, analise esta cotação e sugira 3-5 perguntas estratégicas que o FORNECEDOR deveria fazer ao CLIENTE para garantir uma proposta mais precisa e competitiva.
+
+**Cotação:** ${quote_title}
+**ID:** ${quote_id}
+**Perguntas já existentes:** ${existing_questions}
+
+**Contexto:** Você está ajudando um fornecedor a esclarecer pontos importantes com o cliente para:
+- Entender melhor os requisitos e especificações
+- Negociar prazos e condições comerciais favoráveis
+- Identificar oportunidades de valor agregado
+- Evitar mal-entendidos e retrabalho
+
+**Categorias de perguntas:**
+- Especificações (detalhes técnicos, qualidade esperada, normas)
+- Logística (local de entrega, janelas de tempo, condições especiais)
+- Comercial (condições de pagamento, prazos, volumes futuros)
+- Operacional (ponto de contato, aprovações, documentação)
+
+**Instrução:** Sugira perguntas ESPECÍFICAS que um fornecedor experiente faria para esta cotação, focando em maximizar as chances de sucesso da proposta.
+
+Retorne um JSON com este formato:
+{
+  "suggestions": [
+    {
+      "category": "especificações",
+      "question": "Pergunta específica do fornecedor para o cliente?",
+      "reasoning": "Por que esta pergunta é estratégica para o fornecedor"
+    }
+  ]
+}
+`
+      : `
 Como especialista em aquisições corporativas, analise esta cotação e sugira 3-5 perguntas contextuais estruturadas que um cliente deveria fazer ao fornecedor.
 
 **Cotação:** ${quote_title}
@@ -145,24 +178,44 @@ Retorne um JSON com este formato:
 
     if (!generatedContent || generatedContent.trim() === '') {
       console.error('AI returned empty content');
+      const fallbackSuggestions = user_role === 'supplier' 
+        ? [
+            {
+              category: "especificações",
+              question: "Existem especificações técnicas ou normas específicas que devemos seguir?",
+              reasoning: "Essencial para garantir conformidade e evitar retrabalho"
+            },
+            {
+              category: "logística", 
+              question: "Qual é a flexibilidade de prazo de entrega e existe preferência de horário?",
+              reasoning: "Permite oferecer prazos realistas e negociar condições favoráveis"
+            },
+            {
+              category: "comercial",
+              question: "Há expectativa de volumes futuros ou continuidade desta demanda?", 
+              reasoning: "Importante para precificar considerando relacionamento de longo prazo"
+            }
+          ]
+        : [
+            {
+              category: "especificações",
+              question: "Qual o prazo de validade desta proposta?",
+              reasoning: "Importante definir o período de validade da oferta"
+            },
+            {
+              category: "logística", 
+              question: "Qual o prazo de entrega estimado?",
+              reasoning: "Essencial para planejamento de recebimento"
+            },
+            {
+              category: "comercial",
+              question: "Há possibilidade de desconto para pagamento à vista?", 
+              reasoning: "Importante avaliar condições comerciais"
+            }
+          ];
+      
       return new Response(JSON.stringify({
-        suggestions: [
-          {
-            category: "especificações",
-            question: "Qual o prazo de validade desta proposta?",
-            reasoning: "Importante definir o período de validade da oferta"
-          },
-          {
-            category: "logística", 
-            question: "Qual o prazo de entrega estimado?",
-            reasoning: "Essencial para planejamento de recebimento"
-          },
-          {
-            category: "comercial",
-            question: "Há possibilidade de desconto para pagamento à vista?", 
-            reasoning: "Importante avaliar condições comerciais"
-          }
-        ]
+        suggestions: fallbackSuggestions
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -174,25 +227,45 @@ Retorne um JSON com este formato:
       suggestions = JSON.parse(generatedContent);
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', parseError);
-      // Fallback com perguntas padrão
+      // Fallback com perguntas padrão baseadas no papel do usuário
+      const fallbackSuggestions = user_role === 'supplier' 
+        ? [
+            {
+              category: "especificações",
+              question: "Existem especificações técnicas ou normas específicas que devemos seguir?",
+              reasoning: "Essencial para garantir conformidade e evitar retrabalho"
+            },
+            {
+              category: "logística", 
+              question: "Qual é a flexibilidade de prazo de entrega e existe preferência de horário?",
+              reasoning: "Permite oferecer prazos realistas e negociar condições favoráveis"
+            },
+            {
+              category: "comercial",
+              question: "Há expectativa de volumes futuros ou continuidade desta demanda?", 
+              reasoning: "Importante para precificar considerando relacionamento de longo prazo"
+            }
+          ]
+        : [
+            {
+              category: "especificações",
+              question: "Qual o prazo de validade desta proposta?",
+              reasoning: "Importante definir o período de validade da oferta"
+            },
+            {
+              category: "logística", 
+              question: "Qual o prazo de entrega estimado?",
+              reasoning: "Essencial para planejamento de recebimento"
+            },
+            {
+              category: "comercial",
+              question: "Há possibilidade de desconto para pagamento à vista?", 
+              reasoning: "Importante avaliar condições comerciais"
+            }
+          ];
+      
       suggestions = {
-        suggestions: [
-          {
-            category: "especificações",
-            question: "Qual o prazo de validade desta proposta?",
-            reasoning: "Importante definir o período de validade da oferta"
-          },
-          {
-            category: "logística", 
-            question: "Qual o prazo de entrega estimado?",
-            reasoning: "Essencial para planejamento de recebimento"
-          },
-          {
-            category: "comercial",
-            question: "Há possibilidade de desconto para pagamento à vista?", 
-            reasoning: "Importante avaliar condições comerciais"
-          }
-        ]
+        suggestions: fallbackSuggestions
       };
     }
 

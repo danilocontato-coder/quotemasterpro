@@ -21,12 +21,14 @@ interface AIContextualAssistantProps {
   quoteId?: string;
   quotetitle?: string;
   supplierName?: string;
+  userRole?: 'client' | 'supplier' | 'admin'; // Novo prop para identificar o contexto
 }
 
 export const AIContextualAssistant: React.FC<AIContextualAssistantProps> = ({ 
   quoteId, 
   quotetitle,
-  supplierName 
+  supplierName,
+  userRole = 'client' 
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -43,17 +45,28 @@ export const AIContextualAssistant: React.FC<AIContextualAssistantProps> = ({
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      // Mensagem de boas-vindas contextual
+      // Mensagem de boas-vindas contextual baseada no papel do usuário
       const welcomeMessage: Message = {
         id: '1',
         role: 'assistant',
-        content: `Olá! Sou seu assistente IA especializado em esclarecimentos de cotações. ${
-          quoteId && quotetitle
-            ? `Vejo que você está trabalhando na cotação "${quotetitle}" ${supplierName ? `com ${supplierName}` : ''}. `
-            : ''
-        }Posso te ajudar gerando perguntas contextuais, esclarecendo dúvidas sobre processos ou ajudando na comunicação com fornecedores.`,
+        content: userRole === 'supplier' 
+          ? `Olá! Sou seu assistente IA especializado em esclarecimentos com clientes. ${
+              quoteId && quotetitle
+                ? `Vejo que você está trabalhando na cotação "${quotetitle}". `
+                : ''
+            }Posso te ajudar gerando perguntas importantes para esclarecer com o cliente, entender melhor os requisitos ou negociar condições.`
+          : `Olá! Sou seu assistente IA especializado em esclarecimentos de cotações. ${
+              quoteId && quotetitle
+                ? `Vejo que você está trabalhando na cotação "${quotetitle}" ${supplierName ? `com ${supplierName}` : ''}. `
+                : ''
+            }Posso te ajudar gerando perguntas contextuais, esclarecendo dúvidas sobre processos ou ajudando na comunicação com fornecedores.`,
         timestamp: new Date(),
-        suggestions: quoteId ? [
+        suggestions: userRole === 'supplier' && quoteId ? [
+          'Que informações técnicas preciso esclarecer?',
+          'Como negociar melhor prazo de entrega?',
+          'Quais requisitos ainda não estão claros?',
+          'Sugerir condições comerciais vantajosas'
+        ] : quoteId ? [
           'Gerar perguntas sobre esta cotação',
           'Como melhorar a comunicação com o fornecedor?',
           'Que informações ainda faltam?',
@@ -67,7 +80,7 @@ export const AIContextualAssistant: React.FC<AIContextualAssistantProps> = ({
       };
       setMessages([welcomeMessage]);
     }
-  }, [isOpen, quoteId, quotetitle, supplierName]);
+  }, [isOpen, quoteId, quotetitle, supplierName, userRole]);
 
   useEffect(() => {
     scrollToBottom();
@@ -94,6 +107,7 @@ export const AIContextualAssistant: React.FC<AIContextualAssistantProps> = ({
           quote_title: quotetitle,
           supplier_name: supplierName,
           user_question: text,
+          user_role: userRole, // Incluir o papel do usuário
           conversation_id: conversationId,
           message_history: messages
         }

@@ -132,6 +132,7 @@ export function ContextualQA() {
                           quoteId={conversation.quote_id}
                           quotetitle={conversation.quote_title}
                           supplierName={conversation.supplier_name}
+                          userRole="client"
                         />
                         <Button 
                           size="sm" 

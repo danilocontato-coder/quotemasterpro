@@ -151,7 +151,7 @@ export default function Communication() {
                       </p>
                     </div>
                   </div>
-                  <AIContextualAssistant />
+                  <AIContextualAssistant userRole="client" />
                 </div>
                 
                 <ContextualQA />
