@@ -58,16 +58,40 @@ serve(async (req) => {
     // Try to resolve Evolution configuration for this client
     const evolutionConfig = await resolveEvolutionConfig(supabase, client.id)
     
-    // Format message
-    const message = `🎯 *Nova Proposta Recebida!*
+    // Get custom message template from system settings
+    let messageTemplate = `🎯 *Nova Proposta Recebida!*
 
-📋 *Cotação:* ${quote.title} (${quoteId})
-🏢 *Fornecedor:* ${supplierName}
-💰 *Valor Total:* R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+📋 *Cotação:* {{quote_title}} ({{quote_id}})
+🏢 *Fornecedor:* {{supplier_name}}
+💰 *Valor Total:* R$ {{total_value}}
 
 ✅ Uma nova proposta foi enviada para sua cotação. Acesse o sistema para avaliar os detalhes.
 
 _QuoteMaster Pro - Gestão Inteligente de Cotações_`
+
+    try {
+      const { data: settingsData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'whatsapp_proposal_message')
+        .single()
+
+      if (settingsData?.setting_value && typeof settingsData.setting_value === 'object') {
+        const settingValue = settingsData.setting_value as { message?: string }
+        if (settingValue.message) {
+          messageTemplate = settingValue.message
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Using default message template:', error)
+    }
+    
+    // Format message with variables
+    const message = messageTemplate
+      .replace(/\{\{quote_title\}\}/g, quote.title)
+      .replace(/\{\{quote_id\}\}/g, quoteId)
+      .replace(/\{\{supplier_name\}\}/g, supplierName)
+      .replace(/\{\{total_value\}\}/g, totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }))
 
     // Try to send WhatsApp notification
     let whatsappResult = null
