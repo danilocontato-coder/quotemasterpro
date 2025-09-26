@@ -56,6 +56,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
   }, [errors]);
 
   const selectExistingSupplier = useCallback((supplier: any) => {
+    // Preencher formulário com dados do fornecedor existente
+    // Isso criará uma CÓPIA independente para este cliente
     setFormData({
       name: supplier.name || '',
       cnpj: supplier.cnpj || '', 
@@ -68,9 +70,12 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       address: supplier.address?.street || '',
       specialties: supplier.specialties || [],
       type: supplier.type || 'local',
-      status: supplier.status || 'active',
+      status: 'active', // Sempre ativo para nova cópia
     });
     setErrors({});
+    
+    console.log('📋 [SUPPLIER-FORM] Usando dados do fornecedor existente como base:', supplier.name);
+    console.log('📋 [SUPPLIER-FORM] Uma nova cópia independente será criada para este cliente');
   }, []);
 
   const validateStep = useCallback((step: number) => {

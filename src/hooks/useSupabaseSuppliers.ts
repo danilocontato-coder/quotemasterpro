@@ -152,32 +152,7 @@ export const useSupabaseSuppliers = () => {
   const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => {
     try {
       console.log('🔧 [CREATE-SUPPLIER] Iniciando criação de fornecedor', supplierData);
-
-      // Check for duplicates before creating
-      console.log('🔍 [CREATE-SUPPLIER] Verificando duplicatas...');
-      const duplicateCheck = await checkSupplierDuplicate(
-        supplierData.cnpj || '',
-        supplierData.email || '',
-        supabase
-      );
-
-      if (duplicateCheck.exists && duplicateCheck.existing) {
-        const existing = duplicateCheck.existing;
-        const reason = duplicateCheck.reason === 'cnpj' ? 'CNPJ' : 'E-mail';
-        
-        console.log('❌ [CREATE-SUPPLIER] Fornecedor duplicado encontrado', { existing, reason });
-        
-        toast({
-          title: "Fornecedor já existe",
-          description: `Já existe um fornecedor ${existing.type === 'certified' ? 'certificado' : 'local'} com este ${reason}: ${existing.name}`,
-          variant: "destructive"
-        });
-        
-        // Return existing supplier instead of creating new one
-        return existing;
-      }
-
-      console.log('✅ [CREATE-SUPPLIER] Nenhuma duplicata encontrada');
+      console.log('📝 [CREATE-SUPPLIER] Criando cópia independente para este cliente (sem verificação de duplicata)');
 
       // Get current user's profile to get client_id
       console.log('👤 [CREATE-SUPPLIER] Buscando usuário autenticado...');

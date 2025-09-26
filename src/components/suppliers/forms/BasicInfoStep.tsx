@@ -100,8 +100,8 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
       onSelectExistingSupplier(supplier);
       setShowExistingOptions(false);
       toast({
-        title: "Dados preenchidos",
-        description: `Dados do fornecedor ${supplier.name} foram preenchidos. Você pode editá-los se necessário.`,
+        title: "Dados preenchidos como base",
+        description: `Os dados de ${supplier.name} foram preenchidos. Uma nova cópia independente será criada para seu cliente. Você pode editá-los livremente.`,
       });
     }
   };
@@ -177,7 +177,7 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
                 Fornecedores encontrados com este CNPJ
               </CardTitle>
               <p className="text-xs text-orange-700">
-                Encontramos fornecedor(es) com este CNPJ. Você pode selecionar um para prosseguir.
+                Encontramos fornecedor(es) com este CNPJ. Você pode usar os dados como base para criar um novo fornecedor para seu cliente. Uma cópia independente será criada - suas alterações não afetarão outros clientes.
               </p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -202,6 +202,9 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
                           </span>
                         )}
                       </div>
+                      <div className="text-xs text-blue-600 mt-1 font-medium">
+                        ⚠️ Uma cópia será criada para seu cliente
+                      </div>
                     </div>
                     <Button
                       size="sm"
@@ -209,7 +212,7 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
                       onClick={() => selectExistingSupplier(supplier)}
                       className="ml-3"
                     >
-                      Selecionar
+                      Usar como Base
                     </Button>
                   </div>
                 ))}
