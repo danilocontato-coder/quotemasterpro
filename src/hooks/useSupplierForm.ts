@@ -55,6 +55,24 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     }
   }, [errors]);
 
+  const selectExistingSupplier = useCallback((supplier: any) => {
+    setFormData({
+      name: supplier.name || '',
+      cnpj: supplier.cnpj || '', 
+      email: supplier.email || '',
+      whatsapp: supplier.whatsapp || '',
+      phone: supplier.phone || '',
+      website: supplier.website || '',
+      state: supplier.state || '',
+      city: supplier.city || '',
+      address: supplier.address?.street || '',
+      specialties: supplier.specialties || [],
+      type: supplier.type || 'local',
+      status: supplier.status || 'active',
+    });
+    setErrors({});
+  }, []);
+
   const validateStep = useCallback((step: number) => {
     const newErrors: Partial<Record<keyof SupplierFormData, string>> = {};
     
@@ -211,6 +229,7 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
 
     // Form actions
     updateField,
+    selectExistingSupplier,
     nextStep,
     prevStep,
     goToStep,

@@ -24,6 +24,7 @@ export function SupplierFormModal({ open, onClose, editingSupplier }: SupplierFo
     isLoading,
     steps,
     updateField,
+    selectExistingSupplier,
     nextStep,
     prevStep,
     goToStep,
@@ -51,6 +52,7 @@ export function SupplierFormModal({ open, onClose, editingSupplier }: SupplierFo
             data={formData}
             errors={errors}
             onChange={updateField}
+            onSelectExistingSupplier={selectExistingSupplier}
           />
         );
       case 2:
