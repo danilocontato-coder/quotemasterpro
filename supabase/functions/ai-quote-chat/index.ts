@@ -111,36 +111,63 @@ serve(async (req) => {
     const messages = [
       {
         role: 'system',
-        content: `Você é um assistente especializado em ajudar a criar cotações (RFQs) detalhadas para condomínios e empresas no Brasil.
+        content: `Você é um assistente comprador especializado em criar RFQs (Request for Quote) para condomínios e empresas no Brasil.
 
-Sua função é:
-1. Fazer perguntas inteligentes para obter todas as informações necessárias
-2. Sugerir opções práticas que o usuário possa clicar
-3. Quando tiver informações suficientes, gerar uma cotação estruturada
+OBJETIVO: Coletar informações específicas para gerar uma cotação profissional e completa.
 
-SEMPRE responda em português e seja conversacional. Faça UMA pergunta por vez.
+PROCESSO:
+1. Identifique a CATEGORIA do que o cliente precisa
+2. Colete ESPECIFICAÇÕES técnicas detalhadas
+3. Determine QUANTIDADES precisas  
+4. Estabeleça PRAZO de entrega
+5. Identifique ORÇAMENTO aproximado
+6. Quando tiver informações suficientes, gere a RFQ
 
-Para gerar sugestões úteis, considere:
-- Categorias comuns: limpeza, manutenção, segurança, jardinagem, administração
-- Especificações técnicas necessárias
-- Quantidades aproximadas
-- Prazos típicos
+SEMPRE:
+- Faça UMA pergunta focada por vez
+- Seja específico e técnico quando necessário
+- Sugira opções práticas que o cliente possa clicar
+- Use seu conhecimento sobre produtos brasileiros e padrões de mercado
 
-Quando tiver informações suficientes, responda com "GERAR_COTACAO:" seguido do JSON da cotação.
+CATEGORIAS PRINCIPAIS:
+- Limpeza e higiene (detergentes, desinfetantes, materiais)
+- Manutenção predial (elétrica, hidráulica, pintura, reparos)
+- Segurança (equipamentos, monitoramento, controle de acesso)
+- Jardinagem e paisagismo (plantas, fertilizantes, ferramentas)
+- Construção e reforma (materiais, ferramentas, serviços)
+- Escritório e administração (papelaria, equipamentos, móveis)
 
-Formato da cotação final:
+ESPECIFICAÇÕES IMPORTANTES:
+- Marcas preferenciais ou genéricas
+- Certificações necessárias (Inmetro, ISO, etc.)
+- Dimensões, capacidades, potências
+- Cores, modelos, versões específicas
+- Compatibilidades técnicas
+
+INFORMAÇÕES OBRIGATÓRIAS PARA RFQ:
+- Título claro e objetivo
+- Lista de itens com descrições técnicas
+- Quantidades específicas por item
+- Unidades de medida (un, kg, l, m², etc.)
+- Prazo de entrega desejado
+- Local de entrega
+
+Quando tiver todas as informações, responda com "GERAR_RFQ:" seguido do JSON.
+
+Formato da RFQ final:
 {
-  "title": "Título da cotação",
-  "description": "Descrição detalhada",
+  "title": "Título profissional da RFQ",
+  "description": "Descrição detalhada incluindo contexto de uso",
   "items": [
     {
-      "product_name": "Nome do produto/serviço",
+      "product_name": "Nome técnico específico do produto",
       "quantity": número_inteiro,
-      "unit": "unidade",
-      "description": "Descrição técnica"
+      "unit": "unidade de medida",
+      "description": "Especificações técnicas detalhadas, marcas, certificações"
     }
   ],
-  "considerations": ["Consideração 1", "Consideração 2"]
+  "deadline_days": número_de_dias,
+  "considerations": ["Consideração técnica 1", "Prazo de entrega", "Local de entrega"]
 }`
       },
       ...messageHistory.map((msg: any) => ({
@@ -179,19 +206,94 @@ Formato da cotação final:
     console.log('AI response:', aiResponse);
 
     // Verificar se a IA quer gerar uma cotação
-    if (aiResponse.includes('GERAR_COTACAO:')) {
-      const jsonPart = aiResponse.split('GERAR_COTACAO:')[1].trim();
+    if (aiResponse.includes('GERAR_RFQ:')) {
+      const jsonPart = aiResponse.split('GERAR_RFQ:')[1].trim();
       try {
         const quoteData = JSON.parse(jsonPart);
+        console.log('📝 Gerando RFQ no banco:', quoteData);
+        
+        // Buscar user info
+        const { data: userData } = await supabaseClient.auth.getUser();
+        const userId = userData?.user?.id;
+        
+        if (!userId) {
+          throw new Error('Usuário não autenticado');
+        }
+
+        // Buscar client_id do usuário
+        const { data: profile } = await supabaseClient
+          .from('profiles')
+          .select('client_id')
+          .eq('id', userId)
+          .single();
+
+        if (!profile?.client_id) {
+          throw new Error('Cliente não encontrado');
+        }
+
+        // Calcular total aproximado (placeholder)
+        const estimatedTotal = quoteData.items.reduce((sum: number, item: any) => {
+          // Estimativa básica baseada na quantidade
+          return sum + (item.quantity * 100); // R$ 100 por unidade como estimativa
+        }, 0);
+
+        // Inserir cotação
+        const { data: newQuote, error: quoteError } = await supabaseClient
+          .from('quotes')
+          .insert({
+            title: quoteData.title,
+            description: quoteData.description,
+            client_id: profile.client_id,
+            created_by: userId,
+            status: 'draft',
+            total: estimatedTotal,
+            deadline: quoteData.deadline_days ? 
+              new Date(Date.now() + quoteData.deadline_days * 24 * 60 * 60 * 1000).toISOString() : 
+              null
+          })
+          .select()
+          .single();
+
+        if (quoteError) throw quoteError;
+
+        console.log('✅ RFQ criada:', newQuote.id);
+
+        // Inserir itens da cotação
+        if (quoteData.items?.length > 0) {
+          const items = quoteData.items.map((item: any) => ({
+            quote_id: newQuote.id,
+            client_id: profile.client_id,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            unit_price: null, // Será preenchido pelos fornecedores
+            total: null
+          }));
+
+          const { error: itemsError } = await supabaseClient
+            .from('quote_items')
+            .insert(items);
+
+          if (itemsError) {
+            console.error('Erro ao inserir itens:', itemsError);
+          }
+        }
+
         return new Response(JSON.stringify({
-          response: "Perfeito! Gerei sua cotação com base nas informações fornecidas. ✅",
+          response: `🎉 Perfeito! Criei sua RFQ #${newQuote.id} com ${quoteData.items.length} itens. Você pode visualizá-la na página de cotações para enviar aos fornecedores.`,
           quote: quoteData,
-          suggestions: []
+          quoteId: newQuote.id,
+          suggestions: ['Ver minha cotação', 'Criar outra RFQ', 'Enviar para fornecedores']
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (parseError) {
-        console.error('Error parsing quote JSON:', parseError);
+        console.error('Erro ao gerar RFQ:', parseError);
+        return new Response(JSON.stringify({
+          response: "Ocorreu um erro ao criar a RFQ. Por favor, tente novamente.",
+          suggestions: ['Tentar novamente', 'Começar do zero']
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
     }
 
