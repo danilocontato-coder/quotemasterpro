@@ -38,7 +38,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const activeSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
     // Se quote tem supplier_scope definido, usar essa configuração
     if (quote?.supplier_scope === 'local') {
-      return supplier.client_id !== null; // Apenas fornecedores locais
+      return !supplier.is_certified; // Apenas fornecedores locais (não certificados)
     } else if (quote?.supplier_scope === 'all') {
       return true; // Todos os fornecedores (locais + certificados)
     } else {

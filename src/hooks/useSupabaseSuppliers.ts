@@ -23,7 +23,7 @@ export interface Supplier {
   completed_orders: number;
   status: 'pending' | 'active' | 'inactive' | 'suspended';
   subscription_plan_id?: string;
-  client_id?: string;
+  is_certified?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -55,51 +55,44 @@ export const useSupabaseSuppliers = () => {
 
       console.log('Fetching suppliers for user profile:', profile);
 
+      let supplierIds: string[] = [];
+
+      // Apply filters based on user role and context
+      if (profile?.role !== 'admin') {
+        // Non-admin users should only see suppliers associated with their client
+        if (profile?.client_id) {
+          console.log('Filtering suppliers by client association');
+          
+          // Get suppliers associated with this client
+          const { data: associations } = await supabase
+            .from('client_suppliers')
+            .select('supplier_id')
+            .eq('client_id', profile.client_id)
+            .eq('status', 'active');
+
+          supplierIds = associations?.map(a => a.supplier_id) || [];
+          console.log('Associated supplier IDs:', supplierIds);
+        } else {
+          // If user has no client_id context, show no suppliers
+          console.log('No client context, showing no suppliers');
+          supplierIds = [];
+        }
+      }
+
+      // Build query for suppliers
       let query = supabase
         .from('suppliers')
         .select('*')
         .order('name', { ascending: true });
 
-      // Apply filters based on user role and context
+      // Apply supplier ID filter for non-admin users
       if (profile?.role !== 'admin') {
-        // Non-admin users should only see suppliers from their client context
-        if (profile?.client_id) {
-          console.log('Filtering suppliers by client_id + certified from same region');
-          
-          // Get client information to filter certified suppliers by region
-          const { data: clientData } = await supabase
-            .from('clients')
-            .select('address')
-            .eq('id', profile.client_id)
-            .single();
-
-          console.log('Client address data:', clientData);
-          
-          // Extract state from client address (formats: "São Paulo/SP", "Feira de Santana - BA", etc)
-          let clientState = null;
-          if (clientData?.address) {
-            const addressText = clientData.address;
-            // Try to extract state abbreviation (SP, BA, RJ, etc)
-            const stateMatch = addressText.match(/[/-]\s*([A-Z]{2})\s*$/i);
-            if (stateMatch) {
-              clientState = stateMatch[1].toUpperCase();
-            }
-          }
-
-          console.log('Extracted client state:', clientState);
-          
-          // Build query: Local suppliers for this client OR certified suppliers from same state
-          if (clientState) {
-            query = query.or(`client_id.eq.${profile.client_id},and(client_id.is.null,status.eq.active,is_certified.eq.true,state.ilike.${clientState})`);
-          } else {
-            // Fallback: only local suppliers if no client state found
-            console.log('No client state found, showing only local suppliers');
-            query = query.eq('client_id', profile.client_id);
-          }
+        if (supplierIds.length > 0) {
+          query = query.in('id', supplierIds);
         } else {
-          // If user has no client_id context, show no suppliers
-          console.log('No client context, showing no suppliers');
-          query = query.eq('id', '00000000-0000-0000-0000-000000000000'); // Impossible ID
+          // No associated suppliers, return empty
+          setSuppliers([]);
+          return;
         }
       }
       // Admin users see all suppliers
@@ -192,12 +185,12 @@ export const useSupabaseSuppliers = () => {
         throw new Error('Perfil de usuário não encontrado ou sem cliente associado');
       }
 
+      // Create supplier without client_id (suppliers are now global)
       const { data, error } = await supabase
         .from('suppliers')
         .insert([{
           ...supplierData,
           cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
-          client_id: profile.client_id, // Incluir o client_id do usuário atual
           rating: 0,
           completed_orders: 0
         }])
@@ -205,6 +198,15 @@ export const useSupabaseSuppliers = () => {
         .single();
 
       if (error) throw error;
+
+      // Associate supplier with current client
+      await supabase
+        .from('client_suppliers')
+        .insert({
+          client_id: profile.client_id,
+          supplier_id: data.id,
+          status: 'active'
+        });
 
       setSuppliers(prev => [...prev, data as Supplier].sort((a, b) => a.name.localeCompare(b.name)));
       

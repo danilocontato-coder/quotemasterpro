@@ -362,24 +362,24 @@ export default function Suppliers() {
 
                    {/* Actions */}
                    <div className="flex gap-2 pt-2">
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
-                       className="flex-1"
-                       onClick={() => handleEditSupplier(supplier)}
-                       disabled={!(user?.role === 'admin' || (!!supplier.client_id && supplier.client_id === user?.clientId))}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handleEditSupplier(supplier)}
+                        disabled={user?.role !== 'admin'}
+                       >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                         onClick={() => handleDeleteSupplier(supplier)}
+                         disabled={user?.role !== 'admin'}
+                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
-                       <Edit className="h-4 w-4 mr-2" />
-                       Editar
-                     </Button>
-                     
-                     <Button 
-                       variant="outline" 
-                       size="sm"
-                        onClick={() => handleDeleteSupplier(supplier)}
-                        disabled={!(user?.role === 'admin' || (!!supplier.client_id && supplier.client_id === user?.clientId))}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                     >
                        <Trash2 className="h-4 w-4" />
                      </Button>
                    </div>

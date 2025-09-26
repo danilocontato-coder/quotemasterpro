@@ -428,7 +428,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       case 3:
         const filteredSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
           if (formData.supplierScope === 'local') {
-            return supplier.client_id !== null; // Fornecedores locais (cadastrados pelo cliente)
+            return !supplier.is_certified; // Fornecedores locais (não certificados)
           } else {
             return true; // Todos os fornecedores (locais + certificados)
           }
@@ -536,7 +536,7 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{supplier.name}</p>
-                          {!supplier.client_id && (
+                          {supplier.is_certified && (
                             <Badge variant="outline" className="text-xs">Certificado</Badge>
                           )}
                         </div>

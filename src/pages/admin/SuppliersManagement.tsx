@@ -147,7 +147,7 @@ export const SuppliersManagement = () => {
       // Update supplier type
       await updateSupplier(supplier.id, {
         type: certify ? 'certified' : 'local',
-        client_id: certify ? null : supplier.client_id // Certified suppliers are global (no client_id)
+        is_certified: certify
       });
 
       if (certify) {
