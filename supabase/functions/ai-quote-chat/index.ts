@@ -14,9 +14,27 @@ serve(async (req) => {
   }
 
   try {
+    // Obter o token JWT do header Authorization
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    // Criar cliente Supabase com service role para operações admin
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    // Criar cliente Supabase com token do usuário para autenticação
+    const supabaseUserClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }
     );
 
     // Buscar chave da API do OpenAI das configurações do sistema (superadmin)
@@ -101,7 +119,7 @@ serve(async (req) => {
     console.log('Processing chat message:', { conversationId, message });
 
     // Buscar informações do cliente atual para contexto
-    const { data: userData } = await supabaseClient.auth.getUser();
+    const { data: userData } = await supabaseUserClient.auth.getUser();
     const userId = userData?.user?.id;
     
     let clientInfo = { name: 'Cliente', type: 'empresa', sector: 'geral', client_id: null };
@@ -485,7 +503,7 @@ Formato da RFQ final:
         console.log('📝 Gerando RFQ no banco:', quoteData);
         
         // Buscar user info
-        const { data: userData } = await supabaseClient.auth.getUser();
+        const { data: userData } = await supabaseUserClient.auth.getUser();
         const userId = userData?.user?.id;
         
         if (!userId) {
