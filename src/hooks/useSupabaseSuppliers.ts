@@ -234,17 +234,22 @@ export const useSupabaseSuppliers = () => {
       console.log('🔗 [CREATE-SUPPLIER] Criando associação cliente-fornecedor...');
       const { data: associationData, error: associationError } = await supabase
         .from('client_suppliers')
-        .insert({
-          client_id: profile.client_id,
-          supplier_id: data.id,
-          status: 'active'
-        })
+        .upsert(
+          {
+            client_id: profile.client_id,
+            supplier_id: data.id,
+            status: 'active'
+          },
+          { onConflict: 'client_id,supplier_id', ignoreDuplicates: true }
+        )
         .select()
-        .single();
+        .maybeSingle();
       
       if (associationError) {
         console.error('❌ [CREATE-SUPPLIER] Erro ao criar associação:', associationError);
         // Don't throw here, supplier was created successfully
+      } else if (!associationData) {
+        console.log('ℹ️ [CREATE-SUPPLIER] Associação já existia (idempotente).');
       } else {
         console.log('✅ [CREATE-SUPPLIER] Associação criada com sucesso:', associationData);
       }

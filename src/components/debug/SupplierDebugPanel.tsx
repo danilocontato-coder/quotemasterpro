@@ -189,16 +189,21 @@ export function SupplierDebugPanel() {
         
         const { data: associationData, error: associationError } = await supabase
           .from('client_suppliers')
-          .insert({
-            client_id: profile.client_id,
-            supplier_id: supplierData.id,
-            status: 'active'
-          })
+          .upsert(
+            {
+              client_id: profile.client_id,
+              supplier_id: supplierData.id,
+              status: 'active'
+            },
+            { onConflict: 'client_id,supplier_id', ignoreDuplicates: true }
+          )
           .select()
-          .single();
+          .maybeSingle();
 
         if (associationError) {
           addLog('error', 'ASSOCIATION', 'Erro ao criar associação', associationError);
+        } else if (!associationData) {
+          addLog('warn', 'ASSOCIATION', 'Associação já existia (idempotente).');
         } else {
           addLog('success', 'ASSOCIATION', 'Associação criada com sucesso', associationData);
         }
