@@ -127,6 +127,19 @@ export default function Payments() {
     return diffDays;
   };
 
+  if (isLoading) {
+    return (
+      <PageLoader
+        hasHeader={true}
+        hasMetrics={true}
+        hasSearch={true}
+        hasGrid={true}
+        gridColumns={3}
+        metricsCount={5}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       
@@ -248,52 +261,41 @@ export default function Payments() {
       </Card>
 
       {/* Payments Grid */}
-      {isLoading ? (
-        <PageLoader
-          hasHeader={false}
-          hasMetrics={false}
-          hasSearch={false}
-          hasGrid={true}
-          gridColumns={3}
-        />
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentPayments.map((payment) => (
-              <PaymentCard
-                key={payment.id}
-                payment={payment}
-                onPay={async (paymentId) => {
-                  try {
-                    const result = await createCheckoutSession(paymentId);
-                    if (result?.url) {
-                      try {
-                        if (window.top && window.top !== window.self) {
-                          window.top.location.href = result.url;
-                        } else {
-                          window.location.href = result.url;
-                        }
-                      } catch (e) {
-                        window.open(result.url, '_blank', 'noopener,noreferrer');
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {currentPayments.map((payment) => (
+            <PaymentCard
+              key={payment.id}
+              payment={payment}
+              onPay={async (paymentId) => {
+                try {
+                  const result = await createCheckoutSession(paymentId);
+                  if (result?.url) {
+                    try {
+                      if (window.top && window.top !== window.self) {
+                        window.top.location.href = result.url;
+                      } else {
+                        window.location.href = result.url;
                       }
+                    } catch (e) {
+                      window.open(result.url, '_blank', 'noopener,noreferrer');
                     }
-                  } catch (error) {
-                    console.error('Payment error:', error);
                   }
-                }}
-                onConfirmDelivery={async (paymentId) => {
-                  try {
-                    await confirmDelivery(paymentId);
-                  } catch (error) {
-                    console.error('Delivery confirmation error:', error);
-                  }
-                }}
-                onViewDetails={handleViewPayment}
-              />
-            ))}
-          </div>
+                } catch (error) {
+                  console.error('Payment error:', error);
+                }
+              }}
+              onConfirmDelivery={async (paymentId) => {
+                try {
+                  await confirmDelivery(paymentId);
+                } catch (error) {
+                  console.error('Delivery confirmation error:', error);
+                }
+              }}
+              onViewDetails={handleViewPayment}
+            />
+          ))}
         </div>
-      )}
 
         {/* Pagination */}
         {totalPages > 1 && (

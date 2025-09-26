@@ -162,6 +162,19 @@ export default function Products() {
     return { label: "Normal", color: "text-green-600 bg-green-50 border-green-200" };
   };
 
+  if (isLoading) {
+    return (
+      <PageLoader
+        hasHeader={true}
+        hasMetrics={true}
+        hasSearch={true}
+        hasGrid={true}
+        gridColumns={3}
+        metricsCount={6}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -267,18 +280,9 @@ export default function Products() {
       </Card>
 
       {/* Items Grid */}
-      {isLoading ? (
-        <PageLoader
-          hasHeader={false}
-          hasMetrics={false}
-          hasSearch={false}
-          hasGrid={true}
-          gridColumns={3}
-        />
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentItems.length > 0 ? (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {currentItems.length > 0 ? (
             currentItems.map((item) => {
               const stockQuantity = item.stock_quantity || 0;
               const stockStatus = getStockStatus(stockQuantity);
@@ -421,7 +425,7 @@ export default function Products() {
                       trigger={
                         <Button className="btn-corporate">
                           <Plus className="h-4 w-4 mr-2" />
-                          Criar Primeiro Item
+                          Cadastrar Primeiro Item
                         </Button>
                       }
                     />

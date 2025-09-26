@@ -27,6 +27,7 @@ export default function Suppliers() {
   const { user } = useAuth();
   const { suppliers, isLoading, refetch, createSupplier, updateSupplier, deleteSupplier } = useSupabaseSuppliers();
   const { toast } = useToast();
+  
   // Load suppliers on component mount
   useEffect(() => {
     refetch();
@@ -96,6 +97,7 @@ export default function Suppliers() {
       setShowNewSupplierModal(false);
     }
   };
+  
   const handleEditSupplier = (supplier: any) => {
     const isAdmin = user?.role === 'admin';
     const isOwnLocal = !!supplier.client_id && supplier.client_id === user?.clientId;
@@ -112,6 +114,7 @@ export default function Suppliers() {
     setEditingSupplier(supplier);
     setShowNewSupplierModal(true);
   };
+  
   const handleDeleteSupplier = async (supplier: any) => {
     const canDelete = (user?.role === 'admin') || (!!supplier.client_id && supplier.client_id === user?.clientId);
     if (!canDelete) {
@@ -125,10 +128,12 @@ export default function Suppliers() {
     if (!window.confirm(`Tem certeza que deseja excluir o fornecedor "${supplier.name}"?`)) return;
     await deleteSupplier(supplier.id, supplier.name);
   };
+  
   const handleCloseModal = (open: boolean) => {
     setShowNewSupplierModal(open);
     if (!open) setEditingSupplier(null);
   };
+  
   // Cálculos de paginação
   const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -162,6 +167,19 @@ export default function Suppliers() {
     { value: "active", label: "Ativo" },
     { value: "inactive", label: "Inativo" },
   ];
+
+  if (isLoading) {
+    return (
+      <PageLoader
+        hasHeader={true}
+        hasMetrics={true}
+        hasSearch={true}
+        hasGrid={true}
+        gridColumns={3}
+        metricsCount={5}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -270,18 +288,9 @@ export default function Suppliers() {
       </Card>
 
       {/* Suppliers Grid */}
-      {isLoading ? (
-        <PageLoader
-          hasHeader={false}
-          hasMetrics={false}
-          hasSearch={false}
-          hasGrid={true}
-          gridColumns={3}
-        />
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentSuppliers.map((supplier) => (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {currentSuppliers.map((supplier) => (
             <TooltipProvider key={supplier.id}>
               <Card className="card-corporate hover:shadow-[var(--shadow-dropdown)] transition-shadow">
                 <CardHeader className="pb-4">
@@ -377,10 +386,8 @@ export default function Suppliers() {
                 </CardContent>
               </Card>
             </TooltipProvider>
-            ))}
-          </div>
+          ))}
         </div>
-      )}
 
         {/* Paginação */}
         {totalPages > 1 && (
@@ -429,7 +436,7 @@ export default function Suppliers() {
       </div>
 
       {/* Empty State */}
-      {filteredSuppliers.length === 0 && (
+      {!isLoading && filteredSuppliers.length === 0 && (
         <Card className="card-corporate">
           <CardContent className="p-12 text-center">
             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
