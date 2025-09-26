@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClientSupplierModal } from "@/components/suppliers/ClientSupplierModal";
+import { SupplierFormModal } from "@/components/suppliers/SupplierFormModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
@@ -129,9 +129,9 @@ export default function Suppliers() {
     await deleteSupplier(supplier.id, supplier.name);
   };
   
-  const handleCloseModal = (open: boolean) => {
-    setShowNewSupplierModal(open);
-    if (!open) setEditingSupplier(null);
+  const handleCloseModal = () => {
+    setShowNewSupplierModal(false);
+    setEditingSupplier(null);
   };
   
   // Cálculos de paginação
@@ -461,7 +461,7 @@ export default function Suppliers() {
       )}
 
       {/* Modals */}
-      <ClientSupplierModal
+      <SupplierFormModal
         open={showNewSupplierModal}
         onClose={handleCloseModal}
         editingSupplier={editingSupplier}
