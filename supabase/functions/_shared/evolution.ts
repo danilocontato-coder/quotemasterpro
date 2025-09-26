@@ -126,7 +126,7 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
   return { success: false, error: `${lastError} (last: ${lastEndpoint})`, tried_endpoints: endpoints }
 }
 
-// Resolve Evolution config with ENV priority for stability
+// Resolve Evolution config with DB integration priority over ENV for admin control
 export async function resolveEvolutionConfig(
   supabase: any,
   clientId?: string | null,
@@ -135,26 +135,10 @@ export async function resolveEvolutionConfig(
   let instance: string | null = null
   let apiUrl: string | null = null
   let token: string | null = null
-  let scope: EvoScope = 'env'
+  let scope: EvoScope = 'none'
   let sendEndpoint: string | null = null
 
-  // Priority: ENV vars first for stability
-  apiUrl = Deno.env.get('EVOLUTION_API_URL') || ''
-  token = Deno.env.get('EVOLUTION_API_TOKEN') || ''
-  instance = Deno.env.get('EVOLUTION_INSTANCE') || null
-  sendEndpoint = Deno.env.get('EVOLUTION_SEND_ENDPOINT') || null
-  
-  if (apiUrl && token) {
-    return { 
-      apiUrl: apiUrl.replace(/\/+$/, ''), 
-      token, 
-      instance, 
-      scope: 'env',
-      sendEndpoint
-    }
-  }
-
-  // Fallback to DB integrations if ENV not available
+  // Priority 1: DB integrations (superadmin control)
   try {
     const pickCfgFields = (cfg: any) => {
       if (!cfg) return
@@ -202,6 +186,18 @@ export async function resolveEvolutionConfig(
       }
     }
   } catch (_) {}
+
+  // Priority 2: ENV vars as fallback (only if DB integration not found)
+  if (!apiUrl || !token) {
+    apiUrl = apiUrl || Deno.env.get('EVOLUTION_API_URL') || ''
+    token = token || Deno.env.get('EVOLUTION_API_TOKEN') || ''
+    instance = instance || Deno.env.get('EVOLUTION_INSTANCE') || null
+    sendEndpoint = sendEndpoint || Deno.env.get('EVOLUTION_SEND_ENDPOINT') || null
+    
+    if (apiUrl && token && scope === 'none') {
+      scope = 'env'
+    }
+  }
 
   return { 
     apiUrl: (apiUrl || '').replace(/\/+$/, ''), 

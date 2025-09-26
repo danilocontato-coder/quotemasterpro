@@ -8,8 +8,7 @@ const corsHeaders = {
 };
 
 const handler = async (req: Request): Promise<Response> => {
-  console.log('Evolution debug test called');
-
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -19,59 +18,66 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Resolve Evolution config from SuperAdmin
-    console.log('Resolving Evolution config...');
-    const evo = await resolveEvolutionConfig(supabase, null); // null = global config
-    
-    console.log('Evolution config resolved:', {
-      apiUrl: evo.apiUrl,
-      instance: evo.instance,
-      tokenLength: evo.token?.length || 0,
-      scope: evo.scope
-    });
+    // Test Evolution config resolution
+    const evoConfig = await resolveEvolutionConfig(supabase, null, true); // preferGlobal = true
 
-    if (!evo.apiUrl || !evo.token) {
+    if (!evoConfig.apiUrl || !evoConfig.token) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Evolution config not found',
-          config: { apiUrl: !!evo.apiUrl, token: !!evo.token, instance: evo.instance }
+          error: 'Evolution API not configured',
+          config: {
+            hasApiUrl: Boolean(evoConfig.apiUrl),
+            hasToken: Boolean(evoConfig.token),
+            instance: evoConfig.instance,
+            scope: evoConfig.scope
+          }
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
       );
     }
 
-    // Test sending to a dummy number
-    const testPhone = '5571999999999'; // Dummy test number
-    const testMessage = 'Teste da API Evolution - QuoteMaster Pro';
-    
-    console.log('Testing Evolution API send...');
-    const result = await sendEvolutionWhatsApp(evo, testPhone, testMessage);
-    
-    console.log('Evolution test result:', result);
+    // Test sending a message
+    const testNumber = normalizePhone('5571999887766'); // Test number
+    const testMessage = `🤖 Teste de configuração Evolution API\n\nInstância: ${evoConfig.instance}\nHora: ${new Date().toLocaleString('pt-BR')}\n\nConfiguração funcionando corretamente! ✅`;
+
+    const result = await sendEvolutionWhatsApp(evoConfig, testNumber, testMessage);
 
     return new Response(
-      JSON.stringify({ 
-        success: true,
+      JSON.stringify({
+        success: result.success,
+        message: result.success ? 'Teste Evolution executado com sucesso!' : 'Falha no teste Evolution',
         config: {
-          apiUrl: evo.apiUrl,
-          instance: evo.instance,
-          scope: evo.scope
+          apiUrl: evoConfig.apiUrl,
+          instance: evoConfig.instance,
+          scope: evoConfig.scope,
+          hasToken: Boolean(evoConfig.token)
         },
-        test_result: result
+        testResult: result,
+        testNumber,
+        timestamp: new Date().toISOString()
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
     );
 
   } catch (error: any) {
-    console.error('Error in Evolution debug test:', error);
+    console.error('Error in test-evolution-debug:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Erro interno',
+        error: error.message || 'Internal server error',
         stack: error.stack
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
     );
   }
 };
