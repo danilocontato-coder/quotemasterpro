@@ -29,17 +29,17 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Mensagem de boas-vindas
+    // Mensagem de boas-vindas dinâmica
     const welcomeMessage: Message = {
       id: '1',
       role: 'assistant',
-      content: 'Olá! Vou te ajudar a criar uma cotação detalhada. Descreva o que você precisa e eu farei algumas perguntas para garantir que tenhamos todas as informações necessárias.',
+      content: 'Olá! Sou seu assistente especializado em cotações. Vou te ajudar a criar uma RFQ detalhada e personalizada. Descreva o que você precisa e farei perguntas para garantir que tenhamos todas as especificações necessárias.',
       timestamp: new Date(),
       suggestions: [
-        'Preciso de material de limpeza',
-        'Manutenção predial',
-        'Equipamentos de segurança',
-        'Serviços de jardinagem'
+        'Preciso de materiais para minha empresa',
+        'Quero cotar equipamentos',
+        'Preciso de serviços especializados',
+        'Tenho uma lista de produtos'
       ]
     };
     setMessages([welcomeMessage]);

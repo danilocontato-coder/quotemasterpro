@@ -50,7 +50,6 @@ serve(async (req) => {
       );
     }
 
-
     // Normaliza formato da chave (string direta, string JSON ou objeto)
     const rawKey = aiSettings.setting_value as unknown;
     let openaiApiKey = '';
@@ -88,12 +87,6 @@ serve(async (req) => {
         }
       }
     }
-    console.log('[ai-quote-chat] Key source shape:', {
-      isString: typeof rawKey === 'string',
-      isObject: !!rawKey && typeof rawKey === 'object',
-      objectKeys: rawKey && typeof rawKey === 'object' ? Object.keys(rawKey as Record<string, unknown>) : undefined,
-    });
-
 
     if (!openaiApiKey) {
       console.error('OpenAI API key resolved to empty string. Check system_settings.openai_api_key format.');
@@ -107,16 +100,128 @@ serve(async (req) => {
 
     console.log('Processing chat message:', { conversationId, message });
 
+    // Buscar informações do cliente atual para contexto
+    const { data: userData } = await supabaseClient.auth.getUser();
+    const userId = userData?.user?.id;
+    
+    let clientInfo = { name: 'Cliente', type: 'empresa', sector: 'geral' };
+    if (userId) {
+      const { data: profile } = await supabaseClient
+        .from('profiles')
+        .select('client_id')
+        .eq('id', userId)
+        .single();
+
+      if (profile?.client_id) {
+        const { data: client } = await supabaseClient
+          .from('clients')
+          .select('name, company_name, notes')
+          .eq('id', profile.client_id)
+          .single();
+
+        if (client) {
+          clientInfo.name = client.name;
+          clientInfo.type = client.company_name ? 'empresa' : 'condominio';
+          
+          // Detectar setor baseado no nome e notas da empresa
+          const fullText = `${client.name} ${client.company_name || ''} ${client.notes || ''}`.toLowerCase();
+          
+          if (fullText.includes('condomin') || fullText.includes('predial') || fullText.includes('sínd')) {
+            clientInfo.sector = 'condominio';
+          } else if (fullText.includes('hospital') || fullText.includes('clínica') || fullText.includes('médico') || fullText.includes('saúde')) {
+            clientInfo.sector = 'saude';
+          } else if (fullText.includes('escola') || fullText.includes('universidade') || fullText.includes('educação')) {
+            clientInfo.sector = 'educacao';
+          } else if (fullText.includes('indústria') || fullText.includes('fábrica') || fullText.includes('manufatura')) {
+            clientInfo.sector = 'industria';
+          } else if (fullText.includes('restaurante') || fullText.includes('hotel') || fullText.includes('alimentação')) {
+            clientInfo.sector = 'alimentacao';
+          } else if (fullText.includes('escritório') || fullText.includes('consultoria') || fullText.includes('advocacia')) {
+            clientInfo.sector = 'escritorio';
+          } else {
+            clientInfo.sector = 'geral';
+          }
+        }
+      }
+    }
+
+    // Definir categorias e sugestões baseadas no setor
+    const sectorCategories: Record<string, string[]> = {
+      condominio: [
+        'Limpeza e higiene (detergentes, desinfetantes, materiais)',
+        'Manutenção predial (elétrica, hidráulica, pintura, reparos)',
+        'Segurança (equipamentos, monitoramento, controle de acesso)',
+        'Jardinagem e paisagismo (plantas, fertilizantes, ferramentas)',
+        'Construção e reforma (materiais, ferramentas, serviços)',
+        'Administração predial (papelaria, equipamentos, móveis)'
+      ],
+      saude: [
+        'Equipamentos médicos e hospitalares',
+        'Materiais de limpeza hospitalar e desinfecção',
+        'Medicamentos e insumos farmacêuticos',
+        'Mobiliário hospitalar e clínico',
+        'Equipamentos de proteção individual (EPIs)',
+        'Sistemas de monitoramento e segurança'
+      ],
+      educacao: [
+        'Material escolar e didático',
+        'Equipamentos de informática e audiovisual',
+        'Mobiliário escolar e administrativo',
+        'Materiais de limpeza e manutenção',
+        'Equipamentos esportivos e recreativos',
+        'Serviços de alimentação escolar'
+      ],
+      industria: [
+        'Matérias-primas e insumos de produção',
+        'Equipamentos industriais e máquinas',
+        'Ferramentas e equipamentos de manutenção',
+        'Equipamentos de segurança do trabalho',
+        'Sistemas de automação e controle',
+        'Serviços de logística e transporte'
+      ],
+      alimentacao: [
+        'Ingredientes e insumos alimentares',
+        'Equipamentos de cozinha industrial',
+        'Embalagens e descartáveis',
+        'Produtos de limpeza para cozinha',
+        'Equipamentos de refrigeração',
+        'Uniformes e equipamentos de segurança'
+      ],
+      escritorio: [
+        'Material de escritório e papelaria',
+        'Equipamentos de informática',
+        'Mobiliário corporativo',
+        'Serviços de telecomunicações',
+        'Material de limpeza para escritórios',
+        'Equipamentos de segurança patrimonial'
+      ],
+      geral: [
+        'Materiais e insumos diversos',
+        'Equipamentos e ferramentas',
+        'Serviços de manutenção',
+        'Material de limpeza',
+        'Equipamentos de segurança',
+        'Mobiliário e decoração'
+      ]
+    };
+
+    const categories = sectorCategories[clientInfo.sector] || sectorCategories.geral;
+
     // Construir histórico da conversa
     const messages = [
       {
         role: 'system',
-        content: `Você é um assistente comprador especializado em criar RFQs (Request for Quote) para condomínios e empresas no Brasil.
+        content: `Você é um assistente comprador especializado em criar RFQs (Request for Quote) para empresas no Brasil.
 
-OBJETIVO: Coletar informações específicas para gerar uma cotação profissional e completa.
+INFORMAÇÕES DO CLIENTE:
+- Nome: ${clientInfo.name}
+- Tipo: ${clientInfo.type}
+- Setor: ${clientInfo.sector}
+
+OBJETIVO: Coletar informações específicas para gerar uma cotação profissional e completa para o setor ${clientInfo.sector}.
 
 PROCESSO:
-1. Identifique a CATEGORIA do que o cliente precisa
+1. Identifique a CATEGORIA do que o cliente precisa (use as categorias adequadas para o setor)
 2. Colete ESPECIFICAÇÕES técnicas detalhadas
 3. Determine QUANTIDADES precisas  
 4. Estabeleça PRAZO de entrega
@@ -127,22 +232,19 @@ SEMPRE:
 - Faça UMA pergunta focada por vez
 - Seja específico e técnico quando necessário
 - Sugira opções práticas que o cliente possa clicar
-- Use seu conhecimento sobre produtos brasileiros e padrões de mercado
+- Use seu conhecimento sobre produtos brasileiros e padrões de mercado para o setor ${clientInfo.sector}
+- Adapte sua linguagem ao contexto (${clientInfo.type === 'condominio' ? 'condomínio' : 'empresa'})
 
-CATEGORIAS PRINCIPAIS:
-- Limpeza e higiene (detergentes, desinfetantes, materiais)
-- Manutenção predial (elétrica, hidráulica, pintura, reparos)
-- Segurança (equipamentos, monitoramento, controle de acesso)
-- Jardinagem e paisagismo (plantas, fertilizantes, ferramentas)
-- Construção e reforma (materiais, ferramentas, serviços)
-- Escritório e administração (papelaria, equipamentos, móveis)
+CATEGORIAS PARA ESTE SETOR (${clientInfo.sector}):
+${categories.map((cat: string) => `- ${cat}`).join('\n')}
 
 ESPECIFICAÇÕES IMPORTANTES:
 - Marcas preferenciais ou genéricas
-- Certificações necessárias (Inmetro, ISO, etc.)
+- Certificações necessárias (Inmetro, ISO, ANVISA, etc.)
 - Dimensões, capacidades, potências
 - Cores, modelos, versões específicas
 - Compatibilidades técnicas
+- Normas específicas do setor
 
 INFORMAÇÕES OBRIGATÓRIAS PARA RFQ:
 - Título claro e objetivo
@@ -298,7 +400,7 @@ Formato da RFQ final:
     }
 
     // Extrair sugestões do texto da IA
-    const suggestions = extractSuggestions(aiResponse, message);
+    const suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
 
     return new Response(JSON.stringify({
       response: aiResponse,
@@ -320,46 +422,90 @@ Formato da RFQ final:
   }
 });
 
-function extractSuggestions(aiResponse: string, userMessage: string): string[] {
+function extractSuggestions(aiResponse: string, userMessage: string, clientSector: string = 'geral'): string[] {
   const suggestions: string[] = [];
   
   // Sugestões contextuais baseadas na mensagem do usuário
   const lowerMessage = userMessage.toLowerCase();
   const lowerResponse = aiResponse.toLowerCase();
 
+  // Definir sugestões por setor
+  const sectorSuggestions: Record<string, { categories: string[]; maintenance: string[]; cleaning: string[] }> = {
+    condominio: {
+      categories: ['Material de limpeza', 'Manutenção predial', 'Equipamentos de segurança', 'Serviços de jardinagem'],
+      maintenance: ['Manutenção elétrica', 'Manutenção hidráulica', 'Pintura', 'Reparos gerais'],
+      cleaning: ['Produtos de limpeza', 'Equipamentos de limpeza', 'Materiais descartáveis', 'Serviços de limpeza']
+    },
+    saude: {
+      categories: ['Equipamentos médicos', 'Material hospitalar', 'Medicamentos', 'EPIs médicos'],
+      maintenance: ['Manutenção de equipamentos', 'Calibração de aparelhos', 'Limpeza hospitalar', 'Desinfecção'],
+      cleaning: ['Desinfetantes hospitalares', 'Material estéril', 'Equipamentos de limpeza', 'EPIs de limpeza']
+    },
+    educacao: {
+      categories: ['Material escolar', 'Equipamentos de informática', 'Mobiliário escolar', 'Material didático'],
+      maintenance: ['Manutenção de equipamentos', 'Reparos prediais', 'Limpeza escolar', 'Jardinagem'],
+      cleaning: ['Material de limpeza escolar', 'Produtos de higiene', 'Equipamentos de limpeza', 'Descartáveis']
+    },
+    industria: {
+      categories: ['Matérias-primas', 'Equipamentos industriais', 'Ferramentas', 'EPIs industriais'],
+      maintenance: ['Manutenção industrial', 'Peças de reposição', 'Lubrificantes', 'Ferramentas especiais'],
+      cleaning: ['Produtos industriais', 'Desengraxantes', 'Solventes', 'Equipamentos especiais']
+    },
+    alimentacao: {
+      categories: ['Ingredientes', 'Equipamentos de cozinha', 'Embalagens', 'Produtos de higiene'],
+      maintenance: ['Manutenção de equipamentos', 'Peças para cozinha', 'Limpeza industrial', 'Calibração'],
+      cleaning: ['Sanitizantes', 'Detergentes alimentares', 'Material de higiene', 'Descartáveis']
+    },
+    escritorio: {
+      categories: ['Material de escritório', 'Equipamentos de informática', 'Mobiliário', 'Telecomunicações'],
+      maintenance: ['Manutenção de TI', 'Suporte técnico', 'Limpeza corporativa', 'Reformas'],
+      cleaning: ['Produtos de limpeza', 'Material de higiene', 'Equipamentos de limpeza', 'Descartáveis']
+    },
+    geral: {
+      categories: ['Materiais diversos', 'Equipamentos', 'Serviços', 'Manutenção geral'],
+      maintenance: ['Manutenção geral', 'Reparos diversos', 'Limpeza', 'Conservação'],
+      cleaning: ['Produtos de limpeza', 'Material de higiene', 'Equipamentos', 'Serviços de limpeza']
+    }
+  };
+
+  const sectorData = sectorSuggestions[clientSector] || sectorSuggestions.geral;
+
   // Se está perguntando sobre categoria
   if (lowerResponse.includes('categoria') || lowerResponse.includes('tipo de')) {
-    suggestions.push('Limpeza e higiene', 'Manutenção predial', 'Segurança', 'Jardinagem', 'Equipamentos');
+    suggestions.push(...sectorData.categories);
   }
   
   // Se está perguntando sobre quantidade
-  if (lowerResponse.includes('quantidade') || lowerResponse.includes('quantos')) {
+  else if (lowerResponse.includes('quantidade') || lowerResponse.includes('quantos')) {
     suggestions.push('Pequena quantidade', 'Quantidade média', 'Grande quantidade', 'Não sei ainda');
   }
   
   // Se está perguntando sobre prazo
-  if (lowerResponse.includes('prazo') || lowerResponse.includes('quando')) {
+  else if (lowerResponse.includes('prazo') || lowerResponse.includes('quando')) {
     suggestions.push('Urgente (até 7 dias)', 'Moderado (15 dias)', 'Flexível (30 dias)', 'Não tenho pressa');
   }
   
   // Se está perguntando sobre orçamento
-  if (lowerResponse.includes('orçamento') || lowerResponse.includes('valor')) {
+  else if (lowerResponse.includes('orçamento') || lowerResponse.includes('valor')) {
     suggestions.push('Até R$ 1.000', 'R$ 1.000 - R$ 5.000', 'R$ 5.000 - R$ 20.000', 'Acima de R$ 20.000');
   }
 
-  // Sugestões para limpeza
-  if (lowerMessage.includes('limpeza')) {
-    suggestions.push('Produtos de limpeza', 'Equipamentos de limpeza', 'Serviços de limpeza', 'Materiais descartáveis');
+  // Sugestões específicas por contexto
+  else if (lowerMessage.includes('limpeza') || lowerResponse.includes('limpeza')) {
+    suggestions.push(...sectorData.cleaning);
   }
 
-  // Sugestões para manutenção
-  if (lowerMessage.includes('manutenção')) {
-    suggestions.push('Manutenção elétrica', 'Manutenção hidráulica', 'Pintura', 'Reparos gerais');
+  else if (lowerMessage.includes('manutenção') || lowerResponse.includes('manutenção')) {
+    suggestions.push(...sectorData.maintenance);
   }
 
   // Sugestões gerais se não há contexto específico
-  if (suggestions.length === 0) {
-    suggestions.push('Sim', 'Não', 'Preciso de mais detalhes', 'Tenho outras necessidades');
+  else if (suggestions.length === 0) {
+    if (lowerResponse.includes('?')) {
+      suggestions.push('Sim', 'Não', 'Preciso de mais detalhes', 'Tenho outras necessidades');
+    } else {
+      suggestions.push(...sectorData.categories);
+    }
   }
 
   return suggestions.slice(0, 4); // Limitar a 4 sugestões
