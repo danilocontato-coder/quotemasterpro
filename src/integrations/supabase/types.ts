@@ -62,6 +62,7 @@ export type Database = {
         Row: {
           ai_analysis: Json | null
           approved_by: string | null
+          client_id: string | null
           completed_at: string | null
           conversation_log: Json | null
           created_at: string
@@ -80,6 +81,7 @@ export type Database = {
         Insert: {
           ai_analysis?: Json | null
           approved_by?: string | null
+          client_id?: string | null
           completed_at?: string | null
           conversation_log?: Json | null
           created_at?: string
@@ -98,6 +100,7 @@ export type Database = {
         Update: {
           ai_analysis?: Json | null
           approved_by?: string | null
+          client_id?: string | null
           completed_at?: string | null
           conversation_log?: Json | null
           created_at?: string
@@ -114,6 +117,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_negotiations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_negotiations_quote_id_fkey"
             columns: ["quote_id"]
@@ -949,6 +959,7 @@ export type Database = {
       coupons: {
         Row: {
           active: boolean
+          client_id: string | null
           code: string
           created_at: string
           created_by: string | null
@@ -969,6 +980,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          client_id?: string | null
           code: string
           created_at?: string
           created_by?: string | null
@@ -989,6 +1001,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          client_id?: string | null
           code?: string
           created_at?: string
           created_by?: string | null
@@ -1007,7 +1020,15 @@ export type Database = {
           usage_count?: number
           usage_limit?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coupons_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deliveries: {
         Row: {
@@ -1658,6 +1679,7 @@ export type Database = {
       }
       quote_items: {
         Row: {
+          client_id: string | null
           cost_center_id: string | null
           created_at: string | null
           id: string
@@ -1669,6 +1691,7 @@ export type Database = {
           unit_price: number | null
         }
         Insert: {
+          client_id?: string | null
           cost_center_id?: string | null
           created_at?: string | null
           id?: string
@@ -1680,6 +1703,7 @@ export type Database = {
           unit_price?: number | null
         }
         Update: {
+          client_id?: string | null
           cost_center_id?: string | null
           created_at?: string | null
           id?: string
@@ -1691,6 +1715,13 @@ export type Database = {
           unit_price?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quote_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quote_items_cost_center_id_fkey"
             columns: ["cost_center_id"]
@@ -1851,6 +1882,7 @@ export type Database = {
       quote_tokens: {
         Row: {
           access_count: number
+          client_id: string | null
           created_at: string
           expires_at: string
           full_token: string
@@ -1861,6 +1893,7 @@ export type Database = {
         }
         Insert: {
           access_count?: number
+          client_id?: string | null
           created_at?: string
           expires_at?: string
           full_token: string
@@ -1871,6 +1904,7 @@ export type Database = {
         }
         Update: {
           access_count?: number
+          client_id?: string | null
           created_at?: string
           expires_at?: string
           full_token?: string
@@ -1880,6 +1914,13 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quote_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quote_tokens_quote_id_fkey"
             columns: ["quote_id"]
@@ -2615,6 +2656,7 @@ export type Database = {
       user_settings: {
         Row: {
           avatar_url: string | null
+          client_id: string | null
           company_name: string | null
           created_at: string | null
           display_name: string | null
@@ -2629,6 +2671,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          client_id?: string | null
           company_name?: string | null
           created_at?: string | null
           display_name?: string | null
@@ -2643,6 +2686,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          client_id?: string | null
           company_name?: string | null
           created_at?: string | null
           display_name?: string | null
@@ -2655,7 +2699,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
@@ -2889,6 +2941,7 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: {
           avatar_url: string | null
+          client_id: string | null
           company_name: string | null
           created_at: string | null
           display_name: string | null
