@@ -231,9 +231,18 @@ PROCESSO:
 SEMPRE:
 - Faça UMA pergunta focada por vez
 - Seja específico e técnico quando necessário
-- Sugira opções práticas que o cliente possa clicar
+- Quando listar opções ou exemplos, SEMPRE inclua sugestões específicas no final da resposta
 - Use seu conhecimento sobre produtos brasileiros e padrões de mercado para o setor ${clientInfo.sector}
 - Adapte sua linguagem ao contexto (${clientInfo.type === 'condominio' ? 'condomínio' : 'empresa'})
+
+FORMATO DE SUGESTÕES:
+Quando der exemplos ou opções, termine sua resposta com:
+[SUGESTÕES: "Opção 1", "Opção 2", "Opção 3", "Opção 4"]
+
+Exemplos de como usar:
+- Se perguntou sobre tipos de detergente: [SUGESTÕES: "Detergente neutro", "Detergente alcalino", "Detergente ácido", "Detergente enzimático"]
+- Se perguntou sobre quantidades: [SUGESTÕES: "1-10 unidades", "11-50 unidades", "51-100 unidades", "Mais de 100 unidades"]
+- Se perguntou sobre prazo: [SUGESTÕES: "Até 7 dias", "15 dias", "30 dias", "Sem pressa"]
 
 CATEGORIAS PARA ESTE SETOR (${clientInfo.sector}):
 ${categories.map((cat: string) => `- ${cat}`).join('\n')}
@@ -307,7 +316,31 @@ Formato da RFQ final:
 
     console.log('AI response:', aiResponse);
 
-    // Verificar se a IA quer gerar uma cotação
+    // Extrair sugestões da resposta da IA
+    let suggestions: string[] = [];
+    let cleanResponse = aiResponse;
+    
+    // Procurar por sugestões no formato [SUGESTÕES: "item1", "item2", ...]
+    const suggestionsMatch = aiResponse.match(/\[SUGESTÕES:\s*([^\]]+)\]/);
+    if (suggestionsMatch) {
+      try {
+        // Extrair as sugestões entre aspas
+        const suggestionsText = suggestionsMatch[1];
+        const matches = suggestionsText.match(/"([^"]+)"/g);
+        if (matches) {
+          suggestions = matches.map((match: string) => match.slice(1, -1)); // Remove as aspas
+        }
+        // Remove a linha de sugestões da resposta
+        cleanResponse = aiResponse.replace(/\[SUGESTÕES:[^\]]+\]/, '').trim();
+      } catch (error) {
+        console.error('Erro ao extrair sugestões:', error);
+        // Fallback para sugestões automáticas
+        suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
+      }
+    } else {
+      // Se não há sugestões explícitas, usar as automáticas
+      suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
+    }
     if (aiResponse.includes('GERAR_RFQ:')) {
       const jsonPart = aiResponse.split('GERAR_RFQ:')[1].trim();
       try {
@@ -399,11 +432,11 @@ Formato da RFQ final:
       }
     }
 
-    // Extrair sugestões do texto da IA
-    const suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
+    // Extrair sugestões do texto da IA (fallback)
+    // const suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
 
     return new Response(JSON.stringify({
-      response: aiResponse,
+      response: cleanResponse,
       suggestions,
       quote: null
     }), {
