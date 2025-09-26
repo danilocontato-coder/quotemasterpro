@@ -225,7 +225,8 @@ PROCESSO OTIMIZADO:
 2. Colete apenas as especificações ESSENCIAIS (não detalhe demais)
 3. Defina quantidades aproximadas (pode ser estimativa)
 4. Estabeleça prazo básico
-5. Quando tiver o MÍNIMO necessário, GERE a RFQ (não precisa de perfeição)
+5. Configure fornecedores (local/certificado, múltipla seleção)
+6. Quando tiver o MÍNIMO necessário, GERE e ENVIE a RFQ automaticamente
 
 DIRETRIZES PARA AGILIDADE:
 - Seja DIRETO e OBJETIVO
@@ -233,7 +234,14 @@ DIRETRIZES PARA AGILIDADE:
 - Não insista em detalhes técnicos se o cliente não souber
 - Use opções práticas e rápidas
 - Mantenha o foco na VELOCIDADE da criação da RFQ
-- Máximo 3-4 perguntas antes de gerar a cotação
+- Máximo 4-5 perguntas antes de gerar a cotação
+
+FLUXO DE PERGUNTAS OBRIGATÓRIAS:
+1. CATEGORIA/PRODUTO - "Que tipo de produto/serviço você precisa?"
+2. QUANTIDADE - "Quantidade aproximada?" (aceitar estimativas)
+3. PRAZO - "Qual o prazo?" (sugerir opções rápidas)
+4. FORNECEDORES - "Prefere fornecedores locais, certificados ou ambos?"
+5. GERAR E ENVIAR - Criar RFQ automaticamente e enviar para fornecedores selecionados
 
 SEMPRE:
 - Faça UMA pergunta RÁPIDA e focada por vez
@@ -248,6 +256,12 @@ EXEMPLOS DE PERGUNTAS RÁPIDAS:
 - "Qual categoria? Ex: Limpeza, Equipamentos, Materiais..."
 - "Quantidade aproximada? Ex: Pequena (até 50), Média (50-200), Grande (200+)"
 - "Prazo desejado? Ex: Urgente (7 dias), Normal (15 dias), Flexível (30 dias)"
+- "Tipo de fornecedor? Ex: Locais, Certificados, Ambos, Qualquer um"
+
+PARA SELEÇÃO DE FORNECEDORES:
+- Sempre pergunte sobre preferência de fornecedores após definir produto/quantidade/prazo
+- Ofereça opções: "Locais da sua região", "Certificados", "Ambos", "Qualquer um"
+- Para múltipla escolha de fornecedores específicos use: [FORNECEDORES: "nome1", "nome2", "nome3"]
 
 FORMATO DE SUGESTÕES:
 Sempre termine com opções clicáveis:
@@ -287,7 +301,13 @@ Formato da RFQ final:
     }
   ],
   "deadline_days": número_de_dias,
-  "considerations": ["Consideração técnica 1", "Prazo de entrega", "Local de entrega"]
+  "considerations": ["Consideração técnica 1", "Prazo de entrega", "Local de entrega"],
+  "categories": ["categoria1", "categoria2"],
+  "supplierPreferences": {
+    "onlyLocal": boolean,
+    "onlyCertified": boolean,
+    "autoSend": boolean
+  }
 }`
       },
       ...messageHistory.map((msg: any) => ({
@@ -383,6 +403,25 @@ Formato da RFQ final:
           throw new Error('Cliente não encontrado');
         }
 
+        // Buscar fornecedores automaticamente se especificado
+        let selectedSuppliers: any[] = [];
+        if (quoteData.supplierPreferences) {
+          const { data: suppliers } = await supabaseClient
+            .from('suppliers')
+            .select('*')
+            .eq('status', 'active')
+            .in('specialties', quoteData.categories || []);
+            
+          if (suppliers && suppliers.length > 0) {
+            // Filtrar baseado nas preferências
+            selectedSuppliers = suppliers.filter((supplier: any) => {
+              if (quoteData.supplierPreferences.onlyLocal && !supplier.region) return false;
+              if (quoteData.supplierPreferences.onlyCertified && !supplier.is_certified) return false;
+              return true;
+            }).slice(0, 10); // Máximo 10 fornecedores
+          }
+        }
+
         // Calcular total aproximado (placeholder)
         const estimatedTotal = quoteData.items.reduce((sum: number, item: any) => {
           // Estimativa básica baseada na quantidade
@@ -397,11 +436,13 @@ Formato da RFQ final:
             description: quoteData.description,
             client_id: profile.client_id,
             created_by: userId,
-            status: 'draft',
+            status: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend ? 'sent' : 'draft',
             total: estimatedTotal,
             deadline: quoteData.deadline_days ? 
               new Date(Date.now() + quoteData.deadline_days * 24 * 60 * 60 * 1000).toISOString() : 
-              null
+              null,
+            selected_supplier_ids: selectedSuppliers.map(s => s.id),
+            suppliers_sent_count: selectedSuppliers.length
           })
           .select()
           .single();
@@ -430,11 +471,46 @@ Formato da RFQ final:
           }
         }
 
+        // Inserir fornecedores selecionados
+        if (selectedSuppliers.length > 0) {
+          const quoteSuppliers = selectedSuppliers.map(supplier => ({
+            quote_id: newQuote.id,
+            supplier_id: supplier.id
+          }));
+
+          const { error: suppliersError } = await supabaseClient
+            .from('quote_suppliers')
+            .insert(quoteSuppliers);
+
+          if (suppliersError) {
+            console.error('Erro ao vincular fornecedores:', suppliersError);
+          }
+        }
+
+        // Enviar automaticamente se configurado
+        let autoSendMessage = '';
+        if (selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend) {
+          try {
+            await supabaseClient.functions.invoke('send-quote-to-suppliers', {
+              body: { 
+                quoteId: newQuote.id,
+                supplierIds: selectedSuppliers.map(s => s.id)
+              }
+            });
+            autoSendMessage = ` A RFQ foi enviada automaticamente para ${selectedSuppliers.length} fornecedores!`;
+          } catch (sendError) {
+            console.error('Erro ao enviar para fornecedores:', sendError);
+            autoSendMessage = ' (Erro no envio automático - você pode enviar manualmente)';
+          }
+        }
+
         return new Response(JSON.stringify({
-          response: `🎉 Perfeito! Criei sua RFQ #${newQuote.id} com ${quoteData.items.length} itens. Você pode visualizá-la na página de cotações para enviar aos fornecedores.`,
+          response: `🎉 Perfeito! Criei sua RFQ #${newQuote.id} com ${quoteData.items.length} itens${selectedSuppliers.length > 0 ? ` e ${selectedSuppliers.length} fornecedores selecionados` : ''}.${autoSendMessage} Você pode acompanhar o progresso na página de cotações.`,
           quote: quoteData,
           quoteId: newQuote.id,
-          suggestions: ['Ver minha cotação', 'Criar outra RFQ', 'Enviar para fornecedores']
+          suppliers: selectedSuppliers,
+          autoSent: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend,
+          suggestions: ['Ver minha cotação', 'Criar outra RFQ', 'Acompanhar propostas']
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -538,6 +614,16 @@ function extractSuggestions(aiResponse: string, userMessage: string, clientSecto
   // Se está perguntando sobre orçamento
   else if (lowerResponse.includes('orçamento') || lowerResponse.includes('valor')) {
     suggestions.push('Até R$ 1.000', 'R$ 1.000 - R$ 5.000', 'R$ 5.000 - R$ 20.000', 'Acima de R$ 20.000');
+  }
+
+  // Se está perguntando sobre fornecedores
+  else if (lowerResponse.includes('fornecedor') || lowerResponse.includes('supplier')) {
+    suggestions.push('Apenas locais', 'Apenas certificados', 'Ambos (local + certificado)', 'Qualquer fornecedor');
+  }
+  
+  // Se está perguntando sobre envio automático
+  else if (lowerResponse.includes('enviar') || lowerResponse.includes('automático')) {
+    suggestions.push('Sim, enviar automaticamente', 'Não, vou enviar depois', 'Revisar antes de enviar');
   }
 
   // Sugestões específicas por contexto
