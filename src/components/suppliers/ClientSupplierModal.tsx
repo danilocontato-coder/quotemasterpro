@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { brazilStates } from '@/data/brazilStates';
 import { CNPJSearchModal } from './CNPJSearchModal';
+import { useSupplierAssociation } from '@/hooks/useSupplierAssociation';
 
 interface ClientSupplierModalProps {
   open: boolean;
@@ -49,6 +50,7 @@ const steps = [
 export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSupplierModalProps) {
   const { createSupplier, updateSupplier, refetch } = useSupabaseSuppliers();
   const { toast } = useToast();
+  const { associateSupplierToClient } = useSupplierAssociation();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -259,21 +261,22 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
                 <CNPJSearchModal
                   cnpj={formData.cnpj}
                   onCNPJChange={(cnpj) => setFormData(prev => ({ ...prev, cnpj }))}
-                  onReuseData={(supplier) => {
-                    setFormData({
-                      name: supplier.name,
-                      cnpj: supplier.cnpj,
-                      address: typeof supplier.address === 'string' ? supplier.address : (supplier.address?.street || ''),
-                      email: supplier.email,
-                      phone: supplier.phone || '',
-                      whatsapp: supplier.whatsapp || '',
-                      website: supplier.website || '',
-                      specialties: supplier.specialties || [],
-                      type: 'local',
-                      state: supplier.address?.state || '',
-                      city: supplier.address?.city || '',
-                      status: 'active'
-                    });
+                  onReuseData={async (supplier) => {
+                    try {
+                      await associateSupplierToClient(supplier.id);
+                      toast({
+                        title: "Fornecedor associado",
+                        description: `O fornecedor ${supplier.name} foi associado ao seu cliente.`,
+                      });
+                      onClose(false);
+                      await refetch();
+                    } catch (err) {
+                      toast({
+                        title: "Erro na associação",
+                        description: "Não foi possível associar o fornecedor. Tente novamente.",
+                        variant: "destructive",
+                      });
+                    }
                   }}
                 />
                 {errors.cnpj && <p className="text-xs text-destructive">{errors.cnpj}</p>}

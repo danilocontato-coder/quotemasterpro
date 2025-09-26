@@ -110,7 +110,7 @@ export function CNPJSearchModal({ cnpj, onCNPJChange, onReuseData }: CNPJSearchM
               Fornecedores encontrados com este CNPJ
             </CardTitle>
             <p className="text-xs text-orange-700">
-              Você pode reutilizar os dados de um fornecedor existente ou continuar criando um novo.
+              Encontramos fornecedor(es) com este CNPJ. Você pode associá-lo à sua conta de cliente.
             </p>
           </CardHeader>
           <CardContent className="pt-0">
@@ -141,21 +141,12 @@ export function CNPJSearchModal({ cnpj, onCNPJChange, onReuseData }: CNPJSearchM
                     variant="outline"
                     onClick={() => reuseSupplierData(supplier)}
                     className="ml-3"
+                    disabled={supplier.is_associated}
                   >
-                    Reutilizar dados
+                    {supplier.is_associated ? 'Já associado' : 'Associar fornecedor'}
                   </Button>
                 </div>
               ))}
-              <div className="pt-2 border-t">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowExistingOptions(false)}
-                  className="w-full text-muted-foreground"
-                >
-                  Continuar criando novo fornecedor
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>
