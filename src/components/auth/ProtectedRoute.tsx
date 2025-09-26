@@ -22,6 +22,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isLoading: tenantLoading } = useAuthTenant();
   
   const location = useLocation();
+  const hasAdminToken = typeof window !== 'undefined' && new URLSearchParams(location.search).has('adminToken');
 
   // Loading states
   if (authLoading || tenantLoading) {
@@ -38,6 +39,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Not authenticated
   if (!user) {
+    // Se há um adminToken na URL, aguardar inicialização do modo admin
+    if (hasAdminToken) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="space-y-4 w-full max-w-md">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-8 w-3/4" />
+          </div>
+        </div>
+      );
+    }
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
