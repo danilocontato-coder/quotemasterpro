@@ -2981,6 +2981,10 @@ export type Database = {
         Args: { p_approved: boolean; p_notes?: string; p_payment_id: string }
         Returns: Json
       }
+      associate_supplier_to_client: {
+        Args: { p_client_id?: string; p_supplier_id: string }
+        Returns: string
+      }
       check_overdue_accounts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -3013,9 +3017,43 @@ export type Database = {
         Args: { quote_id_param: string }
         Returns: boolean
       }
+      find_or_create_supplier_by_cnpj: {
+        Args: {
+          p_cnpj: string
+          p_email?: string
+          p_name?: string
+          p_phone?: string
+        }
+        Returns: {
+          certification_status: string
+          existing_name: string
+          is_new: boolean
+          supplier_id: string
+        }[]
+      }
       generate_delivery_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_client_suppliers: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          address: Json
+          associated_at: string
+          association_status: string
+          certification_status: string
+          cnpj: string
+          completed_orders: number
+          email: string
+          id: string
+          name: string
+          phone: string
+          rating: number
+          specialties: string[]
+          status: string
+          website: string
+          whatsapp: string
+        }[]
       }
       get_cost_center_hierarchy: {
         Args: { p_client_id: string }
@@ -3124,6 +3162,10 @@ export type Database = {
         Args: { user_email: string; user_id: string; user_name?: string }
         Returns: string
       }
+      invite_supplier_certification: {
+        Args: { p_message?: string; p_supplier_id: string }
+        Returns: Json
+      }
       link_user_to_client: {
         Args: { target_client_id: string; user_id: string }
         Returns: boolean
@@ -3176,11 +3218,11 @@ export type Database = {
         Args: { search_cnpj: string }
         Returns: {
           address: Json
-          client_id: string
-          client_name: string
+          certification_status: string
           cnpj: string
           email: string
           id: string
+          is_associated: boolean
           name: string
           phone: string
           specialties: string[]

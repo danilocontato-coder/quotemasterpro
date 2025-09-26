@@ -137,21 +137,13 @@ export function useSupabaseDashboard() {
           console.log('🏢 Dashboard: Extracted client state:', clientState);
 
           // Build suppliers query: Local suppliers for this client OR certified suppliers from same state
-          let suppliersQuery = supabase.from('suppliers').select('*').eq('status', 'active');
-          
-          if (clientState) {
-            // Local suppliers for this client OR certified suppliers from same state
-            suppliersQuery = suppliersQuery.or(`client_id.eq.${clientId},and(client_id.is.null,is_certified.eq.true,state.ilike.${clientState})`);
-          } else {
-            // Fallback: only local suppliers if no client state found
-            console.log('🏢 Dashboard: No client state found, showing only local suppliers');
-            suppliersQuery = suppliersQuery.eq('client_id', clientId);
-          }
+          // Buscar fornecedores associados através da nova tabela client_suppliers
+          const suppliersPromise = supabase.rpc('get_client_suppliers');
 
           const [quotesRes, paymentsRes, suppliersRes, notificationsRes] = await Promise.all([
             supabase.from('quotes').select('*').eq('client_id', clientId),
             supabase.from('payments').select('*').eq('client_id', clientId),
-            suppliersQuery,
+            suppliersPromise,
             supabase.from('notifications').select('*').eq('user_id', user.id)
           ]);
 

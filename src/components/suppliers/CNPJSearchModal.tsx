@@ -16,8 +16,8 @@ interface ExistingSupplier {
   website: string;
   address: any;
   specialties: string[];
-  client_id: string;
-  client_name: string;
+  certification_status: string;
+  is_associated: boolean;
 }
 
 interface CNPJSearchModalProps {
@@ -122,14 +122,19 @@ export function CNPJSearchModal({ cnpj, onCNPJChange, onReuseData }: CNPJSearchM
                 >
                   <div className="flex-1">
                     <div className="font-medium text-sm">{supplier.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {supplier.email}
-                      {supplier.client_name && (
-                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                          Cliente: {supplier.client_name}
-                        </span>
-                      )}
-                    </div>
+                     <div className="text-xs text-muted-foreground">
+                       {supplier.email}
+                       {supplier.certification_status === 'certified' && (
+                         <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                           Certificado
+                         </span>
+                       )}
+                       {supplier.is_associated && (
+                         <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                           Já Associado
+                         </span>
+                       )}
+                     </div>
                   </div>
                   <Button
                     size="sm"
