@@ -19,12 +19,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Buscar chave da API do OpenAI das configurações do sistema
+    // Buscar chave da API do OpenAI das configurações do sistema (superadmin)
     const { data: aiSettings, error: settingsError } = await supabaseClient
-      .from('ai_negotiation_settings')
+      .from('system_settings')
       .select('setting_value')
       .eq('setting_key', 'openai_api_key')
-      .eq('active', true)
       .single();
 
     if (settingsError || !aiSettings?.setting_value) {
