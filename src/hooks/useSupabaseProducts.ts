@@ -13,6 +13,7 @@ export interface Product {
   stock_quantity: number | null;
   status: string;
   supplier_id?: string | null;
+  client_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -175,14 +176,22 @@ export const useSupabaseProducts = () => {
       }
       
       if (profile.role === 'admin') {
-        // Admin products require supplier association only
+        // Admin must be associated to some scope due to RLS no-orphans policy
+        if (profile.client_id) productPayload.client_id = profile.client_id;
         if (profile.supplier_id) productPayload.supplier_id = profile.supplier_id;
-        if (!productPayload.supplier_id && user?.supplierId) productPayload.supplier_id = user.supplierId;
-        if (!productPayload.supplier_id) {
-          throw new Error('Usuário administrador deve estar associado a um fornecedor para cadastrar produtos.');
+        // Fallback to AuthContext if profile has no association
+        if (!productPayload.client_id && !productPayload.supplier_id) {
+          if (user?.clientId) productPayload.client_id = user.clientId;
+          if (!productPayload.client_id && user?.supplierId) productPayload.supplier_id = user.supplierId;
+        }
+        if (!productPayload.client_id && !productPayload.supplier_id) {
+          throw new Error('Usuário administrador sem associação a cliente/fornecedor. Vincule um cliente ou fornecedor para cadastrar produtos.');
         }
       } else if (['manager', 'collaborator'].includes(profile.role)) {
-        throw new Error('Clientes não podem criar produtos diretamente. Use fornecedores para isso.');
+        productPayload.client_id = profile.client_id || user?.clientId || null;
+        if (!productPayload.client_id) {
+          throw new Error('Perfil de usuário não está associado a um cliente');
+        }
       } else if (profile.role === 'supplier') {
         productPayload.supplier_id = profile.supplier_id || user?.supplierId || null;
         if (!productPayload.supplier_id) {
@@ -193,7 +202,8 @@ export const useSupabaseProducts = () => {
       // Ensure types are correct for Supabase
       const finalPayload = {
         ...productPayload,
-        supplier_id: productPayload.supplier_id || null
+        supplier_id: productPayload.supplier_id || null,
+        client_id: productPayload.client_id || null
       } as any; // Type assertion to bypass strict typing
 
       const { data, error } = await supabase

@@ -2393,6 +2393,7 @@ export type Database = {
           certification_expires_at: string | null
           certification_status: string | null
           city: string | null
+          client_id: string | null
           cnpj: string
           completed_orders: number | null
           created_at: string | null
@@ -2422,6 +2423,7 @@ export type Database = {
           certification_expires_at?: string | null
           certification_status?: string | null
           city?: string | null
+          client_id?: string | null
           cnpj: string
           completed_orders?: number | null
           created_at?: string | null
@@ -2451,6 +2453,7 @@ export type Database = {
           certification_expires_at?: string | null
           certification_status?: string | null
           city?: string | null
+          client_id?: string | null
           cnpj?: string
           completed_orders?: number | null
           created_at?: string | null

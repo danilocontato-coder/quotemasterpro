@@ -6,6 +6,7 @@ export interface SupplierDuplicateResult {
     cnpj: string;
     email: string;
     type: 'local' | 'certified';
+    client_id?: string;
     is_certified?: boolean;
   };
   reason?: 'cnpj' | 'email';
@@ -34,7 +35,7 @@ export const checkSupplierDuplicate = async (
     if (normalizedCNPJ) {
       const { data: cnpjMatch } = await supabase
         .from('suppliers')
-        .select('id, name, cnpj, email, type, is_certified')
+        .select('id, name, cnpj, email, type, client_id, is_certified')
         .eq('cnpj', normalizedCNPJ)
         .maybeSingle();
       
@@ -51,7 +52,7 @@ export const checkSupplierDuplicate = async (
     if (email) {
       const { data: emailMatch } = await supabase
         .from('suppliers')
-        .select('id, name, cnpj, email, type, is_certified')
+        .select('id, name, cnpj, email, type, client_id, is_certified')
         .ilike('email', email.trim())
         .maybeSingle();
       
@@ -79,8 +80,8 @@ export const selectBestSupplier = (suppliers: any[]): any => {
   if (suppliers.length === 0) return null;
   if (suppliers.length === 1) return suppliers[0];
   
-  // Prioritize certified suppliers (is_certified = true)
-  const certified = suppliers.find(s => s.type === 'certified' && s.is_certified);
+  // Prioritize certified suppliers (client_id = null)
+  const certified = suppliers.find(s => s.type === 'certified' && !s.client_id);
   if (certified) return certified;
   
   // Return the first one if no certified found

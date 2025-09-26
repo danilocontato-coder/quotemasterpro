@@ -62,6 +62,7 @@ export interface DatabaseTables {
     address: string;
     subscription_plan_id: string | null; // References subscription_plans
     type: 'local' | 'certificado'; // Local: client-specific, Certificado: platform-verified
+    client_id: string | null; // For local suppliers
     region: string | null; // For certificado suppliers
     state: string | null;
     city: string | null;
