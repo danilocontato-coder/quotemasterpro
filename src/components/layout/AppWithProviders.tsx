@@ -140,6 +140,11 @@ export const AppWithProviders: React.FC = () => {
             <SuperAdminDashboard />
           </Suspense>
         } />
+        <Route path="superadmin" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <SuperAdminDashboard />
+          </Suspense>
+        } />
         <Route path="accounts" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <AccountsManagement />
