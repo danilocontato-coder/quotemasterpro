@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,10 +12,27 @@ serve(async (req) => {
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+    // Conectar ao Supabase
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Buscar chave da API do OpenAI das configurações do sistema (superadmin)
+    const { data: aiSettings, error: settingsError } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'openai_api_key')
+      .single();
+
+    if (settingsError || !aiSettings?.setting_value) {
+      console.error('OpenAI API key not found in settings:', settingsError);
+      throw new Error('OpenAI API key not configured in system settings');
     }
+
+    const openAIApiKey = typeof aiSettings.setting_value === 'string' 
+      ? aiSettings.setting_value 
+      : aiSettings.setting_value.value || aiSettings.setting_value;
 
     const { base64Content, filename } = await req.json();
 

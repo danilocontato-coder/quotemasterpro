@@ -2,8 +2,6 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -70,13 +68,23 @@ Retorne um JSON com este formato:
 }
 `;
 
-    // Verificar chave da OpenAI
-    if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY não configurada nas secrets do Supabase Functions');
+    // Buscar chave da API do OpenAI das configurações do sistema (superadmin)
+    const { data: openaiSettings, error: openaiError } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'openai_api_key')
+      .single();
+
+    if (openaiError || !openaiSettings?.setting_value) {
+      console.error('OpenAI API key not found in settings:', openaiError);
       return new Response(JSON.stringify({
-        error: 'OPENAI_API_KEY não configurada',
+        error: 'OpenAI API key not configured in system settings',
       }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+
+    const openAIApiKey = typeof openaiSettings.setting_value === 'string' 
+      ? openaiSettings.setting_value 
+      : openaiSettings.setting_value.value || openaiSettings.setting_value;
 
     const isModernModel = /^(gpt-5|gpt-4\.1|o3|o4)/.test(aiModel);
 
