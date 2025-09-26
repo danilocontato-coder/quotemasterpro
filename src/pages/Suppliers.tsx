@@ -37,6 +37,19 @@ export default function Suppliers() {
   const currentClientId = user?.clientId || '';
   const currentClientRegion = 'São Paulo - Capital';
 
+  // Helper function para verificar permissões de edição/exclusão
+  const canEditSupplier = (supplier: any) => {
+    const isAdmin = user?.role === 'admin';
+    const isOwnLocal = supplier.type === 'local' && supplier.client_id === user?.clientId;
+    return isAdmin || isOwnLocal;
+  };
+
+  const canDeleteSupplier = (supplier: any) => {
+    const isAdmin = user?.role === 'admin';
+    const isOwnLocal = supplier.type === 'local' && supplier.client_id === user?.clientId;
+    return isAdmin || isOwnLocal;
+  };
+
   // Função para filtrar fornecedores baseado no cliente atual
   const getAvailableSuppliers = () => {
     return suppliers.filter(supplier => {
@@ -71,13 +84,12 @@ export default function Suppliers() {
 
   
   const handleEditSupplier = (supplier: any) => {
-    const isAdmin = user?.role === 'admin';
-    const isOwnLocal = !!supplier.client_id && supplier.client_id === user?.clientId;
-    const canEdit = isAdmin || isOwnLocal;
-    if (!canEdit) {
+    if (!canEditSupplier(supplier)) {
       toast({
         title: 'Ação não permitida',
-        description: 'Apenas o SuperAdmin pode editar fornecedores certificados. Você só pode editar fornecedores locais do seu cliente.',
+        description: supplier.type === 'certified' 
+          ? 'Fornecedores certificados só podem ser editados pelo SuperAdmin.'
+          : 'Você só pode editar fornecedores locais do seu cliente.',
         variant: 'destructive'
       });
       return;
@@ -88,11 +100,12 @@ export default function Suppliers() {
   };
   
   const handleDeleteSupplier = async (supplier: any) => {
-    const canDelete = (user?.role === 'admin') || (!!supplier.client_id && supplier.client_id === user?.clientId);
-    if (!canDelete) {
+    if (!canDeleteSupplier(supplier)) {
       toast({
         title: 'Ação não permitida',
-        description: 'Apenas Admin pode remover fornecedores certificados (globais). Você pode excluir apenas fornecedores locais do seu cliente.',
+        description: supplier.type === 'certified'
+          ? 'Fornecedores certificados só podem ser removidos pelo SuperAdmin.'
+          : 'Você só pode excluir fornecedores locais do seu cliente.',
         variant: 'destructive'
       });
       return;
@@ -339,7 +352,7 @@ export default function Suppliers() {
                         size="sm" 
                         className="flex-1"
                         onClick={() => handleEditSupplier(supplier)}
-                        disabled={user?.role !== 'admin'}
+                        disabled={!canEditSupplier(supplier)}
                        >
                         <Edit className="h-4 w-4 mr-2" />
                         Editar
@@ -349,8 +362,8 @@ export default function Suppliers() {
                         variant="outline" 
                         size="sm"
                          onClick={() => handleDeleteSupplier(supplier)}
-                         disabled={user?.role !== 'admin'}
-                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                         disabled={!canDeleteSupplier(supplier)}
+                         className="text-red-600 hover:text-red-700 hover:bg-red-50 disabled:text-gray-400"
                       >
                        <Trash2 className="h-4 w-4" />
                      </Button>
