@@ -124,7 +124,9 @@ Retorne um JSON com este formato:
     const baseMessages = [
       { 
         role: 'system', 
-        content: 'Você é um especialista em aquisições corporativas que gera perguntas contextuais para esclarecimentos entre clientes e fornecedores. Sempre retorne JSON válido.' 
+        content: user_role === 'supplier' 
+          ? 'Você é um consultor especializado em relacionamento fornecedor-cliente. Retorne APENAS um JSON válido com perguntas estratégicas que fornecedores devem fazer aos clientes.'
+          : 'Você é um especialista em aquisições corporativas que gera perguntas contextuais para esclarecimentos entre clientes e fornecedores. Sempre retorne JSON válido.'
       },
       { role: 'user', content: prompt }
     ];
@@ -215,6 +217,9 @@ Retorne um JSON com este formato:
           ];
       
       return new Response(JSON.stringify({
+        message: user_role === 'supplier' 
+          ? 'Aqui estão perguntas estratégicas para esclarecer com o cliente:'
+          : 'Aqui estão perguntas contextuais sugeridas:',
         suggestions: fallbackSuggestions
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -265,11 +270,19 @@ Retorne um JSON com este formato:
           ];
       
       suggestions = {
+        message: user_role === 'supplier' 
+          ? 'Aqui estão perguntas estratégicas para esclarecer com o cliente:'
+          : 'Aqui estão perguntas contextuais sugeridas:',
         suggestions: fallbackSuggestions
       };
     }
 
-    return new Response(JSON.stringify(suggestions), {
+    return new Response(JSON.stringify({
+      message: user_role === 'supplier' 
+        ? 'Aqui estão perguntas estratégicas para esclarecer com o cliente e melhorar sua proposta:'
+        : 'Aqui estão perguntas contextuais sugeridas para esta cotação:',
+      suggestions: suggestions.suggestions || suggestions
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

@@ -54,7 +54,7 @@ export const AIContextualAssistant: React.FC<AIContextualAssistantProps> = ({
               quoteId && quotetitle
                 ? `Vejo que você está trabalhando na cotação "${quotetitle}". `
                 : ''
-            }Posso te ajudar gerando perguntas importantes para esclarecer com o cliente, entender melhor os requisitos ou negociar condições.`
+            }Clique em "Gerar perguntas estratégicas" para receber sugestões de perguntas importantes que você deve esclarecer com o cliente para elaborar uma proposta mais precisa.`
           : `Olá! Sou seu assistente IA especializado em esclarecimentos de cotações. ${
               quoteId && quotetitle
                 ? `Vejo que você está trabalhando na cotação "${quotetitle}" ${supplierName ? `com ${supplierName}` : ''}. `
@@ -62,10 +62,10 @@ export const AIContextualAssistant: React.FC<AIContextualAssistantProps> = ({
             }Posso te ajudar gerando perguntas contextuais, esclarecendo dúvidas sobre processos ou ajudando na comunicação com fornecedores.`,
         timestamp: new Date(),
         suggestions: userRole === 'supplier' && quoteId ? [
-          'Que informações técnicas preciso esclarecer?',
-          'Como negociar melhor prazo de entrega?',
-          'Quais requisitos ainda não estão claros?',
-          'Sugerir condições comerciais vantajosas'
+          'Gerar perguntas estratégicas para esta cotação',
+          'Perguntas sobre especificações técnicas',
+          'Perguntas sobre prazo e logística',
+          'Perguntas sobre condições comerciais'
         ] : quoteId ? [
           'Gerar perguntas sobre esta cotação',
           'Como melhorar a comunicação com o fornecedor?',
@@ -118,7 +118,7 @@ export const AIContextualAssistant: React.FC<AIContextualAssistantProps> = ({
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: data.response || data.suggestions?.join('\n• ') || 'Desculpe, não consegui gerar uma resposta adequada.',
+        content: data.response || data.message || 'Aqui estão algumas perguntas sugeridas para esclarecer com o cliente:',
         timestamp: new Date(),
         suggestions: data.suggestions || []
       };
