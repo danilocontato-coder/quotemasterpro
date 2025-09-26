@@ -191,12 +191,6 @@ const navigation = [
         href: '/admin/monitoring',
         icon: Server,
         description: 'Status dos serviços'
-      },
-      {
-        name: 'Configuração de APIs',
-        href: '/admin/api',
-        icon: Key,
-        description: 'Chaves de API e integrações'
       }
     ]
   }

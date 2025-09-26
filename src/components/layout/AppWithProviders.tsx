@@ -47,14 +47,13 @@ const SystemSettings = React.lazy(() => import('@/pages/admin/SystemSettings'));
 const BrandSettings = React.lazy(() => import('@/pages/admin/BrandSettings'));
 const CouponsManagement = React.lazy(() => import('@/pages/admin/CouponsManagement'));
 const PlansManagement = React.lazy(() => import('@/pages/admin/PlansManagement'));
-const IntegrationsManagement = React.lazy(() => import('@/pages/admin/IntegrationsManagement'));
 const WhatsAppTemplates = React.lazy(() => import('@/pages/admin/WhatsAppTemplates'));
 const AdminDashboard = React.lazy(() => import('@/pages/dashboards/AdminDashboard'));
 const SupportDashboard = React.lazy(() => import('@/pages/dashboards/SupportDashboard'));
 const AuditLogs = React.lazy(() => import('@/pages/admin/AuditLogs'));
 const AIConfigurationManagement = React.lazy(() => import('@/pages/admin/AIConfigurationManagement'));
 const CommunicationManagement = React.lazy(() => import('@/pages/admin/CommunicationManagement'));
-const ApiConfiguration = React.lazy(() => import('@/pages/admin/ApiConfiguration'));
+const IntegrationsAndApisManagement = React.lazy(() => import('@/pages/admin/IntegrationsAndApisManagement'));
 const DomainSettings = React.lazy(() => import('@/pages/admin/DomainSettings'));
 const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialManagement'));
 
@@ -168,7 +167,7 @@ export const AppWithProviders: React.FC = () => {
         } />
         <Route path="integrations" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <IntegrationsManagement />
+            <IntegrationsAndApisManagement />
           </Suspense>
         } />
         <Route path="whatsapp" element={
@@ -218,7 +217,7 @@ export const AppWithProviders: React.FC = () => {
         } />
         <Route path="api" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <ApiConfiguration />
+            <IntegrationsAndApisManagement />
           </Suspense>
         } />
         <Route path="domain" element={

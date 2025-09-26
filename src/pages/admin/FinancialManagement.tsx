@@ -593,10 +593,10 @@ export const FinancialManagement = () => {
                   <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Configurar Integrações</h3>
                   <p className="text-muted-foreground mb-4">
-                    Acesse a página de Integrações para configurar Stripe, boletos e webhooks
+                    Acesse a página de Integrações e APIs para configurar Stripe, boletos e webhooks
                   </p>
                   <Button onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: '/admin/integrations' }))}>
-                    Ir para Integrações
+                    Ir para Integrações e APIs
                   </Button>
                 </div>
               </CardContent>
