@@ -1314,6 +1314,7 @@ export type Database = {
       notifications: {
         Row: {
           action_url: string | null
+          client_id: string | null
           created_at: string | null
           id: string
           message: string
@@ -1326,6 +1327,7 @@ export type Database = {
         }
         Insert: {
           action_url?: string | null
+          client_id?: string | null
           created_at?: string | null
           id?: string
           message: string
@@ -1338,6 +1340,7 @@ export type Database = {
         }
         Update: {
           action_url?: string | null
+          client_id?: string | null
           created_at?: string | null
           id?: string
           message?: string
@@ -1348,7 +1351,15 @@ export type Database = {
           type?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
