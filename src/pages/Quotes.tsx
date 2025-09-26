@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { InitialLoader } from "@/components/layout/InitialLoader";
 
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
+import { useAIQuoteFeature } from "@/hooks/useAIQuoteFeature";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { toast } from "sonner";
 
@@ -22,6 +23,7 @@ const QuoteDetailModal = lazy(() => import("@/components/quotes/QuoteDetailModal
 const StatusProgressIndicator = lazy(() => import("@/components/quotes/StatusProgressIndicator").then(m => ({ default: m.StatusProgressIndicator })));
 const EconomyNotification = lazy(() => import("@/components/quotes/EconomyNotification").then(m => ({ default: m.EconomyNotification, useEconomyAlerts: m.useEconomyAlerts })));
 const SendQuoteToSuppliersModal = lazy(() => import("@/components/quotes/SendQuoteToSuppliersModal").then(m => ({ default: m.SendQuoteToSuppliersModal })));
+const AIQuoteGeneratorModal = lazy(() => import("@/components/quotes/AIQuoteGeneratorModal").then(m => ({ default: m.AIQuoteGeneratorModal })));
 
 export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,6 +33,7 @@ export default function Quotes() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isMatrixManagerOpen, setIsMatrixManagerOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<any | null>(null);
   const [viewingQuote, setViewingQuote] = useState<any | null>(null);
   const [quoteToDelete, setQuoteToDelete] = useState<any | null>(null);
@@ -42,6 +45,7 @@ export default function Quotes() {
   
   const { quotes, createQuote, updateQuote, deleteQuote, isLoading, error, markQuoteAsReceived, refetch } = useSupabaseQuotes();
   const { enforceLimit } = useSupabaseSubscriptionGuard();
+  const { isEnabled: aiFeatureEnabled } = useAIQuoteFeature();
 
   // Carregar alerts apenas quando necessário
   const [alertsEnabled, setAlertsEnabled] = useState(false);
@@ -172,6 +176,18 @@ export default function Quotes() {
     }
   };
 
+  const handleAIQuoteGenerated = (aiQuote: any) => {
+    // Pré-preencher modal de criação com dados da IA
+    setEditingQuote({
+      title: aiQuote.title,
+      description: aiQuote.description,
+      items: aiQuote.items || [],
+      ai_generated: true,
+      ai_considerations: aiQuote.considerations || []
+    });
+    setIsCreateModalOpen(true);
+  };
+
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (quote.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -279,6 +295,17 @@ export default function Quotes() {
             <Archive className="h-4 w-4" />
             Matrizes de Decisão
           </Button>
+          {aiFeatureEnabled && (
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAIModalOpen(true)} 
+              className="flex items-center gap-2"
+              disabled={!!error}
+            >
+              <Sparkles className="h-4 w-4" />
+              Gerar com IA
+            </Button>
+          )}
           <Button 
             className="btn-corporate flex items-center gap-2"
             onClick={() => {
@@ -682,6 +709,17 @@ export default function Quotes() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* AI Quote Generator Modal */}
+      {aiFeatureEnabled && (
+        <Suspense fallback={<div>Carregando...</div>}>
+          <AIQuoteGeneratorModal
+            open={isAIModalOpen}
+            onOpenChange={setIsAIModalOpen}
+            onQuoteGenerated={handleAIQuoteGenerated}
+          />
+        </Suspense>
       )}
     </div>
   );
