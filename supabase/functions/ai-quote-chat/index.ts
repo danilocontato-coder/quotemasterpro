@@ -104,7 +104,9 @@ serve(async (req) => {
     const { data: userData } = await supabaseClient.auth.getUser();
     const userId = userData?.user?.id;
     
-    let clientInfo = { name: 'Cliente', type: 'empresa', sector: 'geral' };
+    let clientInfo = { name: 'Cliente', type: 'empresa', sector: 'geral', client_id: null };
+    let historyContext = null;
+    
     if (userId) {
       const { data: profile } = await supabaseClient
         .from('profiles')
@@ -113,6 +115,8 @@ serve(async (req) => {
         .single();
 
       if (profile?.client_id) {
+        clientInfo.client_id = profile.client_id;
+        
         const { data: client } = await supabaseClient
           .from('clients')
           .select('name, company_name, notes')
@@ -141,6 +145,71 @@ serve(async (req) => {
           } else {
             clientInfo.sector = 'geral';
           }
+        }
+
+        // Buscar histórico de RFQs do cliente para análise e aprendizado
+        const { data: clientHistory } = await supabaseClient
+          .from('quotes')
+          .select(`
+            id, title, description, created_at,
+            quote_items(product_name, quantity),
+            suppliers(name, specialties)
+          `)
+          .eq('client_id', profile.client_id)
+          .order('created_at', { ascending: false })
+          .limit(15);
+
+        // Buscar fornecedores mais usados pelo cliente
+        const { data: quoteSuppliers } = await supabaseClient
+          .from('quotes')
+          .select(`
+            suppliers(id, name, specialties, rating)
+          `)
+          .eq('client_id', profile.client_id)
+          .not('supplier_id', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(30);
+
+        if (clientHistory && clientHistory.length > 0) {
+          // Analisar padrões do histórico para personalização
+          const allProducts = clientHistory.flatMap(q => q.quote_items?.map(i => i.product_name) || []);
+          const allSuppliers = quoteSuppliers?.map(q => q.suppliers).filter(Boolean) || [];
+          
+          // Produtos mais frequentes
+          const productFreq: Record<string, number> = {};
+          allProducts.forEach(product => {
+            if (product) {
+              productFreq[product] = (productFreq[product] || 0) + 1;
+            }
+          });
+          
+          // Fornecedores preferenciais
+          const supplierFreq: Record<string, number> = {};
+          allSuppliers.forEach((supplier: any) => {
+            if (supplier?.name) {
+              supplierFreq[supplier.name] = (supplierFreq[supplier.name] || 0) + 1;
+            }
+          });
+
+          historyContext = {
+            totalRFQs: clientHistory.length,
+            commonProducts: Object.entries(productFreq)
+              .sort(([,a], [,b]) => b - a)
+              .slice(0, 8)
+              .map(([product]) => product),
+            preferredSuppliers: Object.entries(supplierFreq)
+              .sort(([,a], [,b]) => b - a)
+              .slice(0, 5)
+              .map(([supplier]) => supplier),
+            recentRFQs: clientHistory.slice(0, 3).map(q => ({
+              title: q.title,
+              description: q.description,
+              itemsCount: q.quote_items?.length || 0
+            })),
+            avgItemsPerRFQ: Math.round(
+              clientHistory.reduce((sum, q) => sum + (q.quote_items?.length || 0), 0) / clientHistory.length
+            )
+          };
         }
       }
     }
@@ -218,6 +287,27 @@ INFORMAÇÕES DO CLIENTE:
 - Tipo: ${clientInfo.type}
 - Setor: ${clientInfo.sector}
 
+${historyContext ? `
+HISTÓRICO E APRENDIZADO PERSONALIZADO:
+- Total de RFQs anteriores: ${historyContext.totalRFQs}
+- Média de itens por RFQ: ${historyContext.avgItemsPerRFQ}
+
+PRODUTOS FREQUENTES DO CLIENTE:
+${historyContext.commonProducts.length > 0 ? historyContext.commonProducts.map((p: string) => `- ${p}`).join('\n') : '- Nenhum histórico ainda'}
+
+FORNECEDORES PREFERENCIAIS:
+${historyContext.preferredSuppliers.length > 0 ? historyContext.preferredSuppliers.map((s: string) => `- ${s}`).join('\n') : '- Nenhum histórico ainda'}
+
+ÚLTIMAS RFQs PARA REFERÊNCIA:
+${historyContext.recentRFQs.map((rfq: any, i: number) => `${i+1}. "${rfq.title}" (${rfq.itemsCount} itens)`).join('\n')}
+
+PERSONALIZAÇÃO: Use essas informações para:
+- Sugerir produtos similares aos já pedidos
+- Recomendar quantidades baseadas no histórico
+- Mencionar fornecedores preferenciais quando relevante
+- Ajustar o tom baseado no padrão de compras
+` : ''}
+
 OBJETIVO: Coletar informações específicas para gerar uma cotação profissional e completa para o setor ${clientInfo.sector}.
 
 PROCESSO OTIMIZADO:
@@ -235,12 +325,13 @@ DIRETRIZES PARA AGILIDADE:
 - Use opções práticas e rápidas
 - Mantenha o foco na VELOCIDADE da criação da RFQ
 - Máximo 4-5 perguntas antes de gerar a cotação
+${historyContext ? '- PRIORIZE sugestões baseadas no histórico do cliente' : ''}
 
 FLUXO DE PERGUNTAS OBRIGATÓRIAS:
-1. CATEGORIA/PRODUTO - "Que tipo de produto/serviço você precisa?"
+1. CATEGORIA/PRODUTO - "Que tipo de produto/serviço você precisa?"${historyContext && historyContext.commonProducts.length > 0 ? ` (Sugerir: ${historyContext.commonProducts.slice(0, 3).join(', ')})` : ''}
 2. QUANTIDADE - "Quantidade aproximada?" (aceitar estimativas)
 3. PRAZO - "Qual o prazo?" (sugerir opções rápidas)
-4. FORNECEDORES - "Prefere fornecedores locais, certificados ou ambos?"
+4. FORNECEDORES - "Prefere fornecedores locais, certificados ou ambos?"${historyContext && historyContext.preferredSuppliers.length > 0 ? ` (Mencionar preferenciais: ${historyContext.preferredSuppliers.slice(0, 2).join(', ')})` : ''}
 5. GERAR E ENVIAR - Criar RFQ automaticamente e enviar para fornecedores selecionados
 
 SEMPRE:
@@ -251,6 +342,7 @@ SEMPRE:
 - Use linguagem simples e direta
 - Seja PROATIVO: sugira quantidades típicas, prazos padrão
 - NÃO peça informações desnecessárias
+${historyContext ? '- PERSONALIZE sugestões baseadas no histórico de compras' : ''}
 
 EXEMPLOS DE PERGUNTAS RÁPIDAS:
 - "Qual categoria? Ex: Limpeza, Equipamentos, Materiais..."
@@ -504,13 +596,27 @@ Formato da RFQ final:
           }
         }
 
+        // Mensagem de sucesso personalizada
+        let successMessage = `🎉 Perfeito! Criei sua RFQ #${newQuote.id} com ${quoteData.items.length} itens${selectedSuppliers.length > 0 ? ` e ${selectedSuppliers.length} fornecedores selecionados` : ''}.${autoSendMessage}`;
+        
+        if (historyContext && historyContext.totalRFQs > 0) {
+          successMessage += `\n\n🎯 **Aprendizado personalizado:** Esta é sua ${historyContext.totalRFQs + 1}ª RFQ - usei seu histórico para otimizar as sugestões!`;
+        }
+        
+        successMessage += ` Você pode acompanhar o progresso na página de cotações.`;
+
         return new Response(JSON.stringify({
-          response: `🎉 Perfeito! Criei sua RFQ #${newQuote.id} com ${quoteData.items.length} itens${selectedSuppliers.length > 0 ? ` e ${selectedSuppliers.length} fornecedores selecionados` : ''}.${autoSendMessage} Você pode acompanhar o progresso na página de cotações.`,
+          response: successMessage,
           quote: quoteData,
           quoteId: newQuote.id,
           suppliers: selectedSuppliers,
           autoSent: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend,
-          suggestions: ['Ver minha cotação', 'Criar outra RFQ', 'Acompanhar propostas']
+          suggestions: ['Ver minha cotação', 'Criar outra RFQ', 'Acompanhar propostas'],
+          historyInsights: historyContext ? {
+            totalPreviousRFQs: historyContext.totalRFQs,
+            commonProducts: historyContext.commonProducts.slice(0, 3),
+            preferredSuppliers: historyContext.preferredSuppliers.slice(0, 2)
+          } : null
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
