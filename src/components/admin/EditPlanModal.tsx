@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,6 +16,33 @@ interface EditPlanModalProps {
   open: boolean;
   onClose: () => void;
 }
+
+// Lista de funcionalidades disponíveis
+const AVAILABLE_FEATURES = [
+  'Export PDF de Cotações',
+  'Suporte por Email',
+  'Suporte por WhatsApp',
+  'Suporte Prioritário',
+  'API Access',
+  'Integração WhatsApp',
+  'Integração Email Marketing',
+  'Relatórios Avançados',
+  'Dashboard Personalizado',
+  'Múltiplos Usuários',
+  'Gestão de Fornecedores',
+  'Aprovações Múltiplas',
+  'Centros de Custo',
+  'Auditoria Completa',
+  'Backup Automático',
+  'SLA Garantido',
+  'Treinamento Personalizado',
+  'Onboarding Dedicado',
+  'Custom Branding',
+  'Domínio Personalizado',
+  'White Label',
+  'Analytics Avançados',
+  'Integrações Personalizadas'
+];
 
 export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
   const { updatePlan } = useSupabaseSubscriptionPlans();
@@ -42,11 +70,13 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
     features: [] as string[]
   });
 
-  const [features, setFeatures] = useState('');
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (plan && open) {
+      const planFeatures = Array.isArray(plan.features) ? plan.features : [];
+      
       setFormData({
         name: plan.name || '',
         display_name: plan.display_name || '',
@@ -66,25 +96,29 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
         allow_branding: plan.allow_branding || false,
         allow_custom_domain: plan.allow_custom_domain || false,
         custom_color: plan.custom_color || '#3b82f6',
-        features: Array.isArray(plan.features) ? plan.features : []
+        features: planFeatures
       });
-      setFeatures(Array.isArray(plan.features) ? plan.features.join('\n') : '');
+      
+      setSelectedFeatures(planFeatures);
     }
   }, [plan, open]);
+
+  const handleFeatureToggle = (feature: string, checked: boolean) => {
+    if (checked) {
+      setSelectedFeatures(prev => [...prev, feature]);
+    } else {
+      setSelectedFeatures(prev => prev.filter(f => f !== feature));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const featuresArray = features
-        .split('\n')
-        .map(f => f.trim())
-        .filter(f => f.length > 0);
-
       const planData = {
         ...formData,
-        features: featuresArray,
+        features: selectedFeatures,
         target_audience: formData.target_audience as 'clients' | 'suppliers' | 'both',
         status: formData.status as 'active' | 'inactive'
       };
@@ -335,19 +369,26 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
           {/* Funcionalidades */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Funcionalidades Incluídas</h3>
-            <div>
-              <Label htmlFor="features">Funcionalidades (uma por linha)</Label>
-              <Textarea
-                id="features"
-                value={features}
-                onChange={(e) => setFeatures(e.target.value)}
-                placeholder="PDF Export&#10;Suporte prioritário&#10;API Access"
-                rows={6}
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                Digite uma funcionalidade por linha
-              </p>
+            <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto border rounded-lg p-4">
+              {AVAILABLE_FEATURES.map((feature) => (
+                <div key={feature} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`feature-${feature}`}
+                    checked={selectedFeatures.includes(feature)}
+                    onCheckedChange={(checked) => handleFeatureToggle(feature, checked as boolean)}
+                  />
+                  <Label 
+                    htmlFor={`feature-${feature}`}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {feature}
+                  </Label>
+                </div>
+              ))}
             </div>
+            <p className="text-sm text-muted-foreground">
+              Selecione as funcionalidades que estarão disponíveis neste plano
+            </p>
           </div>
 
           {/* Botões */}
