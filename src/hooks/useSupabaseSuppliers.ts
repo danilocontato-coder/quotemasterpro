@@ -349,8 +349,8 @@ export const useSupabaseSuppliers = () => {
         if (associationError) throw associationError;
 
         toast({
-          title: "Fornecedor removido da sua lista",
-          description: `O fornecedor "${name}" foi removido da sua lista, mas continua disponível para outros clientes.`,
+          title: "Fornecedor removido",
+          description: `O fornecedor "${name}" foi removido da sua lista.`,
         });
       }
 

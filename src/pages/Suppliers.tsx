@@ -111,12 +111,8 @@ export default function Suppliers() {
       return;
     }
 
-    // Show confirmation dialog with client-specific soft delete explanation
-    const confirmed = window.confirm(
-      `Tem certeza que deseja remover o fornecedor "${supplier.name}" da sua lista?\n\n` +
-      `O fornecedor será removido apenas da SUA lista de fornecedores, ` +
-      `mas continuará disponível para outros clientes e para o SuperAdmin.`
-    );
+    // Show confirmation dialog - simple and direct
+    const confirmed = window.confirm(`Tem certeza que deseja remover "${supplier.name}" da sua lista?`);
     
     if (!confirmed) return;
     await deleteSupplier(supplier.id, supplier.name);
