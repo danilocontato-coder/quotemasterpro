@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, Search, Building2, Plus } from 'lucide-react';
+import { CheckCircle, Search, Building2, Plus, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useSupplierAssociation } from '@/hooks/useSupplierAssociation';
+import { InactiveSupplierModal } from './InactiveSupplierModal';
 
 interface SmartSupplierModalProps {
   isOpen: boolean;
@@ -23,14 +24,16 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
     isLoading 
   } = useSupplierAssociation();
 
-  const [step, setStep] = useState<'search' | 'create' | 'found'>('search');
+  const [step, setStep] = useState<'search' | 'create' | 'found' | 'inactive'>('search');
   const [foundSupplier, setFoundSupplier] = useState<any>(null);
   const [searchCnpj, setSearchCnpj] = useState('');
+  const [inactiveSupplierData, setInactiveSupplierData] = useState<any>(null);
 
   const resetModal = () => {
     setStep('search');
     setFoundSupplier(null);
     setSearchCnpj('');
+    setInactiveSupplierData(null);
   };
 
   const handleCNPJSearch = async (cnpj: string) => {
@@ -43,6 +46,7 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
       if (supplier) {
         setFoundSupplier(supplier);
         
+        
         if (supplier.association_status === 'associated') {
           toast({
             title: "Fornecedor já associado",
@@ -50,9 +54,21 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
             variant: "default"
           });
           return;
-        } else {
-          setStep('found');
         }
+        
+        // Verificar se fornecedor está ativo
+        if (supplier.status !== 'active') {
+          setInactiveSupplierData({
+            supplier_name: supplier.name,
+            supplier_cnpj: supplier.cnpj,
+            supplier_email: supplier.email,
+            supplier_status: supplier.status
+          });
+          setStep('inactive');
+          return;
+        }
+        
+        setStep('found');
       } else {
         // Não encontrou fornecedor, ir para tela de criação
         setStep('create');
@@ -75,8 +91,14 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
       onSuccess?.();
       onOpenChange(false);
       resetModal();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao associar fornecedor:', error);
+      
+      if (error.code === 'SUPPLIER_INACTIVE') {
+        // Mostrar modal de fornecedor inativo
+        setInactiveSupplierData(error.supplierData);
+        setStep('inactive');
+      }
     }
   };
 
@@ -122,7 +144,7 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            {step === 'create' ? 'Criar Novo Fornecedor' : 'Buscar Fornecedor'}
+            {step === 'create' ? 'Criar Novo Fornecedor' : step === 'inactive' ? 'Fornecedor Inativo' : 'Buscar Fornecedor'}
           </DialogTitle>
         </DialogHeader>
 
@@ -148,6 +170,9 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
                 <p><span className="font-medium">Status:</span> 
                   <Badge variant={foundSupplier.certification_status === 'certified' ? 'default' : 'outline'} className="ml-2">
                     {foundSupplier.certification_status === 'certified' ? 'Certificado' : 'Não Certificado'}
+                  </Badge>
+                  <Badge variant={foundSupplier.status === 'active' ? 'default' : 'destructive'} className="ml-2">
+                    {foundSupplier.status === 'active' ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </p>
               </div>
@@ -190,6 +215,34 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
             />
           </div>
         )}
+        
+        {/* Modal de fornecedor inativo */}
+        <InactiveSupplierModal
+          isOpen={step === 'inactive'}
+          onOpenChange={(open) => {
+            if (!open) {
+              setStep('search');
+              setInactiveSupplierData(null);
+            }
+          }}
+          supplierData={inactiveSupplierData}
+          onRequestReactivation={() => {
+            // TODO: Implementar solicitação de reativação
+            toast({
+              title: "Solicitação enviada",
+              description: "Sua solicitação de reativação foi enviada para análise.",
+            });
+            onOpenChange(false);
+            resetModal();
+          }}
+          onContactSupport={() => {
+            // TODO: Implementar contato com suporte
+            toast({
+              title: "Redirecionando",
+              description: "Você será redirecionado para o suporte.",
+            });
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

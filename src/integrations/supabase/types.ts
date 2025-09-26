@@ -3225,6 +3225,7 @@ export type Database = {
           name: string
           phone: string
           specialties: string[]
+          status: string
           website: string
           whatsapp: string
         }[]
@@ -3266,6 +3267,10 @@ export type Database = {
           max_discount_amount: number
           valid: boolean
         }[]
+      }
+      validate_supplier_status_for_association: {
+        Args: { p_supplier_id: string }
+        Returns: Json
       }
     }
     Enums: {

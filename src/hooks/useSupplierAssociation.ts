@@ -13,6 +13,7 @@ export interface SupplierSearchResult {
   address: any;
   specialties: string[];
   certification_status: string;
+  status: string;
   association_status: string;
 }
 
@@ -21,6 +22,16 @@ export interface FindSupplierResult {
   is_new: boolean;
   certification_status: string;
   existing_name: string;
+}
+
+export interface SupplierValidationResult {
+  valid: boolean;
+  error_code?: string;
+  message?: string;
+  supplier_name?: string;
+  supplier_cnpj?: string;
+  supplier_email?: string;
+  supplier_status?: string;
 }
 
 export function useSupplierAssociation() {
@@ -82,9 +93,43 @@ export function useSupplierAssociation() {
     }
   };
 
+  const validateSupplierStatus = async (supplierId: string): Promise<SupplierValidationResult> => {
+    try {
+      const { data, error } = await supabase.rpc('validate_supplier_status_for_association', {
+        p_supplier_id: supplierId
+      });
+
+      if (error) throw error;
+      return data as unknown as SupplierValidationResult;
+    } catch (error) {
+      console.error('Erro ao validar status do fornecedor:', error);
+      throw error;
+    }
+  };
+
   const associateSupplierToClient = async (supplierId: string): Promise<void> => {
     setIsLoading(true);
     try {
+      // Validar status do fornecedor antes da associação
+      const validation = await validateSupplierStatus(supplierId);
+      
+      if (!validation.valid) {
+        if (validation.error_code === 'SUPPLIER_INACTIVE') {
+          // Retornar informações específicas do fornecedor inativo
+          const error = new Error(validation.message);
+          (error as any).code = 'SUPPLIER_INACTIVE';
+          (error as any).supplierData = {
+            supplier_name: validation.supplier_name,
+            supplier_cnpj: validation.supplier_cnpj,
+            supplier_email: validation.supplier_email,
+            supplier_status: validation.supplier_status
+          };
+          throw error;
+        } else {
+          throw new Error(validation.message);
+        }
+      }
+
       const { error } = await supabase.rpc('associate_supplier_to_client', {
         p_supplier_id: supplierId
       });
@@ -97,12 +142,18 @@ export function useSupplierAssociation() {
       });
     } catch (error: any) {
       console.error('Erro ao associar fornecedor:', error);
-      toast({
-        title: "Erro na associação",
-        description: "Não foi possível associar o fornecedor. Tente novamente.",
-        variant: "destructive",
-      });
-      throw error;
+      
+      if (error.code === 'SUPPLIER_INACTIVE') {
+        // Re-throw com dados específicos para tratamento na UI
+        throw error;
+      } else {
+        toast({
+          title: "Erro na associação",
+          description: error.message || "Não foi possível associar o fornecedor. Tente novamente.",
+          variant: "destructive",
+        });
+        throw error;
+      }
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +177,7 @@ export function useSupplierAssociation() {
     findSupplierByCNPJ,
     createNewSupplier,
     associateSupplierToClient,
+    validateSupplierStatus,
     getClientSuppliers
   };
 }
