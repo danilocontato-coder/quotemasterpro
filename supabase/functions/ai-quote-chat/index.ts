@@ -467,9 +467,17 @@ Formato da RFQ final:
       
       // Remover blocos de código markdown se existirem
       if (jsonPart.startsWith('```json')) {
-        jsonPart = jsonPart.replace(/```json\s*/, '').replace(/\s*```$/, '');
+        jsonPart = jsonPart.replace(/```json\s*/, '').replace(/\s*```[\s\S]*$/, '');
       } else if (jsonPart.startsWith('```')) {
-        jsonPart = jsonPart.replace(/```\s*/, '').replace(/\s*```$/, '');
+        jsonPart = jsonPart.replace(/```\s*/, '').replace(/\s*```[\s\S]*$/, '');
+      }
+      
+      // Encontrar o JSON válido entre chaves
+      const jsonStart = jsonPart.indexOf('{');
+      const jsonEnd = jsonPart.lastIndexOf('}');
+      
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        jsonPart = jsonPart.substring(jsonStart, jsonEnd + 1);
       }
       
       try {
