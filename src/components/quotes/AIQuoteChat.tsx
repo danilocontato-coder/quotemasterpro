@@ -141,6 +141,39 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
     setTimeout(() => scrollToBottom(), 100);
   };
 
+  const testQuoteCreation = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-quote-creation');
+      
+      if (error) throw error;
+      
+      console.log('✅ Teste de criação concluído:', data);
+      
+      const testMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: `✅ Teste concluído! ${data.success ? 'A criação de RFQ está funcionando normalmente.' : 'Houve problemas na criação da RFQ.'}\n\nDetalhes: ${JSON.stringify(data, null, 2)}`,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, testMessage]);
+    } catch (error) {
+      console.error('❌ Erro no teste:', error);
+      
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: `❌ Teste falhou: ${error.message}\n\nDetalhes: ${JSON.stringify(error, null, 2)}`,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sendMessage(currentMessage);
@@ -157,9 +190,20 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
             <Bot className="h-5 w-5 text-primary" />
             <span className="font-medium">Assistente de Cotações</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ✕
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={testQuoteCreation}
+              disabled={isLoading}
+              className="text-xs"
+            >
+              Testar
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              ✕
+            </Button>
+          </div>
         </div>
 
         {/* Messages */}

@@ -522,32 +522,55 @@ Formato da RFQ final:
         }
 
         // Buscar client_id do usuário
-        const { data: profile } = await supabaseClient
+        const { data: profile, error: profileError } = await supabaseClient
           .from('profiles')
           .select('client_id')
           .eq('id', userId)
           .single();
 
-        if (!profile?.client_id) {
-          throw new Error('Cliente não encontrado');
+        if (profileError) {
+          console.error('Erro ao buscar perfil:', profileError);
+          throw new Error(`Erro ao buscar perfil: ${profileError.message}`);
         }
+
+        if (!profile?.client_id) {
+          throw new Error('Cliente não encontrado no perfil do usuário');
+        }
+
+        console.log('📋 Perfil encontrado:', { userId, clientId: profile.client_id });
 
         // Buscar fornecedores automaticamente se especificado
         let selectedSuppliers: any[] = [];
         if (quoteData.supplierPreferences) {
-          const { data: suppliers } = await supabaseClient
+          console.log('🔍 Buscando fornecedores com filtros:', quoteData.supplierPreferences);
+          
+          let suppliersQuery = supabaseClient
             .from('suppliers')
             .select('*')
-            .eq('status', 'active')
-            .in('specialties', quoteData.categories || []);
+            .eq('status', 'active');
             
-          if (suppliers && suppliers.length > 0) {
-            // Filtrar baseado nas preferências
-            selectedSuppliers = suppliers.filter((supplier: any) => {
-              if (quoteData.supplierPreferences.onlyLocal && !supplier.region) return false;
-              if (quoteData.supplierPreferences.onlyCertified && !supplier.is_certified) return false;
-              return true;
-            }).slice(0, 10); // Máximo 10 fornecedores
+          // Aplicar filtros baseado nas categorias
+          if (quoteData.categories && quoteData.categories.length > 0) {
+            suppliersQuery = suppliersQuery.overlaps('specialties', quoteData.categories);
+          }
+            
+          const { data: suppliers, error: suppliersError } = await suppliersQuery.limit(20);
+          
+          if (suppliersError) {
+            console.error('Erro ao buscar fornecedores:', suppliersError);
+          } else {
+            console.log(`📋 Encontrados ${suppliers?.length || 0} fornecedores`);
+            
+            if (suppliers && suppliers.length > 0) {
+              // Filtrar baseado nas preferências
+              selectedSuppliers = suppliers.filter((supplier: any) => {
+                if (quoteData.supplierPreferences.onlyLocal && supplier.visibility_scope !== 'local') return false;
+                if (quoteData.supplierPreferences.onlyCertified && !supplier.is_certified) return false;
+                return true;
+              }).slice(0, 10); // Máximo 10 fornecedores
+              
+              console.log(`✅ Selecionados ${selectedSuppliers.length} fornecedores após filtros`);
+            }
           }
         }
 
@@ -558,30 +581,40 @@ Formato da RFQ final:
         }, 0);
 
         // Inserir cotação
+        console.log('📝 Inserindo cotação no banco...');
+        const quotePayload = {
+          title: quoteData.title,
+          description: quoteData.description,
+          client_id: profile.client_id,
+          created_by: userId,
+          status: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend ? 'sent' : 'draft',
+          total: estimatedTotal,
+          deadline: quoteData.deadline_days ? 
+            new Date(Date.now() + quoteData.deadline_days * 24 * 60 * 60 * 1000).toISOString() : 
+            null,
+          selected_supplier_ids: selectedSuppliers.map(s => s.id),
+          suppliers_sent_count: selectedSuppliers.length,
+          client_name: clientInfo.name || 'Cliente'
+        };
+        
+        console.log('📋 Payload da cotação:', quotePayload);
+        
         const { data: newQuote, error: quoteError } = await supabaseClient
           .from('quotes')
-          .insert({
-            title: quoteData.title,
-            description: quoteData.description,
-            client_id: profile.client_id,
-            created_by: userId,
-            status: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend ? 'sent' : 'draft',
-            total: estimatedTotal,
-            deadline: quoteData.deadline_days ? 
-              new Date(Date.now() + quoteData.deadline_days * 24 * 60 * 60 * 1000).toISOString() : 
-              null,
-            selected_supplier_ids: selectedSuppliers.map(s => s.id),
-            suppliers_sent_count: selectedSuppliers.length
-          })
+          .insert(quotePayload)
           .select()
           .single();
 
-        if (quoteError) throw quoteError;
+        if (quoteError) {
+          console.error('❌ Erro ao inserir cotação:', quoteError);
+          throw new Error(`Erro ao criar cotação: ${quoteError.message}`);
+        }
 
         console.log('✅ RFQ criada:', newQuote.id);
 
         // Inserir itens da cotação
         if (quoteData.items?.length > 0) {
+          console.log(`📋 Inserindo ${quoteData.items.length} itens...`);
           const items = quoteData.items.map((item: any) => ({
             quote_id: newQuote.id,
             client_id: profile.client_id,
@@ -596,7 +629,10 @@ Formato da RFQ final:
             .insert(items);
 
           if (itemsError) {
-            console.error('Erro ao inserir itens:', itemsError);
+            console.error('❌ Erro ao inserir itens:', itemsError);
+            throw new Error(`Erro ao inserir itens: ${itemsError.message}`);
+          } else {
+            console.log('✅ Itens inseridos com sucesso');
           }
         }
 
@@ -658,10 +694,11 @@ Formato da RFQ final:
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (parseError) {
-        console.error('Erro ao gerar RFQ:', parseError);
+        console.error('❌ Erro ao gerar RFQ:', parseError);
+        const errorMessage = parseError instanceof Error ? parseError.message : 'Erro desconhecido';
         return new Response(JSON.stringify({
-          response: "Ocorreu um erro ao criar a RFQ. Por favor, tente novamente.",
-          suggestions: ['Tentar novamente', 'Começar do zero']
+          response: `Ocorreu um erro ao criar a RFQ: ${errorMessage}. Por favor, tente novamente ou entre em contato com o suporte.`,
+          suggestions: ['Tentar novamente', 'Começar do zero', 'Falar com suporte']
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
