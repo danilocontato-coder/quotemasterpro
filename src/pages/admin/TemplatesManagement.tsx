@@ -99,9 +99,20 @@ export default function TemplatesManagement() {
       const { data, error } = await supabase
         .from('whatsapp_templates')
         .select(`
-          *,
+          id,
+          name,
+          subject,
+          message_content,
+          template_type,
+          active,
+          is_global,
+          is_default,
+          client_id,
+          variables,
+          created_at,
           clients (name)
         `)
+        .order('is_default', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
