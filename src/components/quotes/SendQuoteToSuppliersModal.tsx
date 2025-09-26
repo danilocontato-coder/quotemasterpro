@@ -247,7 +247,6 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           supplier_ids: selectedSuppliers,
           send_whatsapp: sendWhatsApp,
           send_email: sendEmail,
-          custom_message: `Nova cotação disponível: ${quote.title}\n\nDescrição: ${quote.description || 'Sem descrição'}\n\nPrazo: ${quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'A definir'}\n\nAcesse a plataforma para mais detalhes.`,
           send_via: sendVia,
           supplier_links: supplierLinks,
           short_links: validShortLinks,
