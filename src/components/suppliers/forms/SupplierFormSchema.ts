@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-// CNPJ validation regex
-const cnpjRegex = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/;
+// CNPJ validation - aceita tanto formatado quanto sem formatação
+const cnpjRegex = /^(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})$/;
 
 // Phone validation (Brazilian format)
 const phoneRegex = /^\(\d{2}\)\s\d{4,5}-\d{4}$/;
@@ -21,7 +21,7 @@ export const supplierFormSchema = z.object({
   cnpj: z
     .string()
     .trim()
-    .refine(val => cnpjRegex.test(val), 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX'),
+    .refine(val => cnpjRegex.test(val), 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX ou 14 dígitos'),
   
   // Contato
   email: z
