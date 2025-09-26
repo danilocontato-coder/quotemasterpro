@@ -55,6 +55,7 @@ export interface AuthContextType {
   error: string | null;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
+  isAdminMode: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,32 +77,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     console.log('🔍 [DEBUG-AUTH] AuthProvider useEffect triggered for session initialization');
-    // Get initial session
-    const initializeAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+    
+    // Verificar se há token admin na URL primeiro
+    const checkAdminToken = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminToken = urlParams.get('adminToken');
+      
+      if (adminToken) {
+        console.log('🔍 [DEBUG-AUTH] Admin token detected:', adminToken);
+        const adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
         
-        if (error) {
-          console.error('❌ Error getting initial session:', error);
-          setIsLoading(false);
-          return;
+        if (adminData) {
+          try {
+            const parsedData = JSON.parse(adminData);
+            console.log('🔍 [DEBUG-AUTH] Admin access data:', parsedData);
+            
+            // Simular usuário logado como cliente/fornecedor
+            if (parsedData.targetRole === 'manager' && parsedData.targetClientId) {
+              simulateClientLogin(parsedData);
+              return true;
+            } else if (parsedData.targetRole === 'supplier' && parsedData.targetSupplierId) {
+              simulateSupplierLogin(parsedData);
+              return true;
+            }
+          } catch (error) {
+            console.error('❌ Error parsing admin data:', error);
+          }
         }
-        
-        console.log('🔍 Initial session check:', { hasSession: !!session, userId: session?.user?.id });
-        
-        setSession(session);
-        if (session?.user) {
-          fetchUserProfile(session.user);
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('❌ Error initializing auth:', error);
-        setIsLoading(false);
       }
+      return false;
     };
 
-    initializeAuth();
+    // Se não há token admin, inicializar autenticação normal
+    if (!checkAdminToken()) {
+      const initializeAuth = async () => {
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('❌ Error getting initial session:', error);
+            setIsLoading(false);
+            return;
+          }
+          
+          console.log('🔍 Initial session check:', { hasSession: !!session, userId: session?.user?.id });
+          
+          setSession(session);
+          if (session?.user) {
+            fetchUserProfile(session.user);
+          } else {
+            setIsLoading(false);
+          }
+        } catch (error) {
+          console.error('❌ Error initializing auth:', error);
+          setIsLoading(false);
+        }
+      };
+
+      initializeAuth();
+    }
 
     // Listen for auth changes - com filtros para evitar reloads desnecessários
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -141,6 +175,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Função para simular login como cliente
+  const simulateClientLogin = async (adminData: any) => {
+    console.log('🔍 [DEBUG-AUTH] Simulating client login:', adminData);
+    setIsLoading(true);
+    
+    try {
+      // Buscar dados do cliente
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', adminData.targetClientId)
+        .single();
+
+      if (clientError || !clientData) {
+        console.error('❌ Error fetching client data:', clientError);
+        setError('Cliente não encontrado');
+        setIsLoading(false);
+        return;
+      }
+
+      // Criar usuário simulado
+      const simulatedUser: User = {
+        id: `admin_simulated_${adminData.targetClientId}`,
+        email: clientData.email,
+        name: adminData.targetClientName || clientData.name,
+        role: 'manager' as UserRole,
+        active: true,
+        clientId: adminData.targetClientId,
+        companyName: clientData.company_name || clientData.name
+      };
+
+      console.log('✅ Simulated client user created:', simulatedUser);
+      setUser(simulatedUser);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('❌ Error simulating client login:', error);
+      setError('Erro ao simular acesso como cliente');
+      setIsLoading(false);
+    }
+  };
+
+  // Função para simular login como fornecedor
+  const simulateSupplierLogin = async (adminData: any) => {
+    console.log('🔍 [DEBUG-AUTH] Simulating supplier login:', adminData);
+    setIsLoading(true);
+    
+    try {
+      // Buscar dados do fornecedor
+      const { data: supplierData, error: supplierError } = await supabase
+        .from('suppliers')
+        .select('*')
+        .eq('id', adminData.targetSupplierId)
+        .single();
+
+      if (supplierError || !supplierData) {
+        console.error('❌ Error fetching supplier data:', supplierError);
+        setError('Fornecedor não encontrado');
+        setIsLoading(false);
+        return;
+      }
+
+      // Criar usuário simulado
+      const simulatedUser: User = {
+        id: `admin_simulated_${adminData.targetSupplierId}`,
+        email: supplierData.email,
+        name: adminData.targetSupplierName || supplierData.name,
+        role: 'supplier' as UserRole,
+        active: true,
+        supplierId: adminData.targetSupplierId,
+        companyName: supplierData.name
+      };
+
+      console.log('✅ Simulated supplier user created:', simulatedUser);
+      setUser(simulatedUser);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('❌ Error simulating supplier login:', error);
+      setError('Erro ao simular acesso como fornecedor');
+      setIsLoading(false);
+    }
+  };
+
+  // Função para verificar se é modo admin
+  const isAdminMode = (): boolean => {
+    return user?.id?.startsWith('admin_simulated_') || false;
+  };
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
     console.log('🔍 [DEBUG-AUTH] fetchUserProfile called for user:', supabaseUser.id);
@@ -330,11 +451,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user?.id]); // Only depend on user ID to prevent unnecessary re-runs
 
   const logout = async (): Promise<void> => {
+    // Verificar se é usuário simulado (admin mode)
+    if (user?.id?.startsWith('admin_simulated_')) {
+      // Para usuários simulados, apenas limpar o estado local
+      setUser(null);
+      setSession(null);
+      // Fechar a aba se for acesso admin
+      window.close();
+      return;
+    }
+    
     await supabase.auth.signOut();
   };
 
   const updateProfile = async (updates: Partial<User>): Promise<void> => {
-    if (!user || !session) return;
+    if (!user) return;
+    
+    // Se for usuário simulado, não tentar atualizar no banco
+    if (user.id.startsWith('admin_simulated_')) {
+      setUser({ ...user, ...updates });
+      return;
+    }
+    
+    if (!session) return;
     
     setIsLoading(true);
     try {
@@ -366,6 +505,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     logout,
     updateProfile,
+    isAdminMode,
   };
 
   return (
