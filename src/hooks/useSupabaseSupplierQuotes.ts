@@ -366,34 +366,20 @@ export const useSupabaseSupplierQuotes = () => {
 
       console.log('✅ Quote response submitted successfully');
       
-      // Criar notificação para o cliente sobre nova proposta
+      // Enviar notificação WhatsApp para o cliente sobre nova proposta
       try {
-        const { data: quoteData } = await supabase
-          .from('quotes')
-          .select('client_id')
-          .eq('id', quoteId)
-          .single();
-
-        if (quoteData?.client_id) {
-          await supabase.functions.invoke('create-notification', {
-            body: {
-              client_id: quoteData.client_id,
-              notify_all_client_users: true,
-              title: 'Nova Proposta Recebida',
-              message: `${user.name || 'Fornecedor'} enviou uma proposta de R$ ${responseData.total_amount.toFixed(2)} para a cotação #${quoteId}`,
-              type: 'proposal',
-              priority: 'high',
-              action_url: '/quotes',
-              metadata: {
-                quote_id: quoteId,
-                supplier_name: user.name || 'Fornecedor',
-                total_amount: responseData.total_amount
-              }
-            }
-          });
-        }
+        await supabase.functions.invoke('notify-client-proposal', {
+          body: {
+            quoteId: quoteId,
+            supplierId: user.supplierId,
+            supplierName: user.name || 'Fornecedor',
+            totalValue: responseData.total_amount
+          }
+        });
+        
+        console.log('✅ WhatsApp notification sent to client');
       } catch (notificationError) {
-        console.error('⚠️ Error creating proposal notification (non-critical):', notificationError);
+        console.error('⚠️ Error sending WhatsApp notification (non-critical):', notificationError);
       }
       
       // Refresh quotes to update status
