@@ -37,18 +37,33 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
   };
 
   useEffect(() => {
-    // Mensagem de boas-vindas dinâmica
+    // Mensagem de boas-vindas dinâmica com sugestões
+    const welcomeContent = 'Olá! Sou seu assistente especializado em cotações. Vou te ajudar a criar uma RFQ detalhada e personalizada. Descreva o que você precisa e farei perguntas para garantir que tenhamos todas as especificações necessárias.\n\n[SUGESTÕES: "Materiais para minha empresa", "Equipamentos de escritório", "Serviços especializados", "Tenho uma lista de produtos"]';
+    
+    // Extrair sugestões da mensagem inicial
+    let suggestions: string[] = [];
+    let cleanContent = welcomeContent;
+    
+    const suggestionsMatch = welcomeContent.match(/\[SUGESTÕES:\s*([^\]]+)\]/);
+    if (suggestionsMatch) {
+      try {
+        const suggestionsText = suggestionsMatch[1];
+        const matches = suggestionsText.match(/"([^"]+)"/g);
+        if (matches) {
+          suggestions = matches.map((match: string) => match.slice(1, -1));
+        }
+        cleanContent = welcomeContent.replace(/\[SUGESTÕES:[^\]]+\]/, '').trim();
+      } catch (error) {
+        console.error('Erro ao extrair sugestões da mensagem inicial:', error);
+      }
+    }
+
     const welcomeMessage: Message = {
       id: '1',
       role: 'assistant',
-      content: 'Olá! Sou seu assistente especializado em cotações. Vou te ajudar a criar uma RFQ detalhada e personalizada. Descreva o que você precisa e farei perguntas para garantir que tenhamos todas as especificações necessárias.',
+      content: cleanContent,
       timestamp: new Date(),
-      suggestions: [
-        'Preciso de materiais para minha empresa',
-        'Quero cotar equipamentos',
-        'Preciso de serviços especializados',
-        'Tenho uma lista de produtos'
-      ]
+      suggestions: suggestions
     };
     setMessages([welcomeMessage]);
   }, []);

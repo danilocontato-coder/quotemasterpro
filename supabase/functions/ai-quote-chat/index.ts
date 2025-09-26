@@ -373,9 +373,18 @@ PARA SELEÇÃO DE FORNECEDORES:
 - Ofereça opções: "Locais da sua região", "Certificados", "Ambos", "Qualquer um"
 - Para múltipla escolha de fornecedores específicos use: [FORNECEDORES: "nome1", "nome2", "nome3"]
 
-FORMATO DE SUGESTÕES:
-Sempre termine com opções clicáveis:
+FORMATO DE SUGESTÕES (OBRIGATÓRIO):
+TODA resposta DEVE terminar com sugestões contextuais clicáveis baseadas na pergunta feita:
 [SUGESTÕES: "Opção 1", "Opção 2", "Opção 3", "Opção 4"]
+
+EXEMPLOS DE SUGESTÕES POR CONTEXTO:
+- Primeira pergunta: [SUGESTÕES: "Materiais de limpeza", "Equipamentos", "Serviços", "Tenho uma lista"]
+- Sobre quantidade: [SUGESTÕES: "Pequena quantidade", "Quantidade média", "Grande quantidade", "Não sei ainda"]
+- Sobre prazo: [SUGESTÕES: "Urgente (até 7 dias)", "Normal (15 dias)", "Flexível (30 dias)", "Sem pressa"]
+- Sobre fornecedores: [SUGESTÕES: "Apenas locais", "Apenas certificados", "Ambos (local + certificado)", "Qualquer um"]
+- Confirmações: [SUGESTÕES: "Sim, está correto", "Não, preciso ajustar", "Adicionar mais itens", "Gerar cotação"]
+
+IMPORTANTE: NUNCA responda sem incluir as sugestões no formato [SUGESTÕES: ...]!
 
 CATEGORIAS PARA ESTE SETOR (${clientInfo.sector}):
 ${categories.map((cat: string) => `- ${cat}`).join('\n')}
@@ -468,6 +477,7 @@ Formato da RFQ final:
         const matches = suggestionsText.match(/"([^"]+)"/g);
         if (matches) {
           suggestions = matches.map((match: string) => match.slice(1, -1)); // Remove as aspas
+          console.log('✅ Sugestões extraídas da IA:', suggestions);
         }
         // Remove a linha de sugestões da resposta
         cleanResponse = aiResponse.replace(/\[SUGESTÕES:[^\]]+\]/, '').trim();
@@ -477,6 +487,7 @@ Formato da RFQ final:
         suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
       }
     } else {
+      console.log('⚠️ IA não incluiu sugestões no formato correto, usando fallback');
       // Se não há sugestões explícitas, usar as automáticas
       suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
     }
