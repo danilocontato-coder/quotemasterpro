@@ -17,13 +17,12 @@ import {
   Smartphone,
   Search,
   Filter,
-  Settings
+  Star
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import TemplateModal from '@/components/admin/TemplateModal';
 import { TemplatePreview } from '@/components/admin/TemplatePreview';
-import DefaultTemplateManager from '@/components/admin/DefaultTemplateManager';
 
 interface Template {
   id: string;
@@ -88,6 +87,7 @@ export default function TemplatesManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -148,6 +148,68 @@ export default function TemplatesManagement() {
     } catch (error: any) {
       console.error('Error updating template:', error);
       toast.error('Erro ao atualizar template');
+    }
+  };
+
+  const setAsDefault = async (template: Template) => {
+    try {
+      setUpdating(template.id);
+
+      // Remove default from other templates of same type and scope
+      if (template.is_global) {
+        // Remove default from other global templates of same type
+        await supabase
+          .from('whatsapp_templates')
+          .update({ is_default: false })
+          .eq('template_type', template.template_type)
+          .eq('is_global', true)
+          .neq('id', template.id);
+      } else if (template.client_id) {
+        // Remove default from other client templates of same type
+        await supabase
+          .from('whatsapp_templates')
+          .update({ is_default: false })
+          .eq('template_type', template.template_type)
+          .eq('client_id', template.client_id)
+          .neq('id', template.id);
+      }
+
+      // Set this template as default
+      const { error } = await supabase
+        .from('whatsapp_templates')
+        .update({ is_default: true })
+        .eq('id', template.id);
+
+      if (error) throw error;
+
+      toast.success('Template definido como padrão');
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error setting default template:', error);
+      toast.error('Erro ao definir template padrão');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const removeDefault = async (template: Template) => {
+    try {
+      setUpdating(template.id);
+
+      const { error } = await supabase
+        .from('whatsapp_templates')
+        .update({ is_default: false })
+        .eq('id', template.id);
+
+      if (error) throw error;
+
+      toast.success('Template padrão removido');
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error removing default template:', error);
+      toast.error('Erro ao remover template padrão');
+    } finally {
+      setUpdating(null);
     }
   };
 
@@ -261,6 +323,34 @@ export default function TemplatesManagement() {
                     <Edit className="w-4 h-4 mr-1" />
                     Editar
                   </Button>
+
+                  {template.active && (
+                    <>
+                      {!template.is_default ? (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => setAsDefault(template)}
+                          disabled={updating === template.id}
+                          className="w-full"
+                        >
+                          <Star className="w-4 h-4 mr-1" />
+                          {updating === template.id ? 'Definindo...' : 'Definir Padrão'}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeDefault(template)}
+                          disabled={updating === template.id}
+                          className="w-full"
+                        >
+                          <Star className="w-4 h-4 mr-1 fill-current" />
+                          {updating === template.id ? 'Removendo...' : 'Remover Padrão'}
+                        </Button>
+                      )}
+                    </>
+                  )}
                   
                   <Button
                     variant={template.active ? "secondary" : "default"}
@@ -362,12 +452,8 @@ export default function TemplatesManagement() {
 
       {/* Templates Content */}
       <Tabs defaultValue="templates" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="templates">Todos ({filteredTemplates.length})</TabsTrigger>
-          <TabsTrigger value="defaults">
-            <Settings className="h-4 w-4 mr-1" />
-            Templates Padrão
-          </TabsTrigger>
           <TabsTrigger value="whatsapp">
             WhatsApp ({templatesByCategory.whatsapp?.length || 0})
           </TabsTrigger>
@@ -384,10 +470,6 @@ export default function TemplatesManagement() {
 
         <TabsContent value="templates" className="space-y-4">
           {renderTemplatesList(filteredTemplates)}
-        </TabsContent>
-
-        <TabsContent value="defaults" className="space-y-4">
-          <DefaultTemplateManager />
         </TabsContent>
 
         {Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
