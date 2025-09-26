@@ -316,7 +316,7 @@ export const useSupabaseSuppliers = () => {
       
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, client_id')
         .eq('id', authUser.id)
         .single();
 
@@ -336,16 +336,28 @@ export const useSupabaseSuppliers = () => {
         });
       } else {
         // Non-admin users do soft delete (mark as inactive)
-        const { error } = await supabase
+        const { error: supplierError } = await supabase
           .from('suppliers')
           .update({ status: 'inactive', updated_at: new Date().toISOString() })
           .eq('id', id);
 
-        if (error) throw error;
+        if (supplierError) throw supplierError;
+
+        // Also soft delete the client-supplier association (preserve for potential reactivation)
+        const { error: associationError } = await supabase
+          .from('client_suppliers')
+          .update({ status: 'inactive', updated_at: new Date().toISOString() })
+          .eq('supplier_id', id)
+          .eq('client_id', profile?.client_id || '');
+
+        if (associationError) {
+          console.warn('Error updating client_suppliers association:', associationError);
+          // Don't fail the whole operation if association update fails
+        }
 
         toast({
           title: "Fornecedor desativado",
-          description: `O fornecedor "${name}" foi desativado. Os administradores ainda podem reativá-lo se necessário.`,
+          description: `O fornecedor "${name}" foi desativado. Os administradores podem reativá-lo e restaurar a associação quando necessário.`,
         });
       }
 

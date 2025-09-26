@@ -125,9 +125,29 @@ export const SuppliersManagement = () => {
       const newStatus = supplier.status === 'active' ? 'inactive' : 'active';
       await updateSupplier(supplier.id, { status: newStatus });
       
+      // If reactivating a supplier, also reactivate its client associations
+      if (newStatus === 'active') {
+        console.log('Reativando associações do fornecedor:', supplier.name);
+        
+        // Reactivate all inactive client-supplier associations for this supplier
+        const { error: associationError } = await supabase
+          .from('client_suppliers')
+          .update({ status: 'active', updated_at: new Date().toISOString() })
+          .eq('supplier_id', supplier.id)
+          .eq('status', 'inactive');
+
+        if (associationError) {
+          console.warn('Erro ao reativar associações:', associationError);
+        } else {
+          console.log('Associações reativadas com sucesso');
+        }
+      }
+      
       toast({
         title: "Status Atualizado",
-        description: `Fornecedor ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso`,
+        description: newStatus === 'active' 
+          ? `Fornecedor ativado com sucesso. Associações com clientes foram restauradas.`
+          : `Fornecedor desativado com sucesso`,
       });
     } catch (error) {
       console.error('Erro ao alterar status:', error);
@@ -318,7 +338,8 @@ export const SuppliersManagement = () => {
               </div>
               <p className="text-sm text-blue-700 mt-1">
                 Existem <strong>{stats.inactive}</strong> fornecedores inativos que foram desativados por clientes. 
-                Estes são candidatos ideais para certificação e expansão da rede global.
+                <br />
+                <strong>Ao reativar:</strong> As associações com os clientes anteriores serão automaticamente restauradas.
               </p>
             </div>
           )}
