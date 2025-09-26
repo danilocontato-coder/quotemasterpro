@@ -234,6 +234,54 @@ serve(async (req) => {
       }
     }
 
+    // Buscar fornecedores disponíveis para contexto inteligente da IA
+    let availableSuppliers = [];
+    try {
+      // Só buscar fornecedores se estivermos numa conversa ativa com o cliente
+      if (clientInfo.client_id) {
+        // Extrair categorias da mensagem do usuário para sugerir fornecedores
+        const messageCategories = extractCategoriesFromMessage(message, clientInfo.sector);
+        
+        if (messageCategories.length > 0) {
+          console.log(`🤖 Buscando fornecedores para categorias: ${messageCategories.join(', ')}`);
+          
+          // Buscar dados do cliente para localização
+          const { data: clientData } = await supabaseClient
+            .from('clients')
+            .select('address')
+            .eq('id', clientInfo.client_id)
+            .single();
+
+          // Extrair localização (simplificado)
+          let clientState = 'SP';
+          let clientCity = 'São Paulo';
+          
+          if (clientData?.address) {
+            const addressStr = typeof clientData.address === 'string' 
+              ? clientData.address 
+              : JSON.stringify(clientData.address);
+            
+            const stateMatch = addressStr.match(/\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/i);
+            if (stateMatch) clientState = stateMatch[0].toUpperCase();
+          }
+
+          const { data: supplierSuggestions } = await supabaseClient
+            .rpc('suggest_suppliers_for_quote', {
+              _client_region: 'Brasil',
+              _client_state: clientState,
+              _client_city: clientCity,
+              _categories: messageCategories,
+              _max_suppliers: 8
+            });
+          
+          availableSuppliers = supplierSuggestions || [];
+          console.log(`🎯 Encontrados ${availableSuppliers.length} fornecedores sugeridos pela IA`);
+        }
+      }
+    } catch (error) {
+      console.log('Erro ao buscar fornecedores para contexto:', error);
+    }
+
     // Definir categorias e sugestões baseadas no setor
     const sectorCategories: Record<string, string[]> = {
       condominio: [
@@ -306,6 +354,17 @@ INFORMAÇÕES DO CLIENTE:
 - Nome: ${clientInfo.name}
 - Tipo: ${clientInfo.type}
 - Setor: ${clientInfo.sector}
+
+${availableSuppliers.length > 0 ? `
+FORNECEDORES DISPONÍVEIS PARA SUGESTÃO:
+${availableSuppliers.slice(0, 5).map((s: any) => `- ${s.name} ${s.is_certified ? '🏆' : ''} (${s.city}/${s.state}) - Score: ${s.match_score}`).join('\n')}
+
+CONTEXTO INTELIGENTE: A IA já identificou fornecedores adequados para este tipo de solicitação. Quando chegar na parte de escolher fornecedores, você pode mencionar os sugeridos acima e permitir que o cliente escolha entre:
+- "Enviar para os fornecedores sugeridos automaticamente"
+- "Apenas locais" 
+- "Apenas certificados (🏆)"
+- "Deixar eu escolher depois"
+` : ''}
 
 ${historyContext ? `
 HISTÓRICO E APRENDIZADO PERSONALIZADO:
@@ -551,38 +610,96 @@ Formato da RFQ final:
 
         const clientDisplayName = clientData?.name || profile.name || 'Cliente';
 
-        // Buscar fornecedores automaticamente se especificado
+        // Buscar dados do cliente para sugestão inteligente de fornecedores
+        const { data: clientDetails } = await supabaseClient
+          .from('clients')
+          .select('name, address')
+          .eq('id', profile.client_id)
+          .single();
+
+        // Buscar fornecedores com IA inteligente baseada nas categorias
         let selectedSuppliers: any[] = [];
-        if (quoteData.supplierPreferences) {
-          console.log('🔍 Buscando fornecedores com filtros:', quoteData.supplierPreferences);
+        if (quoteData.supplierPreferences && quoteData.categories && quoteData.categories.length > 0) {
+          console.log('🤖 Buscando fornecedores inteligentes com IA para categorias:', quoteData.categories);
           
-          let suppliersQuery = supabaseClient
-            .from('suppliers')
-            .select('*')
-            .eq('status', 'active');
+          try {
+            // Extrair informações de localização do cliente
+            let clientRegion = 'Brasil';
+            let clientState = 'SP';
+            let clientCity = 'São Paulo';
             
-          // Aplicar filtros baseado nas categorias
-          if (quoteData.categories && quoteData.categories.length > 0) {
-            suppliersQuery = suppliersQuery.overlaps('specialties', quoteData.categories);
-          }
-            
-          const { data: suppliers, error: suppliersError } = await suppliersQuery.limit(20);
-          
-          if (suppliersError) {
-            console.error('Erro ao buscar fornecedores:', suppliersError);
-          } else {
-            console.log(`📋 Encontrados ${suppliers?.length || 0} fornecedores`);
-            
-            if (suppliers && suppliers.length > 0) {
-              // Filtrar baseado nas preferências
-              selectedSuppliers = suppliers.filter((supplier: any) => {
-                if (quoteData.supplierPreferences.onlyLocal && supplier.visibility_scope !== 'local') return false;
-                if (quoteData.supplierPreferences.onlyCertified && !supplier.is_certified) return false;
-                return true;
-              }).slice(0, 10); // Máximo 10 fornecedores
+            if (clientDetails?.address) {
+              const addressStr = typeof clientDetails.address === 'string' 
+                ? clientDetails.address 
+                : JSON.stringify(clientDetails.address);
               
-              console.log(`✅ Selecionados ${selectedSuppliers.length} fornecedores após filtros`);
+              // Tentar extrair estado e cidade do endereço
+              const stateMatch = addressStr.match(/\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/i);
+              if (stateMatch) clientState = stateMatch[0].toUpperCase();
+              
+              const cityRegex = /cidade[:\s]*([^,\n]+)|city[:\s]*([^,\n]+)|([^,\n]+)\s*-\s*[A-Z]{2}/i;
+              const cityMatch = addressStr.match(cityRegex);
+              if (cityMatch) {
+                clientCity = (cityMatch[1] || cityMatch[2] || cityMatch[3] || '').trim();
+              }
             }
+
+            console.log(`📍 Cliente localizado em: ${clientCity}, ${clientState}, ${clientRegion}`);
+
+            // Usar função RPC para sugestões inteligentes
+            const { data: suggestedSuppliers, error: suggestError } = await supabaseClient
+              .rpc('suggest_suppliers_for_quote', {
+                _client_region: clientRegion,
+                _client_state: clientState,
+                _client_city: clientCity,
+                _categories: quoteData.categories,
+                _max_suppliers: 15
+              });
+
+            if (suggestError) {
+              console.error('Erro na sugestão inteligente:', suggestError);
+              // Fallback para busca simples
+              const { data: fallbackSuppliers } = await supabaseClient
+                .from('suppliers')
+                .select('*')
+                .eq('status', 'active')
+                .overlaps('specialties', quoteData.categories)
+                .limit(10);
+              selectedSuppliers = fallbackSuppliers || [];
+            } else {
+              console.log(`🎯 IA sugeriu ${suggestedSuppliers?.length || 0} fornecedores com score de compatibilidade`);
+              
+              // Aplicar filtros de preferência do usuário
+              let filteredSuppliers = suggestedSuppliers || [];
+              
+              if (quoteData.supplierPreferences.onlyLocal) {
+                filteredSuppliers = filteredSuppliers.filter((s: any) => 
+                  s.visibility_scope === 'region' && s.state === clientState
+                );
+                console.log(`🏠 Filtro local: ${filteredSuppliers.length} fornecedores locais`);
+              }
+              
+              if (quoteData.supplierPreferences.onlyCertified) {
+                filteredSuppliers = filteredSuppliers.filter((s: any) => s.is_certified);
+                console.log(`🏆 Filtro certificados: ${filteredSuppliers.length} fornecedores certificados`);
+              }
+
+              // Ordenar por score de compatibilidade e pegar os melhores
+              selectedSuppliers = filteredSuppliers
+                .sort((a: any, b: any) => (b.match_score || 0) - (a.match_score || 0))
+                .slice(0, 10);
+              
+              console.log(`✅ Selecionados ${selectedSuppliers.length} fornecedores com IA`);
+              
+              // Log dos fornecedores selecionados com seus scores
+              selectedSuppliers.forEach((supplier: any, index: number) => {
+                console.log(`  ${index + 1}. ${supplier.name} - Score: ${supplier.match_score}, Certificado: ${supplier.is_certified ? '🏆' : '❌'}, Região: ${supplier.city}/${supplier.state}`);
+              });
+            }
+            
+          } catch (error) {
+            console.error('Erro na sugestão inteligente de fornecedores:', error);
+            selectedSuppliers = [];
           }
         }
 
@@ -950,4 +1067,51 @@ function extractSuggestions(aiResponse: string, userMessage: string, clientSecto
   }
 
   return suggestions.slice(0, 4); // Limitar a 4 sugestões
+}
+
+// Função para extrair categorias da mensagem do usuário
+function extractCategoriesFromMessage(message: string, sector: string = 'geral'): string[] {
+  const lowerMessage = message.toLowerCase();
+  const categories: string[] = [];
+  
+  // Palavras-chave por setor
+  const sectorKeywords: Record<string, Record<string, string[]>> = {
+    condominio: {
+      'Material de limpeza': ['limpeza', 'detergente', 'desinfetante', 'sabão', 'álcool', 'hipoclorito'],
+      'Manutenção predial': ['manutenção', 'reparo', 'elétrica', 'hidráulica', 'pintura', 'reforma'],
+      'Segurança': ['segurança', 'camera', 'alarme', 'porteiro', 'controle acesso', 'monitoramento'],
+      'Jardinagem': ['jardim', 'planta', 'fertilizante', 'podador', 'grama', 'paisagismo'],
+      'Equipamentos': ['equipamento', 'ferramenta', 'maquinário', 'aparelho', 'dispositivo']
+    },
+    saude: {
+      'Equipamentos médicos': ['equipamento médico', 'aparelho', 'maca', 'estetoscópio', 'termômetro'],
+      'Material hospitalar': ['material hospitalar', 'seringas', 'luvas', 'máscaras', 'gaze'],
+      'Medicamentos': ['medicamento', 'remédio', 'farmácia', 'droga', 'comprimido'],
+      'Limpeza hospitalar': ['limpeza hospitalar', 'desinfetante', 'álcool', 'esterilização']
+    },
+    geral: {
+      'Material de escritório': ['papel', 'caneta', 'impressora', 'computador', 'móveis'],
+      'Limpeza': ['limpeza', 'detergente', 'pano', 'vassoura', 'álcool'],
+      'Manutenção': ['manutenção', 'reparo', 'conserto', 'ferramenta'],
+      'Equipamentos': ['equipamento', 'aparelho', 'máquina', 'dispositivo']
+    }
+  };
+  
+  const keywords = sectorKeywords[sector] || sectorKeywords.geral;
+  
+  // Buscar categorias baseadas nas palavras-chave
+  for (const [category, words] of Object.entries(keywords)) {
+    if (words.some(word => lowerMessage.includes(word))) {
+      categories.push(category);
+    }
+  }
+  
+  // Se não encontrou categorias específicas, tentar algumas genéricas
+  if (categories.length === 0) {
+    if (lowerMessage.includes('comprar') || lowerMessage.includes('preciso de') || lowerMessage.includes('cotação')) {
+      categories.push('Materiais diversos');
+    }
+  }
+  
+  return categories;
 }
