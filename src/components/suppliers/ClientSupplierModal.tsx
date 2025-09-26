@@ -76,12 +76,15 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
     
+    console.log('🔥 [DEBUG] Validating step', step, 'with formData:', JSON.stringify(formData, null, 2));
+    
     switch (step) {
       case 1:
         if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
         if (!formData.cnpj.trim()) newErrors.cnpj = 'CNPJ é obrigatório';
         if (!formData.state.trim()) newErrors.state = 'Estado é obrigatório';
         if (!formData.city.trim()) newErrors.city = 'Cidade é obrigatória';
+        console.log('🔥 [DEBUG] Step 1 validation - state:', formData.state, 'city:', formData.city);
         break;
       case 2:
         if (!formData.email.trim()) newErrors.email = 'Email é obrigatório';
@@ -91,6 +94,8 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
         if (formData.specialties.length === 0) newErrors.specialties = 'Selecione pelo menos uma especialidade';
         break;
     }
+    
+    console.log('🔥 [DEBUG] Validation errors:', newErrors);
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -171,6 +176,9 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return;
     
+    console.log('🔥 [DEBUG] FormData before submission:', JSON.stringify(formData, null, 2));
+    console.log('🔥 [DEBUG] State/City values:', { state: formData.state, city: formData.city });
+    
     setIsLoading(true);
     try {
       let result;
@@ -186,7 +194,9 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
         }
       } else {
         // Create new supplier
+        console.log('🔥 [DEBUG] Calling createSupplier with formData:', JSON.stringify(formData, null, 2));
         result = await createSupplier(formData);
+        console.log('🔥 [DEBUG] CreateSupplier result:', JSON.stringify(result, null, 2));
         if (result) {
           toast({
             title: "Fornecedor cadastrado com sucesso!",
@@ -311,6 +321,7 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
                               key={state.code}
                               value={state.name}
                               onSelect={() => {
+                                console.log('🔥 [DEBUG] Setting state:', state.code);
                                 setFormData(prev => ({ ...prev, state: state.code, city: '' }));
                               }}
                             >
@@ -355,6 +366,7 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
                                 key={city}
                                 value={city}
                                 onSelect={() => {
+                                  console.log('🔥 [DEBUG] Setting city:', city);
                                   setFormData(prev => ({ ...prev, city }));
                                 }}
                               >
