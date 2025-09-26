@@ -24,6 +24,7 @@ const StatusProgressIndicator = lazy(() => import("@/components/quotes/StatusPro
 const EconomyNotification = lazy(() => import("@/components/quotes/EconomyNotification").then(m => ({ default: m.EconomyNotification, useEconomyAlerts: m.useEconomyAlerts })));
 const SendQuoteToSuppliersModal = lazy(() => import("@/components/quotes/SendQuoteToSuppliersModal").then(m => ({ default: m.SendQuoteToSuppliersModal })));
 const AIQuoteGeneratorModal = lazy(() => import("@/components/quotes/AIQuoteGeneratorModal").then(m => ({ default: m.AIQuoteGeneratorModal })));
+const AIQuoteChat = lazy(() => import("@/components/quotes/AIQuoteChat").then(m => ({ default: m.AIQuoteChat })));
 
 export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,6 +35,7 @@ export default function Quotes() {
   const [isMatrixManagerOpen, setIsMatrixManagerOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<any | null>(null);
   const [viewingQuote, setViewingQuote] = useState<any | null>(null);
   const [quoteToDelete, setQuoteToDelete] = useState<any | null>(null);
@@ -301,15 +303,26 @@ export default function Quotes() {
             <Archive className="h-4 w-4" />
             Matrizes de Decisão
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => setIsAIModalOpen(true)} 
-            className="flex items-center gap-2"
-            disabled={!!error}
-          >
-            <Sparkles className="h-4 w-4" />
-            Gerar com IA
-          </Button>
+          <div className="flex gap-1">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAIModalOpen(true)} 
+              className="flex items-center gap-2"
+              disabled={!!error}
+            >
+              <Sparkles className="h-4 w-4" />
+              IA Rápida
+            </Button>
+            <Button 
+              variant="default" 
+              onClick={() => setIsAIChatOpen(true)} 
+              className="flex items-center gap-2"
+              disabled={!!error}
+            >
+              <Sparkles className="h-4 w-4" />
+              Chat IA
+            </Button>
+          </div>
           <Button 
             className="btn-corporate flex items-center gap-2"
             onClick={() => {
@@ -723,6 +736,21 @@ export default function Quotes() {
           onQuoteGenerated={handleAIQuoteGenerated}
         />
       </Suspense>
+
+      {/* AI Quote Chat Modal */}
+      {isAIChatOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Suspense fallback={<div>Carregando chat...</div>}>
+            <AIQuoteChat
+              onQuoteGenerated={(quote) => {
+                handleAIQuoteGenerated(quote);
+                setIsAIChatOpen(false);
+              }}
+              onClose={() => setIsAIChatOpen(false)}
+            />
+          </Suspense>
+        </div>
+      )}
     </div>
   );
 }
