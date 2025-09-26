@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SupplierFormModal } from "@/components/suppliers/SupplierFormModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
+import { SupplierDebugPanel } from "@/components/debug/SupplierDebugPanel";
+import { SimpleSupplierTest } from "@/components/debug/SimpleSupplierTest";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageLoader } from "@/components/ui/page-loader";
@@ -22,6 +24,7 @@ export default function Suppliers() {
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const itemsPerPage = 9;
 
   const { user } = useAuth();
@@ -166,6 +169,14 @@ export default function Suppliers() {
           <Button 
             variant="outline"
             className="flex items-center gap-2"
+            onClick={() => setShowDebugPanel(!showDebugPanel)}
+          >
+            <Bug className="h-4 w-4" />
+            {showDebugPanel ? 'Ocultar' : 'Debug'}
+          </Button>
+          <Button 
+            variant="outline"
+            className="flex items-center gap-2"
             onClick={() => setShowNewGroupModal(true)}
           >
             <UserPlus className="h-4 w-4" />
@@ -180,6 +191,14 @@ export default function Suppliers() {
           </Button>
         </div>
       </div>
+
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <div className="mb-6 space-y-4">
+          <SimpleSupplierTest />
+          <SupplierDebugPanel />
+        </div>
+      )}
 
       {/* Filter Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">

@@ -148,7 +148,10 @@ export const useSupabaseSuppliers = () => {
 
   const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => {
     try {
+      console.log('🔧 [CREATE-SUPPLIER] Iniciando criação de fornecedor', supplierData);
+
       // Check for duplicates before creating
+      console.log('🔍 [CREATE-SUPPLIER] Verificando duplicatas...');
       const duplicateCheck = await checkSupplierDuplicate(
         supplierData.cnpj || '',
         supplierData.email || '',
@@ -158,6 +161,8 @@ export const useSupabaseSuppliers = () => {
       if (duplicateCheck.exists && duplicateCheck.existing) {
         const existing = duplicateCheck.existing;
         const reason = duplicateCheck.reason === 'cnpj' ? 'CNPJ' : 'E-mail';
+        
+        console.log('❌ [CREATE-SUPPLIER] Fornecedor duplicado encontrado', { existing, reason });
         
         toast({
           title: "Fornecedor já existe",
@@ -169,21 +174,31 @@ export const useSupabaseSuppliers = () => {
         return existing;
       }
 
+      console.log('✅ [CREATE-SUPPLIER] Nenhuma duplicata encontrada');
+
       // Get current user's profile to get client_id
+      console.log('👤 [CREATE-SUPPLIER] Buscando usuário autenticado...');
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) {
+        console.error('❌ [CREATE-SUPPLIER] Usuário não autenticado');
         throw new Error('Usuário não autenticado');
       }
 
+      console.log('✅ [CREATE-SUPPLIER] Usuário autenticado:', { id: authUser.id, email: authUser.email });
+
+      console.log('🔍 [CREATE-SUPPLIER] Buscando perfil do usuário...');
       const { data: profile } = await supabase
         .from('profiles')
-        .select('client_id')
+        .select('client_id, role, name')
         .eq('id', authUser.id)
         .single();
 
       if (!profile?.client_id) {
+        console.error('❌ [CREATE-SUPPLIER] Perfil não encontrado ou sem cliente associado', profile);
         throw new Error('Perfil de usuário não encontrado ou sem cliente associado');
       }
+
+      console.log('✅ [CREATE-SUPPLIER] Perfil encontrado:', profile);
 
       // Create supplier - triggers will handle client_id and CNPJ normalization
       const insertData = {
@@ -192,25 +207,51 @@ export const useSupabaseSuppliers = () => {
         rating: 0,
         completed_orders: 0
       };
+
+      console.log('📝 [CREATE-SUPPLIER] Dados preparados para inserção:', insertData);
       
+      console.log('🚀 [CREATE-SUPPLIER] Executando INSERT na tabela suppliers...');
       const { data, error } = await supabase
         .from('suppliers')
         .insert([insertData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [CREATE-SUPPLIER] Erro no INSERT:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      console.log('✅ [CREATE-SUPPLIER] Fornecedor criado com sucesso:', data);
 
       // Associate supplier with current client
-      await supabase
+      console.log('🔗 [CREATE-SUPPLIER] Criando associação cliente-fornecedor...');
+      const { data: associationData, error: associationError } = await supabase
         .from('client_suppliers')
         .insert({
           client_id: profile.client_id,
           supplier_id: data.id,
           status: 'active'
-        });
+        })
+        .select()
+        .single();
+      
+      if (associationError) {
+        console.error('❌ [CREATE-SUPPLIER] Erro ao criar associação:', associationError);
+        // Don't throw here, supplier was created successfully
+      } else {
+        console.log('✅ [CREATE-SUPPLIER] Associação criada com sucesso:', associationData);
+      }
 
       setSuppliers(prev => [...prev, data as Supplier].sort((a, b) => a.name.localeCompare(b.name)));
+      
+      console.log('🎉 [CREATE-SUPPLIER] Processo concluído com sucesso!');
       
       toast({
         title: "Fornecedor criado",
@@ -218,7 +259,7 @@ export const useSupabaseSuppliers = () => {
       });
       return data;
     } catch (error) {
-      console.error('Error creating supplier:', error);
+      console.error('💥 [CREATE-SUPPLIER] Erro inesperado:', error);
       toast({
         title: "Erro ao criar fornecedor",
         description: "Não foi possível criar o fornecedor.",

@@ -110,11 +110,17 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
 
     // Final validation
     try {
+      console.log('📝 [SUPPLIER-FORM] Iniciando submissão do formulário');
+      console.log('📝 [SUPPLIER-FORM] Dados do formulário:', formData);
+      
       const validatedData = supplierFormSchema.parse(formData);
+      console.log('✅ [SUPPLIER-FORM] Dados validados:', validatedData);
+      
       setIsLoading(true);
 
       let result;
       if (editingSupplier) {
+        console.log('🔄 [SUPPLIER-FORM] Modo edição - atualizando fornecedor:', editingSupplier.id);
         result = await updateSupplier(editingSupplier.id, validatedData);
         if (result) {
           toast({
@@ -123,6 +129,7 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
           });
         }
       } else {
+        console.log('🆕 [SUPPLIER-FORM] Modo criação - criando novo fornecedor');
         result = await createSupplier(validatedData);
         if (result) {
           toast({
@@ -133,11 +140,14 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       }
 
       if (result) {
+        console.log('🎉 [SUPPLIER-FORM] Operação concluída com sucesso');
         resetForm();
         onSuccess?.();
+      } else {
+        console.log('❌ [SUPPLIER-FORM] Operação falhou - resultado nulo');
       }
     } catch (error: any) {
-      console.error('Validation error:', error);
+      console.error('💥 [SUPPLIER-FORM] Erro na validação/submissão:', error);
       
       if (error.errors) {
         const newErrors: Partial<Record<keyof SupplierFormData, string>> = {};
