@@ -308,7 +308,6 @@ export default function Quotes() {
               variant="outline" 
               onClick={() => setIsDocumentModalOpen(true)} 
               className="flex items-center gap-2"
-              disabled={!!error}
             >
               <FileText className="h-4 w-4" />
               Cotação por PDF
@@ -742,6 +741,17 @@ export default function Quotes() {
           </Suspense>
         </div>
       )}
+
+      {/* Document Upload Modal */}
+      <Suspense fallback={null}>
+        <DocumentUploadModal
+          open={isDocumentModalOpen}
+          onOpenChange={setIsDocumentModalOpen}
+          onQuoteGenerated={(quote) => {
+            handleAIQuoteGenerated(quote);
+          }}
+        />
+      </Suspense>
     </div>
   );
 }
