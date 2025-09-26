@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, EyeOff, Key, Settings, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ApiKey {
   name: string;
@@ -68,6 +69,7 @@ export const ApiConfiguration = () => {
   const { toast } = useToast();
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [newKeys, setNewKeys] = useState<Record<string, string>>({});
+  const [configuredKeys, setConfiguredKeys] = useState<Record<string, boolean>>({});
   const [testing, setTesting] = useState<string | null>(null);
 
   const toggleKeyVisibility = (keyName: string) => {
@@ -84,29 +86,63 @@ export const ApiConfiguration = () => {
     }));
   };
 
+  const fetchConfigured = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'openai_api_key')
+        .single();
+
+      let configured = false;
+      const val = data?.setting_value as any;
+      if (typeof val === 'string') configured = val.trim().length > 0;
+      else if (val && typeof val === 'object') {
+        const candidate = val.value || val.key || val.api_key || val.OPENAI_API_KEY || val.openai_api_key;
+        configured = typeof candidate === 'string' && candidate.trim().length > 0;
+      }
+      setConfiguredKeys(prev => ({ ...prev, OPENAI_API_KEY: configured }));
+    } catch (e) {
+      console.error('[ApiConfiguration] fetchConfigured error', e);
+    }
+  };
+
   const saveKey = async (keyName: string) => {
-    if (!newKeys[keyName]?.trim()) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira uma chave válida",
-        variant: "destructive"
-      });
+    const raw = newKeys[keyName]?.trim();
+    if (!raw) {
+      toast({ title: 'Erro', description: 'Por favor, insira uma chave válida', variant: 'destructive' });
       return;
     }
 
-    // Aqui você implementaria a chamada para salvar a chave via Edge Function
-    toast({
-      title: "Sucesso",
-      description: `Chave ${keyName} salva com sucesso`,
-    });
+    try {
+      // Persistir em system_settings sob a key canônica 'openai_api_key'
+      if (keyName === 'OPENAI_API_KEY') {
+        const { data: existing } = await supabase
+          .from('system_settings')
+          .select('id')
+          .eq('setting_key', 'openai_api_key')
+          .single();
 
-    // Limpar o campo após salvar
-    setNewKeys(prev => ({
-      ...prev,
-      [keyName]: ''
-    }));
+        if (existing?.id) {
+          await supabase
+            .from('system_settings')
+            .update({ setting_value: { value: raw } })
+            .eq('id', existing.id);
+        } else {
+          await supabase
+            .from('system_settings')
+            .insert({ setting_key: 'openai_api_key', setting_value: { value: raw }, description: 'Chave da API OpenAI' });
+        }
+      }
+
+      toast({ title: 'Sucesso', description: `Chave ${keyName} salva com sucesso` });
+      setNewKeys(prev => ({ ...prev, [keyName]: '' }));
+      fetchConfigured();
+    } catch (e) {
+      console.error('[ApiConfiguration] saveKey error', e);
+      toast({ title: 'Erro', description: 'Não foi possível salvar a chave', variant: 'destructive' });
+    }
   };
-
   const testConnection = async (keyName: string) => {
     setTesting(keyName);
     
@@ -193,41 +229,43 @@ export const ApiConfiguration = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {keys.map((apiKey) => (
-                  <div key={apiKey.name} className="border rounded-lg p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Label className="font-medium">{apiKey.name}</Label>
-                        {apiKey.required && (
-                          <Badge variant="destructive" className="text-xs">
-                            Obrigatório
-                          </Badge>
-                        )}
-                        {apiKey.configured ? (
-                          <Badge variant="default" className="text-xs flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            Configurado
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Não configurado
-                          </Badge>
+                {keys.map((apiKey) => {
+                  const isConfigured = configuredKeys[apiKey.name] ?? apiKey.configured;
+                  return (
+                    <div key={apiKey.name} className="border rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Label className="font-medium">{apiKey.name}</Label>
+                          {apiKey.required && (
+                            <Badge variant="destructive" className="text-xs">
+                              Obrigatório
+                            </Badge>
+                          )}
+                          {isConfigured ? (
+                            <Badge variant="default" className="text-xs flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Configurado
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Não configurado
+                            </Badge>
+                          )}
+                        </div>
+                        {isConfigured && (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => testConnection(apiKey.name)}
+                              disabled={testing === apiKey.name}
+                            >
+                              {testing === apiKey.name ? 'Testando...' : 'Testar'}
+                            </Button>
+                          </div>
                         )}
                       </div>
-                      {apiKey.configured && (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => testConnection(apiKey.name)}
-                            disabled={testing === apiKey.name}
-                          >
-                            {testing === apiKey.name ? 'Testando...' : 'Testar'}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
 
                     <p className="text-sm text-muted-foreground">
                       {apiKey.description}
