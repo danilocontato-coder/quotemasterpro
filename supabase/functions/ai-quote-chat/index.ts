@@ -34,9 +34,31 @@ serve(async (req) => {
       );
     }
 
-    const openaiApiKey = typeof aiSettings.setting_value === 'string' 
-      ? aiSettings.setting_value 
-      : aiSettings.setting_value.value || aiSettings.setting_value;
+    // Normaliza formato da chave (string direta ou objeto com diferentes campos)
+    const rawKey = aiSettings.setting_value as unknown;
+    let openaiApiKey = '';
+    if (typeof rawKey === 'string') {
+      openaiApiKey = rawKey.trim();
+    } else if (rawKey && typeof rawKey === 'object') {
+      const k = rawKey as Record<string, unknown>;
+      const candidates = [
+        k.value,
+        k.apiKey,
+        k.api_key,
+        k.OPENAI_API_KEY,
+        k.key,
+        k.openai_api_key,
+      ];
+      openaiApiKey = (candidates.find((v) => typeof v === 'string' && v.trim().length > 0) as string | undefined)?.trim() || '';
+    }
+
+    if (!openaiApiKey) {
+      console.error('OpenAI API key resolved to empty string. Check system_settings.openai_api_key format.');
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key inválida nas configurações do sistema.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { conversationId, message, messageHistory } = await req.json();
 
