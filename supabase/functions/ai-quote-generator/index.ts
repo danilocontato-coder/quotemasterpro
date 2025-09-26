@@ -34,9 +34,50 @@ serve(async (req) => {
       );
     }
 
-    const openaiApiKey = typeof aiSettings.setting_value === 'string' 
-      ? aiSettings.setting_value 
-      : aiSettings.setting_value.value || aiSettings.setting_value;
+    // Normaliza formato da chave (string direta, string JSON ou objeto)
+    const rawKey = aiSettings.setting_value as unknown;
+    let openaiApiKey = '';
+
+    const pickFromObj = (obj: Record<string, unknown>) => {
+      const candidates = [
+        obj.value,
+        obj.apiKey,
+        obj.api_key,
+        obj.OPENAI_API_KEY,
+        obj.key,
+        obj.openai_api_key,
+      ];
+      return (candidates.find((v) => typeof v === 'string' && v.trim().length > 0) as string | undefined)?.trim() || '';
+    };
+
+    if (typeof rawKey === 'string') {
+      const s = rawKey.trim();
+      if (s.startsWith('{') && s.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(s);
+          if (parsed && typeof parsed === 'object') {
+            openaiApiKey = pickFromObj(parsed as Record<string, unknown>);
+          }
+        } catch (_) {/* ignore parse error */}
+      }
+      if (!openaiApiKey) openaiApiKey = s; // assume já é a chave pura
+    } else if (rawKey && typeof rawKey === 'object') {
+      openaiApiKey = pickFromObj(rawKey as Record<string, unknown>);
+      if (!openaiApiKey) {
+        const v = (rawKey as Record<string, unknown>).value;
+        if (v && typeof v === 'object') {
+          openaiApiKey = pickFromObj(v as Record<string, unknown>);
+        }
+      }
+    }
+
+    if (!openaiApiKey) {
+      console.error('[ai-quote-generator] OpenAI key vazia após normalização.');
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key inválida nas configurações do sistema.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { description, clientInfo, preferences } = await req.json();
 

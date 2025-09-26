@@ -34,23 +34,45 @@ serve(async (req) => {
       );
     }
 
-    // Normaliza formato da chave (string direta ou objeto com diferentes campos)
+    // Normaliza formato da chave (string direta, string JSON ou objeto)
     const rawKey = aiSettings.setting_value as unknown;
     let openaiApiKey = '';
-    if (typeof rawKey === 'string') {
-      openaiApiKey = rawKey.trim();
-    } else if (rawKey && typeof rawKey === 'object') {
-      const k = rawKey as Record<string, unknown>;
+
+    const pickFromObj = (obj: Record<string, unknown>) => {
       const candidates = [
-        k.value,
-        k.apiKey,
-        k.api_key,
-        k.OPENAI_API_KEY,
-        k.key,
-        k.openai_api_key,
+        obj.value,
+        obj.apiKey,
+        obj.api_key,
+        obj.OPENAI_API_KEY,
+        obj.key,
+        obj.openai_api_key,
       ];
-      openaiApiKey = (candidates.find((v) => typeof v === 'string' && v.trim().length > 0) as string | undefined)?.trim() || '';
+      return (candidates.find((v) => typeof v === 'string' && v.trim().length > 0) as string | undefined)?.trim() || '';
+    };
+
+    if (typeof rawKey === 'string') {
+      const s = rawKey.trim();
+      if (s.startsWith('{') && s.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(s);
+          if (parsed && typeof parsed === 'object') {
+            openaiApiKey = pickFromObj(parsed as Record<string, unknown>);
+          }
+        } catch (_) {/* ignore parse error */}
+      }
+      if (!openaiApiKey) openaiApiKey = s; // assume já é a chave pura
+    } else if (rawKey && typeof rawKey === 'object') {
+      openaiApiKey = pickFromObj(rawKey as Record<string, unknown>);
+      // Suporte para nesting: { value: { key: 'sk-...' } }
+      if (!openaiApiKey) {
+        const v = (rawKey as Record<string, unknown>).value;
+        if (v && typeof v === 'object') {
+          openaiApiKey = pickFromObj(v as Record<string, unknown>);
+        }
+      }
     }
+
+    console.log('[ai-quote-chat] Resolved OpenAI key type:', { hasKey: !!openaiApiKey, keyLen: openaiApiKey?.length || 0 });
 
     if (!openaiApiKey) {
       console.error('OpenAI API key resolved to empty string. Check system_settings.openai_api_key format.');
