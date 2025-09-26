@@ -32,14 +32,16 @@ import {
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
-
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
+import { AIContextualAssistant } from "@/components/communication/AIContextualAssistant";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [messageQuote, setMessageQuote] = useState<any>(null);
   
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   
@@ -129,6 +131,11 @@ export default function SupplierQuotes() {
   const handleSendProposal = (quote: any) => {
     setSelectedQuote(quote);
     setIsProposalModalOpen(true);
+  };
+
+  const handleOpenMessages = (quote: any) => {
+    setMessageQuote(quote);
+    setIsMessageModalOpen(true);
   };
 
 
@@ -335,9 +342,14 @@ export default function SupplierQuotes() {
                              <Package className="h-4 w-4" />
                            </Button>
                          )}
-                         <Button variant="ghost" size="sm" title="Mensagens">
-                           <MessageSquare className="h-4 w-4" />
-                         </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            title="Mensagens"
+                            onClick={() => handleOpenMessages(quote)}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
                        </div>
                      </TableCell>
                   </TableRow>
@@ -421,6 +433,41 @@ export default function SupplierQuotes() {
           window.dispatchEvent(new CustomEvent('quotes-updated'));
         }}
       />
+
+      {/* Modal de Mensagens Contextuais */}
+      {isMessageModalOpen && messageQuote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh]">
+            <div className="p-6 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    Chat IA - Cotação #{messageQuote.id}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {messageQuote.title}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMessageModalOpen(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              <div className="flex-1">
+                <AIContextualAssistant
+                  quoteId={messageQuote.id}
+                  quotetitle={messageQuote.title}
+                  supplierName={user?.name}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
