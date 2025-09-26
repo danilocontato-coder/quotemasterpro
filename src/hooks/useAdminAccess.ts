@@ -26,7 +26,7 @@ export const useAdminAccess = () => {
       // Gerar token temporário para acesso admin
       const adminToken = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Armazenar dados no sessionStorage para a nova aba
+      // Armazenar dados no localStorage para a nova aba
       const adminAccessData = {
         originalRole: 'admin',
         targetClientId: clientId,
@@ -37,8 +37,8 @@ export const useAdminAccess = () => {
         timestamp: Date.now()
       };
 
-      // Usar sessionStorage para que seja específico da sessão
-      sessionStorage.setItem(`adminAccess_${adminToken}`, JSON.stringify(adminAccessData));
+      // Usar localStorage para compartilhar com a nova aba
+      localStorage.setItem(`adminAccess_${adminToken}`, JSON.stringify(adminAccessData));
 
       toast({
         title: "Abrindo nova aba",
@@ -79,7 +79,7 @@ export const useAdminAccess = () => {
       // Gerar token temporário para acesso admin
       const adminToken = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Armazenar dados no sessionStorage para a nova aba
+      // Armazenar dados no localStorage para a nova aba
       const adminAccessData = {
         originalRole: 'admin',
         targetSupplierId: supplierId,
@@ -90,8 +90,8 @@ export const useAdminAccess = () => {
         timestamp: Date.now()
       };
 
-      // Usar sessionStorage para que seja específico da sessão
-      sessionStorage.setItem(`adminAccess_${adminToken}`, JSON.stringify(adminAccessData));
+      // Usar localStorage para compartilhar com a nova aba
+      localStorage.setItem(`adminAccess_${adminToken}`, JSON.stringify(adminAccessData));
 
       toast({
         title: "Abrindo nova aba",
@@ -157,7 +157,10 @@ export const useAdminAccess = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const adminToken = urlParams.get('adminToken');
       if (adminToken) {
-        const adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        let adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        if (!adminData) {
+          adminData = localStorage.getItem(`adminAccess_${adminToken}`);
+        }
         return adminData ? JSON.parse(adminData).isAdminMode : false;
       }
 
@@ -174,7 +177,10 @@ export const useAdminAccess = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const adminToken = urlParams.get('adminToken');
       if (adminToken) {
-        const adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        let adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        if (!adminData) {
+          adminData = localStorage.getItem(`adminAccess_${adminToken}`);
+        }
         if (adminData) {
           return JSON.parse(adminData);
         }

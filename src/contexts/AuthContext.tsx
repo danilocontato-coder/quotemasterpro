@@ -85,7 +85,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (adminToken) {
         console.log('🔍 [DEBUG-AUTH] Admin token detected:', adminToken);
-        const adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        let adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        if (!adminData) {
+          adminData = localStorage.getItem(`adminAccess_${adminToken}`);
+        }
         
         if (adminData) {
           try {
