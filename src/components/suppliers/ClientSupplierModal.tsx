@@ -176,9 +176,6 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return;
     
-    console.log('🔥 [DEBUG] FormData before submission:', JSON.stringify(formData, null, 2));
-    console.log('🔥 [DEBUG] State/City values:', { state: formData.state, city: formData.city });
-    
     setIsLoading(true);
     try {
       let result;
@@ -194,9 +191,7 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
         }
       } else {
         // Create new supplier
-        console.log('🔥 [DEBUG] Calling createSupplier with formData:', JSON.stringify(formData, null, 2));
         result = await createSupplier(formData);
-        console.log('🔥 [DEBUG] CreateSupplier result:', JSON.stringify(result, null, 2));
         if (result) {
           toast({
             title: "Fornecedor cadastrado com sucesso!",
@@ -321,7 +316,6 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
                               key={state.code}
                               value={state.name}
                               onSelect={() => {
-                                console.log('🔥 [DEBUG] Setting state:', state.code);
                                 setFormData(prev => ({ ...prev, state: state.code, city: '' }));
                               }}
                             >
@@ -366,7 +360,6 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
                                 key={city}
                                 value={city}
                                 onSelect={() => {
-                                  console.log('🔥 [DEBUG] Setting city:', city);
                                   setFormData(prev => ({ ...prev, city }));
                                 }}
                               >

@@ -148,9 +148,6 @@ export const useSupabaseSuppliers = () => {
 
   const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => {
     try {
-      console.log('🔥 [DEBUG] CreateSupplier called with data:', JSON.stringify(supplierData, null, 2));
-      console.log('🔥 [DEBUG] State/City values:', { state: supplierData.state, city: supplierData.city, region: supplierData.region });
-      
       // Check for duplicates before creating
       const duplicateCheck = await checkSupplierDuplicate(
         supplierData.cnpj || '',
@@ -188,7 +185,7 @@ export const useSupabaseSuppliers = () => {
         throw new Error('Perfil de usuário não encontrado ou sem cliente associado');
       }
 
-      // Create supplier without client_id (suppliers are now global)
+      // Create supplier - triggers will handle client_id and CNPJ normalization
       const insertData = {
         ...supplierData,
         cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
@@ -196,22 +193,13 @@ export const useSupabaseSuppliers = () => {
         completed_orders: 0
       };
       
-      console.log('🔥 [DEBUG] Data being inserted into DB:', JSON.stringify(insertData, null, 2));
-      console.log('🔥 [DEBUG] State/City in insert:', { state: insertData.state, city: insertData.city, region: insertData.region });
-      
       const { data, error } = await supabase
         .from('suppliers')
         .insert([insertData])
         .select()
         .single();
 
-      if (error) {
-        console.log('🔥 [DEBUG] Insert error:', error);
-        throw error;
-      }
-
-      console.log('🔥 [DEBUG] Supplier created successfully:', JSON.stringify(data, null, 2));
-      console.log('🔥 [DEBUG] State/City in response:', { state: data.state, city: data.city, region: data.region });
+      if (error) throw error;
 
       // Associate supplier with current client
       await supabase
