@@ -103,7 +103,7 @@ serve(async (req) => {
       );
     }
 
-    const { conversationId, message, messageHistory } = await req.json();
+    const { conversationId, message, messageHistory = [] } = await req.json();
 
     console.log('Processing chat message:', { conversationId, message });
 
