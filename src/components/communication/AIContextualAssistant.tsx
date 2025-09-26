@@ -14,7 +14,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  suggestions?: string[];
+  suggestions?: (string | { category?: string; question: string; reasoning?: string })[];
 }
 
 interface AIContextualAssistantProps {
@@ -204,18 +204,21 @@ export const AIContextualAssistant: React.FC<AIContextualAssistantProps> = ({
                       <div className="mt-2 space-y-1">
                         <p className="text-xs text-muted-foreground">Sugestões:</p>
                         <div className="flex flex-wrap gap-1">
-                          {message.suggestions.slice(0, 3).map((suggestion, index) => (
-                            <Button
-                              key={index}
-                              variant="outline"
-                              size="sm"
-                              className="text-xs h-7"
-                              onClick={() => handleSuggestionClick(suggestion)}
-                            >
-                              <HelpCircle className="w-3 h-3 mr-1" />
-                              {suggestion}
-                            </Button>
-                          ))}
+                          {message.suggestions.slice(0, 3).map((suggestion, index) => {
+                            const suggestionText = typeof suggestion === 'string' ? suggestion : suggestion.question;
+                            return (
+                              <Button
+                                key={index}
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7"
+                                onClick={() => handleSuggestionClick(suggestionText)}
+                              >
+                                <HelpCircle className="w-3 h-3 mr-1" />
+                                {suggestionText}
+                              </Button>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
