@@ -4,6 +4,7 @@ import { useCentralizedRealtime } from '@/hooks/useCentralizedRealtime';
 import { useGlobalNavigation } from '@/hooks/useGlobalNavigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
+import { SecurityMonitor } from '@/components/security/SecurityMonitor';
 
 // Layouts principais
 import MainLayout from '@/components/layout/MainLayout';
@@ -95,6 +96,10 @@ export const AppWithProviders: React.FC = () => {
   useGlobalNavigation();
 
   return (
+    <>
+      {/* Monitor de Segurança - Proteção contra acessos não autorizados */}
+      <SecurityMonitor />
+      
     <Routes>
       {/* Rotas públicas de autenticação */}
       <Route path="/auth/login" element={
@@ -125,9 +130,9 @@ export const AppWithProviders: React.FC = () => {
         </Suspense>
       } />
 
-      {/* Rotas do SuperAdmin */}
+      {/* Rotas do SuperAdmin - PROTEÇÃO CRÍTICA */}
       <Route path="/admin/*" element={
-        <ProtectedRoute allowedRoles={['admin']}>
+        <ProtectedRoute allowedRoles={['admin']} adminOnly={true}>
           <SuperAdminLayout />
         </ProtectedRoute>
       }>
@@ -501,5 +506,6 @@ export const AppWithProviders: React.FC = () => {
         </Suspense>
       } />
     </Routes>
+    </>
   );
 };

@@ -9,12 +9,14 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
   redirectTo?: string;
+  adminOnly?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRoles,
-  redirectTo = '/auth/login'
+  redirectTo = '/auth/login',
+  adminOnly = false
 }) => {
   const { user, isLoading: authLoading } = useAuth();
   const { isLoading: tenantLoading } = useAuthTenant();
@@ -40,15 +42,28 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
 
+  // PROTEÇÃO CRÍTICA: Apenas admins podem acessar rotas administrativas
+  if (adminOnly && user.role !== 'admin') {
+    console.warn('🔒 [SECURITY] Acesso negado: usuário não-admin tentou acessar rota administrativa');
+    return <Navigate to="/" replace />;
+  }
+
   // Check role-based access
   const isSupplierContext = !!user.supplierId;
   if (allowedRoles) {
+    // SEGURANÇA: Bloquear acesso de clientes/fornecedores às rotas de admin
+    if (allowedRoles.includes('admin') && user.role !== 'admin') {
+      console.warn(`🔒 [SECURITY] Acesso negado: usuário ${user.role} tentou acessar rota de admin`);
+      return <Navigate to="/" replace />;
+    }
+
     // Special case: supplier context users (any role) can access supplier routes
     if (allowedRoles.includes('supplier') && isSupplierContext) {
       return <>{children}</>;
     }
 
     if (!allowedRoles.includes(user.role)) {
+      console.warn(`🔒 [SECURITY] Acesso negado: role ${user.role} não autorizado para ${allowedRoles.join(', ')}`);
       // Redirecionar para dashboard apropriado baseado no role/contexto
       const dashboardMap: Record<string, string> = {
         admin: '/admin/superadmin',
