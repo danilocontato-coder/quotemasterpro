@@ -2931,6 +2931,7 @@ export type Database = {
           client_id: string | null
           created_at: string
           id: string
+          is_default: boolean | null
           is_global: boolean
           message_content: string
           name: string
@@ -2944,6 +2945,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          is_default?: boolean | null
           is_global?: boolean
           message_content: string
           name: string
@@ -2957,6 +2959,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
+          is_default?: boolean | null
           is_global?: boolean
           message_content?: string
           name?: string

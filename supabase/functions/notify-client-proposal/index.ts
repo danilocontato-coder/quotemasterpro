@@ -70,16 +70,46 @@ serve(async (req) => {
 _QuoteMaster Pro - Gestão Inteligente de Cotações_`
 
     try {
-      // First try to find a client-specific template, then fall back to global template
-      const { data: templateData } = await supabase
+      // First try to find a client-specific default template
+      let templateQuery = supabase
         .from('whatsapp_templates')
         .select('message_content')
         .eq('template_type', 'proposal_received_whatsapp')
         .eq('active', true)
-        .or(`client_id.eq.${client.id},is_global.eq.true`)
-        .order('is_global', { ascending: true }) // Client-specific first, then global
-        .limit(1)
-        .single()
+        .eq('client_id', client.id)
+        .eq('is_default', true)
+        .maybeSingle()
+
+      let { data: templateData } = await templateQuery
+
+      // If no client-specific default, try global default
+      if (!templateData) {
+        const { data: globalTemplate } = await supabase
+          .from('whatsapp_templates')
+          .select('message_content')
+          .eq('template_type', 'proposal_received_whatsapp')
+          .eq('active', true)
+          .eq('is_global', true)
+          .eq('is_default', true)
+          .maybeSingle()
+        
+        templateData = globalTemplate
+      }
+
+      // If no default templates, fall back to any active template
+      if (!templateData) {
+        const { data: fallbackTemplate } = await supabase
+          .from('whatsapp_templates')
+          .select('message_content')
+          .eq('template_type', 'proposal_received_whatsapp')
+          .eq('active', true)
+          .or(`client_id.eq.${client.id},is_global.eq.true`)
+          .order('is_global', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+        
+        templateData = fallbackTemplate
+      }
 
       if (templateData?.message_content) {
         messageTemplate = templateData.message_content

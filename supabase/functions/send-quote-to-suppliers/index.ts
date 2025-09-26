@@ -129,31 +129,52 @@ const handler = async (req: Request): Promise<Response> => {
       source: { scope: evo.scope }
     };
 
-    // Load WhatsApp template
+    // Load WhatsApp template with new default logic
     let whatsappTemplate = null;
     
-    // Try to find client-specific template first
-    const { data: clientTemplate } = await supabase
-      .from('whatsapp_templates')
-      .select('*')
-      .eq('template_type', 'quote_request')
-      .eq('active', true)
-      .eq('client_id', quote.client_id)
-      .maybeSingle();
-
-    if (clientTemplate) {
-      whatsappTemplate = clientTemplate;
-    } else {
-      // Fallback to global template
-      const { data: globalTemplate } = await supabase
+    try {
+      // First try to find client-specific default template
+      let { data: clientDefaultTemplate } = await supabase
         .from('whatsapp_templates')
         .select('*')
         .eq('template_type', 'quote_request')
         .eq('active', true)
-        .eq('is_global', true)
+        .eq('client_id', quote.client_id)
+        .eq('is_default', true)
         .maybeSingle();
-      
-      whatsappTemplate = globalTemplate;
+
+      if (clientDefaultTemplate) {
+        whatsappTemplate = clientDefaultTemplate;
+      } else {
+        // Try global default template
+        const { data: globalDefaultTemplate } = await supabase
+          .from('whatsapp_templates')
+          .select('*')
+          .eq('template_type', 'quote_request')
+          .eq('active', true)
+          .eq('is_global', true)
+          .eq('is_default', true)
+          .maybeSingle();
+        
+        if (globalDefaultTemplate) {
+          whatsappTemplate = globalDefaultTemplate;
+        } else {
+          // Fallback to any active template (client-specific first, then global)
+          const { data: fallbackTemplate } = await supabase
+            .from('whatsapp_templates')
+            .select('*')
+            .eq('template_type', 'quote_request')
+            .eq('active', true)
+            .or(`client_id.eq.${quote.client_id},is_global.eq.true`)
+            .order('is_global', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          
+          whatsappTemplate = fallbackTemplate;
+        }
+      }
+    } catch (error) {
+      console.warn('Error loading WhatsApp template:', error);
     }
 
     // Format deadline

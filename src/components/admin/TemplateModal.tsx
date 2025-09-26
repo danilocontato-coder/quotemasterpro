@@ -106,6 +106,7 @@ export default function TemplateModal({
     template_type: 'quote_request',
     active: true,
     is_global: true,
+    is_default: false,
     client_id: ''
   });
   const [clients, setClients] = useState<any[]>([]);
@@ -122,6 +123,7 @@ export default function TemplateModal({
         template_type: template.template_type || 'quote_request',
         active: template.active ?? true,
         is_global: template.is_global ?? true,
+        is_default: template.is_default ?? false,
         client_id: template.client_id || ''
       });
     } else {
@@ -132,6 +134,7 @@ export default function TemplateModal({
         template_type: 'quote_request',
         active: true,
         is_global: true,
+        is_default: false,
         client_id: ''
       });
     }
@@ -175,6 +178,27 @@ export default function TemplateModal({
     setIsLoading(true);
 
     try {
+      // Se marcar como padrão, primeiro desmarcar outros templates padrão do mesmo tipo e escopo
+      if (formData.is_default) {
+        if (formData.is_global) {
+          // Desmarcar outros templates globais padrão do mesmo tipo
+          await supabase
+            .from('whatsapp_templates')
+            .update({ is_default: false })
+            .eq('template_type', formData.template_type)
+            .eq('is_global', true)
+            .eq('is_default', true);
+        } else if (formData.client_id) {
+          // Desmarcar outros templates do mesmo cliente e tipo
+          await supabase
+            .from('whatsapp_templates')
+            .update({ is_default: false })
+            .eq('template_type', formData.template_type)
+            .eq('client_id', formData.client_id)
+            .eq('is_default', true);
+        }
+      }
+
       const variables = getTemplateVariables();
       
       const data = {
@@ -184,6 +208,7 @@ export default function TemplateModal({
         template_type: formData.template_type,
         active: formData.active,
         is_global: formData.is_global,
+        is_default: formData.is_default,
         client_id: formData.is_global ? null : formData.client_id || null,
         variables: variables
       };
@@ -376,6 +401,28 @@ export default function TemplateModal({
                   />
                   <span className="text-sm">
                     {formData.active ? 'Ativo' : 'Inativo'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Template Padrão */}
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50/50">
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-2">
+                    ⭐ Template Padrão
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Este template será usado automaticamente pelo sistema para o tipo "{TEMPLATE_TYPES.find(t => t.value === formData.template_type)?.label}"
+                    {!formData.is_global && formData.client_id && ' para este cliente específico'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={formData.is_default}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_default: checked }))}
+                  />
+                  <span className="text-sm">
+                    {formData.is_default ? 'Padrão' : 'Comum'}
                   </span>
                 </div>
               </div>

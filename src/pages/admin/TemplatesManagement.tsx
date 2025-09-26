@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,12 +16,14 @@ import {
   Bell, 
   Smartphone,
   Search,
-  Filter
+  Filter,
+  Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import TemplateModal from '@/components/admin/TemplateModal';
 import { TemplatePreview } from '@/components/admin/TemplatePreview';
+import DefaultTemplateManager from '@/components/admin/DefaultTemplateManager';
 
 interface Template {
   id: string;
@@ -31,6 +33,7 @@ interface Template {
   template_type: string;
   active: boolean;
   is_global: boolean;
+  is_default?: boolean;
   client_id?: string;
   variables: any;
   created_at: string;
@@ -192,6 +195,12 @@ export default function TemplatesManagement() {
                     <Badge variant={template.active ? "default" : "secondary"}>
                       {template.active ? 'Ativo' : 'Inativo'}
                     </Badge>
+
+                    {template.is_default && (
+                      <Badge variant="default" className="bg-yellow-500 text-white flex items-center gap-1">
+                        ⭐ Padrão
+                      </Badge>
+                    )}
                   </div>
 
                   {template.subject && (
@@ -341,9 +350,13 @@ export default function TemplatesManagement() {
       </Card>
 
       {/* Templates Content */}
-      <Tabs defaultValue="all" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="all">Todos ({filteredTemplates.length})</TabsTrigger>
+      <Tabs defaultValue="templates" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="templates">Todos ({filteredTemplates.length})</TabsTrigger>
+          <TabsTrigger value="defaults">
+            <Settings className="h-4 w-4 mr-1" />
+            Templates Padrão
+          </TabsTrigger>
           <TabsTrigger value="whatsapp">
             WhatsApp ({templatesByCategory.whatsapp?.length || 0})
           </TabsTrigger>
@@ -358,8 +371,12 @@ export default function TemplatesManagement() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="space-y-4">
+        <TabsContent value="templates" className="space-y-4">
           {renderTemplatesList(filteredTemplates)}
+        </TabsContent>
+
+        <TabsContent value="defaults" className="space-y-4">
+          <DefaultTemplateManager />
         </TabsContent>
 
         {Object.entries(templatesByCategory).map(([category, categoryTemplates]) => (
