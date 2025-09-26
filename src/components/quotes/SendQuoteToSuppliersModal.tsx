@@ -26,7 +26,6 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
-  const [customMessage, setCustomMessage] = useState('');
   const [resolvedWebhookUrl, setResolvedWebhookUrl] = useState<string | null>(null);
   const [evolutionConfigured, setEvolutionConfigured] = useState(false);
   const [generatedShortLinks, setGeneratedShortLinks] = useState<any[]>([]);
@@ -68,13 +67,6 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       if (a.type !== 'certified' && b.type === 'certified') return 1;
       return a.name.localeCompare(b.name);
     });
-
-  // Default message
-  useEffect(() => {
-    if (quote) {
-      setCustomMessage(`Nova cotação disponível: ${quote.title}\n\nDescrição: ${quote.description || 'Sem descrição'}\n\nPrazo: ${quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'A definir'}\n\nAcesse a plataforma para mais detalhes.`);
-    }
-  }, [quote]);
 
   // Select suppliers that were chosen during quote creation
   useEffect(() => {
@@ -257,7 +249,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           supplier_ids: selectedSuppliers,
           send_whatsapp: sendWhatsApp,
           send_email: sendEmail,
-          custom_message: customMessage.trim(),
+          custom_message: `Nova cotação disponível: ${quote.title}\n\nDescrição: ${quote.description || 'Sem descrição'}\n\nPrazo: ${quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'A definir'}\n\nAcesse a plataforma para mais detalhes.`,
           send_via: sendVia,
           supplier_links: supplierLinks,
           short_links: validShortLinks,
@@ -539,25 +531,6 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
               </CardContent>
             </Card>
           )}
-
-          {/* Custom Message */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Mensagem Personalizada</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Digite uma mensagem personalizada..."
-                value={customMessage}
-                onChange={(e) => setCustomMessage(e.target.value)}
-                rows={5}
-                className="resize-none"
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Esta mensagem será enviada junto com os detalhes da cotação
-              </p>
-            </CardContent>
-          </Card>
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-4">
