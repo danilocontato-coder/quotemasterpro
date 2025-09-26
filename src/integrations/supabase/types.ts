@@ -1583,7 +1583,7 @@ export type Database = {
           name: string
           status: string | null
           stock_quantity: number | null
-          supplier_id: string
+          supplier_id: string | null
           unit_price: number | null
           updated_at: string | null
         }
@@ -1597,7 +1597,7 @@ export type Database = {
           name: string
           status?: string | null
           stock_quantity?: number | null
-          supplier_id: string
+          supplier_id?: string | null
           unit_price?: number | null
           updated_at?: string | null
         }
@@ -1611,7 +1611,7 @@ export type Database = {
           name?: string
           status?: string | null
           stock_quantity?: number | null
-          supplier_id?: string
+          supplier_id?: string | null
           unit_price?: number | null
           updated_at?: string | null
         }
