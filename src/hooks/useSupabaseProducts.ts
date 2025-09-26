@@ -26,6 +26,7 @@ export const useSupabaseProducts = () => {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
+      console.log('🔍 Buscando produtos no banco...');
       const { data, error } = await supabase
         .from('products')
         .select('*')
@@ -36,6 +37,7 @@ export const useSupabaseProducts = () => {
         throw error;
       }
       
+      console.log(`📦 Produtos carregados: ${data?.length || 0}`);
       setProducts((data as Product[]) || []);
     } catch (error) {
       console.error('Error fetching products:', error);

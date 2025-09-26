@@ -680,10 +680,12 @@ Formato da RFQ final:
         }
 
         // Padronizar produtos no catálogo
+        console.log(`🔍 Iniciando padronização de ${quoteData.items?.length || 0} itens...`);
         const standardizedProducts = [];
         if (quoteData.items?.length > 0) {
           for (const item of quoteData.items) {
             try {
+              console.log(`📝 Verificando produto: ${item.product_name}`);
               // Verificar se produto já existe
               const { data: existingProduct } = await supabaseClient
                 .from('products')
@@ -693,30 +695,38 @@ Formato da RFQ final:
                 .single();
 
               if (!existingProduct) {
+                console.log(`➕ Criando novo produto: ${item.product_name}`);
                 // Criar produto padrão
-                const { data: newProduct } = await supabaseClient
+                const { data: newProduct, error: insertError } = await supabaseClient
                   .from('products')
                   .insert({
                     name: item.product_name,
                     description: item.description || `Produto criado pela IA para RFQ #${newQuote.id}`,
-                    unit: item.unit || 'un',
+                    category: 'Geral',
                     client_id: profile.client_id,
                     supplier_id: null, // Produto genérico do cliente
-                    price: null // Será preenchido pelos fornecedores
+                    unit_price: null, // Será preenchido pelos fornecedores
+                    stock_quantity: 0,
+                    status: 'active'
                   })
                   .select()
                   .single();
 
-                if (newProduct) {
+                if (insertError) {
+                  console.error(`❌ Erro ao inserir produto ${item.product_name}:`, insertError);
+                } else if (newProduct) {
                   standardizedProducts.push(newProduct.name);
-                  console.log(`✅ Produto padronizado: ${newProduct.name}`);
+                  console.log(`✅ Produto padronizado: ${newProduct.name} (ID: ${newProduct.id})`);
                 }
+              } else {
+                console.log(`ℹ️ Produto já existe: ${item.product_name}`);
               }
             } catch (productError) {
               console.warn(`⚠️ Erro ao padronizar produto ${item.product_name}:`, productError);
             }
           }
         }
+        console.log(`📊 Padronização concluída. ${standardizedProducts.length} produtos criados.`);
 
         // Mensagem de sucesso personalizada
         let successMessage = `🎉 Perfeito! Criei sua RFQ #${newQuote.id} com ${quoteData.items.length} itens${selectedSuppliers.length > 0 ? ` e ${selectedSuppliers.length} fornecedores selecionados` : ''}.${autoSendMessage}`;
