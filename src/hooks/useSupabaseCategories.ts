@@ -11,6 +11,7 @@ export interface Category {
   updated_at: string;
   created_by?: string | null;
   is_system?: boolean;
+  client_id?: string | null; // Nova coluna para segregação por cliente
 }
 
 export const useSupabaseCategories = () => {
@@ -59,7 +60,8 @@ export const useSupabaseCategories = () => {
           description: categoryData.description || null,
           color: categoryData.color || '#3b82f6',
           created_by: authData.user.id,
-          is_system: false
+          is_system: false,
+          // client_id será automaticamente definido pelo trigger
         }])
         .select()
         .single();

@@ -549,6 +549,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          client_id: string | null
           color: string | null
           created_at: string
           created_by: string | null
@@ -559,6 +560,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_id?: string | null
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -569,6 +571,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_id?: string | null
           color?: string | null
           created_at?: string
           created_by?: string | null
@@ -578,7 +581,15 @@ export type Database = {
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_ai_settings: {
         Row: {
