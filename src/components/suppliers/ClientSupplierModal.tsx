@@ -9,10 +9,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Stepper } from '@/components/ui/stepper';
-import { UserPlus, MessageCircle, Building, CheckCircle, ArrowLeft, ArrowRight, X, MapPin, Check, ChevronsUpDown } from 'lucide-react';
+import { UserPlus, MessageCircle, Building, CheckCircle, ArrowLeft, ArrowRight, X, MapPin, Check, ChevronsUpDown, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { brazilStates } from '@/data/brazilStates';
+import { CNPJSearchModal } from './CNPJSearchModal';
 
 interface ClientSupplierModalProps {
   open: boolean;
@@ -208,6 +209,12 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
           description: "Este CNPJ já está cadastrado no sistema. Use um CNPJ diferente ou verifique se o fornecedor já existe.",
           variant: "destructive"
         });
+      } else if (error?.code === '23505' && error?.message?.includes('suppliers_cnpj_client_unique')) {
+        toast({
+          title: "Fornecedor já cadastrado",
+          description: "Este fornecedor já está cadastrado para este cliente. Use um CNPJ diferente ou edite o fornecedor existente.",
+          variant: "destructive"
+        });
       } else {
         toast({
           title: editingSupplier ? "Erro ao atualizar fornecedor" : "Erro ao cadastrar fornecedor",
@@ -249,12 +256,25 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
 
               <div className="space-y-2">
                 <Label htmlFor="cnpj">CNPJ *</Label>
-                <Input
-                  id="cnpj"
-                  value={formData.cnpj}
-                  onChange={(e) => setFormData(prev => ({ ...prev, cnpj: e.target.value }))}
-                  placeholder="00.000.000/0000-00"
-                  className={errors.cnpj ? "border-destructive" : ""}
+                <CNPJSearchModal
+                  cnpj={formData.cnpj}
+                  onCNPJChange={(cnpj) => setFormData(prev => ({ ...prev, cnpj }))}
+                  onReuseData={(supplier) => {
+                    setFormData({
+                      name: supplier.name,
+                      cnpj: supplier.cnpj,
+                      address: typeof supplier.address === 'string' ? supplier.address : (supplier.address?.street || ''),
+                      email: supplier.email,
+                      phone: supplier.phone || '',
+                      whatsapp: supplier.whatsapp || '',
+                      website: supplier.website || '',
+                      specialties: supplier.specialties || [],
+                      type: 'local',
+                      state: supplier.address?.state || '',
+                      city: supplier.address?.city || '',
+                      status: 'active'
+                    });
+                  }}
                 />
                 {errors.cnpj && <p className="text-xs text-destructive">{errors.cnpj}</p>}
               </div>

@@ -3035,6 +3035,22 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      search_supplier_by_cnpj: {
+        Args: { search_cnpj: string }
+        Returns: {
+          address: Json
+          client_id: string
+          client_name: string
+          cnpj: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          specialties: string[]
+          website: string
+          whatsapp: string
+        }[]
+      }
       suggest_suppliers_for_quote: {
         Args: {
           _categories: string[]
