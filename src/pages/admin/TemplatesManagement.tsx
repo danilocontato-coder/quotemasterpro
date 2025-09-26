@@ -150,9 +150,9 @@ export default function TemplatesManagement() {
 
   // Group templates by category for tabs view
   const templatesByCategory = TEMPLATE_CATEGORIES.slice(1).reduce((acc, category) => {
-    acc[category.value] = filteredTemplates.filter(template => 
+    acc[category.value] = filteredTemplates?.filter(template => 
       getTemplateCategory(template.template_type) === category.value
-    );
+    ) || [];
     return acc;
   }, {} as Record<string, Template[]>);
 
