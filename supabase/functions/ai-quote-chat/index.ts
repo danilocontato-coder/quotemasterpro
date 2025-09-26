@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Importar função de análise de produtos
+import { analyzeProduct } from './product-matcher.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -190,12 +192,12 @@ serve(async (req) => {
 
         if (clientHistory && clientHistory.length > 0) {
           // Analisar padrões do histórico para personalização
-          const allProducts = clientHistory.flatMap(q => q.quote_items?.map(i => i.product_name) || []);
-          const allSuppliers = quoteSuppliers?.map(q => q.suppliers).filter(Boolean) || [];
+          const allProducts = clientHistory.flatMap((q: any) => q.quote_items?.map((i: any) => i.product_name) || []);
+          const allSuppliers = quoteSuppliers?.map((q: any) => q.suppliers).filter(Boolean) || [];
           
           // Produtos mais frequentes
           const productFreq: Record<string, number> = {};
-          allProducts.forEach(product => {
+          allProducts.forEach((product: string) => {
             if (product) {
               productFreq[product] = (productFreq[product] || 0) + 1;
             }
@@ -219,13 +221,13 @@ serve(async (req) => {
               .sort(([,a], [,b]) => b - a)
               .slice(0, 5)
               .map(([supplier]) => supplier),
-            recentRFQs: clientHistory.slice(0, 3).map(q => ({
+            recentRFQs: clientHistory.slice(0, 3).map((q: any) => ({
               title: q.title,
               description: q.description,
               itemsCount: q.quote_items?.length || 0
             })),
             avgItemsPerRFQ: Math.round(
-              clientHistory.reduce((sum, q) => sum + (q.quote_items?.length || 0), 0) / clientHistory.length
+              clientHistory.reduce((sum: number, q: any) => sum + (q.quote_items?.length || 0), 0) / clientHistory.length
             )
           };
         }
@@ -679,71 +681,124 @@ Formato da RFQ final:
           }
         }
 
-        // Padronizar produtos no catálogo
-        console.log(`🔍 Iniciando padronização de ${quoteData.items?.length || 0} itens...`);
+        // Padronizar produtos no catálogo com detecção de similares
+        console.log(`🔍 Iniciando padronização inteligente de ${quoteData.items?.length || 0} itens...`);
         const standardizedProducts = [];
+        const productConflicts = [];
+        
+        // Buscar produtos existentes do cliente para comparação
+        const { data: existingProducts } = await supabaseClient
+          .from('products')
+          .select('id, name, code, category')
+          .eq('client_id', profile.client_id);
+        
+        console.log(`📦 Produtos existentes encontrados: ${existingProducts?.length || 0}`);
+        
         if (quoteData.items?.length > 0) {
           for (const item of quoteData.items) {
             try {
-              console.log(`📝 Verificando produto: ${item.product_name}`);
-              // Verificar se produto já existe
-              const { data: existingProduct } = await supabaseClient
+              console.log(`📝 Analisando produto: ${item.product_name}`);
+              
+              // Analisar produto com IA de similaridade
+              const analysis = analyzeProduct(item.product_name, existingProducts || []);
+              console.log(`🤖 Análise do produto:`, {
+                original: item.product_name,
+                normalized: analysis.normalizedName,
+                isService: analysis.isService,
+                category: analysis.category,
+                suggestions: analysis.suggestions.length,
+                confidence: analysis.confidence
+              });
+              
+              // Se há produtos similares com alta confiança, usar o existente
+              if (analysis.suggestions.length > 0 && analysis.confidence > 0.85) {
+                const bestMatch = analysis.suggestions[0];
+                console.log(`✨ Usando produto existente similar: ${bestMatch.name} (${Math.round(bestMatch.similarity * 100)}% similar)`);
+                standardizedProducts.push(`${item.product_name} → ${bestMatch.name}`);
+                continue;
+              }
+              
+              // Verificar se produto normalizado já existe (busca exata)
+              const { data: exactMatch } = await supabaseClient
                 .from('products')
-                .select('id')
-                .eq('name', item.product_name)
+                .select('id, name')
+                .eq('name', analysis.normalizedName)
                 .eq('client_id', profile.client_id)
                 .maybeSingle();
 
-              if (!existingProduct) {
-                console.log(`➕ Criando novo produto: ${item.product_name}`);
-                // Gerar código simples e único para o produto
-                let code = `PROD${Date.now().toString().slice(-6)}${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`;
+              if (!exactMatch) {
+                console.log(`➕ Criando novo produto: ${analysis.normalizedName}`);
                 
-                // Tentar inserir produto com código gerado
+                // Gerar código único para o produto
+                let code = `${analysis.isService ? 'SERV' : 'PROD'}${Date.now().toString().slice(-6)}${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`;
+                
+                // Criar produto com dados normalizados
                 const { data: newProduct, error: insertError } = await supabaseClient
                   .from('products')
                   .insert({
                     code,
-                    name: item.product_name,
-                    description: item.description || `Produto criado pela IA para RFQ #${newQuote.id}`,
-                    category: 'Geral',
+                    name: analysis.normalizedName,
+                    description: item.description || `${analysis.isService ? 'Serviço' : 'Produto'} criado pela IA para RFQ #${newQuote.id}`,
+                    category: analysis.category,
                     client_id: profile.client_id,
                     supplier_id: null, // Produto genérico do cliente
                     unit_price: null, // Será preenchido pelos fornecedores
-                    stock_quantity: 0,
+                    stock_quantity: analysis.isService ? null : 0, // Serviços não têm estoque
                     status: 'active'
                   })
                   .select()
                   .single();
 
                 if (insertError) {
-                  console.error(`❌ Erro ao inserir produto ${item.product_name}:`, insertError);
+                  console.error(`❌ Erro ao inserir produto ${analysis.normalizedName}:`, insertError);
+                  productConflicts.push({
+                    original: item.product_name,
+                    error: insertError.message,
+                    suggestions: analysis.suggestions
+                  });
                 } else if (newProduct) {
-                  standardizedProducts.push(newProduct.name);
-                  console.log(`✅ Produto padronizado: ${newProduct.name} (ID: ${newProduct.id})`);
+                  const productType = analysis.isService ? 'serviço' : 'produto';
+                  if (item.product_name !== analysis.normalizedName) {
+                    standardizedProducts.push(`${item.product_name} → ${analysis.normalizedName} (${productType})`);
+                  } else {
+                    standardizedProducts.push(`${analysis.normalizedName} (novo ${productType})`);
+                  }
+                  console.log(`✅ ${productType.charAt(0).toUpperCase() + productType.slice(1)} criado: ${newProduct.name} (ID: ${newProduct.id})`);
                 }
               } else {
-                console.log(`ℹ️ Produto já existe: ${item.product_name}`);
+                console.log(`ℹ️ Produto normalizado já existe: ${analysis.normalizedName}`);
+                if (item.product_name !== analysis.normalizedName) {
+                  standardizedProducts.push(`${item.product_name} → ${analysis.normalizedName} (existente)`);
+                }
               }
             } catch (productError) {
-              console.warn(`⚠️ Erro ao padronizar produto ${item.product_name}:`, productError);
+              console.warn(`⚠️ Erro ao analisar produto ${item.product_name}:`, productError);
+              productConflicts.push({
+                original: item.product_name,
+                error: productError instanceof Error ? productError.message : 'Erro desconhecido',
+                suggestions: []
+              });
             }
           }
         }
-        console.log(`📊 Padronização concluída. ${standardizedProducts.length} produtos criados.`);
+        console.log(`📊 Padronização concluída. ${standardizedProducts.length} produtos processados, ${productConflicts.length} conflitos.`);
 
-        // Mensagem de sucesso personalizada
+        // Mensagem de sucesso personalizada com detalhes da padronização
         let successMessage = `🎉 Perfeito! Criei sua RFQ #${newQuote.id} com ${quoteData.items.length} itens${selectedSuppliers.length > 0 ? ` e ${selectedSuppliers.length} fornecedores selecionados` : ''}.${autoSendMessage}`;
         
         if (standardizedProducts.length > 0) {
-          successMessage += `\n\n📦 **Produtos padronizados:** Adicionei ${standardizedProducts.length} produtos ao seu catálogo para facilitar futuras cotações.`;
+          successMessage += `\n\n📦 **Produtos processados:**\n${standardizedProducts.map(p => `• ${p}`).join('\n')}`;
+          
+          if (productConflicts.length > 0) {
+            successMessage += `\n\n⚠️ **${productConflicts.length} produto(s) com conflito** - verifique no módulo de produtos.`;
+          }
         }
         
         if (historyContext && historyContext.totalRFQs > 0) {
-          successMessage += `\n\n🎯 **Aprendizado personalizado:** Esta é sua ${historyContext.totalRFQs + 1}ª RFQ - usei seu histórico para otimizar as sugestões!`;
+          successMessage += `\n\n🎯 **Aprendizado:** Esta é sua ${historyContext.totalRFQs + 1}ª RFQ - a IA melhorou a padronização baseada no seu histórico!`;
         }
         
-        successMessage += ` Você pode acompanhar o progresso na página de cotações.`;
+        successMessage += `\n\n💡 **Dica:** Os produtos foram automaticamente normalizados e categorizados. Acesse o módulo Produtos para revisar.`;
 
         return new Response(JSON.stringify({
           response: successMessage,
@@ -753,6 +808,7 @@ Formato da RFQ final:
           suppliers: selectedSuppliers,
           autoSent: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend,
           standardizedProducts: standardizedProducts,
+          productConflicts: productConflicts,
           suggestions: [], // Sem sugestões - conversa finalizada
           historyInsights: historyContext ? {
             totalPreviousRFQs: historyContext.totalRFQs,
