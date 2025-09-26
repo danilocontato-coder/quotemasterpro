@@ -198,13 +198,23 @@ export function ClientSupplierModal({ open, onClose, editingSupplier }: ClientSu
         resetForm();
         onClose(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving supplier:', error);
-      toast({
-        title: editingSupplier ? "Erro ao atualizar fornecedor" : "Erro ao cadastrar fornecedor",
-        description: "Não foi possível salvar o fornecedor. Tente novamente.",
-        variant: "destructive"
-      });
+      
+      // Check for duplicate CNPJ error
+      if (error?.code === '23505' && error?.message?.includes('suppliers_cnpj_key')) {
+        toast({
+          title: "CNPJ já cadastrado",
+          description: "Este CNPJ já está cadastrado no sistema. Use um CNPJ diferente ou verifique se o fornecedor já existe.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: editingSupplier ? "Erro ao atualizar fornecedor" : "Erro ao cadastrar fornecedor",
+          description: "Não foi possível salvar o fornecedor. Tente novamente.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
