@@ -35,8 +35,12 @@ export function SupplierFormModal({ open, onClose, editingSupplier }: SupplierFo
     isEditMode,
   } = useSupplierForm({
     editingSupplier,
-    onSuccess: onClose,
-    onCancel: onClose,
+    onSuccess: () => {
+      onClose();
+    },
+    onCancel: () => {
+      onClose();
+    },
   });
 
   const renderStepContent = () => {

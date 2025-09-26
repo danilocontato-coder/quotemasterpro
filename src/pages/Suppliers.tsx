@@ -68,35 +68,6 @@ export default function Suppliers() {
   const globalSuppliers = availableSuppliers.filter(s => s.type === 'certified').length;
   const prioritySuppliers = availableSuppliers.filter(s => s.rating > 4).length;
 
-  const handleSupplierCreate = async (data: any) => {
-    try {
-      const payload: any = {
-        name: data.companyName,
-        cnpj: data.cnpj,
-        email: data.email,
-        phone: data.phone || null,
-        website: data.website || null,
-        address: data.address || null,
-        status: data.status || 'pending',
-        subscription_plan_id: data.plan || null,
-        specialties: data.businessInfo?.specialties || [],
-        type: 'local',
-        client_id: (user as any)?.clientId || null,
-        business_info: data.businessInfo || {},
-      };
-
-      if (editingSupplier?.id) {
-        await updateSupplier(editingSupplier.id, payload);
-      } else {
-        await createSupplier(payload);
-      }
-    } catch (error: any) {
-      console.error('Supplier save error:', error);
-    } finally {
-      setEditingSupplier(null);
-      setShowNewSupplierModal(false);
-    }
-  };
   
   const handleEditSupplier = (supplier: any) => {
     const isAdmin = user?.role === 'admin';
@@ -463,7 +434,10 @@ export default function Suppliers() {
       {/* Modals */}
       <SupplierFormModal
         open={showNewSupplierModal}
-        onClose={handleCloseModal}
+        onClose={() => {
+          handleCloseModal();
+          refetch(); // Refresh suppliers list after modal closes
+        }}
         editingSupplier={editingSupplier}
       />
 
