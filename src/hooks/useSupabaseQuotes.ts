@@ -212,14 +212,13 @@ export const useSupabaseQuotes = () => {
 
       console.log('✅ Quote inserted successfully, ID:', quoteId);
 
-      // Step 2: UPDATE optional fields
+      // Step 2: UPDATE optional fields (items_count será atualizado automaticamente pelo trigger)
       const { error: updateError } = await supabase
         .from('quotes')
         .update({
           description: quoteData.description || null,
           deadline: deadline,
           supplier_scope: quoteData.supplier_scope || 'local',
-          items_count: quoteData.items?.length || 0,
           selected_supplier_ids: quoteData.supplier_ids || []
         })
         .eq('id', quoteId);
