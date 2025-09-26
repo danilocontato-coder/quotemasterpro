@@ -33,7 +33,7 @@ import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
-import { AIContextualAssistant } from "@/components/communication/AIContextualAssistant";
+import { SupplierClarificationModal } from "@/components/supplier/SupplierClarificationModal";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -434,41 +434,13 @@ export default function SupplierQuotes() {
         }}
       />
 
-      {/* Modal de Mensagens Contextuais */}
-      {isMessageModalOpen && messageQuote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[80vh]">
-            <div className="p-6 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    Chat IA - Cotação #{messageQuote.id}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {messageQuote.title}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsMessageModalOpen(false)}
-                >
-                  ✕
-                </Button>
-              </div>
-              
-              <div className="flex-1">
-                <AIContextualAssistant
-                  quoteId={messageQuote.id}
-                  quotetitle={messageQuote.title}
-                  supplierName={user?.name}
-                  userRole="supplier"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal de Esclarecimentos Estruturado */}
+      <SupplierClarificationModal
+        open={isMessageModalOpen}
+        onOpenChange={setIsMessageModalOpen}
+        quote={messageQuote}
+        supplierName={user?.name}
+      />
     </div>
   );
 }
