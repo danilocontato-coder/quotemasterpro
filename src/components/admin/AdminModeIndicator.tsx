@@ -7,8 +7,15 @@ import { useAdminAccess } from '@/hooks/useAdminAccess';
 export const AdminModeIndicator = () => {
   const { isInAdminMode, returnToAdmin, isAccessingAs, getAdminAccessData } = useAdminAccess();
 
-  // Limpar URL do token admin após carregar os dados
+  // Limpar URL do token admin após carregar os dados e limpar localStorage antigo
   useEffect(() => {
+    // Limpar qualquer localStorage antigo que possa estar interferindo
+    const oldAdminMode = localStorage.getItem('adminAccessMode');
+    if (oldAdminMode) {
+      console.log('Removendo localStorage antigo do modo admin');
+      localStorage.removeItem('adminAccessMode');
+    }
+    
     const urlParams = new URLSearchParams(window.location.search);
     const adminToken = urlParams.get('adminToken');
     

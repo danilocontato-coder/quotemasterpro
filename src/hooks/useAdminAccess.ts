@@ -115,28 +115,34 @@ export const useAdminAccess = () => {
     }
   };
 
-  // Voltar ao modo admin
+  // Voltar ao modo admin (não usado mais, pois fechamos a aba)
   const returnToAdmin = async () => {
     setIsAccessingAs(true);
     
     try {
-      // Remover modo admin do localStorage
-      localStorage.removeItem('adminAccessMode');
+      // Limpar dados de acesso admin
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminToken = urlParams.get('adminToken');
+      
+      if (adminToken) {
+        localStorage.removeItem(`adminAccess_${adminToken}`);
+        sessionStorage.removeItem(`adminAccess_${adminToken}`);
+      }
 
       toast({
-        title: "Modo admin restaurado",
-        description: "Você voltou ao painel de administração",
+        title: "Sessão encerrada",
+        description: "Fechando aba de simulação",
         variant: "default"
       });
       
-      // Redirecionar para admin dashboard
-      navigate('/admin/superadmin');
+      // Fechar aba
+      window.close();
       
     } catch (error) {
-      console.error('Erro ao voltar ao modo admin:', error);
+      console.error('Erro ao encerrar sessão admin:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível retornar ao modo admin",
+        description: "Não foi possível encerrar a sessão",
         variant: "destructive"
       });
     } finally {
@@ -144,24 +150,24 @@ export const useAdminAccess = () => {
     }
   };
 
-  // Verificar se estamos em modo admin
+  // Verificar se estamos em modo admin (apenas para simulação de super admin)
   const isInAdminMode = () => {
     try {
-      // Verificar localStorage (método antigo)
-      const adminMode = localStorage.getItem('adminAccessMode');
-      if (adminMode && JSON.parse(adminMode).isAdminMode) {
-        return true;
-      }
-
-      // Verificar se há token admin na URL
+      // APENAS verificar se há token admin na URL (removendo localStorage para evitar mostrar para clientes reais)
       const urlParams = new URLSearchParams(window.location.search);
       const adminToken = urlParams.get('adminToken');
-      if (adminToken) {
+      
+      if (adminToken && adminToken.startsWith('admin_')) {
         let adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
         if (!adminData) {
           adminData = localStorage.getItem(`adminAccess_${adminToken}`);
         }
-        return adminData ? JSON.parse(adminData).isAdminMode : false;
+        
+        if (adminData) {
+          const parsedData = JSON.parse(adminData);
+          // Verificar se é realmente uma simulação de admin (tem originalRole admin)
+          return parsedData.isAdminMode && parsedData.originalRole === 'admin';
+        }
       }
 
       return false;
@@ -173,22 +179,26 @@ export const useAdminAccess = () => {
   // Obter dados do acesso admin
   const getAdminAccessData = () => {
     try {
-      // Verificar URL primeiro
+      // APENAS verificar URL (removendo localStorage para evitar dados de clientes reais)
       const urlParams = new URLSearchParams(window.location.search);
       const adminToken = urlParams.get('adminToken');
-      if (adminToken) {
+      
+      if (adminToken && adminToken.startsWith('admin_')) {
         let adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
         if (!adminData) {
           adminData = localStorage.getItem(`adminAccess_${adminToken}`);
         }
+        
         if (adminData) {
-          return JSON.parse(adminData);
+          const parsedData = JSON.parse(adminData);
+          // Só retornar se for realmente uma simulação de admin
+          if (parsedData.isAdminMode && parsedData.originalRole === 'admin') {
+            return parsedData;
+          }
         }
       }
 
-      // Fallback para localStorage (método antigo)
-      const adminMode = localStorage.getItem('adminAccessMode');
-      return adminMode ? JSON.parse(adminMode) : null;
+      return null;
     } catch {
       return null;
     }
