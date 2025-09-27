@@ -74,8 +74,36 @@ serve(async (req) => {
     if (forceDelete && hasLinkedData) {
       console.log('Executando exclusão forçada - removendo dados vinculados...')
       
-      // 1. Remover produtos vinculados
+      // 1. Tratar quote_items que referenciam produtos do fornecedor e remover produtos
       if ((productsCount || 0) > 0) {
+        // Buscar IDs dos produtos do fornecedor
+        const { data: supplierProducts, error: productsFetchError } = await supabase
+          .from('products')
+          .select('id')
+          .eq('supplier_id', supplierId)
+
+        if (productsFetchError) {
+          console.error('Erro ao buscar produtos do fornecedor:', productsFetchError)
+          throw productsFetchError
+        }
+
+        const productIds = (supplierProducts || []).map((p: { id: string }) => p.id)
+
+        if (productIds.length > 0) {
+          // Desvincular itens de cotação que referenciam esses produtos
+          const { error: quoteItemsUpdateError } = await supabase
+            .from('quote_items')
+            .update({ product_id: null })
+            .in('product_id', productIds)
+
+          if (quoteItemsUpdateError) {
+            console.error('Erro ao desvincular quote_items dos produtos:', quoteItemsUpdateError)
+            throw quoteItemsUpdateError
+          }
+          console.log(`quote_items atualizados para remover referência de ${productIds.length} produto(s)`) 
+        }
+
+        // Agora remover produtos
         const { error: productsError } = await supabase
           .from('products')
           .delete()
@@ -138,7 +166,8 @@ serve(async (req) => {
         'supplier_ratings', 
         'payments',
         'deliveries',
-        'client_suppliers'
+        'client_suppliers',
+        'quote_suppliers'
       ]
 
       for (const table of relatedTables) {
