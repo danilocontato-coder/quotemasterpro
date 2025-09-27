@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSupplierModal } from "@/components/suppliers/CreateSupplierModal";
+import { DeleteSupplierModal } from "@/components/admin/DeleteSupplierModal";
 import { useSupabaseAdminSuppliers } from "@/hooks/useSupabaseAdminSuppliers";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -578,32 +579,17 @@ export const SuppliersManagement = () => {
         }}
       />
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deletingSupplier} onOpenChange={() => setDeletingSupplier(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Fornecedor</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o fornecedor "{deletingSupplier?.name}"? 
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                if (deletingSupplier) {
-                  await deleteSupplier(deletingSupplier.id, deletingSupplier.name);
-                  setDeletingSupplier(null);
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Modal de Exclusão de Fornecedor */}
+      <DeleteSupplierModal
+        open={!!deletingSupplier}
+        onOpenChange={(open) => !open && setDeletingSupplier(null)}
+        supplier={deletingSupplier}
+        onDeleteSupplier={async (id: string, forceDelete?: boolean) => {
+          // A lógica de exclusão agora está toda na edge function
+          // Apenas atualizar a lista local após sucesso
+          await refetch();
+        }}
+      />
 
       {/* Certification Confirmation */}
       <AlertDialog open={!!certifyingSupplier} onOpenChange={() => setCertifyingSupplier(null)}>
