@@ -26,16 +26,17 @@ interface BrandingContextType {
 }
 
 const defaultSettings: BrandingSettings = {
-  companyName: 'Sistema de Cotações',
+  companyName: 'Cotiz', // Nome padrão otimizado
   logo: '/placeholder.svg',
   primaryColor: '#003366',
   secondaryColor: '#F5F5F5',
   accentColor: '#0066CC',
   favicon: '/favicon.ico',
-  footerText: '© 2025 Sistema de Cotações. Todos os direitos reservados.',
-  loginPageTitle: 'Bem-vindo ao Sistema de Cotações',
+  footerText: '© 2025 Cotiz. Todos os direitos reservados.',
+  loginPageTitle: 'Bem-vindo ao Cotiz',
   loginPageSubtitle: 'Plataforma completa de gestão de cotações',
   dashboardWelcomeMessage: 'Bem-vindo de volta!',
+  customCss: '',
 };
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
@@ -52,6 +53,12 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [settings, setSettings] = useState<BrandingSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  // Aplicar branding padrão imediatamente para evitar delay
+  useEffect(() => {
+    console.log('🎨 [BRANDING] Aplicando configurações padrão imediatamente...');
+    applyBrandingToDOM(defaultSettings);
+  }, []);
 
   // Carregar configurações baseado no usuário atual
   const loadSettings = useCallback(async () => {
@@ -596,14 +603,18 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   useEffect(() => {
-    console.log('🎨 [BRANDING] Provider montado, iniciando carregamento...');
-    loadSettings();
+    console.log('🎨 [BRANDING] Provider montado, carregando configurações...');
     
-    // Disparar evento personalizado após 1 segundo para forçar atualização do favicon
-    setTimeout(() => {
-      const event = new CustomEvent('branding-updated');
-      window.dispatchEvent(event);
-    }, 1000);
+    // Carregar settings rapidamente sem delay
+    const loadQuickly = async () => {
+      try {
+        await loadSettings();
+      } catch (error) {
+        console.warn('🎨 [BRANDING] Falha no carregamento rápido, usando padrões');
+      }
+    };
+    
+    loadQuickly();
   }, []); // Remove dependency on loadSettings to prevent infinite reloads
 
   // Escutar eventos de atualização de branding
