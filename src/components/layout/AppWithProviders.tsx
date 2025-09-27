@@ -5,6 +5,7 @@ import { useGlobalNavigation } from '@/hooks/useGlobalNavigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { SecurityMonitor } from '@/components/security/SecurityMonitor';
+import { FaviconUpdater } from '@/components/common/FaviconUpdater';
 
 // Layouts principais
 import MainLayout from '@/components/layout/MainLayout';
@@ -96,6 +97,9 @@ export const AppWithProviders: React.FC = () => {
 
   return (
     <>
+      {/* Componente para atualizar o favicon */}
+      <FaviconUpdater />
+      
       {/* Monitor de Segurança - Proteção contra acessos não autorizados */}
       <SecurityMonitor />
       

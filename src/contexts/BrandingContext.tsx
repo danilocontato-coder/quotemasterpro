@@ -83,6 +83,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               customCss: d.customCss || undefined,
             } as BrandingSettings;
             console.log('🎨 [BRANDING] Global settings via function:', globalSettings);
+            console.log('🎨 [BRANDING] Favicon carregado:', globalSettings.favicon);
             return globalSettings;
           }
           console.warn('🎨 [BRANDING] Edge function falhou ou retornou vazio, caindo para consulta direta...', fnError);
@@ -314,8 +315,14 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Atualizar favicon
     const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-    if (favicon && brandingSettings.favicon !== '/favicon.ico') {
+    if (favicon && brandingSettings.favicon) {
+      console.log('🎨 [BRANDING] Atualizando favicon para:', brandingSettings.favicon);
       favicon.href = brandingSettings.favicon;
+      // Forçar recarga do favicon adicionando timestamp
+      const newFavicon = favicon.cloneNode(true) as HTMLLinkElement;
+      newFavicon.href = `${brandingSettings.favicon}?t=${Date.now()}`;
+      document.head.removeChild(favicon);
+      document.head.appendChild(newFavicon);
     }
 
     // Aplicar CSS customizado
@@ -589,7 +596,14 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   useEffect(() => {
+    console.log('🎨 [BRANDING] Provider montado, iniciando carregamento...');
     loadSettings();
+    
+    // Disparar evento personalizado após 1 segundo para forçar atualização do favicon
+    setTimeout(() => {
+      const event = new CustomEvent('branding-updated');
+      window.dispatchEvent(event);
+    }, 1000);
   }, []); // Remove dependency on loadSettings to prevent infinite reloads
 
   // Escutar eventos de atualização de branding
