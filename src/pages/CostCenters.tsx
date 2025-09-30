@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { CreateCostCenterModal } from '@/components/cost-centers/CreateCostCenterModal';
 import { EditCostCenterModal } from '@/components/cost-centers/EditCostCenterModal';
@@ -10,6 +11,7 @@ import { CostCenterStats } from '@/components/cost-centers/CostCenterStats';
 import { CostCenterList } from '@/components/cost-centers/CostCenterList';
 
 export default function CostCenters() {
+  const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCostCenter, setEditingCostCenter] = useState<any>(null);
   const { costCenters, spending, isLoading, fetchSpending, deleteCostCenter, createDefaultCostCenters } = useCostCenters();
@@ -46,6 +48,14 @@ export default function CostCenters() {
           <p className="text-muted-foreground">Gerencie os centros de custo e analise os gastos</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/debug-cost-centers')}
+            title="Debug"
+          >
+            <Bug className="h-4 w-4" />
+          </Button>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Centro de Custo
