@@ -1897,6 +1897,53 @@ export type Database = {
           },
         ]
       }
+      quote_supplier_status: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          declined_reason: string | null
+          id: string
+          last_reminder_sent_at: string | null
+          proposal_received_at: string | null
+          quote_id: string
+          status: string
+          supplier_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          declined_reason?: string | null
+          id?: string
+          last_reminder_sent_at?: string | null
+          proposal_received_at?: string | null
+          quote_id: string
+          status?: string
+          supplier_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          declined_reason?: string | null
+          id?: string
+          last_reminder_sent_at?: string | null
+          proposal_received_at?: string | null
+          quote_id?: string
+          status?: string
+          supplier_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_supplier_status_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_suppliers: {
         Row: {
           created_at: string | null

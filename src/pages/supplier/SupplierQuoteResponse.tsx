@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Upload, FileText, Plus, Trash2, Building2, Clock, DollarSign, UserPlus, HelpCircle, Calculator, Eye, CheckCircle } from 'lucide-react';
+import { Upload, FileText, Plus, Trash2, Building2, Clock, DollarSign, UserPlus, HelpCircle, Calculator, Eye, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
@@ -68,6 +68,8 @@ const SupplierQuoteResponse = () => {
   const [uploadMethod, setUploadMethod] = useState<'pdf' | 'manual'>('manual');
   const [showHelp, setShowHelp] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
 
   useEffect(() => {
     if (quoteId && token) {
@@ -250,6 +252,64 @@ const SupplierQuoteResponse = () => {
     return proposalItems.reduce((sum, item) => sum + item.totalPrice, 0);
   };
 
+  const handleDeclineParticipation = async () => {
+    if (!declineReason.trim()) {
+      toast({
+        title: "Erro",
+        description: "Por favor, informe o motivo da recusa",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      // Buscar short_code do token atual
+      const { data: tokenData } = await supabase
+        .from('quote_tokens')
+        .select('short_code')
+        .eq('full_token', token)
+        .maybeSingle();
+
+      if (!tokenData) {
+        throw new Error('Token não encontrado');
+      }
+
+      // Chamar edge function para processar recusa
+      const { data, error } = await supabase.functions.invoke('process-supplier-response', {
+        body: {
+          token: tokenData.short_code,
+          action: 'decline',
+          reason: declineReason
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Recusa registrada",
+        description: "Sua recusa foi registrada com sucesso. Obrigado pela resposta!",
+      });
+
+      // Redirecionar após 2 segundos
+      setTimeout(() => {
+        window.location.href = 'https://quotemaster.com';
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error declining participation:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível registrar a recusa",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+      setShowDeclineModal(false);
+    }
+  };
+
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
@@ -383,14 +443,24 @@ const SupplierQuoteResponse = () => {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Building2 className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-bold text-primary">Envio de Proposta</h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowHelp(!showHelp)}
-              className="ml-2"
-            >
-              <HelpCircle className="w-4 h-4" />
-            </Button>
+            <div className="ml-auto flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHelp(!showHelp)}
+              >
+                <HelpCircle className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeclineModal(true)}
+                className="text-red-600 border-red-300 hover:bg-red-50"
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                Recusar Participação
+              </Button>
+            </div>
           </div>
           <p className="text-muted-foreground mb-6">Responda à solicitação de cotação de forma simples e rápida</p>
           
@@ -958,6 +1028,65 @@ const SupplierQuoteResponse = () => {
               </p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Modal de Recusa */}
+        {showDeclineModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-600">
+                  <XCircle className="w-5 h-5" />
+                  Recusar Participação
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Informe o motivo da recusa. Isso ajudará o cliente a entender sua decisão.
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="declineReason">Motivo da Recusa *</Label>
+                    <Textarea
+                      id="declineReason"
+                      value={declineReason}
+                      onChange={(e) => setDeclineReason(e.target.value)}
+                      placeholder="Ex: Não trabalhamos com este tipo de produto, prazo muito curto, etc."
+                      rows={4}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowDeclineModal(false);
+                        setDeclineReason('');
+                      }}
+                      className="flex-1"
+                      disabled={submitting}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleDeclineParticipation}
+                      disabled={submitting || !declineReason.trim()}
+                      className="flex-1 bg-red-600 hover:bg-red-700"
+                    >
+                      {submitting ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                          Processando...
+                        </>
+                      ) : (
+                        'Confirmar Recusa'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>

@@ -12,6 +12,12 @@ verify_jwt = false
 [functions.send-quote-to-suppliers]
 verify_jwt = true
 
+[functions.send-quote-reminders]
+verify_jwt = true
+
+[functions.process-supplier-response]
+verify_jwt = false
+
 [functions.test-integration]
 verify_jwt = true
 

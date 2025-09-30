@@ -97,6 +97,24 @@ const handler = async (req: Request): Promise<Response> => {
       } else {
         console.log(`Mapped quote ${quote.id} to ${mappings.length} supplier(s)`);
       }
+
+      // Criar registros de status para cada fornecedor
+      const statusMappings = suppliers.map((s: any) => ({
+        quote_id: quote.id,
+        supplier_id: s.id,
+        client_id: quote.client_id,
+        status: 'pending'
+      }));
+      
+      const { error: statusErr } = await supabase
+        .from('quote_supplier_status')
+        .upsert(statusMappings, { onConflict: 'quote_id,supplier_id' });
+      
+      if (statusErr) {
+        console.warn('Failed to upsert supplier status:', statusErr);
+      } else {
+        console.log(`Created status tracking for ${statusMappings.length} supplier(s)`);
+      }
     } catch (e) {
       console.warn('Error while mapping suppliers to quote:', e);
     }
