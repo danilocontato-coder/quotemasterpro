@@ -64,7 +64,7 @@ const SystemTests = () => {
       
       if (error || !session) {
         return {
-          ...tests[0],
+          ...(tests.find(t => t.id === 'auth')!),
           status: 'failed',
           duration: performance.now() - start,
           message: 'Sessão inválida ou expirada',
@@ -73,7 +73,7 @@ const SystemTests = () => {
       }
 
       return {
-        ...tests[0],
+        ...(tests.find(t => t.id === 'auth')!),
         status: 'passed',
         duration: performance.now() - start,
         message: `Usuário autenticado: ${session.user.email}`,
@@ -81,7 +81,7 @@ const SystemTests = () => {
       };
     } catch (err: any) {
       return {
-        ...tests[0],
+        ...(tests.find(t => t.id === 'auth')!),
         status: 'failed',
         duration: performance.now() - start,
         message: err.message
@@ -105,7 +105,7 @@ const SystemTests = () => {
 
       if (error || !profile) {
         return {
-          ...tests[1],
+          ...(tests.find(t => t.id === 'profile')!),
           status: 'failed',
           duration: performance.now() - start,
           message: 'Perfil não encontrado',
@@ -114,7 +114,7 @@ const SystemTests = () => {
       }
 
       return {
-        ...tests[1],
+        ...(tests.find(t => t.id === 'profile')!),
         status: 'passed',
         duration: performance.now() - start,
         message: `Perfil carregado: ${profile.role}`,
@@ -122,7 +122,7 @@ const SystemTests = () => {
       };
     } catch (err: any) {
       return {
-        ...tests[1],
+        ...(tests.find(t => t.id === 'profile')!),
         status: 'failed',
         duration: performance.now() - start,
         message: err.message
@@ -157,7 +157,7 @@ const SystemTests = () => {
 
       if (invalidQuotes.length > 0) {
         return {
-          ...tests[2],
+          ...(tests.find(t => t.id === 'isolation-quotes')!),
           status: 'failed',
           duration: performance.now() - start,
           message: `🚨 VULNERABILIDADE: ${invalidQuotes.length} cotações de outros clientes foram retornadas!`,
@@ -166,7 +166,7 @@ const SystemTests = () => {
       }
 
       return {
-        ...tests[2],
+        ...(tests.find(t => t.id === 'isolation-quotes')!),
         status: 'passed',
         duration: performance.now() - start,
         message: `${quotes?.length || 0} cotações isoladas corretamente`,
@@ -174,7 +174,7 @@ const SystemTests = () => {
       };
     } catch (err: any) {
       return {
-        ...tests[2],
+        ...(tests.find(t => t.id === 'isolation-quotes')!),
         status: 'failed',
         duration: performance.now() - start,
         message: err.message
@@ -212,7 +212,7 @@ const SystemTests = () => {
 
       if (invalidProducts.length > 0) {
         return {
-          ...tests[3],
+          ...(tests.find(t => t.id === 'isolation-products')!),
           status: 'failed',
           duration: performance.now() - start,
           message: `🚨 VULNERABILIDADE: ${invalidProducts.length} produtos de outros usuários foram retornados!`,
@@ -221,7 +221,7 @@ const SystemTests = () => {
       }
 
       return {
-        ...tests[3],
+        ...(tests.find(t => t.id === 'isolation-products')!),
         status: 'passed',
         duration: performance.now() - start,
         message: `${products?.length || 0} produtos isolados corretamente`,
@@ -229,7 +229,7 @@ const SystemTests = () => {
       };
     } catch (err: any) {
       return {
-        ...tests[3],
+        ...(tests.find(t => t.id === 'isolation-products')!),
         status: 'failed',
         duration: performance.now() - start,
         message: err.message
@@ -254,7 +254,7 @@ const SystemTests = () => {
 
       if (!firstQuote) {
         return {
-          ...tests[6],
+          ...(tests.find(t => t.id === 'rls-protection')!),
           status: 'warning',
           duration: performance.now() - start,
           message: 'Nenhuma cotação para testar (criar uma cotação primeiro)'
@@ -272,7 +272,7 @@ const SystemTests = () => {
       if (error || error?.code === 'PGRST116') {
         // Erro esperado (RLS bloqueou)
         return {
-          ...tests[6],
+          ...(tests.find(t => t.id === 'rls-protection')!),
           status: 'passed',
           duration: performance.now() - start,
           message: '✅ RLS bloqueou tentativa de modificação não autorizada',
@@ -282,7 +282,7 @@ const SystemTests = () => {
 
       // Se não deu erro, é uma vulnerabilidade!
       return {
-        ...tests[6],
+        ...(tests.find(t => t.id === 'rls-protection')!),
         status: 'failed',
         duration: performance.now() - start,
         message: '🚨 VULNERABILIDADE CRÍTICA: RLS não bloqueou modificação não autorizada!',
@@ -291,7 +291,7 @@ const SystemTests = () => {
     } catch (err: any) {
       // Erro é bom neste caso (significa que RLS bloqueou)
       return {
-        ...tests[6],
+        ...(tests.find(t => t.id === 'rls-protection')!),
         status: 'passed',
         duration: performance.now() - start,
         message: '✅ RLS bloqueou tentativa de modificação (erro esperado)',
@@ -313,7 +313,7 @@ const SystemTests = () => {
 
       if (duration > 3000) {
         return {
-          ...tests[7],
+          ...(tests.find(t => t.id === 'perf-dashboard')!),
           status: 'warning',
           duration,
           message: `⚠️ Lento: ${duration.toFixed(0)}ms (recomendado < 3000ms)`
@@ -321,14 +321,14 @@ const SystemTests = () => {
       }
 
       return {
-        ...tests[7],
+        ...(tests.find(t => t.id === 'perf-dashboard')!),
         status: 'passed',
         duration,
         message: `Excelente: ${duration.toFixed(0)}ms`
       };
     } catch (err: any) {
       return {
-        ...tests[7],
+        ...(tests.find(t => t.id === 'perf-dashboard')!),
         status: 'failed',
         duration: performance.now() - start,
         message: err.message
@@ -353,7 +353,7 @@ const SystemTests = () => {
       if (error) throw error;
 
       return {
-        ...tests[10],
+        ...(tests.find(t => t.id === 'notifications')!),
         status: 'passed',
         duration: performance.now() - start,
         message: `${notifications?.length || 0} notificações carregadas`,
@@ -361,7 +361,7 @@ const SystemTests = () => {
       };
     } catch (err: any) {
       return {
-        ...tests[10],
+        ...(tests.find(t => t.id === 'notifications')!),
         status: 'failed',
         duration: performance.now() - start,
         message: err.message
@@ -387,7 +387,7 @@ const SystemTests = () => {
 
       if (orphanCount > 0) {
         return {
-          ...tests[13],
+          ...(tests.find(t => t.id === 'orphan-check')!),
           status: 'warning',
           duration: performance.now() - start,
           message: `⚠️ ${orphanCount} produtos órfãos encontrados`,
@@ -396,14 +396,14 @@ const SystemTests = () => {
       }
 
       return {
-        ...tests[13],
+        ...(tests.find(t => t.id === 'orphan-check')!),
         status: 'passed',
         duration: performance.now() - start,
         message: 'Nenhum dado órfão encontrado'
       };
     } catch (err: any) {
       return {
-        ...tests[13],
+        ...(tests.find(t => t.id === 'orphan-check')!),
         status: 'failed',
         duration: performance.now() - start,
         message: err.message
