@@ -21,7 +21,8 @@ import {
   Download,
   Send,
   BarChart3,
-  Brain
+  Brain,
+  User
 } from 'lucide-react';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +33,7 @@ import { QuoteItemsList } from './QuoteItemsList';
 import { getStatusText } from "@/utils/statusUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { supabase } from '@/integrations/supabase/client';
+import { AuditLog } from '@/hooks/useAuditLogs';
 
 export interface QuoteProposal {
   id: string;
@@ -91,6 +93,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [showItemAnalysis, setShowItemAnalysis] = useState(false);
   const [itemAnalysisData, setItemAnalysisData] = useState<ItemAnalysisData[]>([]);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const { toast } = useToast();
   const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
 
@@ -172,11 +175,60 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     }
   }, [quote?.id, quoteItems]);
 
+  // Fetch audit logs for this quote
+  const fetchAuditLogs = useCallback(async () => {
+    if (!quote?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select(`
+          id,
+          action,
+          entity_type,
+          entity_id,
+          created_at,
+          details,
+          profiles:user_id (
+            name,
+            email
+          )
+        `)
+        .eq('entity_id', quote.id)
+        .eq('entity_type', 'quotes')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching audit logs:', error);
+        return;
+      }
+      
+      const formattedLogs: AuditLog[] = (data || []).map((log: any) => ({
+        id: log.id,
+        action: log.action,
+        entity_type: log.entity_type,
+        entity_id: log.entity_id,
+        panel_type: null,
+        details: log.details,
+        created_at: log.created_at,
+        user_id: null,
+        user_name: log.profiles?.name || 'Sistema',
+        user_email: log.profiles?.email || null,
+        user_role: null,
+      }));
+      
+      setAuditLogs(formattedLogs);
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+    }
+  }, [quote?.id]);
+
   useEffect(() => {
     if (open && quote?.id) {
       fetchQuoteItems();
+      fetchAuditLogs();
     }
-  }, [open, quote?.id, fetchQuoteItems]);
+  }, [open, quote?.id, fetchQuoteItems, fetchAuditLogs]);
 
   useEffect(() => {
     if (quoteItems.length > 0) {
@@ -669,27 +721,44 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                      <div className="bg-blue-100 p-2 rounded-full">
-                        <Send className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Cotação criada</p>
-                        <p className="text-sm text-muted-foreground">
-                          {quote.created_at ? new Date(quote.created_at).toLocaleString('pt-BR') : 'Data não disponível'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {quote.status !== 'draft' && (
-                      <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-                        <div className="bg-green-100 p-2 rounded-full">
-                          <MessageSquare className="h-4 w-4 text-green-600" />
+                    {auditLogs.length > 0 ? (
+                      auditLogs.map((log) => (
+                        <div key={log.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border">
+                          <div className="bg-primary/10 p-2 rounded-full">
+                            {log.action.includes('CREATE') ? (
+                              <Send className="h-4 w-4 text-primary" />
+                            ) : log.action.includes('UPDATE') ? (
+                              <CheckCircle className="h-4 w-4 text-blue-600" />
+                            ) : (
+                              <MessageSquare className="h-4 w-4 text-green-600" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">{log.action.replace(/_/g, ' ')}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <User className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground">
+                                Criado por: <span className="font-medium">{log.user_name}</span>
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Calendar className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(log.created_at).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+                        <div className="bg-blue-100 p-2 rounded-full">
+                          <Send className="h-4 w-4 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-medium">Enviada para fornecedores</p>
+                          <p className="font-medium">Cotação criada</p>
                           <p className="text-sm text-muted-foreground">
-                            {quote.suppliers_sent_count || 0} fornecedores contatados
+                            {quote.created_at ? new Date(quote.created_at).toLocaleString('pt-BR') : 'Data não disponível'}
                           </p>
                         </div>
                       </div>
