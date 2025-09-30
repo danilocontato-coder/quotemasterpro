@@ -269,6 +269,7 @@ export function useCostCenters() {
 
   const createDefaultCostCenters = useCallback(async () => {
     try {
+      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -291,9 +292,11 @@ export function useCostCenters() {
         description: 'Centros de custo padrão criados com sucesso',
       });
 
-      // Refresh both hierarchy and spending data
-      await fetchHierarchy(profile.client_id);
-      await fetchSpending(profile.client_id);
+      // Refresh data
+      await Promise.all([
+        fetchCostCenters(),
+        fetchSpending(profile.client_id)
+      ]);
     } catch (err) {
       console.error('Error creating default cost centers:', err);
       toast({
@@ -301,8 +304,10 @@ export function useCostCenters() {
         description: 'Erro ao criar centros de custo padrão',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
-  }, [toast, fetchHierarchy, fetchSpending]);
+  }, [toast, fetchCostCenters, fetchSpending]);
 
   useEffect(() => {
     fetchCostCenters();
