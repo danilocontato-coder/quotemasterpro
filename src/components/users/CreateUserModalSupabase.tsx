@@ -394,6 +394,20 @@ const normalizePhone = (phone: string) => {
                 {formData.generateCredentials && (
                   <div className="space-y-4 p-4 bg-muted rounded-lg">
                     <div>
+                      <label className="text-sm font-medium">E-mail de Acesso</label>
+                      <Input
+                        type="email"
+                        value={formData.email}
+                        disabled
+                        className="bg-background"
+                        placeholder="Preencha o e-mail na aba Informações Básicas"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Este será o e-mail usado para login. Defina-o na aba "Informações Básicas".
+                      </p>
+                    </div>
+
+                    <div>
                       <label className="text-sm font-medium">Nome de Usuário</label>
                       <Input
                         value={formData.username}
