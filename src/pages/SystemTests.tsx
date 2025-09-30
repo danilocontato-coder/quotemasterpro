@@ -31,11 +31,11 @@ const SystemTests = () => {
   // ============================================================================
 
   const tests: Omit<TestResult, 'status'>[] = [
-    { id: 'auth', name: '🔐 Verificação de Autenticação', category: 'Segurança' },
+    { id: 'auth', name: '🔐 Sessão de Autenticação', category: 'Segurança' },
     { id: 'profile', name: '👤 Carregamento de Perfil', category: 'Segurança' },
-    { id: 'isolation-quotes', name: '📋 Isolamento de Cotações', category: 'RLS' },
-    { id: 'isolation-products', name: '📦 Isolamento de Produtos', category: 'RLS' },
-    { id: 'rls-protection', name: '🛡️ Proteção contra Manipulação', category: 'RLS' },
+    { id: 'isolation-quotes', name: '📋 Listagem de Cotações (Isolamento)', category: 'Cotações' },
+    { id: 'isolation-products', name: '📦 Listagem de Produtos (Isolamento)', category: 'Produtos' },
+    { id: 'rls-protection', name: '🛡️ Proteção RLS em Cotações (Bloqueio)', category: 'Cotações' },
     { id: 'perf-dashboard', name: '⚡ Performance Dashboard', category: 'Performance' },
     { id: 'notifications', name: '🔔 Sistema de Notificações', category: 'Funcional' },
     { id: 'orphan-check', name: '🔍 Verificação de Dados Órfãos', category: 'Qualidade' },
