@@ -162,30 +162,37 @@ export function QuotesHelp({ searchQuery }: HelpProps) {
             </div>
 
             <div>
-              <h4 className="font-semibold text-foreground">🟡 Em Análise (Under Review)</h4>
+              <h4 className="font-semibold text-foreground">🟡 Recebendo Propostas (Receiving)</h4>
               <p className="text-muted-foreground">
-                Respostas recebidas e cotação está sendo analisada pela equipe.
+                Cotação enviada e já recebeu algumas propostas, mas ainda aguarda resposta de outros fornecedores.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-foreground">✅ Propostas Recebidas (Received)</h4>
+              <p className="text-muted-foreground">
+                Todas as propostas esperadas foram recebidas. Cotação pronta para análise.
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-foreground">🔵 Em Análise (Under Review)</h4>
+              <p className="text-muted-foreground">
+                Cotação foi enviada para aprovação e está aguardando decisão do aprovador responsável.
               </p>
             </div>
 
             <div>
               <h4 className="font-semibold text-foreground">🟢 Aprovada (Approved)</h4>
               <p className="text-muted-foreground">
-                Cotação aprovada pelo gestor responsável. Pronta para gerar pedido.
+                Cotação aprovada pelo gestor responsável. Pronta para gerar pagamento e finalizar o processo.
               </p>
             </div>
 
             <div>
               <h4 className="font-semibold text-foreground">🔴 Rejeitada (Rejected)</h4>
               <p className="text-muted-foreground">
-                Cotação rejeitada. Verifique os comentários do aprovador para entender o motivo.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-foreground">💚 Paga (Paid)</h4>
-              <p className="text-muted-foreground">
-                Pagamento realizado ao fornecedor. Processo financeiro concluído.
+                Cotação rejeitada pelo aprovador. Verifique os comentários para entender o motivo. A cotação não pode mais prosseguir.
               </p>
             </div>
 

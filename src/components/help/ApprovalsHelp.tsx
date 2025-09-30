@@ -22,8 +22,13 @@ export function ApprovalsHelp({ searchQuery }: HelpProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            O sistema permite configurar níveis de aprovação baseados em valores, categorias ou outros critérios. Quando uma cotação atinge determinado valor, ela passa automaticamente pelo fluxo de aprovação configurado.
+            O sistema possui níveis de aprovação configurados pelo administrador baseados em faixas de valores. Quando uma cotação é criada, o sistema verifica automaticamente qual nível de aprovação se aplica baseado no valor total.
           </p>
+          <Alert className="mt-4">
+            <AlertDescription>
+              <strong>Importante:</strong> Os níveis de aprovação são criados e gerenciados na tela "Níveis de Aprovação" do menu lateral.
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
 
@@ -65,12 +70,11 @@ export function ApprovalsHelp({ searchQuery }: HelpProps) {
               <div>
                 <h4 className="font-semibold text-foreground">Passo 3: Tomar Decisão</h4>
                 <p className="text-muted-foreground">
-                  Após revisar, você tem três opções:
+                  Após revisar, você tem duas opções:
                 </p>
                 <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-muted-foreground">
-                  <li><strong>Aprovar:</strong> Libera a cotação para prosseguir</li>
-                  <li><strong>Rejeitar:</strong> Impede o prosseguimento</li>
-                  <li><strong>Solicitar Alterações:</strong> Devolve para ajustes</li>
+                  <li><strong>Aprovar:</strong> Libera a cotação para prosseguir para o próximo nível ou finaliza o fluxo</li>
+                  <li><strong>Rejeitar:</strong> Impede o prosseguimento da cotação</li>
                 </ul>
               </div>
             </div>
@@ -100,39 +104,26 @@ export function ApprovalsHelp({ searchQuery }: HelpProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Níveis de Aprovação</CardTitle>
+          <CardTitle>Configuração de Níveis de Aprovação</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            O sistema suporta múltiplos níveis de aprovação. Por exemplo:
+            Os níveis de aprovação são configurados na tela "Níveis de Aprovação" (menu lateral) e definem:
           </p>
-          <div className="space-y-3">
-            <div>
-              <h4 className="font-semibold text-foreground">Nível 1: Supervisor</h4>
-              <p className="text-muted-foreground">
-                Cotações até R$ 5.000 - aprovação do supervisor direto
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-foreground">Nível 2: Gerente</h4>
-              <p className="text-muted-foreground">
-                Cotações de R$ 5.001 até R$ 20.000 - aprovação do gerente
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-foreground">Nível 3: Diretor</h4>
-              <p className="text-muted-foreground">
-                Cotações acima de R$ 20.000 - aprovação da diretoria
-              </p>
-            </div>
-          </div>
+          <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
+            <li><strong>Nome do Nível:</strong> Identificação do nível (ex: "Nível 1 - Básico")</li>
+            <li><strong>Faixa de Valores:</strong> Valor mínimo e máximo que ativa este nível</li>
+            <li><strong>Aprovadores Autorizados:</strong> Lista de usuários que podem aprovar neste nível</li>
+            <li><strong>Ordem do Nível:</strong> Sequência de execução quando há múltiplos níveis</li>
+          </ul>
           <Alert className="mt-4">
             <AlertDescription>
-              <strong>Nota:</strong> Os níveis e valores são configuráveis pelo administrador do sistema. Entre em contato com seu gestor para entender as regras específicas da sua organização.
+              <strong>Exemplo:</strong> Se configurado um nível para cotações de R$ 1.000 a R$ 5.000, todas as cotações nesta faixa serão automaticamente encaminhadas aos aprovadores definidos nesse nível.
             </AlertDescription>
           </Alert>
+          <p className="text-muted-foreground mt-4">
+            Na lista de aprovações, você pode visualizar qual nível se aplica a cada cotação e quem são os aprovadores autorizados ao passar o mouse sobre o ícone do nível.
+          </p>
         </CardContent>
       </Card>
 
@@ -190,24 +181,22 @@ export function ApprovalsHelp({ searchQuery }: HelpProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Delegação de Aprovação</CardTitle>
+          <CardTitle>Auditoria de Aprovações</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Se você estiver ausente, pode delegar suas aprovações:
+            Todas as aprovações e rejeições são registradas no sistema para auditoria:
           </p>
-          <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-4">
-            <li>Vá para "Configurações" no menu</li>
-            <li>Clique em "Delegação de Aprovações"</li>
-            <li>Selecione o usuário que assumirá suas aprovações</li>
-            <li>Defina o período de delegação</li>
-            <li>Confirme a delegação</li>
-          </ol>
-          <Alert className="mt-4">
-            <AlertDescription>
-              <strong>Importante:</strong> O usuário delegado terá os mesmos poderes de aprovação que você durante o período definido.
-            </AlertDescription>
-          </Alert>
+          <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
+            <li>Data e hora da decisão</li>
+            <li>Quem aprovou ou rejeitou</li>
+            <li>Comentários adicionados</li>
+            <li>Valor da cotação na época da aprovação</li>
+            <li>Fornecedor selecionado</li>
+          </ul>
+          <p className="text-muted-foreground mt-4">
+            Estes registros ficam disponíveis no histórico da cotação e podem ser exportados para relatórios.
+          </p>
         </CardContent>
       </Card>
 
