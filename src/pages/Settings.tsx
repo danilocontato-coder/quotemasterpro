@@ -12,6 +12,7 @@ import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
 import { PasswordChange } from "@/components/settings/PasswordChange";
 import { QuoteApprovalSettings } from "@/components/settings/QuoteApprovalSettings";
+import { QuoteReminderSettings } from "@/components/settings/QuoteReminderSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function Settings() {
@@ -362,7 +363,10 @@ export function Settings() {
         </TabsContent>
 
         <TabsContent value="approval">
-          <QuoteApprovalSettings />
+          <div className="space-y-6">
+            <QuoteApprovalSettings />
+            <QuoteReminderSettings />
+          </div>
         </TabsContent>
 
         <TabsContent value="preferences">
