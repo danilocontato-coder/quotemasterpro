@@ -180,6 +180,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     if (!quote?.id) return;
     
     try {
+      console.log('Fetching audit logs for quote:', quote.id);
       const { data, error } = await supabase
         .from('audit_logs')
         .select(`
@@ -189,6 +190,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           entity_id,
           created_at,
           details,
+          user_id,
           profiles:user_id (
             name,
             email
@@ -203,6 +205,8 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         return;
       }
       
+      console.log('Audit logs fetched:', data);
+      
       const formattedLogs: AuditLog[] = (data || []).map((log: any) => ({
         id: log.id,
         action: log.action,
@@ -211,12 +215,13 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         panel_type: null,
         details: log.details,
         created_at: log.created_at,
-        user_id: null,
+        user_id: log.user_id,
         user_name: log.profiles?.name || 'Sistema',
         user_email: log.profiles?.email || null,
         user_role: null,
       }));
       
+      console.log('Formatted audit logs:', formattedLogs);
       setAuditLogs(formattedLogs);
     } catch (error) {
       console.error('Error fetching audit logs:', error);
