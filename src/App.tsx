@@ -10,6 +10,13 @@ import { BrandingProvider } from '@/contexts/BrandingContext';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
 import { AppWithProviders } from '@/components/layout/AppWithProviders';
 
+// Carregar test helpers em desenvolvimento
+if (import.meta.env.DEV) {
+  import('./utils/testHelpers').catch(err => {
+    console.error('Erro ao carregar test helpers:', err);
+  });
+}
+
 // Query client otimizado
 const queryClient = new QueryClient({
   defaultOptions: {
