@@ -241,6 +241,15 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     }
   }, [quoteItems, fetchProposals]);
 
+  // Log audit logs for debugging
+  useEffect(() => {
+    console.log('🔍 Audit logs state:', { 
+      auditLogsLength: auditLogs.length, 
+      auditLogs, 
+      quoteId: quote?.id 
+    });
+  }, [auditLogs, quote?.id]);
+
   const negotiation = quote ? getNegotiationByQuoteId(quote.id) : null;
 
   // Calculate best combination (multi-supplier optimization)
@@ -756,16 +765,8 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                         </div>
                       ))
                     ) : (
-                      <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                        <div className="bg-blue-100 p-2 rounded-full">
-                          <Send className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Cotação criada</p>
-                          <p className="text-sm text-muted-foreground">
-                            {quote.created_at ? new Date(quote.created_at).toLocaleString('pt-BR') : 'Data não disponível'}
-                          </p>
-                        </div>
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>Nenhuma atividade registrada ainda</p>
                       </div>
                     )}
                   </div>
