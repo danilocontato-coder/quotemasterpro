@@ -24,6 +24,7 @@ const SystemTests = () => {
   const [results, setResults] = useState<TestResult[]>([]);
   const [summary, setSummary] = useState({ passed: 0, failed: 0, warnings: 0, total: 0 });
   const [currentTestId, setCurrentTestId] = useState<string | null>(null);
+  const [moduleCategory, setModuleCategory] = useState<string>('');
 
   // ============================================================================
   // TESTES AUTOMATIZADOS
@@ -411,52 +412,60 @@ const SystemTests = () => {
   };
 
   // ============================================================================
-  // EXECUTAR TODOS OS TESTES
+  // EXECUÇÃO SELECIONÁVEL (GLOBAL OU POR MÓDULO)
   // ============================================================================
-  const runAllTests = async () => {
-    console.log('🧪 [TESTS] Iniciando bateria de testes...');
+  const testMap: Record<string, () => Promise<TestResult>> = {
+    auth: testAuthentication,
+    profile: testProfile,
+    'isolation-quotes': testQuotesIsolation,
+    'isolation-products': testProductsIsolation,
+    'rls-protection': testRLSProtection,
+    'perf-dashboard': testDashboardPerformance,
+    notifications: testNotifications,
+    'orphan-check': testOrphanData,
+  };
+
+  const runSelectedTests = async (ids: string[]) => {
+    console.log('🧪 [TESTS] Iniciando:', ids);
     setIsRunning(true);
-    // Inicializa a lista com todos os testes em "pendente" para mostrar a timeline
-    setResults(tests.map(t => ({ ...t, status: 'pending' } as TestResult)));
+    // Mostrar todos os testes com pendente, mas destacar os selecionados
+    setResults(tests.map(t => ({ ...t, status: ids.includes(t.id) ? 'pending' : 'pending' }) as TestResult));
     setProgress(0);
     setSummary({ passed: 0, failed: 0, warnings: 0, total: 0 });
 
-    const testFunctions = [
-      testAuthentication,
-      testProfile,
-      testQuotesIsolation,
-      testProductsIsolation,
-      testRLSProtection,
-      testDashboardPerformance,
-      testNotifications,
-      testOrphanData,
-    ];
-
+    const toRun = ids.map(id => ({ id, fn: testMap[id] })).filter(x => !!x.fn);
     const testResults: TestResult[] = [];
-    
-    for (let i = 0; i < testFunctions.length; i++) {
-      const current = tests[i];
+
+    for (let i = 0; i < toRun.length; i++) {
+      const { id, fn } = toRun[i];
+      const current = tests.find(t => t.id === id)!;
       setCurrentTestId(current.id);
-      console.log(`🧪 [TESTS] Executando: ${current.name} (${i + 1}/${testFunctions.length})`);
-      const result = await testFunctions[i]();
+      updateTestResult(id, { status: 'running' });
+      console.log(`🧪 [TESTS] Executando: ${current.name} (${i + 1}/${toRun.length})`);
+      const result = await fn();
       console.log('🧪 [TESTS] Resultado:', result);
       testResults.push(result);
       updateTestResult(result.id, result);
-      setProgress(((i + 1) / testFunctions.length) * 100);
-      
-      // Delay para melhor visualização
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setProgress(((i + 1) / toRun.length) * 100);
+      await new Promise(r => setTimeout(r, 300));
     }
 
-    // Calcular resumo
     const passed = testResults.filter(r => r.status === 'passed').length;
     const failed = testResults.filter(r => r.status === 'failed').length;
     const warnings = testResults.filter(r => r.status === 'warning').length;
 
-    console.log('🧪 [TESTS] Todos os testes concluídos:', { passed, failed, warnings, total: testResults.length });
     setSummary({ passed, failed, warnings, total: testResults.length });
     setIsRunning(false);
     setCurrentTestId(null);
+  };
+
+  // Global (todos)
+  const runAllTests = async () => runSelectedTests(tests.map(t => t.id));
+
+  // Por módulo (categoria)
+  const runModule = async (category: string) => {
+    const ids = tests.filter(t => t.category === category).map(t => t.id);
+    return runSelectedTests(ids);
   };
 
   // ============================================================================
@@ -528,6 +537,9 @@ const SystemTests = () => {
     return acc;
   }, {} as Record<string, TestResult[]>);
 
+  const categories = Array.from(new Set(tests.map(t => t.category)));
+
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -538,12 +550,8 @@ const SystemTests = () => {
             Validação completa de segurança, isolamento de dados e performance
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={runAllTests}
-            disabled={isRunning}
-            size="lg"
-          >
+        <div className="flex flex-col md:flex-row gap-2 md:items-center">
+          <Button onClick={runAllTests} disabled={isRunning} size="lg">
             {isRunning ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -552,10 +560,35 @@ const SystemTests = () => {
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Executar Testes
+                Executar Global
               </>
             )}
           </Button>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground">Módulo:</label>
+            <select
+              className="border rounded-md px-2 py-2 bg-background"
+              value={moduleCategory}
+              onChange={(e) => setModuleCategory(e.target.value)}
+              disabled={isRunning}
+            >
+              <option value="">Selecione</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <Button
+              onClick={() => moduleCategory && runModule(moduleCategory)}
+              disabled={!moduleCategory || isRunning}
+              variant="outline"
+              size="lg"
+            >
+              <Play className="mr-2 h-4 w-4" />
+              Executar Módulo
+            </Button>
+          </div>
+
           {results.length > 0 && (
             <Button onClick={downloadReport} variant="outline" size="lg">
               <Download className="mr-2 h-4 w-4" />
