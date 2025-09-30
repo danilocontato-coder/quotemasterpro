@@ -705,6 +705,35 @@ export type Database = {
           },
         ]
       }
+      client_product_counters: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          current_counter: number
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          current_counter?: number
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          current_counter?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_product_counters_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_quote_counters: {
         Row: {
           client_id: string
@@ -3229,6 +3258,10 @@ export type Database = {
       }
       next_product_code: {
         Args: { prefix?: string }
+        Returns: string
+      }
+      next_product_id_by_client: {
+        Args: { p_client_id: string; prefix?: string }
         Returns: string
       }
       next_quote_id_by_client: {

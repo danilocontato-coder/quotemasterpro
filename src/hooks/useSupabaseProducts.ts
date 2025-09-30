@@ -109,35 +109,7 @@ export const useSupabaseProducts = () => {
     };
   }, []); // No dependencies to prevent loops
 
-  const generateUniqueCode = async (baseCode?: string): Promise<string> => {
-    const prefix = baseCode || 'PROD';
-    let counter = 1;
-    let code = `${prefix}${counter.toString().padStart(3, '0')}`;
-    
-    // Check if code exists
-    while (true) {
-      const { data: existing } = await supabase
-        .from('products')
-        .select('id')
-        .eq('code', code)
-        .maybeSingle();
-      
-      if (!existing) {
-        return code;
-      }
-      
-      counter++;
-      code = `${prefix}${counter.toString().padStart(3, '0')}`;
-      
-      // Safety check to avoid infinite loop
-      if (counter > 9999) {
-        code = `${prefix}${Date.now()}`;
-        break;
-      }
-    }
-    
-    return code;
-  };
+  // Geração de código agora é automática via trigger no banco de dados
 
   const addProduct = async (productData: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     try {
@@ -160,22 +132,8 @@ export const useSupabaseProducts = () => {
       // For suppliers, require supplier_id
       let productPayload = { ...productData };
       
-      // Se o código foi fornecido em branco ou vazio, removê-lo para usar o default do DB
-      if (!productPayload.code || productPayload.code.trim() === '') {
-        delete productPayload.code;
-      } else {
-        // Se foi fornecido um código, verificar se já existe
-        const { data: existing } = await supabase
-          .from('products')
-          .select('id')
-          .eq('code', productPayload.code.trim())
-          .maybeSingle();
-        
-        if (existing) {
-          // Código já existe, vamos removê-lo para usar o default do DB
-          delete productPayload.code;
-        }
-      }
+      // Remover código para usar geração automática via trigger do banco
+      delete productPayload.code;
       
       if (profile.role === 'admin') {
         // Admin must be associated to some scope due to RLS no-orphans policy
@@ -354,7 +312,6 @@ export const useSupabaseProducts = () => {
     addProduct,
     updateProduct,
     deleteProduct,
-    updateStock,
-    generateUniqueCode
+    updateStock
   };
 };
