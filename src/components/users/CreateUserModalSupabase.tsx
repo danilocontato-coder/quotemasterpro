@@ -66,13 +66,13 @@ export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const [passwordCopied, setPasswordCopied] = useState(false);
 
   useEffect(() => {
-    if (formData.generateCredentials && formData.email && !formData.password) {
+    if (formData.generateCredentials && formData.email) {
       const username = formData.email.split('@')[0];
-      const password = generateTemporaryPassword();
       setFormData(prev => ({
         ...prev,
         username,
-        password
+        // Só gera nova senha se não existir uma
+        password: prev.password || generateTemporaryPassword()
       }));
     }
   }, [formData.email, formData.generateCredentials, generateTemporaryPassword]);
