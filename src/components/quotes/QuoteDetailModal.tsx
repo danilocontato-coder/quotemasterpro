@@ -177,10 +177,13 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
   // Fetch audit logs for this quote
   const fetchAuditLogs = useCallback(async () => {
-    if (!quote?.id) return;
+    if (!quote?.id) {
+      console.log('❌ No quote ID, skipping audit logs fetch');
+      return;
+    }
     
     try {
-      console.log('Fetching audit logs for quote:', quote.id);
+      console.log('🔍 Fetching audit logs for quote:', quote.id);
       const { data, error } = await supabase
         .from('audit_logs')
         .select(`
@@ -201,11 +204,11 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Error fetching audit logs:', error);
+        console.error('❌ Error fetching audit logs:', error);
         return;
       }
       
-      console.log('Audit logs fetched:', data);
+      console.log('✅ Audit logs raw data:', data);
       
       const formattedLogs: AuditLog[] = (data || []).map((log: any) => ({
         id: log.id,
@@ -221,15 +224,17 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         user_role: null,
       }));
       
-      console.log('Formatted audit logs:', formattedLogs);
+      console.log('✅ Formatted audit logs:', formattedLogs);
       setAuditLogs(formattedLogs);
     } catch (error) {
-      console.error('Error fetching audit logs:', error);
+      console.error('❌ Exception fetching audit logs:', error);
     }
   }, [quote?.id]);
 
   useEffect(() => {
+    console.log('🔄 QuoteDetailModal useEffect - open:', open, 'quote?.id:', quote?.id);
     if (open && quote?.id) {
+      console.log('✅ Calling fetchQuoteItems and fetchAuditLogs');
       fetchQuoteItems();
       fetchAuditLogs();
     }
