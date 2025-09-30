@@ -35,6 +35,18 @@ export const PlansPage = () => {
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [creatingCheckout, setCreatingCheckout] = useState<string | null>(null);
 
+  // Debug logs
+  useEffect(() => {
+    console.log('🎯 PlansPage - Estado atual:', {
+      user: user?.email,
+      clientId: user?.clientId,
+      userPlan,
+      usageLoading,
+      currentUsage,
+      plansCount: plans.length
+    });
+  }, [user, userPlan, usageLoading, currentUsage, plans.length]);
+
   useEffect(() => {
     if (user) {
       checkSubscriptionStatus();

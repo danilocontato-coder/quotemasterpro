@@ -304,8 +304,35 @@ export function useSupabaseSubscriptionGuard() {
   // userPlan usando useMemo para evitar recálculo infinito
   const userPlan = useMemo(() => {
     const planId = currentClient?.subscription_plan_id || 'basic';
-    return getPlanById(planId);
-  }, [currentClient?.subscription_plan_id, getPlanById]);
+    let foundPlan = getPlanById(planId);
+    
+    // Se não encontrou pelo ID exato, tentar pelo nome
+    if (!foundPlan) {
+      foundPlan = subscriptionPlans.find(p => 
+        p.name === planId || 
+        p.name === planId.replace('plan-', '') ||
+        p.id === `plan-${planId}`
+      );
+    }
+    
+    // Se ainda não encontrou, usar o primeiro plano básico
+    if (!foundPlan) {
+      foundPlan = subscriptionPlans.find(p => 
+        p.name === 'basic' || 
+        p.id === 'basic' || 
+        p.id === 'plan-basic'
+      );
+    }
+    
+    console.log('🔍 useSupabaseSubscriptionGuard - userPlan:', {
+      clientId: currentClient?.id,
+      planId,
+      foundPlan: foundPlan ? { id: foundPlan.id, name: foundPlan.name } : null,
+      availablePlans: subscriptionPlans.map(p => ({ id: p.id, name: p.name }))
+    });
+    
+    return foundPlan;
+  }, [currentClient?.subscription_plan_id, getPlanById, subscriptionPlans]);
 
   return {
     currentUsage: getCurrentUsage(),
