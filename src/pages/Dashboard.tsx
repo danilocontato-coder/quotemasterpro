@@ -1,4 +1,5 @@
-import { FileText, Users, CheckCircle, DollarSign, Clock, TrendingUp, AlertTriangle } from "lucide-react";
+import { FileText, Users, CheckCircle, DollarSign, Clock, TrendingUp, AlertTriangle, TestTube2 } from "lucide-react";
+import { Link } from 'react-router-dom';
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { QuoteLimitsMetric } from "@/components/dashboard/QuoteLimitsMetric";
@@ -90,6 +91,31 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Admin Mode Indicator */}
       <AdminModeIndicator />
+      
+      {/* System Tests Quick Access */}
+      <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <TestTube2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">🧪 Testes Automatizados</h3>
+                <p className="text-sm text-muted-foreground">
+                  Validação completa de segurança, isolamento de dados e performance
+                </p>
+              </div>
+            </div>
+            <Link to="/system-tests">
+              <Button size="lg" className="gap-2">
+                <TestTube2 className="h-4 w-4" />
+                Executar Testes
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* Page Header */}
       <div className="flex flex-col gap-2">
