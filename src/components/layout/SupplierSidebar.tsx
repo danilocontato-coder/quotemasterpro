@@ -8,7 +8,8 @@ import {
   MessageSquare,
   DollarSign,
   History,
-  Users
+  Users,
+  HelpCircle
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -38,6 +39,7 @@ const navigationItems = [
 const systemItems = [
   { title: "Usuários", url: "/supplier/users", icon: Users },
   { title: "Histórico", url: "/supplier/history", icon: History },
+  { title: "Ajuda", url: "/help", icon: HelpCircle },
   { title: "Configurações", url: "/supplier/settings", icon: Settings },
   // Branding removido - só deve ser acessível por admins
 ];

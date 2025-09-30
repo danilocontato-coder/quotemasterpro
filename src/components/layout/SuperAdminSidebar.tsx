@@ -27,7 +27,8 @@ import {
   BarChart3,
   Server,
   Bot,
-  Globe
+  Globe,
+  HelpCircle
 } from 'lucide-react';
 
 const navigation = [
@@ -191,6 +192,12 @@ const navigation = [
         href: '/admin/monitoring',
         icon: Server,
         description: 'Status dos serviços'
+      },
+      {
+        name: 'Ajuda',
+        href: '/help',
+        icon: HelpCircle,
+        description: 'Central de ajuda e documentação'
       }
     ]
   }

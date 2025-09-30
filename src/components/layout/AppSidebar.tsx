@@ -13,7 +13,8 @@ import {
   Layers,
   Crown,
   Brain,
-  TreePine
+  TreePine,
+  HelpCircle
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -60,6 +61,7 @@ const systemItems = [
   { title: "Permissões", url: "/permissions", icon: Shield },
   { title: "Relatórios", url: "/reports", icon: BarChart3 },
   { title: "Planos", url: "/plans", icon: Crown },
+  { title: "Ajuda", url: "/help", icon: HelpCircle },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
