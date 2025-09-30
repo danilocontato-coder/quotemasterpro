@@ -3280,6 +3280,10 @@ export type Database = {
           whatsapp: string
         }[]
       }
+      send_automatic_reminders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       suggest_suppliers_for_quote: {
         Args: {
           _categories: string[]
