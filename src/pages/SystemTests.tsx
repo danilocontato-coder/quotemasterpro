@@ -413,6 +413,7 @@ const SystemTests = () => {
   // EXECUTAR TODOS OS TESTES
   // ============================================================================
   const runAllTests = async () => {
+    console.log('🧪 [TESTS] Iniciando bateria de testes...');
     setIsRunning(true);
     setResults([]);
     setProgress(0);
@@ -432,7 +433,9 @@ const SystemTests = () => {
     const testResults: TestResult[] = [];
     
     for (let i = 0; i < testFunctions.length; i++) {
+      console.log(`🧪 [TESTS] Executando teste ${i + 1}/${testFunctions.length}...`);
       const result = await testFunctions[i]();
+      console.log(`🧪 [TESTS] Resultado:`, result);
       testResults.push(result);
       updateTestResult(result.id, result);
       setProgress(((i + 1) / testFunctions.length) * 100);
@@ -446,6 +449,7 @@ const SystemTests = () => {
     const failed = testResults.filter(r => r.status === 'failed').length;
     const warnings = testResults.filter(r => r.status === 'warning').length;
 
+    console.log('🧪 [TESTS] Todos os testes concluídos:', { passed, failed, warnings, total: testResults.length });
     setSummary({ passed, failed, warnings, total: testResults.length });
     setIsRunning(false);
   };
@@ -558,13 +562,21 @@ const SystemTests = () => {
 
       {/* Progress Bar */}
       {isRunning && (
-        <Card className="p-6">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Progresso dos Testes</span>
-              <span className="font-mono">{Math.round(progress)}%</span>
+        <Card className="p-6 border-2 border-primary">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <div className="flex-1">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-semibold">Executando Testes do Sistema...</span>
+                  <span className="font-mono font-bold text-primary">{Math.round(progress)}%</span>
+                </div>
+                <Progress value={progress} className="h-3" />
+              </div>
             </div>
-            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground">
+              Aguarde enquanto validamos segurança, isolamento de dados e performance
+            </p>
           </div>
         </Card>
       )}
