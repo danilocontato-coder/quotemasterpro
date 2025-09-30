@@ -13,7 +13,8 @@ import {
   Layers,
   Crown,
   Brain,
-  TreePine
+  TreePine,
+  Bug
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -60,8 +61,8 @@ const systemItems = [
   { title: "Permissões", url: "/permissions", icon: Shield },
   { title: "Relatórios", url: "/reports", icon: BarChart3 },
   { title: "Planos", url: "/plans", icon: Crown },
+  { title: "Testes do Sistema", url: "/system-tests", icon: Bug },
   { title: "Configurações", url: "/settings", icon: Settings },
-  // Branding removido - só deve ser acessível por admins
 ];
 
 export function AppSidebar() {
