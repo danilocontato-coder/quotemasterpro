@@ -1,24 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DatePickerWithRange } from '@/components/ui/date-picker-with-range';
 import { 
   Search, 
   Download, 
   Filter,
-  Eye,
   AlertTriangle,
   CheckCircle,
   XCircle,
   User,
-  FileText,
   Calendar,
-  Shield,
   Activity,
-  Database
+  Database,
+  Loader2
 } from 'lucide-react';
 import {
   Table,
@@ -28,139 +25,54 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { toast } from 'sonner';
-
-interface AuditLog {
-  id: string;
-  timestamp: string;
-  userId: string;
-  userName: string;
-  userRole: string;
-  action: string;
-  resource: string;
-  resourceId?: string;
-  details: string;
-  ipAddress: string;
-  userAgent: string;
-  status: 'success' | 'error' | 'warning';
-  module: string;
-}
-
-const mockAuditLogs: AuditLog[] = [
-  {
-    id: 'log-1',
-    timestamp: '2024-08-20T14:30:00Z',
-    userId: 'user-1',
-    userName: 'João Silva',
-    userRole: 'manager',
-    action: 'CREATE_QUOTE',
-    resource: 'quotes',
-    resourceId: 'quote-123',
-    details: 'Criou cotação "Material de limpeza" no valor de R$ 1.500,00',
-    ipAddress: '192.168.1.100',
-    userAgent: 'Mozilla/5.0...',
-    status: 'success',
-    module: 'quotes'
-  },
-  {
-    id: 'log-2',
-    timestamp: '2024-08-20T14:25:00Z',
-    userId: 'user-2',
-    userName: 'Maria Santos',
-    userRole: 'admin',
-    action: 'UPDATE_USER',
-    resource: 'users',
-    resourceId: 'user-5',
-    details: 'Atualizou permissões do usuário Pedro Lima',
-    ipAddress: '192.168.1.105',
-    userAgent: 'Mozilla/5.0...',
-    status: 'success',
-    module: 'users'
-  },
-  {
-    id: 'log-3',
-    timestamp: '2024-08-20T14:20:00Z',
-    userId: 'user-3',
-    userName: 'Carlos Oliveira',
-    userRole: 'supplier',
-    action: 'FAILED_LOGIN',
-    resource: 'auth',
-    details: 'Tentativa de login falhada - senha incorreta',
-    ipAddress: '203.0.113.45',
-    userAgent: 'Mozilla/5.0...',
-    status: 'error',
-    module: 'auth'
-  },
-  {
-    id: 'log-4',
-    timestamp: '2024-08-20T14:15:00Z',
-    userId: 'user-1',
-    userName: 'João Silva',
-    userRole: 'manager',
-    action: 'APPROVE_QUOTE',
-    resource: 'approvals',
-    resourceId: 'approval-456',
-    details: 'Aprovou cotação no valor de R$ 2.300,00',
-    ipAddress: '192.168.1.100',
-    userAgent: 'Mozilla/5.0...',
-    status: 'success',
-    module: 'approvals'
-  },
-  {
-    id: 'log-5',
-    timestamp: '2024-08-20T14:10:00Z',
-    userId: 'user-4',
-    userName: 'Ana Costa',
-    userRole: 'admin',
-    action: 'DELETE_SUPPLIER',
-    resource: 'suppliers',
-    resourceId: 'supplier-789',
-    details: 'Removeu fornecedor "Empresa XYZ" do sistema',
-    ipAddress: '192.168.1.102',
-    userAgent: 'Mozilla/5.0...',
-    status: 'warning',
-    module: 'suppliers'
-  }
-];
+import { useAuditLogs } from '@/hooks/useAuditLogs';
 
 export function AuditLogs() {
-  const [logs] = useState<AuditLog[]>(mockAuditLogs);
+  const { logs, isLoading, fetchLogs, exportLogs } = useAuditLogs();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterModule, setFilterModule] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterUser, setFilterUser] = useState('all');
-  const [dateRange, setDateRange] = useState<string>('');
+  const [filterAction, setFilterAction] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  useEffect(() => {
+    fetchLogs({
+      searchTerm,
+      module: filterModule,
+      action: filterAction,
+      startDate,
+      endDate,
+    });
+  }, [filterModule, filterAction, startDate, endDate, fetchLogs]);
 
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
-      log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.resource.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!searchTerm) return true;
     
-    const matchesModule = filterModule === 'all' || log.module === filterModule;
-    const matchesStatus = filterStatus === 'all' || log.status === filterStatus;
-    const matchesUser = filterUser === 'all' || log.userId === filterUser;
-    
-    return matchesSearch && matchesModule && matchesStatus && matchesUser;
+    const search = searchTerm.toLowerCase();
+    return (
+      (log.user_name?.toLowerCase() || '').includes(search) ||
+      log.action.toLowerCase().includes(search) ||
+      log.entity_type.toLowerCase().includes(search) ||
+      log.entity_id.toLowerCase().includes(search) ||
+      JSON.stringify(log.details || {}).toLowerCase().includes(search)
+    );
   });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'success': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'error': return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      default: return <Activity className="h-4 w-4 text-gray-600" />;
-    }
+  const uniqueActions = Array.from(new Set(logs.map(l => l.action)));
+  const uniqueUsers = Array.from(new Set(logs.map(l => l.user_id).filter(Boolean)));
+
+  const getActionIcon = (action: string) => {
+    if (action.includes('CREATE')) return <CheckCircle className="h-4 w-4 text-green-600" />;
+    if (action.includes('DELETE') || action.includes('REMOVE')) return <XCircle className="h-4 w-4 text-red-600" />;
+    if (action.includes('UPDATE') || action.includes('EDIT')) return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+    return <Activity className="h-4 w-4 text-blue-600" />;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success': return 'bg-green-100 text-green-800 border-green-200';
-      case 'error': return 'bg-red-100 text-red-800 border-red-200';
-      case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+  const getActionColor = (action: string) => {
+    if (action.includes('CREATE')) return 'bg-green-100 text-green-800 border-green-200';
+    if (action.includes('DELETE') || action.includes('REMOVE')) return 'bg-red-100 text-red-800 border-red-200';
+    if (action.includes('UPDATE') || action.includes('EDIT')) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    return 'bg-blue-100 text-blue-800 border-blue-200';
   };
 
   const getRoleColor = (role: string) => {
@@ -173,17 +85,12 @@ export function AuditLogs() {
     }
   };
 
-  const handleExport = () => {
-    // Implementar exportação
-    toast.success('Exportando logs de auditoria...');
-  };
-
   const stats = {
     total: logs.length,
-    success: logs.filter(l => l.status === 'success').length,
-    errors: logs.filter(l => l.status === 'error').length,
-    warnings: logs.filter(l => l.status === 'warning').length,
-    uniqueUsers: new Set(logs.map(l => l.userId)).size
+    creates: logs.filter(l => l.action.includes('CREATE')).length,
+    updates: logs.filter(l => l.action.includes('UPDATE') || l.action.includes('EDIT')).length,
+    deletes: logs.filter(l => l.action.includes('DELETE') || l.action.includes('REMOVE')).length,
+    uniqueUsers: uniqueUsers.length
   };
 
   return (
@@ -194,10 +101,16 @@ export function AuditLogs() {
             <h1 className="text-3xl font-bold text-foreground">Logs de Auditoria</h1>
             <p className="text-muted-foreground">Monitore todas as atividades do sistema</p>
           </div>
-          <Button onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar Logs
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => exportLogs('csv')} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              CSV
+            </Button>
+            <Button onClick={() => exportLogs('json')} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              JSON
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -215,24 +128,24 @@ export function AuditLogs() {
           <Card>
             <CardContent className="p-4 text-center">
               <CheckCircle className="h-6 w-6 mx-auto mb-2 text-green-600" />
-              <p className="text-2xl font-bold">{stats.success}</p>
-              <p className="text-xs text-muted-foreground">Sucessos</p>
+              <p className="text-2xl font-bold">{stats.creates}</p>
+              <p className="text-xs text-muted-foreground">Criações</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-4 text-center">
-              <XCircle className="h-6 w-6 mx-auto mb-2 text-red-600" />
-              <p className="text-2xl font-bold">{stats.errors}</p>
-              <p className="text-xs text-muted-foreground">Erros</p>
+              <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
+              <p className="text-2xl font-bold">{stats.updates}</p>
+              <p className="text-xs text-muted-foreground">Atualizações</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="p-4 text-center">
-              <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-yellow-600" />
-              <p className="text-2xl font-bold">{stats.warnings}</p>
-              <p className="text-xs text-muted-foreground">Avisos</p>
+              <XCircle className="h-6 w-6 mx-auto mb-2 text-red-600" />
+              <p className="text-2xl font-bold">{stats.deletes}</p>
+              <p className="text-xs text-muted-foreground">Exclusões</p>
             </CardContent>
           </Card>
           
@@ -281,36 +194,33 @@ export function AuditLogs() {
                 </SelectContent>
               </Select>
               
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <Select value={filterAction} onValueChange={setFilterAction}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Ação" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="success">Sucesso</SelectItem>
-                  <SelectItem value="error">Erro</SelectItem>
-                  <SelectItem value="warning">Aviso</SelectItem>
+                  <SelectItem value="all">Todas as ações</SelectItem>
+                  {uniqueActions.map((action, idx) => (
+                    <SelectItem key={`${action}-${idx}`} value={action}>{action}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               
-              <Select value={filterUser} onValueChange={setFilterUser}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Usuário" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os usuários</SelectItem>
-                  <SelectItem value="user-1">João Silva</SelectItem>
-                  <SelectItem value="user-2">Maria Santos</SelectItem>
-                  <SelectItem value="user-3">Carlos Oliveira</SelectItem>
-                  <SelectItem value="user-4">Ana Costa</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Período</label>
+              <div>
+                <label className="text-sm font-medium block mb-2">Data Inicial</label>
                 <Input
                   type="date"
-                  placeholder="Data inicial"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium block mb-2">Data Final</label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                 />
               </div>
             </div>
@@ -324,79 +234,96 @@ export function AuditLogs() {
             <CardDescription>Histórico completo de atividades do sistema</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Usuário</TableHead>
-                  <TableHead>Ação</TableHead>
-                  <TableHead>Recurso</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Detalhes</TableHead>
-                  <TableHead>IP</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {new Date(log.timestamp).toLocaleString('pt-BR')}
-                        </span>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        <p className="font-medium text-sm">{log.userName}</p>
-                        <Badge variant="outline" className={getRoleColor(log.userRole)}>
-                          {log.userRole}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {log.action}
-                      </Badge>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">{log.resource}</p>
-                        {log.resourceId && (
-                          <p className="text-xs text-muted-foreground">#{log.resourceId}</p>
-                        )}
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(log.status)}
-                        <Badge className={getStatusColor(log.status)}>
-                          {log.status === 'success' ? 'Sucesso' : 
-                           log.status === 'error' ? 'Erro' : 'Aviso'}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <p className="text-sm max-w-xs truncate" title={log.details}>
-                        {log.details}
-                      </p>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {log.ipAddress}
-                      </span>
-                    </TableCell>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Carregando logs...</span>
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Database className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Nenhum log encontrado</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Ação</TableHead>
+                    <TableHead>Módulo</TableHead>
+                    <TableHead>ID Entidade</TableHead>
+                    <TableHead>Detalhes</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">
+                              {new Date(log.created_at).toLocaleDateString('pt-BR')}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(log.created_at).toLocaleTimeString('pt-BR')}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-medium text-sm">{log.user_name || 'Sistema'}</p>
+                          {log.user_email && (
+                            <p className="text-xs text-muted-foreground">{log.user_email}</p>
+                          )}
+                          {log.user_role && (
+                            <Badge variant="outline" className={getRoleColor(log.user_role)}>
+                              {log.user_role}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getActionIcon(log.action)}
+                          <Badge variant="outline" className={`font-mono text-xs ${getActionColor(log.action)}`}>
+                            {log.action}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {log.entity_type}
+                        </Badge>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {log.entity_id}
+                        </span>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="max-w-md">
+                          {log.details && typeof log.details === 'object' ? (
+                            <pre className="text-xs bg-muted p-2 rounded max-h-20 overflow-auto">
+                              {JSON.stringify(log.details, null, 2)}
+                            </pre>
+                          ) : (
+                            <span className="text-sm">{log.details || '-'}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

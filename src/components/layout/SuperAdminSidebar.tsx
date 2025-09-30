@@ -94,10 +94,10 @@ const navigation = [
         description: 'APIs e integrações externas'
       },
       {
-        name: 'Segurança',
-        href: '/admin/security',
+        name: 'Auditoria',
+        href: '/admin/audit',
         icon: Shield,
-        description: 'Logs e auditoria'
+        description: 'Logs e histórico de ações'
       },
       {
         name: 'Banco de Dados',
