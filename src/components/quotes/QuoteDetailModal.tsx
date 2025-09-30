@@ -183,8 +183,10 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     }
     
     try {
-      console.log('🔍 Fetching audit logs for quote:', quote.id);
-      const { data, error } = await supabase
+      console.log('🔍 Starting fetchAuditLogs for quote:', quote.id);
+      console.log('🔍 Making Supabase query...');
+      
+      const { data, error, count } = await supabase
         .from('audit_logs')
         .select(`
           id,
@@ -198,10 +200,12 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             name,
             email
           )
-        `)
+        `, { count: 'exact' })
         .eq('entity_id', quote.id)
         .eq('entity_type', 'quotes')
         .order('created_at', { ascending: false });
+      
+      console.log('🔍 Supabase response:', { data, error, count });
       
       if (error) {
         console.error('❌ Error fetching audit logs:', error);
@@ -209,6 +213,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       }
       
       console.log('✅ Audit logs raw data:', data);
+      console.log('✅ Total audit logs found:', count);
       
       const formattedLogs: AuditLog[] = (data || []).map((log: any) => ({
         id: log.id,
