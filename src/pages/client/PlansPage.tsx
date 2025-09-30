@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Zap, Star, CreditCard, RefreshCw, Settings, Crown, Users } from 'lucide-react';
+import { Check, Zap, Star, CreditCard, RefreshCw, Settings, Crown, Users, FileText, Building2, Database, Package, TrendingUp, Infinity, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
+import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +22,12 @@ export const PlansPage = () => {
   const { plans, isLoading } = useSupabaseSubscriptionPlans();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { 
+    currentUsage, 
+    getUsagePercentage, 
+    userPlan,
+    isLoading: usageLoading
+  } = useSupabaseSubscriptionGuard();
   
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
     subscribed: false
@@ -138,6 +146,70 @@ export const PlansPage = () => {
     );
   }
 
+  // Limites para exibir
+  const limits = [
+    {
+      key: 'CREATE_QUOTE',
+      icon: FileText,
+      label: 'Cotações/Mês',
+      current: currentUsage.quotesThisMonth,
+      limit: userPlan?.max_quotes_per_month || userPlan?.max_quotes || 0,
+      color: 'text-blue-600'
+    },
+    {
+      key: 'ADD_USER',
+      icon: Users,
+      label: 'Usuários',
+      current: currentUsage.usersCount,
+      limit: userPlan?.max_users_per_client || userPlan?.max_users || 0,
+      color: 'text-green-600'
+    },
+    {
+      key: 'ADD_SUPPLIER_TO_QUOTE',
+      icon: Building2,
+      label: 'Fornecedores/Cotação',
+      current: currentUsage.suppliersPerQuote,
+      limit: userPlan?.max_suppliers_per_quote || 0,
+      color: 'text-purple-600'
+    },
+    {
+      key: 'UPLOAD_FILE',
+      icon: Database,
+      label: 'Armazenamento (GB)',
+      current: currentUsage.storageUsedGB,
+      limit: userPlan?.max_storage_gb || 0,
+      color: 'text-orange-600'
+    }
+  ];
+
+  if (user?.role === 'supplier') {
+    limits.push(
+      {
+        key: 'ADD_PRODUCT',
+        icon: Package,
+        label: 'Produtos',
+        current: currentUsage.productsInCatalog,
+        limit: userPlan?.max_products_in_catalog || 0,
+        color: 'text-cyan-600'
+      }
+    );
+  }
+
+  const formatLimit = (limit: number) => {
+    return limit === -1 ? 'Ilimitado' : limit.toString();
+  };
+
+  const nearLimitCount = limits.filter(limit => {
+    if (limit.limit === -1) return false;
+    const percentage = getUsagePercentage(limit.key);
+    return percentage >= 80 && limit.current < limit.limit;
+  }).length;
+
+  const atLimitCount = limits.filter(limit => {
+    if (limit.limit === -1) return false;
+    return limit.current >= limit.limit;
+  }).length;
+
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
@@ -147,6 +219,115 @@ export const PlansPage = () => {
           Escolha o plano ideal para suas necessidades e potencialize sua gestão de cotações
         </p>
       </div>
+
+      {/* Plano Atual e Uso */}
+      {userPlan && !usageLoading && (
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-yellow-500" />
+                  Seu Plano Atual: {userPlan.display_name || userPlan.name}
+                </CardTitle>
+                <CardDescription className="mt-2">
+                  Acompanhe o uso dos recursos do seu plano
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManageSubscription}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Gerenciar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(nearLimitCount > 0 || atLimitCount > 0) && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {atLimitCount > 0 && nearLimitCount > 0
+                    ? `${atLimitCount} limite(s) atingido(s) e ${nearLimitCount} próximo(s) do máximo. Considere fazer upgrade.`
+                    : atLimitCount > 0 
+                      ? `${atLimitCount} limite(s) atingido(s). Faça upgrade do seu plano para continuar.`
+                      : `Você está próximo do limite em ${nearLimitCount} recurso(s). Considere fazer upgrade.`}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {limits.map((item) => {
+                const percentage = getUsagePercentage(item.key);
+                const Icon = item.icon;
+                const isUnlimited = item.limit === -1;
+                const remaining = Math.max(0, item.limit - item.current);
+                
+                return (
+                  <div key={item.key} className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon className={`h-4 w-4 ${item.color}`} />
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">
+                          {item.current}/{formatLimit(item.limit)}
+                        </span>
+                        {isUnlimited && (
+                          <Infinity className="h-4 w-4 text-green-600" />
+                        )}
+                      </div>
+                    </div>
+                    
+                    {!isUnlimited && (
+                      <div className="space-y-1">
+                        <Progress 
+                          value={percentage} 
+                          className="h-2"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{percentage}% usado</span>
+                          {remaining === 0 ? (
+                            <span className="text-red-600 font-medium">
+                              Limite atingido
+                            </span>
+                          ) : percentage >= 80 ? (
+                            <span className="text-yellow-600 font-medium">
+                              {remaining} restante{remaining !== 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span>
+                              {remaining} restante{remaining !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Funcionalidades do Plano Atual */}
+            {userPlan.features && userPlan.features.length > 0 && (
+              <div className="pt-4 border-t">
+                <h4 className="font-medium text-sm mb-3">Funcionalidades Incluídas</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {userPlan.features.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      {feature}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Status da Assinatura */}
       {subscriptionStatus.subscribed && (
