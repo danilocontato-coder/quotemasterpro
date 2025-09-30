@@ -37,7 +37,6 @@ const AdminSuppliers = React.lazy(() => import('@/pages/AdminSuppliers'));
 const NotificationsTesting = React.lazy(() => import('@/pages/NotificationsTesting'));
 const PlansPage = React.lazy(() => import('@/pages/client/PlansPage'));
 const CostCenters = React.lazy(() => import('@/pages/CostCenters'));
-const SystemTests = React.lazy(() => import('@/pages/SystemTests'));
 // BrandingSettings removido - só acessível por admins via /admin/brand
 
 // Admin pages
@@ -337,11 +336,6 @@ export const AppWithProviders: React.FC = () => {
         <Route path="cost-centers" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <CostCenters />
-          </Suspense>
-        } />
-        <Route path="system-tests" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <SystemTests />
           </Suspense>
         } />
       </Route>
