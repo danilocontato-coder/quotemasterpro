@@ -23,6 +23,7 @@ const SystemTests = () => {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<TestResult[]>([]);
   const [summary, setSummary] = useState({ passed: 0, failed: 0, warnings: 0, total: 0 });
+  const [currentTestId, setCurrentTestId] = useState<string | null>(null);
 
   // ============================================================================
   // TESTES AUTOMATIZADOS
@@ -415,7 +416,8 @@ const SystemTests = () => {
   const runAllTests = async () => {
     console.log('🧪 [TESTS] Iniciando bateria de testes...');
     setIsRunning(true);
-    setResults([]);
+    // Inicializa a lista com todos os testes em "pendente" para mostrar a timeline
+    setResults(tests.map(t => ({ ...t, status: 'pending' } as TestResult)));
     setProgress(0);
     setSummary({ passed: 0, failed: 0, warnings: 0, total: 0 });
 
@@ -433,9 +435,11 @@ const SystemTests = () => {
     const testResults: TestResult[] = [];
     
     for (let i = 0; i < testFunctions.length; i++) {
-      console.log(`🧪 [TESTS] Executando teste ${i + 1}/${testFunctions.length}...`);
+      const current = tests[i];
+      setCurrentTestId(current.id);
+      console.log(`🧪 [TESTS] Executando: ${current.name} (${i + 1}/${testFunctions.length})`);
       const result = await testFunctions[i]();
-      console.log(`🧪 [TESTS] Resultado:`, result);
+      console.log('🧪 [TESTS] Resultado:', result);
       testResults.push(result);
       updateTestResult(result.id, result);
       setProgress(((i + 1) / testFunctions.length) * 100);
@@ -452,6 +456,7 @@ const SystemTests = () => {
     console.log('🧪 [TESTS] Todos os testes concluídos:', { passed, failed, warnings, total: testResults.length });
     setSummary({ passed, failed, warnings, total: testResults.length });
     setIsRunning(false);
+    setCurrentTestId(null);
   };
 
   // ============================================================================
@@ -560,10 +565,10 @@ const SystemTests = () => {
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar + Steps */}
       {isRunning && (
         <Card className="p-6 border-2 border-primary">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <div className="flex-1">
@@ -574,6 +579,41 @@ const SystemTests = () => {
                 <Progress value={progress} className="h-3" />
               </div>
             </div>
+
+            {/* Passo atual */}
+            {currentTestId && (
+              <div className="text-sm">
+                <span className="text-muted-foreground">Módulo atual:</span>{' '}
+                <span className="font-medium">
+                  {tests.find(t => t.id === currentTestId)?.name}
+                </span>
+              </div>
+            )}
+
+            {/* Timeline de passos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {tests.map((t, idx) => {
+                const found = results.find(r => r.id === t.id);
+                const status = (found?.status ?? (currentTestId === t.id ? 'running' : 'pending')) as TestResult['status'];
+                const isActive = currentTestId === t.id;
+                return (
+                  <div
+                    key={t.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg border bg-card ${isActive ? 'ring-1 ring-primary' : ''}`}
+                  >
+                    <div className="text-xs font-mono w-6 text-center">{String(idx + 1).padStart(2, '0')}</div>
+                    <div className="shrink-0">{getStatusIcon(status)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium">{t.name}</span>
+                        {getStatusBadge(status)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             <p className="text-xs text-muted-foreground">
               Aguarde enquanto validamos segurança, isolamento de dados e performance
             </p>
