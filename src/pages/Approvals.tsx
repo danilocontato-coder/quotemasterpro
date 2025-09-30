@@ -21,17 +21,27 @@ import {
   ThumbsUp,
   ThumbsDown,
   Timer,
-  FileText
+  FileText,
+  Shield,
+  Users
 } from "lucide-react";
 import { ApprovalDetailModal } from "@/components/approvals/ApprovalDetailModal";
 import { QuoteMarkAsReceivedButton } from "@/components/quotes/QuoteMarkAsReceivedButton";
 import { useSupabaseApprovals, type Approval } from "@/hooks/useSupabaseApprovals";
+import { useSupabaseApprovalLevels, type ApprovalLevel } from "@/hooks/useSupabaseApprovalLevels";
 import { PageLoader } from "@/components/ui/page-loader";
 import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function Approvals() {
   const { approvals, isLoading, refetch } = useSupabaseApprovals();
+  const { approvalLevels } = useSupabaseApprovalLevels();
   const { formatCurrency } = useCurrency();
   const [searchTerm, setSearchTerm] = useState("");
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -39,13 +49,14 @@ export function Approvals() {
   const [activeTab, setActiveTab] = useState("pending");
   
   const [approverNames, setApproverNames] = useState<Record<string, string>>({});
+  const [approvalLevelsMap, setApprovalLevelsMap] = useState<Record<string, ApprovalLevel>>({});
 
   // Load approvals on component mount
   useEffect(() => {
     refetch();
   }, []);
 
-  // Fetch approver names only (quotes data now comes from the hook)
+  // Fetch approver names and match approval levels
   useEffect(() => {
     const fetchApproverNames = async () => {
       if (approvals.length === 0) return;
@@ -73,6 +84,30 @@ export function Approvals() {
 
     fetchApproverNames();
   }, [approvals]);
+
+  // Match each approval to its approval level based on quote value
+  useEffect(() => {
+    if (!approvalLevels || approvalLevels.length === 0) return;
+    
+    const levelsMap: Record<string, ApprovalLevel> = {};
+    
+    approvals.forEach(approval => {
+      const quoteAmount = approval.quotes?.total || 0;
+      
+      // Find matching approval level
+      const matchingLevel = approvalLevels.find(level => 
+        level.active && 
+        quoteAmount >= level.amount_threshold &&
+        quoteAmount <= (level as any).max_amount_threshold
+      );
+      
+      if (matchingLevel) {
+        levelsMap[approval.id] = matchingLevel;
+      }
+    });
+    
+    setApprovalLevelsMap(levelsMap);
+  }, [approvals, approvalLevels]);
 
   const filteredApprovals = approvals.filter(approval => {
     const quote = approval.quotes;
@@ -221,79 +256,132 @@ export function Approvals() {
 
             <TabsContent value={activeTab}>
               <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cotação</TableHead>
-                      <TableHead>Cliente / Fornecedor</TableHead>
-                      <TableHead>Valor / Itens</TableHead>
-                      <TableHead>Aprovador</TableHead>
-                      <TableHead>Prazos</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <Table>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead>Cotação</TableHead>
+                       <TableHead>Cliente / Fornecedor</TableHead>
+                       <TableHead>Valor / Itens</TableHead>
+                       <TableHead>Nível de Aprovação</TableHead>
+                       <TableHead>Aprovadores Autorizados</TableHead>
+                       <TableHead>Prazos</TableHead>
+                       <TableHead>Status</TableHead>
+                       <TableHead className="text-right">Ações</TableHead>
+                     </TableRow>
+                   </TableHeader>
                    <TableBody>
                      {filteredApprovals.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
-                          <div className="flex flex-col items-center gap-2">
-                            <FileText className="h-8 w-8 text-muted-foreground" />
-                            <p className="text-muted-foreground">
-                              {activeTab === "pending" ? "Nenhuma aprovação pendente" :
-                               activeTab === "approved" ? "Nenhuma aprovação aprovada" :
-                               "Nenhuma aprovação reprovada"}
-                            </p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredApprovals.map((approval) => {
-                        const quote = approval.quotes;
-                        return (
-                          <TableRow key={approval.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">#{approval.quote_id}</div>
-                                {quote?.title && (
-                                  <div className="text-sm text-muted-foreground">
-                                    {quote.title}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">
-                                  {quote?.client_name || 'Carregando...'}
-                                </div>
-                                {quote?.supplier_name && (
-                                  <div className="text-sm text-muted-foreground">
-                                    Fornecedor: {quote.supplier_name}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-semibold">
-                                  {quote ? formatCurrency(quote.total || 0) : 'Carregando...'}
-                                </div>
-                                {quote?.items_count && (
-                                  <div className="text-sm text-muted-foreground">
-                                    {quote.items_count} {quote.items_count === 1 ? 'item' : 'itens'}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm">
-                                {approval.approver_id ? 
-                                  (approverNames[approval.approver_id] || approval.approver_id) : 
-                                  'Não atribuído'
-                                }
-                              </div>
-                            </TableCell>
+                       <TableRow>
+                         <TableCell colSpan={8} className="text-center py-8">
+                           <div className="flex flex-col items-center gap-2">
+                             <FileText className="h-8 w-8 text-muted-foreground" />
+                             <p className="text-muted-foreground">
+                               {activeTab === "pending" ? "Nenhuma aprovação pendente" :
+                                activeTab === "approved" ? "Nenhuma aprovação aprovada" :
+                                "Nenhuma aprovação reprovada"}
+                             </p>
+                           </div>
+                         </TableCell>
+                       </TableRow>
+                     ) : (
+                       filteredApprovals.map((approval) => {
+                         const quote = approval.quotes;
+                         const approvalLevel = approvalLevelsMap[approval.id];
+                         return (
+                           <TableRow key={approval.id}>
+                             <TableCell>
+                               <div>
+                                 <div className="font-medium">#{approval.quote_id}</div>
+                                 {quote?.title && (
+                                   <div className="text-sm text-muted-foreground">
+                                     {quote.title}
+                                   </div>
+                                 )}
+                               </div>
+                             </TableCell>
+                             <TableCell>
+                               <div>
+                                 <div className="font-medium">
+                                   {quote?.client_name || 'Carregando...'}
+                                 </div>
+                                 {quote?.supplier_name && (
+                                   <div className="text-sm text-muted-foreground">
+                                     Fornecedor: {quote.supplier_name}
+                                   </div>
+                                 )}
+                               </div>
+                             </TableCell>
+                             <TableCell>
+                               <div>
+                                 <div className="font-semibold">
+                                   {quote ? formatCurrency(quote.total || 0) : 'Carregando...'}
+                                 </div>
+                                 {quote?.items_count && (
+                                   <div className="text-sm text-muted-foreground">
+                                     {quote.items_count} {quote.items_count === 1 ? 'item' : 'itens'}
+                                   </div>
+                                 )}
+                               </div>
+                             </TableCell>
+                             <TableCell>
+                               {approvalLevel ? (
+                                 <TooltipProvider>
+                                   <Tooltip>
+                                     <TooltipTrigger asChild>
+                                       <div className="flex items-center gap-2">
+                                         <Shield className="h-4 w-4 text-primary" />
+                                         <div>
+                                           <div className="font-medium text-sm">
+                                             {approvalLevel.name}
+                                           </div>
+                                           <div className="text-xs text-muted-foreground">
+                                             {formatCurrency(approvalLevel.amount_threshold)} - {formatCurrency((approvalLevel as any).max_amount_threshold)}
+                                           </div>
+                                         </div>
+                                       </div>
+                                     </TooltipTrigger>
+                                     <TooltipContent>
+                                       <p>Nível {approvalLevel.order_level}</p>
+                                       <p className="text-xs">{approvalLevel.name}</p>
+                                     </TooltipContent>
+                                   </Tooltip>
+                                 </TooltipProvider>
+                               ) : (
+                                 <div className="text-sm text-muted-foreground">
+                                   Sem nível configurado
+                                 </div>
+                               )}
+                             </TableCell>
+                             <TableCell>
+                               {approvalLevel && approvalLevel.approvers.length > 0 ? (
+                                 <TooltipProvider>
+                                   <Tooltip>
+                                     <TooltipTrigger asChild>
+                                       <div className="flex items-center gap-2 cursor-help">
+                                         <Users className="h-4 w-4 text-info" />
+                                         <Badge variant="outline" className="text-xs">
+                                           {approvalLevel.approvers.length} {approvalLevel.approvers.length === 1 ? 'aprovador' : 'aprovadores'}
+                                         </Badge>
+                                       </div>
+                                     </TooltipTrigger>
+                                     <TooltipContent className="max-w-xs">
+                                       <p className="font-semibold mb-1">Aprovadores autorizados:</p>
+                                       <ul className="text-xs space-y-1">
+                                         {approvalLevel.approvers.map((approverId, idx) => (
+                                           <li key={idx}>
+                                             • {approverNames[approverId] || approverId}
+                                           </li>
+                                         ))}
+                                       </ul>
+                                     </TooltipContent>
+                                   </Tooltip>
+                                 </TooltipProvider>
+                               ) : (
+                                 <div className="text-sm text-muted-foreground">
+                                   Sem aprovadores definidos
+                                 </div>
+                               )}
+                             </TableCell>
                             <TableCell>
                               <div className="text-sm">
                                 <div>
