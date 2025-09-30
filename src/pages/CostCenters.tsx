@@ -217,12 +217,18 @@ export default function CostCenters() {
                   <div className="text-sm text-muted-foreground mt-4 space-y-2">
                     <p><strong>Centros padrão incluem:</strong></p>
                     <div className="grid grid-cols-2 gap-1 text-xs">
-                      <span>• Administração (R$ 5.000/mês)</span>
-                      <span>• Manutenção (R$ 8.000/mês)</span>
-                      <span>• Limpeza (R$ 3.000/mês)</span>
-                      <span>• Segurança (R$ 4.000/mês)</span>
-                      <span>• Jardim (R$ 2.000/mês)</span>
-                      <span>• Emergência (R$ 1.000/mês)</span>
+                      <span>• Administração e Gestão (R$ 12.000/mês)</span>
+                      <span>• Manutenção Predial (R$ 15.000/mês)</span>
+                      <span>• Limpeza e Conservação (R$ 8.000/mês)</span>
+                      <span>• Segurança e Vigilância (R$ 10.000/mês)</span>
+                      <span>• Jardinagem e Paisagismo (R$ 3.000/mês)</span>
+                      <span>• Água e Esgoto (R$ 5.000/mês)</span>
+                      <span>• Energia Elétrica (R$ 7.000/mês)</span>
+                      <span>• Elevadores (R$ 4.000/mês)</span>
+                      <span>• Obras e Reformas (R$ 10.000/mês)</span>
+                      <span>• Material de Escritório (R$ 1.500/mês)</span>
+                      <span>• Comunicação e Marketing (R$ 2.000/mês)</span>
+                      <span>• Reserva de Emergência (R$ 5.000/mês)</span>
                     </div>
                   </div>
                 </div>
