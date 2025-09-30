@@ -210,6 +210,11 @@ export const PlansPage = () => {
     return limit.current >= limit.limit;
   }).length;
 
+  // Debug logs
+  console.log('PlansPage - userPlan:', userPlan);
+  console.log('PlansPage - usageLoading:', usageLoading);
+  console.log('PlansPage - currentUsage:', currentUsage);
+
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
@@ -221,19 +226,29 @@ export const PlansPage = () => {
       </div>
 
       {/* Plano Atual e Uso */}
-      {userPlan && !usageLoading && (
-        <Card className="max-w-4xl mx-auto">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-yellow-500" />
-                  Seu Plano Atual: {userPlan.display_name || userPlan.name}
-                </CardTitle>
-                <CardDescription className="mt-2">
-                  Acompanhe o uso dos recursos do seu plano
-                </CardDescription>
-              </div>
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="h-5 w-5 text-yellow-500" />
+                {usageLoading ? (
+                  'Carregando seu plano...'
+                ) : userPlan ? (
+                  `Seu Plano Atual: ${userPlan.display_name || userPlan.name}`
+                ) : (
+                  'Plano não configurado'
+                )}
+              </CardTitle>
+              <CardDescription className="mt-2">
+                {usageLoading ? (
+                  'Aguarde enquanto carregamos os dados do seu plano'
+                ) : (
+                  'Acompanhe o uso dos recursos do seu plano'
+                )}
+              </CardDescription>
+            </div>
+            {!usageLoading && (
               <Button
                 variant="outline"
                 size="sm"
@@ -242,8 +257,17 @@ export const PlansPage = () => {
                 <Settings className="h-4 w-4 mr-2" />
                 Gerenciar
               </Button>
+            )}
+          </div>
+        </CardHeader>
+        {usageLoading ? (
+          <CardContent>
+            <div className="space-y-4">
+              <div className="h-20 bg-muted rounded animate-pulse" />
+              <div className="h-20 bg-muted rounded animate-pulse" />
             </div>
-          </CardHeader>
+          </CardContent>
+        ) : userPlan ? (
           <CardContent className="space-y-4">
             {(nearLimitCount > 0 || atLimitCount > 0) && (
               <Alert>
@@ -326,8 +350,17 @@ export const PlansPage = () => {
               </div>
             )}
           </CardContent>
-        </Card>
-      )}
+        ) : (
+          <CardContent>
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Não foi possível carregar as informações do seu plano. Por favor, entre em contato com o suporte.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Status da Assinatura */}
       {subscriptionStatus.subscribed && (
