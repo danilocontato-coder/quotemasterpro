@@ -291,7 +291,9 @@ export function useCostCenters() {
         description: 'Centros de custo padrão criados com sucesso',
       });
 
-      fetchCostCenters();
+      // Refresh both hierarchy and spending data
+      await fetchHierarchy(profile.client_id);
+      await fetchSpending(profile.client_id);
     } catch (err) {
       console.error('Error creating default cost centers:', err);
       toast({
@@ -300,7 +302,7 @@ export function useCostCenters() {
         variant: 'destructive',
       });
     }
-  }, [toast, fetchCostCenters]);
+  }, [toast, fetchHierarchy, fetchSpending]);
 
   useEffect(() => {
     fetchCostCenters();
