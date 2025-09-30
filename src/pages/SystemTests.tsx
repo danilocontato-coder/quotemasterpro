@@ -29,20 +29,14 @@ const SystemTests = () => {
   // ============================================================================
 
   const tests: Omit<TestResult, 'status'>[] = [
-    { id: 'auth', name: 'Verificação de Autenticação', category: 'Segurança' },
-    { id: 'profile', name: 'Carregamento de Perfil', category: 'Segurança' },
-    { id: 'isolation-quotes', name: 'Isolamento de Cotações', category: 'RLS' },
-    { id: 'isolation-products', name: 'Isolamento de Produtos', category: 'RLS' },
-    { id: 'isolation-suppliers', name: 'Isolamento de Fornecedores', category: 'RLS' },
-    { id: 'isolation-users', name: 'Isolamento de Usuários', category: 'RLS' },
-    { id: 'rls-protection', name: 'Proteção contra Manipulação', category: 'RLS' },
-    { id: 'perf-dashboard', name: 'Performance Dashboard', category: 'Performance' },
-    { id: 'perf-quotes', name: 'Performance Listagem Cotações', category: 'Performance' },
-    { id: 'perf-suppliers', name: 'Performance Listagem Fornecedores', category: 'Performance' },
-    { id: 'notifications', name: 'Sistema de Notificações', category: 'Funcional' },
-    { id: 'realtime', name: 'Atualizações em Tempo Real', category: 'Funcional' },
-    { id: 'data-integrity', name: 'Integridade de Dados', category: 'Qualidade' },
-    { id: 'orphan-check', name: 'Verificação de Dados Órfãos', category: 'Qualidade' },
+    { id: 'auth', name: '🔐 Verificação de Autenticação', category: 'Segurança' },
+    { id: 'profile', name: '👤 Carregamento de Perfil', category: 'Segurança' },
+    { id: 'isolation-quotes', name: '📋 Isolamento de Cotações', category: 'RLS' },
+    { id: 'isolation-products', name: '📦 Isolamento de Produtos', category: 'RLS' },
+    { id: 'rls-protection', name: '🛡️ Proteção contra Manipulação', category: 'RLS' },
+    { id: 'perf-dashboard', name: '⚡ Performance Dashboard', category: 'Performance' },
+    { id: 'notifications', name: '🔔 Sistema de Notificações', category: 'Funcional' },
+    { id: 'orphan-check', name: '🔍 Verificação de Dados Órfãos', category: 'Qualidade' },
   ];
 
   const updateTestResult = (id: string, updates: Partial<TestResult>) => {
@@ -422,6 +416,7 @@ const SystemTests = () => {
     setIsRunning(true);
     setResults([]);
     setProgress(0);
+    setSummary({ passed: 0, failed: 0, warnings: 0, total: 0 });
 
     const testFunctions = [
       testAuthentication,
@@ -442,8 +437,8 @@ const SystemTests = () => {
       updateTestResult(result.id, result);
       setProgress(((i + 1) / testFunctions.length) * 100);
       
-      // Pequeno delay para visualização
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Delay para melhor visualização
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     // Calcular resumo
@@ -634,13 +629,31 @@ const SystemTests = () => {
       {/* Empty State */}
       {results.length === 0 && !isRunning && (
         <Card className="p-12 text-center">
-          <div className="text-4xl mb-4">🧪</div>
-          <h3 className="text-xl font-semibold mb-2">Pronto para Testar</h3>
-          <p className="text-muted-foreground mb-6">
-            Clique em "Executar Testes" para iniciar a validação completa do sistema
+          <div className="text-6xl mb-4">🧪</div>
+          <h3 className="text-2xl font-bold mb-3">Sistema de Testes Automatizado</h3>
+          <p className="text-muted-foreground mb-2 max-w-md mx-auto">
+            Execute uma bateria completa de testes para validar:
           </p>
-          <Button onClick={runAllTests} size="lg">
-            <Play className="mr-2 h-4 w-4" />
+          <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto mt-4 mb-6 text-sm">
+            <div className="p-3 border rounded-lg bg-background">
+              <div className="font-semibold mb-1">🔐 Segurança</div>
+              <div className="text-xs text-muted-foreground">Auth & Permissões</div>
+            </div>
+            <div className="p-3 border rounded-lg bg-background">
+              <div className="font-semibold mb-1">🛡️ Isolamento RLS</div>
+              <div className="text-xs text-muted-foreground">Proteção de Dados</div>
+            </div>
+            <div className="p-3 border rounded-lg bg-background">
+              <div className="font-semibold mb-1">⚡ Performance</div>
+              <div className="text-xs text-muted-foreground">Velocidade do Sistema</div>
+            </div>
+            <div className="p-3 border rounded-lg bg-background">
+              <div className="font-semibold mb-1">✅ Qualidade</div>
+              <div className="text-xs text-muted-foreground">Integridade de Dados</div>
+            </div>
+          </div>
+          <Button onClick={runAllTests} size="lg" className="mt-2">
+            <Play className="mr-2 h-5 w-5" />
             Iniciar Testes Automáticos
           </Button>
         </Card>
