@@ -103,6 +103,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
 
     try {
+      // Buscar uso do cliente no banco
       const { data: usage, error } = await supabase
         .from('client_usage')
         .select('*')
@@ -114,40 +115,55 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         return;
       }
 
+      // Sempre buscar contagem real de usuários para garantir precisão
+      const { count: realUsersCount } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', currentClient.id)
+        .eq('status', 'active');
+
       if (!usage) {
-        const [quotesResponse, usersResponse] = await Promise.all([
+        // Se não existe registro, criar um baseado em contagens reais
+        const [quotesResponse, productsResponse] = await Promise.all([
           supabase
             .from('quotes')
-            .select('id', { count: 'exact' })
+            .select('id', { count: 'exact', head: true })
             .eq('client_id', currentClient.id)
             .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
           
           supabase
-            .from('users')
-            .select('id', { count: 'exact' })
+            .from('products')
+            .select('id', { count: 'exact', head: true })
             .eq('client_id', currentClient.id)
-            .eq('status', 'active')
         ]);
 
-        const mockUsage: ClientUsage = {
+        const calculatedUsage: ClientUsage = {
           id: 'temp',
           client_id: currentClient.id,
           quotes_this_month: quotesResponse.count || 0,
-          users_count: usersResponse.count || 0,
-          storage_used_gb: Math.random() * 2,
+          users_count: realUsersCount || 0,
+          storage_used_gb: 0,
           quote_responses_this_month: 0,
-          products_in_catalog: 0,
+          products_in_catalog: productsResponse.count || 0,
           categories_count: 0,
           last_reset_date: new Date().toISOString().split('T')[0],
           updated_at: new Date().toISOString(),
           created_at: new Date().toISOString()
         };
 
-        setClientUsage(mockUsage);
-        sessionStorage.setItem(cacheKey, JSON.stringify(mockUsage));
+        console.log('📊 [SubscriptionContext] Uso calculado:', calculatedUsage);
+        setClientUsage(calculatedUsage);
+        sessionStorage.setItem(cacheKey, JSON.stringify(calculatedUsage));
       } else {
-        setClientUsage(usage);
-        sessionStorage.setItem(cacheKey, JSON.stringify(usage));
+        // Atualizar contagem de usuários com valor real
+        const updatedUsage = {
+          ...usage,
+          users_count: realUsersCount || 0
+        };
+        
+        console.log('📊 [SubscriptionContext] Uso do banco (atualizado):', updatedUsage);
+        setClientUsage(updatedUsage);
+        sessionStorage.setItem(cacheKey, JSON.stringify(updatedUsage));
       }
       sessionStorage.setItem(`${cacheKey}_time`, Date.now().toString());
     } catch (error) {
