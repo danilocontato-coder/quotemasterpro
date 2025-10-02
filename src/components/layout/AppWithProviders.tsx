@@ -76,6 +76,8 @@ const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/Supplier
 const SupplierQuickResponse = React.lazy(() => import('@/pages/supplier/SupplierQuickResponse'));
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
 const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
+const QuickResponse = React.lazy(() => import('@/pages/QuickResponse'));
+const QuickResponseSuccess = React.lazy(() => import('@/pages/QuickResponseSuccess'));
 const NotFound = React.lazy(() => import('@/pages/NotFound'));
 
 // Fallback loading component
@@ -134,6 +136,19 @@ export const AppWithProviders: React.FC = () => {
       <Route path="/s/:shortCode" element={
         <Suspense fallback={<LoadingFallback />}>
           <ShortLinkRedirect />
+        </Suspense>
+      } />
+
+      {/* Quick Response - Resposta rápida pública via token */}
+      <Route path="/r/:token" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <QuickResponse />
+        </Suspense>
+      } />
+      
+      <Route path="/r/success" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <QuickResponseSuccess />
         </Suspense>
       } />
 

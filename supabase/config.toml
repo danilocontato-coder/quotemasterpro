@@ -32,3 +32,9 @@ verify_jwt = true
 
 [functions.ai-lead-scoring]
 verify_jwt = true
+
+[functions.submit-quick-response]
+verify_jwt = false
+
+[functions.validate-quote-token]
+verify_jwt = false
