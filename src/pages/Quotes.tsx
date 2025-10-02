@@ -301,25 +301,26 @@ export default function Quotes() {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+      <div className="flex flex-col gap-4 animate-fade-in">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
             Cotações
           </h1>
-          <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <p className="text-sm md:text-base text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
             Gerencie todas as cotações e solicitações de orçamento
           </p>
         </div>
-        <div className="flex gap-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+        <div className="flex flex-col sm:flex-row gap-2 animate-fade-in w-full" style={{ animationDelay: '0.3s' }}>
           <Button 
             variant="outline"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto justify-center"
             onClick={() => setIsMatrixManagerOpen(true)}
           >
             <Archive className="h-4 w-4" />
-            Matrizes de Decisão
+            <span className="hidden sm:inline">Matrizes de Decisão</span>
+            <span className="sm:hidden">Matrizes</span>
           </Button>
-          <div className="flex gap-1">
+          <div className="grid grid-cols-2 sm:flex gap-2">
             <Button 
               variant="outline" 
               onClick={() => {
@@ -328,10 +329,11 @@ export default function Quotes() {
                   setIsDocumentModalOpen(true);
                 }
               }} 
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 justify-center"
             >
               <FileText className="h-4 w-4" />
-              Cotação por PDF
+              <span className="hidden sm:inline">Cotação por PDF</span>
+              <span className="sm:hidden">PDF</span>
             </Button>
             <Button 
               variant="default" 
@@ -341,15 +343,16 @@ export default function Quotes() {
                   setIsAIChatOpen(true);
                 }
               }} 
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 justify-center"
               disabled={!!error}
             >
               <Sparkles className="h-4 w-4" />
-              Cotação por IA
+              <span className="hidden sm:inline">Cotação por IA</span>
+              <span className="sm:hidden">IA</span>
             </Button>
           </div>
           <Button 
-            className="btn-corporate flex items-center gap-2"
+            className="btn-corporate flex items-center gap-2 w-full sm:w-auto justify-center sm:ml-auto"
             onClick={() => {
               const canCreate = enforceLimit('CREATE_QUOTE');
               if (canCreate) {
@@ -365,7 +368,7 @@ export default function Quotes() {
       </div>
 
       {/* Filter Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
         <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
           <FilterMetricCard
             title="Todas Ativas"
@@ -419,7 +422,7 @@ export default function Quotes() {
       </div>
 
       {/* Additional Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -471,25 +474,25 @@ export default function Quotes() {
 
       {/* Filters and Search */}
       <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.5s' }}>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <CardContent className="p-4 md:p-6">
+          <div className="flex flex-col gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Buscar por RFQ, título ou cliente..."
+                placeholder="Buscar cotações..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleForceRefresh} className="text-xs">
-                🔄 Refresh
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" onClick={handleForceRefresh} className="text-xs flex-1 sm:flex-none">
+                🔄 <span className="ml-1 hidden sm:inline">Refresh</span>
               </Button>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm flex-1 sm:flex-none"
               >
                 {statusOptions.map(option => (
                   <option key={option.value} value={option.value}>
@@ -497,7 +500,7 @@ export default function Quotes() {
                   </option>
                 ))}
               </select>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="flex-shrink-0">
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
@@ -645,8 +648,8 @@ export default function Quotes() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between animate-fade-in" style={{ animationDelay: '0.8s' }}>
-          <div className="text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in" style={{ animationDelay: '0.8s' }}>
+          <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
             Mostrando {startIndex + 1} a {Math.min(endIndex, filteredQuotes.length)} de {filteredQuotes.length} cotações
           </div>
           
@@ -656,23 +659,36 @@ export default function Quotes() {
               size="sm"
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
+              className="h-8"
             >
               <ChevronLeft className="h-4 w-4" />
-              Anterior
+              <span className="hidden sm:inline ml-1">Anterior</span>
             </Button>
             
             <div className="flex items-center space-x-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCurrentPage(page)}
-                  className="w-10"
-                >
-                  {page}
-                </Button>
-              ))}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
             </div>
             
             <Button
@@ -680,8 +696,9 @@ export default function Quotes() {
               size="sm"
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
+              className="h-8"
             >
-              Próxima
+              <span className="hidden sm:inline mr-1">Próxima</span>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
