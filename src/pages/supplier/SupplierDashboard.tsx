@@ -15,6 +15,7 @@ import {
 import { Link } from "react-router-dom";
 import { useSupabaseSupplierDashboard } from "@/hooks/useSupabaseSupplierDashboard";
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator';
+import { useSupplierRoleGuard } from "@/hooks/useSupplierRoleGuard";
 
 interface MetricCardProps {
   title: string;
@@ -49,7 +50,12 @@ function MetricCard({ title, value, icon: Icon, trend, color = "text-primary" }:
 }
 
 export default function SupplierDashboard() {
+  const { isAuthorized, isLoading: roleLoading } = useSupplierRoleGuard();
   const { metrics, recentQuotes, isLoading, error, refetch } = useSupabaseSupplierDashboard();
+
+  if (roleLoading || !isAuthorized) {
+    return null; // Renderiza nada enquanto valida/redireciona
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {

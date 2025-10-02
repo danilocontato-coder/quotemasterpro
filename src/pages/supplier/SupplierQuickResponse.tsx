@@ -70,13 +70,34 @@ const SupplierQuickResponse = () => {
       const currentPath = `/supplier/quick-response/${quoteId}/${token}`;
       sessionStorage.setItem('redirectAfterLogin', currentPath);
       
+      // ⛔ VALIDAÇÃO CRÍTICA: Se usuário está logado mas NÃO é fornecedor, forçar logout
+      if (user && user.role !== 'supplier') {
+        console.error('⛔ [SECURITY] Non-supplier user trying to access supplier area:', {
+          userId: user.id,
+          email: user.email,
+          role: user.role
+        });
+        
+        toast({
+          title: "Acesso Negado",
+          description: "Esta área é exclusiva para fornecedores. Você será redirecionado para fazer login como fornecedor.",
+          variant: "destructive"
+        });
+        
+        // Forçar logout e redirecionar
+        supabase.auth.signOut().then(() => {
+          navigate(`/supplier/auth/${quoteId}/${token}`, { replace: true });
+        });
+        return;
+      }
+      
       // Se o usuário não está autenticado, redirecionar para login
       if (!user) {
         navigate(`/supplier/auth/${quoteId}/${token}` as any, { replace: true });
         return;
       }
       
-      // Se chegou aqui, o usuário está autenticado
+      // Se chegou aqui, o usuário está autenticado E é fornecedor
       validateTokenAndFetchData();
     }
   }, [quoteId, token, user, authLoading]);
