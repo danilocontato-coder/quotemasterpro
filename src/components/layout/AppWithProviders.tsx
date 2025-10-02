@@ -73,6 +73,7 @@ const SupplierSettings = React.lazy(() => import('@/pages/supplier/SupplierSetti
 const SupplierUsers = React.lazy(() => import('@/pages/supplier/SupplierUsers'));
 const SupplierAuth = React.lazy(() => import('@/pages/supplier/SupplierAuth'));
 const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
+const SupplierQuickResponse = React.lazy(() => import('@/pages/supplier/SupplierQuickResponse'));
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
 const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
 const NotFound = React.lazy(() => import('@/pages/NotFound'));
@@ -528,6 +529,7 @@ export const AppWithProviders: React.FC = () => {
       {/* Rotas diretas do fornecedor */}
       <Route path="/supplier/auth/:quoteId/:token" element={<SupplierAuth />} />
       <Route path="/supplier/quote/:quoteId/response/:token" element={<SupplierQuoteResponse />} />
+      <Route path="/supplier/quick-response/:quoteId/:token" element={<SupplierQuickResponse />} />
       <Route path="/supplier/response-success" element={<SupplierResponseSuccess />} />
 
       {/* Catch all - 404 */}
