@@ -292,6 +292,11 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const cacheKey = `client_usage_${currentClient.id}`;
     sessionStorage.removeItem(cacheKey);
     sessionStorage.removeItem(`${cacheKey}_time`);
+    
+    // Limpar cache de planos também para forçar atualização completa
+    sessionStorage.removeItem('subscription_plans');
+    sessionStorage.removeItem('subscription_plans_time');
+    
     await fetchClientUsage();
   }, [currentClient?.id, fetchClientUsage]);
 
