@@ -20,9 +20,10 @@ interface Message {
 interface AIQuoteChatProps {
   onQuoteGenerated: (quote: any) => void;
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
-export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onClose }) => {
+export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onClose, onRefresh }) => {
   const { enforceLimit } = useSupabaseSubscriptionGuard();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -115,12 +116,13 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
           toast.info(`${data.standardizedProducts.length} produtos adicionados ao catálogo`);
         }
         
-        // Fechar chat automaticamente após RFQ criada
+        // Fechar chat e atualizar lista sem refresh
         setTimeout(() => {
           onClose();
-          // Atualizar página para mostrar nova cotação
-          window.location.reload();
-        }, 2000);
+          if (onRefresh) {
+            onRefresh();
+          }
+        }, 1500);
         
         return;
       }

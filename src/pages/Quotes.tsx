@@ -747,6 +747,7 @@ export default function Quotes() {
                 setIsAIChatOpen(false);
               }}
               onClose={() => setIsAIChatOpen(false)}
+              onRefresh={refetch}
             />
           </Suspense>
         </div>
