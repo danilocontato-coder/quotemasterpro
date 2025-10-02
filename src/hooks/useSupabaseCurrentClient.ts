@@ -78,13 +78,22 @@ export function useSupabaseCurrentClient() {
 
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          subscription_plans:subscription_plan_id(id, name, display_name)
+        `)
         .eq('id', user.clientId)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
+        console.log('✅ Cliente carregado:', {
+          id: data.id,
+          name: data.name,
+          subscription_plan_id: data.subscription_plan_id,
+          subscription_plans: (data as any).subscription_plans
+        });
         // Atualizar cache
         clientCache = { data, time: Date.now(), userId: user.id };
         setClient(data);

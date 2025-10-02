@@ -365,6 +365,7 @@ export function useSupabasePlanDetails(planId: string) {
   useEffect(() => {
     const loadPlan = async () => {
       if (!planId) {
+        console.log('⚠️ Plan ID não fornecido');
         setPlan(null);
         setIsLoading(false);
         return;
@@ -372,7 +373,7 @@ export function useSupabasePlanDetails(planId: string) {
 
       try {
         setIsLoading(true);
-        console.log('Carregando detalhes do plano:', planId);
+        console.log('🔄 Carregando detalhes do plano:', planId);
         
         const { data, error } = await supabase
           .from('subscription_plans')
@@ -381,15 +382,19 @@ export function useSupabasePlanDetails(planId: string) {
           .single();
 
         if (error) {
-          console.error('Erro ao carregar plano:', error);
+          console.error('❌ Erro ao carregar plano:', error);
           setPlan(null);
           return;
         }
 
-        console.log('Plano carregado:', data);
+        console.log('✅ Plano carregado:', {
+          id: data.id,
+          name: data.name,
+          display_name: data.display_name
+        });
         setPlan(data as SupabaseSubscriptionPlan);
       } catch (error) {
-        console.error('Erro ao carregar plano:', error);
+        console.error('❌ Erro ao carregar plano:', error);
         setPlan(null);
       } finally {
         setIsLoading(false);
@@ -402,7 +407,7 @@ export function useSupabasePlanDetails(planId: string) {
   return {
     plan,
     isLoading,
-    displayName: plan?.display_name || 'Plano não encontrado',
+    displayName: plan?.display_name || (planId ? 'Plano não encontrado' : 'Sem plano'),
     features: plan?.features || [],
     limits: plan ? {
       maxQuotes: plan.max_quotes,

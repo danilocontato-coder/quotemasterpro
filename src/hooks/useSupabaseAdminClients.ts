@@ -49,6 +49,7 @@ export interface AdminClient {
   groupName?: string;
   status: "active" | "inactive" | "pending";
   plan: string;
+  planDisplayName?: string;
   createdAt: string;
   lastAccess?: string;
   loginCredentials: {
@@ -116,7 +117,12 @@ export function useSupabaseAdminClients() {
             .order('name'),
           supabase
             .from("clients")
-            .select("id, name, cnpj, email, phone, address, status, subscription_plan_id, created_at, updated_at, username, group_id, last_access")
+            .select(`
+              id, name, cnpj, email, phone, address, status, 
+              subscription_plan_id, created_at, updated_at, username, 
+              group_id, last_access,
+              subscription_plans:subscription_plan_id(id, name, display_name)
+            `)
             .order('name')
         ]);
 
@@ -141,7 +147,7 @@ export function useSupabaseAdminClients() {
 
         const groupsMap = new Map(groups.map((g) => [g.id, g]));
 
-        const mapped: AdminClient[] = (clientsResult.data || []).map((c) => ({
+        const mapped: AdminClient[] = (clientsResult.data || []).map((c: any) => ({
           id: c.id,
           companyName: c.name || '',
           cnpj: c.cnpj || '',
@@ -153,6 +159,7 @@ export function useSupabaseAdminClients() {
           groupName: c.group_id ? groupsMap.get(c.group_id)?.name : undefined,
           status: (c.status as AdminClient["status"]) || "active",
           plan: c.subscription_plan_id || "basic",
+          planDisplayName: c.subscription_plans?.display_name || c.subscription_plans?.name || "Basic",
           createdAt: c.created_at || new Date().toISOString(),
           lastAccess: c.last_access || undefined,
           loginCredentials: {
