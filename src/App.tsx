@@ -37,8 +37,7 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  console.log('🚀 [APP] Application starting...');
-
+  // Sistema de log já disponível via systemLogger
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

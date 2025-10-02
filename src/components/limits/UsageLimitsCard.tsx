@@ -89,10 +89,10 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => window.location.reload()}
+            onClick={() => window.location.href = '/settings'}
             className="w-full text-xs"
           >
-            Recarregar página
+            Verificar assinatura
           </Button>
         </CardContent>
       </Card>

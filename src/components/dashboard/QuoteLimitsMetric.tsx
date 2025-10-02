@@ -84,10 +84,10 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => window.location.reload()}
+            onClick={() => window.location.href = '/settings'}
             className="w-full text-xs"
           >
-            Recarregar página
+            Verificar assinatura
           </Button>
         </CardContent>
       </Card>

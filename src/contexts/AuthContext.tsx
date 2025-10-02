@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChangeModal } from '@/components/auth/ForcePasswordChangeModal';
+import { logger } from '@/utils/systemLogger';
 
 export type UserRole = 'admin' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
 
@@ -68,7 +69,7 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
   useEffect(() => {
-    console.log('🔍 [DEBUG-AUTH] AuthProvider useEffect triggered for session initialization');
+    logger.auth('AuthProvider inicializado');
     
     // Verificar se há token admin na URL primeiro
     const checkAdminToken = () => {
@@ -84,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const adminToken = urlParams.get('adminToken');
       
       if (adminToken) {
-        console.log('🔍 [DEBUG-AUTH] Admin token detected:', adminToken);
+        logger.auth('Admin token detectado', { adminToken });
         let adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
         if (!adminData) {
           adminData = localStorage.getItem(`adminAccess_${adminToken}`);
@@ -93,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (adminData) {
           try {
             const parsedData = JSON.parse(adminData);
-            console.log('🔍 [DEBUG-AUTH] Admin access data:', parsedData);
+            logger.auth('Admin access data parsed', parsedData);
             
             // Simular usuário logado como cliente/fornecedor
             if (parsedData.targetRole === 'manager' && parsedData.targetClientId) {
@@ -140,36 +141,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       initializeAuth();
     }
 
-    // Listen for auth changes - com filtros para evitar reloads desnecessários
+    // Listen for auth changes - otimizado para evitar reloads
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('🔍 [DEBUG-AUTH] Auth state changed:', {
-          event,
-          hasSession: !!session,
-          userId: session?.user?.id,
-          currentUserId: user?.id,
-          timestamp: new Date().toISOString()
-        });
+        logger.auth('Auth state change', { event, hasSession: !!session, userId: session?.user?.id });
         
-        // Ignorar eventos que não requerem ação (evitar loops)
+        // Ignorar eventos de token refresh se usuário não mudou
         if (event === 'TOKEN_REFRESHED' && session?.user?.id === user?.id) {
-          console.log('🔍 [DEBUG-AUTH] Token refresh - mantendo estado atual');
+          logger.auth('Token refresh - mantendo estado');
+          setSession(session); // Apenas atualizar sessão
           return;
         }
         
-        console.log('🔍 [DEBUG-AUTH] Processando mudança de auth state...');
+        // Ignorar eventos duplicados
+        if (event === 'SIGNED_IN' && session?.user?.id === user?.id) {
+          logger.auth('SIGNED_IN duplicado - ignorando');
+          return;
+        }
+        
         setSession(session);
         
         if (session?.user) {
-          // Use setTimeout para evitar bloquear mudança de estado de auth
-          setTimeout(() => {
-            console.log('🔍 [DEBUG-AUTH] Chamando fetchUserProfile...');
-            fetchUserProfile(session.user);
-          }, 0);
+          fetchUserProfile(session.user);
         } else {
-          console.log('🔍 [DEBUG-AUTH] Sem sessão - limpando user state');
+          logger.auth('Sem sessão - limpando estado');
           setUser(null);
-          setError(null); // Limpar erro ao fazer logout
+          setError(null);
           setForcePasswordChange(false);
           setIsLoading(false);
         }
@@ -261,13 +258,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Função para verificar se é modo admin
-  const isAdminMode = (): boolean => {
-    return user?.id?.startsWith('admin_simulated_') || false;
-  };
-
-  const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
-    console.log('🔍 [DEBUG-AUTH] fetchUserProfile called for user:', supabaseUser.id);
+  const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser) => {
+    logger.auth('Carregando perfil do usuário', { userId: supabaseUser.id });
     setIsLoading(true);
     
     try {
@@ -407,7 +399,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []); // sem dependências - função estável
 
   const handlePasswordChanged = () => {
     setForcePasswordChange(false);
@@ -453,22 +445,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user?.id]); // Only depend on user ID to prevent unnecessary re-runs
 
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
+    logger.auth('Logout iniciado', { userId: user?.id });
+    
     // Verificar se é usuário simulado (admin mode)
     if (user?.id?.startsWith('admin_simulated_')) {
-      // Para usuários simulados, apenas limpar o estado local
       setUser(null);
       setSession(null);
-      // Fechar a aba se for acesso admin
       window.close();
       return;
     }
     
     await supabase.auth.signOut();
-  };
+  }, [user?.id]);
 
-  const updateProfile = async (updates: Partial<User>): Promise<void> => {
+  const updateProfile = useCallback(async (updates: Partial<User>): Promise<void> => {
     if (!user) return;
+    
+    logger.info('auth', 'Atualizando perfil', updates);
     
     // Se for usuário simulado, não tentar atualizar no banco
     if (user.id.startsWith('admin_simulated_')) {
@@ -494,14 +488,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser({ ...user, ...updates });
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logger.error('auth', 'Erro ao atualizar perfil', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, session]);
 
-  const value = {
+  const isAdminMode = useCallback((): boolean => {
+    return user?.id?.startsWith('admin_simulated_') || false;
+  }, [user?.id]);
+
+  const value = useMemo(() => ({
     user,
     session,
     isLoading,
@@ -509,7 +507,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     updateProfile,
     isAdminMode,
-  };
+  }), [user, session, isLoading, error, logout, updateProfile, isAdminMode]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -525,4 +523,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       )}
     </AuthContext.Provider>
   );
-};
+});
