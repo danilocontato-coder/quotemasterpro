@@ -200,51 +200,61 @@ export default function Payments() {
       </div>
 
       {/* Filter Metrics Cards */}
-      <AnimatedGrid columns={6} baseDelay={0.4} itemDelay={0.08}>
-        <FilterMetricCard
-          title="Total"
-          value={totalPayments}
-          icon={<CreditCard />}
-          isActive={activeFilter === "all"}
-          onClick={() => setActiveFilter("all")}
-          variant="default"
-        />
-        <FilterMetricCard
-          title="Pendente"
-          value={pendingPayments}
-          icon={<Clock />}
-          isActive={activeFilter === "pending"}
-          onClick={() => setActiveFilter("pending")}
-          variant="warning"
-        />
-        <FilterMetricCard
-          title="Processando"
-          value={processingPayments}
-          icon={<ShieldCheck />}
-          isActive={activeFilter === "processing"}
-          onClick={() => setActiveFilter("processing")}
-          variant="default"
-        />
-        <FilterMetricCard
-          title="Concluídos"
-          value={completedPayments}
-          icon={<CheckCircle />}
-          isActive={activeFilter === "completed"}
-          onClick={() => setActiveFilter("completed")}
-          variant="success"
-        />
-        <FilterMetricCard
-          title="Disputas"
-          value={disputedPayments}
-          icon={<AlertTriangle />}
-          isActive={activeFilter === "disputed"}
-          onClick={() => setActiveFilter("disputed")}
-          variant="destructive"
-        />
-      </AnimatedGrid>
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Total"
+            value={totalPayments}
+            icon={<CreditCard />}
+            isActive={activeFilter === "all"}
+            onClick={() => setActiveFilter("all")}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Pendente"
+            value={pendingPayments}
+            icon={<Clock />}
+            isActive={activeFilter === "pending"}
+            onClick={() => setActiveFilter("pending")}
+            variant="warning"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Processando"
+            value={processingPayments}
+            icon={<ShieldCheck />}
+            isActive={activeFilter === "processing"}
+            onClick={() => setActiveFilter("processing")}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Concluídos"
+            value={completedPayments}
+            icon={<CheckCircle />}
+            isActive={activeFilter === "completed"}
+            onClick={() => setActiveFilter("completed")}
+            variant="success"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Disputas"
+            value={disputedPayments}
+            icon={<AlertTriangle />}
+            isActive={activeFilter === "disputed"}
+            onClick={() => setActiveFilter("disputed")}
+            variant="destructive"
+          />
+        </div>
+      </div>
 
       {/* Search and Filters */}
-      <Card className="card-corporate">
+      <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">

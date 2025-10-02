@@ -109,27 +109,22 @@ export default function Dashboard() {
   }
 
   return (
-    <AnimatedPage>
+    <div className="space-y-6">
       {/* Admin Mode Indicator */}
       <AdminModeIndicator />
       
       {/* Page Header */}
-      <AnimatedHeader 
-        title="Dashboard"
-        subtitle="Visão geral do sistema de cotações e orçamentos"
-      />
+      <div className="flex flex-col gap-2 animate-fade-in">
+        <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>Dashboard</h1>
+        <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          Visão geral do sistema de cotações e orçamentos
+        </p>
+      </div>
 
       {/* Primary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-          </>
-        ) : (
-          <>
-            <MetricCard
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+        <>
+          <MetricCard
               title="Total de Cotações"
               value={metrics.totalQuotes}
               change={metrics.totalQuotes > 0 ? "+12% vs mês anterior" : "Nenhuma cotação ainda"}
@@ -152,25 +147,16 @@ export default function Dashboard() {
               value={metrics.activeSuppliers}
               change={metrics.activeSuppliers > 0 ? "+3 este mês" : "Cadastre fornecedores"}
               changeType={metrics.activeSuppliers > 0 ? "positive" : "neutral"}
-              icon={Users}
-              description="Fornecedores cadastrados"
-            />
-          </>
-        )}
+            icon={Users}
+            description="Fornecedores cadastrados"
+          />
+        </>
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-          </>
-        ) : (
-          <>
-            <MetricCard
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+        <>
+          <MetricCard
               title="Gasto Mensal"
               value={`R$ ${metrics.monthlySpending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
               change={metrics.monthlySpending > 0 ? "-8% vs mês anterior" : "Nenhum gasto ainda"}
@@ -203,14 +189,13 @@ export default function Dashboard() {
               change={metrics.economyEstimated > 0 ? "Baseado em propostas aceitas" : "Sem economia calculada"}
               changeType={metrics.economyEstimated > 0 ? "positive" : "neutral"}
               icon={DollarSign}
-              description="Economia com cotações"
-            />
-          </>
-        )}
+            description="Economia com cotações"
+          />
+        </>
       </div>
 
       {/* Usage Limits and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.5s' }}>
         <div className="lg:col-span-2">
           <QuickActions />
         </div>
@@ -224,7 +209,7 @@ export default function Dashboard() {
       <RatingPrompts />
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
         {/* Recent Activity */}
         <Card className="card-corporate">
           <CardHeader>
@@ -300,6 +285,6 @@ export default function Dashboard() {
           </div>
         </VisualCard>
       </div>
-    </AnimatedPage>
+    </div>
   );
 }

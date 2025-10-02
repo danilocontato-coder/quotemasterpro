@@ -203,51 +203,61 @@ export default function Suppliers() {
       </div>
 
       {/* Filter Metrics Cards */}
-      <AnimatedGrid columns={6} baseDelay={0.4} itemDelay={0.08}>
-        <FilterMetricCard
-          title="Total"
-          value={totalSuppliers}
-          icon={<Users />}
-          isActive={activeFilter === "all"}
-          onClick={() => setActiveFilter("all")}
-          variant="default"
-        />
-        <FilterMetricCard
-          title="Ativos"
-          value={activeSuppliers}
-          icon={<Shield />}
-          isActive={activeFilter === "active"}
-          onClick={() => setActiveFilter("active")}
-          variant="success"
-        />
-        <FilterMetricCard
-          title="Locais"
-          value={localSuppliers}
-          icon={<MapPin />}
-          isActive={activeFilter === "local"}
-          onClick={() => setActiveFilter("local")}
-          variant="default"
-        />
-        <FilterMetricCard
-          title="Certificados"
-          value={globalSuppliers}
-          icon={<Building />}
-          isActive={activeFilter === "global"}
-          onClick={() => setActiveFilter("global")}
-          variant="default"
-        />
-        <FilterMetricCard
-          title="Prioritários"
-          value={prioritySuppliers}
-          icon={<Star />}
-          isActive={activeFilter === "priority"}
-          onClick={() => setActiveFilter("priority")}
-          variant="warning"
-        />
-      </AnimatedGrid>
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Total"
+            value={totalSuppliers}
+            icon={<Users />}
+            isActive={activeFilter === "all"}
+            onClick={() => setActiveFilter("all")}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Ativos"
+            value={activeSuppliers}
+            icon={<Shield />}
+            isActive={activeFilter === "active"}
+            onClick={() => setActiveFilter("active")}
+            variant="success"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Locais"
+            value={localSuppliers}
+            icon={<MapPin />}
+            isActive={activeFilter === "local"}
+            onClick={() => setActiveFilter("local")}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Certificados"
+            value={globalSuppliers}
+            icon={<Building />}
+            isActive={activeFilter === "global"}
+            onClick={() => setActiveFilter("global")}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Prioritários"
+            value={prioritySuppliers}
+            icon={<Star />}
+            isActive={activeFilter === "priority"}
+            onClick={() => setActiveFilter("priority")}
+            variant="warning"
+          />
+        </div>
+      </div>
 
       {/* Filters and Search */}
-      <Card className="card-corporate">
+      <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">

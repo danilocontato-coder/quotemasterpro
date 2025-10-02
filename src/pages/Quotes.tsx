@@ -302,11 +302,16 @@ export default function Quotes() {
       )}
 
       {/* Page Header */}
-      <AnimatedHeader
-        title="Cotações"
-        subtitle="Gerencie todas as cotações e solicitações de orçamento"
-        actions={
-          <>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            Cotações
+          </h1>
+          <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            Gerencie todas as cotações e solicitações de orçamento
+          </p>
+        </div>
+        <div className="flex gap-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
           <Button 
             variant="outline"
             className="flex items-center gap-2"
@@ -352,61 +357,70 @@ export default function Quotes() {
                 setIsCreateModalOpen(true);
               }
             }}
-            disabled={!!error} // Disable if there's an auth error
+            disabled={!!error}
           >
             <Plus className="h-4 w-4" />
             Nova Cotação
           </Button>
-          </>
-        }
-      />
+        </div>
+      </div>
 
       {/* Filter Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <FilterMetricCard
-          title="Todas Ativas"
-          value={totalActive}
-          icon={<FileText />}
-          isActive={activeFilter === "all"}
-          onClick={() => setActiveFilter("all")}
-          variant="default"
-        />
-        <FilterMetricCard
-          title="Rascunhos"
-          value={draftQuotes}
-          icon={<Edit />}
-          isActive={activeFilter === "draft"}
-          onClick={() => setActiveFilter("draft")}
-          variant="secondary"
-        />
-        <FilterMetricCard
-          title="Enviadas"
-          value={sentQuotes}
-          icon={<Eye />}
-          isActive={activeFilter === "sent"}
-          onClick={() => setActiveFilter("sent")}
-          variant="warning"
-        />
-        <FilterMetricCard
-          title="Aprovadas"
-          value={approvedQuotes}
-          icon={<Plus />}
-          isActive={activeFilter === "approved"}
-          onClick={() => setActiveFilter("approved")}
-          variant="success"
-        />
-        <FilterMetricCard
-          title="Em Análise"
-          value={underReviewQuotes}
+        <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Todas Ativas"
+            value={totalActive}
+            icon={<FileText />}
+            isActive={activeFilter === "all"}
+            onClick={() => setActiveFilter("all")}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Rascunhos"
+            value={draftQuotes}
+            icon={<Edit />}
+            isActive={activeFilter === "draft"}
+            onClick={() => setActiveFilter("draft")}
+            variant="secondary"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Enviadas"
+            value={sentQuotes}
+            icon={<Eye />}
+            isActive={activeFilter === "sent"}
+            onClick={() => setActiveFilter("sent")}
+            variant="warning"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Aprovadas"
+            value={approvedQuotes}
+            icon={<Plus />}
+            isActive={activeFilter === "approved"}
+            onClick={() => setActiveFilter("approved")}
+            variant="success"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Em Análise"
+            value={underReviewQuotes}
           icon={<Archive />}
           isActive={activeFilter === "under_review"}
           onClick={() => setActiveFilter("under_review")}
           variant="default"
         />
+        </div>
       </div>
 
       {/* Additional Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -457,7 +471,7 @@ export default function Quotes() {
       </div>
 
       {/* Filters and Search */}
-      <Card className="card-corporate">
+      <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.5s' }}>
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -493,7 +507,7 @@ export default function Quotes() {
       </Card>
 
       {/* Quotes Table */}
-      <Card className="card-corporate">
+      <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.6s' }}>
         <CardHeader>
           <CardTitle>
             Lista de Cotações ({filteredQuotes.length})
