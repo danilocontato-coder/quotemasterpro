@@ -79,6 +79,13 @@ const navigation = [
     name: 'Analytics & Financeiro',
     items: [
       {
+        name: 'Prospecção Inteligente',
+        href: '/admin/prospecting',
+        icon: Bot,
+        description: 'IA para crescimento',
+        badge: 'IA'
+      },
+      {
         name: 'Analytics',
         href: '/admin/analytics',
         icon: TrendingUp,

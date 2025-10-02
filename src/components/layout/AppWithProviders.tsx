@@ -43,6 +43,7 @@ const Help = React.lazy(() => import('@/pages/Help'));
 
 // Admin pages
 const SuperAdminDashboard = React.lazy(() => import('@/pages/admin/SuperAdminDashboard'));
+const Prospecting = React.lazy(() => import('@/pages/admin/Prospecting'));
 const ClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManagement'));
 const SuppliersManagement = React.lazy(() => import('@/pages/admin/SuppliersManagement'));
 const AccountsManagement = React.lazy(() => import('@/pages/admin/AccountsManagement'));
@@ -149,6 +150,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="superadmin" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <SuperAdminDashboard />
+          </Suspense>
+        } />
+        <Route path="prospecting" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <Prospecting />
           </Suspense>
         } />
         <Route path="accounts" element={

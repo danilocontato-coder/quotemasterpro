@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_leads: {
+        Row: {
+          ai_insights: Json
+          assigned_to: string | null
+          city: string | null
+          contact_data: Json
+          converted_at: string | null
+          converted_to_client_id: string | null
+          converted_to_supplier_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_contacted_at: string | null
+          notes: string | null
+          region: string | null
+          score: number
+          segment: string
+          state: string | null
+          status: Database["public"]["Enums"]["lead_status"]
+          type: Database["public"]["Enums"]["lead_type"]
+          updated_at: string
+        }
+        Insert: {
+          ai_insights?: Json
+          assigned_to?: string | null
+          city?: string | null
+          contact_data?: Json
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          converted_to_supplier_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          notes?: string | null
+          region?: string | null
+          score: number
+          segment: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          type: Database["public"]["Enums"]["lead_type"]
+          updated_at?: string
+        }
+        Update: {
+          ai_insights?: Json
+          assigned_to?: string | null
+          city?: string | null
+          contact_data?: Json
+          converted_at?: string | null
+          converted_to_client_id?: string | null
+          converted_to_supplier_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_contacted_at?: string | null
+          notes?: string | null
+          region?: string | null
+          score?: number
+          segment?: string
+          state?: string | null
+          status?: Database["public"]["Enums"]["lead_status"]
+          type?: Database["public"]["Enums"]["lead_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_leads_converted_to_client_id_fkey"
+            columns: ["converted_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_leads_converted_to_supplier_id_fkey"
+            columns: ["converted_to_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_negotiation_settings: {
         Row: {
           active: boolean
@@ -1465,6 +1546,84 @@ export type Database = {
           },
         ]
       }
+      outreach_logs: {
+        Row: {
+          campaign_id: string | null
+          channel: Database["public"]["Enums"]["outreach_channel"]
+          clicked_at: string | null
+          converted: boolean | null
+          converted_at: string | null
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          external_message_id: string | null
+          id: string
+          lead_id: string
+          message_sent: string
+          metadata: Json | null
+          opened_at: string | null
+          responded_at: string | null
+          response_text: string | null
+          sent_at: string
+          subject: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          channel: Database["public"]["Enums"]["outreach_channel"]
+          clicked_at?: string | null
+          converted?: boolean | null
+          converted_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          external_message_id?: string | null
+          id?: string
+          lead_id: string
+          message_sent: string
+          metadata?: Json | null
+          opened_at?: string | null
+          responded_at?: string | null
+          response_text?: string | null
+          sent_at?: string
+          subject?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          channel?: Database["public"]["Enums"]["outreach_channel"]
+          clicked_at?: string | null
+          converted?: boolean | null
+          converted_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          external_message_id?: string | null
+          id?: string
+          lead_id?: string
+          message_sent?: string
+          metadata?: Json | null
+          opened_at?: string | null
+          responded_at?: string | null
+          response_text?: string | null
+          sent_at?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "prospecting_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "ai_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -1726,6 +1885,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prospecting_campaigns: {
+        Row: {
+          ai_generated_content: Json
+          channel: Database["public"]["Enums"]["outreach_channel"]
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          max_leads: number | null
+          metrics: Json
+          name: string
+          scheduled_at: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          target_filters: Json | null
+          target_region: string | null
+          target_segment: string
+          target_type: Database["public"]["Enums"]["lead_type"]
+          updated_at: string
+        }
+        Insert: {
+          ai_generated_content?: Json
+          channel: Database["public"]["Enums"]["outreach_channel"]
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          max_leads?: number | null
+          metrics?: Json
+          name: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          target_filters?: Json | null
+          target_region?: string | null
+          target_segment: string
+          target_type: Database["public"]["Enums"]["lead_type"]
+          updated_at?: string
+        }
+        Update: {
+          ai_generated_content?: Json
+          channel?: Database["public"]["Enums"]["outreach_channel"]
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          max_leads?: number | null
+          metrics?: Json
+          name?: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["campaign_status"]
+          target_filters?: Json | null
+          target_region?: string | null
+          target_segment?: string
+          target_type?: Database["public"]["Enums"]["lead_type"]
+          updated_at?: string
+        }
+        Relationships: []
       }
       quote_conversations: {
         Row: {
@@ -3416,6 +3638,10 @@ export type Database = {
         | "financeiro"
         | "suporte_cliente"
         | "fornecedor"
+      campaign_status: "draft" | "active" | "paused" | "completed" | "cancelled"
+      lead_status: "new" | "contacted" | "qualified" | "converted" | "lost"
+      lead_type: "client" | "supplier"
+      outreach_channel: "whatsapp" | "email" | "phone" | "linkedin"
       supplier_status: "pending" | "approved" | "suspended" | "rejected"
       user_status: "active" | "inactive" | "pending" | "suspended"
     }
@@ -3557,6 +3783,10 @@ export const Constants = {
         "suporte_cliente",
         "fornecedor",
       ],
+      campaign_status: ["draft", "active", "paused", "completed", "cancelled"],
+      lead_status: ["new", "contacted", "qualified", "converted", "lost"],
+      lead_type: ["client", "supplier"],
+      outreach_channel: ["whatsapp", "email", "phone", "linkedin"],
       supplier_status: ["pending", "approved", "suspended", "rejected"],
       user_status: ["active", "inactive", "pending", "suspended"],
     },

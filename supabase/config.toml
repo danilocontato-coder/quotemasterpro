@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.public-branding]
 verify_jwt = false
+
+[functions.ai-market-analysis]
+verify_jwt = true
+
+[functions.ai-lead-scoring]
+verify_jwt = true
