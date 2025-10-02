@@ -45,10 +45,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const { client: currentClient, isLoading: clientLoading } = useSupabaseCurrentClient();
   const [clientUsage, setClientUsage] = useState<ClientUsage | null>(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [dbUserPlan, setDbUserPlan] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Cache planos - executa apenas uma vez por sessão
   const fetchSubscriptionPlans = useCallback(async () => {
+    setPlansLoading(true);
     const cached = sessionStorage.getItem('subscription_plans');
     const cacheTime = sessionStorage.getItem('subscription_plans_time');
     
@@ -56,6 +59,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       const age = Date.now() - parseInt(cacheTime);
       if (age < 10 * 60 * 1000) { // 10 minutos
         setSubscriptionPlans(JSON.parse(cached));
+        setPlansLoading(false);
         return;
       }
     }
@@ -73,6 +77,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       sessionStorage.setItem('subscription_plans_time', Date.now().toString());
     } catch (error) {
       console.error('Erro ao buscar planos:', error);
+    } finally {
+      setPlansLoading(false);
     }
   }, []);
 
@@ -161,6 +167,23 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   }, [currentClient?.id, clientLoading, fetchClientUsage]);
 
+  // Buscar plano atual do usuário via RPC (retorna mesmo se inativo)
+  useEffect(() => {
+    if (!user) {
+      setDbUserPlan(null);
+      return;
+    }
+    (async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_current_user_plan');
+        if (error) throw error;
+        setDbUserPlan(data || null);
+      } catch (err) {
+        console.error('Erro ao buscar plano atual via RPC:', err);
+      }
+    })();
+  }, [user?.id]);
+
   const getPlanById = useCallback((planId: string) => {
     if (!planId) return undefined as any;
     const norm = String(planId).toLowerCase();
@@ -180,15 +203,15 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
 
     const planId = currentClient.subscription_plan_id || 'basic';
-    const userPlan = getPlanById(planId);
+    const plan = getPlanById(planId) || dbUserPlan;
     
-    if (!userPlan) {
+    if (!plan) {
       return { allowed: true, currentUsage: 0, limit: -1 };
     }
 
     switch (action) {
       case 'CREATE_QUOTE':
-        const maxQuotes = userPlan?.max_quotes_per_month || 0;
+        const maxQuotes = plan?.max_quotes_per_month || plan?.max_quotes || 0;
         const currentQuotes = clientUsage.quotes_this_month;
         
         return {
@@ -279,11 +302,31 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [clientUsage]);
 
   const userPlan = useMemo(() => {
+    // Se temos um plano via RPC, usar esse primeiro
+    if (dbUserPlan) {
+      console.log('✅ [SubscriptionContext] Plano via RPC:', {
+        id: dbUserPlan.id,
+        name: dbUserPlan.name,
+        display_name: dbUserPlan.display_name,
+        enabled_modules: dbUserPlan.enabled_modules
+      });
+      return dbUserPlan;
+    }
+
     const planId = currentClient?.subscription_plan_id || '';
     
-    if (!planId || subscriptionPlans.length === 0) {
-      console.warn('⚠️ [SubscriptionContext] Sem plan_id ou planos não carregados:', {
+    if (!planId) {
+      console.warn('⚠️ [SubscriptionContext] Sem plan_id no cliente:', {
         planId,
+        clientId: currentClient?.id
+      });
+      return undefined;
+    }
+
+    if (plansLoading || subscriptionPlans.length === 0) {
+      console.warn('⚠️ [SubscriptionContext] Planos ainda não carregados:', {
+        planId,
+        plansLoading,
         plansCount: subscriptionPlans.length,
         clientId: currentClient?.id
       });
@@ -304,10 +347,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (!foundPlan) {
       console.error('❌ [SubscriptionContext] Plano não encontrado:', {
         planId,
-        availablePlans: subscriptionPlans.map(p => p.id)
+        availablePlans: subscriptionPlans.map(p => ({ id: p.id, name: p.name }))
       });
     } else {
-      console.log('✅ [SubscriptionContext] Plano carregado:', {
+      console.log('✅ [SubscriptionContext] Plano encontrado:', {
         id: foundPlan.id,
         name: foundPlan.name,
         display_name: foundPlan.display_name,
@@ -316,7 +359,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
 
     return foundPlan;
-  }, [currentClient?.subscription_plan_id, getPlanById, subscriptionPlans]);
+  }, [dbUserPlan, currentClient?.subscription_plan_id, getPlanById, subscriptionPlans, plansLoading]);
 
   const value = useMemo(() => ({
     currentUsage: getCurrentUsage(),
