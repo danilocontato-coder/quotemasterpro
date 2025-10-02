@@ -68,62 +68,15 @@ const navigation = [
         description: 'Planos de assinatura'
       },
       {
-        name: 'Equipe Suporte',
-        href: '/admin/support-team',
-        icon: HeadphonesIcon,
-        description: 'Agentes de suporte'
+        name: 'Gestão de Cupons',
+        href: '/admin/coupons',
+        icon: CreditCard,
+        description: 'Cupons de desconto'
       }
     ]
   },
   {
-    name: 'Sistema',
-    items: [
-      {
-        name: 'Configurações',
-        href: '/admin/system',
-        icon: Settings,
-        description: 'Config. do sistema'
-      },
-      {
-        name: 'Marca',
-        href: '/admin/brand',
-        icon: Building2,
-        description: 'Logo e identidade'
-      },
-      {
-        name: 'Integrações & APIs',
-        href: '/admin/integrations',
-        icon: Zap,
-        description: 'APIs e integrações externas'
-      },
-      {
-        name: 'Auditoria',
-        href: '/admin/audit',
-        icon: Shield,
-        description: 'Logs e histórico de ações'
-      },
-      {
-        name: 'Banco de Dados',
-        href: '/admin/database',
-        icon: Database,
-        description: 'Gerenciamento DB'
-      },
-      {
-        name: 'Configuração IA',
-        href: '/admin/ai-config',
-        icon: Bot,
-        description: 'Negociação automática'
-      },
-      {
-        name: 'Configuração de Domínio',
-        href: '/admin/domain',
-        icon: Globe,
-        description: 'URL base para links'
-      }
-    ]
-  },
-  {
-    name: 'Analytics & Reports',
+    name: 'Analytics & Financeiro',
     items: [
       {
         name: 'Analytics',
@@ -170,42 +123,54 @@ const navigation = [
         name: 'Templates & Mensagens',
         href: '/admin/templates',
         icon: MessageSquare,
-        description: 'WhatsApp, Email, SMS e Notificações'
+        description: 'WhatsApp, Email, SMS'
       },
       {
-        name: 'Gestão de Cupons',
-        href: '/admin/coupons',
-        icon: CreditCard,
-        description: 'Cupons de desconto'
+        name: 'Equipe Suporte',
+        href: '/admin/support-team',
+        icon: HeadphonesIcon,
+        description: 'Agentes de suporte'
       }
     ]
   },
   {
-    name: 'Configurações',
+    name: 'Sistema & Configurações',
     items: [
       {
-        name: 'Sistema',
+        name: 'Configurações',
         href: '/admin/system',
         icon: Settings,
-        description: 'Configurações gerais do sistema'
+        description: 'Configurações do sistema'
       },
       {
         name: 'Marca',
         href: '/admin/brand',
         icon: Palette,
-        description: 'Personalização visual'
+        description: 'Logo e identidade visual'
       },
       {
         name: 'Domínio',
         href: '/admin/domain',
         icon: Globe,
-        description: 'Gerenciar domínio personalizado'
+        description: 'Domínio personalizado'
+      },
+      {
+        name: 'Integrações & APIs',
+        href: '/admin/integrations',
+        icon: Zap,
+        description: 'APIs externas'
+      },
+      {
+        name: 'Configuração IA',
+        href: '/admin/ai-config',
+        icon: Bot,
+        description: 'Negociação automática'
       },
       {
         name: 'Minha Conta',
         href: '/admin/user-settings',
         icon: UserCog,
-        description: 'Gerenciar dados e senha da conta'
+        description: 'Dados e senha da conta'
       }
     ]
   },
@@ -213,10 +178,22 @@ const navigation = [
     name: 'Administração',
     items: [
       {
+        name: 'Auditoria',
+        href: '/admin/audit',
+        icon: Shield,
+        description: 'Logs e histórico'
+      },
+      {
         name: 'Logs do Sistema',
         href: '/admin/logs',
         icon: Activity,
         description: 'Logs de atividade'
+      },
+      {
+        name: 'Banco de Dados',
+        href: '/admin/database',
+        icon: Database,
+        description: 'Gerenciamento DB'
       },
       {
         name: 'Monitoramento',
@@ -228,7 +205,7 @@ const navigation = [
         name: 'Ajuda',
         href: '/help',
         icon: HelpCircle,
-        description: 'Central de ajuda e documentação'
+        description: 'Central de ajuda'
       }
     ]
   }
