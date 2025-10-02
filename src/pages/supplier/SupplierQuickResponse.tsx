@@ -108,6 +108,26 @@ const SupplierQuickResponse = () => {
 
       if (quoteError) throw quoteError;
 
+      // VALIDAÇÃO CRÍTICA DE SEGURANÇA: Verificar se o fornecedor logado tem acesso a esta cotação
+      if (user?.role === 'supplier' && user?.supplierId && quoteData?.supplier_id) {
+        if (user.supplierId !== quoteData.supplier_id) {
+          console.error('⛔ [SECURITY] Supplier access denied:', {
+            loggedSupplierId: user.supplierId,
+            quoteSupplierId: quoteData.supplier_id
+          });
+          
+          toast({
+            title: "Acesso Negado",
+            description: "Esta cotação foi destinada a outro fornecedor. Você não tem permissão para acessá-la.",
+            variant: "destructive"
+          });
+          
+          setLoading(false);
+          navigate('/supplier', { replace: true });
+          return;
+        }
+      }
+
       // Buscar itens da cotação
       const { data: items, error: itemsError } = await supabase
         .from('quote_items')
