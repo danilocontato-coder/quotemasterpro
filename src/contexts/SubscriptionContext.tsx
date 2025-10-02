@@ -63,8 +63,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     try {
       const { data, error } = await supabase
         .from('subscription_plans')
-        .select('*')
-        .eq('status', 'active');
+        .select('*');
 
       if (error) throw error;
 
@@ -162,7 +161,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [currentClient?.id, clientLoading, fetchClientUsage]);
 
   const getPlanById = useCallback((planId: string) => {
-    return subscriptionPlans.find(p => p.id === planId);
+    if (!planId) return undefined as any;
+    const norm = String(planId).toLowerCase();
+    return (
+      subscriptionPlans.find(p => p.id === planId) ||
+      subscriptionPlans.find(p => (p.id || '').toLowerCase() === norm) ||
+      subscriptionPlans.find(p => (p.name || '').toLowerCase() === norm) ||
+      subscriptionPlans.find(p => (p.display_name || '').toLowerCase() === norm) ||
+      subscriptionPlans.find(p => (p.name || '').toLowerCase() === norm.replace(/^plan-/, '')) ||
+      subscriptionPlans.find(p => (p.id || '').toLowerCase() === `plan-${norm}`)
+    );
   }, [subscriptionPlans]);
 
   const checkLimit = useCallback((action: string, additionalCount: number = 1): LimitCheckResult => {
@@ -270,25 +278,28 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [clientUsage]);
 
   const userPlan = useMemo(() => {
-    const planId = currentClient?.subscription_plan_id || 'basic';
-    let foundPlan = getPlanById(planId);
-    
-    if (!foundPlan) {
+    const planId = currentClient?.subscription_plan_id || '';
+    let foundPlan = planId ? getPlanById(planId) : undefined;
+
+    if (!foundPlan && planId) {
+      const norm = planId.toLowerCase();
       foundPlan = subscriptionPlans.find(p => 
-        p.name === planId || 
-        p.name === planId.replace('plan-', '') ||
-        p.id === `plan-${planId}`
+        (p.name || '').toLowerCase() === norm ||
+        (p.name || '').toLowerCase() === norm.replace(/^plan-/, '') ||
+        (p.display_name || '').toLowerCase() === norm
       );
     }
-    
+
     if (!foundPlan) {
-      foundPlan = subscriptionPlans.find(p => 
-        p.name === 'basic' || 
-        p.id === 'basic' || 
-        p.id === 'plan-basic'
-      );
+      // Fallback para um plano básico comum
+      foundPlan = getPlanById('basic') || getPlanById('plan-basic');
     }
-    
+
+    if (!foundPlan && subscriptionPlans.length > 0) {
+      // Último recurso: primeiro plano disponível (para evitar undefined)
+      foundPlan = subscriptionPlans[0];
+    }
+
     return foundPlan;
   }, [currentClient?.subscription_plan_id, getPlanById, subscriptionPlans]);
 
