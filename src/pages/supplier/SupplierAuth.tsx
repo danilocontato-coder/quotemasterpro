@@ -131,8 +131,8 @@ const SupplierAuth = () => {
         description: "Login realizado com sucesso!"
       });
 
-      // Redirecionar para resposta da cotação
-      navigate(`/supplier/quote/${quoteId}/response/${token}`);
+      // Redirecionar para resposta da cotação (resposta rápida)
+      navigate(`/supplier/quick-response/${quoteId}/${token}`);
       
     } catch (error: any) {
       console.error('Login error:', error);
@@ -184,7 +184,7 @@ const SupplierAuth = () => {
         email: registerData.email,
         password: registerData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/supplier/quote/${quoteId}/response/${token}`,
+          emailRedirectTo: `${window.location.origin}/supplier/quick-response/${quoteId}/${token}`,
           data: {
             name: registerData.name,
             role: 'supplier'
@@ -228,7 +228,7 @@ const SupplierAuth = () => {
           if (profileError) throw profileError;
 
           toast({ title: 'Sucesso', description: 'Cadastro realizado e sessão criada.' });
-          navigate(`/supplier/quote/${quoteId}/response/${token}`);
+          navigate(`/supplier/quick-response/${quoteId}/${token}`);
         } else {
           // Sem sessão (confirmação de e-mail exigida): orientar próximo passo
           toast({

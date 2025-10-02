@@ -72,7 +72,7 @@ const SupplierQuickResponse = () => {
       
       // Se o usuário não está autenticado, redirecionar para login
       if (!user) {
-        navigate('/supplier/auth', { replace: true });
+        navigate(`/supplier/auth/${quoteId}/${token}` as any, { replace: true });
         return;
       }
       
