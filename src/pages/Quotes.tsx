@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Sparkles } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Sparkles, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -512,90 +512,117 @@ export default function Quotes() {
           return (
             <Card 
               key={quote.id} 
-              className="card-corporate hover:shadow-md transition-all hover-scale animate-fade-in" 
+              className="card-corporate hover:shadow-lg transition-all hover-scale animate-fade-in flex flex-col" 
               style={{ 
                 animationDelay: `${animationDelay}s`,
                 opacity: 0,
                 animationFillMode: 'forwards'
               }}
             >
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-base leading-tight">{quote.title}</CardTitle>
-                    <p className="text-xs text-muted-foreground font-mono mt-1">
-                      ID: {quote.id}
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base leading-tight line-clamp-2 mb-2">
+                      {quote.title}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {quote.id}
                     </p>
                   </div>
-                  <StatusProgressIndicator status={quote.status} />
+                  <div className="flex-shrink-0">
+                    <StatusProgressIndicator status={quote.status} />
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              
+              <CardContent className="space-y-4 flex-1">
                 {/* Quote Info */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Itens:</span>
-                    <span className="font-semibold">{quote.items_count || 0}</span>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Itens
+                    </span>
+                    <span className="font-semibold text-sm">{quote.items_count || 0}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Respostas:</span>
-                    <span className="font-semibold">{quote.responses_count || 0}/{quote.suppliers_sent_count || 0}</span>
+                  
+                  <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      Respostas
+                    </span>
+                    <span className="font-semibold text-sm">
+                      {quote.responses_count || 0}/{quote.suppliers_sent_count || 0}
+                    </span>
                   </div>
+                  
                   {quote.deadline && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Prazo:</span>
+                    <div className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-950 rounded-md border border-orange-200 dark:border-orange-800">
+                      <span className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Prazo
+                      </span>
                       <div className="text-right">
-                        <p className="font-semibold">{new Date(quote.deadline).toLocaleDateString('pt-BR')}</p>
-                        <p className="text-xs text-orange-600">
+                        <p className="font-semibold text-sm">{new Date(quote.deadline).toLocaleDateString('pt-BR')}</p>
+                        <p className="text-xs text-orange-600 dark:text-orange-400">
                           {Math.ceil((new Date(quote.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
                         </p>
                       </div>
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Criado em:</span>
-                    <span className="text-xs">{new Date(quote.created_at).toLocaleDateString('pt-BR')}</span>
-                  </div>
                 </div>
 
                 {/* Actions */}
-                <div className="pt-2 border-t border-border flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleViewClick(quote)}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    Ver
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleEditClick(quote)}
-                    disabled={quote.status === 'approved'}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  {(quote.status === 'draft' || quote.status === 'sent') && (
-                    <Suspense fallback={<Button variant="outline" size="sm"><Send className="h-4 w-4" /></Button>}>
-                      <SendQuoteToSuppliersModal
-                        quote={quote}
-                        trigger={
-                          <Button variant="outline" size="sm">
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                    </Suspense>
-                  )}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDeleteClick(quote)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div className="pt-3 border-t border-border mt-auto">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleViewClick(quote)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Visualizar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEditClick(quote)}
+                      disabled={quote.status === 'approved'}
+                      title={quote.status === 'approved' ? 'Não é possível editar cotações aprovadas' : 'Editar cotação'}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {(quote.status === 'draft' || quote.status === 'sent') && (
+                      <Suspense fallback={<Button variant="secondary" size="sm" className="flex-1" disabled><Send className="h-4 w-4 mr-2" />Enviar</Button>}>
+                        <SendQuoteToSuppliersModal
+                          quote={quote}
+                          trigger={
+                            <Button variant="secondary" size="sm" className="flex-1">
+                              <Send className="h-4 w-4 mr-2" />
+                              Enviar
+                            </Button>
+                          }
+                        />
+                      </Suspense>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDeleteClick(quote)}
+                      title={quote.status === 'draft' ? 'Excluir cotação' : 'Cancelar cotação'}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Criado em {new Date(quote.created_at).toLocaleDateString('pt-BR')}
+                  </p>
                 </div>
               </CardContent>
             </Card>
