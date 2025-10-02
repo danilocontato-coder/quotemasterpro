@@ -15,7 +15,8 @@ const SupplierAuth = () => {
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('login');
+  const [activeTab, setActiveTab] = useState('register'); // Começar na aba de cadastro
+  const [supplierEmail, setSupplierEmail] = useState<string>('');
   
   const [loginData, setLoginData] = useState({
     email: '',
@@ -33,7 +34,7 @@ const SupplierAuth = () => {
     confirmPassword: ''
   });
 
-  // Validar token e guardar contexto do link
+  // Validar token e buscar dados do fornecedor
   useEffect(() => {
     if (!quoteId || !token) {
       toast({ title: 'Link inválido', description: 'Parâmetros ausentes no link.', variant: 'destructive' });
@@ -41,7 +42,7 @@ const SupplierAuth = () => {
       return;
     }
     
-    // Validate token with the backend
+    // Validate token and fetch supplier email
     const validateToken = async () => {
       try {
         const { data, error } = await supabase.functions.invoke('validate-quote-token', {
@@ -59,6 +60,32 @@ const SupplierAuth = () => {
         }
         
         console.log('Token validated successfully:', data);
+        
+        // Buscar email do fornecedor para pré-preencher
+        const { data: quoteData } = await supabase
+          .from('quotes')
+          .select('supplier_id')
+          .eq('id', quoteId)
+          .single();
+        
+        if (quoteData?.supplier_id) {
+          const { data: supplier } = await supabase
+            .from('suppliers')
+            .select('email, name')
+            .eq('id', quoteData.supplier_id)
+            .single();
+          
+          if (supplier?.email) {
+            setSupplierEmail(supplier.email);
+            setRegisterData(prev => ({ 
+              ...prev, 
+              email: supplier.email,
+              name: supplier.name || ''
+            }));
+            setLoginData(prev => ({ ...prev, email: supplier.email }));
+          }
+        }
+        
         localStorage.setItem('supplier_quote_context', JSON.stringify({ 
           quoteId, 
           token, 
@@ -179,7 +206,45 @@ const SupplierAuth = () => {
     try {
       setLoading(true);
 
-      // Registrar usuário no Supabase Auth
+      // PASSO 1: Buscar o fornecedor vinculado à cotação
+      const { data: quoteData, error: quoteError } = await supabase
+        .from('quotes')
+        .select('supplier_id')
+        .eq('id', quoteId)
+        .single();
+
+      if (quoteError) throw new Error('Cotação não encontrada');
+
+      let targetSupplierId = null;
+
+      if (quoteData?.supplier_id) {
+        // Buscar dados do fornecedor da cotação
+        const { data: existingSupplier, error: supplierLookupError } = await supabase
+          .from('suppliers')
+          .select('id, email')
+          .eq('id', quoteData.supplier_id)
+          .single();
+
+        if (supplierLookupError) {
+          console.error('Erro ao buscar fornecedor:', supplierLookupError);
+        }
+
+        // Validar se o email do registro corresponde ao email do fornecedor cadastrado
+        if (existingSupplier && existingSupplier.email.toLowerCase() === registerData.email.toLowerCase()) {
+          targetSupplierId = existingSupplier.id;
+          console.log('✅ Email corresponde ao fornecedor cadastrado:', targetSupplierId);
+        } else if (existingSupplier) {
+          toast({
+            title: "Email não corresponde",
+            description: `Esta cotação foi enviada para ${existingSupplier.email}. Use esse email para se cadastrar.`,
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // PASSO 2: Registrar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: registerData.email,
         password: registerData.password,
@@ -199,35 +264,58 @@ const SupplierAuth = () => {
         try { localStorage.setItem('supplier_quote_context', JSON.stringify({ quoteId, token, email: registerData.email, ts: Date.now() })); } catch {}
 
         if (authData.session) {
-          // Usuário já autenticado (email auto-confirmado). Criar fornecedor e vincular perfil.
-          const { data: supplier, error: supplierError } = await supabase
-            .from('suppliers')
-            .insert({
-              name: registerData.name,
-              cnpj: registerData.cnpj,
-              email: registerData.email,
-              phone: registerData.phone,
-              city: registerData.city,
-              state: registerData.state,
-              status: 'active',
-              type: 'local'
-            })
-            .select('id')
-            .single();
-          if (supplierError) throw supplierError;
+          // PASSO 3: Vincular ao fornecedor existente ou criar novo
+          if (targetSupplierId) {
+            // Vincular ao fornecedor existente
+            console.log('🔗 Vinculando profile ao fornecedor existente:', targetSupplierId);
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update({ 
+                supplier_id: targetSupplierId, 
+                role: 'supplier',
+                onboarding_completed: true,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', authData.user.id);
+            if (profileError) throw profileError;
 
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ 
-              supplier_id: supplier.id, 
-              role: 'supplier',
-              onboarding_completed: true,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', authData.user.id);
-          if (profileError) throw profileError;
+            toast({ 
+              title: 'Conta vinculada!', 
+              description: 'Sua conta foi vinculada ao fornecedor cadastrado.' 
+            });
+          } else {
+            // Criar novo fornecedor se não houver um vinculado à cotação
+            console.log('🆕 Criando novo fornecedor para email:', registerData.email);
+            const { data: supplier, error: supplierError } = await supabase
+              .from('suppliers')
+              .insert({
+                name: registerData.name,
+                cnpj: registerData.cnpj,
+                email: registerData.email,
+                phone: registerData.phone,
+                city: registerData.city,
+                state: registerData.state,
+                status: 'active',
+                type: 'local'
+              })
+              .select('id')
+              .single();
+            if (supplierError) throw supplierError;
 
-          toast({ title: 'Sucesso', description: 'Cadastro realizado e sessão criada.' });
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .update({ 
+                supplier_id: supplier.id, 
+                role: 'supplier',
+                onboarding_completed: true,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', authData.user.id);
+            if (profileError) throw profileError;
+
+            toast({ title: 'Sucesso', description: 'Cadastro realizado e sessão criada.' });
+          }
+
           navigate(`/supplier/quick-response/${quoteId}/${token}`);
         } else {
           // Sem sessão (confirmação de e-mail exigida): orientar próximo passo
@@ -266,6 +354,10 @@ const SupplierAuth = () => {
             <CardTitle className="text-center">
               Responder Cotação
             </CardTitle>
+            <p className="text-sm text-muted-foreground text-center mt-2">
+              Se você já tem uma conta, faça <strong>login</strong>.<br />
+              Se é a primeira vez, clique em <strong>Cadastrar</strong> usando o email para o qual a cotação foi enviada.
+            </p>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -316,6 +408,13 @@ const SupplierAuth = () => {
               
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-4">
+                  {supplierEmail && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm">
+                      <p className="text-primary font-medium">📧 Cotação enviada para: {supplierEmail}</p>
+                      <p className="text-muted-foreground text-xs mt-1">Use este email para criar sua conta.</p>
+                    </div>
+                  )}
+                  
                   <div>
                     <Label htmlFor="registerName">Nome da Empresa *</Label>
                     <div className="relative">
@@ -348,6 +447,9 @@ const SupplierAuth = () => {
                   
                   <div>
                     <Label htmlFor="registerEmail">E-mail *</Label>
+                    {supplierEmail && (
+                      <p className="text-xs text-muted-foreground mb-1">Email pré-preenchido (não editável)</p>
+                    )}
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -357,7 +459,7 @@ const SupplierAuth = () => {
                         onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
                         placeholder="contato@empresa.com"
                         className="pl-10"
-                        disabled={loading}
+                        disabled={loading || !!supplierEmail}
                       />
                     </div>
                   </div>
