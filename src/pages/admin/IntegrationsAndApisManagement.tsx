@@ -95,6 +95,14 @@ const apiConfigurations: Record<string, ApiKey[]> = {
       required: false,
       configured: true
     }
+  ],
+  perplexity: [
+    {
+      name: 'PERPLEXITY_API_KEY',
+      description: 'Chave da API Perplexity para análise inteligente de mercado',
+      required: false,
+      configured: false
+    }
   ]
 };
 
@@ -151,6 +159,8 @@ const getServiceIcon = (service: string) => {
       return '🔄';
     case 'openai':
       return '🤖';
+    case 'perplexity':
+      return '🧠';
     default:
       return '🔧';
   }
@@ -166,6 +176,8 @@ const getServiceName = (service: string) => {
       return 'N8N (Automações)';
     case 'openai':
       return 'OpenAI (Inteligência Artificial)';
+    case 'perplexity':
+      return 'Perplexity (Análise de Mercado)';
     default:
       return service;
   }
@@ -223,20 +235,41 @@ export const IntegrationsAndApisManagement = () => {
 
   const fetchConfigured = async () => {
     try {
-      const { data } = await supabase
+      // Fetch OpenAI
+      const { data: openaiData } = await supabase
         .from('system_settings')
         .select('setting_value')
         .eq('setting_key', 'openai_api_key')
         .single();
 
-      let configured = false;
-      const val = data?.setting_value as any;
-      if (typeof val === 'string') configured = val.trim().length > 0;
-      else if (val && typeof val === 'object') {
-        const candidate = val.value || val.key || val.api_key || val.OPENAI_API_KEY || val.openai_api_key;
-        configured = typeof candidate === 'string' && candidate.trim().length > 0;
+      let openaiConfigured = false;
+      const openaiVal = openaiData?.setting_value as any;
+      if (typeof openaiVal === 'string') openaiConfigured = openaiVal.trim().length > 0;
+      else if (openaiVal && typeof openaiVal === 'object') {
+        const candidate = openaiVal.value || openaiVal.key || openaiVal.api_key || openaiVal.OPENAI_API_KEY || openaiVal.openai_api_key;
+        openaiConfigured = typeof candidate === 'string' && candidate.trim().length > 0;
       }
-      setConfiguredKeys(prev => ({ ...prev, OPENAI_API_KEY: configured }));
+
+      // Fetch Perplexity
+      const { data: perplexityData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'perplexity_api_key')
+        .single();
+
+      let perplexityConfigured = false;
+      const perplexityVal = perplexityData?.setting_value as any;
+      if (typeof perplexityVal === 'string') perplexityConfigured = perplexityVal.trim().length > 0;
+      else if (perplexityVal && typeof perplexityVal === 'object') {
+        const candidate = perplexityVal.value || perplexityVal.key || perplexityVal.api_key || perplexityVal.PERPLEXITY_API_KEY || perplexityVal.perplexity_api_key;
+        perplexityConfigured = typeof candidate === 'string' && candidate.trim().length > 0;
+      }
+
+      setConfiguredKeys(prev => ({ 
+        ...prev, 
+        OPENAI_API_KEY: openaiConfigured,
+        PERPLEXITY_API_KEY: perplexityConfigured
+      }));
     } catch (e) {
       console.error('[IntegrationsAndApis] fetchConfigured error', e);
     }
@@ -266,6 +299,23 @@ export const IntegrationsAndApisManagement = () => {
           await supabase
             .from('system_settings')
             .insert({ setting_key: 'openai_api_key', setting_value: { value: raw }, description: 'Chave da API OpenAI' });
+        }
+      } else if (keyName === 'PERPLEXITY_API_KEY') {
+        const { data: existing } = await supabase
+          .from('system_settings')
+          .select('id')
+          .eq('setting_key', 'perplexity_api_key')
+          .single();
+
+        if (existing?.id) {
+          await supabase
+            .from('system_settings')
+            .update({ setting_value: { value: raw } })
+            .eq('id', existing.id);
+        } else {
+          await supabase
+            .from('system_settings')
+            .insert({ setting_key: 'perplexity_api_key', setting_value: { value: raw }, description: 'Chave da API Perplexity para análise de mercado' });
         }
       }
 
@@ -374,7 +424,7 @@ export const IntegrationsAndApisManagement = () => {
           {/* Tab Chaves de API */}
           <TabsContent value="api-keys" className="space-y-6">
             <Tabs defaultValue="stripe" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 {Object.keys(apiConfigurations).map((service) => (
                   <TabsTrigger key={service} value={service} className="flex items-center gap-2">
                     <span>{getServiceIcon(service)}</span>
