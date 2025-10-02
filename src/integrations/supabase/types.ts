@@ -2872,6 +2872,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           avatar_url: string | null
@@ -3237,6 +3258,10 @@ export type Database = {
       }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      has_role_text: {
+        Args: { _role: string; _user_id: string }
         Returns: boolean
       }
       initialize_client_data: {
