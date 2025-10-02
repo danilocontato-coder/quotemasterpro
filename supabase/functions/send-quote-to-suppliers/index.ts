@@ -681,7 +681,7 @@ const handler = async (req: Request): Promise<Response> => {
             : null;
 
           // Use short link if available, otherwise fallback to long link
-          const supplierProposalLink = shortLinkEntry?.short_link || linkEntry?.link || `${frontendBaseUrl}/supplier/auth/${quoteId}/fallback-token`;
+          const supplierProposalLink = shortLinkEntry?.short_link || linkEntry?.link || `${frontendBaseUrl}/supplier/quick-response/${quoteId}/fallback-token`;
 
           // Create supplier-specific template variables
           const supplierTemplateVars = {

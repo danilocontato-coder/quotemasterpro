@@ -125,7 +125,7 @@ serve(async (req) => {
     }
     
     const shortUrl = `${baseUrl}/s/${shortCode}`
-    const fullUrl = `${baseUrl}/supplier/auth/${quote_id}/${fullToken}`
+    const fullUrl = `${baseUrl}/supplier/quick-response/${quote_id}/${fullToken}`
 
     return new Response(
       JSON.stringify({
