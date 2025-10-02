@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Eye, EyeOff, MessageSquare, Mail, CreditCard, Zap, Brain, Truck, Globe, Building, Users } from "lucide-react";
+import { Eye, EyeOff, MessageSquare, Mail, CreditCard, Zap, Brain, Truck, Globe, Building, Users, Sparkles } from "lucide-react";
 import { Integration } from "@/hooks/useSupabaseIntegrations";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -111,7 +111,7 @@ const integrationTypes = [
     id: 'perplexity',
     name: 'Perplexity AI',
     description: 'Análise inteligente de mercado com IA',
-    icon: Brain,
+    icon: Sparkles,
     fields: [
       { key: 'api_key', label: 'API Key', type: 'password', required: false, help: 'Deixe vazio para usar chave global configurada em API Keys' },
       { key: 'model', label: 'Modelo', type: 'select', options: ['llama-3.1-sonar-small-128k-online', 'llama-3.1-sonar-large-128k-online', 'llama-3.1-sonar-huge-128k-online'], required: true },
