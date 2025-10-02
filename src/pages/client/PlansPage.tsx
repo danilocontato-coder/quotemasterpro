@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Zap, Star, CreditCard, RefreshCw, Settings, Crown, Users, FileText, Building2, Database, Package, TrendingUp, Infinity, AlertTriangle } from 'lucide-react';
+import { Check, Zap, Star, CreditCard, RefreshCw, Crown, Users, FileText, Building2, Database, Package, TrendingUp, Infinity, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -108,25 +108,6 @@ export const PlansPage = () => {
     }
   };
 
-  const handleManageSubscription = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível acessar o portal de gerenciamento",
-        variant: "destructive",
-      });
-    }
-  };
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('pt-BR', {
@@ -260,16 +241,6 @@ export const PlansPage = () => {
                 )}
               </CardDescription>
             </div>
-            {!usageLoading && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleManageSubscription}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Gerenciar
-              </Button>
-            )}
           </div>
         </CardHeader>
         {usageLoading ? (
@@ -374,41 +345,6 @@ export const PlansPage = () => {
         )}
       </Card>
 
-      {/* Status da Assinatura */}
-      {subscriptionStatus.subscribed && (
-        <Alert className="max-w-2xl mx-auto">
-          <Crown className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <div>
-              <strong>Assinatura Ativa:</strong> {subscriptionStatus.subscription_tier}
-              {subscriptionStatus.subscription_end && (
-                <span className="ml-2 text-sm text-muted-foreground">
-                  • Renovação: {formatDate(subscriptionStatus.subscription_end)}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={checkSubscriptionStatus}
-                disabled={checkingSubscription}
-              >
-                <RefreshCw className={`h-3 w-3 mr-1 ${checkingSubscription ? 'animate-spin' : ''}`} />
-                Atualizar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleManageSubscription}
-              >
-                <Settings className="h-3 w-3 mr-1" />
-                Gerenciar
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Grid de Planos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
@@ -524,35 +460,30 @@ export const PlansPage = () => {
 
                 {/* Botão de Ação */}
                 <div className="pt-4">
-                  {isCurrentPlan ? (
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={handleManageSubscription}
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Gerenciar Assinatura
-                    </Button>
-                  ) : (
-                    <Button 
-                      className="w-full" 
-                      onClick={() => handlePlanSelection(plan.id)}
-                      disabled={creatingCheckout === plan.id}
-                      style={{ backgroundColor: plan.custom_color }}
-                    >
-                      {creatingCheckout === plan.id ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Processando...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          {subscriptionStatus.subscribed ? 'Alterar Plano' : 'Assinar Agora'}
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  <Button 
+                    className="w-full" 
+                    onClick={() => handlePlanSelection(plan.id)}
+                    disabled={creatingCheckout === plan.id || isCurrentPlan}
+                    variant={isCurrentPlan ? "outline" : "default"}
+                    style={!isCurrentPlan ? { backgroundColor: plan.custom_color } : undefined}
+                  >
+                    {isCurrentPlan ? (
+                      <>
+                        <Crown className="h-4 w-4 mr-2" />
+                        Seu Plano Atual
+                      </>
+                    ) : creatingCheckout === plan.id ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        {subscriptionStatus.subscribed ? 'Alterar Plano' : 'Assinar Agora'}
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
