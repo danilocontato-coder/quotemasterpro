@@ -102,6 +102,27 @@ const SupplierQuoteResponse = () => {
         console.error('Error fetching quote items:', itemsError);
       }
 
+      // Buscar dados do fornecedor vinculado à cotação (se houver)
+      if (quote?.supplier_id) {
+        const { data: supplier, error: supplierError } = await supabase
+          .from('suppliers')
+          .select('id, name, cnpj, email, phone, whatsapp')
+          .eq('id', quote.supplier_id)
+          .maybeSingle();
+
+        if (!supplierError && supplier) {
+          // Preencher dados do fornecedor automaticamente
+          setSupplierData({
+            name: supplier.name || '',
+            cnpj: supplier.cnpj || '',
+            email: supplier.email || '',
+            phone: supplier.phone || '',
+            whatsapp: supplier.whatsapp || ''
+          });
+          setExistingSupplier(supplier);
+        }
+      }
+
       startTransition(() => {
         setQuote({
           ...quote,
