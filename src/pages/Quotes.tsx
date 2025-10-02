@@ -23,7 +23,6 @@ const QuoteComparisonButton = lazy(() => import("@/components/quotes/QuoteCompar
 const DecisionMatrixManager = lazy(() => import("@/components/quotes/DecisionMatrixManager").then(m => ({ default: m.DecisionMatrixManager })));
 const QuoteDetailModal = lazy(() => import("@/components/quotes/QuoteDetailModal").then(m => ({ default: m.QuoteDetailModal })));
 const StatusProgressIndicator = lazy(() => import("@/components/quotes/StatusProgressIndicator").then(m => ({ default: m.StatusProgressIndicator })));
-const EconomyNotification = lazy(() => import("@/components/quotes/EconomyNotification").then(m => ({ default: m.EconomyNotification, useEconomyAlerts: m.useEconomyAlerts })));
 const SendQuoteToSuppliersModal = lazy(() => import("@/components/quotes/SendQuoteToSuppliersModal").then(m => ({ default: m.SendQuoteToSuppliersModal })));
 const DocumentUploadModal = lazy(() => import("@/components/quotes/DocumentUploadModal").then(m => ({ default: m.DocumentUploadModal })));
 const AIQuoteChat = lazy(() => import("@/components/quotes/AIQuoteChat").then(m => ({ default: m.AIQuoteChat })));
