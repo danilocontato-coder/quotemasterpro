@@ -108,6 +108,18 @@ const integrationTypes = [
     ]
   },
   {
+    id: 'perplexity',
+    name: 'Perplexity AI',
+    description: 'Análise inteligente de mercado com IA',
+    icon: Brain,
+    fields: [
+      { key: 'api_key', label: 'API Key', type: 'password', required: false, help: 'Deixe vazio para usar chave global configurada em API Keys' },
+      { key: 'model', label: 'Modelo', type: 'select', options: ['llama-3.1-sonar-small-128k-online', 'llama-3.1-sonar-large-128k-online', 'llama-3.1-sonar-huge-128k-online'], required: true },
+      { key: 'temperature', label: 'Temperature', type: 'number', required: false, placeholder: '0.2' },
+      { key: 'max_tokens', label: 'Max Tokens', type: 'number', required: false, placeholder: '1000' }
+    ]
+  },
+  {
     id: 'generic_webhook',
     name: 'Webhook Genérico',
     description: 'Webhook personalizado para integrações customizadas',
