@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { OptimizedSkeleton } from "@/components/ui/optimized-components";
 import { InitialLoader } from "@/components/layout/InitialLoader";
+import { PageLoader } from "@/components/ui/page-loader";
 
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
@@ -265,6 +266,19 @@ export default function Quotes() {
     { value: "approved", label: "Aprovadas" },
     { value: "rejected", label: "Reprovadas" },
   ];
+
+  if (isLoading) {
+    return (
+      <PageLoader
+        hasHeader={true}
+        hasMetrics={true}
+        metricsCount={6}
+        hasSearch={true}
+        hasGrid={true}
+        gridColumns={3}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

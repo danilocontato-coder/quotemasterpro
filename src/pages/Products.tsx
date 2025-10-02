@@ -98,6 +98,19 @@ export default function Products() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <PageLoader
+        hasHeader={true}
+        hasMetrics={true}
+        metricsCount={6}
+        hasSearch={true}
+        hasGrid={true}
+        gridColumns={3}
+      />
+    );
+  }
+
   const handleViewItem = (item: any) => {
     setSelectedItem(item);
     setViewModalOpen(true);
