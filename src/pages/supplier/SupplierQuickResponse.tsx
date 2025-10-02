@@ -218,6 +218,20 @@ const SupplierQuickResponse = () => {
 
       if (responseError) throw responseError;
 
+      // Notificar cliente sobre nova proposta
+      try {
+        await supabase.functions.invoke('notify-client-proposal', {
+          body: {
+            quoteId: quoteId,
+            supplierName: supplierData.name,
+            totalAmount: parseFloat(proposalData.totalAmount)
+          }
+        });
+      } catch (notifyError) {
+        console.error('Erro ao notificar cliente:', notifyError);
+        // Não bloqueia o fluxo se notificação falhar
+      }
+
       toast({
         title: "Proposta enviada!",
         description: "Sua proposta foi enviada com sucesso",
