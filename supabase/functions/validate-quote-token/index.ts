@@ -13,9 +13,10 @@ serve(async (req) => {
   }
 
   try {
+    // Use SERVICE_ROLE_KEY to bypass RLS and validate any token
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     const { quote_id, token } = await req.json()
