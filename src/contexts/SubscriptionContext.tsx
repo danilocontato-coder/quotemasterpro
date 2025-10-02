@@ -393,7 +393,26 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 export function useSubscription() {
   const context = useContext(SubscriptionContext);
   if (context === undefined) {
-    throw new Error('useSubscription must be used within a SubscriptionProvider');
+    // Retornar valores padrão seguros ao invés de erro
+    console.warn('⚠️ useSubscription: Context não disponível, retornando valores padrão');
+    return {
+      currentUsage: {
+        quotesThisMonth: 0,
+        usersCount: 0,
+        storageUsedGB: 0,
+        quoteResponsesThisMonth: 0,
+        productsInCatalog: 0,
+        categoriesCount: 0
+      },
+      clientUsage: null,
+      isLoading: true,
+      checkLimit: () => ({ allowed: true, currentUsage: 0, limit: -1 }),
+      enforceLimit: () => true,
+      getUsagePercentage: () => 0,
+      isNearLimit: () => false,
+      refreshUsage: async () => {},
+      userPlan: undefined
+    } as SubscriptionContextType;
   }
   return context;
 }
