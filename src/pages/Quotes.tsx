@@ -506,233 +506,196 @@ export default function Quotes() {
         </CardContent>
       </Card>
 
-      {/* Quotes Table */}
-      <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.6s' }}>
-        <CardHeader>
-          <CardTitle>
-            Lista de Cotações ({filteredQuotes.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="table-corporate">
-              <thead>
-                <tr>
-                  <th>Título</th>
-                  <th>Status</th>
-                  <th>Itens</th>
-                  <th>Respostas</th>
-                  <th>Prazo</th>
-                  <th>Criado em</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentQuotes.map((quote) => (
-                  <tr key={quote.id}>
-                    <td>
-                      <div>
-                        <p className="font-medium">{quote.title}</p>
-                        <p className="text-sm text-muted-foreground font-mono">ID: {quote.id}</p>
-                      </div>
-                    </td>
-                    <td>
-                      <StatusProgressIndicator status={quote.status} />
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">{quote.items_count || 0} item(s)</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="text-sm">
-                        {quote.responses_count || 0}/{quote.suppliers_sent_count || 0}
-                        <p className="text-xs text-muted-foreground">respostas</p>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="text-sm">
-                        {quote.deadline ? (
-                          <>
-                            <p>{new Date(quote.deadline).toLocaleDateString('pt-BR')}</p>
-                            <p className="text-xs text-orange-600">
-                              {Math.ceil((new Date(quote.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias restantes
-                            </p>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">Sem prazo</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <p className="text-sm">
-                        {new Date(quote.created_at).toLocaleDateString('pt-BR')}
-                      </p>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => handleViewClick(quote)}
-                          title="Visualizar"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => handleEditClick(quote)}
-                          title="Editar"
-                           disabled={quote.status === 'approved'}
-                         >
-                           <Edit className="h-4 w-4" />
-                         </Button>
-                          {/* Send to Suppliers button - only for draft and sent quotes */}
-                          {(quote.status === 'draft' || quote.status === 'sent') && (
-                            <SendQuoteToSuppliersModal
-                              quote={quote}
-                              trigger={
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 text-blue-600 hover:text-blue-700"
-                                  title="Enviar para Fornecedores"
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                              }
-                            />
-                          )}
-                          
-                          {/* Comparator button - only show for quotes with proposals */}
-                           {(quote.status === 'sent' || quote.status === 'receiving' || quote.status === 'received' || quote.status === 'under_review') && (quote.responses_count || 0) >= 1 && (
-                           <QuoteComparisonButton
-                             quoteId={quote.id}
-                             quoteTitle={quote.title}
-                             responsesCount={quote.responses_count || 0}
-                             disabled={false}
-                           />
-                          )}
-                         
-                          {/* Mark as Received button - only for quotes with status 'received' but not yet approved */}
-                          {quote.status === 'received' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-green-600 hover:text-green-700"
-                              title="Marcar como Recebido"
-                              onClick={() => handleMarkAsReceived(quote)}
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                        
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          title={quote.status === 'draft' ? 'Excluir' : 'Cancelar'}
-                          onClick={() => handleDeleteClick(quote)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Paginação */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t">
-              <div className="text-sm text-muted-foreground">
-                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredQuotes.length)} de {filteredQuotes.length} cotações
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Anterior
-                </Button>
-                
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className="w-10"
-                    >
-                      {page}
-                    </Button>
-                  ))}
+      {/* Quotes Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {currentQuotes.map((quote, index) => {
+          const animationDelay = 0.5 + (index * 0.05);
+          return (
+            <Card 
+              key={quote.id} 
+              className="card-corporate hover:shadow-md transition-all hover-scale animate-fade-in" 
+              style={{ 
+                animationDelay: `${animationDelay}s`,
+                opacity: 0,
+                animationFillMode: 'forwards'
+              }}
+            >
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-base leading-tight">{quote.title}</CardTitle>
+                    <p className="text-xs text-muted-foreground font-mono mt-1">
+                      ID: {quote.id}
+                    </p>
+                  </div>
+                  <StatusProgressIndicator status={quote.status} />
                 </div>
-                
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Quote Info */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Itens:</span>
+                    <span className="font-semibold">{quote.items_count || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Respostas:</span>
+                    <span className="font-semibold">{quote.responses_count || 0}/{quote.suppliers_sent_count || 0}</span>
+                  </div>
+                  {quote.deadline && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Prazo:</span>
+                      <div className="text-right">
+                        <p className="font-semibold">{new Date(quote.deadline).toLocaleDateString('pt-BR')}</p>
+                        <p className="text-xs text-orange-600">
+                          {Math.ceil((new Date(quote.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Criado em:</span>
+                    <span className="text-xs">{new Date(quote.created_at).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-2 border-t border-border flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleViewClick(quote)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Ver
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleEditClick(quote)}
+                    disabled={quote.status === 'approved'}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  {(quote.status === 'draft' || quote.status === 'sent') && (
+                    <Suspense fallback={<Button variant="outline" size="sm"><Send className="h-4 w-4" /></Button>}>
+                      <SendQuoteToSuppliersModal
+                        quote={quote}
+                        trigger={
+                          <Button variant="outline" size="sm">
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                    </Suspense>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleDeleteClick(quote)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between animate-fade-in" style={{ animationDelay: '0.8s' }}>
+          <div className="text-sm text-muted-foreground">
+            Mostrando {startIndex + 1} a {Math.min(endIndex, filteredQuotes.length)} de {filteredQuotes.length} cotações
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <Button
-                  variant="outline"
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(page)}
+                  className="w-10"
                 >
-                  Próxima
-                  <ChevronRight className="h-4 w-4" />
+                  {page}
                 </Button>
-              </div>
+              ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Create/Edit Quote Modal */}
-      <CreateQuoteModalSupabase
-        open={isCreateModalOpen}
-        onOpenChange={(open) => {
-          setIsCreateModalOpen(open);
-          if (!open) {
-            setEditingQuote(null);
-          }
-        }}
-        onQuoteCreate={editingQuote ? handleQuoteUpdate : handleQuoteCreate}
-        editingQuote={editingQuote}
-      />
+      <Suspense fallback={null}>
+        <CreateQuoteModalSupabase
+          open={isCreateModalOpen}
+          onOpenChange={(open) => {
+            setIsCreateModalOpen(open);
+            if (!open) {
+              setEditingQuote(null);
+            }
+          }}
+          onQuoteCreate={editingQuote ? handleQuoteUpdate : handleQuoteCreate}
+          editingQuote={editingQuote}
+        />
+      </Suspense>
 
       {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        open={isDeleteModalOpen}
-        onOpenChange={setIsDeleteModalOpen}
-        quote={quoteToDelete}
-        onConfirm={handleDeleteConfirm}
-      />
+      <Suspense fallback={null}>
+        <DeleteConfirmationModal
+          open={isDeleteModalOpen}
+          onOpenChange={setIsDeleteModalOpen}
+          quote={quoteToDelete}
+          onConfirm={handleDeleteConfirm}
+        />
+      </Suspense>
 
       {/* Quote Detail Modal */}
-      <QuoteDetailModal
-        open={isDetailModalOpen}
-        onClose={() => {
-          setIsDetailModalOpen(false);
-          setViewingQuote(null);
-        }}
-        quote={viewingQuote}
-        onStatusChange={(quoteId, newStatus) => {
-          updateQuote(quoteId, { status: newStatus });
-        }}
-      />
+      <Suspense fallback={null}>
+        <QuoteDetailModal
+          open={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setViewingQuote(null);
+          }}
+          quote={viewingQuote}
+          onStatusChange={(quoteId, newStatus) => {
+            updateQuote(quoteId, { status: newStatus });
+          }}
+        />
+      </Suspense>
 
       {/* Decision Matrix Manager */}
-      <DecisionMatrixManager
-        open={isMatrixManagerOpen}
-        onClose={() => setIsMatrixManagerOpen(false)}
-      />
+      <Suspense fallback={null}>
+        <DecisionMatrixManager
+          open={isMatrixManagerOpen}
+          onClose={() => setIsMatrixManagerOpen(false)}
+        />
+      </Suspense>
 
       {/* Empty State */}
       {filteredQuotes.length === 0 && (
@@ -790,6 +753,8 @@ export default function Quotes() {
           }}
         />
       </Suspense>
+
+      {/* Economy Notification - Removed for now */}
     </div>
   );
 }
