@@ -174,26 +174,27 @@ export default function Suppliers() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+      <div className="flex flex-col gap-4 animate-fade-in">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
             Fornecedores
           </h1>
-          <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+          <p className="text-sm md:text-base text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
             Gerencie sua rede de fornecedores e parceiros
           </p>
         </div>
-        <div className="flex gap-2 animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+        <div className="flex flex-col sm:flex-row gap-2 animate-fade-in w-full" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
             <Button 
               variant="outline"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 justify-center w-full sm:w-auto"
               onClick={() => setShowNewGroupModal(true)}
             >
               <UserPlus className="h-4 w-4" />
-              Criar Grupo
+              <span className="hidden sm:inline">Criar Grupo</span>
+              <span className="sm:hidden">Grupo</span>
             </Button>
             <Button 
-              className="btn-corporate flex items-center gap-2"
+              className="btn-corporate flex items-center gap-2 justify-center w-full sm:w-auto sm:ml-auto"
               onClick={() => setShowNewSupplierModal(true)}
             >
               <Plus className="h-4 w-4" />
@@ -203,7 +204,7 @@ export default function Suppliers() {
       </div>
 
       {/* Filter Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
         <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
           <FilterMetricCard
             title="Total"

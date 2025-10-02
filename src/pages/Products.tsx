@@ -191,39 +191,45 @@ export default function Products() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+      <div className="flex flex-col gap-4 animate-fade-in">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
             Catálogo de Itens
           </h1>
-          <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <p className="text-sm md:text-base text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
             Gerencie produtos e serviços para facilitar cotações e controle de estoque
           </p>
         </div>
-        <div className="flex gap-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <Button 
-            variant="outline" 
-            onClick={() => setLogModalOpen(true)}
-            className="flex items-center gap-2"
-          >
-            <History className="h-4 w-4" />
-            Logs
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => setImportModalOpen(true)}
-            className="flex items-center gap-2"
-          >
-            <Upload className="h-4 w-4" />
-            Importar NF
-          </Button>
-          <CategoryManager />
-          <CreateItemModal onItemCreate={handleItemCreate} />
+        <div className="flex flex-col sm:flex-row gap-2 animate-fade-in w-full" style={{ animationDelay: '0.3s' }}>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setLogModalOpen(true)}
+              className="flex items-center gap-2 justify-center"
+            >
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">Logs</span>
+              <span className="sm:hidden">Logs</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setImportModalOpen(true)}
+              className="flex items-center gap-2 justify-center"
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Importar NF</span>
+              <span className="sm:hidden">NF</span>
+            </Button>
+          </div>
+          <div className="flex gap-2 sm:ml-auto">
+            <CategoryManager />
+            <CreateItemModal onItemCreate={handleItemCreate} />
+          </div>
         </div>
       </div>
 
       {/* Filter Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
         <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
           <FilterMetricCard
             title="Total"

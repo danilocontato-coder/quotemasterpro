@@ -115,14 +115,14 @@ export default function Dashboard() {
       
       {/* Page Header */}
       <div className="flex flex-col gap-2 animate-fade-in">
-        <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>Dashboard</h1>
-        <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
           Visão geral do sistema de cotações e orçamentos
         </p>
       </div>
 
       {/* Primary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
         <>
           <MetricCard
               title="Total de Cotações"
@@ -154,7 +154,7 @@ export default function Dashboard() {
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <>
           <MetricCard
               title="Gasto Mensal"
@@ -195,7 +195,7 @@ export default function Dashboard() {
       </div>
 
       {/* Usage Limits and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 animate-fade-in" style={{ animationDelay: '0.5s' }}>
         <div className="lg:col-span-2">
           <QuickActions />
         </div>
@@ -209,7 +209,7 @@ export default function Dashboard() {
       <RatingPrompts />
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
         {/* Recent Activity */}
         <Card className="card-corporate">
           <CardHeader>

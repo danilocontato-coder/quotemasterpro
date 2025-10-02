@@ -37,22 +37,22 @@ export function SupplierLayout() {
         
         <div className="flex-1 flex flex-col">
           {/* Top Header */}
-          <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
-            <div className="flex items-center gap-4">
+          <header className="h-14 md:h-16 border-b border-border bg-card flex items-center justify-between px-3 md:px-6">
+            <div className="flex items-center gap-2 md:gap-4">
               <SidebarTrigger />
-              <div className="relative">
+              <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="Buscar cotações, propostas..."
-                  className="pl-10 w-80"
+                  className="pl-10 w-60 lg:w-80"
                 />
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              {/* Supplier Name */}
-              <div className="text-right mr-4">
-                <p className="text-xs font-medium text-foreground">{supplierName}</p>
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* Supplier Name - Hidden on mobile */}
+              <div className="text-right mr-2 md:mr-4 hidden sm:block">
+                <p className="text-xs font-medium text-foreground truncate max-w-[120px] md:max-w-none">{supplierName}</p>
                 <p className="text-[10px] text-muted-foreground">Plano {planDisplayName}</p>
               </div>
               
@@ -63,7 +63,7 @@ export function SupplierLayout() {
 
           {/* Main Content */}
           <main className="flex-1 overflow-auto">
-            <div className="p-6">
+            <div className="p-3 md:p-6">
               <Outlet />
             </div>
           </main>
