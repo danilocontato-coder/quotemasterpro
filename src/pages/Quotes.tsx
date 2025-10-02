@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Sparkles, Clock } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Sparkles, Clock, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -574,6 +574,19 @@ export default function Quotes() {
 
                 {/* Actions */}
                 <div className="pt-3 border-t border-border mt-auto">
+                  {/* Compare Button - Featured when multiple responses */}
+                  {quote.responses_count >= 2 && (
+                    <div className="mb-2">
+                      <Suspense fallback={<Button variant="outline" size="sm" className="w-full" disabled><BarChart3 className="h-4 w-4 mr-2" />Comparar</Button>}>
+                        <QuoteComparisonButton
+                          quoteId={quote.id}
+                          quoteTitle={quote.title}
+                          responsesCount={quote.responses_count}
+                        />
+                      </Suspense>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center gap-2 mb-2">
                     <Button 
                       variant="default" 

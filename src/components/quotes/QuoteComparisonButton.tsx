@@ -122,15 +122,15 @@ export function QuoteComparisonButton({
   return (
     <>
       <Button
-        variant="outline"
+        variant="default"
         size="sm"
         onClick={() => setShowComparison(true)}
         disabled={disabled || !hasProposals || isLoading}
-        className="flex items-center gap-2"
-        title={hasProposals ? 'Comparar propostas' : 'Aguardando propostas'}
+        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+        title={hasProposals ? 'Comparar propostas recebidas' : 'Aguardando propostas'}
       >
         <BarChart3 className="h-4 w-4" />
-        {isLoading ? 'Carregando...' : `Comparar (${proposals.length})`}
+        {isLoading ? 'Carregando...' : `Comparar Propostas (${proposals.length})`}
       </Button>
 
       <QuoteComparison
