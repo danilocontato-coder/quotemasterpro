@@ -341,10 +341,12 @@ export default function Payments() {
                 Próxima
                 <ChevronRight className="h-4 w-4" />
               </Button>
-          )}
+            </div>
+          </div>
+        )}
 
-      {/* Empty State */}
-      {filteredPayments.length === 0 && (
+        {/* Empty State */}
+        {filteredPayments.length === 0 && (
         <Card className="card-corporate">
           <CardContent className="p-12 text-center">
             <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
