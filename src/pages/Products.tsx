@@ -178,14 +178,16 @@ export default function Products() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Catálogo de Itens</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            Catálogo de Itens
+          </h1>
+          <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
             Gerencie produtos e serviços para facilitar cotações e controle de estoque
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
           <Button 
             variant="outline" 
             onClick={() => setLogModalOpen(true)}
@@ -209,58 +211,70 @@ export default function Products() {
 
       {/* Filter Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        <FilterMetricCard
-          title="Total"
-          value={totalItems}
-          icon={<Package />}
-          isActive={activeFilter === "all"}
-          onClick={() => setActiveFilter("all")}
-          variant="default"
-        />
-        <FilterMetricCard
-          title="Produtos"
-          value={totalProducts}
-          icon={<Package />}
-          isActive={activeFilter === "products"}
-          onClick={() => setActiveFilter("products")}
-          variant="default"
-        />
-        <FilterMetricCard
-          title="Serviços"
-          value={totalServices}
-          icon={<Wrench />}
-          isActive={activeFilter === "services"}
-          onClick={() => setActiveFilter("services")}
-          variant="success"
-        />
-        <FilterMetricCard
-          title="Normal"
-          value={normalStockItems}
-          icon={<Eye />}
-          isActive={activeFilter === "normal"}
-          onClick={() => setActiveFilter("normal")}
-          variant="success"
-        />
-        <FilterMetricCard
-          title="Baixo"
-          value={lowStockItems}
-          icon={<AlertTriangle />}
-          isActive={activeFilter === "low"}
-          onClick={() => setActiveFilter("low")}
-          variant="warning"
-        />
-        <FilterMetricCard
-          title="Crítico"
-          value={criticalStockItems}
-          icon={<AlertTriangle />}
-          isActive={activeFilter === "critical"}
-          onClick={() => setActiveFilter("critical")}
-          variant="destructive"
-        />
+        <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Total"
+            value={totalItems}
+            icon={<Package />}
+            isActive={activeFilter === "all"}
+            onClick={() => setActiveFilter("all")}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.15s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Produtos"
+            value={totalProducts}
+            icon={<Package />}
+            isActive={activeFilter === "products"}
+            onClick={() => setActiveFilter("products")}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Serviços"
+            value={totalServices}
+            icon={<Wrench />}
+            isActive={activeFilter === "services"}
+            onClick={() => setActiveFilter("services")}
+            variant="success"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Normal"
+            value={normalStockItems}
+            icon={<Eye />}
+            isActive={activeFilter === "normal"}
+            onClick={() => setActiveFilter("normal")}
+            variant="success"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Baixo"
+            value={lowStockItems}
+            icon={<AlertTriangle />}
+            isActive={activeFilter === "low"}
+            onClick={() => setActiveFilter("low")}
+            variant="warning"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Crítico"
+            value={criticalStockItems}
+            icon={<AlertTriangle />}
+            isActive={activeFilter === "critical"}
+            onClick={() => setActiveFilter("critical")}
+            variant="destructive"
+          />
+        </div>
       </div>
 
       {/* Search and Filters */}
-      <Card className="card-corporate">
+      <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
@@ -283,12 +297,22 @@ export default function Products() {
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {currentItems.length > 0 ? (
-            currentItems.map((item) => {
+            currentItems.map((item, index) => {
               const stockQuantity = item.stock_quantity || 0;
               const stockStatus = getStockStatus(stockQuantity);
               const isService = item.category && item.category.includes("Serviços");
+              // Animação escalonada para cada card (máximo 0.9s de delay)
+              const animationDelay = Math.min(0.5 + (index * 0.05), 1.4);
               return (
-                <Card key={item.id} className="card-corporate hover:shadow-md transition-shadow">
+                <Card 
+                  key={item.id} 
+                  className="card-corporate hover:shadow-md transition-all hover-scale animate-fade-in" 
+                  style={{ 
+                    animationDelay: `${animationDelay}s`,
+                    opacity: 0,
+                    animationFillMode: 'forwards'
+                  }}
+                >
                   <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
