@@ -50,6 +50,14 @@ export const RoleBasedRedirect: React.FC = () => {
     return <Navigate to="/auth/login" replace />;
   }
 
+  // Verificar se há URL de redirecionamento guardada
+  const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+  if (redirectPath) {
+    debug('🔍 [DEBUG-REDIRECT] Found redirect path:', redirectPath);
+    sessionStorage.removeItem('redirectAfterLogin');
+    return <Navigate to={redirectPath} replace />;
+  }
+
   const targetRoute = getRoleBasedRoute(user.role, { supplierId: user.supplierId, clientId: user.clientId });
   debug('🔍 [DEBUG-REDIRECT] Redirecting to:', { targetRoute, role: user.role, supplierId: user.supplierId, clientId: user.clientId });
   return <Navigate to={targetRoute} replace />;

@@ -11,6 +11,7 @@ import { CheckCircle, Building2, Package, Clock, DollarSign, AlertCircle, Loader
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface QuoteItem {
   id: string;
@@ -41,6 +42,7 @@ const SupplierQuickResponse = () => {
   const { quoteId, token } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,10 +65,21 @@ const SupplierQuickResponse = () => {
   });
 
   useEffect(() => {
-    if (quoteId && token) {
+    // Guardar URL de destino para redirecionamento após login
+    if (quoteId && token && !authLoading) {
+      const currentPath = `/supplier/quick-response/${quoteId}/${token}`;
+      sessionStorage.setItem('redirectAfterLogin', currentPath);
+      
+      // Se o usuário não está autenticado, redirecionar para login
+      if (!user) {
+        navigate('/supplier/auth', { replace: true });
+        return;
+      }
+      
+      // Se chegou aqui, o usuário está autenticado
       validateTokenAndFetchData();
     }
-  }, [quoteId, token]);
+  }, [quoteId, token, user, authLoading]);
 
   const validateTokenAndFetchData = async () => {
     try {
