@@ -171,6 +171,7 @@ export function IntegrationFormModal({ open, onOpenChange, onSubmit, editingInte
 
     if (open) {
       loadClients();
+      console.log('[IntegrationFormModal] integrationTypes:', integrationTypes.map(t => t.id));
     }
   }, [open]);
 
