@@ -2242,6 +2242,7 @@ export type Database = {
           custom_color: string | null
           description: string | null
           display_name: string
+          enabled_modules: Json | null
           features: Json | null
           id: string
           is_popular: boolean | null
@@ -2273,6 +2274,7 @@ export type Database = {
           custom_color?: string | null
           description?: string | null
           display_name: string
+          enabled_modules?: Json | null
           features?: Json | null
           id: string
           is_popular?: boolean | null
@@ -2304,6 +2306,7 @@ export type Database = {
           custom_color?: string | null
           description?: string | null
           display_name?: string
+          enabled_modules?: Json | null
           features?: Json | null
           id?: string
           is_popular?: boolean | null

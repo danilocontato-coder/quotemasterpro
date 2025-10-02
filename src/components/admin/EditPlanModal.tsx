@@ -8,8 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
 import { useToast } from '@/hooks/use-toast';
+import { AVAILABLE_MODULES, MODULE_CATEGORIES } from '@/constants/modules';
 
 interface EditPlanModalProps {
   plan: any;
@@ -67,15 +70,18 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
     allow_branding: false,
     allow_custom_domain: false,
     custom_color: '#3b82f6',
-    features: [] as string[]
+    features: [] as string[],
+    enabled_modules: [] as string[]
   });
 
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [selectedModules, setSelectedModules] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (plan && open) {
       const planFeatures = Array.isArray(plan.features) ? plan.features : [];
+      const planModules = Array.isArray(plan.enabled_modules) ? plan.enabled_modules : [];
       
       setFormData({
         name: plan.name || '',
@@ -96,10 +102,12 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
         allow_branding: plan.allow_branding || false,
         allow_custom_domain: plan.allow_custom_domain || false,
         custom_color: plan.custom_color || '#3b82f6',
-        features: planFeatures
+        features: planFeatures,
+        enabled_modules: planModules
       });
       
       setSelectedFeatures(planFeatures);
+      setSelectedModules(planModules);
     }
   }, [plan, open]);
 
@@ -108,6 +116,14 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
       setSelectedFeatures(prev => [...prev, feature]);
     } else {
       setSelectedFeatures(prev => prev.filter(f => f !== feature));
+    }
+  };
+
+  const handleModuleToggle = (moduleKey: string, checked: boolean) => {
+    if (checked) {
+      setSelectedModules(prev => [...prev, moduleKey]);
+    } else {
+      setSelectedModules(prev => prev.filter(m => m !== moduleKey));
     }
   };
 
@@ -129,6 +145,7 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
       const planData = {
         ...formData,
         features: selectedFeatures,
+        enabled_modules: selectedModules,
         target_audience: formData.target_audience as 'clients' | 'suppliers' | 'both',
         status: formData.status as 'active' | 'inactive'
       };
@@ -400,6 +417,81 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
             <p className="text-sm text-muted-foreground">
               Selecione as funcionalidades que estarão disponíveis neste plano
             </p>
+          </div>
+
+          <Separator />
+
+          {/* Módulos do Sistema */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-medium">Módulos Ativos</h3>
+              <p className="text-sm text-muted-foreground">
+                Controle quais módulos do sistema estarão disponíveis neste plano
+              </p>
+            </div>
+
+            {MODULE_CATEGORIES.map((category) => {
+              const categoryModules = AVAILABLE_MODULES.filter(m => m.category === category.key);
+              if (categoryModules.length === 0) return null;
+
+              return (
+                <div key={category.key} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${category.color}`} />
+                    <h4 className="font-medium">{category.name}</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-5">
+                    {categoryModules.map((module) => {
+                      const Icon = module.icon;
+                      return (
+                        <div 
+                          key={module.key} 
+                          className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                        >
+                          <Checkbox
+                            id={`module-${module.key}`}
+                            checked={selectedModules.includes(module.key)}
+                            onCheckedChange={(checked) => handleModuleToggle(module.key, checked as boolean)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <Label 
+                              htmlFor={`module-${module.key}`}
+                              className="flex items-center gap-2 text-sm font-medium cursor-pointer"
+                            >
+                              <Icon className="h-4 w-4 flex-shrink-0" />
+                              <span>{module.name}</span>
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {module.description}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {selectedModules.length > 0 && (
+              <div className="mt-4 p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium mb-2">Módulos selecionados ({selectedModules.length}):</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedModules.map((moduleKey) => {
+                    const module = AVAILABLE_MODULES.find(m => m.key === moduleKey);
+                    if (!module) return null;
+                    const Icon = module.icon;
+                    return (
+                      <Badge key={moduleKey} variant="secondary" className="gap-1">
+                        <Icon className="h-3 w-3" />
+                        {module.name}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Botões */}

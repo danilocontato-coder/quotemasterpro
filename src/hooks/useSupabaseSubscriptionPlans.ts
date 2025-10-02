@@ -17,6 +17,7 @@ export interface SupabaseSubscriptionPlan {
   max_storage_gb: number;
   is_popular: boolean;
   features: string[];
+  enabled_modules?: string[];
   created_at: string;
   updated_at: string;
   
@@ -50,6 +51,7 @@ export interface PlanFormData {
   max_storage_gb: number;
   is_popular: boolean;
   features: string[];
+  enabled_modules?: string[];
   allow_branding?: boolean;
   allow_custom_domain?: boolean;
   custom_color?: string;
