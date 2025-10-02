@@ -40,6 +40,21 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
     isLoading: usageLoading
   } = useSupabaseSubscriptionGuard();
 
+  // Debug logs
+  React.useEffect(() => {
+    console.log('📊 [UsageLimitsCard] Estado:', {
+      user: user?.email,
+      usageLoading,
+      userPlan: userPlan ? {
+        id: userPlan.id,
+        name: userPlan.name,
+        display_name: userPlan.display_name,
+        enabled_modules: userPlan.enabled_modules
+      } : null,
+      currentUsage
+    });
+  }, [user, usageLoading, userPlan, currentUsage]);
+
   if (!user) {
     return null;
   }
@@ -62,15 +77,23 @@ export const UsageLimitsCard: React.FC<UsageLimitsCardProps> = ({
 
   if (!userPlan) {
     return (
-      <Card className="w-full">
+      <Card className="w-full border-yellow-500/50 bg-yellow-50/50">
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            <h4 className="font-medium">Plano não encontrado</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <h4 className="font-medium text-sm">Plano não encontrado</h4>
           </div>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs text-muted-foreground mb-2">
             Não foi possível carregar informações do plano. Verifique sua assinatura.
           </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.reload()}
+            className="w-full text-xs"
+          >
+            Recarregar página
+          </Button>
         </CardContent>
       </Card>
     );

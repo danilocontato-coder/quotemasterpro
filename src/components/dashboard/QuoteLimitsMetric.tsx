@@ -33,6 +33,21 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
   const quotesResult = React.useMemo(() => checkLimit('CREATE_QUOTE', 0), [checkLimit]);
   const percentage = React.useMemo(() => getUsagePercentage('CREATE_QUOTE'), [getUsagePercentage]);
 
+  // Debug logs
+  React.useEffect(() => {
+    console.log('📊 [QuoteLimitsMetric] Estado:', {
+      user: user?.email,
+      usageLoading,
+      userPlan: userPlan ? {
+        id: userPlan.id,
+        name: userPlan.name,
+        display_name: userPlan.display_name,
+        enabled_modules: userPlan.enabled_modules
+      } : null,
+      quotesResult
+    });
+  }, [user, usageLoading, userPlan, quotesResult]);
+
   // Now we can have early returns after all hooks are called
   if (!user) {
     return null;
@@ -57,15 +72,23 @@ export const QuoteLimitsMetric: React.FC<QuoteLimitsMetricProps> = ({
 
   if (!userPlan) {
     return (
-      <Card className="w-full">
+      <Card className="w-full border-yellow-500/50 bg-yellow-50/50">
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <FileText className="h-4 w-4 text-blue-600" />
-            <span className="font-medium text-sm">Cotações</span>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <span className="font-medium text-sm">Plano não encontrado</span>
           </div>
-          <div className="text-sm text-muted-foreground">
-            Plano não encontrado. Verifique sua assinatura.
+          <div className="text-xs text-muted-foreground mb-2">
+            Não foi possível carregar informações do plano. Verifique sua assinatura.
           </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.reload()}
+            className="w-full text-xs"
+          >
+            Recarregar página
+          </Button>
         </CardContent>
       </Card>
     );

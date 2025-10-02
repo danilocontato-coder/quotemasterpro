@@ -61,6 +61,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
 
     try {
+      // Buscar todos os planos (sem filtro de status) para garantir que o plano do usuário seja encontrado
       const { data, error } = await supabase
         .from('subscription_plans')
         .select('*');
@@ -279,9 +280,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const userPlan = useMemo(() => {
     const planId = currentClient?.subscription_plan_id || '';
-    let foundPlan = planId ? getPlanById(planId) : undefined;
+    
+    if (!planId || subscriptionPlans.length === 0) {
+      console.warn('⚠️ [SubscriptionContext] Sem plan_id ou planos não carregados:', {
+        planId,
+        plansCount: subscriptionPlans.length,
+        clientId: currentClient?.id
+      });
+      return undefined;
+    }
 
-    if (!foundPlan && planId) {
+    let foundPlan = getPlanById(planId);
+
+    if (!foundPlan) {
       const norm = planId.toLowerCase();
       foundPlan = subscriptionPlans.find(p => 
         (p.name || '').toLowerCase() === norm ||
@@ -291,13 +302,17 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
 
     if (!foundPlan) {
-      // Fallback para um plano básico comum
-      foundPlan = getPlanById('basic') || getPlanById('plan-basic');
-    }
-
-    if (!foundPlan && subscriptionPlans.length > 0) {
-      // Último recurso: primeiro plano disponível (para evitar undefined)
-      foundPlan = subscriptionPlans[0];
+      console.error('❌ [SubscriptionContext] Plano não encontrado:', {
+        planId,
+        availablePlans: subscriptionPlans.map(p => p.id)
+      });
+    } else {
+      console.log('✅ [SubscriptionContext] Plano carregado:', {
+        id: foundPlan.id,
+        name: foundPlan.name,
+        display_name: foundPlan.display_name,
+        enabled_modules: foundPlan.enabled_modules
+      });
     }
 
     return foundPlan;

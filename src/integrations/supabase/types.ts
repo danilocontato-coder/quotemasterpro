@@ -3420,6 +3420,41 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_current_user_plan: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active_clients: number | null
+          allow_branding: boolean | null
+          allow_custom_domain: boolean | null
+          clients_subscribed: number | null
+          created_at: string | null
+          custom_color: string | null
+          description: string | null
+          display_name: string
+          enabled_modules: Json | null
+          features: Json | null
+          id: string
+          is_popular: boolean | null
+          max_categories_per_supplier: number | null
+          max_products_in_catalog: number | null
+          max_quote_responses_per_month: number | null
+          max_quotes: number
+          max_quotes_per_month: number | null
+          max_storage_gb: number
+          max_suppliers: number
+          max_suppliers_per_quote: number | null
+          max_users: number
+          max_users_per_client: number | null
+          monthly_price: number
+          name: string
+          status: string | null
+          suppliers_subscribed: number | null
+          target_audience: string | null
+          total_revenue: number | null
+          updated_at: string | null
+          yearly_price: number
+        }
+      }
       get_current_user_supplier_id: {
         Args: Record<PropertyKey, never>
         Returns: string
