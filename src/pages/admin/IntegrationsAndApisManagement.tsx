@@ -591,6 +591,7 @@ export const IntegrationsAndApisManagement = () => {
                         <SelectItem value="payment_stripe">Stripe</SelectItem>
                         <SelectItem value="zapier_webhook">Zapier</SelectItem>
                         <SelectItem value="n8n_webhook">N8N</SelectItem>
+                        <SelectItem value="perplexity">Perplexity AI</SelectItem>
                         <SelectItem value="generic_webhook">Webhook</SelectItem>
                       </SelectContent>
                     </Select>
