@@ -28,7 +28,9 @@ import {
   Server,
   Bot,
   Globe,
-  HelpCircle
+  HelpCircle,
+  UserCog,
+  Palette
 } from 'lucide-react';
 
 const navigation = [
@@ -175,6 +177,35 @@ const navigation = [
         href: '/admin/coupons',
         icon: CreditCard,
         description: 'Cupons de desconto'
+      }
+    ]
+  },
+  {
+    name: 'Configurações',
+    items: [
+      {
+        name: 'Sistema',
+        href: '/admin/system',
+        icon: Settings,
+        description: 'Configurações gerais do sistema'
+      },
+      {
+        name: 'Marca',
+        href: '/admin/brand',
+        icon: Palette,
+        description: 'Personalização visual'
+      },
+      {
+        name: 'Domínio',
+        href: '/admin/domain',
+        icon: Globe,
+        description: 'Gerenciar domínio personalizado'
+      },
+      {
+        name: 'Minha Conta',
+        href: '/admin/user-settings',
+        icon: UserCog,
+        description: 'Gerenciar dados e senha da conta'
       }
     ]
   },
