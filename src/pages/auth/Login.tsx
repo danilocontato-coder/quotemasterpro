@@ -31,6 +31,15 @@ const Login: React.FC = () => {
   // Auto redirect when user is authenticated
   useEffect(() => {
     if (user && !authLoading) {
+      // Priorizar redirecionamento armazenado (ex.: acesso via link de fornecedor)
+      const storedRedirect = sessionStorage.getItem('redirectAfterLogin');
+      if (storedRedirect) {
+        console.log('Login: redirectAfterLogin encontrado. Redirecionando para', storedRedirect);
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(storedRedirect, { replace: true });
+        return;
+      }
+
       const redirectPath = getRoleBasedRoute(user.role, { supplierId: user.supplierId, clientId: user.clientId });
       console.log('Login: redirecting user', user.email, 'with role', user.role, 'ctx', { supplierId: user.supplierId, clientId: user.clientId }, 'to', redirectPath);
       
