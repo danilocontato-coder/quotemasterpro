@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
 import { AppWithProviders } from '@/components/layout/AppWithProviders';
@@ -44,14 +45,16 @@ function App() {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <BrandingProvider>
             <AuthProvider>
-              <Router>
-                {/* GlobalNavigationProvider removido - integrado no AppWithProviders */}
-                <AppWithProviders />
-                
-                {/* Toast notifications */}
-                <Toaster />
-                <Sonner />
-              </Router>
+              <SubscriptionProvider>
+                <Router>
+                  {/* GlobalNavigationProvider removido - integrado no AppWithProviders */}
+                  <AppWithProviders />
+                  
+                  {/* Toast notifications */}
+                  <Toaster />
+                  <Sonner />
+                </Router>
+              </SubscriptionProvider>
             </AuthProvider>
           </BrandingProvider>
         </ThemeProvider>

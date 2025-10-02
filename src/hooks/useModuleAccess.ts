@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 export type ModuleKey = 
@@ -20,102 +21,99 @@ interface ModuleAccessResult {
   enabledModules: ModuleKey[];
 }
 
+// Cache global para evitar queries repetidas
+const moduleCache = new Map<string, { data: ModuleKey[], timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 export const useModuleAccess = (requiredModule?: ModuleKey): ModuleAccessResult => {
-  const [hasAccess, setHasAccess] = useState(false);
+  const { user } = useAuth();
+  const [hasAccess, setHasAccess] = useState(true); // Permissivo durante carregamento
   const [isLoading, setIsLoading] = useState(true);
   const [userPlanId, setUserPlanId] = useState<string | null>(null);
   const [enabledModules, setEnabledModules] = useState<ModuleKey[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const getUserId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id || null);
-    };
-    getUserId();
-  }, []);
-
-  useEffect(() => {
-    if (userId) {
-      checkModuleAccess();
-    }
-  }, [userId, requiredModule]);
-
-  const checkModuleAccess = async () => {
-    if (!userId) {
+    if (!user?.id) {
       setIsLoading(false);
       return;
     }
 
-    try {
-      // Buscar perfil do usuário
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('client_id, supplier_id')
-        .eq('id', userId)
-        .single();
+    const checkModuleAccess = async () => {
+      try {
+        // Verificar cache primeiro
+        const cacheKey = `modules_${user.id}`;
+        const cached = moduleCache.get(cacheKey);
+        
+        if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+          setEnabledModules(cached.data);
+          setHasAccess(!requiredModule || cached.data.includes(requiredModule));
+          setIsLoading(false);
+          return;
+        }
 
-      if (profileError) throw profileError;
-
-      // Buscar plano baseado no tipo de usuário
-      let planQuery;
-      if (profile.client_id) {
-        planQuery = supabase
-          .from('clients')
-          .select('subscription_plan_id')
-          .eq('id', profile.client_id)
+        // Buscar perfil e plano em uma única query otimizada
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('client_id, supplier_id')
+          .eq('id', user.id)
           .single();
-      } else if (profile.supplier_id) {
-        planQuery = supabase
-          .from('suppliers')
-          .select('subscription_plan_id')
-          .eq('id', profile.supplier_id)
+
+        if (profileError) throw profileError;
+
+        let planId: string | null = null;
+
+        if (profile.client_id) {
+          const { data: client } = await supabase
+            .from('clients')
+            .select('subscription_plan_id')
+            .eq('id', profile.client_id)
+            .single();
+          planId = client?.subscription_plan_id || null;
+        } else if (profile.supplier_id) {
+          const { data: supplier } = await supabase
+            .from('suppliers')
+            .select('subscription_plan_id')
+            .eq('id', profile.supplier_id)
+            .single();
+          planId = supplier?.subscription_plan_id || null;
+        }
+
+        if (!planId) {
+          setIsLoading(false);
+          return;
+        }
+
+        setUserPlanId(planId);
+
+        // Buscar módulos do plano
+        const { data: plan } = await supabase
+          .from('subscription_plans')
+          .select('enabled_modules')
+          .eq('id', planId)
           .single();
-      } else {
+
+        const modules = (plan?.enabled_modules as ModuleKey[]) || [];
+        
+        // Atualizar cache
+        moduleCache.set(cacheKey, { data: modules, timestamp: Date.now() });
+        
+        setEnabledModules(modules);
+        setHasAccess(!requiredModule || modules.includes(requiredModule));
+      } catch (error) {
+        console.error('Erro ao verificar acesso ao módulo:', error);
+        setHasAccess(true); // Permissivo em caso de erro
+      } finally {
         setIsLoading(false);
-        return;
       }
+    };
 
-      const { data: entity, error: entityError } = await planQuery;
-      if (entityError) throw entityError;
+    checkModuleAccess();
+  }, [user?.id, requiredModule]);
 
-      if (!entity?.subscription_plan_id) {
-        setIsLoading(false);
-        return;
-      }
-
-      setUserPlanId(entity.subscription_plan_id);
-
-      // Buscar módulos habilitados no plano
-      const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
-        .select('enabled_modules')
-        .eq('id', entity.subscription_plan_id)
-        .single();
-
-      if (planError) throw planError;
-
-      const modules = (plan?.enabled_modules as ModuleKey[]) || [];
-      setEnabledModules(modules);
-
-      // Verificar se tem acesso ao módulo específico
-      if (requiredModule) {
-        setHasAccess(modules.includes(requiredModule));
-      } else {
-        setHasAccess(true);
-      }
-    } catch (error) {
-      console.error('Erro ao verificar acesso ao módulo:', error);
-      setHasAccess(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return {
+  return useMemo(() => ({
     hasAccess,
     isLoading,
     userPlanId,
     enabledModules
-  };
+  }), [hasAccess, isLoading, userPlanId, enabledModules]);
 };

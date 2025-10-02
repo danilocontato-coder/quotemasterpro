@@ -1,3 +1,4 @@
+import React from "react";
 import { Bell, CheckCircle, AlertTriangle, Info, X, FileText, Truck, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +36,7 @@ const getNotificationIcon = (type: string) => {
   }
 };
 
-export function NotificationDropdown() {
+export const NotificationDropdown = React.memo(function NotificationDropdown() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useSupabaseNotifications();
   const navigate = useNavigate();
 
@@ -128,4 +129,4 @@ export function NotificationDropdown() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});
