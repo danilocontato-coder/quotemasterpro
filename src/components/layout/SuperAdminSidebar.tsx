@@ -165,12 +165,6 @@ const navigation = [
         href: '/admin/ai-config',
         icon: Bot,
         description: 'Negociação automática'
-      },
-      {
-        name: 'Minha Conta',
-        href: '/admin/user-settings',
-        icon: UserCog,
-        description: 'Dados e senha da conta'
       }
     ]
   },

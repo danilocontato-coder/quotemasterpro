@@ -31,14 +31,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { AIQuoteFeatureToggle } from '@/components/admin/AIQuoteFeatureToggle';
 import { supabase } from '@/integrations/supabase/client';
+import { PasswordChange } from '@/components/settings/PasswordChange';
 
 export const SystemSettings = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const [systemConfig, setSystemConfig] = useState({
-    systemName: 'Sistema de Cotações',
-    systemDescription: 'Plataforma corporativa de gestão de cotações',
     maintenanceMode: false,
     registrationEnabled: true,
     emailVerificationRequired: true,
@@ -139,35 +138,19 @@ export const SystemSettings = () => {
                 <CardDescription>Configurações básicas do sistema</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="systemName">Nome do Sistema</Label>
-                    <Input
-                      id="systemName"
-                      value={systemConfig.systemName}
-                      onChange={(e) => setSystemConfig({...systemConfig, systemName: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="sessionTimeout">Timeout de Sessão (horas)</Label>
-                    <Input
-                      id="sessionTimeout"
-                      type="number"
-                      value={systemConfig.sessionTimeout}
-                      onChange={(e) => setSystemConfig({...systemConfig, sessionTimeout: parseInt(e.target.value)})}
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="systemDescription">Descrição do Sistema</Label>
-                  <Textarea
-                    id="systemDescription"
-                    value={systemConfig.systemDescription}
-                    onChange={(e) => setSystemConfig({...systemConfig, systemDescription: e.target.value})}
-                    rows={3}
+                  <Label htmlFor="sessionTimeout">Tempo da Sessão (horas)</Label>
+                  <Input
+                    id="sessionTimeout"
+                    type="number"
+                    min="1"
+                    max="168"
+                    value={systemConfig.sessionTimeout}
+                    onChange={(e) => setSystemConfig({...systemConfig, sessionTimeout: parseInt(e.target.value)})}
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Define quanto tempo um usuário pode ficar inativo antes de ser desconectado automaticamente (1-168 horas)
+                  </p>
                 </div>
 
                 <div className="space-y-4">
@@ -211,13 +194,17 @@ export const SystemSettings = () => {
 
           {/* Configurações de Segurança */}
           <TabsContent value="security" className="space-y-6">
+            {/* Alteração de Senha */}
+            <PasswordChange />
+
+            {/* Outras Configurações de Segurança */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
-                  Configurações de Segurança
+                  Políticas de Segurança
                 </CardTitle>
-                <CardDescription>Configurações de autenticação e segurança</CardDescription>
+                <CardDescription>Configurações globais de autenticação e segurança</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -226,6 +213,8 @@ export const SystemSettings = () => {
                     <Input
                       id="maxLoginAttempts"
                       type="number"
+                      min="3"
+                      max="10"
                       value={systemConfig.maxLoginAttempts}
                       onChange={(e) => setSystemConfig({...systemConfig, maxLoginAttempts: parseInt(e.target.value)})}
                     />
@@ -236,6 +225,8 @@ export const SystemSettings = () => {
                     <Input
                       id="logRetention"
                       type="number"
+                      min="30"
+                      max="365"
                       value={systemConfig.logRetentionDays}
                       onChange={(e) => setSystemConfig({...systemConfig, logRetentionDays: parseInt(e.target.value)})}
                     />

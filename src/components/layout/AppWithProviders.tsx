@@ -58,7 +58,6 @@ const AIConfigurationManagement = React.lazy(() => import('@/pages/admin/AIConfi
 const CommunicationManagement = React.lazy(() => import('@/pages/admin/CommunicationManagement'));
 const IntegrationsAndApisManagement = React.lazy(() => import('@/pages/admin/IntegrationsAndApisManagement'));
 const DomainSettings = React.lazy(() => import('@/pages/admin/DomainSettings'));
-const UserSettings = React.lazy(() => import('@/pages/admin/UserSettings'));
 const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialManagement'));
 
 // Supplier pages
@@ -235,11 +234,6 @@ export const AppWithProviders: React.FC = () => {
         <Route path="domain" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <DomainSettings />
-          </Suspense>
-        } />
-        <Route path="user-settings" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <UserSettings />
           </Suspense>
         } />
       </Route>
