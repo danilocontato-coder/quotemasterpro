@@ -12,6 +12,7 @@ import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageLoader } from "@/components/ui/page-loader";
+import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { useToast } from "@/hooks/use-toast";
 
 export default function Suppliers() {
@@ -173,34 +174,36 @@ export default function Suppliers() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Fornecedores</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+            Fornecedores
+          </h1>
+          <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
             Gerencie sua rede de fornecedores e parceiros
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={() => setShowNewGroupModal(true)}
-          >
-            <UserPlus className="h-4 w-4" />
-            Criar Grupo
-          </Button>
-          <Button 
-            className="btn-corporate flex items-center gap-2"
-            onClick={() => setShowNewSupplierModal(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Novo Fornecedor
-          </Button>
+        <div className="flex gap-2 animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+            <Button 
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => setShowNewGroupModal(true)}
+            >
+              <UserPlus className="h-4 w-4" />
+              Criar Grupo
+            </Button>
+            <Button 
+              className="btn-corporate flex items-center gap-2"
+              onClick={() => setShowNewSupplierModal(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Novo Fornecedor
+            </Button>
         </div>
       </div>
 
       {/* Filter Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <AnimatedGrid columns={6} baseDelay={0.4} itemDelay={0.08}>
         <FilterMetricCard
           title="Total"
           value={totalSuppliers}
@@ -241,7 +244,7 @@ export default function Suppliers() {
           onClick={() => setActiveFilter("priority")}
           variant="warning"
         />
-      </div>
+      </AnimatedGrid>
 
       {/* Filters and Search */}
       <Card className="card-corporate">

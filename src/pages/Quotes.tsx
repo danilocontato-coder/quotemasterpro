@@ -12,6 +12,7 @@ import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
 import { useAIQuoteFeature } from "@/hooks/useAIQuoteFeature";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
+import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { toast } from "sonner";
 
 // Lazy load modais pesados
@@ -287,14 +288,11 @@ export default function Quotes() {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Cotações</h1>
-          <p className="text-muted-foreground">
-            Gerencie todas as cotações e solicitações de orçamento
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <AnimatedHeader
+        title="Cotações"
+        subtitle="Gerencie todas as cotações e solicitações de orçamento"
+        actions={
+          <>
           <Button 
             variant="outline"
             className="flex items-center gap-2"
@@ -345,8 +343,9 @@ export default function Quotes() {
             <Plus className="h-4 w-4" />
             Nova Cotação
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Filter Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">

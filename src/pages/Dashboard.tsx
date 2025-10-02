@@ -14,6 +14,7 @@ import { useSupabaseDashboard } from "@/hooks/useSupabaseDashboard";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { useSupabasePlanDetails } from '@/hooks/useSupabaseSubscriptionPlans';
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator';
+import { AnimatedPage, AnimatedSection, AnimatedHeader, AnimatedGrid } from '@/components/ui/animated-page';
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
@@ -88,17 +89,15 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <AnimatedPage>
       {/* Admin Mode Indicator */}
       <AdminModeIndicator />
       
       {/* Page Header */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Visão geral do sistema de cotações e orçamentos
-        </p>
-      </div>
+      <AnimatedHeader 
+        title="Dashboard"
+        subtitle="Visão geral do sistema de cotações e orçamentos"
+      />
 
       {/* Primary Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -281,6 +280,6 @@ export default function Dashboard() {
           </div>
         </VisualCard>
       </div>
-    </div>
+    </AnimatedPage>
   );
 }

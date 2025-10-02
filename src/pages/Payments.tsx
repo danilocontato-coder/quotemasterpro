@@ -25,6 +25,7 @@ import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 
 import { supabase } from "@/integrations/supabase/client";
+import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { toast } from "sonner";
 import { useAutomaticPayments } from "@/hooks/useAutomaticPayments";
 
@@ -144,14 +145,16 @@ export default function Payments() {
     <div className="space-y-6">
       
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pagamentos</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+            Pagamentos
+          </h1>
+          <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
             Gerencie pagamentos seguros com sistema de escrow
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
           <CreatePaymentModal
             onPaymentCreate={async (quoteId: string, amount: number) => {
               try {
@@ -197,7 +200,7 @@ export default function Payments() {
       </div>
 
       {/* Filter Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <AnimatedGrid columns={6} baseDelay={0.4} itemDelay={0.08}>
         <FilterMetricCard
           title="Total"
           value={totalPayments}
@@ -238,7 +241,7 @@ export default function Payments() {
           onClick={() => setActiveFilter("disputed")}
           variant="destructive"
         />
-      </div>
+      </AnimatedGrid>
 
       {/* Search and Filters */}
       <Card className="card-corporate">
@@ -338,10 +341,7 @@ export default function Payments() {
                 Próxima
                 <ChevronRight className="h-4 w-4" />
               </Button>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
 
       {/* Empty State */}
       {filteredPayments.length === 0 && (
@@ -364,6 +364,7 @@ export default function Payments() {
           </CardContent>
         </Card>
       )}
+      </div>
 
       {/* Modals */}
       <PaymentDetailModal
