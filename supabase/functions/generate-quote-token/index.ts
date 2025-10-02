@@ -27,6 +27,21 @@ serve(async (req) => {
       )
     }
 
+    // Get quote to extract client_id
+    const { data: quoteData, error: quoteError } = await supabaseClient
+      .from('quotes')
+      .select('client_id')
+      .eq('id', quote_id)
+      .single()
+
+    if (quoteError || !quoteData) {
+      console.error('Quote not found:', quoteError)
+      return new Response(
+        JSON.stringify({ error: 'Quote not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Generate unique short code
     const generateShortCode = () => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
@@ -65,11 +80,12 @@ serve(async (req) => {
       )
     }
 
-    // Insert token into database
+    // Insert token into database with client_id
     const { data: tokenData, error: insertError } = await supabaseClient
       .from('quote_tokens')
       .insert({
         quote_id,
+        client_id: quoteData.client_id,
         short_code: shortCode,
         full_token: fullToken,
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
