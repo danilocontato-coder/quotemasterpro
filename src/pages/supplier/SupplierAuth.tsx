@@ -264,15 +264,24 @@ const SupplierAuth = () => {
         try { localStorage.setItem('supplier_quote_context', JSON.stringify({ quoteId, token, email: registerData.email, ts: Date.now() })); } catch {}
 
         if (authData.session) {
-          // PASSO 3: Vincular ao fornecedor existente ou criar novo
+          // PASSO 3: GARANTIR que role seja 'supplier' ANTES de vincular
+          // Atualizar profile primeiro com role=supplier
+          await supabase
+            .from('profiles')
+            .update({ 
+              role: 'supplier',
+              tenant_type: 'supplier'
+            })
+            .eq('id', authData.user.id);
+          
+          // PASSO 4: Vincular ao fornecedor existente ou criar novo
           if (targetSupplierId) {
             // Vincular ao fornecedor existente
             console.log('🔗 Vinculando profile ao fornecedor existente:', targetSupplierId);
             const { error: profileError } = await supabase
               .from('profiles')
               .update({ 
-                supplier_id: targetSupplierId, 
-                role: 'supplier',
+                supplier_id: targetSupplierId,
                 onboarding_completed: true,
                 updated_at: new Date().toISOString()
               })
@@ -305,8 +314,7 @@ const SupplierAuth = () => {
             const { error: profileError } = await supabase
               .from('profiles')
               .update({ 
-                supplier_id: supplier.id, 
-                role: 'supplier',
+                supplier_id: supplier.id,
                 onboarding_completed: true,
                 updated_at: new Date().toISOString()
               })
@@ -316,6 +324,9 @@ const SupplierAuth = () => {
             toast({ title: 'Sucesso', description: 'Cadastro realizado e sessão criada.' });
           }
 
+          // ⚠️ CRITICAL: Forçar reload do auth para pegar role atualizado
+          await supabase.auth.refreshSession();
+          
           navigate(`/supplier/quick-response/${quoteId}/${token}`);
         } else {
           // Sem sessão (confirmação de e-mail exigida): orientar próximo passo
