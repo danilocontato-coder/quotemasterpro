@@ -3252,6 +3252,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_enabled_modules: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
       get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -3365,6 +3369,18 @@ export type Database = {
           supplier_id: string
           visibility_scope: string
         }[]
+      }
+      user_has_all_modules_access: {
+        Args: { _module_keys: string[] }
+        Returns: boolean
+      }
+      user_has_any_module_access: {
+        Args: { _module_keys: string[] }
+        Returns: boolean
+      }
+      user_has_module_access: {
+        Args: { _module_key: string }
+        Returns: boolean
       }
       validate_coupon: {
         Args: {
