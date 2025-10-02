@@ -31,35 +31,46 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useBranding } from '@/contexts/BrandingContext';
+import { useModuleAccess, type ModuleKey } from '@/hooks/useModuleAccess';
 
-const navigationItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: any;
+  requiredModule?: ModuleKey;
+}
+
+// Módulos CORE - sempre disponíveis
+const navigationItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Cotações", url: "/quotes", icon: FileText },
-  { title: "Fornecedores", url: "/suppliers", icon: Users },
+  { title: "Cotações", url: "/quotes", icon: FileText, requiredModule: 'quotes' },
+  { title: "Fornecedores", url: "/suppliers", icon: Users, requiredModule: 'suppliers' },
   { title: "Itens", url: "/products", icon: Package },
 ];
 
-const approvalItems = [
-  { title: "Aprovações", url: "/approvals", icon: CheckCircle },
-  { title: "Níveis de Aprovação", url: "/approval-levels", icon: Layers },
-  { title: "Negociações IA", url: "/ai-negotiations", icon: Brain },
+// Módulos AVANÇADOS - aprovações
+const approvalItems: NavItem[] = [
+  { title: "Aprovações", url: "/approvals", icon: CheckCircle, requiredModule: 'approvals' },
+  { title: "Níveis de Aprovação", url: "/approval-levels", icon: Layers, requiredModule: 'approvals' },
+  { title: "Negociações IA", url: "/ai-negotiations", icon: Brain, requiredModule: 'ai_negotiation' },
 ];
 
-const financialItems = [
-  { title: "Pagamentos", url: "/payments", icon: CreditCard },
-  { title: "Centros de Custo", url: "/cost-centers", icon: TreePine },
+// Módulos AVANÇADOS - financeiro
+const financialItems: NavItem[] = [
+  { title: "Pagamentos", url: "/payments", icon: CreditCard, requiredModule: 'payments' },
+  { title: "Centros de Custo", url: "/cost-centers", icon: TreePine, requiredModule: 'cost_centers' },
 ];
 
-const communicationItems = [
+// Módulos de comunicação
+const communicationItems: NavItem[] = [
   { title: "Comunicação", url: "/communication", icon: Mail },
 ];
 
-// Removed admin items section
-
-const systemItems = [
+// Módulos de sistema
+const systemItems: NavItem[] = [
   { title: "Usuários", url: "/users", icon: UserCog },
   { title: "Permissões", url: "/permissions", icon: Shield },
-  { title: "Relatórios", url: "/reports", icon: BarChart3 },
+  { title: "Relatórios", url: "/reports", icon: BarChart3, requiredModule: 'advanced_reports' },
   { title: "Planos", url: "/plans", icon: Crown },
   { title: "Ajuda", url: "/help", icon: HelpCircle },
   { title: "Configurações", url: "/settings", icon: Settings },
@@ -71,8 +82,26 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
   const { settings } = useBranding();
+  const { enabledModules, isLoading } = useModuleAccess();
 
   const isActive = (path: string) => currentPath === path;
+
+  // Filtrar itens de navegação baseado em módulos habilitados
+  const filterMenuItems = (items: NavItem[]) => {
+    return items.filter(item => {
+      // Se não requer módulo, sempre mostrar
+      if (!item.requiredModule) return true;
+      // Se está carregando, mostrar tudo (evitar UI flickering)
+      if (isLoading) return true;
+      // Verificar se o módulo está habilitado
+      return enabledModules.includes(item.requiredModule);
+    });
+  };
+
+  const filteredNavigationItems = filterMenuItems(navigationItems);
+  const filteredApprovalItems = filterMenuItems(approvalItems);
+  const filteredFinancialItems = filterMenuItems(financialItems);
+  const filteredSystemItems = filterMenuItems(systemItems);
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
@@ -99,7 +128,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {navigationItems.map((item) => (
+              {filteredNavigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild className="h-10">
                     <TransitionNavLink 
@@ -117,52 +146,56 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Financial Section */}
-        <SidebarGroup className="px-3 pt-4">
-          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
-            {!isCollapsed && "Financeiro"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {financialItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="h-10">
-                    <TransitionNavLink 
-                      to={item.url} 
-                      className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </TransitionNavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {filteredFinancialItems.length > 0 && (
+          <SidebarGroup className="px-3 pt-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
+              {!isCollapsed && "Financeiro"}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {filteredFinancialItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild className="h-10">
+                      <TransitionNavLink 
+                        to={item.url} 
+                        className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                      >
+                        <item.icon className="h-5 w-5" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </TransitionNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Approval Section */}
-        <SidebarGroup className="px-3 pt-4">
-          <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
-            {!isCollapsed && "Aprovações"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {approvalItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="h-10">
-                    <TransitionNavLink 
-                      to={item.url} 
-                      className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </TransitionNavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {filteredApprovalItems.length > 0 && (
+          <SidebarGroup className="px-3 pt-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/60 font-medium mb-3 px-2">
+              {!isCollapsed && "Aprovações"}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {filteredApprovalItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild className="h-10">
+                      <TransitionNavLink 
+                        to={item.url} 
+                        className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                      >
+                        <item.icon className="h-5 w-5" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </TransitionNavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Communication Section */}
         <SidebarGroup className="px-3 pt-4">
@@ -195,7 +228,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {systemItems.map((item) => (
+              {filteredSystemItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild className="h-10">
                     <TransitionNavLink 

@@ -8,7 +8,9 @@ import {
   HeadphonesIcon, 
   Palette,
   MessageSquare,
-  Truck
+  Truck,
+  CheckCircle,
+  TreePine
 } from 'lucide-react';
 
 export interface ModuleDefinition {
@@ -41,6 +43,20 @@ export const AVAILABLE_MODULES: ModuleDefinition[] = [
     description: 'Gestão de pagamentos e faturamento',
     icon: CreditCard,
     category: 'core'
+  },
+  {
+    key: 'approvals',
+    name: 'Aprovações',
+    description: 'Fluxo de aprovação de cotações',
+    icon: CheckCircle,
+    category: 'advanced'
+  },
+  {
+    key: 'cost_centers',
+    name: 'Centros de Custo',
+    description: 'Organização financeira por centro de custo',
+    icon: TreePine,
+    category: 'advanced'
   },
   
   // Advanced modules

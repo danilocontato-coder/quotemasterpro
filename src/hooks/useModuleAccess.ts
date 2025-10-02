@@ -6,6 +6,8 @@ export type ModuleKey =
   | 'quotes'
   | 'suppliers'
   | 'payments'
+  | 'approvals'
+  | 'cost_centers'
   | 'advanced_reports'
   | 'ai_quote_analysis'
   | 'ai_negotiation'
