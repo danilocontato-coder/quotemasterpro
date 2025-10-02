@@ -22,7 +22,7 @@ export const getRoleBasedRoute = (
   role: UserRole,
   ctx?: { supplierId?: string | null; clientId?: string | null; tenantType?: string | null }
 ): string => {
-  console.log('getRoleBasedRoute called with', { role, ctx });
+  logger.navigation('getRoleBasedRoute', { role, ctx });
 
   // Admin and support have priority routes regardless of tenant
   if (role === 'admin') {
@@ -56,7 +56,7 @@ export interface AuthContextType {
   error: string | null;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
-  isAdminMode: () => boolean;
+  checkAdminMode: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,188 +76,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
   const [error, setError] = useState<string | null>(null);
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
-  useEffect(() => {
-    logger.auth('AuthProvider inicializado');
-    
-    // Verificar se há token admin na URL primeiro
-    const checkAdminToken = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const adminToken = urlParams.get('adminToken');
-      
-      if (adminToken) {
-        logger.auth('Admin token detectado', { adminToken });
-        let adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
-        if (!adminData) {
-          adminData = localStorage.getItem(`adminAccess_${adminToken}`);
-        }
-        
-        if (adminData) {
-          try {
-            const parsedData = JSON.parse(adminData);
-            logger.auth('Admin access data parsed', parsedData);
-            
-            // Simular usuário logado como cliente/fornecedor
-            if (parsedData.targetRole === 'manager' && parsedData.targetClientId) {
-              simulateClientLogin(parsedData);
-              return true;
-            } else if (parsedData.targetRole === 'supplier' && parsedData.targetSupplierId) {
-              simulateSupplierLogin(parsedData);
-              return true;
-            }
-          } catch (error) {
-            console.error('❌ Error parsing admin data:', error);
-          }
-        }
-      }
-      return false;
-    };
+  // Memoizar função de check admin mode
+  const checkAdminMode = useCallback((): boolean => {
+    return user?.id?.startsWith('admin_simulated_') || false;
+  }, [user?.id]);
 
-    // Se não há token admin, inicializar autenticação normal
-    if (!checkAdminToken()) {
-      const initializeAuth = async () => {
-        try {
-          const { data: { session }, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error('❌ Error getting initial session:', error);
-            setIsLoading(false);
-            return;
-          }
-          
-          console.log('🔍 Initial session check:', { hasSession: !!session, userId: session?.user?.id });
-          
-          setSession(session);
-          if (session?.user) {
-            fetchUserProfile(session.user);
-          } else {
-            setIsLoading(false);
-          }
-        } catch (error) {
-          console.error('❌ Error initializing auth:', error);
-          setIsLoading(false);
-        }
-      };
-
-      initializeAuth();
-    }
-
-    // Listen for auth changes - otimizado para evitar reloads
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        logger.auth('Auth state change', { event, hasSession: !!session, userId: session?.user?.id });
-        
-        // Ignorar eventos de token refresh se usuário não mudou
-        if (event === 'TOKEN_REFRESHED' && session?.user?.id === user?.id) {
-          logger.auth('Token refresh - mantendo estado');
-          setSession(session); // Apenas atualizar sessão
-          return;
-        }
-        
-        // Ignorar eventos duplicados
-        if (event === 'SIGNED_IN' && session?.user?.id === user?.id) {
-          logger.auth('SIGNED_IN duplicado - ignorando');
-          return;
-        }
-        
-        setSession(session);
-        
-        if (session?.user) {
-          fetchUserProfile(session.user);
-        } else {
-          logger.auth('Sem sessão - limpando estado');
-          setUser(null);
-          setError(null);
-          setForcePasswordChange(false);
-          setIsLoading(false);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Função para simular login como cliente
-  const simulateClientLogin = async (adminData: any) => {
-    console.log('🔍 [DEBUG-AUTH] Simulating client login:', adminData);
-    setIsLoading(true);
-    
-    try {
-      // Buscar dados do cliente
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', adminData.targetClientId)
-        .single();
-
-      if (clientError || !clientData) {
-        console.error('❌ Error fetching client data:', clientError);
-        setError('Cliente não encontrado');
-        setIsLoading(false);
-        return;
-      }
-
-      // Criar usuário simulado
-      const simulatedUser: User = {
-        id: `admin_simulated_${adminData.targetClientId}`,
-        email: clientData.email,
-        name: adminData.targetClientName || clientData.name,
-        role: 'manager' as UserRole,
-        active: true,
-        clientId: adminData.targetClientId,
-        companyName: clientData.company_name || clientData.name
-      };
-
-      console.log('✅ Simulated client user created:', simulatedUser);
-      setUser(simulatedUser);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('❌ Error simulating client login:', error);
-      setError('Erro ao simular acesso como cliente');
-      setIsLoading(false);
-    }
-  };
-
-  // Função para simular login como fornecedor
-  const simulateSupplierLogin = async (adminData: any) => {
-    console.log('🔍 [DEBUG-AUTH] Simulating supplier login:', adminData);
-    setIsLoading(true);
-    
-    try {
-      // Buscar dados do fornecedor
-      const { data: supplierData, error: supplierError } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('id', adminData.targetSupplierId)
-        .single();
-
-      if (supplierError || !supplierData) {
-        console.error('❌ Error fetching supplier data:', supplierError);
-        setError('Fornecedor não encontrado');
-        setIsLoading(false);
-        return;
-      }
-
-      // Criar usuário simulado
-      const simulatedUser: User = {
-        id: `admin_simulated_${adminData.targetSupplierId}`,
-        email: supplierData.email,
-        name: adminData.targetSupplierName || supplierData.name,
-        role: 'supplier' as UserRole,
-        active: true,
-        supplierId: adminData.targetSupplierId,
-        companyName: supplierData.name
-      };
-
-      console.log('✅ Simulated supplier user created:', simulatedUser);
-      setUser(simulatedUser);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('❌ Error simulating supplier login:', error);
-      setError('Erro ao simular acesso como fornecedor');
-      setIsLoading(false);
-    }
-  };
-
+  // Definir fetchUserProfile como useCallback estável
   const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser) => {
     logger.auth('Carregando perfil do usuário', { userId: supabaseUser.id });
     setIsLoading(true);
@@ -288,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       }
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
+        logger.error('auth', 'Erro ao buscar perfil', profileError);
         // Create a basic user even if profile fetch fails
         const fallbackUser = {
           id: supabaseUser.id,
@@ -302,11 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       }
 
       if (profile) {
-        console.log('✅ Profile encontrado:', {
+        logger.auth('Profile encontrado', {
           id: profile.id,
           email: profile.email,
           client_id: profile.client_id,
-          onboarding_completed: profile.onboarding_completed,
           role: profile.role
         });
 
@@ -319,9 +142,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
             .maybeSingle();
 
           if (clientError) {
-            console.error('Erro ao verificar status do cliente:', clientError);
+            logger.error('auth', 'Erro ao verificar status do cliente', clientError);
           } else if (clientData && clientData.status !== 'active') {
-            console.log('⚠️ Cliente inativo, fazendo logout do usuário');
+            logger.warn('auth', 'Cliente inativo - fazendo logout');
             setError('Sua conta foi desativada. Entre em contato com o administrador.');
             setUser(null);
             setIsLoading(false);
@@ -339,9 +162,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
             .maybeSingle();
 
           if (supplierError) {
-            console.error('Erro ao verificar status do fornecedor:', supplierError);
+            logger.error('auth', 'Erro ao verificar status do fornecedor', supplierError);
           } else if (supplierData && supplierData.status !== 'active') {
-            console.log('⚠️ Fornecedor inativo, fazendo logout do usuário');
+            logger.warn('auth', 'Fornecedor inativo - fazendo logout');
             setError('Sua conta de fornecedor foi desativada. Entre em contato com o administrador.');
             setUser(null);
             setIsLoading(false);
@@ -370,9 +193,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           supplierId: profile.supplier_id,
         };
         setUser(userProfile);
-        setError(null); // Limpar qualquer erro anterior ao fazer login com sucesso
+        setError(null);
       } else {
-        console.log('⚠️ Profile não encontrado, criando usuário básico');
+        logger.warn('auth', 'Profile não encontrado - criando usuário básico');
         // Profile doesn't exist, create a basic user
         const basicUser = {
           id: supabaseUser.id,
@@ -382,10 +205,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           active: true,
         };
         setUser(basicUser);
-        setError(null); // Limpar qualquer erro anterior ao fazer login com sucesso
+        setError(null);
       }
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      logger.error('auth', 'Erro em fetchUserProfile', error);
       // Fallback user creation
       const errorFallbackUser = {
         id: supabaseUser.id,
@@ -395,19 +218,197 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         active: true,
       };
       setUser(errorFallbackUser);
-      setError(null); // Limpar qualquer erro anterior mesmo em caso de fallback
+      setError(null);
     } finally {
       setIsLoading(false);
     }
-  }, []); // sem dependências - função estável
+  }, []);
 
-  const handlePasswordChanged = () => {
-    setForcePasswordChange(false);
-  };
+  // Função para simular login como cliente
+  const simulateClientLogin = useCallback(async (adminData: any) => {
+    logger.auth('Simulando login de cliente', adminData);
+    setIsLoading(true);
+    
+    try {
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', adminData.targetClientId)
+        .single();
 
-  // Listen for profile updates from settings - only if user exists and hasn't changed
+      if (clientError || !clientData) {
+        logger.error('auth', 'Erro ao buscar dados do cliente', clientError);
+        setError('Cliente não encontrado');
+        setIsLoading(false);
+        return;
+      }
+
+      const simulatedUser: User = {
+        id: `admin_simulated_${adminData.targetClientId}`,
+        email: clientData.email,
+        name: adminData.targetClientName || clientData.name,
+        role: 'manager' as UserRole,
+        active: true,
+        clientId: adminData.targetClientId,
+        companyName: clientData.company_name || clientData.name
+      };
+
+      logger.auth('Usuário simulado de cliente criado', simulatedUser);
+      setUser(simulatedUser);
+      setIsLoading(false);
+    } catch (error) {
+      logger.error('auth', 'Erro ao simular login de cliente', error);
+      setError('Erro ao simular acesso como cliente');
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Função para simular login como fornecedor
+  const simulateSupplierLogin = useCallback(async (adminData: any) => {
+    logger.auth('Simulando login de fornecedor', adminData);
+    setIsLoading(true);
+    
+    try {
+      const { data: supplierData, error: supplierError } = await supabase
+        .from('suppliers')
+        .select('*')
+        .eq('id', adminData.targetSupplierId)
+        .single();
+
+      if (supplierError || !supplierData) {
+        logger.error('auth', 'Erro ao buscar dados do fornecedor', supplierError);
+        setError('Fornecedor não encontrado');
+        setIsLoading(false);
+        return;
+      }
+
+      const simulatedUser: User = {
+        id: `admin_simulated_${adminData.targetSupplierId}`,
+        email: supplierData.email,
+        name: adminData.targetSupplierName || supplierData.name,
+        role: 'supplier' as UserRole,
+        active: true,
+        supplierId: adminData.targetSupplierId,
+        companyName: supplierData.name
+      };
+
+      logger.auth('Usuário simulado de fornecedor criado', simulatedUser);
+      setUser(simulatedUser);
+      setIsLoading(false);
+    } catch (error) {
+      logger.error('auth', 'Erro ao simular login de fornecedor', error);
+      setError('Erro ao simular acesso como fornecedor');
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (!user?.id) return; // Early return if no user
+    logger.auth('AuthProvider inicializado');
+    
+    // Verificar se há token admin na URL primeiro
+    const checkAdminToken = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminToken = urlParams.get('adminToken');
+      
+      if (adminToken) {
+        logger.auth('Admin token detectado', { adminToken });
+        let adminData = sessionStorage.getItem(`adminAccess_${adminToken}`);
+        if (!adminData) {
+          adminData = localStorage.getItem(`adminAccess_${adminToken}`);
+        }
+        
+        if (adminData) {
+          try {
+            const parsedData = JSON.parse(adminData);
+            logger.auth('Admin access data parsed', parsedData);
+            
+            // Simular usuário logado como cliente/fornecedor
+            if (parsedData.targetRole === 'manager' && parsedData.targetClientId) {
+              simulateClientLogin(parsedData);
+              return true;
+            } else if (parsedData.targetRole === 'supplier' && parsedData.targetSupplierId) {
+              simulateSupplierLogin(parsedData);
+              return true;
+            }
+          } catch (error) {
+            logger.error('auth', 'Erro ao parsear admin data', error);
+          }
+        }
+      }
+      return false;
+    };
+
+    // Se não há token admin, inicializar autenticação normal
+    if (!checkAdminToken()) {
+      const initializeAuth = async () => {
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            logger.error('auth', 'Erro ao obter sessão inicial', error);
+            setIsLoading(false);
+            return;
+          }
+          
+          logger.auth('Sessão inicial verificada', { hasSession: !!session, userId: session?.user?.id });
+          
+          setSession(session);
+          if (session?.user) {
+            fetchUserProfile(session.user);
+          } else {
+            setIsLoading(false);
+          }
+        } catch (error) {
+          logger.error('auth', 'Erro ao inicializar auth', error);
+          setIsLoading(false);
+        }
+      };
+
+      initializeAuth();
+    }
+
+    // Listen for auth changes - otimizado para evitar reloads
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, newSession) => {
+        logger.auth('Auth state change', { event, hasSession: !!newSession, userId: newSession?.user?.id });
+        
+        // Ignorar eventos de token refresh se usuário não mudou
+        if (event === 'TOKEN_REFRESHED' && newSession?.user?.id === user?.id) {
+          logger.auth('Token refresh - mantendo estado');
+          setSession(newSession); // Apenas atualizar sessão
+          return;
+        }
+        
+        // Ignorar eventos duplicados
+        if (event === 'SIGNED_IN' && newSession?.user?.id === user?.id) {
+          logger.auth('SIGNED_IN duplicado - ignorando');
+          return;
+        }
+        
+        setSession(newSession);
+        
+        if (newSession?.user) {
+          fetchUserProfile(newSession.user);
+        } else {
+          logger.auth('Sem sessão - limpando estado');
+          setUser(null);
+          setError(null);
+          setForcePasswordChange(false);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [fetchUserProfile, simulateClientLogin, simulateSupplierLogin, user?.id]);
+
+  const handlePasswordChanged = useCallback(() => {
+    setForcePasswordChange(false);
+  }, []);
+
+  // Listen for profile updates from settings
+  useEffect(() => {
+    if (!user?.id) return;
 
     const handleProfileUpdate = (event: any) => {
       if (user && event.detail) {
@@ -426,10 +427,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       }
     };
 
-    // Listen for the custom event we dispatch from useRealtimeDataSync
     const handleProfileReload = () => {
       if (user?.id && session?.user) {
-        // Use existing session user instead of making another API call
         fetchUserProfile(session.user);
       }
     };
@@ -443,7 +442,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       window.removeEventListener('userAvatarUpdated', handleAvatarUpdate);
       window.removeEventListener('user-profile-updated', handleProfileReload);
     };
-  }, [user?.id]); // Only depend on user ID to prevent unnecessary re-runs
+  }, [user?.id, session?.user, fetchUserProfile]);
 
   const logout = useCallback(async (): Promise<void> => {
     logger.auth('Logout iniciado', { userId: user?.id });
@@ -495,10 +494,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     }
   }, [user, session]);
 
-  const isAdminMode = useCallback((): boolean => {
-    return user?.id?.startsWith('admin_simulated_') || false;
-  }, [user?.id]);
-
   const value = useMemo(() => ({
     user,
     session,
@@ -506,21 +501,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     error,
     logout,
     updateProfile,
-    isAdminMode,
-  }), [user, session, isLoading, error, logout, updateProfile, isAdminMode]);
+    checkAdminMode,
+  }), [user, session, isLoading, error, logout, updateProfile, checkAdminMode]);
 
   return (
     <AuthContext.Provider value={value}>
       {children}
       
       {/* Modal obrigatório de troca de senha */}
-      {forcePasswordChange && user && (
-        <ForcePasswordChangeModal
-          open={forcePasswordChange}
-          userEmail={user.email}
-          onPasswordChanged={handlePasswordChanged}
-        />
-      )}
+      <ForcePasswordChangeModal
+        open={forcePasswordChange && !!user}
+        userEmail={user?.email || ''}
+        onPasswordChanged={handlePasswordChanged}
+      />
     </AuthContext.Provider>
   );
 });
+
+AuthProvider.displayName = 'AuthProvider';
