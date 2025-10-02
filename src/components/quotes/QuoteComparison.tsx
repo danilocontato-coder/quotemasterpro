@@ -236,25 +236,38 @@ export function QuoteComparison({
     setMatrixName('');
   };
 
-  const handleApproveProposal = async (proposal: any) => {
+  const handleApproveProposal = async (proposal: any, isRecommended: boolean = false) => {
     if (isApproving) return;
     
     setIsApproving(true);
     try {
+      // Chamar edge function que lida com aprovação (respeita níveis de aprovação)
       const { data, error } = await supabase.functions.invoke('approve-proposal', {
         body: {
           responseId: proposal.id,
           quoteId: proposal.quoteId,
-          comments: 'Proposta aprovada através do sistema de comparação inteligente'
+          comments: isRecommended 
+            ? 'Proposta recomendada aprovada através do sistema de comparação inteligente'
+            : `Proposta escolhida manualmente através do sistema de comparação inteligente (Score: ${proposal.finalScore.toFixed(1)})`
         }
       });
 
       if (error) throw error;
 
-      toast({
-        title: "✅ Proposta Aprovada!",
-        description: `Fornecedor ${proposal.supplierName} foi notificado via WhatsApp`,
-      });
+      // Verificar se foi enviado para aprovação ou aprovado direto
+      const requiresApproval = data?.requiresApproval || false;
+      
+      if (requiresApproval) {
+        toast({
+          title: "📋 Enviado para Aprovação!",
+          description: `Proposta do fornecedor ${proposal.supplierName} foi enviada para aprovação.`,
+        });
+      } else {
+        toast({
+          title: "✅ Proposta Aprovada!",
+          description: `Fornecedor ${proposal.supplierName} foi notificado via WhatsApp`,
+        });
+      }
 
       // Call callback to refresh quotes
       onProposalApproved?.();
@@ -395,11 +408,12 @@ export function QuoteComparison({
                       <div className="text-sm text-blue-600">Score Final</div>
                     </div>
                     <Button
-                      onClick={() => handleApproveProposal(bestProposal)}
+                      onClick={() => handleApproveProposal(bestProposal, true)}
                       className="bg-green-600 hover:bg-green-700 text-white"
                       disabled={isApproving}
                     >
-                      {isApproving ? 'Aprovando...' : 'Aprovar Proposta'}
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {isApproving ? 'Processando...' : 'Aprovar Recomendação'}
                     </Button>
                   </div>
                 </div>
@@ -408,6 +422,10 @@ export function QuoteComparison({
                     📊 <strong>Baseado nos seus critérios</strong>, recomendamos a compra do fornecedor{' '}
                     <strong>{bestProposal.supplierName}</strong> que oferece a melhor relação 
                     custo-benefício com score de <strong>{bestProposal.finalScore.toFixed(1)} pontos</strong>.
+                    <br />
+                    <span className="text-xs mt-1 block">
+                      💡 Você pode escolher qualquer fornecedor da lista abaixo se preferir outra opção.
+                    </span>
                   </p>
                 </div>
               </CardContent>
@@ -459,8 +477,8 @@ export function QuoteComparison({
               </p>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <div className="min-w-[800px]">
-                <div className="grid grid-cols-8 gap-4 mb-4 text-xs font-medium text-muted-foreground border-b pb-2">
+              <div className="min-w-[900px]">
+                <div className="grid grid-cols-9 gap-4 mb-4 text-xs font-medium text-muted-foreground border-b pb-2">
                   <div>Fornecedor</div>
                   <div>Preço ({weights.price}%)</div>
                   <div>Prazo ({weights.deliveryTime}%)</div>
@@ -469,10 +487,11 @@ export function QuoteComparison({
                   <div>Garantia ({weights.warranty}%)</div>
                   <div>Reputação ({weights.reputation}%)</div>
                   <div>Score Final</div>
+                  <div>Ação</div>
                 </div>
                 
                 {normalizedScores.map((proposal, index) => (
-                  <div key={proposal.id} className={`grid grid-cols-8 gap-4 p-4 rounded-lg border mb-2 ${
+                  <div key={proposal.id} className={`grid grid-cols-9 gap-4 p-4 rounded-lg border mb-2 ${
                     index === 0 ? 'bg-blue-50 border-blue-200' : 'bg-card'
                   }`}>
                     <div className="flex items-center gap-2">
@@ -535,6 +554,19 @@ export function QuoteComparison({
                         {proposal.finalScore.toFixed(1)}
                         {index === 0 && ' 🏆'}
                       </Badge>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <Button
+                        size="sm"
+                        variant={index === 0 ? 'default' : 'outline'}
+                        onClick={() => handleApproveProposal(proposal, index === 0)}
+                        disabled={isApproving}
+                        className={index === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        {isApproving ? 'Processando...' : 'Aprovar'}
+                      </Button>
                     </div>
                   </div>
                 ))}
