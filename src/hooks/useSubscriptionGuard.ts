@@ -106,32 +106,6 @@ export function useSubscriptionGuard() {
     };
   };
 
-  const checkSuppliersLimit = (): LimitCheckResult => {
-    const plan = getPlanById(currentPlan);
-    if (!plan) {
-      return { 
-        allowed: false, 
-        reason: 'Plano não encontrado',
-        currentUsage: 0,
-        limit: 0
-      };
-    }
-
-    const currentUsageValue = currentUsage.suppliersPerQuote;
-    const limit = plan.max_suppliers_per_quote || 5;
-    if (limit === -1) {
-      return { allowed: true, currentUsage: currentUsageValue, limit: -1 };
-    }
-
-    const allowed = currentUsageValue < limit;
-    return {
-      allowed,
-      reason: allowed ? undefined : `Limite de ${limit} fornecedores/cotação atingido`,
-      currentUsage: currentUsageValue,
-      limit,
-      upgradeRequired: !allowed
-    };
-  };
 
   const checkStorageLimit = (): LimitCheckResult => {
     const plan = getPlanById(currentPlan);
@@ -263,8 +237,6 @@ export function useSubscriptionGuard() {
         return checkQuotesLimit();
       case 'CREATE_USER':
         return checkUsersLimit();
-      case 'ADD_SUPPLIER_TO_QUOTE':
-        return checkSuppliersLimit();
       case 'UPLOAD_FILE':
         return checkStorageLimit();
       case 'RECEIVE_QUOTE_RESPONSE':
@@ -308,7 +280,6 @@ export function useSubscriptionGuard() {
     currentPlan,
     checkQuotesLimit,
     checkUsersLimit,
-    checkSuppliersLimit,
     checkStorageLimit,
     checkQuoteResponsesLimit,
     checkProductsLimit,
