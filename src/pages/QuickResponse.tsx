@@ -8,11 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Building2, Mail, DollarSign, FileText, Upload, Package, Edit2, Users, Zap, TrendingUp, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useBranding } from '@/contexts/BrandingContext';
 
 export default function QuickResponse() {
   const { token } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { settings: brandingSettings } = useBranding();
   
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(true);
@@ -225,7 +227,7 @@ export default function QuickResponse() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-1">QuoteMaster Pro</h1>
+              <h1 className="text-3xl font-bold mb-1">{brandingSettings.companyName}</h1>
               <p className="text-primary-foreground/80 text-sm">Plataforma de Gestão de Cotações</p>
             </div>
             <Package className="w-12 h-12 opacity-80" />

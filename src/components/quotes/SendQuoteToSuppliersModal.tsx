@@ -207,16 +207,17 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       
       const shortLinks = await Promise.all(
         selectedSuppliers.map(async (supplierId) => {
-          const result = await generateQuoteShortLink(quote.id);
+          const result = await generateQuoteShortLink(quote.id, supplierId);
           
           if (!result.success) {
             console.error('❌ [SEND-QUOTE] Failed to generate link for supplier:', supplierId, result.error);
             return null;
           }
           
-          console.log('✅ [SEND-QUOTE] Generated link for supplier:', supplierId, {
+          console.log(`✅ [SEND-QUOTE] ${result.reused ? '♻️ Reutilizado' : '🆕 Novo'} link para fornecedor:`, supplierId, {
             shortUrl: result.shortUrl,
-            fullUrl: result.fullUrl
+            fullUrl: result.fullUrl,
+            reused: result.reused
           });
           
           return {
