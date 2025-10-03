@@ -156,93 +156,10 @@ export default function QuickResponse() {
       
       setAttachment(file);
       
-      // Se for PDF, tentar extrair dados automaticamente com IA
-      if (file.type === 'application/pdf') {
-        toast({
-          title: '🤖 Processando PDF com IA...',
-          description: 'Extraindo dados automaticamente da proposta.'
-        });
-        
-        setIsExtractingFromPdf(true);
-        
-        try {
-          // Converter PDF para base64
-          const reader = new FileReader();
-          reader.onload = async (event) => {
-            const base64 = event.target?.result as string;
-            
-            // Chamar edge function para extrair dados
-            const { data: extractedData, error: extractError } = await supabase.functions.invoke('extract-quote-from-pdf', {
-              body: { 
-                pdfBase64: base64.split(',')[1], // Remove data:application/pdf;base64,
-                fileName: file.name 
-              }
-            });
-            
-            console.log('📄 [PDF-EXTRACT] Response:', { extractedData, extractError });
-            
-            if (extractError) {
-              console.error('❌ [PDF-EXTRACT] Error:', extractError);
-              toast({
-                title: 'Erro ao processar PDF',
-                description: extractError.message || 'Não foi possível extrair os dados. Preencha manualmente.',
-                variant: 'destructive'
-              });
-              setIsExtractingFromPdf(false);
-              return;
-            }
-            
-            if (!extractedData?.success) {
-              console.error('❌ [PDF-EXTRACT] Failed:', extractedData?.error);
-              toast({
-                title: 'Não foi possível extrair dados',
-                description: extractedData?.error || 'Preencha manualmente os campos abaixo.',
-                variant: 'destructive'
-              });
-              setIsExtractingFromPdf(false);
-              return;
-            }
-            
-            // Preencher formulário com dados extraídos
-            if (extractedData.data) {
-              const updates: any = {};
-              
-              if (extractedData.data.totalAmount) {
-                updates.totalAmount = extractedData.data.totalAmount;
-              }
-              
-              if (extractedData.data.notes) {
-                updates.notes = extractedData.data.notes;
-              }
-              
-              if (Object.keys(updates).length > 0) {
-                setFormData(prev => ({
-                  ...prev,
-                  ...updates
-                }));
-                
-                toast({
-                  title: '✅ Dados extraídos com sucesso!',
-                  description: `${extractedData.data.totalAmount ? 'Valor total' : ''}${extractedData.data.totalAmount && extractedData.data.notes ? ' e ' : ''}${extractedData.data.notes ? 'observações' : ''} preenchidos automaticamente.`
-                });
-              } else {
-                toast({
-                  title: 'PDF processado',
-                  description: 'Não foram encontrados dados para preencher. Complete manualmente.',
-                  variant: 'default'
-                });
-              }
-            }
-            
-            setIsExtractingFromPdf(false);
-          };
-          
-          reader.readAsDataURL(file);
-        } catch (error) {
-          console.error('Erro ao processar PDF:', error);
-          setIsExtractingFromPdf(false);
-        }
-      }
+      toast({
+        title: '✅ Arquivo selecionado',
+        description: `${file.name} será enviado com sua resposta.`
+      });
     }
   };
 
@@ -519,9 +436,6 @@ export default function QuickResponse() {
                   <div>
                     <Label htmlFor="attachment">
                       Anexar Proposta (opcional)
-                      {isExtractingFromPdf && (
-                        <span className="ml-2 text-xs text-primary">🤖 Extraindo dados com IA...</span>
-                      )}
                     </Label>
                     <div className="relative">
                       <Input
@@ -530,7 +444,7 @@ export default function QuickResponse() {
                         onChange={handleFileChange}
                         accept=".pdf,.doc,.docx,.xls,.xlsx"
                         className="cursor-pointer"
-                        disabled={loading || isExtractingFromPdf}
+                        disabled={loading}
                       />
                       {attachment && (
                         <p className="text-xs text-muted-foreground mt-1">
