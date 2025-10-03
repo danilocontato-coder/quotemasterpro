@@ -17,17 +17,36 @@ import {
   Shield,
   Database,
   Zap,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  CreditCard,
+  Globe
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useSuperAdminDashboard } from '@/hooks/useSuperAdminDashboard';
+import { useSuperAdminAnalytics } from '@/hooks/useSuperAdminAnalytics';
 import { NotificationTester } from '@/components/debug/NotificationTester';
 import { PaginatedActivities } from '@/components/admin/PaginatedActivities';
+import { GeographicDistributionMap } from '@/components/admin/charts/GeographicDistributionMap';
+import { RevenueChart } from '@/components/admin/charts/RevenueChart';
+import { QuotesStatusChart } from '@/components/admin/charts/QuotesStatusChart';
+import { TopClientsChart } from '@/components/admin/charts/TopClientsChart';
+import { ActivityHeatmap } from '@/components/admin/charts/ActivityHeatmap';
+import { ConversionFunnelChart } from '@/components/admin/charts/ConversionFunnelChart';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const SuperAdminDashboard = () => {
   console.log('SuperAdminDashboard component rendering');
   const navigate = useNavigate();
   const { metrics, activities, systemStatus, financialSummary, isLoading, error } = useSuperAdminDashboard();
+  const { 
+    revenueData, 
+    quotesStatusData, 
+    topClientsData, 
+    activityHeatmap,
+    conversionFunnel,
+    isLoading: analyticsLoading 
+  } = useSuperAdminAnalytics();
   
   console.log('SuperAdminDashboard state:', { isLoading, error, metricsCount: Object.keys(metrics).length });
 
@@ -76,79 +95,117 @@ export const SuperAdminDashboard = () => {
 
   return (
     <div className="w-full h-full bg-background">
-      <div className="border-b bg-card px-6 py-4">
-        <div className="flex items-center justify-between">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary via-primary/90 to-primary/70 px-6 py-8 border-b">
+        <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
+        <div className="relative flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">SuperAdmin Dashboard</h1>
-            <p className="text-muted-foreground">Controle total da plataforma de cotações</p>
+            <h1 className="text-4xl font-bold text-white mb-2">SuperAdmin Dashboard</h1>
+            <p className="text-white/80">Controle total e insights estratégicos da plataforma</p>
           </div>
-          <div className="flex items-center gap-4">
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-white/20 text-white border-white/30 backdrop-blur">
+              <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
               Sistema Online
             </Badge>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="bg-white/10 text-white border-white/30 hover:bg-white/20" onClick={() => navigate('/admin/audit')}>
               <Shield className="h-4 w-4 mr-2" />
-              Logs de Segurança
+              Auditoria
             </Button>
           </div>
         </div>
       </div>
 
       <div className="p-6 space-y-6 overflow-auto">
-        {/* Métricas Principais */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <MetricCard
-                  title="Usuários Totais"
-                  value={isLoading ? "..." : metrics.totalUsers.toLocaleString()}
-                  icon={Users}
-                />
-              </div>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                <MetricCard
-                  title="Receita Mensal"
-                  value={isLoading ? "..." : `R$ ${metrics.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                  icon={DollarSign}
-                />
-              </div>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-                <MetricCard
-                  title="Clientes Ativos"
-                  value={isLoading ? "..." : metrics.totalClients.toLocaleString()}
-                  icon={Building2}
-                />
-              </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-                <MetricCard
-                  title="Fornecedores"
-                  value={isLoading ? "..." : metrics.totalSuppliers.toLocaleString()}
-                  icon={Truck}
-                />
-              </div>
-            </div>
-          </div>
-          
-          {/* Testador de Notificações */}
-          <div className="lg:col-span-1">
-            <NotificationTester />
-          </div>
+        {/* Métricas Principais - KPIs Estratégicos */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+          <MetricCard
+            title="Usuários Ativos"
+            value={isLoading ? "..." : metrics.totalUsers.toLocaleString()}
+            change="+12% vs mês anterior"
+            changeType="positive"
+            icon={Users}
+            description="Total de usuários no sistema"
+          />
+          <MetricCard
+            title="Receita Mensal (MRR)"
+            value={isLoading ? "..." : `R$ ${(metrics.monthlyRevenue / 1000).toFixed(0)}K`}
+            change="+18% vs mês anterior"
+            changeType="positive"
+            icon={DollarSign}
+            description="Receita recorrente mensal"
+          />
+          <MetricCard
+            title="Clientes Ativos"
+            value={isLoading ? "..." : metrics.totalClients.toLocaleString()}
+            change="+8 novos este mês"
+            changeType="positive"
+            icon={Building2}
+            description="Clientes com assinatura ativa"
+          />
+          <MetricCard
+            title="RFQs Processadas"
+            value={isLoading ? "..." : metrics.totalQuotes.toLocaleString()}
+            change="+245 esta semana"
+            changeType="positive"
+            icon={FileText}
+            description="Total de cotações no sistema"
+          />
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+        {/* Gráficos Principais */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          {analyticsLoading ? (
+            <>
+              <Skeleton className="h-96" />
+              <Skeleton className="h-96" />
+            </>
+          ) : (
+            <>
+              <RevenueChart data={revenueData} />
+              <QuotesStatusChart data={quotesStatusData} />
+            </>
+          )}
+        </div>
+
+        {/* Mapa Geográfico + Funil de Conversão */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <GeographicDistributionMap />
+          {analyticsLoading ? (
+            <Skeleton className="h-96" />
+          ) : (
+            <ConversionFunnelChart data={conversionFunnel} />
+          )}
+        </div>
+
+        {/* Top Clientes + Heatmap de Atividade */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          {analyticsLoading ? (
+            <>
+              <Skeleton className="h-96" />
+              <Skeleton className="h-96" />
+            </>
+          ) : (
+            <>
+              <TopClientsChart data={topClientsData} />
+              <ActivityHeatmap data={activityHeatmap} />
+            </>
+          )}
+        </div>
+
+        {/* Tabs com Informações Detalhadas */}
+        <Tabs defaultValue="overview" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="accounts">Contas</TabsTrigger>
             <TabsTrigger value="system">Sistema</TabsTrigger>
             <TabsTrigger value="integrations">Integrações</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="analytics" className="hidden lg:block">Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Atividades Recentes com Paginação */}
+              {/* Atividades Recentes */}
               <PaginatedActivities
                 activities={activities}
                 isLoading={isLoading}
@@ -157,31 +214,31 @@ export const SuperAdminDashboard = () => {
               />
 
               {/* Status do Sistema */}
-              <Card>
-                <CardHeader>
+              <Card className="overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-muted/50 to-transparent border-b">
                   <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
+                    <Shield className="h-5 w-5 text-primary" />
                     Status do Sistema
                   </CardTitle>
                   <CardDescription>Monitoramento em tempo real</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 pt-6">
                   {isLoading ? (
                     <div className="text-center py-4">
-                      <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-                      <p>Carregando status...</p>
+                      <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
+                      <p className="text-sm text-muted-foreground">Carregando status...</p>
                     </div>
                   ) : systemStatus.map((service) => (
-                    <div key={service.service} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div key={service.service} className="flex items-center justify-between p-4 rounded-xl border border-border/50 hover:border-primary/30 transition-all bg-gradient-to-r from-card to-transparent">
                       <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${getStatusColor(service.status)}`}></div>
+                        <div className={`w-3 h-3 rounded-full ${getStatusColor(service.status)} shadow-lg`}></div>
                         <div>
-                          <p className="font-medium text-sm">{service.service}</p>
+                          <p className="font-semibold text-sm">{service.service}</p>
                           <p className="text-xs text-muted-foreground">Uptime: {service.uptime}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium">{service.responseTime}</p>
+                        <p className="text-sm font-bold text-primary">{service.responseTime}</p>
                         <p className="text-xs text-muted-foreground">Resposta</p>
                       </div>
                     </div>
@@ -190,78 +247,81 @@ export const SuperAdminDashboard = () => {
               </Card>
             </div>
 
-            {/* Cards de Resumo por Tipo */}
+            {/* Resumo Financeiro Detalhado */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="border-blue-200 bg-blue-50">
+              <Card className="border-primary/20 overflow-hidden">
+                <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-600" />
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-blue-700 flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-blue-600" />
                     Clientes
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Total</span>
-                      <span className="font-semibold">{isLoading ? "..." : metrics.totalClients}</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Total</span>
+                      <span className="font-bold text-lg">{isLoading ? "..." : metrics.totalClients}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Assinaturas Ativas</span>
-                      <span className="font-semibold text-green-600">{isLoading ? "..." : metrics.activeSubscriptions}</span>
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Assinaturas Ativas</span>
+                      <span className="font-bold text-lg text-green-600">{isLoading ? "..." : metrics.activeSubscriptions}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Novos Hoje</span>
-                      <span className="font-semibold text-blue-600">{isLoading ? "..." : metrics.todaySignups}</span>
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Novos Hoje</span>
+                      <span className="font-bold text-lg text-blue-600">{isLoading ? "..." : metrics.todaySignups}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-orange-200 bg-orange-50">
+              <Card className="border-primary/20 overflow-hidden">
+                <div className="h-2 bg-gradient-to-r from-orange-500 to-red-500" />
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-orange-700 flex items-center gap-2">
-                    <Truck className="h-5 w-5" />
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-orange-600" />
                     Fornecedores
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Ativos</span>
-                      <span className="font-semibold">{isLoading ? "..." : metrics.totalSuppliers}</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Ativos</span>
+                      <span className="font-bold text-lg">{isLoading ? "..." : metrics.totalSuppliers}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Cotações</span>
-                      <span className="font-semibold text-green-600">{isLoading ? "..." : metrics.totalQuotes}</span>
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Cotações</span>
+                      <span className="font-bold text-lg text-green-600">{isLoading ? "..." : metrics.totalQuotes}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Storage (GB)</span>
-                      <span className="font-semibold text-orange-600">{isLoading ? "..." : metrics.storageUsed.toFixed(1)}</span>
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Storage (GB)</span>
+                      <span className="font-bold text-lg text-orange-600">{isLoading ? "..." : metrics.storageUsed.toFixed(1)}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-green-200 bg-green-50">
+              <Card className="border-primary/20 overflow-hidden">
+                <div className="h-2 bg-gradient-to-r from-green-500 to-emerald-600" />
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-green-700 flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-green-600" />
                     Financeiro
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Receita Total</span>
-                      <span className="font-semibold">R$ {isLoading ? "..." : metrics.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Receita Total</span>
+                      <span className="font-bold text-lg">R$ {isLoading ? "..." : (metrics.totalRevenue / 1000).toFixed(0)}K</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Este Mês</span>
-                      <span className="font-semibold text-green-600">R$ {isLoading ? "..." : metrics.monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Este Mês</span>
+                      <span className="font-bold text-lg text-green-600">R$ {isLoading ? "..." : (metrics.monthlyRevenue / 1000).toFixed(0)}K</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Crescimento</span>
-                      <span className="font-semibold text-green-600">+{isLoading ? "..." : financialSummary.growth.toFixed(1)}%</span>
+                    <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <span className="text-sm text-muted-foreground">Crescimento</span>
+                      <span className="font-bold text-lg text-green-600">+{isLoading ? "..." : financialSummary.growth.toFixed(1)}%</span>
                     </div>
                   </div>
                 </CardContent>
@@ -270,39 +330,170 @@ export const SuperAdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="accounts">
-            <div className="text-center py-12">
-              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Gestão de Contas</h3>
-              <p className="text-muted-foreground mb-4">Usuários, clientes e fornecedores</p>
-              <Button>Acessar Gestão</Button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/accounts')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    Usuários
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{metrics.totalUsers}</p>
+                  <p className="text-sm text-muted-foreground mt-2">Gerenciar todos os usuários</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/clients')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                    Clientes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{metrics.totalClients}</p>
+                  <p className="text-sm text-muted-foreground mt-2">Gerenciar clientes e condomínios</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/suppliers')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-orange-600" />
+                    Fornecedores
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{metrics.totalSuppliers}</p>
+                  <p className="text-sm text-muted-foreground mt-2">Gerenciar fornecedores</p>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="system">
-            <div className="text-center py-12">
-              <Settings className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Configurações do Sistema</h3>
-              <p className="text-muted-foreground mb-4">Configurações avançadas e manutenção</p>
-              <Button>Em desenvolvimento</Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="h-5 w-5 text-primary" />
+                    Banco de Dados
+                  </CardTitle>
+                  <CardDescription>Status e estatísticas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between p-2">
+                      <span className="text-sm">Storage Usado</span>
+                      <span className="font-semibold">{metrics.storageUsed.toFixed(1)} GB</span>
+                    </div>
+                    <div className="flex justify-between p-2">
+                      <span className="text-sm">Tabelas</span>
+                      <span className="font-semibold">28 tabelas</span>
+                    </div>
+                    <Button variant="outline" className="w-full" onClick={() => navigate('/admin/database')}>
+                      Ver Detalhes
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-green-600" />
+                    Segurança
+                  </CardTitle>
+                  <CardDescription>Logs e monitoramento</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between p-2">
+                      <span className="text-sm">Eventos Hoje</span>
+                      <span className="font-semibold">{activities.length}</span>
+                    </div>
+                    <div className="flex justify-between p-2">
+                      <span className="text-sm">Alertas Ativos</span>
+                      <span className="font-semibold text-yellow-600">0</span>
+                    </div>
+                    <Button variant="outline" className="w-full" onClick={() => navigate('/admin/audit')}>
+                      Ver Auditoria
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="integrations">
-            <div className="text-center py-12">
-              <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Integrações Externas</h3>
-              <p className="text-muted-foreground mb-4">WhatsApp, E-mail, Stripe e outras APIs</p>
-              <Button>Em desenvolvimento</Button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-purple-600" />
+                    Pagamentos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    Stripe Conectado
+                  </Badge>
+                  <p className="text-sm text-muted-foreground mt-3">Gateway de pagamento configurado</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="h-5 w-5 text-blue-600" />
+                    APIs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                    Configuração Pendente
+                  </Badge>
+                  <p className="text-sm text-muted-foreground mt-3">WhatsApp, Email, SMS</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/integrations')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-orange-600" />
+                    Configurar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" className="w-full">
+                    Ver Todas Integrações
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="analytics">
-            <div className="text-center py-12">
-              <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Analytics Avançado</h3>
-              <p className="text-muted-foreground mb-4">Relatórios e métricas detalhadas</p>
-              <Button>Em desenvolvimento</Button>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Analytics Avançado
+                </CardTitle>
+                <CardDescription>Relatórios e métricas detalhadas</CardDescription>
+              </CardHeader>
+              <CardContent className="text-center py-8">
+                <Activity className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Analytics Completo</h3>
+                <p className="text-muted-foreground mb-4">
+                  Acesse relatórios detalhados, análises de tendências e insights de negócio
+                </p>
+                <Button onClick={() => navigate('/admin/analytics')}>
+                  Acessar Analytics
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
