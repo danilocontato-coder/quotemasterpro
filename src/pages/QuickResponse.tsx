@@ -22,6 +22,7 @@ export default function QuickResponse() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isEditingPreFilledData, setIsEditingPreFilledData] = useState(false);
   const [hasPreFilledData, setHasPreFilledData] = useState(false);
+  const [isExtractingFromPdf, setIsExtractingFromPdf] = useState(false);
   
   const [formData, setFormData] = useState({
     supplierName: '',
@@ -63,7 +64,16 @@ export default function QuickResponse() {
         setQuoteData(data.quote);
         
         // Buscar TODOS os dados do fornecedor se já cadastrado
-        if (data.quote?.supplier_id) {
+        if (data.supplier) {
+          console.log('🔍 [QUICK-RESPONSE] Dados do fornecedor encontrados:', data.supplier);
+          setFormData(prev => ({ 
+            ...prev, 
+            supplierName: data.supplier.name || '',
+            supplierEmail: data.supplier.email || ''
+          }));
+          setHasPreFilledData(true);
+        } else if (data.quote?.supplier_id) {
+          // Fallback: buscar diretamente se validate-quote-token não retornou
           const { data: supplier } = await supabase
             .from('suppliers')
             .select('name, email, cnpj, phone, city, state')
@@ -71,6 +81,7 @@ export default function QuickResponse() {
             .single();
           
           if (supplier) {
+            console.log('🔍 [QUICK-RESPONSE] Dados do fornecedor via fallback:', supplier);
             setFormData(prev => ({ 
               ...prev, 
               supplierName: supplier.name || '',
@@ -80,6 +91,7 @@ export default function QuickResponse() {
           }
         } else if (data.quote?.supplier_name) {
           // Fallback caso não tenha supplier_id mas tenha supplier_name
+          console.log('🔍 [QUICK-RESPONSE] Usando supplier_name da quote:', data.quote.supplier_name);
           setFormData(prev => ({ 
             ...prev, 
             supplierName: data.quote.supplier_name 
@@ -103,7 +115,7 @@ export default function QuickResponse() {
     validateAndFetch();
   }, [token, navigate, toast]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
@@ -118,6 +130,62 @@ export default function QuickResponse() {
       }
       
       setAttachment(file);
+      
+      // Se for PDF, tentar extrair dados automaticamente com IA
+      if (file.type === 'application/pdf') {
+        toast({
+          title: '🤖 Processando PDF com IA...',
+          description: 'Extraindo dados automaticamente da proposta.'
+        });
+        
+        setIsExtractingFromPdf(true);
+        
+        try {
+          // Converter PDF para base64
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const base64 = event.target?.result as string;
+            
+            // Chamar edge function para extrair dados
+            const { data: extractedData, error: extractError } = await supabase.functions.invoke('extract-quote-from-pdf', {
+              body: { 
+                pdfBase64: base64.split(',')[1], // Remove data:application/pdf;base64,
+                fileName: file.name 
+              }
+            });
+            
+            if (extractError || !extractedData?.success) {
+              console.error('Erro ao extrair dados do PDF:', extractError);
+              toast({
+                title: 'Não foi possível extrair dados',
+                description: 'Preencha manualmente os campos abaixo.',
+                variant: 'destructive'
+              });
+            } else {
+              // Preencher formulário com dados extraídos
+              if (extractedData.data) {
+                setFormData(prev => ({
+                  ...prev,
+                  totalAmount: extractedData.data.totalAmount || prev.totalAmount,
+                  notes: extractedData.data.notes || prev.notes
+                }));
+                
+                toast({
+                  title: '✅ Dados extraídos com sucesso!',
+                  description: 'Confira os valores preenchidos automaticamente.'
+                });
+              }
+            }
+            
+            setIsExtractingFromPdf(false);
+          };
+          
+          reader.readAsDataURL(file);
+        } catch (error) {
+          console.error('Erro ao processar PDF:', error);
+          setIsExtractingFromPdf(false);
+        }
+      }
     }
   };
 
@@ -226,9 +294,20 @@ export default function QuickResponse() {
       <div className="bg-primary text-primary-foreground py-6 shadow-lg">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-1">{brandingSettings.companyName}</h1>
-              <p className="text-primary-foreground/80 text-sm">Plataforma de Gestão de Cotações</p>
+            <div className="flex items-center gap-4">
+              {brandingSettings.logo && brandingSettings.logo !== '/placeholder.svg' && (
+                <div className="bg-white rounded-lg p-2 shadow-md">
+                  <img 
+                    src={brandingSettings.logo} 
+                    alt={brandingSettings.companyName}
+                    className="h-12 w-auto object-contain"
+                  />
+                </div>
+              )}
+              <div>
+                <h1 className="text-3xl font-bold mb-1">{brandingSettings.companyName}</h1>
+                <p className="text-primary-foreground/80 text-sm">Plataforma de Gestão de Cotações</p>
+              </div>
             </div>
             <Package className="w-12 h-12 opacity-80" />
           </div>
@@ -377,7 +456,12 @@ export default function QuickResponse() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="attachment">Anexar Proposta (opcional)</Label>
+                    <Label htmlFor="attachment">
+                      Anexar Proposta (opcional)
+                      {isExtractingFromPdf && (
+                        <span className="ml-2 text-xs text-primary">🤖 Extraindo dados com IA...</span>
+                      )}
+                    </Label>
                     <div className="relative">
                       <Input
                         id="attachment"
@@ -385,7 +469,7 @@ export default function QuickResponse() {
                         onChange={handleFileChange}
                         accept=".pdf,.doc,.docx,.xls,.xlsx"
                         className="cursor-pointer"
-                        disabled={loading}
+                        disabled={loading || isExtractingFromPdf}
                       />
                       {attachment && (
                         <p className="text-xs text-muted-foreground mt-1">
@@ -394,12 +478,33 @@ export default function QuickResponse() {
                         </p>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX (máx. 10MB)</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      📄 PDF com IA: Valores e observações extraídos automaticamente<br />
+                      Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX (máx. 10MB)
+                    </p>
                   </div>
                   
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Enviando...' : 'Enviar Proposta'}
+                  <Button type="submit" className="w-full" disabled={loading || isExtractingFromPdf}>
+                    {loading ? 'Enviando...' : isExtractingFromPdf ? '🤖 Processando PDF...' : 'Enviar Proposta'}
                   </Button>
+                  
+                  <div className="text-center pt-4 border-t">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Ainda não tem cadastro?
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => window.open('/supplier/register', '_blank')}
+                      className="w-full"
+                    >
+                      <Building2 className="w-4 h-4 mr-2" />
+                      Cadastrar como Fornecedor
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Crie sua conta e receba cotações de múltiplos clientes
+                    </p>
+                  </div>
                 </form>
               </CardContent>
             </Card>

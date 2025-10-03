@@ -72,6 +72,7 @@ const SupplierDeliveries = React.lazy(() => import('@/pages/supplier/SupplierDel
 const SupplierSettings = React.lazy(() => import('@/pages/supplier/SupplierSettings'));
 const SupplierUsers = React.lazy(() => import('@/pages/supplier/SupplierUsers'));
 const SupplierAuth = React.lazy(() => import('@/pages/supplier/SupplierAuth'));
+const SupplierRegister = React.lazy(() => import('@/pages/supplier/SupplierRegister'));
 const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierQuickResponse = React.lazy(() => import('@/pages/supplier/SupplierQuickResponse'));
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
@@ -485,6 +486,11 @@ export const AppWithProviders: React.FC = () => {
 
       {/* Rotas diretas do fornecedor - DEVEM VIR ANTES DAS PROTEGIDAS */}
       <Route path="/supplier/auth/:quoteId/:token" element={<SupplierAuth />} />
+      <Route path="/supplier/register" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <SupplierRegister />
+        </Suspense>
+      } />
       <Route path="/supplier/quote/:quoteId/response/:token" element={<SupplierQuoteResponse />} />
       <Route path="/supplier/quick-response/:quoteId/:token" element={<SupplierQuickResponse />} />
       <Route path="/supplier/response-success" element={<SupplierResponseSuccess />} />

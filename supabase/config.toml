@@ -24,6 +24,9 @@ verify_jwt = true
 [functions.extract-pdf-data]
 verify_jwt = false
 
+[functions.extract-quote-from-pdf]
+verify_jwt = false
+
 [functions.public-branding]
 verify_jwt = false
 
