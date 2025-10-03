@@ -41,6 +41,7 @@ interface EditUserModalProps {
 export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
   const { updateUser, resetPassword, groups } = useSupabaseUsers();
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const isAdmin = currentUserRole === 'admin';
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -158,9 +159,14 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
     }));
   };
 
+  const handleCloseAll = () => {
+    setShowResetPasswordModal(false);
+    onClose();
+  };
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onClose}>
+      <Dialog open={open} onOpenChange={(open) => { if (!open) handleCloseAll(); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -318,21 +324,22 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
                     </Badge>
                   </div>
 
-                  {(currentUserRole === 'admin' || currentUserRole === 'manager') && (
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <div className="font-medium">Forçar alteração de senha</div>
-                        <div className="text-sm text-muted-foreground">
-                          Usuário deverá alterar a senha no próximo login
-                        </div>
+                {isAdmin && (
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <div className="font-medium">Forçar alteração de senha</div>
+                      <div className="text-sm text-muted-foreground">
+                        Usuário deverá alterar a senha no próximo login
                       </div>
-                      <Switch
-                        checked={formData.force_password_change}
-                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, force_password_change: checked }))}
-                      />
                     </div>
-                  )}
+                    <Switch
+                      checked={formData.force_password_change}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, force_password_change: checked }))}
+                    />
+                  </div>
+                )}
 
+                {isAdmin && (
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
                       <div className="font-medium">Redefinir Senha</div>
@@ -350,6 +357,7 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
                       Nova Senha
                     </Button>
                   </div>
+                )}
 
                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <div className="flex items-start gap-2">
@@ -368,12 +376,12 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
           </Tabs>
 
           <DialogFooter>
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmit}>
-              Salvar Alterações
-            </Button>
+          <Button variant="outline" onClick={handleCloseAll}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit}>
+            Salvar Alterações
+          </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
