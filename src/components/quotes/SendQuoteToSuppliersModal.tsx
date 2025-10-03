@@ -11,7 +11,8 @@ import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ShortLinkDisplay } from "@/components/ui/short-link-display";
-import { selectBestSupplier, createSupplierResponseLink, generateQuoteToken } from "@/lib/supplierDeduplication";
+import { selectBestSupplier } from "@/lib/supplierDeduplication";
+import { generateQuoteShortLink } from "@/lib/quoteTokens";
 
 interface SendQuoteToSuppliersModalProps {
   quote: any;
@@ -201,45 +202,45 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     setIsLoading(true);
 
     try {
-      // Determina automaticamente o método de envio: forçar Evolution (envio direto)
-      const sendVia = 'direct';
-      
-      // Generate unique response links for each selected supplier
-      const supplierLinks = selectedSuppliers.map((supplierId) => {
-        const token = generateQuoteToken();
-        return {
-          supplier_id: supplierId,
-          link: createSupplierResponseLink(quote?.id, token),
-          token
-        };
-      });
-
       // Generate short links for each supplier
+      console.log('📤 [SEND-QUOTE] Generating short links for suppliers:', selectedSuppliers);
+      
       const shortLinks = await Promise.all(
         selectedSuppliers.map(async (supplierId) => {
-          try {
-            const { data } = await supabase.functions.invoke('generate-quote-token', {
-              body: { quote_id: quote.id }
-            });
-            
-            if (data?.success) {
-              return {
-                supplier_id: supplierId,
-                short_link: data.short_url,
-                full_link: data.full_url,
-                short_code: data.short_code,
-                full_token: data.full_token
-              };
-            }
-            return null;
-          } catch (error) {
-            console.error('Error generating short link for supplier:', supplierId, error);
+          const result = await generateQuoteShortLink(quote.id);
+          
+          if (!result.success) {
+            console.error('❌ [SEND-QUOTE] Failed to generate link for supplier:', supplierId, result.error);
             return null;
           }
+          
+          console.log('✅ [SEND-QUOTE] Generated link for supplier:', supplierId, {
+            shortUrl: result.shortUrl,
+            fullUrl: result.fullUrl
+          });
+          
+          return {
+            supplier_id: supplierId,
+            short_link: result.shortUrl,
+            full_link: result.fullUrl,
+            short_code: result.shortCode,
+            full_token: result.fullToken
+          };
         })
       );
 
       const validShortLinks = shortLinks.filter(Boolean);
+
+      if (validShortLinks.length === 0) {
+        toast.error('Falha ao gerar links para fornecedores');
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('📨 [SEND-QUOTE] Sending quote to suppliers via edge function');
+      
+      // Determina automaticamente o método de envio: forçar Evolution (envio direto)
+      const sendVia = 'direct';
 
       const { data, error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: {
@@ -248,7 +249,6 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           send_whatsapp: sendWhatsApp,
           send_email: sendEmail,
           send_via: sendVia,
-          supplier_links: supplierLinks,
           short_links: validShortLinks,
           frontend_base_url: window.location.origin
         }
@@ -273,9 +273,8 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         
         // Log dos links dos fornecedores selecionados
         console.log('Fornecedores selecionados e links enviados:');
-        validShortLinks.forEach((linkData, index) => {
-          const supplierLink = supplierLinks[index];
-          if (linkData && supplierLink) {
+        validShortLinks.forEach((linkData) => {
+          if (linkData) {
             const supplier = deduplicatedSuppliers.find(s => s.id === linkData.supplier_id);
             const badge = supplier?.type === 'certified' ? '🏆 CERTIFICADO' : '📍 LOCAL';
             console.log(`${badge} ${supplier?.name || 'Fornecedor'}:`);

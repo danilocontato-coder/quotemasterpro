@@ -1,51 +1,54 @@
 import { useEffect, useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, AlertTriangle } from 'lucide-react';
+import { resolveShortLink } from '@/lib/quoteTokens';
 
 export default function ShortLinkRedirect() {
   const { shortCode } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
   useEffect(() => {
-    const resolveShortLink = async () => {
+    const handleResolve = async () => {
       if (!shortCode) {
         setError('Código inválido');
         setLoading(false);
         return;
       }
 
-      try {
-        // Call the resolve function with short code in body
-        const { data, error } = await supabase.functions.invoke('resolve-short-link', {
-          body: { short_code: shortCode }
-        });
+      console.log('🔗 [SHORT-LINK] Resolving short code:', shortCode);
 
-        if (error) {
-          console.error('Error resolving short link:', error);
-          setError('Link inválido ou expirado');
-          return;
-        }
+      const result = await resolveShortLink(shortCode);
 
-        if (data?.success && data?.redirect_url) {
-          // Extract the path from the full URL for client-side navigation
-          const url = new URL(data.redirect_url);
-          setRedirectUrl(url.pathname);
-        } else {
-          setError(data?.error || 'Link inválido');
-        }
-      } catch (err) {
-        console.error('Failed to resolve short link:', err);
-        setError('Erro ao processar o link');
-      } finally {
+      if (!result.success) {
+        console.error('❌ [SHORT-LINK] Resolution failed:', result.error);
+        setError(result.error || 'Link inválido ou expirado');
         setLoading(false);
+        return;
       }
+
+      if (result.redirectUrl) {
+        // Extract path from full URL for client-side navigation
+        try {
+          const url = new URL(result.redirectUrl);
+          const path = url.pathname;
+          console.log('✅ [SHORT-LINK] Redirecting to:', path);
+          setRedirectPath(path);
+        } catch (err) {
+          console.error('❌ [SHORT-LINK] Invalid redirect URL:', result.redirectUrl);
+          setError('URL de redirecionamento inválida');
+        }
+      } else {
+        console.error('❌ [SHORT-LINK] No redirect URL in response');
+        setError('Resposta inválida do servidor');
+      }
+
+      setLoading(false);
     };
 
-    resolveShortLink();
+    handleResolve();
   }, [shortCode]);
 
   if (loading) {
@@ -81,8 +84,8 @@ export default function ShortLinkRedirect() {
     );
   }
 
-  if (redirectUrl) {
-    return <Navigate to={redirectUrl} replace />;
+  if (redirectPath) {
+    return <Navigate to={redirectPath} replace />;
   }
 
   return null;
