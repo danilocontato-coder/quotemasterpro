@@ -102,7 +102,7 @@ serve(async (req) => {
     }
 
     // Get base URL from system settings
-    let baseUrl = req.headers.get('origin') || 'https://bcadcdb0-8f04-4a14-8998-22e01e1b27d7.lovableproject.com'
+    let baseUrl = 'https://cotiz.com.br'
     
     try {
       const { data: settingsData } = await supabaseClient
@@ -124,8 +124,12 @@ serve(async (req) => {
       console.log('Could not fetch base URL from settings, using fallback:', baseUrl)
     }
     
-    const shortUrl = `${baseUrl}/s/${shortCode}`
-    const fullUrl = `${baseUrl}/supplier/quick-response/${quote_id}/${fullToken}`
+    const shortPath = `/s/${shortCode}`
+    const redirectPath = `/supplier/quick-response/${quote_id}/${fullToken}`
+    const shortUrl = `${baseUrl}${shortPath}`
+    const fullUrl = `${baseUrl}${redirectPath}`
+
+    console.log('🔗 [GENERATE-QUOTE-TOKEN] URLs generated:', { baseUrl, shortPath, redirectPath, shortUrl, fullUrl })
 
     return new Response(
       JSON.stringify({
@@ -133,6 +137,8 @@ serve(async (req) => {
         token: tokenData,
         short_url: shortUrl,
         full_url: fullUrl,
+        short_path: shortPath,
+        redirect_path: redirectPath,
         short_code: shortCode,
         full_token: fullToken
       }),

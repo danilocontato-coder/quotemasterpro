@@ -29,7 +29,10 @@ export default function ShortLinkRedirect() {
         return;
       }
 
-      if (result.redirectUrl) {
+      if (result.redirectPath) {
+        console.log('✅ [SHORT-LINK] Using redirect path:', result.redirectPath);
+        setRedirectPath(result.redirectPath);
+      } else if (result.redirectUrl) {
         // Extract path from full URL for client-side navigation
         try {
           const url = new URL(result.redirectUrl);

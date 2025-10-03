@@ -61,6 +61,7 @@ export async function generateQuoteShortLink(quoteId: string): Promise<{
 export async function resolveShortLink(shortCode: string): Promise<{
   success: boolean;
   redirectUrl?: string;
+  redirectPath?: string;
   quoteId?: string;
   fullToken?: string;
   error?: string;
@@ -88,6 +89,7 @@ export async function resolveShortLink(shortCode: string): Promise<{
     return {
       success: true,
       redirectUrl: data.redirect_url,
+      redirectPath: data.redirect_path,
       quoteId: data.quote_id,
       fullToken: data.full_token
     };

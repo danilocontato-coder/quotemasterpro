@@ -102,7 +102,9 @@ serve(async (req) => {
         success: true,
         quote_id: tokenData.quote_id,
         full_token: tokenData.full_token,
+        short_code: tokenData.short_code,
         redirect_url: fullUrl,
+        redirect_path: `/supplier/quick-response/${tokenData.quote_id}/${tokenData.full_token}`,
         expires_at: tokenData.expires_at,
         access_count: tokenData.access_count + 1
       }),
