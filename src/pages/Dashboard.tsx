@@ -109,20 +109,30 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Admin Mode Indicator */}
       <AdminModeIndicator />
       
-      {/* Page Header */}
-      <div className="flex flex-col gap-2 animate-fade-in">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s' }}>Dashboard</h1>
-        <p className="text-sm md:text-base text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          Visão geral do sistema de cotações e orçamentos
-        </p>
+      {/* Page Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-primary/70 p-8 animate-fade-in shadow-lg">
+        <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-3 h-3 rounded-full bg-white/80 animate-pulse" />
+            <span className="text-sm font-medium text-white/90">{clientName || 'Sistema'}</span>
+            <span className="text-xs px-2 py-1 bg-white/20 rounded-full text-white/90">{planDisplayName}</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+            Bem-vindo ao QuoteMaster Pro
+          </h1>
+          <p className="text-base text-white/80 max-w-2xl">
+            Gerencie suas cotações e orçamentos com eficiência e inteligência
+          </p>
+        </div>
       </div>
 
       {/* Primary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
         <>
           <MetricCard
               title="Total de Cotações"
@@ -154,7 +164,7 @@ export default function Dashboard() {
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
         <>
           <MetricCard
               title="Gasto Mensal"
@@ -195,7 +205,7 @@ export default function Dashboard() {
       </div>
 
       {/* Usage Limits and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <div className="lg:col-span-2">
           <QuickActions />
         </div>
@@ -209,11 +219,14 @@ export default function Dashboard() {
       <RatingPrompts />
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in" style={{ animationDelay: '0.5s' }}>
         {/* Recent Activity */}
-        <Card className="card-corporate">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Atividades Recentes</CardTitle>
+        <Card className="card-corporate overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-muted/50 to-transparent border-b">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Atividades Recentes
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -237,24 +250,26 @@ export default function Dashboard() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {activities.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
+                  <div key={activity.id} className="group relative flex items-center justify-between p-4 bg-gradient-to-r from-secondary/30 to-transparent rounded-xl border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-md">
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{activity.action}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
+                        {activity.action}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1.5">
                         {activity.entity}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{activity.time}</p>
+                    <div className="text-right flex flex-col items-end gap-2">
+                      <p className="text-xs text-muted-foreground font-medium">{activity.time}</p>
                       <Badge 
                         variant="secondary" 
-                        className={`text-xs mt-1 ${
-                          activity.status === 'success' ? 'bg-green-100 text-green-700' :
-                          activity.status === 'warning' ? 'bg-yellow-100 text-yellow-700' :
-                          activity.status === 'error' ? 'bg-red-100 text-red-700' :
-                          'bg-blue-100 text-blue-700'
+                        className={`text-xs font-medium shadow-sm ${
+                          activity.status === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0' :
+                          activity.status === 'warning' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-white border-0' :
+                          activity.status === 'error' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white border-0' :
+                          'bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0'
                         }`}
                       >
                         {activity.status === 'success' ? 'Sucesso' :
