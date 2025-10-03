@@ -63,7 +63,7 @@ const SupplierAuth = () => {
         
         console.log('Token validated successfully:', data);
         
-        // Buscar email do fornecedor para pré-preencher
+        // Buscar TODOS os dados do fornecedor para pré-preencher
         const { data: quoteData } = await supabase
           .from('quotes')
           .select('supplier_id')
@@ -73,16 +73,21 @@ const SupplierAuth = () => {
         if (quoteData?.supplier_id) {
           const { data: supplier } = await supabase
             .from('suppliers')
-            .select('email, name')
+            .select('email, name, cnpj, phone, city, state')
             .eq('id', quoteData.supplier_id)
             .single();
           
           if (supplier?.email) {
             setSupplierEmail(supplier.email);
+            // Pré-preencher TODOS os dados disponíveis
             setRegisterData(prev => ({ 
               ...prev, 
               email: supplier.email,
-              name: supplier.name || ''
+              name: supplier.name || '',
+              cnpj: supplier.cnpj || '',
+              phone: supplier.phone || '',
+              city: supplier.city || '',
+              state: supplier.state || ''
             }));
             setLoginData(prev => ({ ...prev, email: supplier.email }));
           }
@@ -422,9 +427,13 @@ const SupplierAuth = () => {
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-4">
                   {supplierEmail && (
-                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm">
-                      <p className="text-primary font-medium">📧 Cotação enviada para: {supplierEmail}</p>
-                      <p className="text-muted-foreground text-xs mt-1">Use este email para criar sua conta.</p>
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm space-y-2">
+                      <p className="text-primary font-medium">✅ Dados pré-preenchidos pelo cliente</p>
+                      <p className="text-muted-foreground text-xs">
+                        Os dados abaixo foram fornecidos pelo cliente que enviou a cotação. 
+                        Por favor, <strong>confirme ou atualize</strong> as informações conforme necessário.
+                      </p>
+                      <p className="text-primary text-xs font-medium">📧 Email: {supplierEmail}</p>
                     </div>
                   )}
                   
@@ -460,9 +469,6 @@ const SupplierAuth = () => {
                   
                   <div>
                     <Label htmlFor="registerEmail">E-mail *</Label>
-                    {supplierEmail && (
-                      <p className="text-xs text-muted-foreground mb-1">Email pré-preenchido (não editável)</p>
-                    )}
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input

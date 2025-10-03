@@ -58,8 +58,23 @@ export default function QuickResponse() {
         
         setQuoteData(data.quote);
         
-        // Pré-preencher dados se fornecedor já cadastrado
-        if (data.quote?.supplier_name) {
+        // Buscar TODOS os dados do fornecedor se já cadastrado
+        if (data.quote?.supplier_id) {
+          const { data: supplier } = await supabase
+            .from('suppliers')
+            .select('name, email, cnpj, phone, city, state')
+            .eq('id', data.quote.supplier_id)
+            .single();
+          
+          if (supplier) {
+            setFormData(prev => ({ 
+              ...prev, 
+              supplierName: supplier.name || '',
+              supplierEmail: supplier.email || ''
+            }));
+          }
+        } else if (data.quote?.supplier_name) {
+          // Fallback caso não tenha supplier_id mas tenha supplier_name
           setFormData(prev => ({ 
             ...prev, 
             supplierName: data.quote.supplier_name 
@@ -247,6 +262,14 @@ export default function QuickResponse() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {formData.supplierName && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm mb-4">
+                  <p className="text-primary font-medium">✅ Dados pré-preenchidos</p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    O cliente já forneceu alguns dados. Por favor, <strong>confirme ou atualize</strong> conforme necessário.
+                  </p>
+                </div>
+              )}
               <div>
                 <Label htmlFor="supplierName">Nome da Empresa *</Label>
                 <div className="relative">
