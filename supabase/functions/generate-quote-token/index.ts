@@ -27,10 +27,10 @@ serve(async (req) => {
       )
     }
 
-    // Get quote to extract client_id
+    // Get quote to extract client_id and deadline
     const { data: quoteData, error: quoteError } = await supabaseClient
       .from('quotes')
-      .select('client_id')
+      .select('client_id, deadline')
       .eq('id', quote_id)
       .single()
 
@@ -136,6 +136,17 @@ serve(async (req) => {
       )
     }
 
+    // Calcular expiração baseado no deadline da cotação ou 30 dias se não houver
+    const expiresAt = quoteData.deadline 
+      ? new Date(quoteData.deadline).toISOString()
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    
+    console.log('🔗 [GENERATE-QUOTE-TOKEN] Expiration:', {
+      deadline: quoteData.deadline,
+      expiresAt,
+      usedDeadline: !!quoteData.deadline
+    })
+
     // Insert token into database with client_id
     const { data: tokenData, error: insertError } = await supabaseClient
       .from('quote_tokens')
@@ -144,7 +155,7 @@ serve(async (req) => {
         client_id: quoteData.client_id,
         short_code: shortCode,
         full_token: fullToken,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+        expires_at: expiresAt
       })
       .select()
       .single()
