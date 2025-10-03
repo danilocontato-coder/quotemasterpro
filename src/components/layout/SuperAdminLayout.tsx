@@ -5,6 +5,7 @@ import { SuperAdminSidebar } from './SuperAdminSidebar';
 import { UserDropdown } from './UserDropdown';
 import { RoleBasedNotificationDropdown } from './RoleBasedNotificationDropdown';
 import { useSimpleRefreshPrevention } from '@/hooks/useSimpleRefreshPrevention';
+import { useBranding } from '@/contexts/BrandingContext';
 
 import { SystemMetricsBar } from '@/components/admin/SystemMetricsBar';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ import { Input } from '@/components/ui/input';
 
 export const SuperAdminLayout = () => {
   console.log('SuperAdminLayout component rendering');
+  const { settings } = useBranding();
 
   // Prevenção simples de refresh que não interfere com auth
   useSimpleRefreshPrevention();
@@ -62,7 +64,7 @@ export const SuperAdminLayout = () => {
             {/* Footer - Hidden on mobile */}
             <footer className="hidden md:flex h-12 bg-card border-t items-center justify-between px-6 text-sm text-muted-foreground flex-shrink-0">
               <div className="flex items-center gap-4">
-                <span className="hidden lg:inline">© 2024 Sistema de Cotações - SuperAdmin Panel</span>
+                <span className="hidden lg:inline">© 2024 {settings.companyName} - SuperAdmin Panel</span>
                 <Badge variant="outline" className="text-xs">
                   <Shield className="h-3 w-3 mr-1" />
                   Ambiente Seguro

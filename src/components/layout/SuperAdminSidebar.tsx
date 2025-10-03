@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useBranding } from '@/contexts/BrandingContext';
 import {
   LayoutDashboard,
   Users,
@@ -215,6 +216,7 @@ const navigation = [
 
 export const SuperAdminSidebar = () => {
   const location = useLocation();
+  const { settings } = useBranding();
 
   const isActive = (href: string, exact = false) => {
     if (exact) {
@@ -324,7 +326,7 @@ export const SuperAdminSidebar = () => {
       {/* Footer */}
       <div className="border-t p-4">
         <div className="text-center text-xs text-muted-foreground">
-          <p>Sistema de Cotações</p>
+          <p>{settings.companyName}</p>
           <p>Admin Panel v2.0</p>
         </div>
       </div>

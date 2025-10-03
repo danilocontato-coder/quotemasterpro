@@ -8,11 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Mail, Lock, User, Phone, MapPin } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useBranding } from '@/contexts/BrandingContext';
 
 const SupplierAuth = () => {
   const { quoteId, token } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { settings } = useBranding();
   
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('register'); // Começar na aba de cadastro
@@ -356,7 +358,7 @@ const SupplierAuth = () => {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <Building2 className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-primary mb-2">Sistema de Cotações</h1>
+          <h1 className="text-2xl font-bold text-primary mb-2">{settings.companyName}</h1>
           <p className="text-muted-foreground">Acesso para Fornecedores</p>
         </div>
 
