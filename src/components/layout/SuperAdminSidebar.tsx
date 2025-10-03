@@ -267,7 +267,7 @@ export const SuperAdminSidebar = () => {
                   onClick={handleLinkClick}
                   className={({ isActive: navIsActive }) =>
                     cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-muted',
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted',
                       (navIsActive && section.exact) || (isActive(section.href, section.exact))
                         ? 'bg-primary/10 text-primary font-medium'
                         : 'text-muted-foreground hover:text-foreground'
@@ -290,7 +290,7 @@ export const SuperAdminSidebar = () => {
                         onClick={handleLinkClick}
                         className={({ isActive: navIsActive }) =>
                           cn(
-                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-muted group',
+                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted group',
                             navIsActive || isActive(item.href)
                               ? 'bg-primary/10 text-primary font-medium'
                               : 'text-muted-foreground hover:text-foreground'

@@ -187,16 +187,25 @@ All colors MUST be HSL. Design system for enterprise quote management.
            hover:bg-secondary/50 transition-colors;
   }
 
-  /* Sidebar navigation styles */
+  /* Sidebar navigation styles - Optimized for mobile */
   .nav-item {
     @apply flex items-center gap-3 px-4 py-3 rounded-lg 
            text-sidebar-foreground hover:bg-sidebar-accent 
-           hover:text-sidebar-accent-foreground transition-colors cursor-pointer;
+           hover:text-sidebar-accent-foreground cursor-pointer;
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: background-color, transform;
+    transform: translateZ(0); /* Hardware acceleration */
   }
 
   .nav-item.active {
     @apply bg-sidebar-primary text-sidebar-primary-foreground 
            shadow-[var(--shadow-card)];
+  }
+  
+  .nav-item:active {
+    transform: scale(0.98) translateZ(0);
   }
 
   /* Status badges */
@@ -222,44 +231,63 @@ All colors MUST be HSL. Design system for enterprise quote management.
            transition-shadow duration-200;
   }
 
-  /* Smooth entrance animations */
+  /* Smooth entrance animations - Mobile optimized */
   @keyframes smooth-fade-in {
     from {
       opacity: 0;
-      transform: translateY(20px);
+      transform: translate3d(0, 20px, 0);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translate3d(0, 0, 0);
     }
   }
 
   @keyframes smooth-scale-in {
     from {
       opacity: 0;
-      transform: scale(0.95) translateY(10px);
+      transform: scale3d(0.95, 0.95, 1) translate3d(0, 10px, 0);
     }
     to {
       opacity: 1;
-      transform: scale(1) translateY(0);
+      transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
     }
   }
 
-  /* Apply smooth animations */
+  /* Apply smooth animations with hardware acceleration */
   .animate-fade-in {
-    animation: smooth-fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: smooth-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: opacity, transform;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
   }
 
   .animate-scale-in {
-    animation: smooth-scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: smooth-scale-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: opacity, transform;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Hover scale effect */
+  /* Hover scale effect - Mobile optimized */
   .hover-scale {
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    transform: translateZ(0);
   }
 
   .hover-scale:hover {
-    transform: scale(1.02);
+    transform: scale3d(1.02, 1.02, 1) translateZ(0);
+  }
+  
+  /* Prevent layout shifts during animations */
+  @media (prefers-reduced-motion: reduce) {
+    .nav-item,
+    .animate-fade-in,
+    .animate-scale-in,
+    .hover-scale {
+      animation: none !important;
+      transition: none !important;
+    }
   }
 }

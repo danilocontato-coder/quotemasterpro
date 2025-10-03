@@ -1,5 +1,5 @@
-import React, { startTransition } from 'react';
-import { NavLink as RouterNavLink, useNavigate, NavLinkProps } from 'react-router-dom';
+import React from 'react';
+import { NavLink as RouterNavLink, NavLinkProps } from 'react-router-dom';
 
 interface TransitionNavLinkProps extends Omit<NavLinkProps, 'onClick'> {
   to: string;
@@ -9,8 +9,8 @@ interface TransitionNavLinkProps extends Omit<NavLinkProps, 'onClick'> {
 }
 
 /**
- * Enhanced NavLink that wraps navigation with startTransition
- * to prevent suspension errors during lazy component loading
+ * Optimized NavLink component for smooth mobile navigation
+ * Uses native NavLink for better performance on mobile devices
  */
 export const TransitionNavLink: React.FC<TransitionNavLinkProps> = ({ 
   to, 
@@ -19,20 +19,11 @@ export const TransitionNavLink: React.FC<TransitionNavLinkProps> = ({
   onClick,
   ...props 
 }) => {
-  const navigate = useNavigate();
-
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    
-    // Call custom onClick if provided
+    // Call custom onClick if provided (for closing mobile menu)
     if (onClick) {
       onClick();
     }
-    
-    // Use startTransition to make navigation non-urgent
-    startTransition(() => {
-      navigate(to);
-    });
   };
 
   return (
