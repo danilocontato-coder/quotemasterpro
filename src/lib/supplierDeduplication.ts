@@ -100,7 +100,7 @@ export const generateQuoteToken = (): string => {
  * @deprecated Use createSupplierResponseLinkAsync instead for system configuration support
  */
 export const createSupplierResponseLink = (quoteId: string, token: string): string => {
-  return `${window.location.origin}/supplier/auth/${quoteId}/${token}`;
+  return `${window.location.origin}/supplier/quick-response/${quoteId}/${token}`;
 };
 
 /**
@@ -110,9 +110,9 @@ export const createSupplierResponseLinkAsync = async (quoteId: string, token: st
   try {
     const { getCachedBaseUrl } = await import('@/utils/systemConfig');
     const baseUrl = await getCachedBaseUrl();
-    return `${baseUrl}/supplier/auth/${quoteId}/${token}`;
+    return `${baseUrl}/supplier/quick-response/${quoteId}/${token}`;
   } catch (error) {
     console.warn('Erro ao buscar URL base, usando fallback:', error);
-    return `${window.location.origin}/supplier/auth/${quoteId}/${token}`;
+    return `${window.location.origin}/supplier/quick-response/${quoteId}/${token}`;
   }
 };
