@@ -504,7 +504,7 @@ Formato da RFQ final:
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -933,7 +933,7 @@ Formato da RFQ final:
             preferredSuppliers: historyContext.preferredSuppliers.slice(0, 2)
           } : null
         }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
         });
       } catch (parseError) {
         console.error('❌ Erro ao gerar RFQ:', parseError);
@@ -942,7 +942,7 @@ Formato da RFQ final:
           response: `Ocorreu um erro ao criar a RFQ: ${errorMessage}. Por favor, tente novamente ou entre em contato com o suporte.`,
           suggestions: ['Tentar novamente', 'Começar do zero', 'Falar com suporte']
         }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
         });
       }
     }
@@ -955,7 +955,7 @@ Formato da RFQ final:
       suggestions,
       quote: null
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
     });
 
   } catch (error) {
@@ -965,7 +965,7 @@ Formato da RFQ final:
       error: errorMessage
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
     });
   }
 });

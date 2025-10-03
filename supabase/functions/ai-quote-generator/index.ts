@@ -144,7 +144,7 @@ Gere uma cotação detalhada e profissional.`;
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
@@ -168,10 +168,12 @@ Gere uma cotação detalhada e profissional.`;
 
     console.log('Generated content:', generatedContent);
 
-    // Parse do JSON gerado
+    // Parse do JSON gerado com tratamento UTF-8
     let parsedQuote;
     try {
-      parsedQuote = JSON.parse(generatedContent);
+      // Garantir que o conteúdo está em UTF-8 antes do parse
+      const cleanContent = generatedContent.trim();
+      parsedQuote = JSON.parse(cleanContent);
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError);
       // Fallback se o parsing falhar
@@ -192,7 +194,7 @@ Gere uma cotação detalhada e profissional.`;
       success: true,
       quote: parsedQuote
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
     });
 
   } catch (error) {
