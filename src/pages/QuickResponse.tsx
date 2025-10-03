@@ -61,11 +61,22 @@ export default function QuickResponse() {
           return;
         }
         
+        console.log('📦 [QUICK-RESPONSE] Dados recebidos:', { 
+          quote: data.quote, 
+          supplier: data.supplier,
+          hasSupplier: !!data.supplier,
+          supplierIdInQuote: data.quote?.supplier_id 
+        });
+        
         setQuoteData(data.quote);
         
         // Buscar TODOS os dados do fornecedor se já cadastrado
         if (data.supplier) {
-          console.log('🔍 [QUICK-RESPONSE] Dados do fornecedor encontrados:', data.supplier);
+          console.log('✅ [QUICK-RESPONSE] PRÉ-PREENCHENDO com dados do fornecedor:', {
+            name: data.supplier.name,
+            email: data.supplier.email
+          });
+          
           setFormData(prev => ({ 
             ...prev, 
             supplierName: data.supplier.name || '',
@@ -73,30 +84,44 @@ export default function QuickResponse() {
           }));
           setHasPreFilledData(true);
         } else if (data.quote?.supplier_id) {
+          console.log('🔍 [QUICK-RESPONSE] Tentando buscar fornecedor pelo supplier_id:', data.quote.supplier_id);
+          
           // Fallback: buscar diretamente se validate-quote-token não retornou
-          const { data: supplier } = await supabase
+          const { data: supplier, error: supplierError } = await supabase
             .from('suppliers')
             .select('name, email, cnpj, phone, city, state')
             .eq('id', data.quote.supplier_id)
             .single();
           
+          if (supplierError) {
+            console.error('❌ [QUICK-RESPONSE] Erro ao buscar fornecedor:', supplierError);
+          }
+          
           if (supplier) {
-            console.log('🔍 [QUICK-RESPONSE] Dados do fornecedor via fallback:', supplier);
+            console.log('✅ [QUICK-RESPONSE] PRÉ-PREENCHENDO via fallback:', {
+              name: supplier.name,
+              email: supplier.email
+            });
+            
             setFormData(prev => ({ 
               ...prev, 
               supplierName: supplier.name || '',
               supplierEmail: supplier.email || ''
             }));
             setHasPreFilledData(true);
+          } else {
+            console.log('⚠️ [QUICK-RESPONSE] Fornecedor não encontrado pelo supplier_id');
           }
         } else if (data.quote?.supplier_name) {
-          // Fallback caso não tenha supplier_id mas tenha supplier_name
-          console.log('🔍 [QUICK-RESPONSE] Usando supplier_name da quote:', data.quote.supplier_name);
+          console.log('✅ [QUICK-RESPONSE] PRÉ-PREENCHENDO com supplier_name da quote:', data.quote.supplier_name);
+          
           setFormData(prev => ({ 
             ...prev, 
             supplierName: data.quote.supplier_name 
           }));
           setHasPreFilledData(true);
+        } else {
+          console.log('⚠️ [QUICK-RESPONSE] Nenhum dado de fornecedor disponível para pré-preencher');
         }
         
       } catch (error) {
@@ -291,25 +316,29 @@ export default function QuickResponse() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* Header */}
-      <div className="bg-primary text-primary-foreground py-6 shadow-lg">
+      <div className="bg-primary text-primary-foreground py-8 shadow-lg">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {brandingSettings.logo && brandingSettings.logo !== '/placeholder.svg' && (
-                <div className="bg-white rounded-lg p-2 shadow-md">
+                <div className="bg-white rounded-lg p-3 shadow-md">
                   <img 
                     src={brandingSettings.logo} 
                     alt={brandingSettings.companyName}
-                    className="h-12 w-auto object-contain"
+                    className="h-14 w-auto object-contain"
                   />
                 </div>
               )}
               <div>
-                <h1 className="text-3xl font-bold mb-1">{brandingSettings.companyName}</h1>
-                <p className="text-primary-foreground/80 text-sm">Plataforma de Gestão de Cotações</p>
+                <h1 className="text-4xl font-extrabold mb-1 tracking-tight drop-shadow-md">
+                  {brandingSettings.companyName}
+                </h1>
+                <p className="text-primary-foreground/90 text-base font-medium">
+                  Plataforma de Gestão de Cotações
+                </p>
               </div>
             </div>
-            <Package className="w-12 h-12 opacity-80" />
+            <Package className="w-14 h-14 opacity-70" />
           </div>
         </div>
       </div>
