@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { useSupabaseUsers, SupabaseUser } from '@/hooks/useSupabaseUsers';
 import { toast } from 'sonner';
+import { ResetPasswordModal } from './ResetPasswordModal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EditUserModalProps {
   open: boolean;
@@ -38,6 +40,8 @@ interface EditUserModalProps {
 
 export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
   const { updateUser, resetPassword, groups } = useSupabaseUsers();
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -66,6 +70,29 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
       });
     }
   }, [user]);
+
+  // Load current user's role
+  React.useEffect(() => {
+    const loadCurrentUserRole = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', authUser.id)
+            .single();
+          
+          if (profile) {
+            setCurrentUserRole(profile.role);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading current user role:', error);
+      }
+    };
+    loadCurrentUserRole();
+  }, []);
 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
@@ -96,12 +123,29 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
     }
   };
 
-  const handleResetPassword = async () => {
+  const handleResetPasswordAutomatic = async () => {
     try {
       const newPassword = await resetPassword(user.id);
-      toast.success(`Nova senha temporária: ${newPassword}`);
-    } catch (error) {
-      // Error is handled in the hook
+      toast.success(`Nova senha temporária gerada: ${newPassword}`, {
+        description: 'Copie esta senha e envie ao usuário. Ele será obrigado a alterá-la no próximo login.',
+        duration: 10000
+      });
+      return newPassword;
+    } catch (error: any) {
+      toast.error('Erro ao gerar senha: ' + (error?.message || 'Tente novamente'));
+      throw error;
+    }
+  };
+
+  const handleResetPasswordCustom = async (customPassword: string) => {
+    try {
+      await resetPassword(user.id, customPassword);
+      toast.success('Senha redefinida com sucesso', {
+        description: 'O usuário pode utilizar a nova senha imediatamente.'
+      });
+    } catch (error: any) {
+      toast.error('Erro ao definir senha: ' + (error?.message || 'Tente novamente'));
+      throw error;
     }
   };
 
@@ -273,30 +317,32 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
                   </Badge>
                 </div>
 
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">Forçar alteração de senha</div>
-                    <div className="text-sm text-muted-foreground">
-                      Usuário deverá alterar a senha no próximo login
+                {(currentUserRole === 'admin' || currentUserRole === 'manager') && (
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <div className="font-medium">Forçar alteração de senha</div>
+                      <div className="text-sm text-muted-foreground">
+                        Usuário deverá alterar a senha no próximo login
+                      </div>
                     </div>
+                    <Switch
+                      checked={formData.force_password_change}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, force_password_change: checked }))}
+                    />
                   </div>
-                  <Switch
-                    checked={formData.force_password_change}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, force_password_change: checked }))}
-                  />
-                </div>
+                )}
 
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <div className="font-medium">Redefinir Senha</div>
                     <div className="text-sm text-muted-foreground">
-                      Gerar nova senha temporária para o usuário
+                      Gerar senha temporária ou definir senha personalizada
                     </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleResetPassword}
+                    onClick={() => setShowResetPasswordModal(true)}
                     className="gap-2"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -329,6 +375,14 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <ResetPasswordModal
+        open={showResetPasswordModal}
+        onClose={() => setShowResetPasswordModal(false)}
+        userName={user?.name || ''}
+        onResetAutomatic={handleResetPasswordAutomatic}
+        onResetCustom={handleResetPasswordCustom}
+      />
     </Dialog>
   );
 }

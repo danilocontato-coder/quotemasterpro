@@ -639,14 +639,45 @@ export function useSupabaseUsers() {
   }, []);
 
   // Reset password
-  const resetPassword = async (userId: string) => {
-    const newPassword = generateTemporaryPassword();
-    // In a real implementation, you would need to integrate with Supabase Auth
-    // For now, we'll just return the password and update the force_password_change flag
+  const resetPassword = async (userId: string, customPassword?: string) => {
+    const newPassword = customPassword || generateTemporaryPassword();
+    const forceChange = !customPassword; // Só força mudança se for senha temporária
+    
     try {
-      await updateUser(userId, { force_password_change: true });
+      // Get user's auth_user_id
+      const { data: userData } = await supabase
+        .from('users')
+        .select('auth_user_id, email')
+        .eq('id', userId)
+        .single();
+
+      if (!userData?.auth_user_id) {
+        throw new Error('Usuário não possui conta de autenticação vinculada');
+      }
+
+      // Call edge function to reset password
+      const { data: result, error: resetError } = await supabase.functions.invoke('reset-user-password', {
+        body: {
+          authUserId: userData.auth_user_id,
+          newPassword: newPassword
+        }
+      });
+
+      if (resetError) {
+        console.error('Error calling reset-user-password function:', resetError);
+        throw new Error('Erro ao redefinir senha: ' + resetError.message);
+      }
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'Erro ao redefinir senha');
+      }
+
+      // Update force_password_change flag
+      await updateUser(userId, { force_password_change: forceChange });
+      
       return newPassword;
     } catch (error) {
+      console.error('Error resetting password:', error);
       throw error;
     }
   };
