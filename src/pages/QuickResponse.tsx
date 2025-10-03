@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Building2, Mail, DollarSign, FileText, Upload, Package } from 'lucide-react';
+import { Building2, Mail, DollarSign, FileText, Upload, Package, Edit2, Users, Zap, TrendingUp, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -18,6 +18,8 @@ export default function QuickResponse() {
   const [validating, setValidating] = useState(true);
   const [quoteData, setQuoteData] = useState<any>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [isEditingPreFilledData, setIsEditingPreFilledData] = useState(false);
+  const [hasPreFilledData, setHasPreFilledData] = useState(false);
   
   const [formData, setFormData] = useState({
     supplierName: '',
@@ -72,6 +74,7 @@ export default function QuickResponse() {
               supplierName: supplier.name || '',
               supplierEmail: supplier.email || ''
             }));
+            setHasPreFilledData(true);
           }
         } else if (data.quote?.supplier_name) {
           // Fallback caso não tenha supplier_id mas tenha supplier_name
@@ -79,6 +82,7 @@ export default function QuickResponse() {
             ...prev, 
             supplierName: data.quote.supplier_name 
           }));
+          setHasPreFilledData(true);
         }
         
       } catch (error) {
@@ -215,154 +219,270 @@ export default function QuickResponse() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center py-8">
-      <div className="container mx-auto px-4 max-w-2xl">
-        <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-            <Package className="w-8 h-8 text-primary" />
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      {/* Header */}
+      <div className="bg-primary text-primary-foreground py-6 shadow-lg">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-1">QuoteMaster Pro</h1>
+              <p className="text-primary-foreground/80 text-sm">Plataforma de Gestão de Cotações</p>
+            </div>
+            <Package className="w-12 h-12 opacity-80" />
           </div>
-          <h1 className="text-2xl font-bold text-primary mb-2">Resposta Rápida</h1>
-          <p className="text-muted-foreground">Envie sua proposta de forma ágil</p>
         </div>
+      </div>
 
-        {quoteData && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Detalhes da Cotação</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Cotação:</span>
-                <span className="font-medium">#{quoteData.id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Cliente:</span>
-                <span className="font-medium">{quoteData.client_name}</span>
-              </div>
-              {quoteData.title && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Título:</span>
-                  <span className="font-medium">{quoteData.title}</span>
-                </div>
-              )}
-              {quoteData.description && (
-                <div className="mt-2">
-                  <span className="text-muted-foreground block mb-1">Descrição:</span>
-                  <p className="text-sm bg-muted p-2 rounded">{quoteData.description}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+      <div className="container mx-auto px-4 max-w-6xl py-8">
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Coluna Principal - Formulário */}
+          <div className="lg:col-span-2 space-y-6">
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sua Proposta</CardTitle>
-            <p className="text-sm text-muted-foreground">Preencha os dados abaixo para enviar sua proposta</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {formData.supplierName && (
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm mb-4">
-                  <p className="text-primary font-medium">✅ Dados pré-preenchidos</p>
-                  <p className="text-muted-foreground text-xs mt-1">
-                    O cliente já forneceu alguns dados. Por favor, <strong>confirme ou atualize</strong> conforme necessário.
-                  </p>
-                </div>
-              )}
-              <div>
-                <Label htmlFor="supplierName">Nome da Empresa *</Label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="supplierName"
-                    value={formData.supplierName}
-                    onChange={(e) => setFormData({...formData, supplierName: e.target.value})}
-                    placeholder="Razão social da sua empresa"
-                    className="pl-10"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="supplierEmail">E-mail de Contato *</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="supplierEmail"
-                    type="email"
-                    value={formData.supplierEmail}
-                    onChange={(e) => setFormData({...formData, supplierEmail: e.target.value})}
-                    placeholder="contato@empresa.com"
-                    className="pl-10"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="totalAmount">Valor Total da Proposta *</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="totalAmount"
-                    type="text"
-                    value={formData.totalAmount}
-                    onChange={(e) => setFormData({...formData, totalAmount: e.target.value})}
-                    placeholder="R$ 0,00"
-                    className="pl-10"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Exemplo: 1500.00 ou 1.500,00</p>
-              </div>
-              
-              <div>
-                <Label htmlFor="notes">Observações (opcional)</Label>
-                <div className="relative">
-                  <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Informações adicionais, prazo de entrega, condições de pagamento..."
-                    className="pl-10 min-h-[100px]"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="attachment">Anexar Proposta (opcional)</Label>
-                <div className="relative">
-                  <Input
-                    id="attachment"
-                    type="file"
-                    onChange={handleFileChange}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
-                    className="cursor-pointer"
-                    disabled={loading}
-                  />
-                  {attachment && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      <Upload className="w-3 h-3 inline mr-1" />
-                      {attachment.name}
-                    </p>
+            {quoteData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Detalhes da Cotação
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cotação:</span>
+                    <span className="font-bold text-primary">#{quoteData.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cliente:</span>
+                    <span className="font-medium">{quoteData.client_name}</span>
+                  </div>
+                  {quoteData.title && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Título:</span>
+                      <span className="font-medium">{quoteData.title}</span>
+                    </div>
                   )}
+                  {quoteData.description && (
+                    <div className="mt-2">
+                      <span className="text-muted-foreground block mb-1">Descrição:</span>
+                      <p className="text-sm bg-muted p-3 rounded-md">{quoteData.description}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  Sua Proposta
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Preencha os dados abaixo para enviar sua proposta</p>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {hasPreFilledData && (
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-primary font-semibold flex items-center gap-2 mb-1">
+                            <Award className="w-4 h-4" />
+                            Dados pré-preenchidos
+                          </p>
+                          <p className="text-muted-foreground text-sm">
+                            {isEditingPreFilledData 
+                              ? "Você pode editar os dados abaixo conforme necessário."
+                              : "Os dados foram preenchidos automaticamente. Clique em 'Editar' se precisar alterá-los."}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditingPreFilledData(!isEditingPreFilledData)}
+                          className="ml-2"
+                        >
+                          <Edit2 className="w-4 h-4 mr-1" />
+                          {isEditingPreFilledData ? 'Bloquear' : 'Editar'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <Label htmlFor="supplierName">Nome da Empresa *</Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="supplierName"
+                        value={formData.supplierName}
+                        onChange={(e) => setFormData({...formData, supplierName: e.target.value})}
+                        placeholder="Razão social da sua empresa"
+                        className="pl-10"
+                        disabled={loading || (hasPreFilledData && !isEditingPreFilledData)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="supplierEmail">E-mail de Contato *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="supplierEmail"
+                        type="email"
+                        value={formData.supplierEmail}
+                        onChange={(e) => setFormData({...formData, supplierEmail: e.target.value})}
+                        placeholder="contato@empresa.com"
+                        className="pl-10"
+                        disabled={loading || (hasPreFilledData && !isEditingPreFilledData)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="totalAmount">Valor Total da Proposta *</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="totalAmount"
+                        type="text"
+                        value={formData.totalAmount}
+                        onChange={(e) => setFormData({...formData, totalAmount: e.target.value})}
+                        placeholder="R$ 0,00"
+                        className="pl-10"
+                        disabled={loading}
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Exemplo: 1500.00 ou 1.500,00</p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="notes">Observações (opcional)</Label>
+                    <div className="relative">
+                      <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Textarea
+                        id="notes"
+                        value={formData.notes}
+                        onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                        placeholder="Informações adicionais, prazo de entrega, condições de pagamento..."
+                        className="pl-10 min-h-[100px]"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="attachment">Anexar Proposta (opcional)</Label>
+                    <div className="relative">
+                      <Input
+                        id="attachment"
+                        type="file"
+                        onChange={handleFileChange}
+                        accept=".pdf,.doc,.docx,.xls,.xlsx"
+                        className="cursor-pointer"
+                        disabled={loading}
+                      />
+                      {attachment && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <Upload className="w-3 h-3 inline mr-1" />
+                          {attachment.name}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX (máx. 10MB)</p>
+                  </div>
+                  
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? 'Enviando...' : 'Enviar Proposta'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Coluna Lateral - Benefícios */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-primary" />
+                  Por que se cadastrar?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="mt-1">
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1">Novos Clientes</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Receba cotações de diversos clientes automaticamente
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX (máx. 10MB)</p>
-              </div>
-              
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Enviando...' : 'Enviar Proposta'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                
+                <div className="flex gap-3">
+                  <div className="mt-1">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1">Aumente suas Vendas</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Participe de mais oportunidades e expanda seu negócio
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3">
+                  <div className="mt-1">
+                    <Zap className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1">Respostas Rápidas</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Sistema ágil para enviar propostas em segundos
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3">
+                  <div className="mt-1">
+                    <Award className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1">Certificação</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Torne-se um fornecedor certificado e ganhe destaque
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-primary/30">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <Package className="w-12 h-12 text-primary mx-auto mb-3" />
+                  <h3 className="font-bold text-lg mb-2">Cadastre-se Grátis</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Ao enviar sua proposta, você já pode criar sua conta e começar a receber cotações de outros clientes
+                  </p>
+                  <div className="bg-primary/10 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground">
+                      ✨ <strong>Sem custos iniciais</strong><br />
+                      ✨ <strong>Acesso imediato</strong><br />
+                      ✨ <strong>Suporte dedicado</strong>
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
