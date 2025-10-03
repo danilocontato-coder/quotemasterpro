@@ -179,25 +179,57 @@ export default function QuickResponse() {
               }
             });
             
-            if (extractError || !extractedData?.success) {
-              console.error('Erro ao extrair dados do PDF:', extractError);
+            console.log('📄 [PDF-EXTRACT] Response:', { extractedData, extractError });
+            
+            if (extractError) {
+              console.error('❌ [PDF-EXTRACT] Error:', extractError);
               toast({
-                title: 'Não foi possível extrair dados',
-                description: 'Preencha manualmente os campos abaixo.',
+                title: 'Erro ao processar PDF',
+                description: extractError.message || 'Não foi possível extrair os dados. Preencha manualmente.',
                 variant: 'destructive'
               });
-            } else {
-              // Preencher formulário com dados extraídos
-              if (extractedData.data) {
+              setIsExtractingFromPdf(false);
+              return;
+            }
+            
+            if (!extractedData?.success) {
+              console.error('❌ [PDF-EXTRACT] Failed:', extractedData?.error);
+              toast({
+                title: 'Não foi possível extrair dados',
+                description: extractedData?.error || 'Preencha manualmente os campos abaixo.',
+                variant: 'destructive'
+              });
+              setIsExtractingFromPdf(false);
+              return;
+            }
+            
+            // Preencher formulário com dados extraídos
+            if (extractedData.data) {
+              const updates: any = {};
+              
+              if (extractedData.data.totalAmount) {
+                updates.totalAmount = extractedData.data.totalAmount;
+              }
+              
+              if (extractedData.data.notes) {
+                updates.notes = extractedData.data.notes;
+              }
+              
+              if (Object.keys(updates).length > 0) {
                 setFormData(prev => ({
                   ...prev,
-                  totalAmount: extractedData.data.totalAmount || prev.totalAmount,
-                  notes: extractedData.data.notes || prev.notes
+                  ...updates
                 }));
                 
                 toast({
                   title: '✅ Dados extraídos com sucesso!',
-                  description: 'Confira os valores preenchidos automaticamente.'
+                  description: `${extractedData.data.totalAmount ? 'Valor total' : ''}${extractedData.data.totalAmount && extractedData.data.notes ? ' e ' : ''}${extractedData.data.notes ? 'observações' : ''} preenchidos automaticamente.`
+                });
+              } else {
+                toast({
+                  title: 'PDF processado',
+                  description: 'Não foram encontrados dados para preencher. Complete manualmente.',
+                  variant: 'default'
                 });
               }
             }

@@ -32,49 +32,55 @@ serve(async (req) => {
 
     console.log('🤖 [EXTRACT-PDF] Processing PDF:', fileName)
 
+    // Preparar prompt para processar o PDF
+    const systemPrompt = `Você é um assistente especializado em extrair dados de propostas comerciais em PDF.
+
+Extraia APENAS:
+1. Valor total da proposta (totalAmount) - em formato numérico, sem símbolos de moeda
+2. Observações/notas relevantes (notes) - prazo de entrega, condições de pagamento, validade da proposta, etc.
+
+Retorne APENAS o JSON com esta estrutura EXATA (sem markdown, sem explicações):
+{
+  "totalAmount": "1234.56",
+  "notes": "Prazo: 10 dias úteis. Pagamento: 30 dias. Validade: 15 dias."
+}
+
+Se não encontrar valor total, use null. Se não houver observações relevantes, use string vazia.
+IMPORTANTE: Retorne APENAS o objeto JSON, nada mais.`
+
     // Chamar Lovable AI para extrair dados do PDF
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
           {
-            role: 'system',
-            content: `Você é um assistente especializado em extrair dados de propostas comerciais em PDF.
-Extraia APENAS:
-1. Valor total da proposta (totalAmount) - em formato numérico
-2. Observações/notas relevantes (notes) - prazo de entrega, condições de pagamento, etc.
-
-Retorne em JSON com esta estrutura EXATA:
-{
-  "totalAmount": "1234.56",
-  "notes": "Prazo: 10 dias úteis. Pagamento: 30 dias."
-}
-
-Se não encontrar valor, use null. Se não houver observações, use string vazia.`
-          },
-          {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Extraia os dados desta proposta comercial:'
+                text: systemPrompt
+              },
+              {
+                type: 'text',
+                text: '\n\nAnalise esta proposta comercial em PDF e extraia os dados solicitados:'
               },
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:application/pdf;base64,${pdfBase64}`
+                  url: `data:application/pdf;base64,${pdfBase64}`,
+                  detail: 'high'
                 }
               }
             ]
           }
         ],
         temperature: 0.1,
-        max_tokens: 500
+        max_tokens: 1000
       })
     })
 
@@ -139,7 +145,7 @@ Se não encontrar valor, use null. Se não houver observações, use string vazi
           notes: extractedData.notes || ''
         }
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' } }
     )
 
   } catch (error) {
@@ -147,9 +153,9 @@ Se não encontrar valor, use null. Se não houver observações, use string vazi
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Erro desconhecido ao processar PDF' 
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' } }
     )
   }
 })
