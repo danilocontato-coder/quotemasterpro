@@ -65,7 +65,7 @@ serve(async (req) => {
     }
 
     // Get base URL from system settings
-    let baseUrl = req.headers.get('origin') || 'https://bcadcdb0-8f04-4a14-8998-22e01e1b27d7.lovableproject.com'
+    let baseUrl = 'https://cotiz.com.br'
     
     try {
       const { data: settingsData } = await supabaseClient
@@ -87,7 +87,15 @@ serve(async (req) => {
       console.log('Could not fetch base URL from settings, using fallback:', baseUrl)
     }
     
+    console.log('🔗 [RESOLVE-SHORT-LINK] Generating redirect URL:', {
+      baseUrl,
+      quoteId: tokenData.quote_id,
+      fullToken: tokenData.full_token
+    })
+    
     const fullUrl = `${baseUrl}/supplier/quick-response/${tokenData.quote_id}/${tokenData.full_token}`
+    
+    console.log('✅ [RESOLVE-SHORT-LINK] Final redirect URL:', fullUrl)
 
     return new Response(
       JSON.stringify({
