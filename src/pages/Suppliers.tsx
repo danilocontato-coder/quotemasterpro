@@ -1,6 +1,6 @@
 // Página de Fornecedores - Sistema funcionando ✅
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, MessageCircle, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,6 @@ import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageLoader } from "@/components/ui/page-loader";
-import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { useToast } from "@/hooks/use-toast";
 
 export default function Suppliers() {
