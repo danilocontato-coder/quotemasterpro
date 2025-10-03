@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Copy, ExternalLink, Building2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { getCachedBaseUrl } from '@/utils/systemConfig';
+import { generateQuoteShortLink } from '@/lib/quoteTokens';
 
 interface SupplierQuoteLinkProps {
   quoteId: string;
@@ -20,16 +20,16 @@ const SupplierQuoteLink: React.FC<SupplierQuoteLinkProps> = ({ quoteId, quoteTit
   useEffect(() => {
     const generateLink = async () => {
       try {
-        const baseUrl = await getCachedBaseUrl();
-        const token = crypto.randomUUID();
-        const link = `${baseUrl}/supplier/auth/${quoteId}/${token}`;
-        setSupplierLink(link);
+        const result = await generateQuoteShortLink(quoteId);
+        if (result.success && (result.shortUrl || result.fullUrl)) {
+          setSupplierLink(result.shortUrl || result.fullUrl || '');
+        } else {
+          console.error('Falha ao gerar short link:', result.error);
+          setSupplierLink('');
+        }
       } catch (error) {
         console.error('Erro ao gerar link:', error);
-        // Fallback para URL atual
-        const token = crypto.randomUUID();
-        const link = `${window.location.origin}/supplier/auth/${quoteId}/${token}`;
-        setSupplierLink(link);
+        setSupplierLink('');
       } finally {
         setIsLoading(false);
       }

@@ -21,23 +21,38 @@ serve(async (req) => {
 
     const { quote_id, token } = await req.json()
 
-    if (!quote_id || !token) {
+    if (!token) {
       return new Response(
         JSON.stringify({ 
           valid: false, 
-          error: 'quote_id and token are required' 
+          error: 'token is required' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Look up token
-    const { data: tokenData, error: tokenError } = await supabaseClient
-      .from('quote_tokens')
-      .select('*')
-      .eq('quote_id', quote_id)
-      .eq('full_token', token)
-      .single()
+    // Look up token (with or without quote_id)
+    let tokenData: any = null
+    let tokenError: any = null
+
+    if (quote_id) {
+      const res = await supabaseClient
+        .from('quote_tokens')
+        .select('*')
+        .eq('quote_id', quote_id)
+        .eq('full_token', token)
+        .maybeSingle()
+      tokenData = res.data
+      tokenError = res.error
+    } else {
+      const res = await supabaseClient
+        .from('quote_tokens')
+        .select('*')
+        .eq('full_token', token)
+        .maybeSingle()
+      tokenData = res.data
+      tokenError = res.error
+    }
 
     if (tokenError || !tokenData) {
       console.error('Token validation failed:', { quote_id, token }, tokenError)
@@ -49,6 +64,8 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    const resolvedQuoteId = tokenData.quote_id
 
     // Check if token has expired
     if (new Date(tokenData.expires_at) < new Date()) {
@@ -66,8 +83,8 @@ serve(async (req) => {
     const { data: quoteData, error: quoteError } = await supabaseClient
       .from('quotes')
       .select('id, title, description, status, deadline, client_name, supplier_id')
-      .eq('id', quote_id)
-      .single()
+      .eq('id', resolvedQuoteId)
+      .maybeSingle()
 
     if (quoteError || !quoteData) {
       return new Response(
@@ -117,7 +134,8 @@ serve(async (req) => {
           access_count: tokenData.access_count + 1
         },
         quote: quoteData,
-        supplier: supplierData // Include supplier data if available
+        supplier: supplierData,
+        quote_id: resolvedQuoteId
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

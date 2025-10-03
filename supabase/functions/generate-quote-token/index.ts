@@ -124,8 +124,9 @@ serve(async (req) => {
       console.log('Could not fetch base URL from settings, using fallback:', baseUrl)
     }
     
+    
     const shortPath = `/s/${shortCode}`
-    const redirectPath = `/supplier/quick-response/${quote_id}/${fullToken}`
+    const redirectPath = `/r/${fullToken}`
     const shortUrl = `${baseUrl}${shortPath}`
     const fullUrl = `${baseUrl}${redirectPath}`
 

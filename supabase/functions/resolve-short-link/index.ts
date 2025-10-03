@@ -93,7 +93,7 @@ serve(async (req) => {
       fullToken: tokenData.full_token
     })
     
-    const fullUrl = `${baseUrl}/supplier/quick-response/${tokenData.quote_id}/${tokenData.full_token}`
+    const fullUrl = `${baseUrl}/r/${tokenData.full_token}`
     
     console.log('✅ [RESOLVE-SHORT-LINK] Final redirect URL:', fullUrl)
 
@@ -104,7 +104,7 @@ serve(async (req) => {
         full_token: tokenData.full_token,
         short_code: tokenData.short_code,
         redirect_url: fullUrl,
-        redirect_path: `/supplier/quick-response/${tokenData.quote_id}/${tokenData.full_token}`,
+        redirect_path: `/r/${tokenData.full_token}`,
         expires_at: tokenData.expires_at,
         access_count: tokenData.access_count + 1
       }),
