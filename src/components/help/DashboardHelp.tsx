@@ -1,12 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
+import { useBranding } from "@/contexts/BrandingContext";
 
 interface HelpProps {
   searchQuery?: string;
 }
 
 export function DashboardHelp({ searchQuery }: HelpProps) {
+  const { settings } = useBranding();
+  
   return (
     <div className="space-y-6">
       <Alert>
@@ -22,7 +25,7 @@ export function DashboardHelp({ searchQuery }: HelpProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            O Dashboard é a página principal do sistema QuoteMaster Pro. Ele oferece uma visão geral de todas as suas operações, incluindo cotações ativas, aprovações pendentes, pagamentos e estatísticas importantes.
+            O Dashboard é a página principal do sistema {settings.companyName}. Ele oferece uma visão geral de todas as suas operações, incluindo cotações ativas, aprovações pendentes, pagamentos e estatísticas importantes.
           </p>
         </CardContent>
       </Card>

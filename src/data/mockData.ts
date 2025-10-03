@@ -1,4 +1,4 @@
-// Mock data for QuoteMaster Pro
+// Mock data for the system
 export interface Quote {
   id: string;
   title: string;

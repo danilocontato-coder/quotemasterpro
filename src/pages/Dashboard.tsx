@@ -15,12 +15,14 @@ import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { useSupabasePlanDetails } from '@/hooks/useSupabaseSubscriptionPlans';
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator';
 import { AnimatedPage, AnimatedSection, AnimatedHeader, AnimatedGrid } from '@/components/ui/animated-page';
+import { useBranding } from '@/contexts/BrandingContext';
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
   const { clientName, subscriptionPlan, isLoading: clientLoading } = useSupabaseCurrentClient();
   const { displayName: planDisplayName } = useSupabasePlanDetails(subscriptionPlan);
   const { metrics, activities, isLoading, error, refetch } = useSupabaseDashboard();
+  const { settings } = useBranding();
 
   if (isLoading || clientLoading) {
     return (
@@ -123,7 +125,7 @@ export default function Dashboard() {
             <span className="text-xs px-2 py-1 bg-white/20 rounded-full text-white/90">{planDisplayName}</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-            Bem-vindo ao QuoteMaster Pro
+            Bem-vindo ao {settings.companyName}
           </h1>
           <p className="text-base text-white/80 max-w-2xl">
             Gerencie suas cotações e orçamentos com eficiência e inteligência

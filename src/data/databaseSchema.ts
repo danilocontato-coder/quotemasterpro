@@ -1,5 +1,5 @@
 // Database schema definition for Supabase integration
-// This file defines the expected database structure for the QuoteMaster Pro application
+// This file defines the expected database structure for the application
 
 export interface DatabaseTables {
   // Authentication and User Management

@@ -39,23 +39,47 @@ class NotificationService {
 
   // Será usado quando conectado ao Supabase para buscar configurações
   async loadConfiguration(): Promise<NotificationConfig | null> {
-    // TODO: Implementar busca das configurações do Supabase
-    // const { data } = await supabase
-    //   .from('notification_settings')
-    //   .select('*')
-    //   .single();
-    
-    // Mock configuration for now
-    return {
-      email: {
-        provider: 'sendgrid',
-        fromEmail: 'noreply@quotemaster.com',
-        fromName: 'QuoteMaster Pro'
-      },
-      whatsapp: {
-        provider: 'evolution-api'
-      }
-    };
+    try {
+      // Buscar configurações de branding para obter o nome da empresa
+      const { data: brandingData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'company_name')
+        .single();
+
+      const settingValue = brandingData?.setting_value as any;
+      const companyName = settingValue?.value || 'Sistema de Cotações';
+
+      // TODO: Implementar busca das configurações de notificação do Supabase
+      // const { data } = await supabase
+      //   .from('notification_settings')
+      //   .select('*')
+      //   .single();
+      
+      // Mock configuration for now
+      return {
+        email: {
+          provider: 'sendgrid',
+          fromEmail: 'noreply@cotiz.com',
+          fromName: companyName
+        },
+        whatsapp: {
+          provider: 'evolution-api'
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao carregar configurações de notificação:', error);
+      return {
+        email: {
+          provider: 'sendgrid',
+          fromEmail: 'noreply@cotiz.com',
+          fromName: 'Sistema de Cotações'
+        },
+        whatsapp: {
+          provider: 'evolution-api'
+        }
+      };
+    }
   }
 
   async sendQuoteByEmail(

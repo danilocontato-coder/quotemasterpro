@@ -15,10 +15,12 @@ import { UsersHelp } from "@/components/help/UsersHelp";
 import { SettingsHelp } from "@/components/help/SettingsHelp";
 import { CommunicationHelp } from "@/components/help/CommunicationHelp";
 import { CostCentersHelp } from "@/components/help/CostCentersHelp";
+import { useBranding } from "@/contexts/BrandingContext";
 
 export default function Help() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { settings } = useBranding();
 
   const modules = [
     { id: "dashboard", label: "Dashboard", icon: Home, component: DashboardHelp },
@@ -42,7 +44,7 @@ export default function Help() {
           <h1 className="text-4xl font-bold text-foreground">Central de Ajuda</h1>
         </div>
         <p className="text-muted-foreground text-lg">
-          Guia completo do sistema QuoteMaster Pro com instruções passo a passo para todas as funcionalidades
+          Guia completo do sistema {settings.companyName} com instruções passo a passo para todas as funcionalidades
         </p>
       </div>
 

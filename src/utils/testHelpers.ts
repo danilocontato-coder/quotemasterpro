@@ -1,5 +1,5 @@
 /**
- * HELPERS DE TESTE - QuoteMaster Pro
+ * HELPERS DE TESTE - Sistema de Cotações
  * Funções auxiliares para facilitar testes manuais e automatizados
  */
 
