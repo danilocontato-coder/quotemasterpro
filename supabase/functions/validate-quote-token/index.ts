@@ -62,10 +62,10 @@ serve(async (req) => {
       )
     }
 
-    // Fetch quote details to include in response
+    // Fetch quote details AND supplier data to include in response
     const { data: quoteData, error: quoteError } = await supabaseClient
       .from('quotes')
-      .select('id, title, description, status, deadline, client_name')
+      .select('id, title, description, status, deadline, client_name, supplier_id')
       .eq('id', quote_id)
       .single()
 
@@ -77,6 +77,21 @@ serve(async (req) => {
         }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Fetch supplier data if quote has a supplier_id
+    let supplierData = null
+    if (quoteData.supplier_id) {
+      const { data: supplier, error: supplierError } = await supabaseClient
+        .from('suppliers')
+        .select('id, name, email, cnpj, phone, city, state')
+        .eq('id', quoteData.supplier_id)
+        .single()
+      
+      if (!supplierError && supplier) {
+        supplierData = supplier
+        console.log('✅ Supplier data found for quote:', supplier.name)
+      }
     }
 
     // Update access count
@@ -101,7 +116,8 @@ serve(async (req) => {
           expires_at: tokenData.expires_at,
           access_count: tokenData.access_count + 1
         },
-        quote: quoteData
+        quote: quoteData,
+        supplier: supplierData // Include supplier data if available
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

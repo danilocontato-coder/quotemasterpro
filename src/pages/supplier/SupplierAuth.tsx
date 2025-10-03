@@ -63,34 +63,25 @@ const SupplierAuth = () => {
         
         console.log('Token validated successfully:', data);
         
-        // Buscar TODOS os dados do fornecedor para pré-preencher
-        const { data: quoteData } = await supabase
-          .from('quotes')
-          .select('supplier_id')
-          .eq('id', quoteId)
-          .single();
-        
-        if (quoteData?.supplier_id) {
-          const { data: supplier } = await supabase
-            .from('suppliers')
-            .select('email, name, cnpj, phone, city, state')
-            .eq('id', quoteData.supplier_id)
-            .single();
+        // Usar dados do fornecedor retornados pela edge function (bypassa RLS)
+        if (data.supplier) {
+          const supplier = data.supplier;
+          console.log('✅ Supplier data received from edge function:', supplier.name);
           
-          if (supplier?.email) {
-            setSupplierEmail(supplier.email);
-            // Pré-preencher TODOS os dados disponíveis
-            setRegisterData(prev => ({ 
-              ...prev, 
-              email: supplier.email,
-              name: supplier.name || '',
-              cnpj: supplier.cnpj || '',
-              phone: supplier.phone || '',
-              city: supplier.city || '',
-              state: supplier.state || ''
-            }));
-            setLoginData(prev => ({ ...prev, email: supplier.email }));
-          }
+          setSupplierEmail(supplier.email);
+          // Pré-preencher TODOS os dados disponíveis
+          setRegisterData(prev => ({ 
+            ...prev, 
+            email: supplier.email,
+            name: supplier.name || '',
+            cnpj: supplier.cnpj || '',
+            phone: supplier.phone || '',
+            city: supplier.city || '',
+            state: supplier.state || ''
+          }));
+          setLoginData(prev => ({ ...prev, email: supplier.email }));
+        } else {
+          console.log('ℹ️ No supplier data in quote - user can register with any email');
         }
         
         localStorage.setItem('supplier_quote_context', JSON.stringify({ 
@@ -213,37 +204,36 @@ const SupplierAuth = () => {
     try {
       setLoading(true);
 
-      // PASSO 1: Buscar o fornecedor vinculado à cotação
-      const { data: quoteData, error: quoteError } = await supabase
-        .from('quotes')
-        .select('supplier_id')
-        .eq('id', quoteId)
-        .single();
-
-      if (quoteError) throw new Error('Cotação não encontrada');
-
+      // PASSO 1: Buscar dados da cotação do localStorage (já validados pela edge function)
+      const storedContext = localStorage.getItem('supplier_quote_context');
       let targetSupplierId = null;
+      
+      if (!storedContext) {
+        throw new Error('Contexto da cotação não encontrado. Tente acessar o link novamente.');
+      }
 
-      if (quoteData?.supplier_id) {
-        // Buscar dados do fornecedor da cotação
-        const { data: existingSupplier, error: supplierLookupError } = await supabase
-          .from('suppliers')
-          .select('id, email')
-          .eq('id', quoteData.supplier_id)
-          .single();
-
-        if (supplierLookupError) {
-          console.error('Erro ao buscar fornecedor:', supplierLookupError);
-        }
-
-        // Validar se o email do registro corresponde ao email do fornecedor cadastrado
-        if (existingSupplier && existingSupplier.email.toLowerCase() === registerData.email.toLowerCase()) {
-          targetSupplierId = existingSupplier.id;
-          console.log('✅ Email corresponde ao fornecedor cadastrado:', targetSupplierId);
-        } else if (existingSupplier) {
+      const context = JSON.parse(storedContext);
+      
+      // Verificar se há um fornecedor pré-cadastrado (do supplierEmail state)
+      if (supplierEmail) {
+        // Validar se o email do registro corresponde ao email do fornecedor pré-cadastrado
+        if (supplierEmail.toLowerCase() === registerData.email.toLowerCase()) {
+          // Buscar o supplier_id usando SERVICE_ROLE através de uma query simples
+          // Como já temos o email validado, podemos buscar o supplier
+          const { data: existingSupplier } = await supabase
+            .from('suppliers')
+            .select('id')
+            .eq('email', supplierEmail)
+            .maybeSingle();
+          
+          if (existingSupplier) {
+            targetSupplierId = existingSupplier.id;
+            console.log('✅ Email corresponde ao fornecedor pré-cadastrado:', targetSupplierId);
+          }
+        } else {
           toast({
             title: "Email não corresponde",
-            description: `Esta cotação foi enviada para ${existingSupplier.email}. Use esse email para se cadastrar.`,
+            description: `Esta cotação foi enviada para ${supplierEmail}. Use esse email para se cadastrar.`,
             variant: "destructive"
           });
           setLoading(false);
