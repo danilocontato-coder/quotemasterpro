@@ -10,13 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Generate a short link for a quote
  * This calls the edge function to create a token and return the short URL
- * @param quoteId - The quote ID
- * @param supplierId - Optional supplier ID to reuse existing token for same supplier
+ * Automatically reuses existing valid tokens for the same quote
  */
-export async function generateQuoteShortLink(
-  quoteId: string, 
-  supplierId?: string
-): Promise<{
+export async function generateQuoteShortLink(quoteId: string): Promise<{
   success: boolean;
   shortUrl?: string;
   fullUrl?: string;
@@ -26,13 +22,8 @@ export async function generateQuoteShortLink(
   error?: string;
 }> {
   try {
-    const body: any = { quote_id: quoteId };
-    if (supplierId) {
-      body.supplier_id = supplierId;
-    }
-    
     const { data, error } = await supabase.functions.invoke('generate-quote-token', {
-      body
+      body: { quote_id: quoteId }
     });
 
     if (error) {

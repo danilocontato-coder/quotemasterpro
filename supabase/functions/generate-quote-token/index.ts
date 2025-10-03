@@ -18,7 +18,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { quote_id, supplier_id } = await req.json()
+    const { quote_id } = await req.json()
 
     if (!quote_id) {
       return new Response(
@@ -42,8 +42,8 @@ serve(async (req) => {
       )
     }
 
-    // Verificar se já existe um token válido para esta cotação (opcionalmente filtrado por supplier_id)
-    let existingTokenQuery = supabaseClient
+    // Verificar se já existe um token válido para esta cotação
+    const { data: existingTokens } = await supabaseClient
       .from('quote_tokens')
       .select('*')
       .eq('quote_id', quote_id)
@@ -51,62 +51,52 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(1)
     
-    // Se supplier_id foi fornecido, verificar se há token específico para esse fornecedor
-    // Isso permite que cada fornecedor tenha seu próprio token, mas evita duplicatas para o mesmo fornecedor
-    if (supplier_id) {
-      const { data: supplierTokens } = await supabaseClient
-        .from('quote_tokens')
-        .select('*')
-        .eq('quote_id', quote_id)
-        .contains('metadata', { supplier_id })
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
+    // Se encontrou token existente e válido, reutilizar
+    if (existingTokens && existingTokens.length > 0) {
+      const existingToken = existingTokens[0]
+      console.log('🔗 [GENERATE-QUOTE-TOKEN] ♻️ Reutilizando token existente para quote_id:', quote_id)
       
-      if (supplierTokens && supplierTokens.length > 0) {
-        const existingToken = supplierTokens[0]
-        console.log('🔗 [GENERATE-QUOTE-TOKEN] Reutilizando token existente para supplier_id:', supplier_id)
+      // Buscar base URL
+      let baseUrl = 'https://cotiz.com.br'
+      try {
+        const { data: settingsData } = await supabaseClient
+          .from('system_settings')
+          .select('setting_value')
+          .eq('setting_key', 'base_url')
+          .single()
         
-        // Buscar base URL
-        let baseUrl = 'https://cotiz.com.br'
-        try {
-          const { data: settingsData } = await supabaseClient
-            .from('system_settings')
-            .select('setting_value')
-            .eq('setting_key', 'base_url')
-            .single()
-          
-          if (settingsData?.setting_value) {
-            const settingValue = typeof settingsData.setting_value === 'string' 
-              ? settingsData.setting_value.replace(/"/g, '')
-              : String(settingsData.setting_value || '').replace(/"/g, '')
-            if (settingValue) baseUrl = settingValue
-          }
-        } catch (error) {
-          console.log('Could not fetch base URL, using fallback:', baseUrl)
+        if (settingsData?.setting_value) {
+          const settingValue = typeof settingsData.setting_value === 'string' 
+            ? settingsData.setting_value.replace(/"/g, '')
+            : String(settingsData.setting_value || '').replace(/"/g, '')
+          if (settingValue) baseUrl = settingValue
         }
-        
-        const shortPath = `/s/${existingToken.short_code}`
-        const redirectPath = `/r/${existingToken.full_token}`
-        const shortUrl = `${baseUrl}${shortPath}`
-        const fullUrl = `${baseUrl}${redirectPath}`
-        
-        return new Response(
-          JSON.stringify({
-            success: true,
-            token: existingToken,
-            short_url: shortUrl,
-            full_url: fullUrl,
-            short_path: shortPath,
-            redirect_path: redirectPath,
-            short_code: existingToken.short_code,
-            full_token: existingToken.full_token,
-            reused: true
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+      } catch (error) {
+        console.log('Could not fetch base URL, using fallback:', baseUrl)
       }
+      
+      const shortPath = `/s/${existingToken.short_code}`
+      const redirectPath = `/r/${existingToken.full_token}`
+      const shortUrl = `${baseUrl}${shortPath}`
+      const fullUrl = `${baseUrl}${redirectPath}`
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          token: existingToken,
+          short_url: shortUrl,
+          full_url: fullUrl,
+          short_path: shortPath,
+          redirect_path: redirectPath,
+          short_code: existingToken.short_code,
+          full_token: existingToken.full_token,
+          reused: true
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
+
+    console.log('🔗 [GENERATE-QUOTE-TOKEN] 🆕 Criando novo token para quote_id:', quote_id)
 
     // Generate unique short code
     const generateShortCode = () => {
@@ -146,23 +136,16 @@ serve(async (req) => {
       )
     }
 
-    // Insert token into database with client_id e metadata se supplier_id fornecido
-    const insertData: any = {
-      quote_id,
-      client_id: quoteData.client_id,
-      short_code: shortCode,
-      full_token: fullToken,
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
-    }
-    
-    // Adicionar supplier_id em metadata se fornecido
-    if (supplier_id) {
-      insertData.metadata = { supplier_id }
-    }
-    
+    // Insert token into database with client_id
     const { data: tokenData, error: insertError } = await supabaseClient
       .from('quote_tokens')
-      .insert(insertData)
+      .insert({
+        quote_id,
+        client_id: quoteData.client_id,
+        short_code: shortCode,
+        full_token: fullToken,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+      })
       .select()
       .single()
 

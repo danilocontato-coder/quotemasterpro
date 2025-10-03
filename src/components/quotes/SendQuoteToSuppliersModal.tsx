@@ -205,30 +205,30 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       // Generate short links for each supplier
       console.log('📤 [SEND-QUOTE] Generating short links for suppliers:', selectedSuppliers);
       
-      const shortLinks = await Promise.all(
-        selectedSuppliers.map(async (supplierId) => {
-          const result = await generateQuoteShortLink(quote.id, supplierId);
-          
-          if (!result.success) {
-            console.error('❌ [SEND-QUOTE] Failed to generate link for supplier:', supplierId, result.error);
-            return null;
-          }
-          
-          console.log(`✅ [SEND-QUOTE] ${result.reused ? '♻️ Reutilizado' : '🆕 Novo'} link para fornecedor:`, supplierId, {
-            shortUrl: result.shortUrl,
-            fullUrl: result.fullUrl,
-            reused: result.reused
-          });
-          
-          return {
-            supplier_id: supplierId,
-            short_link: result.shortUrl,
-            full_link: result.fullUrl,
-            short_code: result.shortCode,
-            full_token: result.fullToken
-          };
-        })
-      );
+      // Gerar um único link para a cotação (reutiliza se já existir)
+      const linkResult = await generateQuoteShortLink(quote.id);
+      
+      if (!linkResult.success) {
+        toast.error("Erro ao gerar link da cotação", {
+          description: linkResult.error
+        });
+        return;
+      }
+      
+      console.log(`✅ [SEND-QUOTE] ${linkResult.reused ? '♻️ Link reutilizado' : '🆕 Novo link'} para cotação:`, quote.id, {
+        shortUrl: linkResult.shortUrl,
+        fullUrl: linkResult.fullUrl,
+        reused: linkResult.reused
+      });
+      
+      // Usar o mesmo link para todos os fornecedores
+      const shortLinks = selectedSuppliers.map(supplierId => ({
+        supplier_id: supplierId,
+        short_link: linkResult.shortUrl,
+        full_link: linkResult.fullUrl,
+        short_code: linkResult.shortCode,
+        full_token: linkResult.fullToken
+      }));
 
       const validShortLinks = shortLinks.filter(Boolean);
 
