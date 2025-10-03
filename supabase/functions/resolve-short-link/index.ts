@@ -87,7 +87,7 @@ serve(async (req) => {
       console.log('Could not fetch base URL from settings, using fallback:', baseUrl)
     }
     
-    const fullUrl = `${baseUrl}/supplier/quickresponse/${tokenData.quote_id}/${tokenData.full_token}`
+    const fullUrl = `${baseUrl}/supplier/quick-response/${tokenData.quote_id}/${tokenData.full_token}`
 
     return new Response(
       JSON.stringify({
