@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { useSidebar } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
   Users,
@@ -221,6 +222,15 @@ export const SuperAdminSidebar = () => {
     }
     return location.pathname.startsWith(href);
   };
+  
+  // Precisa importar useSidebar no topo
+  const { isMobile, setOpen } = useSidebar();
+  
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  };
 
   return (
     <div className="flex h-full w-64 flex-col bg-card border-r">
@@ -254,6 +264,7 @@ export const SuperAdminSidebar = () => {
               {section.href ? (
                 <TransitionNavLink
                   to={section.href}
+                  onClick={handleLinkClick}
                   className={({ isActive: navIsActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-muted',
@@ -276,6 +287,7 @@ export const SuperAdminSidebar = () => {
                       <TransitionNavLink
                         key={item.href}
                         to={item.href}
+                        onClick={handleLinkClick}
                         className={({ isActive: navIsActive }) =>
                           cn(
                             'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-muted group',

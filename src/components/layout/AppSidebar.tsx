@@ -77,7 +77,7 @@ const systemItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpen } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
@@ -85,6 +85,12 @@ export function AppSidebar() {
   const { enabledModules, isLoading } = useModuleAccess();
 
   const isActive = (path: string) => currentPath === path;
+  
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  };
 
   // Filtrar itens de navegação baseado em módulos habilitados
   const filterMenuItems = (items: NavItem[]) => {
@@ -134,6 +140,7 @@ export function AppSidebar() {
                     <TransitionNavLink 
                       to={item.url} 
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                      onClick={handleLinkClick}
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
@@ -159,6 +166,7 @@ export function AppSidebar() {
                       <TransitionNavLink 
                         to={item.url} 
                         className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                        onClick={handleLinkClick}
                       >
                         <item.icon className="h-5 w-5" />
                         {!isCollapsed && <span>{item.title}</span>}
@@ -185,6 +193,7 @@ export function AppSidebar() {
                       <TransitionNavLink 
                         to={item.url} 
                         className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                        onClick={handleLinkClick}
                       >
                         <item.icon className="h-5 w-5" />
                         {!isCollapsed && <span>{item.title}</span>}
@@ -210,6 +219,7 @@ export function AppSidebar() {
                     <TransitionNavLink 
                       to={item.url} 
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                      onClick={handleLinkClick}
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
@@ -234,6 +244,7 @@ export function AppSidebar() {
                     <TransitionNavLink 
                       to={item.url} 
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                      onClick={handleLinkClick}
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}

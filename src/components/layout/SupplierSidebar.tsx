@@ -45,13 +45,19 @@ const systemItems = [
 ];
 
 export function SupplierSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpen } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
   const { settings } = useBranding();
 
   const isActive = (path: string) => currentPath === path;
+  
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpen(false);
+    }
+  };
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
@@ -84,6 +90,7 @@ export function SupplierSidebar() {
                     <TransitionNavLink 
                       to={item.url} 
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                      onClick={handleLinkClick}
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
@@ -107,6 +114,7 @@ export function SupplierSidebar() {
                   <TransitionNavLink 
                     to="/supplier/messages" 
                     className={`nav-item ${isActive("/supplier/messages") ? 'active' : ''}`}
+                    onClick={handleLinkClick}
                   >
                     <MessageSquare className="h-5 w-5" />
                     {!isCollapsed && <span>Mensagens</span>}
@@ -130,6 +138,7 @@ export function SupplierSidebar() {
                     <TransitionNavLink 
                       to={item.url} 
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                      onClick={handleLinkClick}
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}

@@ -5,6 +5,7 @@ interface TransitionNavLinkProps extends Omit<NavLinkProps, 'onClick'> {
   to: string;
   children: React.ReactNode;
   className?: string | ((props: { isActive: boolean }) => string);
+  onClick?: () => void;
 }
 
 /**
@@ -15,12 +16,18 @@ export const TransitionNavLink: React.FC<TransitionNavLinkProps> = ({
   to, 
   children, 
   className,
+  onClick,
   ...props 
 }) => {
   const navigate = useNavigate();
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
+    
+    // Call custom onClick if provided
+    if (onClick) {
+      onClick();
+    }
     
     // Use startTransition to make navigation non-urgent
     startTransition(() => {
