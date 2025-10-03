@@ -483,6 +483,12 @@ export const AppWithProviders: React.FC = () => {
         } />
       </Route>
 
+      {/* Rotas diretas do fornecedor - DEVEM VIR ANTES DAS PROTEGIDAS */}
+      <Route path="/supplier/auth/:quoteId/:token" element={<SupplierAuth />} />
+      <Route path="/supplier/quote/:quoteId/response/:token" element={<SupplierQuoteResponse />} />
+      <Route path="/supplier/quick-response/:quoteId/:token" element={<SupplierQuickResponse />} />
+      <Route path="/supplier/response-success" element={<SupplierResponseSuccess />} />
+
       {/* Rotas do Fornecedor */}
       <Route path="/supplier/*" element={
         <ProtectedRoute allowedRoles={['supplier']}>
@@ -524,11 +530,6 @@ export const AppWithProviders: React.FC = () => {
             <SupplierDeliveries />
           </Suspense>
         } />
-        <Route path="reports" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <SupplierReports />
-          </Suspense>
-        } />
         <Route path="settings" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <SupplierSettings />
@@ -540,12 +541,6 @@ export const AppWithProviders: React.FC = () => {
           </Suspense>
         } />
       </Route>
-
-      {/* Rotas diretas do fornecedor */}
-      <Route path="/supplier/auth/:quoteId/:token" element={<SupplierAuth />} />
-      <Route path="/supplier/quote/:quoteId/response/:token" element={<SupplierQuoteResponse />} />
-      <Route path="/supplier/quick-response/:quoteId/:token" element={<SupplierQuickResponse />} />
-      <Route path="/supplier/response-success" element={<SupplierResponseSuccess />} />
 
       {/* Catch all - 404 */}
       <Route path="*" element={
