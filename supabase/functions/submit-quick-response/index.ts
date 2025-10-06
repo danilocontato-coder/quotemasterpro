@@ -143,7 +143,7 @@ serve(async (req) => {
         supplier_name: supplier_name,
         total_amount: total_amount,
         notes: notes,
-        attachments: attachment_url ? [attachment_url] : null,
+        // attachments column does not exist in quote_responses; ignoring attachment_url to avoid insert failure
         status: 'submitted'
       })
       .select()
