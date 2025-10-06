@@ -20,9 +20,14 @@ serve(async (req) => {
       token, 
       supplier_name, 
       supplier_email, 
-      total_amount, 
+      total_amount,
+      delivery_days,
+      shipping_cost,
+      warranty_months,
+      payment_terms,
       notes,
-      attachment_url 
+      attachment_url,
+      items 
     } = await req.json();
 
     console.log('📦 [Quick Response] Dados recebidos:', { 
@@ -142,8 +147,12 @@ serve(async (req) => {
         supplier_id: supplierId,
         supplier_name: supplier_name,
         total_amount: total_amount,
+        delivery_days: delivery_days || 7,
+        shipping_cost: shipping_cost || 0,
+        warranty_months: warranty_months || 12,
+        payment_terms: payment_terms || '30 dias',
+        items: items || [],
         notes: notes,
-        // attachments column does not exist in quote_responses; ignoring attachment_url to avoid insert failure
         status: 'submitted'
       })
       .select()

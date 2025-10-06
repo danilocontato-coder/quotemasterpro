@@ -24,10 +24,14 @@ export default function QuickResponse() {
   const [hasPreFilledData, setHasPreFilledData] = useState(false);
   const [isExtractingFromPdf, setIsExtractingFromPdf] = useState(false);
   
+  const [quoteItems, setQuoteItems] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     supplierName: '',
     supplierEmail: '',
-    totalAmount: '',
+    deliveryDays: '7',
+    shippingCost: '0',
+    warrantyMonths: '12',
+    paymentTerms: '30 dias',
     notes: ''
   });
 
@@ -69,6 +73,22 @@ export default function QuickResponse() {
         });
         
         setQuoteData(data.quote);
+        
+        // Buscar itens da cotação
+        const { data: items, error: itemsError } = await supabase
+          .from('quote_items')
+          .select('*')
+          .eq('quote_id', data.quote.id);
+        
+        if (!itemsError && items) {
+          const itemsWithProposal = items.map(item => ({
+            ...item,
+            proposed_quantity: item.quantity,
+            proposed_unit_price: '',
+            proposed_total: 0
+          }));
+          setQuoteItems(itemsWithProposal);
+        }
         
         // Buscar TODOS os dados do fornecedor se já cadastrado
         if (data.supplier) {
@@ -163,27 +183,68 @@ export default function QuickResponse() {
     }
   };
 
+  const updateItemPrice = (index: number, price: string) => {
+    const newItems = [...quoteItems];
+    const cleanPrice = parseFloat(price.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    newItems[index].proposed_unit_price = price;
+    newItems[index].proposed_total = cleanPrice * newItems[index].proposed_quantity;
+    setQuoteItems(newItems);
+  };
+
+  const updateItemQuantity = (index: number, qty: string) => {
+    const newItems = [...quoteItems];
+    const quantity = parseInt(qty) || 0;
+    newItems[index].proposed_quantity = quantity;
+    const price = parseFloat(newItems[index].proposed_unit_price?.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    newItems[index].proposed_total = price * quantity;
+    setQuoteItems(newItems);
+  };
+
+  const addNewItem = () => {
+    setQuoteItems([...quoteItems, {
+      id: `new-${Date.now()}`,
+      product_name: '',
+      proposed_quantity: 1,
+      proposed_unit_price: '',
+      proposed_total: 0
+    }]);
+  };
+
+  const removeItem = (index: number) => {
+    setQuoteItems(quoteItems.filter((_, i) => i !== index));
+  };
+
+  const calculateTotal = () => {
+    return quoteItems.reduce((sum, item) => sum + (item.proposed_total || 0), 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.supplierName || !formData.supplierEmail || !formData.totalAmount) {
+    if (!formData.supplierName || !formData.supplierEmail) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha empresa, e-mail e valor total.",
+        description: "Preencha empresa e e-mail.",
         variant: "destructive"
       });
       return;
     }
 
-    const amount = parseFloat(formData.totalAmount.replace(/[^\d.,]/g, '').replace(',', '.'));
-    if (isNaN(amount) || amount <= 0) {
+    // Validar itens
+    const itemsWithPrices = quoteItems.filter(item => 
+      item.proposed_unit_price && parseFloat(item.proposed_unit_price.replace(/[^\d.,]/g, '').replace(',', '.')) > 0
+    );
+
+    if (itemsWithPrices.length === 0) {
       toast({
-        title: "Valor inválido",
-        description: "Informe um valor numérico válido.",
+        title: "Itens obrigatórios",
+        description: "Preencha pelo menos um item com quantidade e preço.",
         variant: "destructive"
       });
       return;
     }
+
+    const totalAmount = calculateTotal();
 
     try {
       setLoading(true);
@@ -215,15 +276,28 @@ export default function QuickResponse() {
         attachmentUrl = urlData.publicUrl;
       }
       
+      // Preparar itens para envio
+      const proposalItems = itemsWithPrices.map(item => ({
+        product_name: item.product_name,
+        quantity: item.proposed_quantity,
+        unit_price: parseFloat(item.proposed_unit_price.replace(/[^\d.,]/g, '').replace(',', '.')),
+        total: item.proposed_total
+      }));
+
       // Submeter resposta via edge function
       const { data, error } = await supabase.functions.invoke('submit-quick-response', {
         body: {
           token,
           supplier_name: formData.supplierName,
           supplier_email: formData.supplierEmail,
-          total_amount: amount,
+          total_amount: totalAmount,
+          delivery_days: parseInt(formData.deliveryDays) || 7,
+          shipping_cost: parseFloat(formData.shippingCost.replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+          warranty_months: parseInt(formData.warrantyMonths) || 12,
+          payment_terms: formData.paymentTerms || '30 dias',
           notes: formData.notes || null,
-          attachment_url: attachmentUrl
+          attachment_url: attachmentUrl,
+          items: proposalItems
         }
       });
       
@@ -330,13 +404,108 @@ export default function QuickResponse() {
               </Card>
             )}
 
+            {/* Itens da Cotação */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Itens da Cotação
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Preencha os preços para cada item solicitado</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {quoteItems.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Nenhum item na cotação</p>
+                    <Button type="button" variant="outline" size="sm" className="mt-2" onClick={addNewItem}>
+                      Adicionar Item
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      {quoteItems.map((item, index) => (
+                        <Card key={item.id || index} className="p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                            <div className="md:col-span-5">
+                              <Label className="text-xs">Produto</Label>
+                              <Input
+                                value={item.product_name}
+                                onChange={(e) => {
+                                  const newItems = [...quoteItems];
+                                  newItems[index].product_name = e.target.value;
+                                  setQuoteItems(newItems);
+                                }}
+                                placeholder="Nome do produto"
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <Label className="text-xs">Quantidade</Label>
+                              <Input
+                                type="number"
+                                value={item.proposed_quantity}
+                                onChange={(e) => updateItemQuantity(index, e.target.value)}
+                                className="h-9"
+                                min="1"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <Label className="text-xs">Preço Unitário</Label>
+                              <Input
+                                value={item.proposed_unit_price}
+                                onChange={(e) => updateItemPrice(index, e.target.value)}
+                                placeholder="R$ 0,00"
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <Label className="text-xs">Total</Label>
+                              <Input
+                                value={`R$ ${(item.proposed_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                disabled
+                                className="h-9 bg-muted"
+                              />
+                            </div>
+                            <div className="md:col-span-1 flex items-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeItem(index)}
+                                className="h-9 w-full text-destructive hover:text-destructive"
+                              >
+                                ✕
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <Button type="button" variant="outline" size="sm" onClick={addNewItem}>
+                        + Adicionar Item
+                      </Button>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Total Geral</p>
+                        <p className="text-2xl font-bold text-primary">
+                          R$ {calculateTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
-                  Sua Proposta
+                  Dados da Proposta
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">Preencha os dados abaixo para enviar sua proposta</p>
+                <p className="text-sm text-muted-foreground">Preencha os dados complementares</p>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -399,23 +568,55 @@ export default function QuickResponse() {
                       />
                     </div>
                   </div>
-                  
-                  <div>
-                    <Label htmlFor="totalAmount">Valor Total da Proposta *</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="deliveryDays">Prazo de Entrega (dias)</Label>
                       <Input
-                        id="totalAmount"
-                        type="text"
-                        value={formData.totalAmount}
-                        onChange={(e) => setFormData({...formData, totalAmount: e.target.value})}
-                        placeholder="R$ 0,00"
-                        className="pl-10"
+                        id="deliveryDays"
+                        type="number"
+                        value={formData.deliveryDays}
+                        onChange={(e) => setFormData({...formData, deliveryDays: e.target.value})}
+                        placeholder="7"
                         disabled={loading}
-                        required
+                        min="1"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Exemplo: 1500.00 ou 1.500,00</p>
+                    <div>
+                      <Label htmlFor="shippingCost">Frete</Label>
+                      <Input
+                        id="shippingCost"
+                        value={formData.shippingCost}
+                        onChange={(e) => setFormData({...formData, shippingCost: e.target.value})}
+                        placeholder="R$ 0,00"
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="warrantyMonths">Garantia (meses)</Label>
+                      <Input
+                        id="warrantyMonths"
+                        type="number"
+                        value={formData.warrantyMonths}
+                        onChange={(e) => setFormData({...formData, warrantyMonths: e.target.value})}
+                        placeholder="12"
+                        disabled={loading}
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="paymentTerms">Condições de Pagamento</Label>
+                      <Input
+                        id="paymentTerms"
+                        value={formData.paymentTerms}
+                        onChange={(e) => setFormData({...formData, paymentTerms: e.target.value})}
+                        placeholder="30 dias"
+                        disabled={loading}
+                      />
+                    </div>
                   </div>
                   
                   <div>
@@ -459,8 +660,8 @@ export default function QuickResponse() {
                     </p>
                   </div>
                   
-                  <Button type="submit" className="w-full" disabled={loading || isExtractingFromPdf}>
-                    {loading ? 'Enviando...' : isExtractingFromPdf ? '🤖 Processando PDF...' : 'Enviar Proposta'}
+                  <Button type="submit" className="w-full" size="lg" disabled={loading || isExtractingFromPdf || quoteItems.length === 0}>
+                    {loading ? 'Enviando...' : isExtractingFromPdf ? '🤖 Processando PDF...' : `Enviar Proposta - R$ ${calculateTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                   </Button>
                   
                   <div className="text-center pt-4 border-t">
