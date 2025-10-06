@@ -61,7 +61,7 @@ serve(async (req) => {
     const { data: tokenData, error: tokenError } = await supabase
       .from('quote_tokens')
       .select('quote_id, expires_at, client_id')
-      .eq('short_code', token)
+      .or(`short_code.eq.${token},full_token.eq.${token}`)
       .maybeSingle();
 
     if (tokenError) {
@@ -162,11 +162,12 @@ serve(async (req) => {
     // Notificar cliente sobre nova proposta
     console.log('📧 [Quick Response] Enviando notificação ao cliente...');
     try {
+      const amountNum = typeof total_amount === 'number' ? total_amount : parseFloat(String(total_amount).replace(',', '.'));
       await supabase.functions.invoke('create-notification', {
         body: {
           client_id: tokenData.client_id,
           title: 'Nova Proposta Recebida',
-          message: `${supplier_name} enviou uma proposta de R$ ${total_amount.toFixed(2)} para a cotação #${tokenData.quote_id}`,
+          message: `${supplier_name} enviou uma proposta de R$ ${isNaN(amountNum) ? total_amount : amountNum.toFixed(2)} para a cotação #${tokenData.quote_id}`,
           type: 'proposal',
           priority: 'normal',
           metadata: {
