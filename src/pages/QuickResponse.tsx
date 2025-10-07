@@ -442,9 +442,9 @@ export default function QuickResponse() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Package className="w-5 h-5" />
-                  Itens da Cotação
+                  Itens Solicitados pelo Cliente
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">Preencha os preços para cada item solicitado</p>
+                <p className="text-sm text-muted-foreground">Confira os itens e quantidades solicitadas, depois preencha seus preços</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 {quoteItems.length === 0 ? (
@@ -457,12 +457,20 @@ export default function QuickResponse() {
                   </div>
                 ) : (
                   <>
+                    <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                      <p className="text-sm text-blue-900 dark:text-blue-100">
+                        ℹ️ Os produtos e quantidades abaixo foram solicitados pelo cliente. Você pode ajustar se necessário e adicionar novos itens.
+                      </p>
+                    </div>
                     <div className="space-y-3">
                       {quoteItems.map((item, index) => (
-                        <Card key={item.id || index} className="p-4">
+                        <Card key={item.id || index} className="p-4 border-l-4 border-l-primary">
                           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                             <div className="md:col-span-5">
-                              <Label className="text-xs">Produto</Label>
+                              <Label className="text-xs flex items-center gap-1">
+                                Produto 
+                                <span className="text-muted-foreground">(solicitado pelo cliente)</span>
+                              </Label>
                               <Input
                                 value={item.product_name}
                                 onChange={(e) => {
@@ -471,26 +479,29 @@ export default function QuickResponse() {
                                   setQuoteItems(newItems);
                                 }}
                                 placeholder="Nome do produto"
-                                className="h-9"
+                                className="h-9 bg-muted"
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <Label className="text-xs">Quantidade</Label>
+                              <Label className="text-xs flex items-center gap-1">
+                                Quantidade
+                                <span className="text-xs text-muted-foreground">(solicitado: {item.quantity})</span>
+                              </Label>
                               <Input
                                 type="number"
                                 value={item.proposed_quantity}
                                 onChange={(e) => updateItemQuantity(index, e.target.value)}
-                                className="h-9"
+                                className="h-9 bg-muted"
                                 min="1"
                               />
                             </div>
                             <div className="md:col-span-2">
-                              <Label className="text-xs">Preço Unitário</Label>
+                              <Label className="text-xs font-semibold text-primary">Seu Preço Unitário *</Label>
                               <Input
                                 value={item.proposed_unit_price}
                                 onChange={(e) => updateItemPrice(index, e.target.value)}
                                 placeholder="R$ 0,00"
-                                className="h-9"
+                                className="h-9 border-primary"
                               />
                             </div>
                             <div className="md:col-span-2">
