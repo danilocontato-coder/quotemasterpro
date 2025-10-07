@@ -249,9 +249,16 @@ export default function QuickResponse() {
     try {
       setLoading(true);
       
+      console.log('🚀 [QUICK-RESPONSE] Iniciando envio de proposta:', {
+        itemsCount: itemsWithPrices.length,
+        totalAmount,
+        hasAttachment: !!attachment
+      });
+      
       // Upload de anexo se houver
       let attachmentUrl = null;
       if (attachment) {
+        console.log('📎 [QUICK-RESPONSE] Fazendo upload de anexo...');
         const fileExt = attachment.name.split('.').pop();
         const fileName = `${token}_${Date.now()}.${fileExt}`;
         
@@ -260,7 +267,7 @@ export default function QuickResponse() {
           .upload(`quick-responses/${fileName}`, attachment);
         
         if (uploadError) {
-          console.error('Erro no upload:', uploadError);
+          console.error('❌ [QUICK-RESPONSE] Erro no upload:', uploadError);
           toast({
             title: "Erro no upload",
             description: "Não foi possível enviar o arquivo.",
@@ -274,37 +281,63 @@ export default function QuickResponse() {
           .getPublicUrl(`quick-responses/${fileName}`);
         
         attachmentUrl = urlData.publicUrl;
+        console.log('✅ [QUICK-RESPONSE] Anexo enviado:', attachmentUrl);
       }
       
       // Preparar itens para envio
-      const proposalItems = itemsWithPrices.map(item => ({
-        product_name: item.product_name,
-        quantity: item.proposed_quantity,
-        unit_price: parseFloat(item.proposed_unit_price.replace(/[^\d.,]/g, '').replace(',', '.')),
-        total: item.proposed_total
-      }));
+      const proposalItems = itemsWithPrices.map(item => {
+        const unitPrice = parseFloat(String(item.proposed_unit_price).replace(/[^\d.,]/g, '').replace(',', '.'));
+        return {
+          product_name: item.product_name || 'Item sem nome',
+          quantity: parseInt(String(item.proposed_quantity)) || 1,
+          unit_price: unitPrice,
+          total: item.proposed_total || (unitPrice * (parseInt(String(item.proposed_quantity)) || 1))
+        };
+      });
+
+      // Limpar e validar campos numéricos
+      const deliveryDays = parseInt(String(formData.deliveryDays)) || 7;
+      const shippingCostStr = String(formData.shippingCost || '0');
+      const shippingCost = parseFloat(shippingCostStr.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+      const warrantyMonths = parseInt(String(formData.warrantyMonths)) || 12;
+
+      const payload = {
+        token,
+        supplier_name: formData.supplierName.trim(),
+        supplier_email: formData.supplierEmail.trim().toLowerCase(),
+        total_amount: totalAmount,
+        delivery_days: deliveryDays,
+        shipping_cost: shippingCost,
+        warranty_months: warrantyMonths,
+        payment_terms: formData.paymentTerms.trim() || '30 dias',
+        notes: formData.notes?.trim() || null,
+        attachment_url: attachmentUrl,
+        items: proposalItems
+      };
+
+      console.log('📤 [QUICK-RESPONSE] Enviando payload:', {
+        ...payload,
+        items: `${proposalItems.length} itens`
+      });
 
       // Submeter resposta via edge function
       const { data, error } = await supabase.functions.invoke('submit-quick-response', {
-        body: {
-          token,
-          supplier_name: formData.supplierName,
-          supplier_email: formData.supplierEmail,
-          total_amount: totalAmount,
-          delivery_days: parseInt(formData.deliveryDays) || 7,
-          shipping_cost: parseFloat(formData.shippingCost.replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
-          warranty_months: parseInt(formData.warrantyMonths) || 12,
-          payment_terms: formData.paymentTerms || '30 dias',
-          notes: formData.notes || null,
-          attachment_url: attachmentUrl,
-          items: proposalItems
-        }
+        body: payload
       });
       
-      if (error || !data?.success) {
+      console.log('📥 [QUICK-RESPONSE] Resposta recebida:', { data, error });
+
+      if (error) {
+        console.error('❌ [QUICK-RESPONSE] Erro da edge function:', error);
+        throw new Error(error.message || 'Erro ao submeter resposta');
+      }
+
+      if (!data?.success) {
+        console.error('❌ [QUICK-RESPONSE] Resposta sem sucesso:', data);
         throw new Error(data?.error || 'Erro ao submeter resposta');
       }
       
+      console.log('✅ [QUICK-RESPONSE] Proposta enviada com sucesso!');
       toast({
         title: "Resposta enviada!",
         description: "Sua proposta foi enviada com sucesso."
@@ -314,10 +347,10 @@ export default function QuickResponse() {
       navigate('/r/success');
       
     } catch (error: any) {
-      console.error('Erro ao enviar resposta:', error);
+      console.error('❌ [QUICK-RESPONSE] Erro geral:', error);
       toast({
-        title: "Erro",
-        description: error.message || "Não foi possível enviar sua resposta.",
+        title: "Erro ao enviar proposta",
+        description: error.message || "Não foi possível enviar sua resposta. Verifique os dados e tente novamente.",
         variant: "destructive"
       });
     } finally {

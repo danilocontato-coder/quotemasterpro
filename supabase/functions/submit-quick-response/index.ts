@@ -35,8 +35,13 @@ serve(async (req) => {
       supplier_name, 
       supplier_email,
       total_amount,
+      delivery_days,
+      shipping_cost,
+      warranty_months,
+      payment_terms,
       notes,
-      attachment_url 
+      attachment_url,
+      itemsCount: items?.length || 0
     });
 
     // Validar campos obrigatórios
@@ -55,6 +60,18 @@ serve(async (req) => {
             (!supplier_name ? 'nome ' : '') +
             (!supplier_email ? 'e-mail ' : '') +
             (!total_amount ? 'valor total' : '')
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }, status: 400 }
+      );
+    }
+
+    // Validar items
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.error('❌ [Quick Response] Itens inválidos ou ausentes');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Nenhum item foi enviado na proposta'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }, status: 400 }
       );
