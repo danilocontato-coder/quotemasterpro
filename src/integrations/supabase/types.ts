@@ -951,6 +951,7 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          branding_settings_id: string | null
           client_type: Database["public"]["Enums"]["client_type"]
           cnpj: string
           company_name: string | null
@@ -973,6 +974,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          branding_settings_id?: string | null
           client_type?: Database["public"]["Enums"]["client_type"]
           cnpj: string
           company_name?: string | null
@@ -995,6 +997,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          branding_settings_id?: string | null
           client_type?: Database["public"]["Enums"]["client_type"]
           cnpj?: string
           company_name?: string | null
@@ -1016,6 +1019,13 @@ export type Database = {
           username?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_branding_settings_id_fkey"
+            columns: ["branding_settings_id"]
+            isOneToOne: false
+            referencedRelation: "branding_settings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_parent_client_id_fkey"
             columns: ["parent_client_id"]
