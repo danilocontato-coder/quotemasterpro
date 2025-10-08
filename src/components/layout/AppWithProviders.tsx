@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleBasedRedirect } from '@/components/layout/RoleBasedRedirect';
 import { SecurityMonitor } from '@/components/security/SecurityMonitor';
 import { FaviconUpdater } from '@/components/common/FaviconUpdater';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 // Layouts principais
 import MainLayout from '@/components/layout/MainLayout';
@@ -116,7 +117,8 @@ export const AppWithProviders: React.FC = () => {
       {/* Monitor de Segurança - Proteção contra acessos não autorizados */}
       <SecurityMonitor />
       
-    <Routes>
+    <ErrorBoundary>
+      <Routes>
       {/* Rotas públicas de autenticação */}
       <Route path="/auth/login" element={
         <Suspense fallback={<LoadingFallback />}>
@@ -623,7 +625,8 @@ export const AppWithProviders: React.FC = () => {
           <NotFound />
         </Suspense>
       } />
-    </Routes>
+      </Routes>
+    </ErrorBoundary>
     </>
   );
 };
