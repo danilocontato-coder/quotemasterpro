@@ -1,5 +1,6 @@
 import { FileText, Users, CheckCircle, DollarSign, Clock, TrendingUp, AlertTriangle } from "lucide-react";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { QuoteLimitsMetric } from "@/components/dashboard/QuoteLimitsMetric";
@@ -19,10 +20,19 @@ import { useBranding } from '@/contexts/BrandingContext';
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
-  const { clientName, subscriptionPlan, isLoading: clientLoading } = useSupabaseCurrentClient();
+  const navigate = useNavigate();
+  const { clientName, subscriptionPlan, clientType, isLoading: clientLoading } = useSupabaseCurrentClient();
   const { displayName: planDisplayName } = useSupabasePlanDetails(subscriptionPlan);
   const { metrics, activities, isLoading, error, refetch } = useSupabaseDashboard();
   const { settings } = useBranding();
+
+  // Redirecionar administradoras para dashboard específico
+  useEffect(() => {
+    if (!clientLoading && clientType === 'administradora') {
+      console.log('🔍 Dashboard: Tipo administradora detectado, redirecionando...');
+      navigate('/administradora/dashboard', { replace: true });
+    }
+  }, [clientType, clientLoading, navigate]);
 
   if (isLoading || clientLoading) {
     return (

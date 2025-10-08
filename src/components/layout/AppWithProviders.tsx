@@ -79,7 +79,7 @@ const SupplierQuickResponse = React.lazy(() => import('@/pages/supplier/Supplier
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
 
 // Administradora pages
-const AdministradoraDashboard = React.lazy(() => import('@/pages/administradora/AdministradoraDashboard'));
+const AdministradoraDashboard = React.lazy(() => import('@/pages/admin/AdministradoraDashboard'));
 const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
 const QuickResponse = React.lazy(() => import('@/pages/QuickResponse'));
 const QuickResponseSuccess = React.lazy(() => import('@/pages/QuickResponseSuccess'));

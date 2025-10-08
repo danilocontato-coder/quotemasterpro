@@ -12,6 +12,7 @@ interface ClientInfo {
   company_name?: string;
   subscription_plan_id?: string;
   status: string;
+  client_type?: 'direct' | 'administradora' | 'condominio_vinculado';
   created_at: string;
   updated_at: string;
 }
@@ -187,5 +188,6 @@ export function useSupabaseCurrentClient() {
     subscriptionPlan: client?.subscription_plan_id || 'basic',
     clientStatus: client?.status || 'active',
     clientEmail: client?.email || user?.email || '',
+    clientType: client?.client_type || 'direct',
   };
 }
