@@ -62,6 +62,12 @@ export interface AdminClient {
   revenue: number;
   quotesCount: number;
   notes?: string;
+  // Hierarquia: administradoras e condomínios vinculados
+  clientType?: 'direct' | 'administradora' | 'condominio_vinculado';
+  parentClientId?: string;
+  parentClientName?: string;
+  childClientsCount?: number;
+  childClients?: AdminClient[]; // Para administradoras, lista de filhos
 }
 
 // Utilities

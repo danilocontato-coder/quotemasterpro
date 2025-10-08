@@ -76,7 +76,10 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
     groupId: '',
     plan: 'basic',
     status: 'active' as const,
-    notes: ''
+    notes: '',
+    // Hierarquia
+    clientType: 'direct' as 'direct' | 'administradora' | 'condominio_vinculado',
+    parentClientId: ''
   });
 
   const [contacts, setContacts] = useState<ClientContact[]>([{
@@ -290,7 +293,9 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
         groupId: '',
         plan: 'basic',
         status: 'active',
-        notes: ''
+        notes: '',
+        clientType: 'direct',
+        parentClientId: ''
       });
       setContacts([{
         name: '',
