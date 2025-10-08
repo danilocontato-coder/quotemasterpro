@@ -28,30 +28,25 @@ Deno.serve(async (req) => {
     const password = 'SuperAdmin2025!';
     const name = 'Super Admin';
 
-    // Deletar usuário se já existe usando SQL direto
-    const { data: existingUser } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .maybeSingle();
+    // Deletar usuário se já existe via Admin API
+    const { data: listed } = await supabaseAdmin.auth.admin.listUsers();
+    const existing = listed.users.find((u: any) => u.email === email);
     
-    if (existingUser) {
-      console.log('Deletando usuário existente:', existingUser.id);
-      await supabaseAdmin.rpc('exec_sql', {
-        sql: `DELETE FROM auth.users WHERE id = '${existingUser.id}'`
-      }).catch(() => {
-        // Ignorar erro se a função não existir
-      });
+    if (existing) {
+      console.log('Deletando usuário existente (admin):', existing.id);
+      const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(existing.id);
+      if (delErr) {
+        console.error('Erro ao deletar usuário existente:', delErr);
+        throw delErr;
+      }
     }
 
-    // Usar signUp ao invés de admin API para evitar erro de schema
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+    // Criar via Admin API com e-mail confirmado
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: { name },
-        emailRedirectTo: undefined
-      }
+      email_confirm: true,
+      user_metadata: { name }
     });
 
     if (authError) {
@@ -65,11 +60,7 @@ Deno.serve(async (req) => {
 
     console.log('✅ Usuário auth criado:', authData.user.id);
     
-    // Atualizar email_confirmed diretamente via SQL
-    await supabaseAdmin
-      .from('profiles')
-      .update({ email: email })
-      .eq('id', authData.user.id);
+    // E-mail já definido na criação do usuário; seguiremos para upsert do profile abaixo
 
     // Criar profile
     const { error: profileError } = await supabaseAdmin
