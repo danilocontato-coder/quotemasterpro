@@ -16,9 +16,6 @@ import AdministradoraLayout from '@/components/layout/AdministradoraLayout';
 
 // Dashboard import estático
 import Dashboard from '@/pages/Dashboard';
-// Import estático para evitar erro de dynamic import nesta rota crítica
-import ClientsManagement from '@/pages/admin/ClientsManagement';
-
 // Lazy loading de páginas
 const LoginPage = React.lazy(() => import('@/pages/auth/Login'));
 const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
@@ -48,7 +45,14 @@ const Help = React.lazy(() => import('@/pages/Help'));
 // Admin pages
 const SuperAdminDashboard = React.lazy(() => import('@/pages/admin/SuperAdminDashboard'));
 const Prospecting = React.lazy(() => import('@/pages/admin/Prospecting'));
-// ClientsManagement importado estaticamente acima
+const ClientsManagement = React.lazy(() =>
+  import('@/pages/admin/ClientsManagement')
+    .then(m => ({ default: m.default ?? m.ClientsManagement }))
+    .catch((err) => {
+      console.error('❌ Failed to load ClientsManagement module', err);
+      return { default: () => <div className="p-6">Erro ao carregar Gerenciamento de Clientes</div> };
+    })
+);
 const AccountsManagement = React.lazy(() => import('@/pages/admin/AccountsManagement'));
 const SuppliersManagement = React.lazy(() => import('@/pages/admin/SuppliersManagement'));
 const SystemSettings = React.lazy(() => import('@/pages/admin/SystemSettings'));
