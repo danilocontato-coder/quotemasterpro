@@ -11,6 +11,8 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('🔧 Creating superadmin user...');
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -22,43 +24,41 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Deletar usuário existente se houver
+    const email = 'superadmin@quotemaster.com';
+    const password = 'SuperAdmin2025!';
+    const name = 'Super Admin';
+
+    // Deletar usuário se já existe
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(u => u.email === 'superadmin@quotemaster.com');
+    const existingUser = existingUsers.users.find(u => u.email === email);
     
     if (existingUser) {
+      console.log('Deletando usuário existente:', existingUser.id);
       await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
-      console.log('Usuário existente deletado:', existingUser.id);
     }
 
     // Criar novo usuário
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: 'superadmin@quotemaster.com',
-      password: 'SuperAdmin2025!',
+      email,
+      password,
       email_confirm: true,
-      user_metadata: {
-        name: 'Super Admin'
-      }
+      user_metadata: { name }
     });
 
     if (authError) {
       console.error('Erro ao criar usuário auth:', authError);
-      return new Response(
-        JSON.stringify({ error: authError.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      throw authError;
     }
 
-    const userId = authData.user.id;
-    console.log('Usuário auth criado:', userId);
+    console.log('✅ Usuário auth criado:', authData.user.id);
 
     // Criar profile
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
-        id: userId,
-        email: 'superadmin@quotemaster.com',
-        name: 'Super Admin',
+        id: authData.user.id,
+        email,
+        name,
         role: 'admin',
         active: true,
         onboarding_completed: true
@@ -66,30 +66,36 @@ Deno.serve(async (req) => {
 
     if (profileError) {
       console.error('Erro ao criar profile:', profileError);
+      throw profileError;
     }
 
-    // Criar registro na tabela users
-    const { error: userError } = await supabaseAdmin
+    console.log('✅ Profile criado');
+
+    // Criar entrada na tabela users
+    const { error: usersError } = await supabaseAdmin
       .from('users')
       .upsert({
-        auth_user_id: userId,
-        name: 'Super Admin',
-        email: 'superadmin@quotemaster.com',
+        auth_user_id: authData.user.id,
+        name,
+        email,
         role: 'admin',
         status: 'active'
       }, {
         onConflict: 'auth_user_id'
       });
 
-    if (userError) {
-      console.error('Erro ao criar user:', userError);
+    if (usersError) {
+      console.error('Erro ao criar user:', usersError);
+      throw usersError;
     }
 
-    // Criar role admin
+    console.log('✅ User criado');
+
+    // Adicionar role
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .upsert({
-        user_id: userId,
+        user_id: authData.user.id,
         role: 'admin'
       }, {
         onConflict: 'user_id,role'
@@ -97,23 +103,36 @@ Deno.serve(async (req) => {
 
     if (roleError) {
       console.error('Erro ao criar role:', roleError);
+      throw roleError;
     }
 
+    console.log('✅ Role criada');
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: 'Superadmin criado com sucesso!',
-        email: 'superadmin@quotemaster.com',
-        userId: userId
+        userId: authData.user.id,
+        email,
+        password
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
     );
 
   } catch (error) {
-    console.error('Erro geral:', error);
+    console.error('❌ Erro:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({
+        success: false,
+        error: error.message
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      }
     );
   }
 });
