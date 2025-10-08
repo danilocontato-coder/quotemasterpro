@@ -414,7 +414,7 @@ export const ClientsManagement = () => {
                   {clientGroups.filter(group => group.id && group.id.trim() !== '').map(group => (
                     <SelectItem key={group.id} value={group.id}>
                       <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full bg-${group.color}-500`}></div>
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: group.color || '#64748b' }}></div>
                         {group.name}
                       </div>
                     </SelectItem>
