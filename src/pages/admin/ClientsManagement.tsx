@@ -179,10 +179,11 @@ export const ClientsManagement = () => {
       
       const matchesGroup = filterGroup === 'all' || client.groupId === filterGroup;
       const matchesStatus = filterStatus === 'all' || client.status === filterStatus;
+      const matchesType = filterClientType === 'all' || client.clientType === filterClientType;
       
-      return matchesSearch && matchesGroup && matchesStatus;
+      return matchesSearch && matchesGroup && matchesStatus && matchesType;
     });
-  }, [clients, searchTerm, filterGroup, filterStatus]);
+  }, [clients, searchTerm, filterGroup, filterStatus, filterClientType]);
 
   // Pagination
   const pagination = usePagination(filteredClients, {
