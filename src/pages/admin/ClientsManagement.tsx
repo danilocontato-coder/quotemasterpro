@@ -24,7 +24,9 @@ import {
   Tag,
   FileText,
   Shield,
-  CreditCard
+  CreditCard,
+  Network,
+  Home
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -53,6 +55,7 @@ import { EditClientModal } from '@/components/admin/EditClientModal';
 import { ClientCredentialsModal } from '@/components/admin/ClientCredentialsModal';
 import { ClientDocumentsModal } from '@/components/admin/ClientDocumentsModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
+import { HierarchyViewModal } from '@/components/admin/HierarchyViewModal';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 export const ClientsManagement = () => {
@@ -89,7 +92,9 @@ export const ClientsManagement = () => {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [showDocumentsModal, setShowDocumentsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showHierarchyView, setShowHierarchyView] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [filterClientType, setFilterClientType] = useState<string>("all");
 
   // Memoized callbacks to prevent unnecessary re-renders
   const handleUpdateClient = useCallback(async (id: string, data: any) => {
@@ -299,6 +304,13 @@ export const ClientsManagement = () => {
           <div className="flex items-center gap-3">
             <Button 
               variant="outline"
+              onClick={() => setShowHierarchyView(true)}
+            >
+              <Network className="h-4 w-4 mr-2" />
+              Visualizar Hierarquia
+            </Button>
+            <Button 
+              variant="outline"
               onClick={() => setShowGroupsManager(true)}
             >
               <Tag className="h-4 w-4 mr-2" />
@@ -420,6 +432,18 @@ export const ClientsManagement = () => {
                   <SelectItem value="pending">Pendente</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select value={filterClientType} onValueChange={setFilterClientType}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="direct">Clientes Diretos</SelectItem>
+                  <SelectItem value="administradora">Administradoras</SelectItem>
+                  <SelectItem value="condominio_vinculado">Condomínios Vinculados</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -440,15 +464,16 @@ export const ClientsManagement = () => {
               <Table>
                  <TableHeader>
                    <TableRow>
-                     <TableHead>Cliente</TableHead>
-                     <TableHead>Contato</TableHead>
-                     <TableHead>Grupo</TableHead>
-                     <TableHead>Status</TableHead>
-                     <TableHead>Plano</TableHead>
-                     <TableHead>Métricas</TableHead>
-                     <TableHead>Último Acesso</TableHead>
-                     <TableHead className="text-right">Ações</TableHead>
-                   </TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Hierarquia</TableHead>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Grupo</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Plano</TableHead>
+                      <TableHead>Métricas</TableHead>
+                      <TableHead>Último Acesso</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
                  </TableHeader>
                  <TableBody>
                    {pagination.paginatedData.map((client) => (
@@ -462,23 +487,52 @@ export const ClientsManagement = () => {
                           <p className="font-medium">{client.companyName}</p>
                           <p className="text-sm text-muted-foreground">{client.cnpj}</p>
                         </div>
-                      </div>
-                    </TableCell>
-                    
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-sm">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          <span>{client.email}</span>
-                        </div>
-                        {client.phone && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            <span>{client.phone}</span>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
+                       </div>
+                     </TableCell>
+                     
+                     {/* Nova coluna de Hierarquia */}
+                     <TableCell>
+                       {client.clientType === 'administradora' && (
+                         <div className="flex items-center gap-2">
+                           <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700">
+                             <Network className="h-3 w-3 mr-1" />
+                             Administradora
+                           </Badge>
+                           <span className="text-xs text-muted-foreground">
+                             {client.childClientsCount || 0} condo(s)
+                           </span>
+                         </div>
+                       )}
+                       
+                       {client.clientType === 'condominio_vinculado' && (
+                         <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-700">
+                           <Home className="h-3 w-3 mr-1" />
+                           {client.parentClientName || 'Vinculado'}
+                         </Badge>
+                       )}
+                       
+                       {client.clientType === 'direct' && (
+                         <Badge variant="outline" className="bg-gray-50 border-gray-200">
+                           <Building2 className="h-3 w-3 mr-1" />
+                           Direto
+                         </Badge>
+                       )}
+                     </TableCell>
+                     
+                     <TableCell>
+                       <div className="space-y-1">
+                         <div className="flex items-center gap-1 text-sm">
+                           <Mail className="h-3 w-3 text-muted-foreground" />
+                           <span>{client.email}</span>
+                         </div>
+                         {client.phone && (
+                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                             <Phone className="h-3 w-3" />
+                             <span>{client.phone}</span>
+                           </div>
+                         )}
+                       </div>
+                     </TableCell>
                     
                     <TableCell>
                       {client.groupName ? (
@@ -722,6 +776,18 @@ export const ClientsManagement = () => {
         onOpenChange={setShowDeleteModal}
         client={selectedClient}
         onDeleteClient={handleDeleteFromModal}
+      />
+
+      <HierarchyViewModal 
+        open={showHierarchyView}
+        onOpenChange={setShowHierarchyView}
+        clients={clients}
+        onClientClick={(client) => {
+          console.log('🔍 [ClientsManagement] Cliente clicado na hierarquia:', client.companyName);
+          setSelectedClient(client);
+          setShowViewModal(true);
+          setShowHierarchyView(false);
+        }}
       />
     </div>
   );

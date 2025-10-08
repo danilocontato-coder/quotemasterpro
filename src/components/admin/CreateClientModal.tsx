@@ -10,8 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
+import { useAdministradoras } from '@/hooks/useAdministradoras';
 import {
   Building2,
   User,
@@ -29,9 +31,14 @@ import {
   RefreshCw,
   Send,
   CreditCard,
-  Copy
+  Copy,
+  Network,
+  Palette
 } from 'lucide-react';
 import { AdminClient, ClientGroup, ClientContact, ClientDocument } from '@/hooks/useSupabaseAdminClients';
+import { ClientTypeSelect } from './ClientTypeSelect';
+import { ParentClientSelect } from './ParentClientSelect';
+import { BrandingSettingsForm } from './BrandingSettingsForm';
 
 interface CreateClientModalProps {
   open: boolean;
@@ -55,9 +62,11 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
 }) => {
   const { toast } = useToast();
   const { plans } = useSupabaseSubscriptionPlans();
+  const { administradoras, loading: loadingAdmins } = useAdministradoras();
   const [currentTab, setCurrentTab] = useState('basic');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [brandingData, setBrandingData] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -446,6 +455,101 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                       </Select>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Hierarquia e Branding */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Network className="h-4 w-4" />
+                    Hierarquia e Branding
+                  </CardTitle>
+                  <CardDescription>
+                    Configure o tipo de cliente e personalizações visuais
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Tipo de Cliente */}
+                  <div className="space-y-2">
+                    <Label>Tipo de Cliente</Label>
+                    <ClientTypeSelect 
+                      value={formData.clientType}
+                      onChange={(value) => {
+                        console.log('🔄 [CreateClient] Mudança de tipo:', value);
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          clientType: value,
+                          // Limpar campos dependentes ao mudar tipo
+                          parentClientId: value === 'condominio_vinculado' ? prev.parentClientId : '',
+                          brandingSettingsId: value === 'administradora' ? prev.brandingSettingsId : '',
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  {/* Administradora Pai (condicional) */}
+                  {formData.clientType === 'condominio_vinculado' && (
+                    <div className="space-y-2">
+                      <ParentClientSelect 
+                        value={formData.parentClientId}
+                        onChange={(value) => {
+                          console.log('🔗 [CreateClient] Administradora selecionada:', value);
+                          setFormData(prev => ({ ...prev, parentClientId: value }));
+                        }}
+                        administradoras={administradoras}
+                        disabled={loadingAdmins}
+                      />
+                      {loadingAdmins && (
+                        <p className="text-xs text-muted-foreground">Carregando administradoras...</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Branding (condicional para Administradoras) */}
+                  {formData.clientType === 'administradora' && (
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="branding">
+                        <AccordionTrigger className="text-sm">
+                          <div className="flex items-center gap-2">
+                            <Palette className="h-4 w-4" />
+                            Configurar Branding Personalizado
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="pt-4">
+                            <BrandingSettingsForm 
+                              onSave={(data) => {
+                                console.log('🎨 [CreateClient] Branding salvo:', data);
+                                setBrandingData(data);
+                                // O branding_settings_id será definido após salvar no banco
+                              }}
+                            />
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+
+                  {/* Toggle de Aprovação (para Administradoras) */}
+                  {formData.clientType === 'administradora' && (
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="requiresApproval">Requer Aprovação de Cotações</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Cotações dos condomínios vinculados precisarão de aprovação antes do envio
+                        </p>
+                      </div>
+                      <Switch 
+                        id="requiresApproval"
+                        checked={formData.requiresApproval}
+                        onCheckedChange={(checked) => {
+                          console.log('✅ [CreateClient] Aprovação requerida:', checked);
+                          setFormData(prev => ({ ...prev, requiresApproval: checked }));
+                        }}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
