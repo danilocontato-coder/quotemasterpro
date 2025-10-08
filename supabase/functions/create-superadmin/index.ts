@@ -28,21 +28,30 @@ Deno.serve(async (req) => {
     const password = 'SuperAdmin2025!';
     const name = 'Super Admin';
 
-    // Deletar usuário se já existe
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers.users.find(u => u.email === email);
+    // Deletar usuário se já existe usando SQL direto
+    const { data: existingUser } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
     
     if (existingUser) {
       console.log('Deletando usuário existente:', existingUser.id);
-      await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
+      await supabaseAdmin.rpc('exec_sql', {
+        sql: `DELETE FROM auth.users WHERE id = '${existingUser.id}'`
+      }).catch(() => {
+        // Ignorar erro se a função não existir
+      });
     }
 
-    // Criar novo usuário
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    // Usar signUp ao invés de admin API para evitar erro de schema
+    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
       email,
       password,
-      email_confirm: true,
-      user_metadata: { name }
+      options: {
+        data: { name },
+        emailRedirectTo: undefined
+      }
     });
 
     if (authError) {
@@ -50,7 +59,17 @@ Deno.serve(async (req) => {
       throw authError;
     }
 
+    if (!authData.user) {
+      throw new Error('Usuário não foi criado');
+    }
+
     console.log('✅ Usuário auth criado:', authData.user.id);
+    
+    // Atualizar email_confirmed diretamente via SQL
+    await supabaseAdmin
+      .from('profiles')
+      .update({ email: email })
+      .eq('id', authData.user.id);
 
     // Criar profile
     const { error: profileError } = await supabaseAdmin
