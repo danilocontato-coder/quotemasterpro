@@ -68,6 +68,10 @@ export interface AdminClient {
   parentClientName?: string;
   childClientsCount?: number;
   childClients?: AdminClient[]; // Para administradoras, lista de filhos
+  // Branding e Aprovações
+  brandingSettingsId?: string;
+  requiresApproval?: boolean;
+  subscriptionPlanId?: string;
 }
 
 // Utilities
@@ -126,7 +130,8 @@ export function useSupabaseAdminClients() {
             .select(`
               id, name, cnpj, email, phone, address, status, 
               subscription_plan_id, created_at, updated_at, username, 
-              group_id, last_access,
+              group_id, last_access, company_name, notes,
+              client_type, parent_client_id, branding_settings_id, requires_approval,
               subscription_plans:subscription_plan_id(id, name, display_name)
             `)
             .order('name')
@@ -153,9 +158,11 @@ export function useSupabaseAdminClients() {
 
         const groupsMap = new Map(groups.map((g) => [g.id, g]));
 
+        console.log('🔄 [AdminClients] Mapeando', clientsResult.data?.length || 0, 'clientes com hierarquia');
+        
         const mapped: AdminClient[] = (clientsResult.data || []).map((c: any) => ({
           id: c.id,
-          companyName: c.name || '',
+          companyName: c.company_name || c.name || '',
           cnpj: c.cnpj || '',
           email: c.email || '',
           phone: c.phone ?? "",
@@ -176,8 +183,42 @@ export function useSupabaseAdminClients() {
           documents: [],
           revenue: 0,
           quotesCount: 0,
-          notes: undefined,
+          notes: c.notes || undefined,
+          // Novos campos de hierarquia
+          clientType: (c.client_type || 'direct') as 'direct' | 'administradora' | 'condominio_vinculado',
+          parentClientId: c.parent_client_id || undefined,
+          brandingSettingsId: c.branding_settings_id || undefined,
+          requiresApproval: c.requires_approval ?? true,
+          childClientsCount: 0, // Será calculado depois
         }));
+
+        // Calcular hierarquia
+        console.log('📊 [AdminClients] Calculando hierarquia...');
+        const clientsMap = new Map(mapped.map(c => [c.id, c]));
+        
+        mapped.forEach(client => {
+          if (client.clientType === 'administradora') {
+            const childCount = mapped.filter(c => c.parentClientId === client.id).length;
+            client.childClientsCount = childCount;
+            if (childCount > 0) {
+              console.log(`🏢 [AdminClients] Admin "${client.companyName}" → ${childCount} condomínios`);
+            }
+          }
+          
+          if (client.clientType === 'condominio_vinculado' && client.parentClientId) {
+            const parent = clientsMap.get(client.parentClientId);
+            client.parentClientName = parent?.companyName || 'N/A';
+            console.log(`🔗 [AdminClients] Condo "${client.companyName}" → Admin "${client.parentClientName}"`);
+          }
+        });
+
+        const stats = {
+          total: mapped.length,
+          admins: mapped.filter(c => c.clientType === 'administradora').length,
+          condos: mapped.filter(c => c.clientType === 'condominio_vinculado').length,
+          direct: mapped.filter(c => c.clientType === 'direct').length,
+        };
+        console.log(`✅ [AdminClients] Dados carregados:`, stats);
 
         setClientGroups(groups);
         setClients(mapped);
@@ -212,19 +253,24 @@ export function useSupabaseAdminClients() {
     clientData: Omit<AdminClient, "id" | "createdAt" | "revenue" | "quotesCount">,
     notificationOptions?: { sendByEmail?: boolean; sendByWhatsApp?: boolean }
   ) => {
-    console.log('🚀 DEBUG: createClient iniciado', {
-      companyName: clientData.companyName,
-      plan: clientData.plan,
-      email: clientData.email
-    });
+    console.log('➕ [AdminClients] Criando cliente:', clientData.companyName);
+    console.log('📋 [AdminClients] Tipo:', clientData.clientType || 'direct');
+    if (clientData.clientType === 'condominio_vinculado') {
+      console.log('🔗 [AdminClients] Vinculado à administradora:', clientData.parentClientId);
+    }
+    if (clientData.clientType === 'administradora') {
+      console.log('🎨 [AdminClients] Branding ID:', clientData.brandingSettingsId);
+      console.log('✅ [AdminClients] Requer aprovação:', clientData.requiresApproval);
+    }
     setLoading(true);
     let createdClientId: string | null = null;
 
     try {
       // 1) Cria o registro do cliente PRIMEIRO (sempre funciona)
-      console.log('🔧 DEBUG: Criando registro do cliente no Supabase');
+      console.log('🔧 [AdminClients] Preparando payload...');
       const insertPayload = {
         name: clientData.companyName,
+        company_name: clientData.companyName,
         cnpj: clientData.cnpj,
         email: clientData.email,
         phone: clientData.phone,
@@ -233,8 +279,19 @@ export function useSupabaseAdminClients() {
         subscription_plan_id: clientData.plan,
         username: clientData.loginCredentials.username,
         group_id: clientData.groupId || null,
+        notes: clientData.notes || null,
+        // Hierarquia e branding
+        client_type: clientData.clientType || 'direct',
+        parent_client_id: clientData.parentClientId || null,
+        branding_settings_id: clientData.brandingSettingsId || null,
+        requires_approval: clientData.requiresApproval ?? true,
       };
-      console.log('📤 DEBUG: Payload do cliente:', insertPayload);
+      console.log('💾 [AdminClients] Payload preparado:', {
+        ...insertPayload,
+        client_type: insertPayload.client_type,
+        has_parent: !!insertPayload.parent_client_id,
+        has_branding: !!insertPayload.branding_settings_id,
+      });
 
       const { data: insertData, error: insertErr } = await supabase
         .from("clients")
@@ -428,9 +485,12 @@ export function useSupabaseAdminClients() {
   };
 
   const updateClient = async (id: string, clientData: Partial<AdminClient>) => {
+    console.log('✏️ [AdminClients] Atualizando cliente:', id);
+    if (clientData.clientType) {
+      console.log('📋 [AdminClients] Mudança de tipo:', clientData.clientType);
+    }
     setLoading(true);
     try {
-      console.log('Atualizando cliente:', id, clientData);
       
       // Preparar dados para a atualização
       const updateData: any = {};
@@ -452,8 +512,17 @@ export function useSupabaseAdminClients() {
       if (clientData.groupId !== undefined) {
         updateData.group_id = clientData.groupId || null;
       }
+      if (clientData.notes !== undefined) {
+        updateData.notes = clientData.notes || null;
+      }
+      
+      // Novos campos de hierarquia e branding
+      if (clientData.clientType !== undefined) updateData.client_type = clientData.clientType;
+      if (clientData.parentClientId !== undefined) updateData.parent_client_id = clientData.parentClientId || null;
+      if (clientData.brandingSettingsId !== undefined) updateData.branding_settings_id = clientData.brandingSettingsId || null;
+      if (clientData.requiresApproval !== undefined) updateData.requires_approval = clientData.requiresApproval;
 
-      console.log('Dados sendo enviados para o Supabase:', updateData);
+      console.log('💾 [AdminClients] Campos atualizados:', Object.keys(updateData).join(', '));
 
       const { error } = await supabase
         .from("clients")
