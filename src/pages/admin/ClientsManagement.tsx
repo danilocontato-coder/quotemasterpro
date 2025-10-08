@@ -374,7 +374,7 @@ export const ClientsManagement = () => {
               <div className="flex flex-wrap gap-3">
                 {stats.byGroup.map((group, index) => (
                   <div key={`${group.name}-${index}`} className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full bg-${group.color}-500`}></div>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: group.color || '#64748b' }}></div>
                     <span className="text-sm font-medium">{group.name}</span>
                     <Badge variant="secondary" className="text-xs">
                       {group.count}

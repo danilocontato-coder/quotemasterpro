@@ -45,7 +45,7 @@ const Help = React.lazy(() => import('@/pages/Help'));
 // Admin pages
 const SuperAdminDashboard = React.lazy(() => import('@/pages/admin/SuperAdminDashboard'));
 const Prospecting = React.lazy(() => import('@/pages/admin/Prospecting'));
-const ClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManagement'));
+const ClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManagement').then(m => ({ default: m.default ?? m.ClientsManagement })));
 const SuppliersManagement = React.lazy(() => import('@/pages/admin/SuppliersManagement'));
 const AccountsManagement = React.lazy(() => import('@/pages/admin/AccountsManagement'));
 const SystemSettings = React.lazy(() => import('@/pages/admin/SystemSettings'));
