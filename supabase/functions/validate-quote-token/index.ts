@@ -27,7 +27,7 @@ serve(async (req) => {
           valid: false, 
           error: 'token is required' 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -61,7 +61,7 @@ serve(async (req) => {
           valid: false, 
           error: 'Invalid token' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -75,7 +75,7 @@ serve(async (req) => {
           error: 'Token has expired',
           expired: true 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -87,12 +87,13 @@ serve(async (req) => {
       .maybeSingle()
 
     if (quoteError || !quoteData) {
+      console.error('Quote not found:', { resolvedQuoteId, quoteError })
       return new Response(
         JSON.stringify({ 
           valid: false, 
           error: 'Quote not found' 
         }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -141,13 +142,13 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error in validate-quote-token:', error)
+    console.error('❌ Error in validate-quote-token:', error)
     return new Response(
       JSON.stringify({ 
         valid: false, 
         error: (error as any)?.message || 'Unknown error' 
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
