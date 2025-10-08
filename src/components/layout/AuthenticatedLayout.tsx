@@ -1,15 +1,19 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from './MainLayout';
 import { SupplierLayout } from './SupplierLayout';
 import { SuperAdminLayout } from './SuperAdminLayout';
+import { AdministradoraLayout } from './AdministradoraLayout';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
 
 export const AuthenticatedLayout: React.FC = () => {
   const { user, isLoading } = useAuth();
   const mountTimeRef = useRef(Date.now());
   const renderCountRef = useRef(0);
+  const [clientType, setClientType] = useState<string | null>(null);
+  const [clientTypeLoading, setClientTypeLoading] = useState(true);
   
   const debug = (msg: string, data?: any) => {
     if (typeof window !== 'undefined' && (window as any).__DEBUG__) {
@@ -35,7 +39,40 @@ export const AuthenticatedLayout: React.FC = () => {
     };
   }, []);
 
-  if (isLoading) {
+  useEffect(() => {
+    const fetchClientType = async () => {
+      if (!user || user.role === 'admin' || user.role === 'supplier') {
+        setClientTypeLoading(false);
+        return;
+      }
+
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.client_id) {
+          const { data: client } = await supabase
+            .from('clients')
+            .select('client_type')
+            .eq('id', profile.client_id)
+            .single();
+
+          setClientType(client?.client_type || 'direct');
+        }
+      } catch (error) {
+        console.error('Erro ao buscar tipo de cliente:', error);
+      } finally {
+        setClientTypeLoading(false);
+      }
+    };
+
+    fetchClientType();
+  }, [user]);
+
+  if (isLoading || clientTypeLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="space-y-4 w-full max-w-md">
@@ -60,6 +97,11 @@ export const AuthenticatedLayout: React.FC = () => {
     case 'manager':
     case 'collaborator':
     case 'client':
+      // Verificar se é administradora
+      if (clientType === 'administradora') {
+        return <AdministradoraLayout />;
+      }
+      return <MainLayout />;
     case 'support':
     default:
       return <MainLayout />;

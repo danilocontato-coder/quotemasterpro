@@ -11,6 +11,7 @@ import { FaviconUpdater } from '@/components/common/FaviconUpdater';
 import MainLayout from '@/components/layout/MainLayout';
 import SuperAdminLayout from '@/components/layout/SuperAdminLayout';
 import SupplierLayout from '@/components/layout/SupplierLayout';
+import AdministradoraLayout from '@/components/layout/AdministradoraLayout';
 
 // Dashboard import estático
 import Dashboard from '@/pages/Dashboard';
@@ -76,6 +77,9 @@ const SupplierRegister = React.lazy(() => import('@/pages/supplier/SupplierRegis
 const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierQuickResponse = React.lazy(() => import('@/pages/supplier/SupplierQuickResponse'));
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
+
+// Administradora pages
+const AdministradoraDashboard = React.lazy(() => import('@/pages/administradora/AdministradoraDashboard'));
 const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
 const QuickResponse = React.lazy(() => import('@/pages/QuickResponse'));
 const QuickResponseSuccess = React.lazy(() => import('@/pages/QuickResponseSuccess'));
@@ -544,6 +548,69 @@ export const AppWithProviders: React.FC = () => {
         <Route path="users" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <SupplierUsers />
+          </Suspense>
+        } />
+      </Route>
+
+      {/* Rotas da Administradora */}
+      <Route path="/administradora/*" element={
+        <ProtectedRoute allowedRoles={['manager', 'collaborator']}>
+          <AdministradoraLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="dashboard" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="condominios" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="cotacoes" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="aprovacoes" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="pagamentos" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="fornecedores" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="produtos" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="relatorios" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="analise-mercado" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
+          </Suspense>
+        } />
+        <Route path="configuracoes" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <AdministradoraDashboard />
           </Suspense>
         } />
       </Route>
