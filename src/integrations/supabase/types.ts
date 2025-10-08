@@ -951,6 +951,7 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          client_type: Database["public"]["Enums"]["client_type"]
           cnpj: string
           company_name: string | null
           contacts: Json | null
@@ -962,6 +963,7 @@ export type Database = {
           last_access: string | null
           name: string
           notes: string | null
+          parent_client_id: string | null
           phone: string | null
           settings: Json | null
           status: string | null
@@ -971,6 +973,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          client_type?: Database["public"]["Enums"]["client_type"]
           cnpj: string
           company_name?: string | null
           contacts?: Json | null
@@ -982,6 +985,7 @@ export type Database = {
           last_access?: string | null
           name: string
           notes?: string | null
+          parent_client_id?: string | null
           phone?: string | null
           settings?: Json | null
           status?: string | null
@@ -991,6 +995,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          client_type?: Database["public"]["Enums"]["client_type"]
           cnpj?: string
           company_name?: string | null
           contacts?: Json | null
@@ -1002,6 +1007,7 @@ export type Database = {
           last_access?: string | null
           name?: string
           notes?: string | null
+          parent_client_id?: string | null
           phone?: string | null
           settings?: Json | null
           status?: string | null
@@ -1010,6 +1016,13 @@ export type Database = {
           username?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_parent_client_id_fkey"
+            columns: ["parent_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_subscription_plan_id_fkey"
             columns: ["subscription_plan_id"]
@@ -2293,6 +2306,7 @@ export type Database = {
           description: string | null
           id: string
           items_count: number | null
+          on_behalf_of_client_id: string | null
           responses_count: number | null
           selected_supplier_ids: string[] | null
           status: string | null
@@ -2314,6 +2328,7 @@ export type Database = {
           description?: string | null
           id: string
           items_count?: number | null
+          on_behalf_of_client_id?: string | null
           responses_count?: number | null
           selected_supplier_ids?: string[] | null
           status?: string | null
@@ -2335,6 +2350,7 @@ export type Database = {
           description?: string | null
           id?: string
           items_count?: number | null
+          on_behalf_of_client_id?: string | null
           responses_count?: number | null
           selected_supplier_ids?: string[] | null
           status?: string | null
@@ -2359,6 +2375,13 @@ export type Database = {
             columns: ["cost_center_id"]
             isOneToOne: false
             referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_on_behalf_of_client_id_fkey"
+            columns: ["on_behalf_of_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
@@ -2459,6 +2482,7 @@ export type Database = {
           active_clients: number | null
           allow_branding: boolean | null
           allow_custom_domain: boolean | null
+          child_clients_limit: number | null
           clients_subscribed: number | null
           created_at: string | null
           custom_color: string | null
@@ -2491,6 +2515,7 @@ export type Database = {
           active_clients?: number | null
           allow_branding?: boolean | null
           allow_custom_domain?: boolean | null
+          child_clients_limit?: number | null
           clients_subscribed?: number | null
           created_at?: string | null
           custom_color?: string | null
@@ -2523,6 +2548,7 @@ export type Database = {
           active_clients?: number | null
           allow_branding?: boolean | null
           allow_custom_domain?: boolean | null
+          child_clients_limit?: number | null
           clients_subscribed?: number | null
           created_at?: string | null
           custom_color?: string | null
@@ -3363,6 +3389,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_accessible_client_ids: {
+        Args: { p_user_id: string }
+        Returns: string[]
+      }
       get_client_suppliers: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -3426,6 +3456,7 @@ export type Database = {
           active_clients: number | null
           allow_branding: boolean | null
           allow_custom_domain: boolean | null
+          child_clients_limit: number | null
           clients_subscribed: number | null
           created_at: string | null
           custom_color: string | null
@@ -3674,6 +3705,7 @@ export type Database = {
         | "suporte_cliente"
         | "fornecedor"
       campaign_status: "draft" | "active" | "paused" | "completed" | "cancelled"
+      client_type: "direct" | "administradora" | "condominio_vinculado"
       lead_status: "new" | "contacted" | "qualified" | "converted" | "lost"
       lead_type: "client" | "supplier"
       outreach_channel: "whatsapp" | "email" | "phone" | "linkedin"
@@ -3819,6 +3851,7 @@ export const Constants = {
         "fornecedor",
       ],
       campaign_status: ["draft", "active", "paused", "completed", "cancelled"],
+      client_type: ["direct", "administradora", "condominio_vinculado"],
       lead_status: ["new", "contacted", "qualified", "converted", "lost"],
       lead_type: ["client", "supplier"],
       outreach_channel: ["whatsapp", "email", "phone", "linkedin"],
