@@ -7,10 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Building2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Loader2, Building2, AlertTriangle, Network, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
 import { usePerformanceDebug, useMemoryDebug } from '@/hooks/usePerformanceDebug';
+import { useAdministradoras } from '@/hooks/useAdministradoras';
+import { ClientTypeSelect } from './ClientTypeSelect';
+import { ParentClientSelect } from './ParentClientSelect';
+import { BrandingSettingsForm } from './BrandingSettingsForm';
 
 interface Client {
   id: string;
@@ -25,6 +32,12 @@ interface Client {
   groupName?: string;
   groupId?: string;
   notes?: string;
+  clientType?: 'direct' | 'administradora' | 'condominio_vinculado';
+  parentClientId?: string;
+  parentClientName?: string;
+  brandingSettingsId?: string;
+  requiresApproval?: boolean;
+  childClientsCount?: number;
 }
 
 interface ClientGroup {
@@ -58,18 +71,27 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
     status: 'active',
     plan: 'basic',
     groupId: '',
-    notes: ''
+    notes: '',
+    clientType: 'direct' as 'direct' | 'administradora' | 'condominio_vinculado',
+    parentClientId: '',
+    brandingSettingsId: '',
+    requiresApproval: true
   });
   const [isLoading, setIsLoading] = useState(false);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
+  const [showTypeChangeWarning, setShowTypeChangeWarning] = useState(false);
+  const [originalClientType, setOriginalClientType] = useState<'direct' | 'administradora' | 'condominio_vinculado'>('direct');
   const { toast } = useToast();
   const { plans } = useSupabaseSubscriptionPlans();
   const { trackAsyncOperation } = usePerformanceDebug('EditClientModal');
   const { checkMemory } = useMemoryDebug('EditClientModal');
+  const { administradoras, loading: loadingAdministradoras } = useAdministradoras();
 
   useEffect(() => {
     if (client) {
       console.log('🔄 EditClientModal: Carregando dados do cliente', client.id);
+      const clientType = client.clientType || 'direct';
+      setOriginalClientType(clientType);
       setFormData({
         name: client.name || '',
         companyName: client.companyName || '',
@@ -80,11 +102,31 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
         status: client.status || 'active',
         plan: client.plan || 'basic',
         groupId: client.groupId || 'none',
-        notes: client.notes || ''
+        notes: client.notes || '',
+        clientType: clientType,
+        parentClientId: client.parentClientId || '',
+        brandingSettingsId: client.brandingSettingsId || '',
+        requiresApproval: client.requiresApproval ?? true
       });
-      console.log('✅ EditClientModal: Dados carregados no formulário');
+      console.log('✅ EditClientModal: Dados carregados no formulário', { clientType, parentClientId: client.parentClientId });
     }
   }, [client]);
+
+  // Avisar quando houver mudança de tipo que pode afetar vínculos
+  useEffect(() => {
+    if (!client) return;
+    
+    const typeChanged = formData.clientType !== originalClientType;
+    const wasAdministradora = originalClientType === 'administradora';
+    const hasChildClients = (client.childClientsCount || 0) > 0;
+    
+    if (typeChanged && wasAdministradora && hasChildClients) {
+      console.log('⚠️ EditClientModal: Alerta - Administradora com condomínios vinculados alterando tipo');
+      setShowTypeChangeWarning(true);
+    } else {
+      setShowTypeChangeWarning(false);
+    }
+  }, [formData.clientType, originalClientType, client]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +155,11 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
         // Convert "none" back to null/empty for the API
         const dataToUpdate = {
           ...formData,
-          groupId: formData.groupId === 'none' ? null : formData.groupId
+          groupId: formData.groupId === 'none' ? null : formData.groupId,
+          clientType: formData.clientType,
+          parentClientId: formData.clientType === 'condominio_vinculado' ? formData.parentClientId : null,
+          brandingSettingsId: formData.clientType === 'administradora' ? formData.brandingSettingsId : null,
+          requiresApproval: formData.requiresApproval
         };
         
         console.log('📤 EditClientModal: Dados sendo enviados:', dataToUpdate);
@@ -221,6 +267,120 @@ export const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleChange('address', e.target.value)}
                   placeholder="Endereço completo"
                   rows={2}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Hierarquia e Branding */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Network className="h-4 w-4" />
+                Hierarquia e Branding
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Aviso de mudança de tipo */}
+              {showTypeChangeWarning && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Atenção:</strong> Esta administradora possui {client?.childClientsCount} condomínio(s) vinculado(s). 
+                    Alterar o tipo pode afetar esses vínculos. Confirme se deseja continuar.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Tipo de Cliente */}
+                <div className="space-y-2">
+                  <Label>Tipo de Cliente</Label>
+                  <ClientTypeSelect
+                    value={formData.clientType}
+                    onChange={(value) => {
+                      console.log('🔄 EditClientModal: Tipo de cliente alterado para:', value);
+                      handleChange('clientType', value);
+                    }}
+                  />
+                  {formData.clientType === 'administradora' && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Network className="h-3 w-3" />
+                      Pode gerenciar múltiplos condomínios vinculados
+                    </p>
+                  )}
+                  {formData.clientType === 'condominio_vinculado' && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Home className="h-3 w-3" />
+                      Vinculado a uma administradora
+                    </p>
+                  )}
+                </div>
+
+                {/* Administradora Pai (apenas para condomínios vinculados) */}
+                {formData.clientType === 'condominio_vinculado' && (
+                  <div className="space-y-2">
+                    <Label>Administradora Responsável *</Label>
+                    <ParentClientSelect
+                      value={formData.parentClientId}
+                      onChange={(value) => {
+                        console.log('🔄 EditClientModal: Administradora pai selecionada:', value);
+                        handleChange('parentClientId', value);
+                      }}
+                      administradoras={administradoras}
+                      disabled={loadingAdministradoras}
+                    />
+                    {client?.parentClientName && (
+                      <p className="text-xs text-muted-foreground">
+                        Atual: {client.parentClientName}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Branding personalizado (apenas para administradoras) */}
+              {formData.clientType === 'administradora' && (
+                <Accordion type="single" collapsible className="border rounded-lg">
+                  <AccordionItem value="branding" className="border-0">
+                    <AccordionTrigger className="px-4 hover:no-underline">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        <span className="font-medium">Configurações de Branding</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <BrandingSettingsForm
+                        onSave={(settingsId) => {
+                          console.log('✅ EditClientModal: Branding salvo com ID:', settingsId);
+                          handleChange('brandingSettingsId', settingsId);
+                          toast({
+                            title: "Branding configurado",
+                            description: "As configurações de marca foram salvas com sucesso."
+                          });
+                        }}
+                        clientId={client?.id}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
+
+              {/* Requer Aprovação */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="requiresApproval">Requer Aprovação</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Cotações devem ser aprovadas antes de serem enviadas aos fornecedores
+                  </p>
+                </div>
+                <Switch
+                  id="requiresApproval"
+                  checked={formData.requiresApproval}
+                  onCheckedChange={(checked) => {
+                    console.log('🔄 EditClientModal: Requer aprovação alterado para:', checked);
+                    handleChange('requiresApproval', checked.toString());
+                  }}
                 />
               </div>
             </CardContent>
