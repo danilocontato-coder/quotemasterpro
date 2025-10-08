@@ -538,7 +538,7 @@ export const ClientsManagement = () => {
                     <TableCell>
                       {client.groupName ? (
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full bg-${getGroupColor(client.groupId)}-500`}></div>
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getGroupColor(client.groupId) || '#64748b' }}></div>
                           <span className="text-sm">{client.groupName}</span>
                         </div>
                       ) : (
