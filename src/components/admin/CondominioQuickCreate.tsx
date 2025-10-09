@@ -64,7 +64,6 @@ export function CondominioQuickCreate({
           parent_client_id: administradoraId,
           branding_settings_id: administradoraBrandingId || null,
           subscription_plan_id: administradoraPlanId || 'plan-basic',
-          requires_approval: true,
           status: 'active'
         })
         .select()
