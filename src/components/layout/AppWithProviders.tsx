@@ -45,14 +45,7 @@ const Help = React.lazy(() => import('@/pages/Help'));
 // Admin pages
 const SuperAdminDashboard = React.lazy(() => import('@/pages/admin/SuperAdminDashboard'));
 const Prospecting = React.lazy(() => import('@/pages/admin/Prospecting'));
-const ClientsManagement = React.lazy(() =>
-  import('@/pages/admin/ClientsManagement')
-    .then(m => ({ default: m.default ?? m.ClientsManagement }))
-    .catch((err) => {
-      console.error('❌ Failed to load ClientsManagement module', err);
-      return { default: () => <div className="p-6">Erro ao carregar Gerenciamento de Clientes</div> };
-    })
-);
+const ClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManagement'));
 const AccountsManagement = React.lazy(() => import('@/pages/admin/AccountsManagement'));
 const SuppliersManagement = React.lazy(() => import('@/pages/admin/SuppliersManagement'));
 const SystemSettings = React.lazy(() => import('@/pages/admin/SystemSettings'));
