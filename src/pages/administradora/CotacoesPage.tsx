@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, RefreshCw, Search, FileText, Building2, Calendar } from 'lucide-react';
 import { useAdministradoraQuotes } from '@/hooks/useAdministradoraQuotes';
 import { useAuth } from '@/contexts/AuthContext';
-import { QuoteCreateDialog } from '@/components/administradora/QuoteCreateDialog';
+import { AdministradoraQuoteForm } from '@/components/administradora/AdministradoraQuoteForm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -196,7 +196,7 @@ export default function CotacoesPage() {
 
       {/* Modal de Criação */}
       {user?.clientId && user?.name && (
-        <QuoteCreateDialog
+        <AdministradoraQuoteForm
           open={showCreateModal}
           onOpenChange={setShowCreateModal}
           administradoraId={user.clientId}
