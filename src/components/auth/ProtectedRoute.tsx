@@ -56,8 +56,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
 
   // PROTEÇÃO CRÍTICA: Apenas admins podem acessar rotas administrativas
-  const effectiveRole = user.role === 'super_admin' ? 'admin' : user.role;
-  if (adminOnly && effectiveRole !== 'admin') {
+  if (adminOnly && user.role !== 'admin') {
     console.warn('🔒 [SECURITY] Acesso negado: usuário não-admin tentou acessar rota administrativa');
     return <Navigate to="/" replace />;
   }
@@ -66,7 +65,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const isSupplierContext = !!user.supplierId;
   if (allowedRoles) {
     // SEGURANÇA: Bloquear acesso de clientes/fornecedores às rotas de admin
-    if (allowedRoles.includes('admin') && effectiveRole !== 'admin') {
+    if (allowedRoles.includes('admin') && user.role !== 'admin') {
       console.warn(`🔒 [SECURITY] Acesso negado: usuário ${user.role} tentou acessar rota de admin`);
       return <Navigate to="/" replace />;
     }
@@ -76,20 +75,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       return <>{children}</>;
     }
 
-    if (!allowedRoles.includes(effectiveRole)) {
+    if (!allowedRoles.includes(user.role)) {
       console.warn(`🔒 [SECURITY] Acesso negado: role ${user.role} não autorizado para ${allowedRoles.join(', ')}`);
       // Redirecionar para dashboard apropriado baseado no role/contexto
       const dashboardMap: Record<string, string> = {
         admin: '/admin/superadmin',
-        super_admin: '/admin/superadmin',
         client: '/dashboard',
         manager: '/dashboard',
         collaborator: '/dashboard',
         supplier: '/supplier',
         support: '/support'
       };
-      const target = dashboardMap[user.role] || dashboardMap[effectiveRole] || (isSupplierContext ? '/supplier' : '/dashboard');
-      return <Navigate to={target} replace />;
+      return <Navigate to={dashboardMap[user.role] || (isSupplierContext ? '/supplier' : '/dashboard')} replace />;
     }
   }
 
