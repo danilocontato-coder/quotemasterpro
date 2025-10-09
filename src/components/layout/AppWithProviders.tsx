@@ -90,6 +90,7 @@ const AdministradoraDashboard = React.lazy(() => import('@/pages/admin/Administr
 const CondominiosPage = React.lazy(() => import('@/pages/administradora/CondominiosPage'));
 const ConfiguracoesPage = React.lazy(() => import('@/pages/administradora/ConfiguracoesPage'));
 const CotacoesPage = React.lazy(() => import('@/pages/administradora/CotacoesPage'));
+const FornecedoresPage = React.lazy(() => import('@/pages/administradora/FornecedoresPage'));
 const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
 const QuickResponse = React.lazy(() => import('@/pages/QuickResponse'));
 const QuickResponseSuccess = React.lazy(() => import('@/pages/QuickResponseSuccess'));
@@ -606,7 +607,7 @@ export const AppWithProviders: React.FC = () => {
         } />
         <Route path="fornecedores" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <AdministradoraDashboard />
+            <FornecedoresPage />
           </Suspense>
         } />
         <Route path="produtos" element={
