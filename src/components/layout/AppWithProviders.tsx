@@ -85,8 +85,10 @@ const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/Supplier
 const SupplierQuickResponse = React.lazy(() => import('@/pages/supplier/SupplierQuickResponse'));
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
 
-// Administradora pages
+// Administradora pages - ISOLADAS
 const AdministradoraDashboard = React.lazy(() => import('@/pages/admin/AdministradoraDashboard'));
+const CondominiosPage = React.lazy(() => import('@/pages/administradora/CondominiosPage'));
+const ConfiguracoesPage = React.lazy(() => import('@/pages/administradora/ConfiguracoesPage'));
 const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
 const QuickResponse = React.lazy(() => import('@/pages/QuickResponse'));
 const QuickResponseSuccess = React.lazy(() => import('@/pages/QuickResponseSuccess'));
@@ -560,12 +562,13 @@ export const AppWithProviders: React.FC = () => {
         } />
       </Route>
 
-      {/* Rotas da Administradora */}
+      {/* Rotas da Administradora - MÓDULO ISOLADO */}
       <Route path="/administradora/*" element={
         <ProtectedRoute allowedRoles={['manager', 'collaborator']}>
           <AdministradoraLayout />
         </ProtectedRoute>
       }>
+        {/* Dashboard Principal */}
         <Route index element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <AdministradoraDashboard />
@@ -576,11 +579,15 @@ export const AppWithProviders: React.FC = () => {
             <AdministradoraDashboard />
           </Suspense>
         } />
+        
+        {/* Condomínios - Página Específica */}
         <Route path="condominios" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <AdministradoraDashboard />
+            <CondominiosPage />
           </Suspense>
         } />
+        
+        {/* Outras rotas - Em desenvolvimento, mostram dashboard temporariamente */}
         <Route path="cotacoes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <AdministradoraDashboard />
@@ -616,9 +623,11 @@ export const AppWithProviders: React.FC = () => {
             <AdministradoraDashboard />
           </Suspense>
         } />
+        
+        {/* Configurações - Página Isolada */}
         <Route path="configuracoes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <Settings />
+            <ConfiguracoesPage />
           </Suspense>
         } />
       </Route>
