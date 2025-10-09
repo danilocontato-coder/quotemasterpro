@@ -137,13 +137,6 @@ export function useVirtualization<T>(
   };
 }
 
-// Lazy loading de componentes críticos
-export const LazyDashboard = React.lazy(() => import('@/pages/Dashboard'));
-export const LazyClientsManagement = React.lazy(() => import('@/pages/admin/ClientsManagement'));
-export const LazyQuotes = React.lazy(() => import('@/pages/Quotes'));
-export const LazySuppliers = React.lazy(() => import('@/pages/Suppliers'));
-export const LazyProducts = React.lazy(() => import('@/pages/Products'));
-
 // Monitor de performance em tempo real - simplificado para evitar erros
 export function usePerformanceMonitor() {
   // Simplified performance monitoring without state
