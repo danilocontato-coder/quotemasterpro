@@ -3714,6 +3714,8 @@ export type Database = {
         | "financeiro"
         | "suporte_cliente"
         | "fornecedor"
+        | "manager"
+        | "collaborator"
       campaign_status: "draft" | "active" | "paused" | "completed" | "cancelled"
       client_type: "direct" | "administradora" | "condominio_vinculado"
       lead_status: "new" | "contacted" | "qualified" | "converted" | "lost"
@@ -3859,6 +3861,8 @@ export const Constants = {
         "financeiro",
         "suporte_cliente",
         "fornecedor",
+        "manager",
+        "collaborator",
       ],
       campaign_status: ["draft", "active", "paused", "completed", "cancelled"],
       client_type: ["direct", "administradora", "condominio_vinculado"],
