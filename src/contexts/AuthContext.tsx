@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChangeModal } from '@/components/auth/ForcePasswordChangeModal';
 import { logger } from '@/utils/systemLogger';
 
-export type UserRole = 'admin' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
+export type UserRole = 'admin' | 'super_admin' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
 
 export interface User {
   id: string;
@@ -25,7 +25,7 @@ export const getRoleBasedRoute = (
   logger.navigation('getRoleBasedRoute', { role, ctx });
 
   // Admin and support have priority routes regardless of tenant
-  if (role === 'admin') {
+  if (role === 'admin' || role === 'super_admin') {
     return '/admin/superadmin';
   }
   if (role === 'support') {

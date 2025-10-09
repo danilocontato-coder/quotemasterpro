@@ -41,7 +41,7 @@ export const AuthenticatedLayout: React.FC = () => {
 
   useEffect(() => {
     const fetchClientType = async () => {
-      if (!user || user.role === 'admin' || user.role === 'supplier') {
+      if (!user || user.role === 'admin' || user.role === 'super_admin' || user.role === 'supplier') {
         setClientTypeLoading(false);
         return;
       }
@@ -91,6 +91,7 @@ export const AuthenticatedLayout: React.FC = () => {
   // Determine which layout to use based on user role
   switch (user.role) {
     case 'admin':
+    case 'super_admin':
       return <SuperAdminLayout />;
     case 'supplier':
       return <SupplierLayout />;
