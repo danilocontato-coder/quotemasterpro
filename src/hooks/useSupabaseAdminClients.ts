@@ -286,7 +286,6 @@ export function useSupabaseAdminClients() {
         client_type: clientData.clientType || 'direct',
         parent_client_id: clientData.parentClientId || null,
         branding_settings_id: clientData.brandingSettingsId || null,
-        requires_approval: clientData.requiresApproval ?? true,
       };
       console.log('💾 [AdminClients] Payload preparado:', {
         ...insertPayload,
