@@ -160,17 +160,25 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
     // Handle password reset action
     if (action === 'reset_password') {
       try {
+        console.log('🔄 Iniciando reset de senha para:', email);
+        
         // Find existing user by email
         const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-        if (listErr) throw listErr;
+        if (listErr) {
+          console.error('Erro ao listar usuários:', listErr);
+          throw listErr;
+        }
 
         const existingUser = (usersList as any)?.users?.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase());
         if (!existingUser) {
+          console.error('Usuário não encontrado no Auth:', email);
           return new Response(
             JSON.stringify({ success: false, error: 'Usuário não encontrado', error_code: 'user_not_found' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         }
+
+        console.log('✅ Usuário encontrado:', existingUser.id);
 
         // Update user password
         const { data: updateData, error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
@@ -186,12 +194,20 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
           );
         }
 
+        console.log('✅ Senha atualizada com sucesso');
+
         // Update force_password_change in users table
         if (clientId || effectiveSupplierId) {
-          await supabaseAdmin
+          const { error: usersUpdateErr } = await supabaseAdmin
             .from('users')
             .update({ force_password_change: temporaryPassword ?? true })
             .eq('auth_user_id', existingUser.id);
+          
+          if (usersUpdateErr) {
+            console.error('Erro ao atualizar force_password_change:', usersUpdateErr);
+          } else {
+            console.log('✅ force_password_change atualizado');
+          }
         }
 
         console.log('Password reset successful for user:', existingUser.id);
