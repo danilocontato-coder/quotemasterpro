@@ -618,7 +618,7 @@ export const AppWithProviders: React.FC = () => {
         } />
         <Route path="configuracoes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <AdministradoraDashboard />
+            <Settings />
           </Suspense>
         } />
       </Route>

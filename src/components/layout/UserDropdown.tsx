@@ -21,7 +21,7 @@ export function UserDropdown() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { settings } = useSupabaseSettings();
-  const { clientName, subscriptionPlan } = useSupabaseCurrentClient();
+  const { clientName, subscriptionPlan, clientType } = useSupabaseCurrentClient();
   const { userPlan } = useSupabaseSubscriptionGuard();
   
   // Get plan display name from Supabase data
@@ -71,6 +71,14 @@ export function UserDropdown() {
       .toUpperCase();
   };
 
+  // Determinar rota de configurações baseado no tipo de cliente
+  const getSettingsRoute = () => {
+    if (user?.role === 'admin') return '/admin/system';
+    if (user?.role === 'supplier') return '/supplier/settings';
+    if (clientType === 'administradora') return '/administradora/configuracoes';
+    return '/settings';
+  };
+
   // Get display name from settings or user
   const displayName = settings?.display_name || user?.name || 'Usuário';
   const displayCompany = settings?.company_name || user?.companyName || clientName || '';
@@ -81,12 +89,12 @@ export function UserDropdown() {
   };
 
   const handleChangePassword = () => {
-    navigate("/settings");
+    navigate(getSettingsRoute());
     toast.info("Acesse a aba 'Segurança' para alterar sua senha");
   };
 
   const handleSecurity = () => {
-    navigate("/settings");
+    navigate(getSettingsRoute());
     toast.info("Configurações de segurança");
   };
 
@@ -203,7 +211,7 @@ export function UserDropdown() {
           <span>Atividade</span>
         </DropdownMenuItem>
         
-        <DropdownMenuItem onClick={() => navigate("/settings")} className="cursor-pointer">
+        <DropdownMenuItem onClick={() => navigate(getSettingsRoute())} className="cursor-pointer">
           <Settings className="mr-2 h-4 w-4" />
           <span>Configurações</span>
         </DropdownMenuItem>
