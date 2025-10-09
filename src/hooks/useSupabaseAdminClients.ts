@@ -110,6 +110,8 @@ export function useSupabaseAdminClients() {
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   
+  console.log('🎯 useSupabaseAdminClients: Hook initialized, clients:', clients.length);
+  
   const { trackAsyncOperation, logOperation } = usePerformanceDebug('useSupabaseAdminClients');
 
   // Otimizada: Fetch único com controle de inicialização

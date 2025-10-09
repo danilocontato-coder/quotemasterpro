@@ -61,7 +61,9 @@ import { useAdminAccess } from '@/hooks/useAdminAccess';
 export const ClientsManagement = () => {
   const { trackAsyncOperation } = usePerformanceDebug('ClientsManagement');
   const { accessAsClient, isAccessingAs } = useAdminAccess();
-  console.log('ClientsManagement component rendering');
+  
+  console.log('🎯 ClientsManagement: Component rendering');
+  
   const {
     clients,
     clientGroups,
@@ -82,6 +84,8 @@ export const ClientsManagement = () => {
     generateUsername,
     stats
   } = useSupabaseAdminClients();
+  
+  console.log('🎯 ClientsManagement: Hook loaded, clients count:', clients?.length || 0);
   
   const { plans, getPlanById } = useSupabaseSubscriptionPlans();
 
