@@ -133,7 +133,7 @@ export function useSupabaseAdminClients() {
               id, name, cnpj, email, phone, address, status, 
               subscription_plan_id, created_at, updated_at, username, 
               group_id, last_access, company_name, notes,
-              client_type, parent_client_id, branding_settings_id, requires_approval,
+              client_type, parent_client_id, branding_settings_id,
               subscription_plans:subscription_plan_id(id, name, display_name)
             `)
             .order('name')
@@ -190,7 +190,7 @@ export function useSupabaseAdminClients() {
           clientType: (c.client_type || 'direct') as 'direct' | 'administradora' | 'condominio_vinculado',
           parentClientId: c.parent_client_id || undefined,
           brandingSettingsId: c.branding_settings_id || undefined,
-          requiresApproval: c.requires_approval ?? true,
+          requiresApproval: true,
           childClientsCount: 0, // Será calculado depois
         }));
 
