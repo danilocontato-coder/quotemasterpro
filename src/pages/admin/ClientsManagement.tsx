@@ -1,6 +1,6 @@
 /**
  * ClientsManagement - Módulo de Gerenciamento de Clientes
- * @version 2.0.0 - Integrado com Supabase
+ * @version 2.0.1 - Corrigido problema de carregamento
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
