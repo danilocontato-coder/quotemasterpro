@@ -42,19 +42,35 @@ serve(async (req) => {
       )
     }
 
-    // Verificar se já existe um token válido para esta cotação
-    const { data: existingTokens } = await supabaseClient
+    // Verificar se já existe um token válido para esta cotação + fornecedor
+    let query = supabaseClient
       .from('quote_tokens')
       .select('*')
       .eq('quote_id', quote_id)
       .gt('expires_at', new Date().toISOString())
+
+    // Se supplier_id foi fornecido, buscar token específico desse fornecedor
+    if (supplier_id) {
+      query = query.eq('supplier_id', supplier_id)
+      console.log('🔍 [GENERATE-QUOTE-TOKEN] Verificando token existente para fornecedor:', supplier_id)
+    } else {
+      // Se não tem supplier_id, buscar apenas tokens genéricos (supplier_id = null)
+      query = query.is('supplier_id', null)
+      console.log('🔍 [GENERATE-QUOTE-TOKEN] Verificando token genérico (sem fornecedor)')
+    }
+
+    const { data: existingTokens } = await query
       .order('created_at', { ascending: false })
       .limit(1)
     
     // Se encontrou token existente e válido, reutilizar
     if (existingTokens && existingTokens.length > 0) {
       const existingToken = existingTokens[0]
-      console.log('🔗 [GENERATE-QUOTE-TOKEN] ♻️ Reutilizando token existente para quote_id:', quote_id)
+      console.log('🔗 [GENERATE-QUOTE-TOKEN] ♻️ Reutilizando token existente:', {
+        quote_id,
+        supplier_id: supplier_id || 'generic',
+        short_code: existingToken.short_code
+      })
       
       // Buscar base URL
       let baseUrl = 'https://cotiz.com.br'
