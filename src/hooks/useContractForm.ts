@@ -71,7 +71,28 @@ export function useContractForm({ editingContract, onSuccess, onCancel }: UseCon
   ];
 
   const updateField = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Se a data de início mudou e temos uma duração selecionada (não custom), recalcular data final
+      if (field === 'start_date' && value && contractDuration !== 'custom') {
+        const durations = [
+          { value: '6m', months: 6 },
+          { value: '1y', months: 12 },
+          { value: '2y', months: 24 },
+          { value: '3y', months: 36 },
+          { value: '5y', months: 60 },
+        ];
+        
+        const selectedDuration = durations.find(d => d.value === contractDuration);
+        if (selectedDuration) {
+          newData.end_date = addMonths(value, selectedDuration.months);
+        }
+      }
+      
+      return newData;
+    });
+    
     // Limpar erro do campo quando atualizado
     if (errors[field]) {
       setErrors(prev => {
@@ -93,12 +114,16 @@ export function useContractForm({ editingContract, onSuccess, onCancel }: UseCon
       { value: '5y', months: 60 },
     ];
     
+    // Se temos uma data de início e a duração não é custom, calcular data final
     if (duration !== 'custom' && formData.start_date) {
       const selectedDuration = durations.find(d => d.value === duration);
       if (selectedDuration) {
         const endDate = addMonths(formData.start_date, selectedDuration.months);
-        updateField('end_date', endDate);
+        setFormData(prev => ({ ...prev, end_date: endDate }));
       }
+    } else if (duration === 'custom') {
+      // Se mudou para custom, limpar a data de término para permitir seleção manual
+      // Mas só se ainda não tiver sido definida manualmente
     }
   };
 
