@@ -87,23 +87,60 @@ export const CreateLocalSupplierModal: React.FC<CreateLocalSupplierModalProps> =
   };
 
   const sendWelcomeWhatsApp = async (supplierId: string, supplierData: any) => {
-    if (!supplierData.whatsapp) return;
+    if (!supplierData.whatsapp) {
+      console.warn('[WhatsApp] Número não fornecido, pulando envio');
+      return;
+    }
 
     try {
-      const { data: profile } = await supabase
+      // 1. Buscar client_id do usuário atual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('client_id, clients(name)')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .select('client_id')
+        .eq('id', user.id)
         .single();
 
-      const clientName = (profile?.clients as any)?.name || 'Cliente';
+      if (profileError) {
+        console.error('[WhatsApp] Erro ao buscar profile:', profileError);
+        throw new Error('Erro ao buscar perfil do usuário');
+      }
 
+      if (!profile?.client_id) {
+        console.error('[WhatsApp] client_id não encontrado no profile');
+        throw new Error('Contexto de cliente não encontrado');
+      }
+
+      // 2. Buscar nome do cliente
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select('name')
+        .eq('id', profile.client_id)
+        .single();
+
+      if (clientError) {
+        console.warn('[WhatsApp] Erro ao buscar nome do cliente:', clientError);
+      }
+
+      const clientName = client?.name || 'Cliente';
+
+      console.log('[WhatsApp] Enviando para:', {
+        supplierId,
+        supplierName: supplierData.name,
+        supplierPhone: supplierData.whatsapp,
+        clientId: profile.client_id,
+        clientName
+      });
+
+      // 3. Invocar Edge Function
       const { data, error } = await supabase.functions.invoke('send-supplier-welcome', {
         body: {
           supplierId,
           supplierName: supplierData.name,
           supplierPhone: supplierData.whatsapp,
-          clientId: profile?.client_id,
+          clientId: profile.client_id,
           clientName,
           customVariables: {
             supplier_email: supplierData.email,
@@ -112,10 +149,23 @@ export const CreateLocalSupplierModal: React.FC<CreateLocalSupplierModalProps> =
         }
       });
 
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Falha ao enviar');
-    } catch (error) {
-      console.error('Erro ao enviar WhatsApp:', error);
+      if (error) {
+        console.error('[WhatsApp] Erro da Edge Function:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        console.error('[WhatsApp] Falha no envio:', data);
+        throw new Error(data?.error || 'Falha ao enviar WhatsApp');
+      }
+
+      console.log('[WhatsApp] ✅ Mensagem enviada com sucesso!', data);
+    } catch (error: any) {
+      console.error('[WhatsApp] ❌ Erro completo:', {
+        message: error.message,
+        stack: error.stack,
+        error
+      });
       throw error;
     }
   };
@@ -142,9 +192,17 @@ export const CreateLocalSupplierModal: React.FC<CreateLocalSupplierModalProps> =
         try {
           await sendWelcomeWhatsApp(result.supplier?.id || result.supplierId, formData);
           toast.success('✅ Fornecedor criado e mensagem enviada!');
-        } catch (whatsappError) {
-          console.error('WhatsApp error:', whatsappError);
-          toast.warning('⚠️ Fornecedor criado, mas houve erro no envio do WhatsApp');
+        } catch (whatsappError: any) {
+          console.error('[CREATE-SUPPLIER] WhatsApp error details:', {
+            message: whatsappError.message,
+            error: whatsappError
+          });
+          
+          const errorMessage = whatsappError.message || 'Erro desconhecido';
+          toast.warning(
+            `⚠️ Fornecedor criado, mas falha no WhatsApp: ${errorMessage}`,
+            { duration: 5000 }
+          );
         }
 
         if (result.credentials) {
