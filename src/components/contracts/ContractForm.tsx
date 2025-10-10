@@ -258,6 +258,8 @@ export const ContractForm = ({ contract, mode, onSuccess }: ContractFormProps) =
         created_by: user.id,
       };
 
+      // Não incluir id e contract_number no INSERT - serão gerados pelo trigger
+
       if (mode === 'edit' && contract) {
         const { error } = await supabase
           .from('contracts')

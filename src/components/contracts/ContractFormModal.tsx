@@ -2,11 +2,11 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ContractForm } from './ContractForm';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -33,13 +33,13 @@ export function ContractFormModal({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader className="space-y-4">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-2xl">
+            <DialogTitle className="text-2xl">
               {editingContract ? 'Editar Contrato' : 'Novo Contrato'}
-            </SheetTitle>
+            </DialogTitle>
             <Button
               variant="ghost"
               size="icon"
@@ -54,7 +54,7 @@ export function ContractFormModal({
               ? 'Atualize as informações do contrato' 
               : 'Preencha as informações para criar um novo contrato'}
           </p>
-        </SheetHeader>
+        </DialogHeader>
 
         <div className="mt-6">
           <ContractForm
@@ -63,7 +63,7 @@ export function ContractFormModal({
             onSuccess={handleSuccess}
           />
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
