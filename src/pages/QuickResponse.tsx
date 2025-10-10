@@ -76,20 +76,41 @@ export default function QuickResponse() {
         
         setQuoteData(data.quote);
         
-        // Buscar itens da cotação
-        const { data: items, error: itemsError } = await supabase
-          .from('quote_items')
-          .select('*')
-          .eq('quote_id', data.quote.id);
+        // 🆕 Debug de visita técnica
+        console.log('🏢 [QUICK-RESPONSE] Informações da cotação:', {
+          requires_visit: data.quote?.requires_visit,
+          visit_deadline: data.quote?.visit_deadline,
+          client_address: data.quote?.client_address,
+          hasAddress: !!data.quote?.client_address
+        });
         
-        if (!itemsError && items) {
-          const itemsWithProposal = items.map(item => ({
-            ...item,
-            proposed_quantity: item.quantity,
-            proposed_unit_price: '',
-            proposed_total: 0
+        // Usar itens que vieram da validação do token
+        if (data.items && data.items.length > 0) {
+          console.log('📦 [QUICK-RESPONSE] Itens recebidos do backend:', data.items.length);
+          console.log('📋 [QUICK-RESPONSE] Detalhes dos itens:', data.items.map(i => ({
+            name: i.product_name,
+            qty: i.quantity
+          })));
+          
+          const itemsWithProposal = data.items.map(item => ({
+            id: item.id,
+            product_name: item.product_name || '',     // ✅ Pré-preenchido (editável)
+            quantity: item.quantity || 0,              // ✅ Quantidade original
+            unit_price: item.unit_price || 0,          // ℹ️ Preço original (referência)
+            proposed_quantity: item.quantity || 0,     // ✅ Quantidade proposta (editável)
+            proposed_unit_price: '',                   // ✅ Preço proposto (editável - vazio)
+            proposed_total: 0                          // ✅ Total calculado
           }));
+          
           setQuoteItems(itemsWithProposal);
+          console.log('✅ [QUICK-RESPONSE] Itens configurados para resposta');
+        } else {
+          console.warn('⚠️ [QUICK-RESPONSE] Nenhum item encontrado na cotação');
+          toast({
+            title: "Atenção",
+            description: "Cotação sem itens. Entre em contato com o cliente.",
+            variant: "destructive"
+          });
         }
         
         // Buscar TODOS os dados do fornecedor se já cadastrado
