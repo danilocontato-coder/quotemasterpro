@@ -178,9 +178,10 @@ export const useSupabaseSuppliers = () => {
 
       console.log('✅ [CREATE-SUPPLIER] Perfil encontrado:', profile);
 
-      // Create supplier - triggers will handle client_id and CNPJ normalization
+      // Create supplier - MUST include client_id for RLS policy
       const insertData = {
         ...supplierData,
+        client_id: profile.client_id, // ✅ Required by RLS policy
         cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
         rating: 0,
         completed_orders: 0
