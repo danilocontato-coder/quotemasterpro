@@ -24,6 +24,8 @@ export interface Quote {
   suppliers_sent_count?: number;
   supplier_scope?: string;
   selected_supplier_ids?: string[];
+  requires_visit?: boolean;
+  visit_deadline?: string;
 }
 
 export const useSupabaseQuotes = () => {

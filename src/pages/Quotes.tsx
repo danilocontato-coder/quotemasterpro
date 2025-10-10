@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Sparkles, Clock, BarChart3 } from "lucide-react";
+import { Plus, Search, Filter, Eye, Trash2, FileText, Edit, Archive, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Sparkles, Clock, BarChart3, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,7 @@ export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [visitFilter, setVisitFilter] = useState("all");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isMatrixManagerOpen, setIsMatrixManagerOpen] = useState(false);
@@ -218,7 +219,20 @@ export default function Quotes() {
       matchesFilter = quote.status === "rejected";
     }
     
-    return matchesSearch && matchesFilter;
+    let matchesVisitFilter = true;
+    if (visitFilter === "requires_visit") {
+      matchesVisitFilter = quote.requires_visit === true;
+    } else if (visitFilter === "awaiting_visit") {
+      matchesVisitFilter = quote.status === "awaiting_visit";
+    } else if (visitFilter === "visit_scheduled") {
+      matchesVisitFilter = quote.status === "visit_scheduled";
+    } else if (visitFilter === "visit_confirmed") {
+      matchesVisitFilter = quote.status === "visit_confirmed";
+    } else if (visitFilter === "visit_overdue") {
+      matchesVisitFilter = quote.status === "visit_overdue";
+    }
+    
+    return matchesSearch && matchesFilter && matchesVisitFilter;
   });
 
   // Calculate metrics - Based on all quotes
@@ -376,7 +390,7 @@ export default function Quotes() {
             value={totalActive}
             icon={<FileText />}
             isActive={activeFilter === "all"}
-            onClick={() => setActiveFilter("all")}
+            onClick={() => { setActiveFilter("all"); setVisitFilter("all"); }}
             variant="default"
           />
         </div>
@@ -386,7 +400,7 @@ export default function Quotes() {
             value={draftQuotes}
             icon={<Edit />}
             isActive={activeFilter === "draft"}
-            onClick={() => setActiveFilter("draft")}
+            onClick={() => { setActiveFilter("draft"); setVisitFilter("all"); }}
             variant="secondary"
           />
         </div>
@@ -396,7 +410,7 @@ export default function Quotes() {
             value={sentQuotes}
             icon={<Eye />}
             isActive={activeFilter === "sent"}
-            onClick={() => setActiveFilter("sent")}
+            onClick={() => { setActiveFilter("sent"); setVisitFilter("all"); }}
             variant="warning"
           />
         </div>
@@ -406,7 +420,7 @@ export default function Quotes() {
             value={approvedQuotes}
             icon={<Plus />}
             isActive={activeFilter === "approved"}
-            onClick={() => setActiveFilter("approved")}
+            onClick={() => { setActiveFilter("approved"); setVisitFilter("all"); }}
             variant="success"
           />
         </div>
@@ -414,11 +428,21 @@ export default function Quotes() {
           <FilterMetricCard
             title="Em Análise"
             value={underReviewQuotes}
-          icon={<Archive />}
-          isActive={activeFilter === "under_review"}
-          onClick={() => setActiveFilter("under_review")}
-          variant="default"
-        />
+            icon={<Archive />}
+            isActive={activeFilter === "under_review"}
+            onClick={() => { setActiveFilter("under_review"); setVisitFilter("all"); }}
+            variant="default"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
+            title="Com Visita"
+            value={quotes.filter(q => q.requires_visit).length}
+            icon={<Calendar />}
+            isActive={visitFilter === "requires_visit"}
+            onClick={() => { setActiveFilter("all"); setVisitFilter("requires_visit"); }}
+            variant="warning"
+          />
         </div>
       </div>
 

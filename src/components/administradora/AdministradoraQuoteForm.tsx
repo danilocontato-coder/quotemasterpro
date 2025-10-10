@@ -27,6 +27,8 @@ interface QuoteFormData {
   cost_center_id?: string;
   targetType: 'self' | 'condominio';
   targetCondominioId: string;
+  requires_visit?: boolean;
+  visit_deadline?: string;
   items: Array<{
     product_name: string;
     quantity: number;
@@ -221,7 +223,9 @@ export function AdministradoraQuoteForm({
           total: 0,
           items_count: formData.items.length,
           supplier_scope: formData.supplierScope,
-          selected_supplier_ids: formData.supplier_ids
+          selected_supplier_ids: formData.supplier_ids,
+          requires_visit: formData.requires_visit || false,
+          visit_deadline: formData.visit_deadline ? new Date(formData.visit_deadline).toISOString() : null
         }])
         .select();
 
@@ -397,6 +401,39 @@ export function AdministradoraQuoteForm({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="requires_visit"
+                  checked={formData.requires_visit || false}
+                  onCheckedChange={(checked) => 
+                    setFormData(prev => ({ ...prev, requires_visit: checked as boolean }))
+                  }
+                />
+                <label htmlFor="requires_visit" className="text-sm font-medium cursor-pointer">
+                  Esta cotação requer visita técnica prévia
+                </label>
+              </div>
+              
+              {formData.requires_visit && (
+                <div className="space-y-2 pl-6">
+                  <Label>Prazo desejado para a visita</Label>
+                  <Input
+                    type="date"
+                    value={formData.visit_deadline || ''}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      visit_deadline: e.target.value 
+                    }))}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Os fornecedores deverão agendar e realizar visita técnica antes de enviar proposta
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         );

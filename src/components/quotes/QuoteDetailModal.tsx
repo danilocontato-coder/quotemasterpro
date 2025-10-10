@@ -30,11 +30,13 @@ import { QuoteComparison } from './QuoteComparison';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
 import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
 import { QuoteItemsList } from './QuoteItemsList';
+import { VisitSection } from './VisitSection';
 import { getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { AuditLog } from '@/hooks/useAuditLogs';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface QuoteProposal {
   id: string;
@@ -96,6 +98,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
   const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
 
   // Fetch quote items from Supabase
@@ -472,6 +475,17 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   <QuoteItemsList quoteId={quote.id} />
                 </CardContent>
               </Card>
+
+              {/* Visit Section */}
+              {quote.requires_visit && user && (
+                <VisitSection 
+                  quote={quote} 
+                  userRole={user.role || 'collaborator'} 
+                  onVisitUpdate={() => {
+                    fetchAuditLogs();
+                  }}
+                />
+              )}
 
               {/* Actions */}
               <Card>

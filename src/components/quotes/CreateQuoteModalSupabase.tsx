@@ -197,8 +197,8 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
     }));
   };
 
-  const handleSubmit = async () => {
-    console.log('=== INICIO handleSubmit ===');
+  const handleSubmit = async (asDraft: boolean = true) => {
+    console.log('=== INICIO handleSubmit ===', { asDraft });
     console.log('🔍 DEBUG: Form data atual:', formData);
     console.log('🔍 DEBUG: Current step:', currentStep);
     console.log('🔍 DEBUG: Can proceed?', canProceed());
@@ -249,13 +249,15 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
         title: formData.title,
         description: formData.description,
         deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
-        status: 'draft',
+        status: asDraft ? 'draft' : 'sent',
         total: 0,
         items_count: formData.items.length,
         responses_count: 0,
-        suppliers_sent_count: 0, // Será atualizado quando a cotação for enviada
-        supplier_scope: formData.supplierScope, // Incluir o escopo de fornecedores
-        supplier_ids: formData.supplier_ids, // Incluir os fornecedores selecionados
+        suppliers_sent_count: asDraft ? 0 : formData.supplier_ids.length,
+        supplier_scope: formData.supplierScope,
+        supplier_ids: formData.supplier_ids,
+        requires_visit: formData.requires_visit || false,
+        visit_deadline: formData.visit_deadline ? new Date(formData.visit_deadline).toISOString() : null,
         items: formData.items.map(item => ({
           product_name: item.product_name,
           quantity: item.quantity || 1,
@@ -696,14 +698,21 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
             </Button>
 
             {currentStep === steps.length ? (
-                <Button
-                  onClick={handleSubmit}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => handleSubmit(true)}
                   disabled={!canProceed()}
-                  className="flex items-center gap-2"
                 >
-                  <Package className="h-4 w-4" />
-                  {editingQuote ? 'Atualizar' : 'Criar'} Cotação
+                  Salvar Rascunho
                 </Button>
+                <Button 
+                  onClick={() => handleSubmit(false)}
+                  disabled={!canProceed()}
+                >
+                  Enviar para Fornecedores
+                </Button>
+              </div>
             ) : (
               <Button
                 onClick={handleNext}
