@@ -80,11 +80,42 @@ serve(async (req) => {
       throw new Error('Failed to confirm visit');
     }
 
-    // Após confirmar visita, liberar para proposta
+    // Calcular quantas visitas foram confirmadas para esta RFQ
+    const { data: allVisits, error: visitsError } = await supabase
+      .from('quote_visits')
+      .select('status, supplier_id')
+      .eq('quote_id', visit.quote_id);
+
+    if (visitsError) {
+      console.error('Error fetching visits:', visitsError);
+    }
+
+    // Contar visitas confirmadas
+    const confirmedCount = (allVisits || []).filter(v => v.status === 'confirmed').length;
+    
+    const { data: quoteData } = await supabase
+      .from('quotes')
+      .select('suppliers_sent_count')
+      .eq('id', visit.quote_id)
+      .single();
+
+    const totalSuppliers = quoteData?.suppliers_sent_count || 1;
+    
+    // Determinar novo status baseado no progresso de confirmações
+    let newQuoteStatus = 'visit_scheduled';
+    if (confirmedCount > 0 && confirmedCount < totalSuppliers) {
+      newQuoteStatus = 'visit_partial_confirmed';
+    } else if (confirmedCount >= totalSuppliers) {
+      newQuoteStatus = 'visit_confirmed'; // Libera para propostas
+    }
+
+    console.log('Updating quote status:', { confirmedCount, totalSuppliers, newQuoteStatus });
+
+    // Atualizar status da cotação
     const { error: quoteError } = await supabase
       .from('quotes')
       .update({ 
-        status: 'visit_confirmed',
+        status: newQuoteStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', visit.quote_id);

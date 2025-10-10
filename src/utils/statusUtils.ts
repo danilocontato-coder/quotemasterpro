@@ -13,8 +13,10 @@ export const getStatusText = (status: string) => {
     case 'cancelled': return 'Cancelada';
     case 'trash': return 'Lixeira';
     case 'awaiting_visit': return 'Aguardando Visita';
-    case 'visit_scheduled': return 'Visita Agendada';
-    case 'visit_confirmed': return 'Visita Realizada';
+    case 'visit_partial_scheduled': return 'Visitas Parciais Agendadas';
+    case 'visit_scheduled': return 'Visitas Agendadas';
+    case 'visit_partial_confirmed': return 'Visitas Parciais Confirmadas';
+    case 'visit_confirmed': return 'Visitas Confirmadas';
     case 'visit_overdue': return 'Visita Atrasada';
     default: return status;
   }
@@ -34,7 +36,9 @@ export const getStatusColor = (status: string) => {
     case 'cancelled': return 'bg-gray-100 text-gray-800';
     case 'trash': return 'bg-gray-100 text-gray-500';
     case 'awaiting_visit': return 'bg-orange-100 text-orange-800';
+    case 'visit_partial_scheduled': return 'bg-amber-100 text-amber-800';
     case 'visit_scheduled': return 'bg-blue-100 text-blue-800';
+    case 'visit_partial_confirmed': return 'bg-sky-100 text-sky-800';
     case 'visit_confirmed': return 'bg-green-100 text-green-800';
     case 'visit_overdue': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';

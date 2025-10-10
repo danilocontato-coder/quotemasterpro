@@ -54,7 +54,7 @@ serve(async (req) => {
     // Get quote details
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
-      .select('id, client_id, status')
+      .select('id, client_id, status, suppliers_sent_count')
       .eq('id', quoteId)
       .single();
 
@@ -98,10 +98,37 @@ serve(async (req) => {
       throw new Error('Failed to schedule visit');
     }
 
-    // Update quote status to 'visit_scheduled'
+    // Calcular quantas visitas já foram agendadas/confirmadas para esta RFQ
+    const { data: allVisits, error: visitsError } = await supabase
+      .from('quote_visits')
+      .select('status, supplier_id')
+      .eq('quote_id', quoteId);
+
+    if (visitsError) {
+      console.error('Error fetching visits:', visitsError);
+    }
+
+    // Contar visitas agendadas ou confirmadas
+    const scheduledOrConfirmedCount = (allVisits || []).filter(
+      v => v.status === 'scheduled' || v.status === 'confirmed'
+    ).length;
+
+    const totalSuppliers = quote.suppliers_sent_count || 1;
+    
+    // Determinar novo status baseado no progresso
+    let newQuoteStatus = 'awaiting_visit';
+    if (scheduledOrConfirmedCount > 0 && scheduledOrConfirmedCount < totalSuppliers) {
+      newQuoteStatus = 'visit_partial_scheduled';
+    } else if (scheduledOrConfirmedCount >= totalSuppliers) {
+      newQuoteStatus = 'visit_scheduled';
+    }
+
+    console.log('Updating quote status:', { scheduledOrConfirmedCount, totalSuppliers, newQuoteStatus });
+
+    // Atualizar status da cotação
     const { error: quoteUpdateError } = await supabase
       .from('quotes')
-      .update({ status: 'visit_scheduled', updated_at: new Date().toISOString() })
+      .update({ status: newQuoteStatus, updated_at: new Date().toISOString() })
       .eq('id', quoteId);
 
     if (quoteUpdateError) {
