@@ -178,10 +178,11 @@ export const useSupabaseSuppliers = () => {
 
       console.log('✅ [CREATE-SUPPLIER] Perfil encontrado:', profile);
 
-      // Create supplier - MUST include client_id for RLS policy
+      // Create supplier - MUST include client_id and type for RLS policy
       const insertData = {
         ...supplierData,
         client_id: profile.client_id, // ✅ Required by RLS policy
+        type: 'local', // ✅ Required by RLS policy: suppliers_client_create_local
         cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
         rating: 0,
         completed_orders: 0

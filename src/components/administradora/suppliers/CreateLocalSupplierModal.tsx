@@ -40,6 +40,7 @@ export const CreateLocalSupplierModal: React.FC<CreateLocalSupplierModalProps> =
     state: '',
     city: '',
     status: 'active',
+    type: 'local', // ✅ Required by RLS policy
   });
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -171,6 +172,7 @@ export const CreateLocalSupplierModal: React.FC<CreateLocalSupplierModalProps> =
       state: '',
       city: '',
       status: 'active',
+      type: 'local', // ✅ Required by RLS policy
     });
     setPassword('');
     setErrors({});
