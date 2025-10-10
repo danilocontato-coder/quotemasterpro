@@ -266,10 +266,71 @@ export const useSupabaseSuppliers = () => {
       
       console.log('🎉 [CREATE-SUPPLIER] Processo concluído com sucesso!');
       
-      toast({
-        title: "Fornecedor criado",
-        description: `O fornecedor "${supplierData.name}" foi criado com sucesso.`,
-      });
+      // Enviar WhatsApp de boas-vindas se houver número cadastrado
+      if (supplierData.whatsapp) {
+        console.log('📤 [CREATE-SUPPLIER] Enviando WhatsApp de boas-vindas para:', supplierData.whatsapp);
+        
+        toast({
+          title: "📤 Enviando boas-vindas",
+          description: "Enviando mensagem via WhatsApp...",
+        });
+
+        try {
+          // Buscar nome do cliente
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('name')
+            .eq('id', targetClientId)
+            .single();
+
+          const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke('send-supplier-welcome', {
+            body: {
+              supplierId: data.id,
+              supplierName: supplierData.name,
+              supplierPhone: supplierData.whatsapp,
+              clientId: targetClientId,
+              clientName: clientData?.name || 'Cliente',
+              customVariables: {
+                supplier_email: supplierData.email,
+                access_link: window.location.origin + '/login'
+              }
+            }
+          });
+
+          if (whatsappError) {
+            console.error('❌ [CREATE-SUPPLIER] Erro ao chamar edge function:', whatsappError);
+            throw whatsappError;
+          }
+
+          if (whatsappResult?.success) {
+            console.log('✅ [CREATE-SUPPLIER] WhatsApp enviado com sucesso, messageId:', whatsappResult.messageId);
+            toast({
+              title: "✅ Fornecedor criado e notificado!",
+              description: `${supplierData.name} foi criado e receberá mensagem no WhatsApp ${supplierData.whatsapp}`,
+            });
+          } else {
+            console.error('❌ [CREATE-SUPPLIER] Falha no envio do WhatsApp:', whatsappResult?.error);
+            toast({
+              title: "⚠️ Fornecedor criado",
+              description: `${supplierData.name} foi criado, mas houve erro ao enviar WhatsApp. Verifique as configurações da Evolution API.`,
+              variant: "destructive",
+            });
+          }
+        } catch (whatsappError: any) {
+          console.error('⚠️ [CREATE-SUPPLIER] Erro no envio de WhatsApp:', whatsappError);
+          toast({
+            title: "⚠️ Fornecedor criado",
+            description: `${supplierData.name} foi criado, mas houve erro ao enviar WhatsApp.`,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Fornecedor criado",
+          description: `O fornecedor "${supplierData.name}" foi criado com sucesso.`,
+        });
+      }
+      
       return data;
     } catch (error) {
       console.error('💥 [CREATE-SUPPLIER] Erro inesperado:', error);
