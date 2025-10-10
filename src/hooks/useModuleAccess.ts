@@ -42,8 +42,25 @@ export const useModuleAccess = (requiredModule?: ModuleKey): ModuleAccessResult 
 
     const checkModuleAccess = async () => {
       try {
-        // Verificar cache primeiro
-        const cacheKey = `modules_${user.id}`;
+        // Detectar modo admin simulado
+        const urlParams = new URLSearchParams(window.location.search);
+        const adminToken = urlParams.get('adminToken');
+        let isSimulatedAdmin = false;
+        let simulatedClientId: string | null = null;
+
+        if (adminToken && adminToken.startsWith('admin_')) {
+          const adminData = localStorage.getItem(`adminAccess_${adminToken}`);
+          if (adminData) {
+            const parsed = JSON.parse(adminData);
+            if (parsed.isAdminMode && parsed.originalRole === 'admin' && parsed.targetClientId) {
+              isSimulatedAdmin = true;
+              simulatedClientId = parsed.targetClientId;
+            }
+          }
+        }
+
+        // Verificar cache (ajustado para modo simulado)
+        const cacheKey = isSimulatedAdmin ? `modules_sim_${simulatedClientId}` : `modules_${user.id}`;
         const cached = moduleCache.get(cacheKey);
         
         if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
@@ -53,31 +70,42 @@ export const useModuleAccess = (requiredModule?: ModuleKey): ModuleAccessResult 
           return;
         }
 
-        // Buscar perfil e plano em uma única query otimizada
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('client_id, supplier_id')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) throw profileError;
-
         let planId: string | null = null;
 
-        if (profile.client_id) {
+        if (isSimulatedAdmin && simulatedClientId) {
+          // Modo admin simulado: buscar plano do cliente simulado
+          console.log('🎭 [MODULE-ACCESS] Modo admin simulado detectado, buscando plano do cliente:', simulatedClientId);
           const { data: client } = await supabase
             .from('clients')
             .select('subscription_plan_id')
-            .eq('id', profile.client_id)
+            .eq('id', simulatedClientId)
             .single();
           planId = client?.subscription_plan_id || null;
-        } else if (profile.supplier_id) {
-          const { data: supplier } = await supabase
-            .from('suppliers')
-            .select('subscription_plan_id')
-            .eq('id', profile.supplier_id)
+        } else {
+          // Modo normal: buscar perfil e plano do usuário
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('client_id, supplier_id')
+            .eq('id', user.id)
             .single();
-          planId = supplier?.subscription_plan_id || null;
+
+          if (profileError) throw profileError;
+
+          if (profile.client_id) {
+            const { data: client } = await supabase
+              .from('clients')
+              .select('subscription_plan_id')
+              .eq('id', profile.client_id)
+              .single();
+            planId = client?.subscription_plan_id || null;
+          } else if (profile.supplier_id) {
+            const { data: supplier } = await supabase
+              .from('suppliers')
+              .select('subscription_plan_id')
+              .eq('id', profile.supplier_id)
+              .single();
+            planId = supplier?.subscription_plan_id || null;
+          }
         }
 
         if (!planId) {
@@ -95,6 +123,8 @@ export const useModuleAccess = (requiredModule?: ModuleKey): ModuleAccessResult 
           .single();
 
         const modules = (plan?.enabled_modules as ModuleKey[]) || [];
+        
+        console.log('✅ [MODULE-ACCESS] Módulos habilitados:', { planId, modules, isSimulatedAdmin });
         
         // Atualizar cache
         moduleCache.set(cacheKey, { data: modules, timestamp: Date.now() });

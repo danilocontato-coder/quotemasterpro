@@ -152,7 +152,6 @@ export const useSupabaseSuppliers = () => {
   const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'rating' | 'completed_orders'>) => {
     try {
       console.log('🔧 [CREATE-SUPPLIER] Iniciando criação de fornecedor', supplierData);
-      console.log('📝 [CREATE-SUPPLIER] Criando cópia independente para este cliente (sem verificação de duplicata)');
 
       // Get current user's profile to get client_id
       console.log('👤 [CREATE-SUPPLIER] Buscando usuário autenticado...');
@@ -171,12 +170,30 @@ export const useSupabaseSuppliers = () => {
         .eq('id', authUser.id)
         .single();
 
-      if (!profile?.client_id) {
-        console.error('❌ [CREATE-SUPPLIER] Perfil não encontrado ou sem cliente associado', profile);
-        throw new Error('Perfil de usuário não encontrado ou sem cliente associado');
+      // Determinar targetClientId: priorizar client_id do contexto (simulação admin) ou do perfil
+      let targetClientId = profile?.client_id || null;
+      
+      // Se não houver client_id no perfil, verificar se é modo admin simulado
+      if (!targetClientId && user?.clientId) {
+        console.log('🎭 [CREATE-SUPPLIER] Modo admin simulado detectado, usando clientId do contexto');
+        targetClientId = user.clientId;
       }
 
-      console.log('✅ [CREATE-SUPPLIER] Perfil encontrado:', profile);
+      if (!targetClientId) {
+        console.error('❌ [CREATE-SUPPLIER] Nenhum client_id disponível (nem perfil, nem simulação)', {
+          profileClientId: profile?.client_id,
+          contextClientId: user?.clientId,
+          profile
+        });
+        throw new Error('Contexto de cliente não encontrado. Selecione um cliente antes de criar fornecedores.');
+      }
+
+      console.log('✅ [CREATE-SUPPLIER] Target client_id definido:', {
+        authUserId: authUser.id,
+        profileClientId: profile?.client_id,
+        contextClientId: user?.clientId,
+        targetClientId
+      });
 
       // Guard: module access for suppliers
       const { data: hasSuppliersAccess, error: accessErr } = await supabase.rpc('user_has_module_access', { _module_key: 'suppliers' });
@@ -192,7 +209,7 @@ export const useSupabaseSuppliers = () => {
       // Create supplier - MUST include client_id and type for RLS policy
       const insertData = {
         ...supplierData,
-        client_id: profile.client_id, // ✅ Required by RLS policy
+        client_id: targetClientId, // ✅ Required by RLS policy (respeitando simulação)
         type: 'local', // ✅ Required by RLS policy: suppliers_client_create_local
         cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
         rating: 0,
