@@ -58,6 +58,9 @@ const ContractDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
+  const [attachmentBlobUrl, setAttachmentBlobUrl] = useState<string | null>(null);
+  const [isAttachmentLoading, setIsAttachmentLoading] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -123,7 +126,39 @@ const ContractDetails = () => {
     };
 
     fetchContract();
-  }, [id, navigate, toast]);
+
+  // Carregar blob quando abrir um anexo (evita bloqueio de iframe por extensões)
+  useEffect(() => {
+    let toRevoke: string | null = null;
+
+    const load = async () => {
+      if (!viewingAttachment) return;
+      setAttachmentError(null);
+      setIsAttachmentLoading(true);
+      setAttachmentBlobUrl(null);
+      try {
+        const res = await fetch(viewingAttachment, { mode: 'cors' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        setAttachmentBlobUrl(url);
+        toRevoke = url;
+      } catch (e) {
+        console.warn('📎 Falha ao carregar anexo para visualização inline (possível bloqueio por extensão):', e);
+        setAttachmentError('blocked');
+      } finally {
+        setIsAttachmentLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      if (toRevoke) URL.revokeObjectURL(toRevoke);
+      setAttachmentBlobUrl(null);
+    };
+  }, [viewingAttachment]);
+
 
   const handleDelete = async () => {
     if (!contract) return;
@@ -442,12 +477,36 @@ const ContractDetails = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 h-full">
-            {viewingAttachment && (
+            {isAttachmentLoading && (
+              <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Carregando anexo...
+              </div>
+            )}
+
+            {!isAttachmentLoading && viewingAttachment && attachmentBlobUrl && (
               <iframe
-                src={viewingAttachment}
+                src={attachmentBlobUrl}
                 className="w-full h-full rounded-lg border"
                 title="Visualizador de Anexo"
               />
+            )}
+
+            {!isAttachmentLoading && viewingAttachment && !attachmentBlobUrl && (
+              <div className="h-full w-full flex flex-col items-center justify-center text-center space-y-3">
+                <AlertCircle className="h-5 w-5 text-yellow-600" />
+                <p className="text-sm text-muted-foreground">
+                  Não foi possível exibir o anexo nesta tela (possível bloqueio do navegador/extensão).
+                </p>
+                <div className="flex gap-2">
+                  <a href={viewingAttachment} target="_blank" rel="noopener noreferrer">
+                    <Button>
+                      Abrir em nova aba
+                    </Button>
+                  </a>
+                  <Button variant="outline" onClick={() => setViewingAttachment(null)}>Fechar</Button>
+                </div>
+              </div>
             )}
           </div>
         </DialogContent>
