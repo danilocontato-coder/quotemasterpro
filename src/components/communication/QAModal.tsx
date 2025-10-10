@@ -340,18 +340,23 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
         <div className="flex-1 flex gap-4 min-h-0">
           {/* Left Panel - Q&A Interface */}
           <div className="w-1/2 flex flex-col space-y-4">
-            <Card className="border-orange-200 bg-orange-50/50">
+            <Card className="border-blue-200 bg-blue-50/50">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-orange-800 mb-1">Sistema de Esclarecimentos</h4>
-                    <p className="text-sm text-orange-700">
+                    <h4 className="font-semibold text-blue-900 mb-1">📋 Canal de Esclarecimentos Técnicos</h4>
+                    <p className="text-sm text-blue-800 mb-2">
                       {userRole === 'client' 
-                        ? 'Como cliente, você pode fazer perguntas estruturadas ao fornecedor sobre esta cotação.'
-                        : 'Como fornecedor, você responde às perguntas do cliente sobre esta cotação.'
+                        ? 'Use este canal apenas para dúvidas técnicas e operacionais.'
+                        : 'Responda apenas perguntas técnicas e operacionais do cliente.'
                       }
                     </p>
+                    <div className="bg-blue-100 border border-blue-300 rounded p-2 mt-2">
+                      <p className="text-xs text-blue-900 font-medium">
+                        ⚠️ Valores e negociações comerciais devem ser enviados via proposta formal na plataforma.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
