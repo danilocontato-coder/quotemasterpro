@@ -27,40 +27,7 @@ export const supplierFormSchema = z.object({
   document_number: z
     .string()
     .trim()
-    .superRefine((val, ctx) => {
-      const normalized = normalizeDocument(val);
-      const parent = (ctx as any).parent;
-      const docType = parent?.document_type || 'cnpj';
-      
-      // Verificar comprimento
-      if (docType === 'cpf' && normalized.length !== 11) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'CPF deve ter 11 dígitos',
-        });
-        return;
-      }
-      if (docType === 'cnpj' && normalized.length !== 14) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'CNPJ deve ter 14 dígitos',
-        });
-        return;
-      }
-      
-      // Validar documento
-      if (docType === 'cpf' && !validateCPF(normalized)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'CPF inválido',
-        });
-      } else if (docType === 'cnpj' && !validateCNPJ(normalized)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'CNPJ inválido',
-        });
-      }
-    }),
+    .min(1, 'Documento é obrigatório'),
   
   // Contato
   email: z
@@ -114,6 +81,20 @@ export const supplierFormSchema = z.object({
   // Campos opcionais
   type: z.enum(['local', 'certified']).default('local'),
   status: z.enum(['active', 'inactive', 'pending']).default('active'),
+}).refine((data) => {
+  // Validação condicional do documento baseado no tipo
+  const normalized = normalizeDocument(data.document_number);
+  
+  if (data.document_type === 'cpf') {
+    if (normalized.length !== 11) return false;
+    return validateCPF(normalized);
+  } else {
+    if (normalized.length !== 14) return false;
+    return validateCNPJ(normalized);
+  }
+}, {
+  message: 'Documento inválido para o tipo selecionado',
+  path: ['document_number'],
 });
 
 export type SupplierFormData = z.infer<typeof supplierFormSchema>;
