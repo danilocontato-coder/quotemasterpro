@@ -2689,6 +2689,7 @@ export type Database = {
           id: string
           quote_id: string
           short_code: string
+          supplier_id: string | null
           used_at: string | null
         }
         Insert: {
@@ -2700,6 +2701,7 @@ export type Database = {
           id?: string
           quote_id: string
           short_code: string
+          supplier_id?: string | null
           used_at?: string | null
         }
         Update: {
@@ -2711,6 +2713,7 @@ export type Database = {
           id?: string
           quote_id?: string
           short_code?: string
+          supplier_id?: string | null
           used_at?: string | null
         }
         Relationships: [
@@ -2726,6 +2729,13 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_tokens_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]

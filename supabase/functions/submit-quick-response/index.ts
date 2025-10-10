@@ -27,7 +27,9 @@ serve(async (req) => {
       payment_terms,
       notes,
       attachment_url,
-      items 
+      items,
+      visit_date,
+      visit_notes
     } = await req.json();
 
     console.log('📦 [Quick Response] Dados recebidos:', { 
@@ -185,21 +187,54 @@ serve(async (req) => {
 
     console.log('✅ Resposta criada com sucesso:', response.id);
 
+    // Agendar visita técnica se fornecida
+    if (visit_date) {
+      console.log('📅 [Quick Response] Agendando visita técnica...');
+      
+      const { error: visitError } = await supabase
+        .from('quote_visits')
+        .insert({
+          quote_id: tokenData.quote_id,
+          supplier_id: supplierId,
+          client_id: tokenData.client_id,
+          scheduled_date: visit_date,
+          requested_date: new Date().toISOString(),
+          status: 'scheduled',
+          notes: visit_notes || null
+        });
+      
+      if (visitError) {
+        console.error('⚠️ Erro ao agendar visita (não crítico):', visitError);
+      } else {
+        console.log('✅ Visita técnica agendada com sucesso');
+      }
+    }
+
     // Notificar cliente sobre nova proposta
     console.log('📧 [Quick Response] Enviando notificação ao cliente...');
     try {
       const amountNum = typeof total_amount === 'number' ? total_amount : parseFloat(String(total_amount).replace(',', '.'));
+      
+      let message = `${supplier_name} enviou uma proposta de R$ ${isNaN(amountNum) ? total_amount : amountNum.toFixed(2)} para a cotação #${tokenData.quote_id}`;
+      
+      // Adicionar info de visita se agendada
+      if (visit_date) {
+        const visitDateFormatted = new Date(visit_date).toLocaleDateString('pt-BR');
+        message += `. Visita técnica agendada para ${visitDateFormatted}.`;
+      }
+      
       await supabase.functions.invoke('create-notification', {
         body: {
           client_id: tokenData.client_id,
-          title: 'Nova Proposta Recebida',
-          message: `${supplier_name} enviou uma proposta de R$ ${isNaN(amountNum) ? total_amount : amountNum.toFixed(2)} para a cotação #${tokenData.quote_id}`,
+          title: visit_date ? 'Nova Proposta com Visita Agendada' : 'Nova Proposta Recebida',
+          message: message,
           type: 'proposal',
           priority: 'normal',
           metadata: {
             quote_id: tokenData.quote_id,
             supplier_name: supplier_name,
-            amount: total_amount
+            amount: total_amount,
+            visit_date: visit_date || null
           }
         }
       });

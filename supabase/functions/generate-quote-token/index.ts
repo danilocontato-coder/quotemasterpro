@@ -18,8 +18,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { quote_id } = await req.json()
-
+    const { quote_id, supplier_id } = await req.json()
+    
     if (!quote_id) {
       return new Response(
         JSON.stringify({ error: 'quote_id is required' }),
@@ -147,12 +147,13 @@ serve(async (req) => {
       usedDeadline: !!quoteData.deadline
     })
 
-    // Insert token into database with client_id
+    // Insert token into database with client_id and supplier_id
     const { data: tokenData, error: insertError } = await supabaseClient
       .from('quote_tokens')
       .insert({
         quote_id,
         client_id: quoteData.client_id,
+        supplier_id: supplier_id || null,
         short_code: shortCode,
         full_token: fullToken,
         expires_at: expiresAt

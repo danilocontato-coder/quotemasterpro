@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Building2, Mail, DollarSign, FileText, Upload, Package, Edit2, Users, Zap, TrendingUp, Award } from 'lucide-react';
+import { Building2, Mail, DollarSign, FileText, Upload, Package, Edit2, Users, Zap, TrendingUp, Award, Calendar, MapPin, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useBranding } from '@/contexts/BrandingContext';
@@ -32,7 +32,9 @@ export default function QuickResponse() {
     shippingCost: '0',
     warrantyMonths: '12',
     paymentTerms: '30 dias',
-    notes: ''
+    notes: '',
+    visitDate: '',
+    visitNotes: ''
   });
 
   // Validar token e buscar dados da cotação
@@ -230,6 +232,31 @@ export default function QuickResponse() {
       return;
     }
 
+    // NOVA VALIDAÇÃO: Se requer visita, data é obrigatória
+    if (quoteData?.requires_visit && !formData.visitDate) {
+      toast({
+        title: "Data da visita obrigatória",
+        description: "Esta cotação requer uma visita técnica. Por favor, agende a data.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validar se data da visita está dentro do prazo
+    if (formData.visitDate && quoteData?.visit_deadline) {
+      const visitDate = new Date(formData.visitDate);
+      const deadline = new Date(quoteData.visit_deadline);
+      
+      if (visitDate > deadline) {
+        toast({
+          title: "Data inválida",
+          description: `A visita deve ser agendada até ${deadline.toLocaleDateString('pt-BR')}`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     // Validar itens
     const itemsWithPrices = quoteItems.filter(item => 
       item.proposed_unit_price && parseFloat(item.proposed_unit_price.replace(/[^\d.,]/g, '').replace(',', '.')) > 0
@@ -312,7 +339,9 @@ export default function QuickResponse() {
         payment_terms: formData.paymentTerms.trim() || '30 dias',
         notes: formData.notes?.trim() || null,
         attachment_url: attachmentUrl,
-        items: proposalItems
+        items: proposalItems,
+        visit_date: formData.visitDate || null,
+        visit_notes: formData.visitNotes?.trim() || null
       };
 
       console.log('📤 [QUICK-RESPONSE] Enviando payload:', {
@@ -431,6 +460,51 @@ export default function QuickResponse() {
                     <div className="mt-2">
                       <span className="text-muted-foreground block mb-1">Descrição:</span>
                       <p className="text-sm bg-muted p-3 rounded-md">{quoteData.description}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Card de Visita Técnica - SE NECESSÁRIA */}
+            {quoteData?.requires_visit && (
+              <Card className="border-amber-500/50 bg-amber-50/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-amber-700">
+                    <Calendar className="w-5 h-5" />
+                    Visita Técnica Necessária
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-start gap-2 text-sm">
+                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
+                    <p className="text-amber-700">
+                      Esta cotação requer uma visita técnica presencial antes do envio da proposta final.
+                    </p>
+                  </div>
+                  
+                  {quoteData.visit_deadline && (
+                    <div className="bg-white rounded-lg p-3 border border-amber-200">
+                      <p className="text-xs text-muted-foreground mb-1">Prazo para visita:</p>
+                      <p className="font-semibold text-amber-700">
+                        {new Date(quoteData.visit_deadline).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {quoteData.client_address && (
+                    <div className="bg-white rounded-lg p-3 border border-amber-200">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-amber-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground mb-1">Local da visita:</p>
+                          <p className="font-medium text-sm">{quoteData.client_address}</p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -651,6 +725,52 @@ export default function QuickResponse() {
                       />
                     </div>
                   </div>
+                  
+                  {/* Campos de Visita Técnica - SE NECESSÁRIA */}
+                  {quoteData?.requires_visit && (
+                    <>
+                      <div className="border-t pt-4">
+                        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Agendamento da Visita Técnica
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 gap-3">
+                          <div>
+                            <Label htmlFor="visitDate">Data da Visita *</Label>
+                            <Input
+                              id="visitDate"
+                              type="date"
+                              value={formData.visitDate}
+                              onChange={(e) => setFormData({...formData, visitDate: e.target.value})}
+                              min={new Date().toISOString().split('T')[0]}
+                              max={quoteData.visit_deadline ? new Date(quoteData.visit_deadline).toISOString().split('T')[0] : undefined}
+                              disabled={loading}
+                              required={quoteData.requires_visit}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {quoteData.visit_deadline 
+                                ? `Prazo máximo: ${new Date(quoteData.visit_deadline).toLocaleDateString('pt-BR')}`
+                                : 'Escolha a data preferencial para a visita técnica'
+                              }
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="visitNotes">Observações da Visita (opcional)</Label>
+                            <Textarea
+                              id="visitNotes"
+                              value={formData.visitNotes}
+                              onChange={(e) => setFormData({...formData, visitNotes: e.target.value})}
+                              placeholder="Ex: Preferência de horário, restrições de acesso, equipamentos necessários..."
+                              className="min-h-[80px]"
+                              disabled={loading}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   
                   <div>
                     <Label htmlFor="notes">Observações (opcional)</Label>

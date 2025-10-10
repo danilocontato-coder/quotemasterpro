@@ -94,11 +94,11 @@ serve(async (req) => {
       )
     }
 
-    // Fetch quote details AND supplier data to include in response
+    // Fetch quote details with visit information
     console.log('🔍 [validate-quote-token] Fetching quote:', resolvedQuoteId)
     const { data: quoteData, error: quoteError } = await supabaseClient
       .from('quotes')
-      .select('id, title, description, status, deadline, client_name, supplier_id')
+      .select('id, title, description, status, deadline, client_name, supplier_id, client_id, requires_visit, visit_deadline')
       .eq('id', resolvedQuoteId)
       .maybeSingle()
 
@@ -115,23 +115,69 @@ serve(async (req) => {
       )
     }
 
-    // Fetch supplier data if quote has a supplier_id
-    console.log('🔍 [validate-quote-token] Checking for supplier_id:', quoteData.supplier_id)
-    let supplierData = null
-    if (quoteData.supplier_id) {
-      console.log('🔍 [validate-quote-token] Fetching supplier:', quoteData.supplier_id)
-      const { data: supplier, error: supplierError } = await supabaseClient
-        .from('suppliers')
-        .select('id, name, email, cnpj, phone, city, state')
-        .eq('id', quoteData.supplier_id)
+    console.log('✅ Quote found:', { 
+      id: quoteData.id, 
+      title: quoteData.title,
+      client_name: quoteData.client_name
+    })
+
+    // Fetch client address if needed
+    let clientAddress = null
+    if (quoteData.client_id) {
+      console.log('🔍 [validate-quote-token] Fetching client address:', quoteData.client_id)
+      const { data: client, error: clientError } = await supabaseClient
+        .from('clients')
+        .select('address')
+        .eq('id', quoteData.client_id)
         .single()
       
-      console.log('🔍 [validate-quote-token] Supplier fetch result:', { found: !!supplier, error: supplierError })
+      if (!clientError && client) {
+        clientAddress = client.address
+        console.log('✅ [validate-quote-token] Client address found')
+      }
+    }
+
+    // Fetch quote items
+    console.log('🔍 [validate-quote-token] Fetching quote items')
+    const { data: quoteItems } = await supabaseClient
+      .from('quote_items')
+      .select('*')
+      .eq('quote_id', resolvedQuoteId)
+    
+    console.log('✅ Found', quoteItems?.length || 0, 'items for quote')
+
+    // Fetch supplier data - priority: token's supplier_id, fallback to quote's supplier_id
+    let supplierData = null
+    const tokenSupplierId = tokenData.supplier_id
+
+    if (tokenSupplierId) {
+      console.log('🔍 [validate-quote-token] Token vinculado ao fornecedor:', tokenSupplierId)
+      const { data: supplier, error: supplierError } = await supabaseClient
+        .from('suppliers')
+        .select('id, name, email, cnpj, phone, whatsapp, city, state, address, website')
+        .eq('id', tokenSupplierId)
+        .single()
       
       if (!supplierError && supplier) {
         supplierData = supplier
-        console.log('✅ [validate-quote-token] Supplier data found:', supplier.name)
+        console.log('✅ [validate-quote-token] Dados do fornecedor encontrados:', supplier.name)
+      } else {
+        console.log('⚠️ [validate-quote-token] Fornecedor do token não encontrado')
       }
+    } else if (quoteData.supplier_id) {
+      // Fallback: supplier_id da quote (compatibilidade)
+      console.log('🔍 [validate-quote-token] Usando supplier_id da quote (fallback):', quoteData.supplier_id)
+      const { data: supplier } = await supabaseClient
+        .from('suppliers')
+        .select('id, name, email, cnpj, phone, whatsapp, city, state')
+        .eq('id', quoteData.supplier_id)
+        .single()
+      
+      if (supplier) {
+        supplierData = supplier
+      }
+    } else {
+      console.log('ℹ️ [validate-quote-token] Token genérico - sem fornecedor vinculado')
     }
 
     // Update access count
@@ -158,7 +204,11 @@ serve(async (req) => {
           expires_at: tokenData.expires_at,
           access_count: tokenData.access_count + 1
         },
-        quote: quoteData,
+        quote: {
+          ...quoteData,
+          client_address: clientAddress
+        },
+        items: quoteItems || [],
         supplier: supplierData,
         quote_id: resolvedQuoteId
       }),
