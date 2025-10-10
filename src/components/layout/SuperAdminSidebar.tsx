@@ -230,7 +230,10 @@ export const SuperAdminSidebar = () => {
   
   const handleLinkClick = () => {
     if (isMobile) {
+      // Force close sidebar on mobile
       setOpen(false);
+      // Also set to collapsed state for extra safety
+      document.body.click(); // trigger outside click
     }
   };
 
