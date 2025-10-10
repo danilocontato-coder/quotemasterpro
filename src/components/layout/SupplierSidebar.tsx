@@ -48,7 +48,8 @@ export function SupplierSidebar() {
   const { state, isMobile, setOpen } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
-  const isCollapsed = state === "collapsed";
+  // No mobile, nunca colapsar - sempre mostrar textos quando aberto
+  const isCollapsed = !isMobile && state === "collapsed";
   const { settings } = useBranding();
 
   const isActive = (path: string) => currentPath === path;
