@@ -94,6 +94,7 @@ export const AuthenticatedLayout: React.FC = () => {
       return <SuperAdminLayout />;
     case 'supplier':
       return <SupplierLayout />;
+    case 'admin_cliente':
     case 'manager':
     case 'collaborator':
     case 'client':

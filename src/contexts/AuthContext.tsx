@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChangeModal } from '@/components/auth/ForcePasswordChangeModal';
 import { logger } from '@/utils/systemLogger';
 
-export type UserRole = 'admin' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
+export type UserRole = 'admin' | 'admin_cliente' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
 
 export interface User {
   id: string;
@@ -24,7 +24,7 @@ export const getRoleBasedRoute = (
 ): string => {
   logger.navigation('getRoleBasedRoute', { role, ctx });
 
-  // Admin and support have priority routes regardless of tenant
+  // APENAS admin global acessa superadmin
   if (role === 'admin') {
     return '/admin/superadmin';
   }
@@ -38,8 +38,9 @@ export const getRoleBasedRoute = (
     return '/supplier';
   }
 
-  // Default client-side dashboards
+  // Client/Manager context (inclui admin_cliente)
   switch (role) {
+    case 'admin_cliente':
     case 'manager':
     case 'client':
     case 'collaborator':
