@@ -738,7 +738,7 @@ Formato da RFQ final:
           description: quoteData.description,
           client_id: profile.client_id,
           created_by: userId,
-          status: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend ? 'sent' : 'draft',
+          status: 'draft', // Sempre criar como rascunho
           total: estimatedTotal,
           deadline: quoteData.deadline_days ? 
             new Date(Date.now() + quoteData.deadline_days * 24 * 60 * 60 * 1000).toISOString() : 
@@ -803,22 +803,7 @@ Formato da RFQ final:
           }
         }
 
-        // Enviar automaticamente se configurado
-        let autoSendMessage = '';
-        if (selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend) {
-          try {
-            await supabaseClient.functions.invoke('send-quote-to-suppliers', {
-              body: { 
-                quoteId: newQuote.id,
-                supplierIds: selectedSuppliers.map(s => s.id)
-              }
-            });
-            autoSendMessage = ` A RFQ foi enviada automaticamente para ${selectedSuppliers.length} fornecedores!`;
-          } catch (sendError) {
-            console.error('Erro ao enviar para fornecedores:', sendError);
-            autoSendMessage = ' (Erro no envio automático - você pode enviar manualmente)';
-          }
-        }
+        // Não enviar automaticamente - usuário decide quando enviar
 
         // Padronizar produtos no catálogo com detecção de similares
         console.log(`🔍 Iniciando padronização inteligente de ${quoteData.items?.length || 0} itens...`);

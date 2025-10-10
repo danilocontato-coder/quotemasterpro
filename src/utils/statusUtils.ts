@@ -12,6 +12,10 @@ export const getStatusText = (status: string) => {
     case 'finalized': return 'Finalizada';
     case 'cancelled': return 'Cancelada';
     case 'trash': return 'Lixeira';
+    case 'awaiting_visit': return 'Aguardando Visita';
+    case 'visit_scheduled': return 'Visita Agendada';
+    case 'visit_confirmed': return 'Visita Realizada';
+    case 'visit_overdue': return 'Visita Atrasada';
     default: return status;
   }
 };
@@ -29,6 +33,10 @@ export const getStatusColor = (status: string) => {
     case 'finalized': return 'bg-purple-100 text-purple-800';
     case 'cancelled': return 'bg-gray-100 text-gray-800';
     case 'trash': return 'bg-gray-100 text-gray-500';
+    case 'awaiting_visit': return 'bg-orange-100 text-orange-800';
+    case 'visit_scheduled': return 'bg-blue-100 text-blue-800';
+    case 'visit_confirmed': return 'bg-green-100 text-green-800';
+    case 'visit_overdue': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -37,9 +45,17 @@ export const getStatusColor = (status: string) => {
 export const getValidStatusTransitions = (currentStatus: string): string[] => {
   switch (currentStatus) {
     case 'draft':
-      return ['sent', 'cancelled'];
+      return ['sent', 'awaiting_visit', 'cancelled'];
     case 'sent':
+      return ['receiving', 'awaiting_visit', 'cancelled'];
+    case 'awaiting_visit':
+      return ['visit_scheduled', 'cancelled'];
+    case 'visit_scheduled':
+      return ['visit_confirmed', 'visit_overdue', 'cancelled'];
+    case 'visit_confirmed':
       return ['receiving', 'cancelled'];
+    case 'visit_overdue':
+      return ['visit_scheduled', 'cancelled'];
     case 'receiving':
       return ['under_review', 'cancelled'];
     case 'under_review':

@@ -37,6 +37,8 @@ interface QuoteFormData {
     whatsapp: boolean;
   };
   supplierScope: 'local' | 'all';
+  requires_visit?: boolean;
+  visit_deadline?: string;
 }
 
 interface CreateQuoteModalSupabaseProps {
@@ -369,6 +371,38 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
                   )) || []}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="requires_visit"
+                  checked={formData.requires_visit || false}
+                  onCheckedChange={(checked) => 
+                    setFormData(prev => ({ ...prev, requires_visit: checked as boolean }))
+                  }
+                />
+                <label htmlFor="requires_visit" className="text-sm font-medium cursor-pointer">
+                  Esta cotação requer visita técnica prévia
+                </label>
+              </div>
+              
+              {formData.requires_visit && (
+                <div className="space-y-2 pl-6">
+                  <Label>Prazo desejado para a visita</Label>
+                  <Input
+                    type="date"
+                    value={formData.visit_deadline || ''}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      visit_deadline: e.target.value 
+                    }))}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Os fornecedores deverão agendar e realizar visita técnica antes de enviar proposta
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         );

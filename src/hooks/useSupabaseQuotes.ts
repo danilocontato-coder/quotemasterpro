@@ -219,7 +219,10 @@ export const useSupabaseQuotes = () => {
           description: quoteData.description || null,
           deadline: deadline,
           supplier_scope: quoteData.supplier_scope || 'local',
-          selected_supplier_ids: quoteData.supplier_ids || []
+          selected_supplier_ids: quoteData.supplier_ids || [],
+          status: 'draft', // Sempre manter como rascunho na criação
+          requires_visit: quoteData.requires_visit || false,
+          visit_deadline: quoteData.visit_deadline || null,
         })
         .eq('id', quoteId);
 

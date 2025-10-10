@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Lock, Bell, Palette, Settings as SettingsIcon } from "lucide-react";
+import { User, Lock, Bell, Palette, Settings as SettingsIcon, Calendar } from "lucide-react";
 import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
 import { PasswordChange } from "@/components/settings/PasswordChange";
 import { QuoteApprovalSettings } from "@/components/settings/QuoteApprovalSettings";
 import { QuoteReminderSettings } from "@/components/settings/QuoteReminderSettings";
+import { VisitSettings } from "@/components/settings/VisitSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function Settings() {
@@ -100,7 +101,7 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Perfil
@@ -116,6 +117,10 @@ export function Settings() {
           <TabsTrigger value="approval" className="flex items-center gap-2">
             <SettingsIcon className="h-4 w-4" />
             Aprovações
+          </TabsTrigger>
+          <TabsTrigger value="visits" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Visitas
           </TabsTrigger>
           <TabsTrigger value="preferences" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
