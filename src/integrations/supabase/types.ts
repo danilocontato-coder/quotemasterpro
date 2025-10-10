@@ -95,6 +95,39 @@ export type Database = {
           },
         ]
       }
+      ai_model_pricing: {
+        Row: {
+          active: boolean | null
+          completion_price_per_1k: number
+          created_at: string | null
+          effective_date: string | null
+          id: string
+          model: string
+          prompt_price_per_1k: number
+          provider: string
+        }
+        Insert: {
+          active?: boolean | null
+          completion_price_per_1k: number
+          created_at?: string | null
+          effective_date?: string | null
+          id?: string
+          model: string
+          prompt_price_per_1k: number
+          provider: string
+        }
+        Update: {
+          active?: boolean | null
+          completion_price_per_1k?: number
+          created_at?: string | null
+          effective_date?: string | null
+          id?: string
+          model?: string
+          prompt_price_per_1k?: number
+          provider?: string
+        }
+        Relationships: []
+      }
       ai_negotiation_settings: {
         Row: {
           active: boolean
@@ -318,6 +351,69 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ai_token_usage: {
+        Row: {
+          client_id: string
+          completion_tokens: number
+          cost_usd: number | null
+          created_at: string
+          feature: string
+          id: string
+          metadata: Json | null
+          model: string
+          prompt_tokens: number
+          provider: string
+          quote_id: string | null
+          request_id: string | null
+          total_tokens: number
+        }
+        Insert: {
+          client_id: string
+          completion_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          feature: string
+          id?: string
+          metadata?: Json | null
+          model: string
+          prompt_tokens?: number
+          provider: string
+          quote_id?: string | null
+          request_id?: string | null
+          total_tokens?: number
+        }
+        Update: {
+          client_id?: string
+          completion_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          feature?: string
+          id?: string
+          metadata?: Json | null
+          model?: string
+          prompt_tokens?: number
+          provider?: string
+          quote_id?: string | null
+          request_id?: string | null
+          total_tokens?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_token_usage_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_token_usage_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_training_data: {
         Row: {
@@ -3659,7 +3755,29 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ai_usage_summary: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          feature: string | null
+          month: string | null
+          provider: string | null
+          request_count: number | null
+          total_completion_tokens: number | null
+          total_cost_usd: number | null
+          total_prompt_tokens: number | null
+          total_tokens: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_token_usage_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       approve_offline_payment: {

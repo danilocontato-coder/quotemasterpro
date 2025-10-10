@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { trackAIUsage } from '../_shared/track-ai-usage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -167,6 +168,25 @@ Gere uma cotação detalhada e profissional.`;
     const generatedContent = data.choices[0].message.content;
 
     console.log('Generated content:', generatedContent);
+
+    // Rastrear uso de tokens
+    if (data.usage && clientInfo?.client_id) {
+      trackAIUsage({
+        supabaseUrl: Deno.env.get('SUPABASE_URL') || '',
+        supabaseKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+        clientId: clientInfo.client_id,
+        provider: 'openai',
+        model: data.model || 'gpt-4o-mini',
+        feature: 'quote_generator',
+        promptTokens: data.usage.prompt_tokens || 0,
+        completionTokens: data.usage.completion_tokens || 0,
+        totalTokens: data.usage.total_tokens || 0,
+        requestId: data.id,
+        metadata: {
+          description_length: description?.length || 0
+        }
+      }).catch(err => console.error('[track-ai-usage] Erro ao rastrear:', err));
+    }
 
     // Parse do JSON gerado com tratamento UTF-8
     let parsedQuote;

@@ -3,6 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // Importar função de análise de produtos
 import { analyzeProduct } from './product-matcher.ts';
+// Importar função de rastreamento de IA
+import { trackAIUsage } from '../_shared/track-ai-usage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -524,6 +526,26 @@ Formato da RFQ final:
     const aiResponse = data.choices[0].message.content;
 
     console.log('AI response:', aiResponse);
+
+    // Rastrear uso de tokens
+    if (data.usage && clientInfo.client_id) {
+      trackAIUsage({
+        supabaseUrl: Deno.env.get('SUPABASE_URL') || '',
+        supabaseKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+        clientId: clientInfo.client_id,
+        provider: 'openai',
+        model: data.model || 'gpt-5-2025-08-07',
+        feature: 'quote_chat',
+        promptTokens: data.usage.prompt_tokens || 0,
+        completionTokens: data.usage.completion_tokens || 0,
+        totalTokens: data.usage.total_tokens || 0,
+        requestId: data.id,
+        metadata: {
+          conversation_id: conversationId,
+          user_message_length: message.length
+        }
+      }).catch(err => console.error('[track-ai-usage] Erro ao rastrear:', err));
+    }
 
     // Extrair sugestões da resposta da IA
     let suggestions: string[] = [];

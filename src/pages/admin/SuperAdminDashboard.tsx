@@ -20,7 +20,8 @@ import {
   RefreshCw,
   FileText,
   CreditCard,
-  Globe
+  Globe,
+  Bot
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useSuperAdminDashboard } from '@/hooks/useSuperAdminDashboard';
@@ -192,6 +193,51 @@ export const SuperAdminDashboard = () => {
             </>
           )}
         </div>
+
+        {/* Card de Consumo de IA */}
+        <Card className="animate-fade-in border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20" style={{ animationDelay: '0.35s' }}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+              <Bot className="h-6 w-6" />
+              Consumo de IA - Este Mês
+            </CardTitle>
+            <CardDescription>
+              Monitoramento de uso de tokens e custos de IA por todos os clientes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border">
+                  <p className="text-sm text-muted-foreground mb-1">Total de Tokens</p>
+                  <p className="text-2xl font-bold">-</p>
+                  <p className="text-xs text-muted-foreground mt-1">Aguardando dados</p>
+                </div>
+                <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border">
+                  <p className="text-sm text-muted-foreground mb-1">Custo Estimado</p>
+                  <p className="text-2xl font-bold text-green-600">-</p>
+                  <p className="text-xs text-muted-foreground mt-1">USD</p>
+                </div>
+                <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border">
+                  <p className="text-sm text-muted-foreground mb-1">Requisições</p>
+                  <p className="text-2xl font-bold">-</p>
+                  <p className="text-xs text-muted-foreground mt-1">Chamadas à API</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full bg-blue-600 text-white hover:bg-blue-700 border-blue-700"
+                onClick={() => navigate('/admin/superadmin/ai-usage')}
+              >
+                Ver Dashboard Completo de IA →
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                💡 Dashboard detalhado com filtros, gráficos e análise por cliente
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Tabs com Informações Detalhadas */}
         <Tabs defaultValue="overview" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>

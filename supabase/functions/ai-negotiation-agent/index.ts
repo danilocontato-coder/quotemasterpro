@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { resolveEvolutionConfig, normalizePhone, sendEvolutionWhatsApp } from '../_shared/evolution.ts';
+import { trackAIUsage } from '../_shared/track-ai-usage.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -214,6 +215,27 @@ Responda APENAS no formato JSON:
 
     const analysisData = await analysisResponse.json();
     let aiAnalysis;
+    
+    // Rastrear uso de tokens (análise)
+    if (analysisData.usage && quote.client_id) {
+      trackAIUsage({
+        supabaseUrl,
+        supabaseKey: supabaseServiceKey,
+        clientId: quote.client_id,
+        provider: usePerplexity ? 'perplexity' : 'openai',
+        model,
+        feature: 'negotiation',
+        promptTokens: analysisData.usage.prompt_tokens || 0,
+        completionTokens: analysisData.usage.completion_tokens || 0,
+        totalTokens: analysisData.usage.total_tokens || 0,
+        quoteId: quoteId,
+        requestId: analysisData.id,
+        metadata: {
+          action: 'analyze',
+          negotiation_potential: negotiationPotential
+        }
+      }).catch(err => console.error('[track-ai-usage] Erro ao rastrear análise:', err));
+    }
     
     try {
       aiAnalysis = JSON.parse(analysisData.choices[0].message.content);
@@ -449,6 +471,28 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
 
     const messageData = await messageResponse.json();
     const aiMessage = messageData.choices[0].message.content.trim();
+
+    // Rastrear uso de tokens (negociação)
+    if (messageData.usage && quote.client_id) {
+      trackAIUsage({
+        supabaseUrl,
+        supabaseKey: supabaseServiceKey,
+        clientId: quote.client_id,
+        provider: 'openai',
+        model: messageData.model || 'gpt-5-2025-08-07',
+        feature: 'negotiation',
+        promptTokens: messageData.usage.prompt_tokens || 0,
+        completionTokens: messageData.usage.completion_tokens || 0,
+        totalTokens: messageData.usage.total_tokens || 0,
+        quoteId: negotiation.quote_id,
+        requestId: messageData.id,
+        metadata: {
+          action: 'negotiate',
+          supplier_name: supplier.name,
+          target_discount: targetDiscount
+        }
+      }).catch(err => console.error('[track-ai-usage] Erro ao rastrear negociação:', err));
+    }
 
     // Normalizar telefone uma única vez
     const normalizedPhone = normalizePhone(supplierPhone);

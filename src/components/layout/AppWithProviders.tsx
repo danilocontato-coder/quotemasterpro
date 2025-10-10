@@ -38,6 +38,7 @@ const ApprovalLevels = React.lazy(() => import('@/pages/ApprovalLevels').then(m 
 const AINegotiations = React.lazy(() => import('@/pages/AINegotiations'));
 const AdminSuppliers = React.lazy(() => import('@/pages/AdminSuppliers'));
 const NotificationsTesting = React.lazy(() => import('@/pages/NotificationsTesting'));
+const SuperAdminAIUsage = React.lazy(() => import('@/pages/admin/SuperAdminAIUsage'));
 const PlansPage = React.lazy(() => import('@/pages/client/PlansPage'));
 const CostCenters = React.lazy(() => import('@/pages/CostCenters'));
 const DebugCostCenters = React.lazy(() => import('@/pages/DebugCostCenters'));
@@ -178,6 +179,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="superadmin" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <SuperAdminDashboard />
+          </Suspense>
+        } />
+        <Route path="superadmin/ai-usage" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <SuperAdminAIUsage />
           </Suspense>
         } />
         <Route path="prospecting" element={
