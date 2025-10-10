@@ -174,7 +174,7 @@ serve(async (req) => {
       supplier_id: supplierId,
       supplier_name: supplier_name,
       total_amount: total_amount,
-      delivery_time: delivery_days ? `${delivery_days} dias` : '7 dias',
+      delivery_time: delivery_days || 7,
       payment_terms: payment_terms || '30 dias',
       items_count: items?.length || 0,
       has_notes: !!notes
@@ -187,7 +187,7 @@ serve(async (req) => {
         supplier_id: supplierId,
         supplier_name: supplier_name,
         total_amount: total_amount,
-        delivery_time: delivery_days ? `${delivery_days} dias` : '7 dias',
+        delivery_time: delivery_days || 7,
         payment_terms: payment_terms || '30 dias',
         items: items || [],
         notes: notes,
