@@ -153,21 +153,20 @@ export const useSupabaseSuppliers = () => {
     try {
       console.log('🔧 [CREATE-SUPPLIER] Iniciando criação de fornecedor', supplierData);
 
-      // Get current user's profile to get client_id
-      console.log('👤 [CREATE-SUPPLIER] Buscando usuário autenticado...');
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
+      // Use current user from context
+      console.log('👤 [CREATE-SUPPLIER] Verificando usuário autenticado...');
+      if (!user?.id) {
         console.error('❌ [CREATE-SUPPLIER] Usuário não autenticado');
         throw new Error('Usuário não autenticado');
       }
 
-      console.log('✅ [CREATE-SUPPLIER] Usuário autenticado:', { id: authUser.id, email: authUser.email });
+      console.log('✅ [CREATE-SUPPLIER] Usuário autenticado:', { id: user.id, email: user.email });
 
       console.log('🔍 [CREATE-SUPPLIER] Buscando perfil do usuário...');
       const { data: profile } = await supabase
         .from('profiles')
         .select('client_id, role, name')
-        .eq('id', authUser.id)
+        .eq('id', user.id)
         .single();
 
       // Determinar targetClientId: priorizar client_id do contexto (simulação admin) ou do perfil
@@ -189,7 +188,7 @@ export const useSupabaseSuppliers = () => {
       }
 
       console.log('✅ [CREATE-SUPPLIER] Target client_id definido:', {
-        authUserId: authUser.id,
+        authUserId: user.id,
         profileClientId: profile?.client_id,
         contextClientId: user?.clientId,
         targetClientId
