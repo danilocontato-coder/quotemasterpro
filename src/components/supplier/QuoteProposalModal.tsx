@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Upload, FileText, X, Send, Save, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Upload, FileText, X, Send, Save, Loader2, Lock, AlertTriangle } from 'lucide-react';
 import { SupplierQuote, ProposalItem, useSupabaseSupplierQuotes } from '@/hooks/useSupabaseSupplierQuotes';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -396,12 +396,25 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
           Envie sua proposta com itens, condições e anexos.
         </DialogDescription>
 
-        <Tabs defaultValue="details" className="w-full">
+        <Tabs defaultValue={quote.requires_visit && quote.status !== 'visit_confirmed' ? 'details' : 'details'} className="w-full">
           <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <TabsTrigger value="details">Detalhes da Solicitação</TabsTrigger>
-            <TabsTrigger value="proposal">Minha Proposta</TabsTrigger>
+            <TabsTrigger 
+              value="proposal"
+              disabled={quote.requires_visit && quote.status !== 'visit_confirmed'}
+            >
+              Minha Proposta
+              {quote.requires_visit && quote.status !== 'visit_confirmed' && (
+                <Lock className="h-3 w-3 ml-1" />
+              )}
+            </TabsTrigger>
             {quote.requires_visit && (
-              <TabsTrigger value="visit">Visita Técnica</TabsTrigger>
+              <TabsTrigger value="visit">
+                Visita Técnica
+                {quote.status !== 'visit_confirmed' && (
+                  <AlertTriangle className="h-3 w-3 ml-1 text-orange-500" />
+                )}
+              </TabsTrigger>
             )}
             <TabsTrigger value="attachments">Anexos</TabsTrigger>
           </TabsList>
@@ -483,18 +496,49 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
           </TabsContent>
 
           <TabsContent value="proposal" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Itens da Proposta
-                  {canEdit && (
-                    <Button onClick={handleAddItem} size="sm">
-                      <Plus className="h-4 w-4" />
-                      Adicionar Item
-                    </Button>
-                  )}
-                </CardTitle>
-              </CardHeader>
+            {quote.requires_visit && quote.status !== 'visit_confirmed' ? (
+              <Card className="border-orange-200 bg-orange-50">
+                <CardContent className="p-6 text-center">
+                  <Lock className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+                  <h3 className="font-semibold text-lg mb-2">🔒 Visita Técnica Obrigatória</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Esta cotação requer visita técnica <strong>antes</strong> do envio de proposta comercial.
+                    Agende e confirme a visita para desbloquear esta seção.
+                  </p>
+                  <div className="bg-white rounded-lg p-4 mb-4 border border-orange-300">
+                    <p className="text-sm font-medium mb-2">Status atual:</p>
+                    <Badge 
+                      variant="outline"
+                      className={
+                        quote.status === 'awaiting_visit' ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                        quote.status === 'visit_scheduled' ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                        'bg-gray-100'
+                      }
+                    >
+                      {quote.status === 'awaiting_visit' ? '⏳ Aguardando agendamento' :
+                       quote.status === 'visit_scheduled' ? '📅 Visita agendada - Aguardando confirmação' :
+                       quote.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Vá para a aba "Visita Técnica" para prosseguir.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      Itens da Proposta
+                      {canEdit && (
+                        <Button onClick={handleAddItem} size="sm">
+                          <Plus className="h-4 w-4" />
+                          Adicionar Item
+                        </Button>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {proposalItems.map((item, index) => (
@@ -617,6 +661,8 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 </div>
               </CardContent>
             </Card>
+              </>
+            )}
           </TabsContent>
 
           {quote.requires_visit && (

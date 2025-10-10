@@ -80,14 +80,17 @@ serve(async (req) => {
       throw new Error('Failed to confirm visit');
     }
 
-    // Update quote status to 'visit_confirmed'
-    const { error: quoteUpdateError } = await supabase
+    // Após confirmar visita, liberar para proposta
+    const { error: quoteError } = await supabase
       .from('quotes')
-      .update({ status: 'visit_confirmed', updated_at: new Date().toISOString() })
+      .update({ 
+        status: 'visit_confirmed',
+        updated_at: new Date().toISOString()
+      })
       .eq('id', visit.quote_id);
 
-    if (quoteUpdateError) {
-      console.error('Error updating quote status:', quoteUpdateError);
+    if (quoteError) {
+      console.error('Error updating quote status:', quoteError);
     }
 
     console.log('Visit confirmed successfully:', updatedVisit);

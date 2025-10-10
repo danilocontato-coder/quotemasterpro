@@ -10,7 +10,7 @@ export interface SupplierQuote {
   client: string;
   clientId: string;
   supplierId?: string;
-  status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired' | 'paid' | 'delivering';
+  status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired' | 'paid' | 'delivering' | 'awaiting_visit' | 'visit_scheduled' | 'visit_confirmed' | 'visit_overdue';
   deadline: string;
   estimatedValue?: number;
   sentAt?: string;

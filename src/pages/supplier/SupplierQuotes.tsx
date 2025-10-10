@@ -28,13 +28,15 @@ import {
   FileCheck,
   Package,
   CreditCard,
-  Calendar
+  Calendar,
+  Truck
 } from "lucide-react";
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
 import { SupplierClarificationModal } from "@/components/supplier/SupplierClarificationModal";
+import { VisitManagementModal } from "@/components/supplier/VisitManagementModal";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,6 +45,7 @@ export default function SupplierQuotes() {
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [messageQuote, setMessageQuote] = useState<any>(null);
+  const [selectedVisitQuote, setSelectedVisitQuote] = useState<any>(null);
   
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   
@@ -78,6 +81,14 @@ export default function SupplierQuotes() {
     switch (status) {
       case 'pending':
         return <Badge variant="secondary">Aguardando Proposta</Badge>;
+      case 'awaiting_visit':
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-700">Aguardando Visita</Badge>;
+      case 'visit_scheduled':
+        return <Badge variant="default" className="bg-blue-100 text-blue-700">Visita Agendada</Badge>;
+      case 'visit_confirmed':
+        return <Badge variant="default" className="bg-green-100 text-green-700">Visita Confirmada</Badge>;
+      case 'visit_overdue':
+        return <Badge variant="destructive">Visita Atrasada</Badge>;
       case 'proposal_sent':
         return <Badge variant="default">Proposta Enviada</Badge>;
       case 'approved':
@@ -297,9 +308,25 @@ export default function SupplierQuotes() {
                     </TableCell>
                     <TableCell>
                       {quote.requires_visit ? (
-                        <Badge variant="outline" className="gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Requerida
+                        <Badge 
+                          variant={
+                            quote.status === 'awaiting_visit' ? 'destructive' : 
+                            quote.status === 'visit_scheduled' ? 'secondary' :
+                            quote.status === 'visit_confirmed' ? 'default' : 
+                            'outline'
+                          }
+                          className={
+                            quote.status === 'awaiting_visit' ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                            quote.status === 'visit_scheduled' ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                            quote.status === 'visit_confirmed' ? 'bg-green-100 text-green-700 border-green-300' :
+                            'bg-gray-100 text-gray-600'
+                          }
+                        >
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {quote.status === 'awaiting_visit' ? '⏳ Agendar' :
+                           quote.status === 'visit_scheduled' ? '📅 Agendada' :
+                           quote.status === 'visit_confirmed' ? '✅ Confirmada' : 
+                           'Requerida'}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
@@ -330,7 +357,37 @@ export default function SupplierQuotes() {
                          >
                            <Eye className="h-4 w-4" />
                          </Button>
-                         {quote.status === 'pending' && (
+                         
+                         {/* Botão Agendar Visita - só se requires_visit E awaiting_visit */}
+                         {quote.requires_visit && quote.status === 'awaiting_visit' && (
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={() => setSelectedVisitQuote(quote)}
+                             className="bg-orange-500 hover:bg-orange-600"
+                             title="Agendar visita técnica"
+                           >
+                             <Calendar className="h-4 w-4 mr-1" />
+                             Agendar
+                           </Button>
+                         )}
+
+                         {/* Botão Confirmar Visita - só se visit_scheduled */}
+                         {quote.requires_visit && quote.status === 'visit_scheduled' && (
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={() => setSelectedVisitQuote(quote)}
+                             className="bg-blue-500 hover:bg-blue-600"
+                             title="Confirmar visita realizada"
+                           >
+                             <CheckCircle className="h-4 w-4 mr-1" />
+                             Confirmar
+                           </Button>
+                         )}
+                         
+                         {/* Botão Enviar Proposta - SÓ se visita confirmada OU não requer visita */}
+                         {((!quote.requires_visit && quote.status === 'pending') || quote.status === 'visit_confirmed') && (
                            <Button 
                              variant="ghost" 
                              size="sm"
@@ -340,6 +397,7 @@ export default function SupplierQuotes() {
                              <Send className="h-4 w-4" />
                            </Button>
                          )}
+                         
                          {quote.status === 'paid' && (
                            <Button 
                              variant="ghost" 
@@ -354,6 +412,7 @@ export default function SupplierQuotes() {
                              <Package className="h-4 w-4" />
                            </Button>
                          )}
+                         
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -452,6 +511,15 @@ export default function SupplierQuotes() {
         onOpenChange={setIsMessageModalOpen}
         quote={messageQuote}
         supplierName={user?.name}
+      />
+
+      <VisitManagementModal
+        quote={selectedVisitQuote}
+        open={!!selectedVisitQuote}
+        onOpenChange={(open) => !open && setSelectedVisitQuote(null)}
+        onVisitUpdated={() => {
+          window.location.reload();
+        }}
       />
     </div>
   );
