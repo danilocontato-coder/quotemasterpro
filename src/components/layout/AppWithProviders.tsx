@@ -557,9 +557,9 @@ export const AppWithProviders: React.FC = () => {
         } />
       </Route>
 
-      {/* Rotas da Administradora - MÓDULO ISOLADO - Apenas para client_type = 'administradora' */}
+      {/* Rotas da Administradora - MÓDULO ISOLADO */}
       <Route path="/administradora/*" element={
-        <ProtectedRoute allowedRoles={['manager', 'collaborator']} requireClientType="administradora">
+        <ProtectedRoute allowedRoles={['manager', 'collaborator']}>
           <AdministradoraLayout />
         </ProtectedRoute>
       }>

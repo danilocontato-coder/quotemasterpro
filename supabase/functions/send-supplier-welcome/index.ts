@@ -33,12 +33,6 @@ serve(async (req) => {
       throw new Error('Missing required parameters: supplierId, supplierName, supplierPhone');
     }
 
-    // Validar clientId (obrigatório)
-    if (!clientId) {
-      console.error('❌ clientId is required but was not provided');
-      throw new Error('Missing required parameter: clientId');
-    }
-
     // 2. Buscar nome do sistema
     const { data: systemSettings } = await supabase
       .from('system_settings')
@@ -79,12 +73,7 @@ serve(async (req) => {
     }
 
     if (!template) {
-      const errorMsg = clientId 
-        ? `No WhatsApp template found for supplier_welcome. Please create one in SuperAdmin for client ${clientId} or a global template.`
-        : 'No global WhatsApp template found for supplier_welcome. Please create one in SuperAdmin > Templates.';
-      
-      console.error('❌', errorMsg);
-      throw new Error(errorMsg);
+      throw new Error('No template found for supplier_welcome. Please create one in SuperAdmin.');
     }
 
     console.log('📄 Using template:', template.name);
@@ -119,19 +108,6 @@ serve(async (req) => {
       hasToken: !!evolutionConfig.token,
       instance: evolutionConfig.instance
     });
-
-    // Validação explícita da configuração Evolution
-    if (!evolutionConfig.apiUrl) {
-      throw new Error('Evolution API URL not configured. Please configure in SuperAdmin > Integrations.');
-    }
-
-    if (!evolutionConfig.token) {
-      throw new Error('Evolution API token not configured. Please configure in SuperAdmin > Integrations.');
-    }
-
-    if (evolutionConfig.scope === 'none') {
-      throw new Error('Evolution API not configured (no valid source found).');
-    }
 
     // 6. Normalizar telefone (adicionar DDI 55 se necessário)
     const normalizedPhone = normalizePhone(supplierPhone, '55');
