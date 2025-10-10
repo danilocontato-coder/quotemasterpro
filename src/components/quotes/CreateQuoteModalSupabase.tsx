@@ -54,7 +54,7 @@ const steps = [
 ];
 
 export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, editingQuote }: CreateQuoteModalSupabaseProps) {
-  const { enforceLimit } = useSupabaseSubscriptionGuard();
+  const { enforceLimit, refreshUsage } = useSupabaseSubscriptionGuard();
   const { products, addProduct, isLoading: productsLoading } = useSupabaseProducts();
   const { suppliers, isLoading: suppliersLoading } = useSupabaseSuppliers();
   const { costCenters = [] } = useCostCenters();
@@ -267,6 +267,10 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
       console.log('=== CHAMANDO onQuoteCreate ===');
       await onQuoteCreate(quoteData);
       console.log('=== SUCESSO ===');
+      
+      // Atualizar contadores após criação
+      console.log('[CreateQuote] Atualizando contadores após criação...');
+      await refreshUsage();
       
     } catch (error) {
       console.error('=== ERRO ===', error);

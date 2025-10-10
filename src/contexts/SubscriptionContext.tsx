@@ -95,7 +95,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     
     if (cached && cacheTime) {
       const age = Date.now() - parseInt(cacheTime);
-      if (age < 5 * 60 * 1000) { // 5 minutos
+      if (age < 60 * 1000) { // 60 segundos (reduzido de 5 minutos)
         setClientUsage(JSON.parse(cached));
         setIsLoading(false);
         return;
@@ -103,6 +103,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
 
     try {
+      // Reset mensal proativo antes de buscar dados
+      console.log('[SubscriptionContext] Executando reset mensal proativo...');
+      try {
+        await supabase.rpc('reset_monthly_usage');
+      } catch (err) {
+        console.warn('[SubscriptionContext] Falha ao executar reset via RPC:', err);
+      }
+      
       // Buscar uso do cliente no banco
       const { data: usage, error } = await supabase
         .from('client_usage')
@@ -155,6 +163,23 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         setClientUsage(calculatedUsage);
         sessionStorage.setItem(cacheKey, JSON.stringify(calculatedUsage));
       } else {
+        // Fallback: verificar se last_reset_date está desatualizado
+        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+        const needsReset = usage.last_reset_date < firstDayOfMonth;
+        
+        if (needsReset) {
+          console.log('[SubscriptionContext] last_reset_date desatualizado, recalculando localmente...');
+          // Recalcular quotes_this_month localmente
+          const { count: quotesCount } = await supabase
+            .from('quotes')
+            .select('id', { count: 'exact', head: true })
+            .eq('client_id', currentClient.id)
+            .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+          
+          usage.quotes_this_month = quotesCount || 0;
+          usage.quote_responses_this_month = 0;
+        }
+        
         // Atualizar contagem de usuários com valor real
         const updatedUsage = {
           ...usage,
@@ -182,6 +207,48 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       fetchClientUsage();
     }
   }, [currentClient?.id, clientLoading, fetchClientUsage]);
+
+  // Realtime listeners para atualizar contadores automaticamente
+  useEffect(() => {
+    if (!currentClient?.id) return;
+
+    console.log('[SubscriptionContext] Configurando listeners realtime...');
+    
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'quotes',
+          filter: `client_id=eq.${currentClient.id}`
+        },
+        (payload) => {
+          console.log('[SubscriptionContext] Realtime: nova cotação criada, atualizando uso...', payload);
+          fetchClientUsage();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'users',
+          filter: `client_id=eq.${currentClient.id}`
+        },
+        (payload) => {
+          console.log('[SubscriptionContext] Realtime: mudança em usuários, atualizando uso...', payload);
+          fetchClientUsage();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[SubscriptionContext] Removendo listeners realtime...');
+      supabase.removeChannel(channel);
+    };
+  }, [currentClient?.id, fetchClientUsage]);
 
   // Buscar plano atual do usuário via RPC (retorna mesmo se inativo)
   useEffect(() => {

@@ -45,7 +45,7 @@ interface CreateUserModalProps {
 
 export function CreateUserModal({ open, onClose }: CreateUserModalProps) {
   const { createUser, generateTemporaryPassword, groups } = useSupabaseUsers();
-  const { enforceLimit } = useSupabaseSubscriptionGuard();
+  const { enforceLimit, refreshUsage } = useSupabaseSubscriptionGuard();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -170,6 +170,11 @@ const normalizePhone = (phone: string) => {
       }
       
       toast.success(`Usuário ${formData.name} criado com sucesso!`);
+      
+      // Atualizar contadores após criação
+      console.log('[CreateUser] Atualizando contadores após criação...');
+      await refreshUsage();
+      
       resetForm();
       onClose();
     } catch (error) {

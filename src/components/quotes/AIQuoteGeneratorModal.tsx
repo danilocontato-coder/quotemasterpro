@@ -23,7 +23,7 @@ export const AIQuoteGeneratorModal: React.FC<AIQuoteGeneratorModalProps> = ({
 }) => {
   const { toast } = useToast();
   const { client, clientName } = useSupabaseCurrentClient();
-  const { enforceLimit } = useSupabaseSubscriptionGuard();
+  const { enforceLimit, refreshUsage } = useSupabaseSubscriptionGuard();
   const [isGenerating, setIsGenerating] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
@@ -68,6 +68,11 @@ export const AIQuoteGeneratorModal: React.FC<AIQuoteGeneratorModalProps> = ({
 
       if (data.success && data.quote) {
         onQuoteGenerated(data.quote);
+        
+        // Atualizar contadores após criação
+        console.log('[AIQuoteGenerator] Atualizando contadores após criação...');
+        await refreshUsage();
+        
         onOpenChange(false);
         toast({
           title: 'Cotação Gerada!',
