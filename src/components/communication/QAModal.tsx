@@ -100,33 +100,6 @@ const questionCategories: QuestionCategory[] = [
     ]
   },
   {
-    id: 'commercial',
-    name: 'Comercial',
-    icon: <DollarSign className="h-4 w-4" />,
-    color: 'orange',
-    questions: [
-      {
-        id: 'payment_discount',
-        text: 'Há desconto para pagamento à vista?',
-        maxChars: 100,
-        responseType: 'text'
-      },
-      {
-        id: 'installment_options',
-        text: 'Aceita parcelamento? Quantas vezes?',
-        maxChars: 100,
-        responseType: 'text'
-      },
-      {
-        id: 'warranty_period',
-        text: 'Qual o período de garantia oferecido?',
-        maxChars: 50,
-        responseType: 'select',
-        options: ['30 dias', '90 dias', '6 meses', '1 ano', 'Mais de 1 ano']
-      }
-    ]
-  },
-  {
     id: 'operational',
     name: 'Operacional',
     icon: <Settings className="h-4 w-4" />,
@@ -455,8 +428,7 @@ export function QAModal({ conversation, open, onOpenChange }: QAModalProps) {
                               // Automaticamente selecionar categoria e adicionar pergunta customizada
                               const categoryMap: { [key: string]: string } = {
                                 'especificações': 'specifications',
-                                'logística': 'logistics', 
-                                'comercial': 'commercial',
+                                'logística': 'logistics',
                                 'operacional': 'operational'
                               };
                               

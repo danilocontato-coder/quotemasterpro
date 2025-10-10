@@ -101,33 +101,6 @@ const supplierQuestionCategories: QuestionCategory[] = [
     ]
   },
   {
-    id: 'commercial',
-    name: 'Comercial',
-    icon: <DollarSign className="h-4 w-4" />,
-    color: 'orange',
-    questions: [
-      {
-        id: 'future_volumes',
-        text: 'Há expectativa de volumes futuros ou continuidade desta demanda?',
-        maxChars: 150,
-        responseType: 'text'
-      },
-      {
-        id: 'payment_terms',
-        text: 'Qual é a condição de pagamento preferida por vocês?',
-        maxChars: 100,
-        responseType: 'select',
-        options: ['À vista', '30 dias', '45 dias', '60 dias', 'Parcelado', 'A negociar']
-      },
-      {
-        id: 'budget_constraints',
-        text: 'Existe uma faixa de orçamento ou restrição específica?',
-        maxChars: 150,
-        responseType: 'text'
-      }
-    ]
-  },
-  {
     id: 'operational',
     name: 'Operacional',
     icon: <Settings className="h-4 w-4" />,
@@ -508,8 +481,7 @@ export function SupplierClarificationModal({
                           onClick={() => {
                             const categoryMap: { [key: string]: string } = {
                               'especificações': 'specifications',
-                              'logística': 'logistics', 
-                              'comercial': 'commercial',
+                              'logística': 'logistics',
                               'operacional': 'operational'
                             };
                             

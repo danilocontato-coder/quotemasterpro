@@ -2500,6 +2500,7 @@ export type Database = {
       }
       quote_messages: {
         Row: {
+          ai_analysis: Json | null
           attachments: string[] | null
           content: string
           conversation_id: string
@@ -2510,6 +2511,7 @@ export type Database = {
           sender_type: string
         }
         Insert: {
+          ai_analysis?: Json | null
           attachments?: string[] | null
           content: string
           conversation_id: string
@@ -2520,6 +2522,7 @@ export type Database = {
           sender_type: string
         }
         Update: {
+          ai_analysis?: Json | null
           attachments?: string[] | null
           content?: string
           conversation_id?: string
