@@ -131,6 +131,15 @@ serve(async (req) => {
       console.log('✅ Fornecedor existente encontrado:', supplierId);
     } else {
       console.log('➕ Criando novo fornecedor...');
+      
+      // Gerar CNPJ temporário único baseado em timestamp + random
+      // Formato: QR + timestamp (últimos 10 dígitos) + random (2 dígitos)
+      const timestamp = Date.now().toString().slice(-10);
+      const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+      const tempCnpj = `${timestamp}${random}`;
+      
+      console.log('🔢 CNPJ temporário gerado:', tempCnpj);
+      
       // Criar novo fornecedor
       const { data: newSupplier, error: supplierError } = await supabase
         .from('suppliers')
@@ -140,7 +149,9 @@ serve(async (req) => {
           status: 'active',
           type: 'local',
           client_id: tokenData.client_id,
-          cnpj: '00000000000000' // CNPJ temporário para fornecedores quick response
+          cnpj: tempCnpj,
+          document_type: 'cpf',
+          document_number: tempCnpj
         })
         .select('id')
         .single();
