@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, FileText, CheckCircle, AlertCircle, Clock, DollarSign, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
 import { useContracts } from '@/hooks/useContracts';
 import { ContractCard } from '@/components/contracts/ContractCard';
 import { ModuleGuard } from '@/components/common/ModuleGuard';
@@ -122,22 +123,30 @@ const Contracts = () => {
 
   return (
     <ModuleGuard requiredModule="contracts" showUpgradePrompt>
-      <div className="container mx-auto py-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Contratos</h1>
-            <p className="text-muted-foreground">
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col gap-4 animate-fade-in">
+          <div className="space-y-2">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
+              Contratos
+            </h1>
+            <p className="text-sm md:text-base text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
               Gerencie todos os seus contratos em um só lugar
             </p>
           </div>
-          <Button onClick={() => setShowFormModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Contrato
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 animate-fade-in w-full" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+            <Button 
+              className="btn-corporate flex items-center gap-2 justify-center w-full sm:w-auto sm:ml-auto"
+              onClick={() => setShowFormModal(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Novo Contrato
+            </Button>
+          </div>
         </div>
 
-        {/* Métricas */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-4">
+        {/* Filter Metrics Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
           <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
             <FilterMetricCard
               title="Total"
@@ -208,53 +217,73 @@ const Contracts = () => {
           </div>
         </div>
 
-        <div className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar contratos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[200px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filtrar por status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {Object.entries(CONTRACT_STATUSES).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Search and Filters */}
+        <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar contratos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Filtrar por status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  {Object.entries(CONTRACT_STATUSES).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Carregando contratos...</p>
-          </div>
-        ) : filteredContracts.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhum contrato encontrado</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredContracts.map(contract => (
-              <ContractCard
-                key={contract.id}
-                contract={contract}
-                onView={(id) => navigate(`/contracts/${id}`)}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        )}
+        {/* Contracts Grid */}
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Carregando contratos...</p>
+            </div>
+          ) : filteredContracts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Nenhum contrato encontrado</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredContracts.map((contract, index) => {
+                const animationDelay = Math.min(0.5 + (index * 0.05), 1.4);
+                return (
+                  <div
+                    key={contract.id}
+                    className="animate-fade-in"
+                    style={{ 
+                      animationDelay: `${animationDelay}s`,
+                      opacity: 0,
+                      animationFillMode: 'forwards'
+                    }}
+                  >
+                    <ContractCard
+                      contract={contract}
+                      onView={(id) => navigate(`/contracts/${id}`)}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <ContractFormModal
