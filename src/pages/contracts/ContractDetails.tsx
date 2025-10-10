@@ -17,6 +17,8 @@ import {
   ExternalLink,
   X
 } from 'lucide-react';
+import { useContractHistory } from '@/hooks/useContractHistory';
+import { ContractHistoryTimeline } from '@/components/contracts/ContractHistoryTimeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +64,7 @@ const ContractDetails = () => {
   const [isAttachmentLoading, setIsAttachmentLoading] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { history, isLoading: isHistoryLoading } = useContractHistory(id || '');
 
   useEffect(() => {
     const fetchContract = async () => {
@@ -435,6 +438,12 @@ const ContractDetails = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Histórico */}
+        <ContractHistoryTimeline 
+          history={history} 
+          isLoading={isHistoryLoading}
+        />
       </div>
 
       {/* Delete Confirmation Dialog */}
