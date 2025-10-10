@@ -3578,6 +3578,10 @@ export type Database = {
         Args: { p_message?: string; p_supplier_id: string }
         Returns: Json
       }
+      is_first_user_of_client: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
       link_user_to_client: {
         Args: { target_client_id: string; user_id: string }
         Returns: boolean
