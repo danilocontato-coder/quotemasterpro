@@ -1198,6 +1198,7 @@ export type Database = {
           changed_by: string | null
           contract_id: string
           created_at: string | null
+          created_by: string | null
           description: string
           event_date: string
           event_type: string
@@ -1213,6 +1214,7 @@ export type Database = {
           changed_by?: string | null
           contract_id: string
           created_at?: string | null
+          created_by?: string | null
           description: string
           event_date: string
           event_type: string
@@ -1228,6 +1230,7 @@ export type Database = {
           changed_by?: string | null
           contract_id?: string
           created_at?: string | null
+          created_by?: string | null
           description?: string
           event_date?: string
           event_type?: string
