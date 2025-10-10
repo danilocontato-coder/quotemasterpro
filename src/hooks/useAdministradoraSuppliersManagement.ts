@@ -292,6 +292,7 @@ export const useAdministradoraSuppliersManagement = () => {
       
       return { 
         success: true, 
+        supplierId: supplier.id,
         supplier, 
         credentials: authResult ? { email: data.email, password } : null 
       };
