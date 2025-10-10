@@ -153,36 +153,20 @@ export const useSupabaseSuppliers = () => {
     try {
       console.log('🔧 [CREATE-SUPPLIER] Iniciando criação de fornecedor', supplierData);
 
-      // Get authenticated user - try context first, then Supabase
+      // Use current user from context
       console.log('👤 [CREATE-SUPPLIER] Verificando usuário autenticado...');
-      console.log('🔍 [CREATE-SUPPLIER] User do contexto:', { id: user?.id, email: user?.email });
-      
-      let authUser = user?.id ? { id: user.id, email: user.email } : null;
-      
-      if (!authUser) {
-        console.log('⚠️ [CREATE-SUPPLIER] User não disponível no contexto, buscando do Supabase...');
-        const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError) {
-          console.error('❌ [CREATE-SUPPLIER] Erro ao buscar usuário:', authError);
-          throw new Error('Erro ao verificar autenticação');
-        }
-        
-        if (!supabaseUser) {
-          console.error('❌ [CREATE-SUPPLIER] Nenhum usuário autenticado encontrado');
-          throw new Error('Usuário não autenticado');
-        }
-        
-        authUser = { id: supabaseUser.id, email: supabaseUser.email };
+      if (!user?.id) {
+        console.error('❌ [CREATE-SUPPLIER] Usuário não autenticado');
+        throw new Error('Usuário não autenticado');
       }
 
-      console.log('✅ [CREATE-SUPPLIER] Usuário autenticado:', authUser);
+      console.log('✅ [CREATE-SUPPLIER] Usuário autenticado:', { id: user.id, email: user.email });
 
       console.log('🔍 [CREATE-SUPPLIER] Buscando perfil do usuário...');
       const { data: profile } = await supabase
         .from('profiles')
         .select('client_id, role, name')
-        .eq('id', authUser.id)
+        .eq('id', user.id)
         .single();
 
       // Determinar targetClientId: priorizar client_id do contexto (simulação admin) ou do perfil
@@ -204,7 +188,7 @@ export const useSupabaseSuppliers = () => {
       }
 
       console.log('✅ [CREATE-SUPPLIER] Target client_id definido:', {
-        authUserId: authUser.id,
+        authUserId: user.id,
         profileClientId: profile?.client_id,
         contextClientId: user?.clientId,
         targetClientId
