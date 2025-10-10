@@ -69,6 +69,13 @@ export const AIQuoteGeneratorModal: React.FC<AIQuoteGeneratorModalProps> = ({
       if (data.success && data.quote) {
         onQuoteGenerated(data.quote);
         
+        // Invalidar cache imediatamente para forçar atualização
+        if (client?.id) {
+          const cacheKey = `client_usage_${client.id}`;
+          sessionStorage.removeItem(cacheKey);
+          sessionStorage.removeItem(`${cacheKey}_time`);
+        }
+        
         // Atualizar contadores após criação
         console.log('[AIQuoteGenerator] Atualizando contadores após criação...');
         await refreshUsage();
@@ -76,7 +83,7 @@ export const AIQuoteGeneratorModal: React.FC<AIQuoteGeneratorModalProps> = ({
         onOpenChange(false);
         toast({
           title: 'Cotação Gerada!',
-          description: 'A IA criou uma cotação baseada nas suas especificações.',
+          description: 'A IA criou uma cotação baseada nas suas especificações. Contador atualizado.',
         });
       } else {
         throw new Error('Erro ao gerar cotação');

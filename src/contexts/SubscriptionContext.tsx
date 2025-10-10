@@ -95,7 +95,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     
     if (cached && cacheTime) {
       const age = Date.now() - parseInt(cacheTime);
-      if (age < 60 * 1000) { // 60 segundos (reduzido de 5 minutos)
+      if (age < 30 * 1000) { // 30 segundos para atualização mais rápida
         setClientUsage(JSON.parse(cached));
         setIsLoading(false);
         return;

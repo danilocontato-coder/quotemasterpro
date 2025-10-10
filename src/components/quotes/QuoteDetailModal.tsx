@@ -31,6 +31,7 @@ import { ItemAnalysisModal } from './ItemAnalysisModal';
 import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
 import { QuoteItemsList } from './QuoteItemsList';
 import { getStatusText } from "@/utils/statusUtils";
+import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { AuditLog } from '@/hooks/useAuditLogs';
@@ -448,7 +449,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                         <span className="text-sm font-medium text-purple-900">Prazo</span>
                       </div>
                       <p className="text-sm font-bold text-purple-900">
-                        {quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'Não definido'}
+                        {quote.deadline ? formatLocalDate(quote.deadline) : 'Não definido'}
                       </p>
                     </div>
                   </div>
@@ -768,7 +769,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                             <div className="flex items-center gap-2 mt-1">
                               <Calendar className="h-3 w-3 text-muted-foreground" />
                               <p className="text-sm text-muted-foreground">
-                                {new Date(log.created_at).toLocaleString('pt-BR')}
+                                {formatLocalDateTime(log.created_at)}
                               </p>
                             </div>
                           </div>

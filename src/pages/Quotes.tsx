@@ -13,6 +13,7 @@ import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
 import { useAIQuoteFeature } from "@/hooks/useAIQuoteFeature";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
+import { formatLocalDateTime, formatLocalDate } from "@/utils/dateUtils";
 import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { toast } from "sonner";
 
@@ -566,7 +567,7 @@ export default function Quotes() {
                         Prazo
                       </span>
                       <div className="text-right">
-                        <p className="font-semibold text-sm">{new Date(quote.deadline).toLocaleDateString('pt-BR')}</p>
+                        <p className="font-semibold text-sm">{formatLocalDate(quote.deadline)}</p>
                         <p className="text-xs text-orange-600 dark:text-orange-400">
                           {Math.ceil((new Date(quote.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
                         </p>
@@ -637,7 +638,7 @@ export default function Quotes() {
                   </div>
                   
                   <p className="text-xs text-muted-foreground text-center mt-2">
-                    Criado em {new Date(quote.created_at).toLocaleDateString('pt-BR')}
+                    Criado em {formatLocalDate(quote.created_at)}
                   </p>
                 </div>
               </CardContent>
