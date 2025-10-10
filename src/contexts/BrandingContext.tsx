@@ -137,7 +137,17 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
                 break;
               case 'company_logo':
-                globalSettings.logo = value || defaultSettings.logo;
+                // Garantir que o logo seja uma string válida
+                if (typeof value === 'string' && value.trim() && value !== '/placeholder.svg') {
+                  globalSettings.logo = value.trim();
+                  console.log('🖼️ [BRANDING] ✅ Logo carregado:', value.trim());
+                } else if (typeof settingValue === 'object' && settingValue.url) {
+                  globalSettings.logo = settingValue.url;
+                  console.log('🖼️ [BRANDING] ✅ Logo extraído do objeto:', settingValue.url);
+                } else {
+                  globalSettings.logo = defaultSettings.logo;
+                  console.log('🖼️ [BRANDING] ⚠️ Logo inválido, usando padrão');
+                }
                 break;
               case 'primary_color':
                 globalSettings.primaryColor = value || defaultSettings.primaryColor;

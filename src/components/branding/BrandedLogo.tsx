@@ -32,6 +32,7 @@ export function BrandedLogo({
   // Se tem logo personalizado
   if (settings?.logo && settings.logo !== '/placeholder.svg') {
     console.log('🖼️ BrandedLogo: Renderizando logo personalizado:', settings.logo);
+    console.log('🖼️ BrandedLogo: Settings completo:', settings);
     
     return (
       <div className={`flex items-center gap-2 ${className}`}>
