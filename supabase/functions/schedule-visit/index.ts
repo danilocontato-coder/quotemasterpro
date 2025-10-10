@@ -62,43 +62,31 @@ serve(async (req) => {
       throw new Error('Quote not found');
     }
 
-    // Check if there's already a visit scheduled for this quote and supplier
-    const { data: existingVisit, error: existingError } = await supabase
-      .from('quote_visits')
-      .select('id, status')
-      .eq('quote_id', quoteId)
-      .eq('supplier_id', supplierId)
-      .in('status', ['scheduled', 'confirmed'])
-      .maybeSingle();
-
-    if (existingError) {
-      throw new Error('Error checking existing visit');
-    }
-
-    if (existingVisit) {
-      throw new Error('A visit is already scheduled for this quote');
-    }
-
-    // Create visit record
+    // Upsert visit to prevent duplicates (unique index on quote_id, supplier_id)
     const { data: visit, error: visitError } = await supabase
       .from('quote_visits')
-      .insert({
+      .upsert({
         quote_id: quoteId,
         supplier_id: supplierId,
         client_id: quote.client_id,
         scheduled_date: scheduledDate,
         notes: notes || null,
-        status: 'scheduled'
+        status: 'scheduled',
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'quote_id,supplier_id'
       })
       .select()
       .single();
 
     if (visitError) {
-      console.error('Error creating visit:', visitError);
+      console.error('Error upserting visit:', visitError);
       throw new Error('Failed to schedule visit');
     }
 
-    // Calcular quantas visitas já foram agendadas/confirmadas para esta RFQ
+    console.log('Visit scheduled successfully:', visit);
+
+    // Buscar todas as visitas para contar por fornecedor distinto
     const { data: allVisits, error: visitsError } = await supabase
       .from('quote_visits')
       .select('status, supplier_id')
@@ -106,13 +94,17 @@ serve(async (req) => {
 
     if (visitsError) {
       console.error('Error fetching visits:', visitsError);
+      throw new Error('Failed to fetch visit statistics');
     }
 
-    // Contar visitas agendadas ou confirmadas
-    const scheduledOrConfirmedCount = (allVisits || []).filter(
-      v => v.status === 'scheduled' || v.status === 'confirmed'
-    ).length;
-
+    // Consolidar por supplier_id (apenas fornecedores únicos com visita agendada ou confirmada)
+    const uniqueSuppliers = new Set(
+      (allVisits || [])
+        .filter(v => v.status === 'scheduled' || v.status === 'confirmed')
+        .map(v => v.supplier_id)
+    );
+    const scheduledOrConfirmedCount = uniqueSuppliers.size;
+    
     const totalSuppliers = quote.suppliers_sent_count || 1;
     
     // Determinar novo status baseado no progresso
@@ -133,9 +125,18 @@ serve(async (req) => {
 
     if (quoteUpdateError) {
       console.error('Error updating quote status:', quoteUpdateError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Failed to update quote status',
+          details: quoteUpdateError.message
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
-
-    console.log('Visit scheduled successfully:', visit);
 
     return new Response(
       JSON.stringify({ 

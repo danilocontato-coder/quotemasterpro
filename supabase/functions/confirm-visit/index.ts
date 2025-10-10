@@ -80,7 +80,20 @@ serve(async (req) => {
       throw new Error('Failed to confirm visit');
     }
 
-    // Calcular quantas visitas foram confirmadas para esta RFQ
+    // Buscar cotação para obter total de fornecedores
+    const { data: quoteData, error: quoteError } = await supabase
+      .from('quotes')
+      .select('suppliers_sent_count')
+      .eq('id', visit.quote_id)
+      .single();
+
+    if (quoteError) {
+      console.error('Error fetching quote:', quoteError);
+    }
+
+    const totalSuppliers = quoteData?.suppliers_sent_count || 1;
+
+    // Buscar todas as visitas e consolidar por fornecedor distinto
     const { data: allVisits, error: visitsError } = await supabase
       .from('quote_visits')
       .select('status, supplier_id')
@@ -90,29 +103,26 @@ serve(async (req) => {
       console.error('Error fetching visits:', visitsError);
     }
 
-    // Contar visitas confirmadas
-    const confirmedCount = (allVisits || []).filter(v => v.status === 'confirmed').length;
-    
-    const { data: quoteData } = await supabase
-      .from('quotes')
-      .select('suppliers_sent_count')
-      .eq('id', visit.quote_id)
-      .single();
-
-    const totalSuppliers = quoteData?.suppliers_sent_count || 1;
+    // Contar fornecedores únicos com visita confirmada
+    const uniqueConfirmedSuppliers = new Set(
+      (allVisits || [])
+        .filter(v => v.status === 'confirmed')
+        .map(v => v.supplier_id)
+    );
+    const confirmedCount = uniqueConfirmedSuppliers.size;
     
     // Determinar novo status baseado no progresso de confirmações
     let newQuoteStatus = 'visit_scheduled';
     if (confirmedCount > 0 && confirmedCount < totalSuppliers) {
       newQuoteStatus = 'visit_partial_confirmed';
     } else if (confirmedCount >= totalSuppliers) {
-      newQuoteStatus = 'visit_confirmed'; // Libera para propostas
+      newQuoteStatus = 'visit_confirmed';
     }
 
     console.log('Updating quote status:', { confirmedCount, totalSuppliers, newQuoteStatus });
 
     // Atualizar status da cotação
-    const { error: quoteError } = await supabase
+    const { error: quoteUpdateError } = await supabase
       .from('quotes')
       .update({ 
         status: newQuoteStatus,
@@ -120,8 +130,19 @@ serve(async (req) => {
       })
       .eq('id', visit.quote_id);
 
-    if (quoteError) {
-      console.error('Error updating quote status:', quoteError);
+    if (quoteUpdateError) {
+      console.error('Error updating quote status:', quoteUpdateError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Failed to update quote status',
+          details: quoteUpdateError.message
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     console.log('Visit confirmed successfully:', updatedVisit);

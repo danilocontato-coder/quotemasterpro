@@ -29,8 +29,8 @@ export function VisitSection({ quote, userRole, onVisitUpdate }: VisitSectionPro
   const canSchedule = userRole === 'supplier' && quote.status === 'awaiting_visit' && !latestVisit;
   const canConfirm = userRole === 'supplier' && latestVisit?.status === 'scheduled';
 
-  const handleVisitAction = async () => {
-    await fetchVisits();
+  const handleVisitAction = () => {
+    fetchVisits();
     onVisitUpdate?.();
   };
 
