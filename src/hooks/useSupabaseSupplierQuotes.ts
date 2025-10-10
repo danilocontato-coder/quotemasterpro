@@ -9,6 +9,7 @@ export interface SupplierQuote {
   description: string;
   client: string;
   clientId: string;
+  supplierId?: string;
   status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired' | 'paid' | 'delivering';
   deadline: string;
   estimatedValue?: number;
@@ -19,6 +20,7 @@ export interface SupplierQuote {
   proposal?: QuoteProposal;
   requires_visit?: boolean;
   visit_deadline?: string;
+  client_name?: string;
 }
 
 export interface SupplierQuoteItem {
@@ -260,6 +262,8 @@ export const useSupabaseSupplierQuotes = () => {
           description: quote.description || '',
           client: clientName,
           clientId: quote.client_id,
+          supplierId: user.supplierId, // ID do fornecedor logado
+          client_name: clientName, // Adicionar para uso no modal
           status: getSupplierStatus(quote.status, response?.status),
           deadline: quote.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           estimatedValue: quote.total > 0 ? quote.total : undefined,

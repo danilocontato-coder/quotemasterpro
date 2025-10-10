@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   HelpCircle, 
   Clock, 
@@ -166,21 +167,82 @@ export function SupplierClarificationModal({
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<Array<{category: string, question: string, reasoning: string}>>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   
-  // Create a mock conversation object for compatibility
-  const conversation = quote ? {
-    id: `quote-${quote.id}`,
-    quote_id: quote.id,
-    quote_title: quote.title,
+  const { sendMessage, markMessagesAsRead, fetchMessages, messages } = useSupabaseQuoteChats();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  
+  const qaMessages = conversationId ? messages[conversationId] || [] : [];
+  
+  const conversation = conversationId ? {
+    id: conversationId,
+    quote_id: quote?.id,
+    quote_title: quote?.title,
     supplier_name: supplierName || 'Fornecedor',
-    client_name: quote.client_name || 'Cliente',
+    client_name: quote?.client_name || 'Cliente',
     status: 'active'
   } : null;
 
-  const { sendMessage, markMessagesAsRead, fetchMessages, messages } = useSupabaseQuoteChats();
-  const { toast } = useToast();
-  
-  const qaMessages = conversation ? messages[conversation.id] || [] : [];
+  // Buscar ou criar conversa real ao abrir o modal
+  useEffect(() => {
+    const initConversation = async () => {
+      if (!open || !quote || !user?.supplierId) return;
+      
+      try {
+        // Buscar conversa existente
+        const { data: existingConv, error: fetchError } = await supabase
+          .from('quote_conversations')
+          .select('id')
+          .eq('quote_id', quote.id)
+          .eq('client_id', quote.clientId)
+          .eq('supplier_id', user.supplierId)
+          .maybeSingle();
+
+        if (fetchError) {
+          console.error('Erro ao buscar conversa:', fetchError);
+          toast({
+            title: "Erro ao carregar conversa",
+            description: fetchError.message,
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (existingConv) {
+          setConversationId(existingConv.id);
+        } else {
+          // Criar nova conversa se não existir
+          const { data: newConv, error: createError } = await supabase
+            .from('quote_conversations')
+            .insert({
+              quote_id: quote.id,
+              client_id: quote.clientId,
+              supplier_id: user.supplierId,
+              status: 'active'
+            })
+            .select('id')
+            .single();
+
+          if (createError) {
+            console.error('Erro ao criar conversa:', createError);
+            toast({
+              title: "Erro ao criar conversa",
+              description: createError.message,
+              variant: "destructive"
+            });
+            return;
+          }
+
+          setConversationId(newConv.id);
+        }
+      } catch (err: any) {
+        console.error('Erro na inicialização da conversa:', err);
+      }
+    };
+
+    initConversation();
+  }, [open, quote, user?.supplierId, toast]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -202,26 +264,48 @@ export function SupplierClarificationModal({
   };
 
   useEffect(() => {
-    if (open && conversation) {
-      fetchMessages(conversation.id);
-      markMessagesAsRead(conversation.id);
+    if (open && conversationId) {
+      fetchMessages(conversationId);
+      markMessagesAsRead(conversationId);
     }
-  }, [open, conversation, fetchMessages, markMessagesAsRead]);
+  }, [open, conversationId, fetchMessages, markMessagesAsRead]);
 
   const handleSendQuestion = async () => {
-    if (!selectedQuestion || !conversation || isLoading) return;
+    if (!selectedQuestion || !conversationId || isLoading || !user?.supplierId) return;
 
     setIsLoading(true);
     try {
       const questionText = selectedQuestion.text;
       const formattedMessage = `**ESCLARECIMENTO**\n\n**Categoria:** ${supplierQuestionCategories.find(c => c.id === selectedCategory)?.name}\n**Pergunta:** ${questionText}`;
       
-      await sendMessage(conversation.id, formattedMessage);
+      // Enviar mensagem como fornecedor
+      const { error: sendError } = await supabase
+        .from('quote_messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          sender_type: 'supplier',
+          content: formattedMessage,
+          attachments: []
+        });
+
+      if (sendError) throw sendError;
+
+      // Recarregar mensagens
+      await fetchMessages(conversationId);
+      
       setSelectedQuestion(null);
       setSelectedCategory('');
       toast({ 
         title: "Pergunta enviada", 
         description: "Sua pergunta foi enviada para o cliente." 
+      });
+    } catch (err: any) {
+      console.error('Erro ao enviar pergunta:', err);
+      toast({
+        title: "Erro ao enviar pergunta",
+        description: err.message,
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
@@ -235,14 +319,14 @@ export function SupplierClarificationModal({
   };
 
   const generateAIQuestions = async () => {
-    if (!conversation || isGeneratingQuestions) return;
+    if (!quote || !conversationId || isGeneratingQuestions) return;
 
     setIsGeneratingQuestions(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-contextual-questions', {
         body: {
-          quote_id: conversation.quote_id,
-          quote_title: conversation.quote_title,
+          quote_id: quote.id,
+          quote_title: quote.title,
           user_role: 'supplier',
           existing_questions: qaMessages.length
         }
@@ -284,7 +368,7 @@ export function SupplierClarificationModal({
     }
   };
 
-  if (!quote || !conversation) return null;
+  if (!quote) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -372,7 +456,7 @@ export function SupplierClarificationModal({
               {selectedQuestion && (
                 <Button
                   onClick={handleSendQuestion}
-                  disabled={isLoading || conversation.status !== 'active'}
+                  disabled={isLoading || !conversationId}
                   className="w-full"
                 >
                   <HelpCircle className="h-4 w-4 mr-2" />
