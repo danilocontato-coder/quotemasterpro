@@ -73,7 +73,13 @@ serve(async (req) => {
     }
 
     if (!template) {
-      throw new Error('No template found for supplier_welcome. Please create one in SuperAdmin.');
+      console.warn('⚠️ No template found for supplier_welcome. Using default fallback.');
+      template = {
+        id: null,
+        name: 'default_supplier_welcome',
+        message_content:
+          'Olá {{supplier_name}}! Seja bem-vindo ao {{platform_name}}. Você foi convidado por {{client_name}}. Acesse: {{access_link}}',
+      };
     }
 
     console.log('📄 Using template:', template.name);
