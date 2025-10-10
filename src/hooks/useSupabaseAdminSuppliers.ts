@@ -190,78 +190,11 @@ export const useSupabaseAdminSuppliers = () => {
       } else {
         console.log('✅ Auth user created for supplier:', authResp);
         
-        // Buscar informações do cliente atual para envio do WhatsApp
-        let clientName = 'Administrador do Sistema';
-        let clientId = null;
-        
-        if (currentClientId) {
-          const { data: clientData } = await supabase
-            .from('clients')
-            .select('name')
-            .eq('id', currentClientId)
-            .single();
-          
-          if (clientData) {
-            clientName = clientData.name;
-            clientId = currentClientId;
-          }
-        }
-
-        // Enviar WhatsApp de boas-vindas automaticamente se houver WhatsApp cadastrado
-        if (supplierData.whatsapp) {
-          console.log('📤 Sending welcome WhatsApp to:', supplierData.whatsapp);
-          
-          toast({
-            title: '📤 Enviando boas-vindas',
-            description: 'Enviando mensagem via WhatsApp...',
-          });
-
-          try {
-            const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke('send-supplier-welcome', {
-              body: {
-                supplierId: (supplier as any).id,
-                supplierName: supplierData.name,
-                supplierPhone: supplierData.whatsapp,
-                clientId,
-                clientName,
-                customVariables: {
-                  supplier_email: supplierData.email,
-                  supplier_password: password,
-                  access_link: window.location.origin + '/login'
-                }
-              }
-            });
-
-            if (whatsappError) {
-              console.error('❌ WhatsApp function error:', whatsappError);
-              throw whatsappError;
-            }
-
-            if (whatsappResult?.success) {
-              console.log('✅ Welcome WhatsApp sent successfully, messageId:', whatsappResult.messageId);
-              toast({
-                title: '✅ Fornecedor criado!',
-                description: `Acesso criado e mensagem de boas-vindas enviada para ${supplierData.whatsapp}`,
-              });
-            } else {
-              console.error('❌ WhatsApp send failed:', whatsappResult?.error);
-              throw new Error(whatsappResult?.error || 'Failed to send WhatsApp');
-            }
-          } catch (whatsappError: any) {
-            console.error('⚠️ WhatsApp error:', whatsappError);
-            toast({
-              title: '⚠️ Fornecedor criado',
-              description: 'Acesso criado, mas houve erro ao enviar WhatsApp. Verifique as configurações da Evolution API.',
-              variant: 'destructive',
-            });
-          }
-        } else {
-          // Se não tiver WhatsApp, apenas informar que o fornecedor foi criado
-          toast({
-            title: '✅ Fornecedor criado!',
-            description: `Login: ${supplierData.email} | Senha: ${password}`,
-          });
-        }
+        // Fornecedor receberá convite para completar cadastro ao receber a primeira cotação
+        toast({
+          title: '✅ Fornecedor criado!',
+          description: 'Ele receberá o convite para registro ao receber a primeira cotação.',
+        });
       }
 
       // Update local state

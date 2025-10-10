@@ -1,3 +1,18 @@
+/**
+ * ⚠️ DEPRECADO - Função substituída pelo fluxo unificado de RFQ
+ * 
+ * Esta função era usada para enviar credenciais de acesso ao fornecedor
+ * imediatamente após criação manual. Agora, o fluxo correto é:
+ * 
+ * 1. Admin cria fornecedor (status: pending_registration)
+ * 2. Admin envia RFQ → send-quote-to-suppliers gera invitation_token
+ * 3. Fornecedor recebe link de registro via WhatsApp
+ * 4. Após completar cadastro → complete-supplier-registration envia credenciais
+ * 
+ * Mantida por compatibilidade com código legado, mas não deve ser chamada
+ * no fluxo normal de criação de fornecedores.
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { resolveEvolutionConfig, sendEvolutionWhatsApp, normalizePhone } from '../_shared/evolution.ts';
