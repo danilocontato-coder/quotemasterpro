@@ -4,7 +4,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Send, Bot, User, CheckCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Loader2, Send, Bot, User, CheckCircle, Calendar } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
@@ -29,6 +31,8 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
   const [currentMessage, setCurrentMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId] = useState(() => crypto.randomUUID());
+  const [requiresVisit, setRequiresVisit] = useState(false);
+  const [visitDeadline, setVisitDeadline] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -92,7 +96,9 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
         body: {
           conversationId,
           message: text,
-          messageHistory: messages
+          messageHistory: messages,
+          requiresVisit,
+          visitDeadline
         }
       });
 
@@ -246,7 +252,38 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
         </ScrollArea>
 
         {/* Input */}
-        <div className="p-4 border-t">
+        <div className="p-4 border-t space-y-3">
+          {/* Opção de visita técnica */}
+          <div className="flex flex-col gap-2 p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="requires-visit-ai"
+                checked={requiresVisit}
+                onCheckedChange={(checked) => setRequiresVisit(checked as boolean)}
+              />
+              <Label htmlFor="requires-visit-ai" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5" />
+                Requer visita técnica prévia
+              </Label>
+            </div>
+            
+            {requiresVisit && (
+              <div className="pl-6 space-y-1">
+                <Label htmlFor="visit-deadline-ai" className="text-xs text-muted-foreground">
+                  Prazo desejado para visita
+                </Label>
+                <Input
+                  id="visit-deadline-ai"
+                  type="date"
+                  value={visitDeadline}
+                  onChange={(e) => setVisitDeadline(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
+          </div>
+          
           <form onSubmit={handleSubmit} className="flex gap-2">
             <Input
               value={currentMessage}
