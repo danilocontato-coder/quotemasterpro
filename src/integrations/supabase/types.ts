@@ -1263,6 +1263,7 @@ export type Database = {
           id: string
           last_reviewed_at: string | null
           notes: string | null
+          payment_frequency: string | null
           payment_terms: string | null
           renewal_date: string | null
           renewal_terms: string | null
@@ -1292,6 +1293,7 @@ export type Database = {
           id: string
           last_reviewed_at?: string | null
           notes?: string | null
+          payment_frequency?: string | null
           payment_terms?: string | null
           renewal_date?: string | null
           renewal_terms?: string | null
@@ -1321,6 +1323,7 @@ export type Database = {
           id?: string
           last_reviewed_at?: string | null
           notes?: string | null
+          payment_frequency?: string | null
           payment_terms?: string | null
           renewal_date?: string | null
           renewal_terms?: string | null
