@@ -3788,6 +3788,53 @@ export type Database = {
           },
         ]
       }
+      visit_settings: {
+        Row: {
+          auto_confirm_after_days: number | null
+          auto_disqualify_on_overdue: boolean | null
+          client_id: string
+          created_at: string | null
+          id: string
+          max_reschedule_attempts: number
+          notify_before_visit_days: number | null
+          notify_on_overdue: boolean | null
+          overdue_tolerance_days: number
+          updated_at: string | null
+        }
+        Insert: {
+          auto_confirm_after_days?: number | null
+          auto_disqualify_on_overdue?: boolean | null
+          client_id: string
+          created_at?: string | null
+          id?: string
+          max_reschedule_attempts?: number
+          notify_before_visit_days?: number | null
+          notify_on_overdue?: boolean | null
+          overdue_tolerance_days?: number
+          updated_at?: string | null
+        }
+        Update: {
+          auto_confirm_after_days?: number | null
+          auto_disqualify_on_overdue?: boolean | null
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          max_reschedule_attempts?: number
+          notify_before_visit_days?: number | null
+          notify_on_overdue?: boolean | null
+          overdue_tolerance_days?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_templates: {
         Row: {
           active: boolean
