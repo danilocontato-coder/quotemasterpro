@@ -366,28 +366,29 @@ const ContractDetails = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {contract.attachments.map((url, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">
-                        Anexo {index + 1}.pdf
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open(url as string, '_blank')}
-                      className="flex items-center gap-2"
+                {contract.attachments.map((url, index) => {
+                  const fileName = (url as string).split('/').pop() || `Anexo ${index + 1}.pdf`;
+                  return (
+                    <a
+                      key={index}
+                      href={url as string}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors group"
                     >
-                      <ExternalLink className="h-4 w-4" />
-                      Visualizar
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {fileName}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground group-hover:text-foreground">
+                        <ExternalLink className="h-4 w-4" />
+                        <span className="text-sm">Abrir</span>
+                      </div>
+                    </a>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
