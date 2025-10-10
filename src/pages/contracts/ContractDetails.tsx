@@ -126,6 +126,7 @@ const ContractDetails = () => {
     };
 
     fetchContract();
+  }, [id, navigate, toast]);
 
   // Carregar blob quando abrir um anexo (evita bloqueio de iframe por extensões)
   useEffect(() => {
