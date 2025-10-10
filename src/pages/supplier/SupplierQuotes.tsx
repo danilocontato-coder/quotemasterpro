@@ -27,7 +27,8 @@ import {
   AlertTriangle,
   FileCheck,
   Package,
-  CreditCard
+  CreditCard,
+  Calendar
 } from "lucide-react";
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
@@ -263,6 +264,7 @@ export default function SupplierQuotes() {
                   <TableHead>Status</TableHead>
                   <TableHead>Prazo</TableHead>
                   <TableHead>Valor Estimado</TableHead>
+                  <TableHead>Visita</TableHead>
                   <TableHead>Proposta</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -291,6 +293,16 @@ export default function SupplierQuotes() {
                         </span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {quote.requires_visit ? (
+                        <Badge variant="outline" className="gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Requerida
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
                     <TableCell>

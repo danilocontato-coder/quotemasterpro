@@ -17,6 +17,8 @@ export interface SupplierQuote {
   items: SupplierQuoteItem[];
   attachments?: QuoteAttachment[];
   proposal?: QuoteProposal;
+  requires_visit?: boolean;
+  visit_deadline?: string;
 }
 
 export interface SupplierQuoteItem {
@@ -173,6 +175,8 @@ export const useSupabaseSupplierQuotes = () => {
             items_count,
             responses_count,
             deadline,
+            requires_visit,
+            visit_deadline,
             created_at,
             updated_at
           )
@@ -204,6 +208,8 @@ export const useSupabaseSupplierQuotes = () => {
             items_count,
             responses_count,
             deadline,
+            requires_visit,
+            visit_deadline,
             created_at,
             updated_at
           )
@@ -260,6 +266,8 @@ export const useSupabaseSupplierQuotes = () => {
           createdAt: quote.created_at,
           items: [], // Will be loaded separately when needed
           sentAt: response ? response.created_at : undefined,
+          requires_visit: quote.requires_visit || false,
+          visit_deadline: quote.visit_deadline,
         };
       });
 

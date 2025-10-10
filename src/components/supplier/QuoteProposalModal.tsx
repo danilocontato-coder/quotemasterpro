@@ -14,6 +14,8 @@ import { Plus, Trash2, Upload, FileText, X, Send, Save, Loader2 } from 'lucide-r
 import { SupplierQuote, ProposalItem, useSupabaseSupplierQuotes } from '@/hooks/useSupabaseSupplierQuotes';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuoteVisits } from '@/hooks/useQuoteVisits';
+import { VisitSection } from '@/components/quotes/VisitSection';
 
 interface QuoteProposalModalProps {
   quote: SupplierQuote | null;
@@ -24,6 +26,7 @@ interface QuoteProposalModalProps {
 export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalModalProps) {
   const { createProposal, updateProposal, sendProposal, addAttachment, removeAttachment, submitQuoteResponse } = useSupabaseSupplierQuotes();
   const { user } = useAuth();
+  const { visits, fetchVisits } = useQuoteVisits(quote?.id);
   const [quoteItems, setQuoteItems] = useState<any[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
@@ -290,6 +293,20 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
         return;
       }
 
+      // VALIDAR VISITA TÉCNICA
+      if (quote.requires_visit) {
+        const confirmedVisit = visits.find(v => v.status === 'confirmed');
+        
+        if (!confirmedVisit) {
+          toast({
+            title: "Visita técnica pendente",
+            description: "Você precisa agendar e confirmar a visita técnica antes de enviar a proposta.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       console.log('🔄 Enviando proposta para cotação:', quote.id);
 
       // Enviar proposta usando a função que funciona
@@ -380,9 +397,12 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
         </DialogDescription>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <TabsTrigger value="details">Detalhes da Solicitação</TabsTrigger>
             <TabsTrigger value="proposal">Minha Proposta</TabsTrigger>
+            {quote.requires_visit && (
+              <TabsTrigger value="visit">Visita Técnica</TabsTrigger>
+            )}
             <TabsTrigger value="attachments">Anexos</TabsTrigger>
           </TabsList>
 
@@ -598,6 +618,16 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
               </CardContent>
             </Card>
           </TabsContent>
+
+          {quote.requires_visit && (
+            <TabsContent value="visit" className="space-y-4">
+              <VisitSection 
+                quote={quote}
+                userRole="supplier"
+                onVisitUpdate={() => fetchVisits()}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="attachments" className="space-y-4">
             <Card>
