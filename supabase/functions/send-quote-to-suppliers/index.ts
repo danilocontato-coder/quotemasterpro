@@ -320,7 +320,10 @@ const handler = async (req: Request): Promise<Response> => {
         resolvedEvolution,
         supplierLinks: supplier_links || [],
         shortLinks: short_links || [],
-        frontendBaseUrl: frontend_base_url || null
+        frontendBaseUrl: frontend_base_url || null,
+        clientName: client.name,
+        quoteTitle: quote.title,
+        deadline: deadlineFormatted
       });
     }
     
@@ -603,7 +606,10 @@ const handler = async (req: Request): Promise<Response> => {
       resolvedEvolution: resolvedEvo,
       supplierLinks,
       shortLinks,
-      frontendBaseUrl
+      frontendBaseUrl,
+      clientName,
+      quoteTitle,
+      deadline
     }: any
   ) {
     console.log('Sending directly via Evolution API');
