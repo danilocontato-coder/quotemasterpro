@@ -53,6 +53,7 @@ export const AIQuoteGeneratorModal: React.FC<AIQuoteGeneratorModalProps> = ({
         body: {
           description: formData.description,
           clientInfo: {
+            client_id: client?.id,
             name: clientName,
             type: client?.company_name ? 'empresa' : 'condominio',
             location: client?.address || 'Não informado'

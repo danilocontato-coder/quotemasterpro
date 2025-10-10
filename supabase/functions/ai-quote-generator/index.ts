@@ -100,6 +100,37 @@ serve(async (req) => {
 
     console.log('Generating AI quote for:', { description, clientInfo, preferences });
 
+    // Obter client_id do usuário autenticado via JWT
+    const authHeader = req.headers.get('Authorization');
+    let effectiveClientId = clientInfo?.client_id || 'unknown';
+    
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+        
+        if (!userError && user) {
+          const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('client_id')
+            .eq('id', user.id)
+            .single();
+          
+          if (profile?.client_id) {
+            effectiveClientId = profile.client_id;
+            console.log('[ai-quote-generator] client_id obtido do JWT:', effectiveClientId);
+          }
+        }
+      } catch (jwtError) {
+        console.error('[ai-quote-generator] Erro ao obter client_id do JWT:', jwtError);
+      }
+    }
+    
+    console.log('[ai-quote-generator] client_id final:', effectiveClientId, {
+      from_payload: clientInfo?.client_id || null,
+      from_jwt: effectiveClientId !== 'unknown' && effectiveClientId !== clientInfo?.client_id
+    });
+
     // Prompt para gerar cotação estruturada
     const systemPrompt = `Você é um assistente especializado em criar cotações detalhadas para condomínios e empresas no Brasil.
 
@@ -169,12 +200,20 @@ Gere uma cotação detalhada e profissional.`;
 
     console.log('Generated content:', generatedContent);
 
-    // Rastrear uso de tokens
-    if (data.usage && clientInfo?.client_id) {
+    // Rastrear uso de tokens - SEMPRE tentar rastrear, mesmo sem client_id
+    if (data.usage) {
+      console.log('[ai-quote-generator] Rastreando uso de IA:', {
+        client_id: effectiveClientId,
+        model: data.model || 'gpt-4o-mini',
+        total_tokens: data.usage.total_tokens || 0,
+        prompt_tokens: data.usage.prompt_tokens || 0,
+        completion_tokens: data.usage.completion_tokens || 0
+      });
+      
       trackAIUsage({
         supabaseUrl: Deno.env.get('SUPABASE_URL') || '',
         supabaseKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
-        clientId: clientInfo.client_id,
+        clientId: effectiveClientId,
         provider: 'openai',
         model: data.model || 'gpt-4o-mini',
         feature: 'quote_generator',
@@ -183,9 +222,13 @@ Gere uma cotação detalhada e profissional.`;
         totalTokens: data.usage.total_tokens || 0,
         requestId: data.id,
         metadata: {
-          description_length: description?.length || 0
+          description_length: description?.length || 0,
+          client_id_source: effectiveClientId === 'unknown' ? 'none' : (clientInfo?.client_id ? 'payload' : 'jwt'),
+          client_id_missing: effectiveClientId === 'unknown'
         }
       }).catch(err => console.error('[track-ai-usage] Erro ao rastrear:', err));
+    } else {
+      console.warn('[ai-quote-generator] Nenhum dado de usage retornado pela OpenAI');
     }
 
     // Parse do JSON gerado com tratamento UTF-8
