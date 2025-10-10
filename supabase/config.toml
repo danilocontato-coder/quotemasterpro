@@ -48,6 +48,9 @@ verify_jwt = false
 [functions.send-supplier-welcome]
 verify_jwt = false
 
+[functions.complete-supplier-registration]
+verify_jwt = false
+
 [functions.schedule-visit]
 verify_jwt = true
 

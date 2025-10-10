@@ -699,25 +699,38 @@ const handler = async (req: Request): Promise<Response> => {
           // Use short link if available, otherwise fallback to long link
           const supplierProposalLink = shortLinkEntry?.short_link || linkEntry?.link || `${frontendBaseUrl}/supplier/quick-response/${quoteId}/fallback-token`;
 
-          // Create supplier-specific template variables
-          const supplierTemplateVars = {
-            ...templateVariables,
-            proposal_link: supplierProposalLink
-          };
-
-          // Render template message with supplier-specific variables
-          let finalMessage = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
+          // 🆕 Verificar se fornecedor já está registrado (tem auth.users vinculado)
+          const isRegistered = supplier.status === 'active' && supplier.registration_status === 'active';
           
-          // Replace template variables including the supplier-specific link
-          Object.entries(supplierTemplateVars).forEach(([key, value]) => {
-            finalMessage = finalMessage.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
-          });
-
-          // Ensure items breakdown is present even if template doesn't include it
-          const hasItemsPlaceholder = typeof templateContent === 'string' && templateContent.includes('{{items_list}}');
-          if (!hasItemsPlaceholder && templateVariables?.items_list) {
-            finalMessage = `${finalMessage}\n\nItens da cotação (${templateVariables.items_count || '0'}):\n${templateVariables.items_list}`;
+          // 🆕 Construir mensagem diferente para registrados vs não-registrados
+          let finalMessage = '';
+          
+          if (isRegistered) {
+            // Fornecedor já cadastrado: mensagem normal de cotação
+            finalMessage = templateContent
+              .replace(/{{supplier_name}}/g, supplier.name || 'Fornecedor')
+              .replace(/{{client_name}}/g, clientName || 'Cliente')
+              .replace(/{{quote_title}}/g, quoteTitle)
+              .replace(/{{quote_id}}/g, quoteId)
+              .replace(/{{deadline}}/g, deadline)
+              .replace(/{{response_link}}/g, supplierProposalLink);
+          } else {
+            // 🎯 Fornecedor NÃO cadastrado: enviar convite para completar cadastro
+            const registrationLink = `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
+            
+            finalMessage = 
+              `🎉 Olá, ${supplier.name}!\n\n` +
+              `Você tem *1 nova cotação* aguardando sua resposta!\n\n` +
+              `📋 *Cotação:* ${quoteTitle}\n` +
+              `🏢 *Cliente:* ${clientName}\n` +
+              `⏰ *Prazo:* ${deadline}\n\n` +
+              `⚠️ *Para visualizar e responder, você precisa completar seu cadastro.*\n\n` +
+              `✅ É rápido! Clique no link abaixo:\n` +
+              `${registrationLink}\n\n` +
+              `Após o cadastro, você receberá suas credenciais por WhatsApp e poderá responder a cotação imediatamente! 🚀`;
           }
+
+          console.log(`📧 [${supplier.name}] Message type:`, isRegistered ? 'QUOTE_NOTIFICATION' : 'REGISTRATION_INVITE');
 
           // Add custom message if provided
           if (customMessage?.trim()) {
