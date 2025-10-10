@@ -9,6 +9,7 @@ import {
 } from '@/components/suppliers/forms/SupplierFormSchema';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface UseSupplierFormProps {
   editingSupplier?: any;
@@ -22,6 +23,7 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [existingSupplierId, setExistingSupplierId] = useState<string | null>(null); // Para rastrear fornecedor existente
   const [formData, setFormData] = useState<Partial<SupplierFormData>>({
     name: editingSupplier?.name || '',
     cnpj: editingSupplier?.cnpj || '',
@@ -56,8 +58,10 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
   }, [errors]);
 
   const selectExistingSupplier = useCallback((supplier: any) => {
-    // Preencher formulário com dados do fornecedor existente
-    // Isso criará uma CÓPIA independente para este cliente
+    // Guardar ID do fornecedor existente para associação
+    setExistingSupplierId(supplier.id);
+    
+    // Preencher formulário com dados do fornecedor existente (apenas para visualização)
     setFormData({
       name: supplier.name || '',
       cnpj: supplier.cnpj || '', 
@@ -70,12 +74,13 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       address: supplier.address?.street || '',
       specialties: supplier.specialties || [],
       type: supplier.type || 'local',
-      status: 'active', // Sempre ativo para nova cópia
+      status: 'active',
     });
     setErrors({});
     
-    console.log('📋 [SUPPLIER-FORM] Usando dados do fornecedor existente como base:', supplier.name);
-    console.log('📋 [SUPPLIER-FORM] Uma nova cópia independente será criada para este cliente');
+    console.log('📋 [SUPPLIER-FORM] Fornecedor existente selecionado:', supplier.name);
+    console.log('🔗 [SUPPLIER-FORM] Será criada apenas a associação com o cliente atual');
+    console.log('🆔 [SUPPLIER-FORM] Supplier ID:', supplier.id);
   }, []);
 
   const validateStep = useCallback((step: number) => {
@@ -135,6 +140,7 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     try {
       console.log('📝 [SUPPLIER-FORM] Iniciando submissão do formulário');
       console.log('📝 [SUPPLIER-FORM] Dados do formulário:', formData);
+      console.log('🆔 [SUPPLIER-FORM] Existing supplier ID:', existingSupplierId);
       
       const validatedData = supplierFormSchema.parse(formData);
       console.log('✅ [SUPPLIER-FORM] Dados validados:', validatedData);
@@ -142,7 +148,42 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       setIsLoading(true);
 
       let result;
-      if (editingSupplier) {
+      
+      // Se estamos reutilizando um fornecedor existente, apenas criar associação
+      if (existingSupplierId && !editingSupplier) {
+        console.log('🔗 [SUPPLIER-FORM] Associando fornecedor existente ao cliente atual');
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user?.id)
+          .single();
+
+        if (!profile?.client_id) {
+          throw new Error('Cliente não identificado');
+        }
+
+        const { data: association, error: assocError } = await supabase
+          .from('client_suppliers')
+          .upsert({
+            client_id: profile.client_id,
+            supplier_id: existingSupplierId,
+            status: 'active'
+          }, {
+            onConflict: 'client_id,supplier_id'
+          })
+          .select()
+          .single();
+
+        if (assocError) throw assocError;
+
+        toast({
+          title: "Fornecedor associado!",
+          description: `${validatedData.name} foi associado ao seu cliente com sucesso.`,
+        });
+        
+        result = association;
+      } else if (editingSupplier) {
         console.log('🔄 [SUPPLIER-FORM] Modo edição - atualizando fornecedor:', editingSupplier.id);
         result = await updateSupplier(editingSupplier.id, validatedData);
         if (result) {
@@ -165,6 +206,7 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       if (result) {
         console.log('🎉 [SUPPLIER-FORM] Operação concluída com sucesso');
         resetForm();
+        setExistingSupplierId(null);
         onSuccess?.();
       } else {
         console.log('❌ [SUPPLIER-FORM] Operação falhou - resultado nulo');
@@ -187,14 +229,14 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       } else {
         toast({
           title: "Erro ao salvar",
-          description: "Ocorreu um erro inesperado. Tente novamente.",
+          description: error.message || "Ocorreu um erro inesperado. Tente novamente.",
           variant: "destructive",
         });
       }
     } finally {
       setIsLoading(false);
     }
-  }, [currentStep, validateStep, formData, editingSupplier, updateSupplier, createSupplier, toast, onSuccess]);
+  }, [currentStep, validateStep, formData, existingSupplierId, editingSupplier, updateSupplier, createSupplier, toast, onSuccess]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -213,6 +255,7 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     });
     setErrors({});
     setCurrentStep(1);
+    setExistingSupplierId(null);
   }, []);
 
   const handleCancel = useCallback(() => {

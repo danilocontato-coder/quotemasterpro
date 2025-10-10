@@ -100,8 +100,8 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
       onSelectExistingSupplier(supplier);
       setShowExistingOptions(false);
       toast({
-        title: "Dados preenchidos como base",
-        description: `Os dados de ${supplier.name} foram preenchidos. Uma nova cópia independente será criada para seu cliente. Você pode editá-los livremente.`,
+        title: "Fornecedor selecionado",
+        description: `${supplier.name} será associado ao seu cliente. Você pode revisar os dados antes de confirmar.`,
       });
     }
   };
@@ -177,7 +177,7 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
                 Fornecedores encontrados com este CNPJ
               </CardTitle>
               <p className="text-xs text-orange-700">
-                Encontramos fornecedor(es) com este CNPJ. Você pode usar os dados como base para criar um novo fornecedor para seu cliente. Uma cópia independente será criada - suas alterações não afetarão outros clientes.
+                Encontramos fornecedor(es) com este CNPJ. Você pode associá-lo ao seu cliente sem criar duplicatas.
               </p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -202,8 +202,8 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-blue-600 mt-1 font-medium">
-                        ⚠️ Uma cópia será criada para seu cliente
+                      <div className="text-xs text-green-600 mt-1 font-medium">
+                        ✅ Será associado ao seu cliente (sem duplicatas)
                       </div>
                     </div>
                     <Button
@@ -212,7 +212,7 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
                       onClick={() => selectExistingSupplier(supplier)}
                       className="ml-3"
                     >
-                      Usar como Base
+                      Associar ao Cliente
                     </Button>
                   </div>
                 ))}
