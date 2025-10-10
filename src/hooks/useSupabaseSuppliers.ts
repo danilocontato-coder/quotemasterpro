@@ -201,6 +201,7 @@ export const useSupabaseSuppliers = () => {
         client_id: targetClientId, // ✅ Required by RLS policy (respeitando simulação)
         type: 'local', // ✅ Required by RLS policy: suppliers_client_create_local
         document_number: normalizeDocument(supplierData.document_number || ''), // Normalize document
+        cnpj: normalizeDocument(supplierData.document_number || ''), // Backwards compatibility with current schema
         rating: 0,
         completed_orders: 0
       };
