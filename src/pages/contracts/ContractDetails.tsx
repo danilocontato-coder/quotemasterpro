@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   Loader2,
   Paperclip,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ModuleGuard } from '@/components/common/ModuleGuard';
 import { ContractStatusBadge } from '@/components/contracts/ContractStatusBadge';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +57,7 @@ const ContractDetails = () => {
   const [costCenterName, setCostCenterName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -369,12 +377,10 @@ const ContractDetails = () => {
                 {contract.attachments.map((url, index) => {
                   const fileName = (url as string).split('/').pop() || `Anexo ${index + 1}.pdf`;
                   return (
-                    <a
+                    <button
                       key={index}
-                      href={url as string}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors group"
+                      onClick={() => setViewingAttachment(url as string)}
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors group w-full text-left"
                     >
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-muted-foreground" />
@@ -383,10 +389,10 @@ const ContractDetails = () => {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground group-hover:text-foreground">
-                        <ExternalLink className="h-4 w-4" />
-                        <span className="text-sm">Abrir</span>
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm">Visualizar</span>
                       </div>
-                    </a>
+                    </button>
                   );
                 })}
               </div>
@@ -419,6 +425,33 @@ const ContractDetails = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Attachment Viewer Dialog */}
+      <Dialog open={!!viewingAttachment} onOpenChange={() => setViewingAttachment(null)}>
+        <DialogContent className="max-w-5xl h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Visualizar Anexo</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewingAttachment(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 h-full">
+            {viewingAttachment && (
+              <iframe
+                src={viewingAttachment}
+                className="w-full h-full rounded-lg border"
+                title="Visualizador de Anexo"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </ModuleGuard>
   );
 };
