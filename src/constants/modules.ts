@@ -10,7 +10,8 @@ import {
   MessageSquare,
   Truck,
   CheckCircle,
-  TreePine
+  TreePine,
+  FileSignature
 } from 'lucide-react';
 
 export interface ModuleDefinition {
@@ -56,6 +57,13 @@ export const AVAILABLE_MODULES: ModuleDefinition[] = [
     name: 'Centros de Custo',
     description: 'Organização financeira por centro de custo',
     icon: TreePine,
+    category: 'advanced'
+  },
+  {
+    key: 'contracts',
+    name: 'Gestão de Contratos',
+    description: 'Controle de contratos com alertas de vencimento',
+    icon: FileSignature,
     category: 'advanced'
   },
   

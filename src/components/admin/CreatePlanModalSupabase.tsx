@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { PlanFormData } from '@/hooks/useSupabaseSubscriptionPlans';
 import { useToast } from '@/hooks/use-toast';
+import { AVAILABLE_MODULES, MODULE_CATEGORIES } from '@/constants/modules';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface CreatePlanModalProps {
   open: boolean;
@@ -59,10 +61,12 @@ export const CreatePlanModalSupabase: React.FC<CreatePlanModalProps> = ({
     max_suppliers_per_quote: 5,
     max_quote_responses_per_month: 50,
     max_products_in_catalog: 100,
-    max_categories_per_supplier: 10
+    max_categories_per_supplier: 10,
+    enabled_modules: []
   });
 
   const [newFeature, setNewFeature] = useState('');
+  const [selectedModules, setSelectedModules] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -80,7 +84,10 @@ export const CreatePlanModalSupabase: React.FC<CreatePlanModalProps> = ({
 
     setIsLoading(true);
     try {
-      await onCreatePlan(formData);
+      await onCreatePlan({
+        ...formData,
+        enabled_modules: selectedModules
+      });
       handleCancel(); // Limpar e fechar
     } catch (error) {
       console.error('Erro ao criar plano:', error);
@@ -112,9 +119,11 @@ export const CreatePlanModalSupabase: React.FC<CreatePlanModalProps> = ({
       max_suppliers_per_quote: 5,
       max_quote_responses_per_month: 50,
       max_products_in_catalog: 100,
-      max_categories_per_supplier: 10
+      max_categories_per_supplier: 10,
+      enabled_modules: []
     });
     setNewFeature('');
+    setSelectedModules([]);
     onOpenChange(false);
   };
 
@@ -137,6 +146,14 @@ export const CreatePlanModalSupabase: React.FC<CreatePlanModalProps> = ({
       ...prev,
       features: prev.features.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleModuleToggle = (moduleKey: string, checked: boolean) => {
+    if (checked) {
+      setSelectedModules(prev => [...prev, moduleKey]);
+    } else {
+      setSelectedModules(prev => prev.filter(m => m !== moduleKey));
+    }
   };
 
   const getAudienceIcon = (audience: string) => {
@@ -174,11 +191,12 @@ export const CreatePlanModalSupabase: React.FC<CreatePlanModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Tabs defaultValue="basic" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="basic">Básico</TabsTrigger>
               <TabsTrigger value="pricing">Preços</TabsTrigger>
               <TabsTrigger value="limits">Limites</TabsTrigger>
               <TabsTrigger value="features">Recursos</TabsTrigger>
+              <TabsTrigger value="modules">Módulos</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4">
@@ -547,6 +565,77 @@ export const CreatePlanModalSupabase: React.FC<CreatePlanModalProps> = ({
                     <div className="text-center py-6 text-muted-foreground">
                       <Zap className="h-8 w-8 mx-auto mb-2" />
                       <p>Nenhum recurso adicionado ainda</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="modules" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Módulos do Sistema
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Controle quais módulos do sistema estarão disponíveis neste plano
+                  </p>
+
+                  {MODULE_CATEGORIES.map((category) => {
+                    const categoryModules = AVAILABLE_MODULES.filter(m => m.category === category.key);
+                    if (categoryModules.length === 0) return null;
+
+                    return (
+                      <div key={category.key} className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${category.color}`} />
+                          <h4 className="font-medium">{category.name}</h4>
+                          <Badge variant="outline" className="ml-auto">
+                            {categoryModules.filter(m => selectedModules.includes(m.key)).length} / {categoryModules.length}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-5">
+                          {categoryModules.map((module) => {
+                            const Icon = module.icon;
+                            return (
+                              <div 
+                                key={module.key} 
+                                className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                              >
+                                <Checkbox
+                                  id={`module-${module.key}`}
+                                  checked={selectedModules.includes(module.key)}
+                                  onCheckedChange={(checked) => handleModuleToggle(module.key, checked as boolean)}
+                                  className="mt-1"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <Label 
+                                    htmlFor={`module-${module.key}`}
+                                    className="flex items-center gap-2 font-medium cursor-pointer"
+                                  >
+                                    <Icon className="h-4 w-4 flex-shrink-0" />
+                                    <span className="truncate">{module.name}</span>
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {module.description}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {selectedModules.length === 0 && (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Shield className="h-8 w-8 mx-auto mb-2" />
+                      <p>Nenhum módulo selecionado</p>
+                      <p className="text-sm">Selecione os módulos que deseja disponibilizar</p>
                     </div>
                   )}
                 </CardContent>
