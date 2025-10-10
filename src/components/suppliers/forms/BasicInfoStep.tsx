@@ -3,15 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Building, AlertCircle, Loader2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Building, AlertCircle, Loader2, FileText, User } from 'lucide-react';
 import { BasicInfoData } from './SupplierFormSchema';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDocument, normalizeDocument, getDocumentPlaceholder } from '@/utils/documentValidation';
 
 interface ExistingSupplier {
   id: string;
   name: string;
-  cnpj: string;
+  document_type: string;
+  document_number: string;
   email: string;
   phone: string;
   whatsapp: string;
@@ -34,36 +37,26 @@ interface BasicInfoStepProps {
 export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier }: BasicInfoStepProps) {
   const [existingSuppliers, setExistingSuppliers] = useState<ExistingSupplier[]>([]);
   const [showExistingOptions, setShowExistingOptions] = useState(false);
-  const [isSearchingCNPJ, setIsSearchingCNPJ] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
-  const formatCNPJ = (value: string) => {
-    // Remove tudo que não for dígito
-    const digits = value.replace(/\D/g, '');
-    
-    // Aplica a máscara do CNPJ
-    if (digits.length <= 14) {
-      return digits
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/\.(\d{3})(\d)/, '.$1/$2')
-        .replace(/(\d{4})(\d)/, '$1-$2');
-    }
-    return value;
-  };
+  
+  const documentType = (data.document_type as 'cpf' | 'cnpj') || 'cnpj';
 
-  const searchSupplierByCNPJ = async (searchCnpj: string) => {
-    const cleanCNPJ = searchCnpj.replace(/\D/g, '');
-    if (!cleanCNPJ || cleanCNPJ.length < 14) return;
+  const searchSupplierByDocument = async (searchDoc: string, docType: 'cpf' | 'cnpj') => {
+    const cleanDoc = normalizeDocument(searchDoc);
+    const expectedLength = docType === 'cpf' ? 11 : 14;
+    if (!cleanDoc || cleanDoc.length < expectedLength) return;
     
-    setIsSearchingCNPJ(true);
+    setIsSearching(true);
     try {
       const { data, error } = await supabase
         .from('suppliers')
         .select('*')
-        .eq('cnpj', cleanCNPJ);
+        .eq('document_type', docType)
+        .eq('document_number', cleanDoc);
 
       if (error) {
-        console.error('Error searching supplier by CNPJ:', error);
+        console.error('Error searching supplier:', error);
         return;
       }
 
@@ -75,24 +68,32 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
         setShowExistingOptions(false);
       }
     } catch (error) {
-      console.error('Error searching supplier by CNPJ:', error);
+      console.error('Error searching supplier:', error);
     } finally {
-      setIsSearchingCNPJ(false);
+      setIsSearching(false);
     }
   };
 
-  const handleCNPJChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatCNPJ(e.target.value);
-    onChange('cnpj', formatted);
+  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatDocument(e.target.value, documentType);
+    onChange('document_number', formatted);
     
-    // Buscar fornecedores existentes quando CNPJ estiver completo
-    const cleanCNPJ = formatted.replace(/\D/g, '');
-    if (cleanCNPJ.length === 14) {
-      searchSupplierByCNPJ(cleanCNPJ);
+    // Buscar fornecedores existentes quando documento estiver completo
+    const cleanDoc = normalizeDocument(formatted);
+    const expectedLength = documentType === 'cpf' ? 11 : 14;
+    if (cleanDoc.length === expectedLength) {
+      searchSupplierByDocument(cleanDoc, documentType);
     } else {
       setExistingSuppliers([]);
       setShowExistingOptions(false);
     }
+  };
+
+  const handleDocumentTypeChange = (value: string) => {
+    onChange('document_type', value);
+    onChange('document_number', ''); // Limpar documento ao trocar tipo
+    setExistingSuppliers([]);
+    setShowExistingOptions(false);
   };
 
   const selectExistingSupplier = (supplier: ExistingSupplier) => {
@@ -139,45 +140,75 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="cnpj" className="text-sm font-medium">
-            CNPJ *
+          <Label className="text-sm font-medium">Tipo de Documento *</Label>
+          <RadioGroup 
+            value={documentType} 
+            onValueChange={handleDocumentTypeChange}
+            className="flex gap-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="cnpj" id="doc-cnpj" />
+              <Label htmlFor="doc-cnpj" className="cursor-pointer flex items-center gap-1 font-normal">
+                <Building className="h-3.5 w-3.5" />
+                CNPJ (Empresa)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="cpf" id="doc-cpf" />
+              <Label htmlFor="doc-cpf" className="cursor-pointer flex items-center gap-1 font-normal">
+                <User className="h-3.5 w-3.5" />
+                CPF (Pessoa Física)
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="document" className="text-sm font-medium">
+            {documentType === 'cpf' ? 'CPF *' : 'CNPJ *'}
           </Label>
           <div className="relative">
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+              {documentType === 'cpf' ? <User className="h-4 w-4 text-muted-foreground" /> : <FileText className="h-4 w-4 text-muted-foreground" />}
+            </div>
             <Input
-              id="cnpj"
-              value={data.cnpj || ''}
-              onChange={handleCNPJChange}
-              placeholder="00.000.000/0000-00"
-              className={errors.cnpj ? "border-destructive focus:border-destructive" : ""}
-              maxLength={18}
+              id="document"
+              value={data.document_number || ''}
+              onChange={handleDocumentChange}
+              placeholder={getDocumentPlaceholder(documentType)}
+              className={`pl-10 ${errors.document_number ? "border-destructive focus:border-destructive" : ""}`}
+              maxLength={documentType === 'cpf' ? 14 : 18}
             />
-            {isSearchingCNPJ && (
+            {isSearching && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             )}
           </div>
-          {errors.cnpj && (
+          {errors.document_number && (
             <div className="flex items-center gap-1 text-xs text-destructive">
               <AlertCircle className="h-3 w-3" />
-              {errors.cnpj}
+              {errors.document_number}
             </div>
           )}
           <p className="text-xs text-muted-foreground">
-            Será usado para identificação única do fornecedor
+            {documentType === 'cpf' 
+              ? 'Será usado para identificação única do prestador de serviço'
+              : 'Será usado para identificação única da empresa'
+            }
           </p>
         </div>
 
-        {/* Mostrar fornecedores existentes com mesmo CNPJ */}
+        {/* Mostrar fornecedores existentes com mesmo documento */}
         {showExistingOptions && existingSuppliers.length > 0 && (
           <Card className="border-orange-200 bg-orange-50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm text-orange-800 flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
-                Fornecedores encontrados com este CNPJ
+                Fornecedores encontrados com este {documentType === 'cpf' ? 'CPF' : 'CNPJ'}
               </CardTitle>
               <p className="text-xs text-orange-700">
-                Encontramos fornecedor(es) com este CNPJ. Você pode associá-lo ao seu cliente sem criar duplicatas.
+                Encontramos fornecedor(es) com este documento. Você pode associá-lo ao seu cliente sem criar duplicatas.
               </p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -228,7 +259,7 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
               <h4 className="text-sm font-medium text-blue-900">Informação importante</h4>
               <p className="text-xs text-blue-700 mt-1">
                 Os dados básicos são essenciais para a identificação e cadastro do fornecedor. 
-                Certifique-se de que o CNPJ está correto, pois será usado para verificar duplicatas.
+                Certifique-se de que o documento está correto, pois será usado para verificar duplicatas e evitar cadastros duplicados.
               </p>
             </div>
           </div>

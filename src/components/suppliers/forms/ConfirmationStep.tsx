@@ -33,8 +33,10 @@ export function ConfirmationStep({ data }: ConfirmationStepProps) {
               <span className="text-sm font-medium">{data.name || 'Não informado'}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">CNPJ:</span>
-              <span className="text-sm font-mono">{data.cnpj || 'Não informado'}</span>
+              <span className="text-sm text-muted-foreground">
+                {data.document_type === 'cpf' ? 'CPF:' : 'CNPJ:'}
+              </span>
+              <span className="text-sm font-mono">{data.document_number || 'Não informado'}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Tipo:</span>

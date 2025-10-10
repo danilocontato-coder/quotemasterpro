@@ -48,9 +48,9 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   // Debug desabilitado para melhorar performance
   // console.log('🔍 DEBUG: selectBestSupplier function:', selectBestSupplier);
   
-  // Group suppliers by CNPJ to handle potential duplicates
+  // Group suppliers by document to handle potential duplicates
   const supplierGroups = activeSuppliers.reduce((groups, supplier) => {
-    const key = supplier.cnpj || supplier.email; // Use CNPJ or email as grouping key
+    const key = supplier.document_number || supplier.email; // Use document number or email as grouping key
     if (!groups[key]) groups[key] = [];
     groups[key].push(supplier);
     return groups;

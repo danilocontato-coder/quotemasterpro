@@ -26,7 +26,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
   const [existingSupplierId, setExistingSupplierId] = useState<string | null>(null); // Para rastrear fornecedor existente
   const [formData, setFormData] = useState<Partial<SupplierFormData>>({
     name: editingSupplier?.name || '',
-    cnpj: editingSupplier?.cnpj || '',
+    document_type: (editingSupplier?.document_type as 'cpf' | 'cnpj') || 'cnpj',
+    document_number: editingSupplier?.document_number || '',
     email: editingSupplier?.email || '',
     whatsapp: editingSupplier?.whatsapp || '',
     phone: editingSupplier?.phone || '',
@@ -45,7 +46,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     if (editingSupplier) {
       setFormData({
         name: editingSupplier.name || '',
-        cnpj: editingSupplier.cnpj || '',
+        document_type: (editingSupplier.document_type as 'cpf' | 'cnpj') || 'cnpj',
+        document_number: editingSupplier.document_number || '',
         email: editingSupplier.email || '',
         whatsapp: editingSupplier.whatsapp || '',
         phone: editingSupplier.phone || '',
@@ -86,7 +88,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     // Preencher formulário com dados do fornecedor existente (apenas para visualização)
     setFormData({
       name: supplier.name || '',
-      cnpj: supplier.cnpj || '', 
+      document_type: supplier.document_type || 'cnpj',
+      document_number: supplier.document_number || '', 
       email: supplier.email || '',
       whatsapp: supplier.whatsapp || '',
       phone: supplier.phone || '',
@@ -263,7 +266,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
   const resetForm = useCallback(() => {
     setFormData({
       name: '',
-      cnpj: '',
+      document_type: 'cnpj',
+      document_number: '',
       email: '',
       whatsapp: '',
       phone: '',

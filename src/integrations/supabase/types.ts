@@ -3239,6 +3239,8 @@ export type Database = {
           cnpj: string
           completed_orders: number | null
           created_at: string | null
+          document_number: string | null
+          document_type: string
           email: string
           id: string
           invited_by_clients: string[] | null
@@ -3269,6 +3271,8 @@ export type Database = {
           cnpj: string
           completed_orders?: number | null
           created_at?: string | null
+          document_number?: string | null
+          document_type?: string
           email: string
           id?: string
           invited_by_clients?: string[] | null
@@ -3299,6 +3303,8 @@ export type Database = {
           cnpj?: string
           completed_orders?: number | null
           created_at?: string | null
+          document_number?: string | null
+          document_type?: string
           email?: string
           id?: string
           invited_by_clients?: string[] | null

@@ -20,6 +20,13 @@ export const normalizeCNPJ = (cnpj: string): string => {
 };
 
 /**
+ * Normalizes document (CPF or CNPJ) by removing all non-numeric characters
+ */
+export const normalizeDocument = (document: string): string => {
+  return document.replace(/[^0-9]/g, '');
+};
+
+/**
  * Checks if a supplier already exists based on CNPJ (primary) or email (fallback)
  * Returns the existing supplier data for deduplication decisions
  */

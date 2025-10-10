@@ -17,7 +17,8 @@ export function SimpleSupplierTest() {
 
     const testData = {
       name: `Teste Fornecedor ${Date.now()}`,
-      cnpj: `${Math.floor(Math.random() * 100000000)}0001${Math.floor(Math.random() * 100)}`,
+      document_type: 'cnpj' as const,
+      document_number: `${Math.floor(Math.random() * 100000000)}0001${Math.floor(Math.random() * 100)}`,
       email: `teste${Date.now()}@fornecedor.com`,
       phone: '(11) 99999-9999',
       whatsapp: '(11) 99999-9999',

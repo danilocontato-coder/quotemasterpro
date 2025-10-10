@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
+import { checkSupplierDuplicate, normalizeDocument } from '@/lib/supplierDeduplication';
 
 export interface Supplier {
   id: string;
   name: string;
-  cnpj: string;
+  document_type: 'cpf' | 'cnpj';
+  document_number: string;
   email: string;
   phone?: string;
   whatsapp?: string;
@@ -199,7 +200,7 @@ export const useSupabaseSuppliers = () => {
         ...supplierData,
         client_id: targetClientId, // ✅ Required by RLS policy (respeitando simulação)
         type: 'local', // ✅ Required by RLS policy: suppliers_client_create_local
-        cnpj: normalizeCNPJ(supplierData.cnpj || ''), // Normalize CNPJ
+        document_number: normalizeDocument(supplierData.document_number || ''), // Normalize document
         rating: 0,
         completed_orders: 0
       };
@@ -333,25 +334,25 @@ export const useSupabaseSuppliers = () => {
 
   const updateSupplier = async (id: string, updates: Partial<Supplier>) => {
     try {
-      // Buscar fornecedor atual para comparar CNPJ
+      // Buscar fornecedor atual para comparar documento
       const { data: currentSupplier } = await supabase
         .from('suppliers')
-        .select('cnpj')
+        .select('document_number, document_type')
         .eq('id', id)
         .single();
 
-      // Normalizar ambos os CNPJs para comparação
-      const currentCnpjNormalized = normalizeCNPJ(currentSupplier?.cnpj || '');
-      const newCnpjNormalized = updates.cnpj ? normalizeCNPJ(updates.cnpj) : '';
+      // Normalizar ambos os documentos para comparação
+      const currentDocNormalized = normalizeDocument(currentSupplier?.document_number || '');
+      const newDocNormalized = updates.document_number ? normalizeDocument(updates.document_number) : '';
 
-      // Se o CNPJ não mudou (mesmo normalizado), remover do update para evitar conflito de constraint
+      // Se o documento não mudou (mesmo normalizado), remover do update para evitar conflito de constraint
       const updateData = { ...updates };
-      if (newCnpjNormalized && currentCnpjNormalized === newCnpjNormalized) {
-        delete updateData.cnpj;
-        console.log('🔄 [UPDATE-SUPPLIER] CNPJ não mudou, removido do update para evitar conflito');
-      } else if (updateData.cnpj) {
-        // Normalizar novo CNPJ antes de salvar
-        updateData.cnpj = normalizeCNPJ(updateData.cnpj);
+      if (newDocNormalized && currentDocNormalized === newDocNormalized) {
+        delete updateData.document_number;
+        console.log('🔄 [UPDATE-SUPPLIER] Documento não mudou, removido do update para evitar conflito');
+      } else if (updateData.document_number) {
+        // Normalizar novo documento antes de salvar
+        updateData.document_number = normalizeDocument(updateData.document_number);
       }
 
       const { data, error } = await supabase

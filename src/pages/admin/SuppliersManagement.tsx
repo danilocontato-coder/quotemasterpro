@@ -46,7 +46,7 @@ export const SuppliersManagement = () => {
   // Filter suppliers based on search and filters
   const filteredSuppliers = (suppliers || []).filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.cnpj.includes(searchTerm) ||
+                         supplier.document_number?.includes(searchTerm) ||
                          supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || supplier.status === statusFilter;
@@ -393,7 +393,7 @@ export const SuppliersManagement = () => {
                         <div>
                           <div className="font-medium">{supplier.name}</div>
                           <div className="text-sm text-muted-foreground font-mono">
-                            {supplier.cnpj}
+                            {supplier.document_type === 'cpf' ? 'CPF: ' : 'CNPJ: '}{supplier.document_number}
                           </div>
                         </div>
                       </TableCell>

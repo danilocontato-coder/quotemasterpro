@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { validateCPF, validateCNPJ, normalizeDocument } from '@/utils/documentValidation';
+
+// CPF validation - aceita formatado ou apenas dígitos
+const cpfRegex = /^(\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11})$/;
 
 // CNPJ validation - aceita tanto formatado quanto sem formatação
 const cnpjRegex = /^(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})$/;
@@ -18,10 +22,45 @@ export const supplierFormSchema = z.object({
     .max(100, 'Nome deve ter no máximo 100 caracteres')
     .refine(val => val.length > 0, 'Nome é obrigatório'),
   
-  cnpj: z
+  document_type: z.enum(['cpf', 'cnpj']).default('cnpj'),
+  
+  document_number: z
     .string()
     .trim()
-    .refine(val => cnpjRegex.test(val), 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX ou 14 dígitos'),
+    .superRefine((val, ctx) => {
+      const normalized = normalizeDocument(val);
+      const parent = (ctx as any).parent;
+      const docType = parent?.document_type || 'cnpj';
+      
+      // Verificar comprimento
+      if (docType === 'cpf' && normalized.length !== 11) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'CPF deve ter 11 dígitos',
+        });
+        return;
+      }
+      if (docType === 'cnpj' && normalized.length !== 14) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'CNPJ deve ter 14 dígitos',
+        });
+        return;
+      }
+      
+      // Validar documento
+      if (docType === 'cpf' && !validateCPF(normalized)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'CPF inválido',
+        });
+      } else if (docType === 'cnpj' && !validateCNPJ(normalized)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'CNPJ inválido',
+        });
+      }
+    }),
   
   // Contato
   email: z
@@ -82,7 +121,8 @@ export type SupplierFormData = z.infer<typeof supplierFormSchema>;
 // Schema para cada step individualmente
 export const basicInfoSchema = supplierFormSchema.pick({
   name: true,
-  cnpj: true,
+  document_type: true,
+  document_number: true,
   type: true,
 });
 

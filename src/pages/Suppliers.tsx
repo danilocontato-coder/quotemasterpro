@@ -62,7 +62,7 @@ export default function Suppliers() {
 
   const filteredSuppliers = availableSuppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (supplier.cnpj && supplier.cnpj.includes(searchTerm)) ||
+                         (supplier.document_number && supplier.document_number.includes(searchTerm)) ||
                          supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
@@ -318,9 +318,9 @@ export default function Suppliers() {
                           </Badge>
                         )}
                       </div>
-                      {supplier.type === 'local' && (
+                      {supplier.type === 'local' && supplier.document_number && (
                         <p className="text-sm text-muted-foreground font-mono">
-                          {supplier.cnpj}
+                          {supplier.document_type === 'cpf' ? 'CPF: ' : 'CNPJ: '}{supplier.document_number}
                         </p>
                       )}
                     </div>
