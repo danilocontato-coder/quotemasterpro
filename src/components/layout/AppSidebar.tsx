@@ -14,7 +14,8 @@ import {
   Crown,
   Brain,
   TreePine,
-  HelpCircle
+  HelpCircle,
+  FileSignature
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -44,6 +45,7 @@ interface NavItem {
 const navigationItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Cotações", url: "/quotes", icon: FileText, requiredModule: 'quotes' },
+  { title: "Contratos", url: "/contracts", icon: FileSignature, requiredModule: 'contracts' },
   { title: "Fornecedores", url: "/suppliers", icon: Users, requiredModule: 'suppliers' },
   { title: "Itens", url: "/products", icon: Package },
 ];
