@@ -86,40 +86,6 @@ export const CreateLocalSupplierModal: React.FC<CreateLocalSupplierModalProps> =
     return Object.keys(newErrors).length === 0;
   };
 
-  const sendWelcomeWhatsApp = async (supplierId: string, supplierData: any) => {
-    if (!supplierData.whatsapp) return;
-
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('client_id, clients(name)')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      const clientName = (profile?.clients as any)?.name || 'Cliente';
-
-      const { data, error } = await supabase.functions.invoke('send-supplier-welcome', {
-        body: {
-          supplierId,
-          supplierName: supplierData.name,
-          supplierPhone: supplierData.whatsapp,
-          clientId: profile?.client_id,
-          clientName,
-          customVariables: {
-            supplier_email: supplierData.email,
-            access_link: window.location.origin + '/login'
-          }
-        }
-      });
-
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Falha ao enviar');
-    } catch (error) {
-      console.error('Erro ao enviar WhatsApp:', error);
-      throw error;
-    }
-  };
-
   const handleSubmit = async () => {
     if (!formData.whatsapp?.trim()) {
       toast.error('WhatsApp é obrigatório para cadastro de fornecedor');
@@ -136,17 +102,8 @@ export const CreateLocalSupplierModal: React.FC<CreateLocalSupplierModalProps> =
       const result = await onCreateSupplier(formData, password);
       
       if (result?.success) {
-        // Enviar WhatsApp automaticamente
-        toast.info('📤 Enviando mensagem de boas-vindas...');
-        
-        try {
-          await sendWelcomeWhatsApp(result.supplier?.id || result.supplierId, formData);
-          toast.success('✅ Fornecedor criado e mensagem enviada!');
-        } catch (whatsappError) {
-          console.error('WhatsApp error:', whatsappError);
-          toast.warning('⚠️ Fornecedor criado, mas houve erro no envio do WhatsApp');
-        }
-
+        // O envio de WhatsApp é feito automaticamente no hook useSupabaseAdminSuppliers
+        // Apenas exibir credenciais ou fechar
         if (result.credentials) {
           setCredentials(result.credentials);
         } else {

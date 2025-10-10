@@ -189,17 +189,31 @@ export const useSupabaseAdminSuppliers = () => {
         });
       } else {
         console.log('✅ Auth user created for supplier:', authResp);
-        toast({
-          title: 'Fornecedor e acesso criados',
-          description: `Login: ${supplierData.email} | Senha: ${password}`,
-        });
+        
+        // Buscar informações do cliente atual para envio do WhatsApp
+        let clientName = 'Administrador do Sistema';
+        let clientId = null;
+        
+        if (currentClientId) {
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('name')
+            .eq('id', currentClientId)
+            .single();
+          
+          if (clientData) {
+            clientName = clientData.name;
+            clientId = currentClientId;
+          }
+        }
 
-        // Enviar WhatsApp de boas-vindas automaticamente
+        // Enviar WhatsApp de boas-vindas automaticamente se houver WhatsApp cadastrado
         if (supplierData.whatsapp) {
-          console.log('📤 Sending welcome WhatsApp...');
+          console.log('📤 Sending welcome WhatsApp to:', supplierData.whatsapp);
+          
           toast({
-            title: 'Enviando mensagem de boas-vindas',
-            description: 'Aguarde...',
+            title: '📤 Enviando boas-vindas',
+            description: 'Enviando mensagem via WhatsApp...',
           });
 
           try {
@@ -208,34 +222,45 @@ export const useSupabaseAdminSuppliers = () => {
                 supplierId: (supplier as any).id,
                 supplierName: supplierData.name,
                 supplierPhone: supplierData.whatsapp,
-                clientId: null,
-                clientName: 'Administrador do Sistema',
+                clientId,
+                clientName,
                 customVariables: {
                   supplier_email: supplierData.email,
+                  supplier_password: password,
                   access_link: window.location.origin + '/login'
                 }
               }
             });
 
-            if (whatsappError) throw whatsappError;
+            if (whatsappError) {
+              console.error('❌ WhatsApp function error:', whatsappError);
+              throw whatsappError;
+            }
 
             if (whatsappResult?.success) {
-              console.log('✅ Welcome WhatsApp sent successfully');
+              console.log('✅ Welcome WhatsApp sent successfully, messageId:', whatsappResult.messageId);
               toast({
-                title: '✅ Mensagem enviada!',
-                description: 'Mensagem de boas-vindas enviada via WhatsApp',
+                title: '✅ Fornecedor criado!',
+                description: `Acesso criado e mensagem de boas-vindas enviada para ${supplierData.whatsapp}`,
               });
             } else {
+              console.error('❌ WhatsApp send failed:', whatsappResult?.error);
               throw new Error(whatsappResult?.error || 'Failed to send WhatsApp');
             }
-          } catch (whatsappError) {
+          } catch (whatsappError: any) {
             console.error('⚠️ WhatsApp error:', whatsappError);
             toast({
-              title: '⚠️ Erro ao enviar WhatsApp',
-              description: 'Fornecedor foi criado, mas houve erro no envio da mensagem',
+              title: '⚠️ Fornecedor criado',
+              description: 'Acesso criado, mas houve erro ao enviar WhatsApp. Verifique as configurações da Evolution API.',
               variant: 'destructive',
             });
           }
+        } else {
+          // Se não tiver WhatsApp, apenas informar que o fornecedor foi criado
+          toast({
+            title: '✅ Fornecedor criado!',
+            description: `Login: ${supplierData.email} | Senha: ${password}`,
+          });
         }
       }
 
