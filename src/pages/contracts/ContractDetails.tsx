@@ -464,8 +464,8 @@ const ContractDetails = () => {
 
       {/* Attachment Viewer Dialog */}
       <Dialog open={!!viewingAttachment} onOpenChange={() => setViewingAttachment(null)}>
-        <DialogContent className="max-w-5xl h-[90vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-[95vw] w-full h-[95vh] p-0 gap-0">
+          <DialogHeader className="px-6 py-4 border-b">
             <DialogTitle className="flex items-center justify-between">
               <span>Visualizar Anexo</span>
               <Button
@@ -477,7 +477,7 @@ const ContractDetails = () => {
               </Button>
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 h-full">
+          <div className="flex-1 h-[calc(95vh-4rem)] p-4">
             {isAttachmentLoading && (
               <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -488,7 +488,7 @@ const ContractDetails = () => {
             {!isAttachmentLoading && viewingAttachment && attachmentBlobUrl && (
               <iframe
                 src={attachmentBlobUrl}
-                className="w-full h-full rounded-lg border"
+                className="w-full h-full rounded border"
                 title="Visualizador de Anexo"
               />
             )}
