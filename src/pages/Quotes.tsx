@@ -256,6 +256,12 @@ export default function Quotes() {
   }).length;
   const responseRate = totalActive > 0 ? Math.round((approvedQuotes / totalActive) * 100) : 0;
 
+  // Visit metrics
+  const awaitingVisitQuotes = quotes.filter(q => q.status === 'awaiting_visit').length;
+  const visitScheduledQuotes = quotes.filter(q => q.status === 'visit_scheduled').length;
+  const visitConfirmedQuotes = quotes.filter(q => q.status === 'visit_confirmed').length;
+  const visitOverdueQuotes = quotes.filter(q => q.status === 'visit_overdue').length;
+
   // Cálculos de paginação
   const totalPages = Math.ceil(filteredQuotes.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -446,6 +452,60 @@ export default function Quotes() {
         </div>
       </div>
 
+      {/* Visit Status Metrics - Show only if there are visits */}
+      {(awaitingVisitQuotes > 0 || visitScheduledQuotes > 0 || visitConfirmedQuotes > 0 || visitOverdueQuotes > 0) && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          {awaitingVisitQuotes > 0 && (
+            <div className="animate-scale-in" style={{ animationDelay: '0.42s', opacity: 0, animationFillMode: 'forwards' }}>
+              <FilterMetricCard
+                title="Aguardando Agendamento"
+                value={awaitingVisitQuotes}
+                icon={<Clock />}
+                isActive={visitFilter === "awaiting_visit"}
+                onClick={() => { setActiveFilter("all"); setVisitFilter("awaiting_visit"); }}
+                variant="warning"
+              />
+            </div>
+          )}
+          {visitScheduledQuotes > 0 && (
+            <div className="animate-scale-in" style={{ animationDelay: '0.44s', opacity: 0, animationFillMode: 'forwards' }}>
+              <FilterMetricCard
+                title="Visita Agendada"
+                value={visitScheduledQuotes}
+                icon={<Calendar />}
+                isActive={visitFilter === "visit_scheduled"}
+                onClick={() => { setActiveFilter("all"); setVisitFilter("visit_scheduled"); }}
+                variant="default"
+              />
+            </div>
+          )}
+          {visitConfirmedQuotes > 0 && (
+            <div className="animate-scale-in" style={{ animationDelay: '0.46s', opacity: 0, animationFillMode: 'forwards' }}>
+              <FilterMetricCard
+                title="Visita Confirmada"
+                value={visitConfirmedQuotes}
+                icon={<CheckCircle />}
+                isActive={visitFilter === "visit_confirmed"}
+                onClick={() => { setActiveFilter("all"); setVisitFilter("visit_confirmed"); }}
+                variant="success"
+              />
+            </div>
+          )}
+          {visitOverdueQuotes > 0 && (
+            <div className="animate-scale-in" style={{ animationDelay: '0.48s', opacity: 0, animationFillMode: 'forwards' }}>
+              <FilterMetricCard
+                title="Visita Atrasada"
+                value={visitOverdueQuotes}
+                icon={<AlertCircle />}
+                isActive={visitFilter === "visit_overdue"}
+                onClick={() => { setActiveFilter("all"); setVisitFilter("visit_overdue"); }}
+                variant="destructive"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Additional Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <Card className="p-4">
@@ -556,6 +616,31 @@ export default function Quotes() {
                     <p className="text-xs text-muted-foreground font-mono">
                       {quote.id}
                     </p>
+                    {/* Visit Status Badges */}
+                    {quote.status === 'awaiting_visit' && (
+                      <Badge variant="secondary" className="mt-2 bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-400">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Aguardando Visita
+                      </Badge>
+                    )}
+                    {quote.status === 'visit_scheduled' && (
+                      <Badge variant="secondary" className="mt-2 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Visita Agendada
+                      </Badge>
+                    )}
+                    {quote.status === 'visit_confirmed' && (
+                      <Badge variant="secondary" className="mt-2 bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-400">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Visita Confirmada
+                      </Badge>
+                    )}
+                    {quote.status === 'visit_overdue' && (
+                      <Badge variant="destructive" className="mt-2 animate-pulse">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Visita Atrasada!
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex-shrink-0">
                     <StatusProgressIndicator status={quote.status} />
@@ -564,6 +649,19 @@ export default function Quotes() {
               </CardHeader>
               
               <CardContent className="space-y-4 flex-1">
+                {/* Visit Overdue Alert */}
+                {quote.status === 'visit_overdue' && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950 border-2 border-red-200 dark:border-red-800 rounded-md animate-pulse">
+                    <div className="flex items-center gap-2 text-red-800 dark:text-red-400">
+                      <AlertCircle className="h-5 w-5" />
+                      <span className="text-sm font-semibold">Visita Técnica Atrasada!</span>
+                    </div>
+                    <p className="text-xs text-red-700 dark:text-red-500 mt-1">
+                      Entre em contato com o fornecedor urgentemente
+                    </p>
+                  </div>
+                )}
+                
                 {/* Quote Info */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
@@ -594,6 +692,22 @@ export default function Quotes() {
                         <p className="font-semibold text-sm">{formatLocalDate(quote.deadline)}</p>
                         <p className="text-xs text-orange-600 dark:text-orange-400">
                           {Math.ceil((new Date(quote.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Visit Deadline Info */}
+                  {quote.requires_visit && quote.visit_deadline && (
+                    <div className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-950 rounded-md border border-blue-200 dark:border-blue-800">
+                      <span className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Prazo Visita
+                      </span>
+                      <div className="text-right">
+                        <p className="font-semibold text-sm">{formatLocalDate(quote.visit_deadline)}</p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400">
+                          {Math.ceil((new Date(quote.visit_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
                         </p>
                       </div>
                     </div>
