@@ -2722,6 +2722,88 @@ export type Database = {
           },
         ]
       }
+      quote_visits: {
+        Row: {
+          attachments: Json | null
+          client_id: string
+          confirmation_notes: string | null
+          confirmed_by: string | null
+          confirmed_date: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          previous_date: string | null
+          quote_id: string
+          requested_date: string
+          reschedule_count: number | null
+          reschedule_reason: string | null
+          scheduled_date: string
+          status: string
+          supplier_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          client_id: string
+          confirmation_notes?: string | null
+          confirmed_by?: string | null
+          confirmed_date?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          previous_date?: string | null
+          quote_id: string
+          requested_date?: string
+          reschedule_count?: number | null
+          reschedule_reason?: string | null
+          scheduled_date: string
+          status?: string
+          supplier_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          client_id?: string
+          confirmation_notes?: string | null
+          confirmed_by?: string | null
+          confirmed_date?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          previous_date?: string | null
+          quote_id?: string
+          requested_date?: string
+          reschedule_count?: number | null
+          reschedule_reason?: string | null
+          scheduled_date?: string
+          status?: string
+          supplier_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_visits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_visits_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_visits_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           client_id: string
