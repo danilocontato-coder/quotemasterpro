@@ -333,9 +333,30 @@ export const useSupabaseSuppliers = () => {
 
   const updateSupplier = async (id: string, updates: Partial<Supplier>) => {
     try {
+      // Buscar fornecedor atual para comparar CNPJ
+      const { data: currentSupplier } = await supabase
+        .from('suppliers')
+        .select('cnpj')
+        .eq('id', id)
+        .single();
+
+      // Normalizar ambos os CNPJs para comparação
+      const currentCnpjNormalized = normalizeCNPJ(currentSupplier?.cnpj || '');
+      const newCnpjNormalized = updates.cnpj ? normalizeCNPJ(updates.cnpj) : '';
+
+      // Se o CNPJ não mudou (mesmo normalizado), remover do update para evitar conflito de constraint
+      const updateData = { ...updates };
+      if (newCnpjNormalized && currentCnpjNormalized === newCnpjNormalized) {
+        delete updateData.cnpj;
+        console.log('🔄 [UPDATE-SUPPLIER] CNPJ não mudou, removido do update para evitar conflito');
+      } else if (updateData.cnpj) {
+        // Normalizar novo CNPJ antes de salvar
+        updateData.cnpj = normalizeCNPJ(updateData.cnpj);
+      }
+
       const { data, error } = await supabase
         .from('suppliers')
-        .update(updates)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();

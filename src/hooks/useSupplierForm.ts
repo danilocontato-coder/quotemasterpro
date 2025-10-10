@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
   supplierFormSchema, 
   basicInfoSchema, 
@@ -39,6 +39,28 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     status: editingSupplier?.status || 'active',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof SupplierFormData, string>>>({});
+
+  // Atualizar formData quando editingSupplier mudar
+  useEffect(() => {
+    if (editingSupplier) {
+      setFormData({
+        name: editingSupplier.name || '',
+        cnpj: editingSupplier.cnpj || '',
+        email: editingSupplier.email || '',
+        whatsapp: editingSupplier.whatsapp || '',
+        phone: editingSupplier.phone || '',
+        website: editingSupplier.website || '',
+        state: editingSupplier.state || '',
+        city: editingSupplier.city || '',
+        address: editingSupplier.address || '',
+        specialties: editingSupplier.specialties || [],
+        type: editingSupplier.type || 'local',
+        status: editingSupplier.status || 'active',
+      });
+      setErrors({});
+      setCurrentStep(1);
+    }
+  }, [editingSupplier]);
 
   const steps = [
     { id: 1, title: 'Dados Básicos', description: 'Nome e identificação' },
