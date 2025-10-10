@@ -236,6 +236,14 @@ export const useAdministradoraSuppliersManagement = () => {
 
       if (!profile?.client_id) throw new Error('Cliente não encontrado');
 
+      // Guard: verificar acesso ao módulo 'suppliers'
+      const { data: hasSuppliersAccess, error: accessErr } = await supabase.rpc('user_has_module_access', { _module_key: 'suppliers' });
+      if (accessErr) throw accessErr;
+      if (!hasSuppliersAccess) {
+        toast.error('Seu plano não habilita o módulo de Fornecedores.');
+        return { success: false };
+      }
+
       // Verificar CNPJ duplicado
       const { data: existing } = await supabase
         .from('suppliers')

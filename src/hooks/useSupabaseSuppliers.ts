@@ -178,6 +178,17 @@ export const useSupabaseSuppliers = () => {
 
       console.log('✅ [CREATE-SUPPLIER] Perfil encontrado:', profile);
 
+      // Guard: module access for suppliers
+      const { data: hasSuppliersAccess, error: accessErr } = await supabase.rpc('user_has_module_access', { _module_key: 'suppliers' });
+      if (accessErr) {
+        console.error('❌ [CREATE-SUPPLIER] Falha ao verificar acesso ao módulo suppliers:', accessErr);
+        throw accessErr;
+      }
+      if (!hasSuppliersAccess) {
+        console.error('⛔ [CREATE-SUPPLIER] Usuário sem acesso ao módulo Fornecedores (plano).');
+        throw new Error('Você não tem acesso ao módulo de Fornecedores no seu plano. Fale com o administrador para habilitar.');
+      }
+
       // Create supplier - MUST include client_id and type for RLS policy
       const insertData = {
         ...supplierData,
