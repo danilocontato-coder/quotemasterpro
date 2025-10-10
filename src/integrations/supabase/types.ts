@@ -2816,6 +2816,7 @@ export type Database = {
           id: string
           items_count: number | null
           on_behalf_of_client_id: string | null
+          requires_visit: boolean | null
           responses_count: number | null
           selected_supplier_ids: string[] | null
           status: string | null
@@ -2826,6 +2827,7 @@ export type Database = {
           title: string
           total: number | null
           updated_at: string | null
+          visit_deadline: string | null
         }
         Insert: {
           client_id: string
@@ -2838,6 +2840,7 @@ export type Database = {
           id: string
           items_count?: number | null
           on_behalf_of_client_id?: string | null
+          requires_visit?: boolean | null
           responses_count?: number | null
           selected_supplier_ids?: string[] | null
           status?: string | null
@@ -2848,6 +2851,7 @@ export type Database = {
           title: string
           total?: number | null
           updated_at?: string | null
+          visit_deadline?: string | null
         }
         Update: {
           client_id?: string
@@ -2860,6 +2864,7 @@ export type Database = {
           id?: string
           items_count?: number | null
           on_behalf_of_client_id?: string | null
+          requires_visit?: boolean | null
           responses_count?: number | null
           selected_supplier_ids?: string[] | null
           status?: string | null
@@ -2870,6 +2875,7 @@ export type Database = {
           title?: string
           total?: number | null
           updated_at?: string | null
+          visit_deadline?: string | null
         }
         Relationships: [
           {
