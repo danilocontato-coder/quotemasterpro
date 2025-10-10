@@ -3268,6 +3268,8 @@ export type Database = {
           phone: string | null
           rating: number | null
           region: string | null
+          registration_completed_at: string | null
+          registration_status: string | null
           specialties: string[] | null
           state: string | null
           status: string | null
@@ -3300,6 +3302,8 @@ export type Database = {
           phone?: string | null
           rating?: number | null
           region?: string | null
+          registration_completed_at?: string | null
+          registration_status?: string | null
           specialties?: string[] | null
           state?: string | null
           status?: string | null
@@ -3332,6 +3336,8 @@ export type Database = {
           phone?: string | null
           rating?: number | null
           region?: string | null
+          registration_completed_at?: string | null
+          registration_status?: string | null
           specialties?: string[] | null
           state?: string | null
           status?: string | null
