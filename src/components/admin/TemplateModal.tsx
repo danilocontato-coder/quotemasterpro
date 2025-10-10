@@ -23,6 +23,7 @@ interface TemplateModalProps {
 
 const TEMPLATE_TYPES = [
   { value: 'quote_request', label: 'Solicitação de Cotação (WhatsApp)', icon: MessageSquare, category: 'whatsapp' },
+  { value: 'supplier_welcome', label: 'Boas-vindas ao Fornecedor (WhatsApp)', icon: MessageSquare, category: 'whatsapp' },
   { value: 'supplier_notification_whatsapp', label: 'Notificação para Fornecedor (WhatsApp)', icon: MessageSquare, category: 'whatsapp' },
   { value: 'proposal_received_whatsapp', label: 'Proposta Recebida (WhatsApp)', icon: MessageSquare, category: 'whatsapp' },
   { value: 'email_quote', label: 'Solicitação de Cotação (Email)', icon: Mail, category: 'email' },
@@ -43,6 +44,12 @@ const DEFAULT_VARIABLES: Record<string, Record<string, string>> = {
     proposal_link: 'Link para envio de proposta',
     client_email: 'Email do cliente',
     client_phone: 'Telefone do cliente'
+  },
+  supplier_welcome: {
+    supplier_name: 'Nome do fornecedor',
+    client_name: 'Nome do cliente que convidou',
+    platform_name: 'Nome da plataforma',
+    access_link: 'Link para acesso ao sistema'
   },
   supplier_notification_whatsapp: {
     supplier_name: 'Nome do fornecedor',

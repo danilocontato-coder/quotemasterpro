@@ -78,7 +78,15 @@ serve(async (req) => {
         id: null,
         name: 'default_supplier_welcome',
         message_content:
-          'Olá {{supplier_name}}! Seja bem-vindo ao {{platform_name}}. Você foi convidado por {{client_name}}. Acesse: {{access_link}}',
+          '🎉 Olá, {{supplier_name}}!\n\n' +
+          'Temos uma ótima notícia! Você foi convidado por *{{client_name}}* para fazer parte da nossa plataforma *{{platform_name}}*.\n\n' +
+          '✅ Com isso, você terá acesso a:\n' +
+          '• Recebimento de cotações\n' +
+          '• Envio de propostas\n' +
+          '• Gestão de pedidos\n' +
+          '• E muito mais!\n\n' +
+          '🔗 *Acesse agora:*\n{{access_link}}\n\n' +
+          'Qualquer dúvida, estamos à disposição!',
       };
     }
 
