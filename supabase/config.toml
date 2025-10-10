@@ -33,6 +33,9 @@ verify_jwt = false
 [functions.ai-market-analysis]
 verify_jwt = true
 
+[functions.ai-quote-generator]
+verify_jwt = true
+
 [functions.ai-lead-scoring]
 verify_jwt = true
 
