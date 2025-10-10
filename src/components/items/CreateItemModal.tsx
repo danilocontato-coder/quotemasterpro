@@ -54,8 +54,8 @@ export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onO
       return;
     }
 
-    const productData = {
-      code: formData.code,
+    const productData: any = {
+      // Código será gerado automaticamente pelo banco via next_product_code()
       name: formData.name,
       description: formData.description || null,
       category: formData.category,
@@ -161,44 +161,33 @@ export function CreateItemModal({ trigger, onItemCreate, open: externalOpen, onO
               <CardTitle className="text-base">Informações Básicas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="code">Código</Label>
-                  <Input
-                    id="code"
-                    placeholder="Deixe vazio para gerar automaticamente"
-                    value={formData.code}
-                    onChange={(e) => handleInputChange('code', e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Se não informado, será gerado automaticamente
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Categoria *</Label>
-                   <Select 
-                     key={`categories-${categories.length}-${Date.now()}`}
-                     value={formData.category} 
-                     onValueChange={(value) => handleInputChange('category', value)}
-                   >
-                     <SelectTrigger>
-                       <SelectValue placeholder="Selecione uma categoria" />
-                     </SelectTrigger>
-                       <SelectContent>
-                         {categories.map((category) => (
-                           <SelectItem key={category.id} value={category.name}>
-                             <div className="flex items-center gap-2">
-                               <div 
-                                 className="w-3 h-3 rounded-full"
-                                 style={{ backgroundColor: category.color }}
-                               />
-                               {category.name}
-                             </div>
-                           </SelectItem>
-                         ))}
-                       </SelectContent>
-                   </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoria *</Label>
+                 <Select 
+                   key={`categories-${categories.length}-${Date.now()}`}
+                   value={formData.category} 
+                   onValueChange={(value) => handleInputChange('category', value)}
+                 >
+                   <SelectTrigger>
+                     <SelectValue placeholder="Selecione uma categoria" />
+                   </SelectTrigger>
+                     <SelectContent>
+                       {categories.map((category) => (
+                         <SelectItem key={category.id} value={category.name}>
+                           <div className="flex items-center gap-2">
+                             <div 
+                               className="w-3 h-3 rounded-full"
+                               style={{ backgroundColor: category.color }}
+                             />
+                             {category.name}
+                           </div>
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                 </Select>
+                 <p className="text-xs text-muted-foreground">
+                   O código será gerado automaticamente (ex: PROD0001)
+                 </p>
               </div>
 
               <div className="space-y-2">
