@@ -123,10 +123,34 @@ export const useSupabaseAdminSuppliers = () => {
     try {
       console.log('🔄 Creating supplier...');
       
-      // Create supplier
+      // Determine context (admin vs client) and enforce RLS-required fields
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id;
+      const { data: isAdmin } = await supabase.rpc('has_role_text', { _user_id: userId, _role: 'admin' });
+      const { data: currentClientId } = await supabase.rpc('get_current_user_client_id');
+
+      const normalizedCnpj = (supplierData.cnpj || '').replace(/\D/g, '');
+      const effectiveType = (supplierData.type as 'local' | 'certified') || 'local';
+
+      const insertData: any = {
+        ...supplierData,
+        cnpj: normalizedCnpj,
+        type: effectiveType,
+        // For local suppliers, client_id MUST match current user's client for RLS
+        client_id: effectiveType === 'local' 
+          ? (supplierData.client_id || currentClientId || null) 
+          : null,
+        // Certified suppliers are global and flagged as certified
+        visibility_scope: effectiveType === 'certified' ? 'global' : (supplierData.visibility_scope || 'region'),
+        is_certified: effectiveType === 'certified' ? true : (supplierData as any).is_certified || false,
+      };
+
+      console.log('📝 insertData (admin flow):', { insertData, isAdmin, currentClientId });
+
+      // Create supplier with enforced payload
       const { data: supplier, error } = await supabase
         .from('suppliers')
-        .insert([supplierData])
+        .insert([insertData])
         .select()
         .single();
 
@@ -169,6 +193,50 @@ export const useSupabaseAdminSuppliers = () => {
           title: 'Fornecedor e acesso criados',
           description: `Login: ${supplierData.email} | Senha: ${password}`,
         });
+
+        // Enviar WhatsApp de boas-vindas automaticamente
+        if (supplierData.whatsapp) {
+          console.log('📤 Sending welcome WhatsApp...');
+          toast({
+            title: 'Enviando mensagem de boas-vindas',
+            description: 'Aguarde...',
+          });
+
+          try {
+            const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke('send-supplier-welcome', {
+              body: {
+                supplierId: (supplier as any).id,
+                supplierName: supplierData.name,
+                supplierPhone: supplierData.whatsapp,
+                clientId: null,
+                clientName: 'Administrador do Sistema',
+                customVariables: {
+                  supplier_email: supplierData.email,
+                  access_link: window.location.origin + '/login'
+                }
+              }
+            });
+
+            if (whatsappError) throw whatsappError;
+
+            if (whatsappResult?.success) {
+              console.log('✅ Welcome WhatsApp sent successfully');
+              toast({
+                title: '✅ Mensagem enviada!',
+                description: 'Mensagem de boas-vindas enviada via WhatsApp',
+              });
+            } else {
+              throw new Error(whatsappResult?.error || 'Failed to send WhatsApp');
+            }
+          } catch (whatsappError) {
+            console.error('⚠️ WhatsApp error:', whatsappError);
+            toast({
+              title: '⚠️ Erro ao enviar WhatsApp',
+              description: 'Fornecedor foi criado, mas houve erro no envio da mensagem',
+              variant: 'destructive',
+            });
+          }
+        }
       }
 
       // Update local state

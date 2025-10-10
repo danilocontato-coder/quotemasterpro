@@ -225,16 +225,51 @@ export const useAdministradoraSuppliersManagement = () => {
 
   const createLocalSupplier = async (data: SupplierFormData, password: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Usuário não autenticado');
 
       const { data: profile } = await supabase
         .from('profiles')
         .select('client_id')
-        .eq('id', user.id)
+        .eq('id', authUser.id)
         .single();
 
-      if (!profile?.client_id) throw new Error('Cliente não encontrado');
+      // Determinar targetClientId: priorizar contexto de simulação admin ou perfil
+      let targetClientId = profile?.client_id || null;
+      
+      // Se não houver client_id no perfil, verificar se é modo admin simulado via useAuth
+      // (useAuth já injeta user.clientId do adminAccessData)
+      if (!targetClientId) {
+        // Tentar obter do contexto via adminAccess
+        const urlParams = new URLSearchParams(window.location.search);
+        const adminToken = urlParams.get('adminToken');
+        if (adminToken) {
+          const adminData = localStorage.getItem(`adminAccess_${adminToken}`);
+          if (adminData) {
+            const parsed = JSON.parse(adminData);
+            targetClientId = parsed.targetClientId || null;
+          }
+        }
+      }
+
+      if (!targetClientId) {
+        toast.error('Contexto de cliente não encontrado. Selecione um cliente antes de criar fornecedores.');
+        return { success: false };
+      }
+
+      console.log('✅ [CREATE-LOCAL-SUPPLIER] Target client_id:', {
+        authUserId: authUser.id,
+        profileClientId: profile?.client_id,
+        targetClientId
+      });
+
+      // Guard: verificar acesso ao módulo 'suppliers'
+      const { data: hasSuppliersAccess, error: accessErr } = await supabase.rpc('user_has_module_access', { _module_key: 'suppliers' });
+      if (accessErr) throw accessErr;
+      if (!hasSuppliersAccess) {
+        toast.error('Seu plano não habilita o módulo de Fornecedores.');
+        return { success: false };
+      }
 
       // Verificar CNPJ duplicado
       const { data: existing } = await supabase
@@ -265,7 +300,7 @@ export const useAdministradoraSuppliersManagement = () => {
           city: data.city,
           status: data.status || 'active',
           type: 'local',
-          client_id: profile.client_id,
+          client_id: targetClientId, // Usar targetClientId ao invés de profile.client_id
         })
         .select()
         .single();
