@@ -22,8 +22,6 @@ const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
 const ForgotPasswordPage = React.lazy(() => import('@/pages/auth/ForgotPassword'));
 const Quotes = React.lazy(() => import('@/pages/Quotes'));
 const Contracts = React.lazy(() => import('@/pages/Contracts'));
-const NewContract = React.lazy(() => import('@/pages/contracts/NewContract'));
-const EditContract = React.lazy(() => import('@/pages/contracts/EditContract'));
 const ContractDetails = React.lazy(() => import('@/pages/contracts/ContractDetails'));
 const Suppliers = React.lazy(() => import('@/pages/Suppliers'));
 const Products = React.lazy(() => import('@/pages/Products'));
@@ -295,16 +293,6 @@ export const AppWithProviders: React.FC = () => {
             <Contracts />
           </Suspense>
         } />
-        <Route path="contracts/new" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <NewContract />
-          </Suspense>
-        } />
-        <Route path="contracts/:id/edit" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <EditContract />
-          </Suspense>
-        } />
         <Route path="contracts/:id" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <ContractDetails />
@@ -427,16 +415,6 @@ export const AppWithProviders: React.FC = () => {
         <Route path="contracts" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <Contracts />
-          </Suspense>
-        } />
-        <Route path="contracts/new" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <NewContract />
-          </Suspense>
-        } />
-        <Route path="contracts/:id/edit" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <EditContract />
           </Suspense>
         } />
         <Route path="contracts/:id" element={

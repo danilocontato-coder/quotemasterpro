@@ -7,6 +7,7 @@ import { useContracts } from '@/hooks/useContracts';
 import { ContractCard } from '@/components/contracts/ContractCard';
 import { ModuleGuard } from '@/components/common/ModuleGuard';
 import { FilterMetricCard } from '@/components/ui/filter-metric-card';
+import { ContractFormModal } from '@/components/contracts/ContractFormModal';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -16,13 +17,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CONTRACT_STATUSES } from '@/constants/contracts';
+import type { Database } from '@/integrations/supabase/types';
+
+type Contract = Database['public']['Tables']['contracts']['Row'];
 
 const Contracts = () => {
   const navigate = useNavigate();
-  const { contracts, isLoading, deleteContract } = useContracts();
+  const { contracts, isLoading, deleteContract, refreshContracts } = useContracts();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
 
   // Calcular métricas
   const metrics = useMemo(() => {
@@ -90,6 +96,23 @@ const Contracts = () => {
     }
   };
 
+  const handleEdit = (id: string) => {
+    const contract = contracts.find(c => c.id === id);
+    if (contract) {
+      setEditingContract(contract);
+      setShowFormModal(true);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowFormModal(false);
+    setEditingContract(null);
+  };
+
+  const handleSuccess = () => {
+    refreshContracts();
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -107,7 +130,7 @@ const Contracts = () => {
               Gerencie todos os seus contratos em um só lugar
             </p>
           </div>
-          <Button onClick={() => navigate('/contracts/new')}>
+          <Button onClick={() => setShowFormModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Contrato
           </Button>
@@ -226,13 +249,20 @@ const Contracts = () => {
                 key={contract.id}
                 contract={contract}
                 onView={(id) => navigate(`/contracts/${id}`)}
-                onEdit={(id) => navigate(`/contracts/${id}/edit`)}
+                onEdit={handleEdit}
                 onDelete={handleDelete}
               />
             ))}
           </div>
         )}
       </div>
+
+      <ContractFormModal
+        open={showFormModal}
+        onClose={handleCloseModal}
+        editingContract={editingContract}
+        onSuccess={handleSuccess}
+      />
     </ModuleGuard>
   );
 };
