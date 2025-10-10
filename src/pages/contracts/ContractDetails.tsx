@@ -12,7 +12,9 @@ import {
   Clock,
   AlertCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Paperclip,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -352,6 +354,44 @@ const ContractDetails = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Anexos */}
+        {contract.attachments && Array.isArray(contract.attachments) && contract.attachments.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Paperclip className="h-5 w-5" />
+                Anexos ({contract.attachments.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {contract.attachments.map((url, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        Anexo {index + 1}.pdf
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open(url as string, '_blank')}
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Visualizar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
