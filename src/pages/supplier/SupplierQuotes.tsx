@@ -33,20 +33,14 @@ import {
 } from "lucide-react";
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
-import { QuoteProposalModal } from "@/components/supplier/QuoteProposalModal";
+import { SupplierQuoteViewModal } from "@/components/supplier/SupplierQuoteViewModal";
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
-import { SupplierClarificationModal } from "@/components/supplier/SupplierClarificationModal";
-import { VisitManagementModal } from "@/components/supplier/VisitManagementModal";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
-  const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
-  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-  const [messageQuote, setMessageQuote] = useState<any>(null);
-  const [selectedVisitQuote, setSelectedVisitQuote] = useState<any>(null);
-  
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -137,17 +131,17 @@ export default function SupplierQuotes() {
 
   const handleViewQuote = (quote: any) => {
     setSelectedQuote(quote);
-    setIsProposalModalOpen(true);
+    setIsViewModalOpen(true);
   };
 
   const handleSendProposal = (quote: any) => {
     setSelectedQuote(quote);
-    setIsProposalModalOpen(true);
+    setIsViewModalOpen(true);
   };
 
-  const handleOpenMessages = (quote: any) => {
-    setMessageQuote(quote);
-    setIsMessageModalOpen(true);
+  const handleRefetch = () => {
+    // Callback para atualizar dados após ações
+    window.location.reload();
   };
 
 
@@ -358,33 +352,33 @@ export default function SupplierQuotes() {
                            <Eye className="h-4 w-4" />
                          </Button>
                          
-                         {/* Botão Agendar Visita - só se requires_visit E awaiting_visit */}
-                         {quote.requires_visit && quote.status === 'awaiting_visit' && (
-                           <Button
-                             variant="default"
-                             size="sm"
-                             onClick={() => setSelectedVisitQuote(quote)}
-                             className="bg-orange-500 hover:bg-orange-600"
-                             title="Agendar visita técnica"
-                           >
-                             <Calendar className="h-4 w-4 mr-1" />
-                             Agendar
-                           </Button>
-                         )}
+                          {/* Botão Agendar Visita - integrado no modal principal */}
+                          {quote.requires_visit && quote.status === 'awaiting_visit' && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleViewQuote(quote)}
+                              className="bg-orange-500 hover:bg-orange-600"
+                              title="Ver cotação e agendar visita"
+                            >
+                              <Calendar className="h-4 w-4 mr-1" />
+                              Ver & Agendar
+                            </Button>
+                          )}
 
-                         {/* Botão Confirmar Visita - só se visit_scheduled */}
-                         {quote.requires_visit && quote.status === 'visit_scheduled' && (
-                           <Button
-                             variant="default"
-                             size="sm"
-                             onClick={() => setSelectedVisitQuote(quote)}
-                             className="bg-blue-500 hover:bg-blue-600"
-                             title="Confirmar visita realizada"
-                           >
-                             <CheckCircle className="h-4 w-4 mr-1" />
-                             Confirmar
-                           </Button>
-                         )}
+                          {/* Botão Confirmar Visita - integrado no modal principal */}
+                          {quote.requires_visit && quote.status === 'visit_scheduled' && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleViewQuote(quote)}
+                              className="bg-blue-500 hover:bg-blue-600"
+                              title="Ver cotação e confirmar visita"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Ver & Confirmar
+                            </Button>
+                          )}
                          
                          {/* Botão Enviar Proposta - SÓ se visita confirmada OU não requer visita */}
                          {((!quote.requires_visit && quote.status === 'pending') || quote.status === 'visit_confirmed') && (
@@ -413,14 +407,15 @@ export default function SupplierQuotes() {
                            </Button>
                          )}
                          
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            title="Mensagens"
-                            onClick={() => handleOpenMessages(quote)}
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
+                           {/* Botão de Mensagens integrado no modal principal */}
+                           <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             title="Ver cotação completa"
+                             onClick={() => handleViewQuote(quote)}
+                           >
+                             <MessageSquare className="h-4 w-4" />
+                           </Button>
                        </div>
                      </TableCell>
                   </TableRow>
@@ -488,38 +483,18 @@ export default function SupplierQuotes() {
         </CardContent>
       </Card>
 
-      <QuoteProposalModal
+      <SupplierQuoteViewModal
         quote={selectedQuote}
-        open={isProposalModalOpen}
-        onOpenChange={setIsProposalModalOpen}
+        open={isViewModalOpen}
+        onOpenChange={setIsViewModalOpen}
+        onProposalSent={handleRefetch}
       />
-
 
       <ScheduleDeliveryModal
         quote={selectedQuote}
         open={isDeliveryModalOpen}
         onOpenChange={setIsDeliveryModalOpen}
-        onDeliveryScheduled={() => {
-          // Atualizar lista de cotações via evento
-          window.dispatchEvent(new CustomEvent('quotes-updated'));
-        }}
-      />
-
-      {/* Modal de Esclarecimentos Estruturado */}
-      <SupplierClarificationModal
-        open={isMessageModalOpen}
-        onOpenChange={setIsMessageModalOpen}
-        quote={messageQuote}
-        supplierName={user?.name}
-      />
-
-      <VisitManagementModal
-        quote={selectedVisitQuote}
-        open={!!selectedVisitQuote}
-        onOpenChange={(open) => !open && setSelectedVisitQuote(null)}
-        onVisitUpdated={() => {
-          window.location.reload();
-        }}
+        onDeliveryScheduled={handleRefetch}
       />
     </div>
   );
