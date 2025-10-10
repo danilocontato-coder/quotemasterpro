@@ -14,7 +14,8 @@ export type ModuleKey =
   | 'priority_support'
   | 'custom_branding'
   | 'whatsapp_integration'
-  | 'delivery_management';
+  | 'delivery_management'
+  | 'contracts';
 
 interface ModuleAccessResult {
   hasAccess: boolean;

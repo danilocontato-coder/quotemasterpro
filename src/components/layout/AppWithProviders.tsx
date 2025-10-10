@@ -21,6 +21,7 @@ const LoginPage = React.lazy(() => import('@/pages/auth/Login'));
 const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
 const ForgotPasswordPage = React.lazy(() => import('@/pages/auth/ForgotPassword'));
 const Quotes = React.lazy(() => import('@/pages/Quotes'));
+const Contracts = React.lazy(() => import('@/pages/Contracts'));
 const Suppliers = React.lazy(() => import('@/pages/Suppliers'));
 const Products = React.lazy(() => import('@/pages/Products'));
 const Approvals = React.lazy(() => import('@/pages/Approvals').then(m => ({ default: m.Approvals })));
@@ -286,6 +287,11 @@ export const AppWithProviders: React.FC = () => {
             <Quotes />
           </Suspense>
         } />
+        <Route path="contracts" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <Contracts />
+          </Suspense>
+        } />
         <Route path="suppliers" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <Suppliers />
@@ -398,6 +404,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="quotes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <Quotes />
+          </Suspense>
+        } />
+        <Route path="contracts" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <Contracts />
           </Suspense>
         } />
         <Route path="suppliers" element={

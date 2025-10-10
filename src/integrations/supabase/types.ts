@@ -724,6 +724,35 @@ export type Database = {
         }
         Relationships: []
       }
+      client_contract_counters: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          current_counter: number
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          current_counter?: number
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          current_counter?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_contract_counters_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_groups: {
         Row: {
           client_count: number | null
@@ -1038,6 +1067,292 @@ export type Database = {
             columns: ["subscription_plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_adjustments: {
+        Row: {
+          adjustment_date: string
+          approved_at: string | null
+          approved_by: string | null
+          attachments: Json | null
+          contract_id: string
+          created_at: string | null
+          id: string
+          index_type: string | null
+          index_value: number | null
+          justification: string | null
+          new_value: number
+          percentage: number
+          previous_value: number
+          requested_by: string | null
+          status: string
+        }
+        Insert: {
+          adjustment_date: string
+          approved_at?: string | null
+          approved_by?: string | null
+          attachments?: Json | null
+          contract_id: string
+          created_at?: string | null
+          id?: string
+          index_type?: string | null
+          index_value?: number | null
+          justification?: string | null
+          new_value: number
+          percentage: number
+          previous_value: number
+          requested_by?: string | null
+          status?: string
+        }
+        Update: {
+          adjustment_date?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          attachments?: Json | null
+          contract_id?: string
+          created_at?: string | null
+          id?: string
+          index_type?: string | null
+          index_value?: number | null
+          justification?: string | null
+          new_value?: number
+          percentage?: number
+          previous_value?: number
+          requested_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_adjustments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_alerts: {
+        Row: {
+          action_required: string | null
+          alert_type: string
+          contract_id: string
+          created_at: string | null
+          due_date: string | null
+          id: string
+          message: string
+          notified_at: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          title: string
+        }
+        Insert: {
+          action_required?: string | null
+          alert_type: string
+          contract_id: string
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          message: string
+          notified_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          title: string
+        }
+        Update: {
+          action_required?: string | null
+          alert_type?: string
+          contract_id?: string
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          message?: string
+          notified_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_alerts_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_history: {
+        Row: {
+          adjustment_index: string | null
+          adjustment_percentage: number | null
+          approved_by: string | null
+          attachments: Json | null
+          changed_by: string | null
+          contract_id: string
+          created_at: string | null
+          description: string
+          event_date: string
+          event_type: string
+          id: string
+          new_value: number | null
+          old_value: number | null
+        }
+        Insert: {
+          adjustment_index?: string | null
+          adjustment_percentage?: number | null
+          approved_by?: string | null
+          attachments?: Json | null
+          changed_by?: string | null
+          contract_id: string
+          created_at?: string | null
+          description: string
+          event_date: string
+          event_type: string
+          id?: string
+          new_value?: number | null
+          old_value?: number | null
+        }
+        Update: {
+          adjustment_index?: string | null
+          adjustment_percentage?: number | null
+          approved_by?: string | null
+          attachments?: Json | null
+          changed_by?: string | null
+          contract_id?: string
+          created_at?: string | null
+          description?: string
+          event_date?: string
+          event_type?: string
+          id?: string
+          new_value?: number | null
+          old_value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_history_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          alert_days_before: number | null
+          approver_user_id: string | null
+          attachments: Json | null
+          auto_renewal: boolean | null
+          client_id: string
+          contract_number: string
+          contract_type: string
+          cost_center_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          description: string | null
+          end_date: string
+          id: string
+          last_reviewed_at: string | null
+          notes: string | null
+          payment_terms: string | null
+          renewal_date: string | null
+          renewal_terms: string | null
+          responsible_user_id: string | null
+          start_date: string
+          status: string
+          supplier_id: string | null
+          tags: string[] | null
+          title: string
+          total_value: number
+          updated_at: string | null
+        }
+        Insert: {
+          alert_days_before?: number | null
+          approver_user_id?: string | null
+          attachments?: Json | null
+          auto_renewal?: boolean | null
+          client_id: string
+          contract_number: string
+          contract_type: string
+          cost_center_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          end_date: string
+          id: string
+          last_reviewed_at?: string | null
+          notes?: string | null
+          payment_terms?: string | null
+          renewal_date?: string | null
+          renewal_terms?: string | null
+          responsible_user_id?: string | null
+          start_date: string
+          status?: string
+          supplier_id?: string | null
+          tags?: string[] | null
+          title: string
+          total_value: number
+          updated_at?: string | null
+        }
+        Update: {
+          alert_days_before?: number | null
+          approver_user_id?: string | null
+          attachments?: Json | null
+          auto_renewal?: boolean | null
+          client_id?: string
+          contract_number?: string
+          contract_type?: string
+          cost_center_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          last_reviewed_at?: string | null
+          notes?: string | null
+          payment_terms?: string | null
+          renewal_date?: string | null
+          renewal_terms?: string | null
+          responsible_user_id?: string | null
+          start_date?: string
+          status?: string
+          supplier_id?: string | null
+          tags?: string[] | null
+          title?: string
+          total_value?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -3395,6 +3710,10 @@ export type Database = {
           supplier_id: string
         }[]
       }
+      generate_contract_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_delivery_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -3585,6 +3904,10 @@ export type Database = {
       link_user_to_client: {
         Args: { target_client_id: string; user_id: string }
         Returns: boolean
+      }
+      next_contract_id_by_client: {
+        Args: { p_client_id: string; prefix?: string }
+        Returns: string
       }
       next_payment_id_by_client: {
         Args: { p_client_id: string; prefix?: string }
