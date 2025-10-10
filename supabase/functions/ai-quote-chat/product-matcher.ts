@@ -70,25 +70,22 @@ function detectServiceType(name: string): boolean {
 export function normalizeProductName(name: string): string {
   return name
     .trim()
-    .toLowerCase()
-    // Remover artigos e preposições comuns
-    .replace(/^(o|a|os|as|um|uma|de|da|do|dos|das|para|com|sem)\s+/g, '')
-    // Padronizar unidades
-    .replace(/\b(l|litro|litros)\b/g, 'l')
-    .replace(/\b(kg|kilo|kilos|quilos?)\b/g, 'kg')
-    .replace(/\b(g|grama|gramas)\b/g, 'g')
-    .replace(/\b(m|metro|metros)\b/g, 'm')
-    .replace(/\b(cm|centimetro|centimetros)\b/g, 'cm')
-    .replace(/\b(un|unid|unidade|unidades|peça|peças|peca|pecas)\b/g, 'un')
-    .replace(/\b(pct|pacote|pacotes|embalagem|embalagens)\b/g, 'pct')
-    // Remover caracteres especiais extras
-    .replace(/[^\w\s]/g, ' ')
+    // Padronizar unidades (fazer antes de remover preposições para não afetar "em pó")
+    .replace(/\b(l|litro|litros)\b/gi, 'L')
+    .replace(/\b(kg|kilo|kilos|quilos?)\b/gi, 'kg')
+    .replace(/\b(g|grama|gramas)\b/gi, 'g')
+    .replace(/\b(m|metro|metros)\b/gi, 'm')
+    .replace(/\b(cm|centimetro|centímetro|centimetros|centímetros)\b/gi, 'cm')
+    .replace(/\b(un|unid|unidade|unidades|peça|peças|peca|pecas)\b/gi, 'un')
+    .replace(/\b(pct|pacote|pacotes|embalagem|embalagens)\b/gi, 'pct')
+    // Remover apenas pontuações e símbolos especiais, preservando letras acentuadas
+    .replace(/[^\wÀ-ÿ\s]/g, ' ')
     // Remover espaços duplos
     .replace(/\s+/g, ' ')
     .trim()
-    // Capitalizar primeira letra de cada palavra
+    // Capitalizar primeira letra de cada palavra mantendo as acentuadas
     .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 }
 
