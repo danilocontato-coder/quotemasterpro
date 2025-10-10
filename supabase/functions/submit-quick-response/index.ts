@@ -32,18 +32,17 @@ serve(async (req) => {
       visit_notes
     } = await req.json();
 
+    console.log('🔵 [SUBMIT-QUICK-RESPONSE] Iniciando processamento...');
     console.log('📦 [Quick Response] Dados recebidos:', { 
       token, 
       supplier_name, 
       supplier_email,
       total_amount,
       delivery_days,
-      shipping_cost,
-      warranty_months,
       payment_terms,
       notes,
-      attachment_url,
-      itemsCount: items?.length || 0
+      itemsCount: items?.length || 0,
+      has_visit_date: !!visit_date
     });
 
     // Validar campos obrigatórios
@@ -170,6 +169,17 @@ serve(async (req) => {
 
     // Criar resposta da cotação
     console.log('💾 [Quick Response] Criando resposta da cotação...');
+    console.log('📊 [Quick Response] Dados da proposta:', {
+      quote_id: tokenData.quote_id,
+      supplier_id: supplierId,
+      supplier_name: supplier_name,
+      total_amount: total_amount,
+      delivery_time: delivery_days ? `${delivery_days} dias` : '7 dias',
+      payment_terms: payment_terms || '30 dias',
+      items_count: items?.length || 0,
+      has_notes: !!notes
+    });
+    
     const { data: response, error: responseError } = await supabase
       .from('quote_responses')
       .insert({
@@ -177,9 +187,7 @@ serve(async (req) => {
         supplier_id: supplierId,
         supplier_name: supplier_name,
         total_amount: total_amount,
-        delivery_days: delivery_days || 7,
-        shipping_cost: shipping_cost || 0,
-        warranty_months: warranty_months || 12,
+        delivery_time: delivery_days ? `${delivery_days} dias` : '7 dias',
         payment_terms: payment_terms || '30 dias',
         items: items || [],
         notes: notes,
@@ -255,11 +263,20 @@ serve(async (req) => {
     }
 
     console.log('🎉 [Quick Response] Processo concluído com sucesso!');
+    console.log('✅ [SUBMIT-QUICK-RESPONSE] Proposta salva:', {
+      response_id: response.id,
+      quote_id: tokenData.quote_id,
+      supplier_id: supplierId,
+      supplier_name: supplier_name,
+      total_amount: total_amount,
+      has_visit: !!visit_date
+    });
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        response_id: response.id 
+        response_id: response.id,
+        message: 'Proposta enviada com sucesso!'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' } }
     );
