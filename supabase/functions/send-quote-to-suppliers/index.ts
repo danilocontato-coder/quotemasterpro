@@ -650,6 +650,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       // Send to each supplier
+      console.log('📨 Starting to send to suppliers:', {
+        total: suppliers.length,
+        supplier_details: suppliers.map((s: any) => ({
+          name: s.name,
+          id: s.id,
+          phone: s.whatsapp || s.phone || 'N/A'
+        }))
+      });
+      
       for (const supplier of suppliers) {
         if (!supplier.whatsapp && !supplier.phone) {
           console.warn(`Supplier ${supplier.name} has no WhatsApp/phone number`);
@@ -662,10 +671,17 @@ const handler = async (req: Request): Promise<Response> => {
         const phone = supplier.whatsapp || supplier.phone || '';
         const finalPhone = normalizePhone(phone);
 
+        console.log(`📱 [${supplier.name}] Phone normalization:`, {
+          original: phone,
+          normalized: finalPhone,
+          length: finalPhone.length,
+          valid: finalPhone.length >= 12
+        });
+
         if (!finalPhone || finalPhone.length < 12) {
-          console.warn(`Invalid phone number for supplier ${supplier.name}: ${phone}`);
+          console.warn(`❌ [${supplier.name}] Invalid phone: "${phone}" → "${finalPhone}" (length: ${finalPhone.length})`);
           errorCount++;
-          errors.push(`${supplier.name}: número inválido (${phone})`);
+          errors.push(`${supplier.name}: número inválido (${phone} → ${finalPhone})`);
           continue;
         }
 
@@ -732,66 +748,69 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`Direct Evolution sending completed: ${successCount} success, ${errorCount} errors`);
 
-      // Update quote status in background
+      // Update quote status SYNCHRONOUSLY (not in background)
+      console.log(`📝 Updating quote ${quoteId} status to 'sent'...`);
+      
+      try {
+        const { error: statusError } = await supabase
+          .from('quotes')
+          .update({ 
+            status: 'sent',
+            suppliers_sent_count: successCount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', quoteId);
+
+        if (statusError) {
+          console.error('❌ Failed to update quote status:', statusError);
+          // Still continue - status update failure shouldn't block notifications
+        } else {
+          console.log(`✅ Quote ${quoteId} status updated to 'sent' (${successCount} suppliers)`);
+        }
+      } catch (error) {
+        console.error('❌ Error updating quote status:', error);
+      }
+
+      // Create notifications in background (keep as-is)
       (async () => {
         try {
-          const { error: statusError } = await supabase
-            .from('quotes')
-            .update({ 
-              status: 'sent',
-              suppliers_sent_count: successCount,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', quoteId);
+          console.log('Creating notifications for suppliers (direct method)...');
+          const supplierNotifications = suppliers.map((supplier: any) => ({
+            title: 'Nova Cotação Recebida',
+            message: `Você recebeu uma nova cotação: ${templateVariables.quote_title} (${quoteId})`,
+            type: 'quote',
+            priority: 'normal',
+            action_url: `/supplier/quotes`,
+            metadata: {
+              quote_id: quoteId,
+              quote_title: templateVariables.quote_title,
+              client_name: templateVariables.client_name,
+              deadline: templateVariables.deadline_formatted
+            },
+            supplier_id: supplier.id,
+            notify_all_supplier_users: true
+          }));
 
-          if (statusError) {
-            console.error('Failed to update quote status:', statusError);
-          } else {
-            console.log(`Quote ${quoteId} status updated to 'sent'`);
-            
-            // Create notifications for suppliers that received the quote (direct method)
+          // Create notifications for all suppliers
+          for (const notificationData of supplierNotifications) {
             try {
-              console.log('Creating notifications for suppliers (direct method)...');
-              const supplierNotifications = suppliers.map((supplier: any) => ({
-                title: 'Nova Cotação Recebida',
-                message: `Você recebeu uma nova cotação: ${templateVariables.quote_title} (${quoteId})`,
-                type: 'quote',
-                priority: 'normal',
-                action_url: `/supplier/quotes`,
-                metadata: {
-                  quote_id: quoteId,
-                  quote_title: templateVariables.quote_title,
-                  client_name: templateVariables.client_name,
-                  deadline: templateVariables.deadline_formatted
-                },
-                supplier_id: supplier.id,
-                notify_all_supplier_users: true
-              }));
+              const { error: notificationError } = await supabase.functions.invoke('create-notification', {
+                body: notificationData
+              });
 
-              // Create notifications for all suppliers
-              for (const notificationData of supplierNotifications) {
-                try {
-                  const { error: notificationError } = await supabase.functions.invoke('create-notification', {
-                    body: notificationData
-                  });
-
-                  if (notificationError) {
-                    console.error('Failed to create supplier notification:', notificationError);
-                  } else {
-                    console.log(`Created notification for supplier: ${notificationData.supplier_id}`);
-                  }
-                } catch (notifyError) {
-                  console.error('Error creating supplier notification:', notifyError);
-                }
+              if (notificationError) {
+                console.error('Failed to create supplier notification:', notificationError);
+              } else {
+                console.log(`Created notification for supplier: ${notificationData.supplier_id}`);
               }
-            } catch (error) {
-              console.error('Error creating supplier notifications:', error);
+            } catch (notifyError) {
+              console.error('Error creating supplier notification:', notifyError);
             }
           }
         } catch (error) {
-          console.error('Error updating quote status:', error);
+          console.error('Error creating supplier notifications:', error);
         }
-      })().catch(err => console.error('Background status update error:', err));
+      })().catch(err => console.error('Background notification error:', err));
 
       // Log the activity in background
       (async () => {

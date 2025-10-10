@@ -264,8 +264,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         const method = data?.send_method ? `\nMétodo: ${data.send_method}` : '';
         toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : '') + method);
         
-        // Atualizar status da cotação para 'sent'
-        await updateQuoteStatus(quote.id, 'sent');
+        // Status update is now handled synchronously by backend, no need to update here
         
         // Store generated short links for display
         setGeneratedShortLinks(validShortLinks);
