@@ -15,7 +15,11 @@ import {
   Calendar,
   Activity,
   Database,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import {
   Table,
@@ -28,12 +32,14 @@ import {
 import { useAuditLogs } from '@/hooks/useAuditLogs';
 
 export function AuditLogs() {
-  const { logs, isLoading, fetchLogs, exportLogs } = useAuditLogs();
+  const { logs, isLoading, pagination, fetchLogs, exportLogs } = useAuditLogs();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterModule, setFilterModule] = useState('all');
   const [filterAction, setFilterAction] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   useEffect(() => {
     fetchLogs({
@@ -42,8 +48,20 @@ export function AuditLogs() {
       action: filterAction,
       startDate,
       endDate,
+      page: currentPage,
+      pageSize,
     });
-  }, [filterModule, filterAction, startDate, endDate, fetchLogs]);
+  }, [filterModule, filterAction, startDate, endDate, currentPage, pageSize, fetchLogs]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePageSizeChange = (newSize: string) => {
+    setPageSize(Number(newSize));
+    setCurrentPage(1); // Reset para primeira página
+  };
 
   const filteredLogs = logs.filter(log => {
     if (!searchTerm) return true;
@@ -230,8 +248,29 @@ export function AuditLogs() {
         {/* Tabela de Logs */}
         <Card>
           <CardHeader>
-            <CardTitle>Registro de Auditoria ({filteredLogs.length})</CardTitle>
-            <CardDescription>Histórico completo de atividades do sistema</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Registro de Auditoria</CardTitle>
+                <CardDescription>
+                  Mostrando {filteredLogs.length} de {pagination.totalRecords} registros
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Registros por página:</span>
+                <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="200">200</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -323,6 +362,84 @@ export function AuditLogs() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+
+            {/* Controles de Paginação */}
+            {!isLoading && filteredLogs.length > 0 && (
+              <div className="mt-6 flex items-center justify-between border-t pt-4">
+                <div className="text-sm text-muted-foreground">
+                  Página {pagination.currentPage} de {pagination.totalPages} 
+                  <span className="mx-2">•</span>
+                  {((pagination.currentPage - 1) * pagination.pageSize) + 1} - {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalRecords)} de {pagination.totalRecords} registros
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(1)}
+                    disabled={!pagination.hasPrevPage}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={!pagination.hasPrevPage}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Anterior
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (pagination.totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= pagination.totalPages - 2) {
+                        pageNum = pagination.totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-10"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={!pagination.hasNextPage}
+                  >
+                    Próxima
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.totalPages)}
+                    disabled={!pagination.hasNextPage}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

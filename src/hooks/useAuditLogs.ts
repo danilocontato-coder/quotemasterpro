@@ -16,10 +16,27 @@ export interface AuditLog {
   user_role: string | null;
 }
 
+export interface PaginationInfo {
+  currentPage: number;
+  pageSize: number;
+  totalRecords: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export function useAuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    pageSize: 50,
+    totalRecords: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
 
   const fetchLogs = useCallback(async (filters?: {
     searchTerm?: string;
@@ -28,13 +45,25 @@ export function useAuditLogs() {
     userId?: string;
     startDate?: string;
     endDate?: string;
-    limit?: number;
+    page?: number;
+    pageSize?: number;
   }) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      let query = supabase
+      const page = filters?.page || 1;
+      const pageSize = filters?.pageSize || 50;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      // Query para contagem total (sem paginação)
+      let countQuery = supabase
+        .from('audit_logs')
+        .select('*', { count: 'exact', head: true });
+
+      // Query para dados (com paginação)
+      let dataQuery = supabase
         .from('audit_logs')
         .select(`
           id,
@@ -51,38 +80,45 @@ export function useAuditLogs() {
             role
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-      // Aplicar filtros
+      // Aplicar os mesmos filtros em ambas as queries
       if (filters?.module && filters.module !== 'all') {
-        query = query.eq('entity_type', filters.module);
+        countQuery = countQuery.eq('entity_type', filters.module);
+        dataQuery = dataQuery.eq('entity_type', filters.module);
       }
 
       if (filters?.action && filters.action !== 'all') {
-        query = query.eq('action', filters.action);
+        countQuery = countQuery.eq('action', filters.action);
+        dataQuery = dataQuery.eq('action', filters.action);
       }
 
       if (filters?.userId && filters.userId !== 'all') {
-        query = query.eq('user_id', filters.userId);
+        countQuery = countQuery.eq('user_id', filters.userId);
+        dataQuery = dataQuery.eq('user_id', filters.userId);
       }
 
       if (filters?.startDate) {
-        query = query.gte('created_at', filters.startDate);
+        countQuery = countQuery.gte('created_at', filters.startDate);
+        dataQuery = dataQuery.gte('created_at', filters.startDate);
       }
 
       if (filters?.endDate) {
-        query = query.lte('created_at', filters.endDate);
+        countQuery = countQuery.lte('created_at', filters.endDate);
+        dataQuery = dataQuery.lte('created_at', filters.endDate);
       }
 
-      if (filters?.limit) {
-        query = query.limit(filters.limit);
-      } else {
-        query = query.limit(100);
-      }
-
-      const { data, error: fetchError } = await query;
+      // Executar ambas as queries
+      const [{ count }, { data, error: fetchError }] = await Promise.all([
+        countQuery,
+        dataQuery
+      ]);
 
       if (fetchError) throw fetchError;
+
+      const totalRecords = count || 0;
+      const totalPages = Math.ceil(totalRecords / pageSize);
 
       const formattedLogs: AuditLog[] = (data || []).map((log: any) => ({
         id: log.id,
@@ -99,6 +135,14 @@ export function useAuditLogs() {
       }));
 
       setLogs(formattedLogs);
+      setPagination({
+        currentPage: page,
+        pageSize,
+        totalRecords,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      });
     } catch (err: any) {
       console.error('Error fetching audit logs:', err);
       setError(err.message);
@@ -154,6 +198,7 @@ export function useAuditLogs() {
     logs,
     isLoading,
     error,
+    pagination,
     fetchLogs,
     exportLogs,
   };
