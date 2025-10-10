@@ -87,13 +87,34 @@ serve(async (req) => {
       console.log('Could not fetch base URL from settings, using fallback:', baseUrl)
     }
     
+    // Determine redirect route based on supplier registration status
+    let redirectRoute = '/r'; // Default: quick response page
+    
+    if (tokenData.supplier_id) {
+      const { data: supplier } = await supabaseClient
+        .from('suppliers')
+        .select('registration_status')
+        .eq('id', tokenData.supplier_id)
+        .single();
+      
+      if (supplier?.registration_status === 'pending_registration') {
+        console.log('🆕 [RESOLVE-SHORT-LINK] Supplier pending registration, redirecting to signup');
+        redirectRoute = '/supplier/register';
+      } else {
+        console.log('✅ [RESOLVE-SHORT-LINK] Supplier active, redirecting to quick response');
+      }
+    } else {
+      console.log('ℹ️ [RESOLVE-SHORT-LINK] No supplier_id, using quick response');
+    }
+    
     console.log('🔗 [RESOLVE-SHORT-LINK] Generating redirect URL:', {
       baseUrl,
       quoteId: tokenData.quote_id,
-      fullToken: tokenData.full_token
+      fullToken: tokenData.full_token,
+      redirectRoute
     })
     
-    const fullUrl = `${baseUrl}/r/${tokenData.full_token}`
+    const fullUrl = `${baseUrl}${redirectRoute}/${tokenData.full_token}`
     
     console.log('✅ [RESOLVE-SHORT-LINK] Final redirect URL:', fullUrl)
 
@@ -104,7 +125,7 @@ serve(async (req) => {
         full_token: tokenData.full_token,
         short_code: tokenData.short_code,
         redirect_url: fullUrl,
-        redirect_path: `/r/${tokenData.full_token}`,
+        redirect_path: `${redirectRoute}/${tokenData.full_token}`,
         expires_at: tokenData.expires_at,
         access_count: tokenData.access_count + 1
       }),
