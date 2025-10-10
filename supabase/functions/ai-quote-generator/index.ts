@@ -171,11 +171,22 @@ Gere uma cotação detalhada e profissional.`;
     // Parse do JSON gerado com tratamento UTF-8
     let parsedQuote;
     try {
-      // Garantir que o conteúdo está em UTF-8 antes do parse
-      const cleanContent = generatedContent.trim();
+      // Limpar possíveis caracteres de controle e garantir UTF-8
+      const cleanContent = generatedContent
+        .trim()
+        .replace(/^\s*```json\s*/i, '')  // Remove markdown code blocks
+        .replace(/\s*```\s*$/, '')
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, ''); // Remove caracteres de controle
+      
       parsedQuote = JSON.parse(cleanContent);
+      
+      // Validar estrutura
+      if (!parsedQuote.title || !Array.isArray(parsedQuote.items)) {
+        throw new Error('Invalid quote structure');
+      }
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError);
+      console.error('Raw content:', generatedContent);
       // Fallback se o parsing falhar
       parsedQuote = {
         title: "Cotação Gerada por IA",
@@ -190,11 +201,18 @@ Gere uma cotação detalhada e profissional.`;
       };
     }
 
-    return new Response(JSON.stringify({
+    // Retornar com encoding UTF-8 explícito
+    const responseBody = JSON.stringify({
       success: true,
       quote: parsedQuote
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
+    });
+
+    return new Response(responseBody, {
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': new TextEncoder().encode(responseBody).length.toString()
+      },
     });
 
   } catch (error) {

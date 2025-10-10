@@ -234,12 +234,15 @@ export const useSupabaseQuotes = () => {
       if (quoteData.items && quoteData.items.length > 0) {
         const itemsToInsert = quoteData.items.map((item: any) => ({
           quote_id: quoteId,
-          product_name: item.product_name,
-          quantity: item.quantity,
+          client_id: clientIdData, // Incluir client_id para compliance com RLS
+          product_name: item.product_name || 'Item não especificado',
+          quantity: item.quantity || 1,
           unit_price: item.unit_price || 0,
           total: (item.quantity || 0) * (item.unit_price || 0),
-          product_id: item.product_id
+          product_id: item.product_id || null
         }));
+
+        console.log('🔍 DEBUG: Items to insert:', JSON.stringify(itemsToInsert, null, 2));
 
         const { error: itemsError } = await supabase
           .from('quote_items')
