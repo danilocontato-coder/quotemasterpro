@@ -169,6 +169,50 @@ export const useSupabaseAdminSuppliers = () => {
           title: 'Fornecedor e acesso criados',
           description: `Login: ${supplierData.email} | Senha: ${password}`,
         });
+
+        // Enviar WhatsApp de boas-vindas automaticamente
+        if (supplierData.whatsapp) {
+          console.log('📤 Sending welcome WhatsApp...');
+          toast({
+            title: 'Enviando mensagem de boas-vindas',
+            description: 'Aguarde...',
+          });
+
+          try {
+            const { data: whatsappResult, error: whatsappError } = await supabase.functions.invoke('send-supplier-welcome', {
+              body: {
+                supplierId: (supplier as any).id,
+                supplierName: supplierData.name,
+                supplierPhone: supplierData.whatsapp,
+                clientId: null,
+                clientName: 'Administrador do Sistema',
+                customVariables: {
+                  supplier_email: supplierData.email,
+                  access_link: window.location.origin + '/login'
+                }
+              }
+            });
+
+            if (whatsappError) throw whatsappError;
+
+            if (whatsappResult?.success) {
+              console.log('✅ Welcome WhatsApp sent successfully');
+              toast({
+                title: '✅ Mensagem enviada!',
+                description: 'Mensagem de boas-vindas enviada via WhatsApp',
+              });
+            } else {
+              throw new Error(whatsappResult?.error || 'Failed to send WhatsApp');
+            }
+          } catch (whatsappError) {
+            console.error('⚠️ WhatsApp error:', whatsappError);
+            toast({
+              title: '⚠️ Erro ao enviar WhatsApp',
+              description: 'Fornecedor foi criado, mas houve erro no envio da mensagem',
+              variant: 'destructive',
+            });
+          }
+        }
       }
 
       // Update local state
