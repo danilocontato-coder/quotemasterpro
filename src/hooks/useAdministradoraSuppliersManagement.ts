@@ -89,23 +89,37 @@ export const useAdministradoraSuppliersManagement = () => {
       // 2. Buscar condomínios filhos primeiro
       const { data: childClients } = await supabase
         .from('clients')
-        .select('id')
+        .select('id, name')
         .eq('parent_client_id', profile.client_id);
 
       const childClientIds = childClients?.map(c => c.id) || [];
 
       // Buscar fornecedores dos condomínios
-      const { data: condominioSuppliers, error: condominioError } = childClientIds.length > 0 
-        ? await supabase
-            .from('suppliers')
-            .select(`
-              *,
-              clients!suppliers_client_id_fkey(name)
-            `)
-            .in('client_id', childClientIds)
-            .eq('type', 'local')
-            .order('name')
-        : { data: [], error: null };
+      let condominioSuppliers: any[] = [];
+      let condominioError = null;
+      
+      if (childClientIds.length > 0) {
+        const { data, error } = await supabase
+          .from('suppliers')
+          .select('*')
+          .in('client_id', childClientIds)
+          .eq('type', 'local')
+          .order('name');
+        
+        condominioSuppliers = data || [];
+        condominioError = error;
+        
+        // Buscar nomes dos condomínios separadamente
+        if (childClients && childClients.length > 0) {
+          condominioSuppliers = condominioSuppliers.map(supplier => {
+            const client = childClients.find(c => c.id === supplier.client_id);
+            return {
+              ...supplier,
+              condominio_name: client?.name || 'Condomínio'
+            };
+          });
+        }
+      }
 
       if (condominioError) throw condominioError;
 
@@ -172,7 +186,7 @@ export const useAdministradoraSuppliersManagement = () => {
         rating: s.rating || undefined,
         completed_orders: s.completed_orders || undefined,
         client_id: s.client_id || undefined,
-        condominio_name: (s as any).clients?.name || 'Condomínio',
+        condominio_name: s.condominio_name || 'Condomínio',
         is_certified: s.is_certified || false,
         created_at: s.created_at || undefined,
       }));
