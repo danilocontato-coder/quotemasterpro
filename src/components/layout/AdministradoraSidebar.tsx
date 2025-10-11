@@ -59,7 +59,7 @@ export const AdministradoraSidebar: React.FC = () => {
         {/* Logo/Brand */}
         <div className="px-4 py-6 border-b border-green-200 flex justify-center">
           <BrandedLogo 
-            size={isCollapsed ? "lg" : "xl"}
+            size={isCollapsed ? "md" : "lg"}
             showCompanyName={false}
           />
         </div>
