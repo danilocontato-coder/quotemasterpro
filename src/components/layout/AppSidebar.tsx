@@ -119,12 +119,11 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       {/* Logo/Brand */}
-      <div className="p-4 border-b border-sidebar-border">
-        {!isCollapsed ? (
-          <BrandedLogo size="md" showCompanyName={true} />
-        ) : (
-          <BrandedLogo size="md" showCompanyName={false} />
-        )}
+      <div className="p-4 border-b border-sidebar-border flex justify-center">
+        <BrandedLogo 
+          size={isCollapsed ? "md" : "lg"}
+          showCompanyName={false}
+        />
       </div>
 
       <SidebarContent className="py-4">

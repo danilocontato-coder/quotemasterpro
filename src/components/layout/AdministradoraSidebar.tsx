@@ -57,12 +57,11 @@ export const AdministradoraSidebar: React.FC = () => {
     <Sidebar collapsible="icon" className="border-r border-green-200 bg-green-50">
       <SidebarContent>
         {/* Logo/Brand */}
-        <div className="flex items-center gap-2 px-4 py-6 border-b border-green-200">
-          {!isCollapsed ? (
-            <BrandedLogo size="md" showCompanyName={true} />
-          ) : (
-            <BrandedLogo size="md" showCompanyName={false} />
-          )}
+        <div className="px-4 py-6 border-b border-green-200 flex justify-center">
+          <BrandedLogo 
+            size={isCollapsed ? "md" : "lg"}
+            showCompanyName={false}
+          />
         </div>
 
         {/* Menu Principal */}
