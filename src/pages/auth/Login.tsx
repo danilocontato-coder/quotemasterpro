@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
 import { InactiveClientAlert } from '@/components/auth/InactiveClientAlert';
 import { BrandedLogo } from '@/components/branding/BrandedLogo';
+import { BrandingLoader } from '@/components/branding/BrandingLoader';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
-  const { settings: brandingSettings } = useBranding();
+  const { settings: brandingSettings, isReady: brandingReady } = useBranding();
 
   const from = location.state?.from?.pathname || getRoleBasedRoute('client');
 
@@ -180,6 +181,11 @@ const Login: React.FC = () => {
   };
 
   const userTypeInfo = getUserTypeInfo();
+
+  // Mostrar loader enquanto branding não está pronto
+  if (!brandingReady) {
+    return <BrandingLoader />;
+  }
 
   return (
     <div className="min-h-screen flex">
