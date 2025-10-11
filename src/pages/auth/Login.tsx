@@ -11,7 +11,7 @@ import { Loader2, Eye, EyeOff, Building2, Users, User, CheckCircle2, Zap, Shield
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
 import { InactiveClientAlert } from '@/components/auth/InactiveClientAlert';
-import cotizLogo from '@/assets/cotiz-logo.png';
+import { BrandedLogo } from '@/components/branding/BrandedLogo';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -194,7 +194,7 @@ const Login: React.FC = () => {
         <div className="relative z-10">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-16">
-            <img src={cotizLogo} alt="Cotiz" className="h-16 w-16" />
+            <BrandedLogo size="lg" showCompanyName={false} />
             <div>
               <h2 className="text-3xl font-bold text-white">{brandingSettings.companyName}</h2>
               <p className="text-primary-foreground/80 text-sm">Gestão Inteligente de Cotações</p>
@@ -259,7 +259,7 @@ const Login: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <img src={cotizLogo} alt="Cotiz" className="h-12 w-12" />
+            <BrandedLogo size="md" showCompanyName={false} />
             <div>
               <h2 className="text-2xl font-bold text-foreground">{brandingSettings.companyName}</h2>
               <p className="text-muted-foreground text-sm">Gestão de Cotações</p>
