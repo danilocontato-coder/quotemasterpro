@@ -43,14 +43,14 @@ export function BrandedLogo({
         <img 
           src={settings.logo} 
           alt={settings.companyName || 'Logo'} 
-          className={`${sizeClasses[size]} object-contain brightness-0 invert`}
+          className={`${sizeClasses[size]} object-contain`}
           onError={(e) => {
             console.error('❌ BrandedLogo: Erro ao carregar logo, usando fallback');
             e.currentTarget.style.display = 'none';
           }}
         />
         {showCompanyName && settings.companyName && (
-          <span className={`font-semibold text-white ${textSizeClasses[size]}`}>
+          <span className={`font-semibold ${textSizeClasses[size]}`}>
             {settings.companyName}
           </span>
         )}

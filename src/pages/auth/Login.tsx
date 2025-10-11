@@ -184,7 +184,7 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Branding & Features */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[hsl(210,100%,20%)] via-[hsl(210,100%,30%)] to-[hsl(210,100%,40%)] p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-12 flex-col justify-between relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
@@ -193,9 +193,9 @@ const Login: React.FC = () => {
 
         <div className="relative z-10">
           {/* Logo */}
-          <div className="flex flex-col items-start gap-4 mb-16 bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-            <BrandedLogo size="lg" showCompanyName={false} />
-            <p className="text-white/90 text-sm font-medium">Gestão Inteligente de Cotações</p>
+          <div className="flex flex-col items-start gap-4 mb-16">
+            <BrandedLogo size="xl" showCompanyName={false} />
+            <p className="text-primary-foreground/80 text-sm">Gestão Inteligente de Cotações</p>
           </div>
 
           {/* Features */}
