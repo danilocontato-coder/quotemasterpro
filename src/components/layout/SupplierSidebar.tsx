@@ -89,6 +89,13 @@ export function SupplierSidebar() {
                       to={item.url} 
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
                       onClick={handleLinkClick}
+                      data-tour={
+                        item.url === '/supplier/quotes' ? 'menu-quotes' :
+                        item.url === '/supplier/products' ? 'menu-products' :
+                        item.url === '/supplier/payments' ? 'menu-payments' :
+                        item.url === '/supplier/profile' ? 'menu-profile' :
+                        undefined
+                      }
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}

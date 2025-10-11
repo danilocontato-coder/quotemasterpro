@@ -141,6 +141,12 @@ export function AppSidebar() {
                       to={item.url} 
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
                       onClick={handleLinkClick}
+                      data-tour={
+                        item.url === '/quotes' ? 'menu-quotes' :
+                        item.url === '/suppliers' ? 'menu-suppliers' :
+                        item.url === '/products' ? 'menu-products' :
+                        undefined
+                      }
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
@@ -191,7 +197,8 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild className="h-10">
                       <TransitionNavLink 
-                        to={item.url} 
+                        to={item.url}
+                        data-tour={item.url === '/approvals' ? 'menu-approvals' : undefined}
                         className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
                         onClick={handleLinkClick}
                       >

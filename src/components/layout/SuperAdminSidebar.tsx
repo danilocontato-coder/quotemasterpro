@@ -241,7 +241,7 @@ export const SuperAdminSidebar = () => {
   return (
     <div className="flex h-full w-64 flex-col bg-card border-r">
       {/* Header */}
-      <div className="flex flex-col items-center px-6 py-6 border-b gap-3">
+      <div data-tour="superadmin-header" className="flex flex-col items-center px-6 py-6 border-b gap-3">
         <BrandedLogo size="md" showCompanyName={false} />
         <div className="text-center">
           <p className="text-sm font-semibold text-foreground">Administrador Master</p>
@@ -289,6 +289,13 @@ export const SuperAdminSidebar = () => {
                         key={item.href}
                         to={item.href}
                         onClick={handleLinkClick}
+                        data-tour={
+                          item.href === '/admin/clients' ? 'menu-clients' :
+                          item.href === '/admin/suppliers' ? 'menu-suppliers' :
+                          item.href === '/admin/plans' ? 'menu-plans' :
+                          item.href === '/admin/analytics' ? 'menu-analytics' :
+                          undefined
+                        }
                         className={({ isActive: navIsActive }) =>
                           cn(
                             'flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted group',

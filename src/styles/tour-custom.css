@@ -1,0 +1,67 @@
+/* Customização do Tour Guiado (React Joyride) */
+
+/* Tooltip container */
+.__floater__open {
+  filter: none !important;
+}
+
+/* Overlay escuro */
+.react-joyride__overlay {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* Spotlight (destaque do elemento) */
+.react-joyride__spotlight {
+  border-radius: 8px !important;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Beacon (ponto pulsante) */
+.react-joyride__beacon {
+  display: none !important;
+}
+
+/* Animações suaves */
+.react-joyride__tooltip {
+  animation: tourFadeIn 0.3s ease-out;
+}
+
+@keyframes tourFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Garantir que elementos com data-tour sejam visíveis */
+[data-tour] {
+  position: relative;
+  z-index: 1;
+}
+
+/* Melhorar contraste do spotlight */
+.react-joyride__spotlight::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid hsl(var(--primary));
+  border-radius: 10px;
+  pointer-events: none;
+  animation: spotlightPulse 2s ease-in-out infinite;
+}
+
+@keyframes spotlightPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
