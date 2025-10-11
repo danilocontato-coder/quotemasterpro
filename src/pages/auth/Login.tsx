@@ -193,12 +193,9 @@ const Login: React.FC = () => {
 
         <div className="relative z-10">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-16">
-            <BrandedLogo size="lg" showCompanyName={false} />
-            <div>
-              <h2 className="text-3xl font-bold text-white">{brandingSettings.companyName}</h2>
-              <p className="text-primary-foreground/80 text-sm">Gestão Inteligente de Cotações</p>
-            </div>
+          <div className="flex flex-col items-start gap-3 mb-16">
+            <BrandedLogo size="lg" showCompanyName={true} className="scale-150 origin-left" />
+            <p className="text-primary-foreground/80 text-sm ml-1">Gestão Inteligente de Cotações</p>
           </div>
 
           {/* Features */}
@@ -258,12 +255,9 @@ const Login: React.FC = () => {
       <div className="flex-1 flex items-center justify-center p-4 bg-background">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <BrandedLogo size="md" showCompanyName={false} />
-            <div>
-              <h2 className="text-2xl font-bold text-foreground">{brandingSettings.companyName}</h2>
-              <p className="text-muted-foreground text-sm">Gestão de Cotações</p>
-            </div>
+          <div className="lg:hidden flex flex-col items-center justify-center gap-3 mb-8">
+            <BrandedLogo size="lg" showCompanyName={true} className="scale-125" />
+            <p className="text-muted-foreground text-sm">Gestão de Cotações</p>
           </div>
 
           <Card className="border-0 shadow-2xl">
