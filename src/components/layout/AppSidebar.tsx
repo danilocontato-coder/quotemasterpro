@@ -121,7 +121,7 @@ export function AppSidebar() {
       {/* Logo/Brand */}
       <div className="p-4 border-b border-sidebar-border flex justify-center">
         <BrandedLogo 
-          size={isCollapsed ? "md" : "lg"}
+          size={isCollapsed ? "lg" : "xl"}
           showCompanyName={false}
         />
       </div>
