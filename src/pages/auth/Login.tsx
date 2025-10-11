@@ -194,7 +194,9 @@ const Login: React.FC = () => {
         <div className="relative z-10">
           {/* Logo */}
           <div className="flex flex-col items-start gap-4 mb-16">
-            <BrandedLogo size="xl" showCompanyName={false} />
+            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
+              <BrandedLogo size="lg" showCompanyName={false} />
+            </div>
             <p className="text-primary-foreground/80 text-sm">Gestão Inteligente de Cotações</p>
           </div>
 
