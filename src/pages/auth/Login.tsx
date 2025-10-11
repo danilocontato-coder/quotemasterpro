@@ -194,7 +194,7 @@ const Login: React.FC = () => {
         <div className="relative z-10">
           {/* Logo */}
           <div className="flex flex-col items-start gap-4 mb-16">
-            <BrandedLogo size="xxl" showCompanyName={false} />
+            <BrandedLogo size="xl" showCompanyName={false} />
             <p className="text-primary-foreground/80 text-sm">Gestão Inteligente de Cotações</p>
           </div>
 
@@ -256,7 +256,7 @@ const Login: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex flex-col items-center justify-center gap-4 mb-8">
-            <BrandedLogo size="xl" showCompanyName={false} />
+            <BrandedLogo size="lg" showCompanyName={false} />
             <p className="text-muted-foreground text-sm">Gestão de Cotações</p>
           </div>
 
