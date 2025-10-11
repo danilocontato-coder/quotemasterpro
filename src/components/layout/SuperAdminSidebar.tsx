@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useBranding } from '@/contexts/BrandingContext';
+import { BrandedLogo } from '@/components/branding/BrandedLogo';
 import {
   LayoutDashboard,
   Users,
@@ -240,15 +241,10 @@ export const SuperAdminSidebar = () => {
   return (
     <div className="flex h-full w-64 flex-col bg-card border-r">
       {/* Header */}
-      <div className="flex h-16 items-center px-6 border-b">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Shield className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold">SuperAdmin</h2>
-            <p className="text-xs text-muted-foreground">Controle Total</p>
-          </div>
+      <div className="flex flex-col items-center px-6 py-6 border-b gap-3">
+        <BrandedLogo size="md" showCompanyName={false} />
+        <div className="text-center">
+          <p className="text-sm font-semibold text-foreground">Administrador Master</p>
         </div>
       </div>
 
