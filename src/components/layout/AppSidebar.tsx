@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
+import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import {
   Sidebar,
   SidebarContent,
@@ -119,17 +120,11 @@ export function AppSidebar() {
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       {/* Logo/Brand */}
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <BarChart3 className="h-5 w-5 text-primary-foreground" />
-          </div>
-          {!isCollapsed && (
-            <div>
-              <h1 className="text-lg font-semibold text-sidebar-foreground">{settings.companyName}</h1>
-              <p className="text-xs text-sidebar-foreground/70">Pro</p>
-            </div>
-          )}
-        </div>
+        {!isCollapsed ? (
+          <BrandedLogo size="md" showCompanyName={true} />
+        ) : (
+          <BrandedLogo size="md" showCompanyName={false} />
+        )}
       </div>
 
       <SidebarContent className="py-4">
