@@ -746,8 +746,8 @@ Formato da RFQ final:
           selected_supplier_ids: selectedSuppliers.map(s => s.id),
           suppliers_sent_count: selectedSuppliers.length,
           client_name: clientDisplayName,
-          requires_visit: requestData.requiresVisit || false,
-          visit_deadline: requestData.visitDeadline ? new Date(requestData.visitDeadline).toISOString() : null
+          requires_visit: false,
+          visit_deadline: null
         };
         
         console.log('📋 Payload da cotação:', quotePayload);
