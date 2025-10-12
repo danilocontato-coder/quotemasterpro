@@ -468,14 +468,11 @@ INFORMAÇÕES OBRIGATÓRIAS PARA RFQ:
 - Prazo de entrega desejado
 - Local de entrega
 
-IMPORTANTE: Quando tiver todas as informações, responda APENAS com "GERAR_RFQ:" seguido do JSON puro, SEM nenhum texto introdutório, explicação ou markdown.
+IMPORTANTE: Quando tiver todas as informações, responda APENAS com GERAR_RFQ: seguido do JSON puro, SEM nenhum texto introdutório, explicação ou blocos de código markdown.
 
 Exemplo correto:
 GERAR_RFQ:
-{"title":"...","description":"..."}
-
-NÃO faça:
-"Aqui está a RFQ:\n```json\n{...}\n```"
+{"title":"Cotação XYZ","description":"Detalhes"}
 
 Formato da RFQ final:
 {
