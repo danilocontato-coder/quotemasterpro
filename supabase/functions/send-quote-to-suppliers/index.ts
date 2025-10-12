@@ -225,6 +225,16 @@ const handler = async (req: Request): Promise<Response> => {
     // Extract short_links from request body
     // short_links is obtained from request body above
     
+    // Helper function to replace all template variables
+    function replaceTemplateVariables(template: string, variables: Record<string, string>): string {
+      let result = template;
+      for (const [key, value] of Object.entries(variables)) {
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        result = result.replace(regex, String(value || ''));
+      }
+      return result;
+    }
+
     // Build variables for template rendering
     const templateVariables = {
       client_name: client.name,
@@ -232,11 +242,14 @@ const handler = async (req: Request): Promise<Response> => {
       client_phone: client.phone || '',
       quote_title: quote.title,
       quote_id: quote.id,
+      deadline: deadlineFormatted,
       deadline_formatted: deadlineFormatted,
+      total: totalFormatted,
       total_formatted: totalFormatted,
       items_list: itemsList,
       items_count: String(items.length || 0),
       proposal_link: 'PLACEHOLDER_WILL_BE_REPLACED_PER_SUPPLIER',
+      response_link: 'PLACEHOLDER_WILL_BE_REPLACED_PER_SUPPLIER',
     };
 
     // Prepare suppliers (no pre-rendered message; rendering will happen in n8n)
@@ -713,13 +726,13 @@ const handler = async (req: Request): Promise<Response> => {
           
           if (isRegistered) {
             // Fornecedor já cadastrado: mensagem normal de cotação
-            finalMessage = templateContent
-              .replace(/{{supplier_name}}/g, supplier.name || 'Fornecedor')
-              .replace(/{{client_name}}/g, clientName || 'Cliente')
-              .replace(/{{quote_title}}/g, quoteTitle)
-              .replace(/{{quote_id}}/g, quoteId)
-              .replace(/{{deadline}}/g, deadline)
-              .replace(/{{response_link}}/g, supplierProposalLink);
+            const supplierVars = {
+              ...templateVariables,
+              supplier_name: supplier.name || 'Fornecedor',
+              proposal_link: supplierProposalLink,
+              response_link: supplierProposalLink,
+            };
+            finalMessage = replaceTemplateVariables(templateContent, supplierVars);
           } else {
             // 🎯 Fornecedor NÃO cadastrado: enviar convite para completar cadastro
             const registrationLink = `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;

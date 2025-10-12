@@ -468,7 +468,14 @@ INFORMAÇÕES OBRIGATÓRIAS PARA RFQ:
 - Prazo de entrega desejado
 - Local de entrega
 
-Quando tiver todas as informações, responda com "GERAR_RFQ:" seguido do JSON.
+IMPORTANTE: Quando tiver todas as informações, responda APENAS com "GERAR_RFQ:" seguido do JSON puro, SEM nenhum texto introdutório, explicação ou markdown.
+
+Exemplo correto:
+GERAR_RFQ:
+{"title":"...","description":"..."}
+
+NÃO faça:
+"Aqui está a RFQ:\n```json\n{...}\n```"
 
 Formato da RFQ final:
 {
@@ -489,7 +496,9 @@ Formato da RFQ final:
     "onlyLocal": boolean,
     "onlyCertified": boolean,
     "autoSend": boolean
-  }
+  },
+  "requiresVisit": boolean,
+  "visitDeadline": "YYYY-MM-DD"
 }`
       },
       ...messageHistory.map((msg: any) => ({
@@ -575,7 +584,11 @@ Formato da RFQ final:
       suggestions = extractSuggestions(aiResponse, message, clientInfo.sector);
     }
     if (aiResponse.includes('GERAR_RFQ:')) {
+      // Extrair apenas a parte após GERAR_RFQ:
       let jsonPart = aiResponse.split('GERAR_RFQ:')[1].trim();
+      
+      // Limpar a resposta para não mostrar JSON ao usuário
+      cleanResponse = aiResponse.split('GERAR_RFQ:')[0].trim() || 'Gerando sua cotação...';
       
       // Remover blocos de código markdown se existirem
       if (jsonPart.startsWith('```json')) {
@@ -746,8 +759,8 @@ Formato da RFQ final:
           selected_supplier_ids: selectedSuppliers.map(s => s.id),
           suppliers_sent_count: selectedSuppliers.length,
           client_name: clientDisplayName,
-          requires_visit: false,
-          visit_deadline: null
+          requires_visit: quoteData.requiresVisit || false,
+          visit_deadline: quoteData.visitDeadline ? new Date(quoteData.visitDeadline).toISOString() : null
         };
         
         console.log('📋 Payload da cotação:', quotePayload);
