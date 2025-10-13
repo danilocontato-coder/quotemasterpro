@@ -766,15 +766,39 @@ Formato da RFQ final:
         
         console.log('📋 Payload da cotação:', quotePayload);
         
-        const { data: newQuote, error: quoteError } = await supabaseClient
-          .from('quotes')
-          .insert(quotePayload)
-          .select()
-          .single();
+        // Retry logic para prevenir erros de duplicate key
+        let newQuote = null;
+        let retryCount = 0;
+        const MAX_RETRIES = 2;
 
-        if (quoteError) {
+        while (retryCount <= MAX_RETRIES) {
+          const { data, error: quoteError } = await supabaseClient
+            .from('quotes')
+            .insert(quotePayload)
+            .select()
+            .single();
+
+          if (!quoteError) {
+            newQuote = data;
+            break;
+          }
+
+          // Se for erro de duplicate key e ainda tem retries
+          if (quoteError.code === '23505' && retryCount < MAX_RETRIES) {
+            console.warn(`⚠️ Duplicate key detectado, tentativa ${retryCount + 1}/${MAX_RETRIES}`);
+            retryCount++;
+            // Aguardar 100ms antes de tentar novamente
+            await new Promise(resolve => setTimeout(resolve, 100));
+            continue;
+          }
+
+          // Qualquer outro erro ou esgotou retries
           console.error('❌ Erro ao inserir cotação:', quoteError);
           throw new Error(`Erro ao criar cotação: ${quoteError.message}`);
+        }
+
+        if (!newQuote) {
+          throw new Error('Erro ao criar cotação após múltiplas tentativas');
         }
 
         console.log('✅ RFQ criada com sucesso:', {
