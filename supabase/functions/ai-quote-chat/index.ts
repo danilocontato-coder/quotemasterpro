@@ -850,7 +850,13 @@ Formato da RFQ final:
           }
         }
 
-        // Não enviar automaticamente - usuário decide quando enviar
+        // Definir mensagem sobre envio automático de fornecedores
+        let autoSendMessage = '';
+        if (selectedSuppliers.length > 0) {
+          autoSendMessage = '\n\n📤 Fornecedores vinculados! Você pode enviar a RFQ quando estiver pronto.';
+        } else {
+          autoSendMessage = '\n\n💡 Não se esqueça de adicionar fornecedores e enviar a RFQ.';
+        }
 
         // Padronizar produtos no catálogo com detecção de similares
         console.log(`🔍 Iniciando padronização inteligente de ${quoteData.items?.length || 0} itens...`);
