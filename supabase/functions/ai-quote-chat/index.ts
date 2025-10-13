@@ -971,23 +971,6 @@ Formato da RFQ final:
         
         successMessage += `\n\n💡 **Dica:** Os produtos foram automaticamente normalizados e categorizados. Acesse o módulo Produtos para revisar.`;
 
-        return new Response(JSON.stringify({
-          response: cleanResponse, // ✅ Usar resposta limpa da IA
-          quote: null, // Não retornar quote para não abrir modal de edição
-          quoteId: newQuote.id,
-          rfqCreated: true, // Flag para indicar que RFQ foi criada no banco
-          suppliers: selectedSuppliers,
-          autoSent: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend,
-          standardizedProducts: standardizedProducts,
-          productConflicts: productConflicts,
-          suggestions: [], // Sem sugestões - conversa finalizada
-          historyInsights: historyContext ? {
-            totalPreviousRFQs: historyContext.totalRFQs,
-            commonProducts: historyContext.commonProducts.slice(0, 3),
-            preferredSuppliers: historyContext.preferredSuppliers.slice(0, 2)
-          } : null
-        });
-        
         console.log('📤 Retornando ao usuário:', {
           rfqCreated: true,
           quoteId: newQuote.id,
