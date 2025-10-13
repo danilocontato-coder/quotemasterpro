@@ -138,7 +138,7 @@ export function ProductSearchModalSupabase({ open, onClose, onProductSelect }: P
               </p>
             </div>
           ) : (
-            <div className="space-y-2 overflow-y-auto flex-1 pr-2">
+            <div className="space-y-2 overflow-y-auto max-h-[400px] flex-1 pr-2">
               {filteredProducts.map((product) => (
                 <div key={product.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                   <Checkbox

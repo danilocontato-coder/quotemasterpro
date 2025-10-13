@@ -58,7 +58,7 @@ export function ProductSearchModal({ open, onOpenChange, onProductSelect, select
           </div>
 
           {/* Lista de produtos */}
-          <div className="max-h-96 overflow-y-auto space-y-2">
+          <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
             {filteredProducts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 {searchTerm ? "Nenhum item encontrado." : "Nenhum produto disponível."}

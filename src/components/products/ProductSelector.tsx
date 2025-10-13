@@ -47,12 +47,12 @@ export function ProductSelector({ onProductSelect, selectedProducts }: ProductSe
           Adicionar Produtos do Estoque
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Selecionar Produtos do Estoque</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 overflow-hidden">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -65,7 +65,7 @@ export function ProductSelector({ onProductSelect, selectedProducts }: ProductSe
           </div>
 
           {/* Products Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[450px] overflow-y-auto pr-2">
             {filteredProducts.map((product) => {
               const isSelected = selectedProducts.includes(product.id);
               const isLowStock = product.stockQuantity <= 10;
