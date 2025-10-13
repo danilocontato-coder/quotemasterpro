@@ -21,6 +21,7 @@ interface QuoteItem {
 
 interface Quote {
   id: string;
+  local_code?: string;
   title: string;
   description: string;
   deadline: string;
@@ -363,7 +364,7 @@ const SupplierQuickResponse = () => {
                   <Package className="w-5 h-5" />
                   {quote.title}
                 </CardTitle>
-                <CardDescription>Cotação #{quote.id}</CardDescription>
+                <CardDescription>Cotação #{quote.local_code || quote.id}</CardDescription>
               </div>
               <Badge variant="outline" className="shrink-0">
                 <Building2 className="w-3 h-3 mr-1" />

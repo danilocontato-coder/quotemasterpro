@@ -138,7 +138,7 @@ export default function CotacoesPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <CardTitle className="text-lg truncate">{quote.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">ID: {quote.id}</p>
+                    <p className="text-sm text-muted-foreground mt-1">Código: {quote.local_code || quote.id}</p>
                   </div>
                   {getStatusBadge(quote.status)}
                 </div>

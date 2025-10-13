@@ -281,7 +281,7 @@ export default function SupplierQuotes() {
               <TableBody>
                 {currentQuotes.map((quote) => (
                   <TableRow key={quote.id}>
-                    <TableCell className="font-mono text-sm">{quote.id}</TableCell>
+                    <TableCell className="font-mono text-sm">{quote.local_code || quote.id}</TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{quote.title}</p>

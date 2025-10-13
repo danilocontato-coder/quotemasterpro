@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface AdministradoraQuote {
   id: string;
+  local_code?: string;
   title: string;
   description: string;
   status: string;
@@ -78,6 +79,7 @@ export function useAdministradoraQuotes(administradoraId?: string): UseAdministr
         .from('quotes')
         .select(`
           id,
+          local_code,
           title,
           description,
           status,

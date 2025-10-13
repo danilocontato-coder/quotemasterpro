@@ -129,6 +129,7 @@ export const useSupabaseQuotes = () => {
       // Transform data to match our interface
       const transformedQuotes: Quote[] = (data || []).map(quote => ({
         id: quote.id,
+        local_code: quote.local_code,
         title: quote.title,
         description: quote.description,
         total: quote.total,

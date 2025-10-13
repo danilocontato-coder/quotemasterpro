@@ -614,7 +614,7 @@ export default function Quotes() {
                       {quote.title}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground font-mono">
-                      {quote.id}
+                      {quote.local_code || quote.id}
                     </p>
                     {/* Visit Status Badges */}
                     {quote.status === 'awaiting_visit' && (

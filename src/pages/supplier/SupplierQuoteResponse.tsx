@@ -22,6 +22,7 @@ interface QuoteItem {
 
 interface Quote {
   id: string;
+  local_code?: string;
   title: string;
   description: string;
   deadline: string;
@@ -540,7 +541,7 @@ const SupplierQuoteResponse = () => {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium">ID da Cotação</Label>
-                <p className="text-lg font-mono">{quote.id}</p>
+                <p className="text-lg font-mono">{quote.local_code || quote.id}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium">Cliente</Label>
