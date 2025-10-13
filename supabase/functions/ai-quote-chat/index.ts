@@ -585,7 +585,8 @@ Formato da RFQ final:
       let jsonPart = aiResponse.split('GERAR_RFQ:')[1].trim();
       
       // Limpar a resposta para não mostrar JSON ao usuário
-      cleanResponse = aiResponse.split('GERAR_RFQ:')[0].trim() || 'Gerando sua cotação...';
+      const textBeforeRFQ = aiResponse.split('GERAR_RFQ:')[0].trim();
+      cleanResponse = textBeforeRFQ || 'Perfeito! Tenho todas as informações necessárias. Criando sua cotação agora... ⏳';
       
       // Remover blocos de código markdown se existirem
       if (jsonPart.startsWith('```json')) {
@@ -601,6 +602,9 @@ Formato da RFQ final:
       if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
         jsonPart = jsonPart.substring(jsonStart, jsonEnd + 1);
       }
+      
+      console.log('🔍 JSON extraído da IA:', jsonPart.substring(0, 100) + '...');
+      console.log('💬 Resposta limpa para usuário:', cleanResponse);
       
       try {
         const quoteData = JSON.parse(jsonPart);
@@ -773,7 +777,14 @@ Formato da RFQ final:
           throw new Error(`Erro ao criar cotação: ${quoteError.message}`);
         }
 
-        console.log('✅ RFQ criada:', newQuote.id);
+        console.log('✅ RFQ criada com sucesso:', {
+          id: newQuote.id,
+          title: newQuote.title,
+          total: newQuote.total,
+          items_count: newQuote.items_count || 0,
+          suppliers_count: selectedSuppliers.length,
+          requires_visit: newQuote.requires_visit
+        });
 
         // Inserir itens da cotação
         if (quoteData.items?.length > 0) {
@@ -937,7 +948,7 @@ Formato da RFQ final:
         successMessage += `\n\n💡 **Dica:** Os produtos foram automaticamente normalizados e categorizados. Acesse o módulo Produtos para revisar.`;
 
         return new Response(JSON.stringify({
-          response: successMessage,
+          response: cleanResponse, // ✅ Usar resposta limpa da IA
           quote: null, // Não retornar quote para não abrir modal de edição
           quoteId: newQuote.id,
           rfqCreated: true, // Flag para indicar que RFQ foi criada no banco
@@ -946,6 +957,30 @@ Formato da RFQ final:
           standardizedProducts: standardizedProducts,
           productConflicts: productConflicts,
           suggestions: [], // Sem sugestões - conversa finalizada
+          historyInsights: historyContext ? {
+            totalPreviousRFQs: historyContext.totalRFQs,
+            commonProducts: historyContext.commonProducts.slice(0, 3),
+            preferredSuppliers: historyContext.preferredSuppliers.slice(0, 2)
+          } : null
+        });
+        
+        console.log('📤 Retornando ao usuário:', {
+          rfqCreated: true,
+          quoteId: newQuote.id,
+          response_preview: cleanResponse.substring(0, 50) + '...',
+          standardized_products: standardizedProducts.length
+        });
+        
+        return new Response(JSON.stringify({
+          response: cleanResponse,
+          quote: null,
+          quoteId: newQuote.id,
+          rfqCreated: true,
+          suppliers: selectedSuppliers,
+          autoSent: selectedSuppliers.length > 0 && quoteData.supplierPreferences?.autoSend,
+          standardizedProducts: standardizedProducts,
+          productConflicts: productConflicts,
+          suggestions: [],
           historyInsights: historyContext ? {
             totalPreviousRFQs: historyContext.totalRFQs,
             commonProducts: historyContext.commonProducts.slice(0, 3),

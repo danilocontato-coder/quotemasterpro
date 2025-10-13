@@ -194,6 +194,24 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (error) {
       console.warn('Error loading WhatsApp template:', error);
     }
+    
+    // Validar template carregado
+    if (!whatsappTemplate || !whatsappTemplate.message_content) {
+      console.warn('⚠️ Nenhum template de WhatsApp encontrado, usando padrão do sistema');
+      whatsappTemplate = {
+        message_content: `Olá {{supplier_name}}!\n\n` +
+          `🏢 *{{client_name}}* solicita uma cotação:\n\n` +
+          `📋 *Cotação:* {{quote_title}}\n` +
+          `🆔 *ID:* {{quote_id}}\n` +
+          `📅 *Prazo:* {{deadline}}\n\n` +
+          `📦 *ITENS:*\n{{items_list}}\n\n` +
+          `🔗 *Acesse para responder:*\n{{proposal_link}}\n\n` +
+          `_Cotiz - Sistema de Cotações_`
+      };
+    }
+    
+    const templateContent = whatsappTemplate.message_content;
+    console.log('📋 Template carregado:', templateContent.substring(0, 50) + '...');
 
     // Format deadline
     const deadlineFormatted = quote.deadline 
@@ -732,7 +750,29 @@ const handler = async (req: Request): Promise<Response> => {
               proposal_link: supplierProposalLink,
               response_link: supplierProposalLink,
             };
-            finalMessage = replaceTemplateVariables(templateContent, supplierVars);
+            
+            console.log(`📝 [${supplier.name}] Variáveis do template:`, {
+              supplier_name: supplierVars.supplier_name,
+              client_name: supplierVars.client_name,
+              quote_title: supplierVars.quote_title,
+              quote_id: supplierVars.quote_id,
+              deadline: supplierVars.deadline,
+              items_count: supplierVars.items_count,
+              proposal_link: supplierVars.proposal_link.substring(0, 30) + '...'
+            });
+            
+            try {
+              finalMessage = replaceTemplateVariables(templateContent, supplierVars);
+              
+              // Validar que todas as variáveis foram substituídas
+              const unreplacedVars = finalMessage.match(/{{[^}]+}}/g);
+              if (unreplacedVars && unreplacedVars.length > 0) {
+                console.warn(`⚠️ [${supplier.name}] Variáveis não substituídas:`, unreplacedVars);
+              }
+            } catch (error) {
+              console.error(`❌ [${supplier.name}] Erro ao substituir variáveis:`, error);
+              throw new Error(`Falha ao processar template para ${supplier.name}`);
+            }
           } else {
             // 🎯 Fornecedor NÃO cadastrado: enviar convite para completar cadastro
             const registrationLink = `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
