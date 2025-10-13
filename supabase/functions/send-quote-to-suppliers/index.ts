@@ -15,7 +15,6 @@ interface SendQuoteRequest {
   send_via?: 'n8n' | 'direct';
   supplier_links?: { supplier_id: string; link: string; token?: string }[];
   short_links?: { supplier_id: string; short_link: string; full_link?: string; short_code?: string; full_token?: string }[];
-  frontend_base_url?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -35,7 +34,30 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via, supplier_links, short_links, frontend_base_url }: SendQuoteRequest = await req.json();
+    // Buscar base URL do sistema
+    let systemBaseUrl = 'https://cotiz.com.br'; // fallback
+    try {
+      const { data: settingsData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'base_url')
+        .single();
+      
+      if (settingsData?.setting_value) {
+        const settingValue = typeof settingsData.setting_value === 'string' 
+          ? settingsData.setting_value.replace(/"/g, '')
+          : String(settingsData.setting_value || '').replace(/"/g, '');
+        
+        if (settingValue) {
+          systemBaseUrl = settingValue;
+          console.log('🌐 [SYSTEM] Base URL carregada:', systemBaseUrl);
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ [SYSTEM] Não foi possível carregar base URL, usando fallback:', systemBaseUrl);
+    }
+
+    const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via, supplier_links, short_links }: SendQuoteRequest = await req.json();
 
     console.log('Processing quote:', quote_id);
 
@@ -336,8 +358,7 @@ const handler = async (req: Request): Promise<Response> => {
       } : null,
       timestamp: new Date().toISOString(),
       platform: 'QuoteMaster Pro',
-      supplier_links: supplier_links || [],
-      frontend_base_url: frontend_base_url || null
+      supplier_links: supplier_links || []
     };
 
     const hasEvolution = Boolean(evolutionInstance && evolutionApiUrl && evolutionToken);
@@ -361,7 +382,7 @@ const handler = async (req: Request): Promise<Response> => {
         resolvedEvolution,
         supplierLinks: supplier_links || [],
         shortLinks: short_links || [],
-        frontendBaseUrl: frontend_base_url || null,
+        frontendBaseUrl: systemBaseUrl,
         clientName: client.name,
         quoteTitle: quote.title,
         deadline: deadlineFormatted,
@@ -799,7 +820,9 @@ const handler = async (req: Request): Promise<Response> => {
             }
           } else {
             // 🎯 Fornecedor NÃO cadastrado: enviar convite para completar cadastro
-            const registrationLink = `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
+            const registrationLink = `${systemBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
+            
+            console.log(`🔗 [${supplier.name}] Registration link: ${registrationLink}`);
             
             // 🆕 Usar template do banco se disponível
             if (registrationTemplate && registrationTemplate.message_content) {
