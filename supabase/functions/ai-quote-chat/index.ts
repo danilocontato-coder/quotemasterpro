@@ -701,7 +701,10 @@ Formato da RFQ final:
                 .eq('status', 'active')
                 .overlaps('specialties', quoteData.categories)
                 .limit(10);
-              selectedSuppliers = fallbackSuppliers || [];
+              selectedSuppliers = (fallbackSuppliers || []).map((s: any) => ({
+                ...s,
+                supplier_id: s.id
+              }));
             } else {
               console.log(`🎯 IA sugeriu ${suggestedSuppliers?.length || 0} fornecedores com score de compatibilidade`);
               
@@ -723,7 +726,11 @@ Formato da RFQ final:
               // Ordenar por score de compatibilidade e pegar os melhores
               selectedSuppliers = filteredSuppliers
                 .sort((a: any, b: any) => (b.match_score || 0) - (a.match_score || 0))
-                .slice(0, 10);
+                .slice(0, 10)
+                .map((s: any) => ({
+                  ...s,
+                  id: s.supplier_id || s.id
+                }));
               
               console.log(`✅ Selecionados ${selectedSuppliers.length} fornecedores com IA`);
               
