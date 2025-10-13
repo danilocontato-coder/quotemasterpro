@@ -664,6 +664,8 @@ const handler = async (req: Request): Promise<Response> => {
         const regex = new RegExp(`{{${key}}}`, 'g');
         result = result.replace(regex, String(value || ''));
       }
+      // Convert literal \n to actual line breaks for WhatsApp
+      result = result.replace(/\\n/g, '\n');
       return result;
     }
     
