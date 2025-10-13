@@ -364,7 +364,8 @@ const handler = async (req: Request): Promise<Response> => {
         frontendBaseUrl: frontend_base_url || null,
         clientName: client.name,
         quoteTitle: quote.title,
-        deadline: deadlineFormatted
+        deadline: deadlineFormatted,
+        registrationTemplate
       });
     }
     
@@ -641,6 +642,7 @@ const handler = async (req: Request): Promise<Response> => {
       evolutionToken,
       templateVariables,
       whatsappTemplate,
+      registrationTemplate,
       templateContent,
       quoteId,
       createdBy,
