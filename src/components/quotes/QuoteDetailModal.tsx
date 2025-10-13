@@ -31,6 +31,7 @@ import { ItemAnalysisModal } from './ItemAnalysisModal';
 import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
 import { QuoteItemsList } from './QuoteItemsList';
 import { VisitSection } from './VisitSection';
+import { VisitsTab } from './VisitsTab';
 import { getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
@@ -408,12 +409,18 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           </DialogHeader>
 
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-5' : 'grid-cols-4'}`}>
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="proposals">
                 Propostas ({proposals.length})
               </TabsTrigger>
               <TabsTrigger value="analysis">Análise Inteligente</TabsTrigger>
+              {quote.requires_visit && (
+                <TabsTrigger value="visits">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Visitas
+                </TabsTrigger>
+              )}
               <TabsTrigger value="history">Histórico</TabsTrigger>
             </TabsList>
 
@@ -752,6 +759,16 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 </>
               )}
             </TabsContent>
+
+            {/* Visits Tab */}
+            {quote.requires_visit && (
+              <TabsContent value="visits" className="space-y-6">
+                <VisitsTab 
+                  quoteId={quote.id} 
+                  totalSuppliers={Math.max(quote.suppliers_sent_count || 0, quote.selected_supplier_ids?.length || 0)}
+                />
+              </TabsContent>
+            )}
 
             <TabsContent value="history" className="space-y-6">
               <Card>

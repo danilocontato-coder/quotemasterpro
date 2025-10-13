@@ -10,6 +10,8 @@ import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
 import { AppWithProviders } from '@/components/layout/AppWithProviders';
+import { TourProvider } from '@/components/tour/TourProvider';
+import '@/styles/tour-custom.css';
 
 // Carregar test helpers em desenvolvimento
 if (import.meta.env.DEV) {
@@ -45,14 +47,16 @@ function App() {
           <BrandingProvider>
             <AuthProvider>
               <SubscriptionProvider>
-                <Router>
-                  {/* GlobalNavigationProvider removido - integrado no AppWithProviders */}
-                  <AppWithProviders />
-                  
-                  {/* Toast notifications */}
-                  <Toaster />
-                  <Sonner />
-                </Router>
+                <TourProvider>
+                  <Router>
+                    {/* GlobalNavigationProvider removido - integrado no AppWithProviders */}
+                    <AppWithProviders />
+                    
+                    {/* Toast notifications */}
+                    <Toaster />
+                    <Sonner />
+                  </Router>
+                </TourProvider>
               </SubscriptionProvider>
             </AuthProvider>
           </BrandingProvider>

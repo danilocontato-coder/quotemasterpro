@@ -24,6 +24,7 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { useBranding } from '@/contexts/BrandingContext';
+import { BrandedLogo } from '@/components/branding/BrandedLogo';
 
 const menuItems = [
   { title: 'Dashboard', url: '/administradora/dashboard', icon: LayoutDashboard },
@@ -56,21 +57,11 @@ export const AdministradoraSidebar: React.FC = () => {
     <Sidebar collapsible="icon" className="border-r border-green-200 bg-green-50">
       <SidebarContent>
         {/* Logo/Brand */}
-        <div className="flex items-center gap-2 px-4 py-6 border-b border-green-200">
-          {!isCollapsed && (
-            <>
-              <Building2 className="h-6 w-6 text-green-600" />
-              <div className="flex flex-col">
-                <span className="font-bold text-green-900">
-                  {settings.companyName}
-                </span>
-                <span className="text-xs text-green-600">Administradora</span>
-              </div>
-            </>
-          )}
-          {isCollapsed && (
-            <Building2 className="h-6 w-6 text-green-600 mx-auto" />
-          )}
+        <div className="px-4 py-6 border-b border-green-200 flex justify-center">
+          <BrandedLogo 
+            size={isCollapsed ? "md" : "lg"}
+            showCompanyName={false}
+          />
         </div>
 
         {/* Menu Principal */}

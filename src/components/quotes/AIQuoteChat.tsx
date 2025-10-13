@@ -116,19 +116,29 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
 
       // Se a IA criou uma RFQ no banco de dados
       if (data.rfqCreated) {
+        // Mostrar mensagem de sucesso com ID da RFQ
+        const successMessage: Message = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `✅ Cotação #${data.quoteId} criada com sucesso!\n\n` +
+            `Você pode visualizá-la na lista de cotações.` +
+            (data.standardizedProducts?.length > 0 
+              ? `\n\n📦 ${data.standardizedProducts.length} produto(s) foram adicionados ao catálogo.` 
+              : ''),
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, successMessage]);
+        
         toast.success(`RFQ #${data.quoteId} criada com sucesso!`);
         
-        if (data.standardizedProducts?.length > 0) {
-          toast.info(`${data.standardizedProducts.length} produtos adicionados ao catálogo`);
-        }
-        
-        // Fechar chat e atualizar lista sem refresh
+        // Fechar chat após 2 segundos
         setTimeout(() => {
           onClose();
           if (onRefresh) {
             onRefresh();
           }
-        }, 1500);
+        }, 2000);
         
         return;
       }
@@ -144,14 +154,24 @@ export const AIQuoteChat: React.FC<AIQuoteChatProps> = ({ onQuoteGenerated, onCl
         onQuoteGenerated(data.quote);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no chat:', error);
-      toast.error("Erro ao enviar mensagem. Verifique se a chave OpenAI está configurada no sistema.");
+      
+      const errorDetails = error?.message || 'Erro desconhecido';
+      const isConfigError = errorDetails.includes('OpenAI') || errorDetails.includes('API key');
+      
+      toast.error(
+        isConfigError 
+          ? "Erro de configuração da IA. Contate o administrador." 
+          : "Erro ao processar mensagem. Tente novamente."
+      );
       
       const errorMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Desculpe, ocorreu um erro. Verifique se as configurações de IA estão corretas no painel administrativo.',
+        content: isConfigError
+          ? '❌ Desculpe, há um problema com a configuração da IA. Por favor, contate o administrador do sistema para verificar as configurações da chave OpenAI.'
+          : '❌ Desculpe, ocorreu um erro ao processar sua mensagem. Você pode tentar reformular ou tentar novamente.',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);

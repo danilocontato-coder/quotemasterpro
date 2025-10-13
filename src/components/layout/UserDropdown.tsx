@@ -120,7 +120,7 @@ export function UserDropdown() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild data-tour="user-menu">
         <Button variant="ghost" className="flex items-center gap-3 h-10 px-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src={displayAvatar} />

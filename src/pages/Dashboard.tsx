@@ -126,7 +126,7 @@ export default function Dashboard() {
       <AdminModeIndicator />
       
       {/* Page Header with gradient */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-primary/70 p-8 animate-fade-in shadow-lg">
+      <div data-tour="dashboard" className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-primary/70 p-8 animate-fade-in shadow-lg">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
         <div className="relative">
           <div className="flex items-center gap-3 mb-2">
@@ -218,7 +218,7 @@ export default function Dashboard() {
 
       {/* Usage Limits and Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-        <div className="lg:col-span-2">
+        <div data-tour="quick-actions" className="lg:col-span-2">
           <QuickActions />
         </div>
         <div className="space-y-4">
