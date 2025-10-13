@@ -80,69 +80,17 @@ serve(async (req) => {
       throw new Error('Failed to confirm visit');
     }
 
-    // Buscar cotação para obter total de fornecedores
-    const { data: quoteData, error: quoteError } = await supabase
-      .from('quotes')
-      .select('suppliers_sent_count')
-      .eq('id', visit.quote_id)
-      .single();
-
-    if (quoteError) {
-      console.error('Error fetching quote:', quoteError);
-    }
-
-    const totalSuppliers = quoteData?.suppliers_sent_count || 1;
-
-    // Buscar todas as visitas e consolidar por fornecedor distinto
-    const { data: allVisits, error: visitsError } = await supabase
-      .from('quote_visits')
-      .select('status, supplier_id')
-      .eq('quote_id', visit.quote_id);
-
-    if (visitsError) {
-      console.error('Error fetching visits:', visitsError);
-    }
-
-    // Contar fornecedores únicos com visita confirmada
-    const uniqueConfirmedSuppliers = new Set(
-      (allVisits || [])
-        .filter(v => v.status === 'confirmed')
-        .map(v => v.supplier_id)
-    );
-    const confirmedCount = uniqueConfirmedSuppliers.size;
-    
-    // Determinar novo status baseado no progresso de confirmações
-    let newQuoteStatus = 'visit_scheduled';
-    if (confirmedCount > 0 && confirmedCount < totalSuppliers) {
-      newQuoteStatus = 'visit_partial_confirmed';
-    } else if (confirmedCount >= totalSuppliers) {
-      newQuoteStatus = 'visit_confirmed';
-    }
-
-    console.log('Updating quote status:', { confirmedCount, totalSuppliers, newQuoteStatus });
-
-    // Atualizar status da cotação
-    const { error: quoteUpdateError } = await supabase
+    // Após confirmar visita, liberar para proposta
+    const { error: quoteError } = await supabase
       .from('quotes')
       .update({ 
-        status: newQuoteStatus,
+        status: 'visit_confirmed',
         updated_at: new Date().toISOString()
       })
       .eq('id', visit.quote_id);
 
-    if (quoteUpdateError) {
-      console.error('Error updating quote status:', quoteUpdateError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Failed to update quote status',
-          details: quoteUpdateError.message
-        }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    if (quoteError) {
+      console.error('Error updating quote status:', quoteError);
     }
 
     console.log('Visit confirmed successfully:', updatedVisit);

@@ -77,14 +77,10 @@ export default function SupplierQuotes() {
         return <Badge variant="secondary">Aguardando Proposta</Badge>;
       case 'awaiting_visit':
         return <Badge variant="secondary" className="bg-orange-100 text-orange-700">Aguardando Visita</Badge>;
-      case 'visit_partial_scheduled':
-        return <Badge variant="default" className="bg-amber-100 text-amber-700">Visitas Parciais Agendadas</Badge>;
       case 'visit_scheduled':
-        return <Badge variant="default" className="bg-blue-100 text-blue-700">Visitas Agendadas</Badge>;
-      case 'visit_partial_confirmed':
-        return <Badge variant="default" className="bg-sky-100 text-sky-700">Visitas Parciais Confirmadas</Badge>;
+        return <Badge variant="default" className="bg-blue-100 text-blue-700">Visita Agendada</Badge>;
       case 'visit_confirmed':
-        return <Badge variant="default" className="bg-green-100 text-green-700">Visitas Confirmadas</Badge>;
+        return <Badge variant="default" className="bg-green-100 text-green-700">Visita Confirmada</Badge>;
       case 'visit_overdue':
         return <Badge variant="destructive">Visita Atrasada</Badge>;
       case 'proposal_sent':

@@ -11,8 +11,7 @@ import { Loader2, Eye, EyeOff, Building2, Users, User, CheckCircle2, Zap, Shield
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
 import { InactiveClientAlert } from '@/components/auth/InactiveClientAlert';
-import { BrandedLogo } from '@/components/branding/BrandedLogo';
-import { BrandingLoader } from '@/components/branding/BrandingLoader';
+import cotizLogo from '@/assets/cotiz-logo.png';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -25,7 +24,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
-  const { settings: brandingSettings, isReady: brandingReady } = useBranding();
+  const { settings: brandingSettings } = useBranding();
 
   const from = location.state?.from?.pathname || getRoleBasedRoute('client');
 
@@ -182,11 +181,6 @@ const Login: React.FC = () => {
 
   const userTypeInfo = getUserTypeInfo();
 
-  // Mostrar loader enquanto branding não está pronto
-  if (!brandingReady) {
-    return <BrandingLoader />;
-  }
-
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Branding & Features */}
@@ -199,11 +193,12 @@ const Login: React.FC = () => {
 
         <div className="relative z-10">
           {/* Logo */}
-          <div className="flex flex-col items-start gap-4 mb-16">
-            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
-              <BrandedLogo size="lg" showCompanyName={false} />
+          <div className="flex items-center gap-3 mb-16">
+            <img src={cotizLogo} alt="Cotiz" className="h-16 w-16" />
+            <div>
+              <h2 className="text-3xl font-bold text-white">{brandingSettings.companyName}</h2>
+              <p className="text-primary-foreground/80 text-sm">Gestão Inteligente de Cotações</p>
             </div>
-            <p className="text-primary-foreground/80 text-sm">Gestão Inteligente de Cotações</p>
           </div>
 
           {/* Features */}
@@ -263,9 +258,12 @@ const Login: React.FC = () => {
       <div className="flex-1 flex items-center justify-center p-4 bg-background">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex flex-col items-center justify-center gap-4 mb-8">
-            <BrandedLogo size="lg" showCompanyName={false} />
-            <p className="text-muted-foreground text-sm">Gestão de Cotações</p>
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+            <img src={cotizLogo} alt="Cotiz" className="h-12 w-12" />
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">{brandingSettings.companyName}</h2>
+              <p className="text-muted-foreground text-sm">Gestão de Cotações</p>
+            </div>
           </div>
 
           <Card className="border-0 shadow-2xl">

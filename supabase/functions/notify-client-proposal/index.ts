@@ -33,7 +33,7 @@ serve(async (req) => {
       .from('quotes')
       .select(`
         *,
-        clients!quotes_client_id_fkey(*)
+        clients!inner(*)
       `)
       .eq('id', quoteId)
       .single()

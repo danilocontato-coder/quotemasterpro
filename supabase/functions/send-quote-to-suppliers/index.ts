@@ -194,24 +194,6 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (error) {
       console.warn('Error loading WhatsApp template:', error);
     }
-    
-    // Validar template carregado
-    if (!whatsappTemplate || !whatsappTemplate.message_content) {
-      console.warn('⚠️ Nenhum template de WhatsApp encontrado, usando padrão do sistema');
-      whatsappTemplate = {
-        message_content: `Olá {{supplier_name}}!\n\n` +
-          `🏢 *{{client_name}}* solicita uma cotação:\n\n` +
-          `📋 *Cotação:* {{quote_title}}\n` +
-          `🆔 *ID:* {{quote_id}}\n` +
-          `📅 *Prazo:* {{deadline}}\n\n` +
-          `📦 *ITENS:*\n{{items_list}}\n\n` +
-          `🔗 *Acesse para responder:*\n{{proposal_link}}\n\n` +
-          `_Cotiz - Sistema de Cotações_`
-      };
-    }
-    
-    const templateContent = whatsappTemplate.message_content;
-    console.log('📋 Template carregado:', templateContent.substring(0, 50) + '...');
 
     // Format deadline
     const deadlineFormatted = quote.deadline 
@@ -243,16 +225,6 @@ const handler = async (req: Request): Promise<Response> => {
     // Extract short_links from request body
     // short_links is obtained from request body above
     
-    // Helper function to replace all template variables
-    function replaceTemplateVariables(template: string, variables: Record<string, string>): string {
-      let result = template;
-      for (const [key, value] of Object.entries(variables)) {
-        const regex = new RegExp(`{{${key}}}`, 'g');
-        result = result.replace(regex, String(value || ''));
-      }
-      return result;
-    }
-
     // Build variables for template rendering
     const templateVariables = {
       client_name: client.name,
@@ -260,14 +232,11 @@ const handler = async (req: Request): Promise<Response> => {
       client_phone: client.phone || '',
       quote_title: quote.title,
       quote_id: quote.id,
-      deadline: deadlineFormatted,
       deadline_formatted: deadlineFormatted,
-      total: totalFormatted,
       total_formatted: totalFormatted,
       items_list: itemsList,
       items_count: String(items.length || 0),
       proposal_link: 'PLACEHOLDER_WILL_BE_REPLACED_PER_SUPPLIER',
-      response_link: 'PLACEHOLDER_WILL_BE_REPLACED_PER_SUPPLIER',
     };
 
     // Prepare suppliers (no pre-rendered message; rendering will happen in n8n)
@@ -744,35 +713,13 @@ const handler = async (req: Request): Promise<Response> => {
           
           if (isRegistered) {
             // Fornecedor já cadastrado: mensagem normal de cotação
-            const supplierVars = {
-              ...templateVariables,
-              supplier_name: supplier.name || 'Fornecedor',
-              proposal_link: supplierProposalLink,
-              response_link: supplierProposalLink,
-            };
-            
-            console.log(`📝 [${supplier.name}] Variáveis do template:`, {
-              supplier_name: supplierVars.supplier_name,
-              client_name: supplierVars.client_name,
-              quote_title: supplierVars.quote_title,
-              quote_id: supplierVars.quote_id,
-              deadline: supplierVars.deadline,
-              items_count: supplierVars.items_count,
-              proposal_link: supplierVars.proposal_link.substring(0, 30) + '...'
-            });
-            
-            try {
-              finalMessage = replaceTemplateVariables(templateContent, supplierVars);
-              
-              // Validar que todas as variáveis foram substituídas
-              const unreplacedVars = finalMessage.match(/{{[^}]+}}/g);
-              if (unreplacedVars && unreplacedVars.length > 0) {
-                console.warn(`⚠️ [${supplier.name}] Variáveis não substituídas:`, unreplacedVars);
-              }
-            } catch (error) {
-              console.error(`❌ [${supplier.name}] Erro ao substituir variáveis:`, error);
-              throw new Error(`Falha ao processar template para ${supplier.name}`);
-            }
+            finalMessage = templateContent
+              .replace(/{{supplier_name}}/g, supplier.name || 'Fornecedor')
+              .replace(/{{client_name}}/g, clientName || 'Cliente')
+              .replace(/{{quote_title}}/g, quoteTitle)
+              .replace(/{{quote_id}}/g, quoteId)
+              .replace(/{{deadline}}/g, deadline)
+              .replace(/{{response_link}}/g, supplierProposalLink);
           } else {
             // 🎯 Fornecedor NÃO cadastrado: enviar convite para completar cadastro
             const registrationLink = `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;

@@ -16,9 +16,6 @@ export interface User {
   active: boolean;
   clientId?: string;
   supplierId?: string;
-  onboardingCompleted?: boolean;
-  tourCompleted?: boolean;
-  tenantType?: string;
 }
 
 export const getRoleBasedRoute = (
@@ -195,9 +192,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           active: profile.active,
           clientId: profile.client_id,
           supplierId: profile.supplier_id,
-          onboardingCompleted: profile.onboarding_completed,
-          tourCompleted: profile.tour_completed,
-          tenantType: profile.tenant_type,
         };
         setUser(userProfile);
         setError(null);

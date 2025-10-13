@@ -2,7 +2,6 @@ export interface QuoteVisit {
   id: string;
   quote_id: string;
   supplier_id: string;
-  supplier_name?: string;
   client_id: string;
   scheduled_date: string;
   confirmed_date?: string;

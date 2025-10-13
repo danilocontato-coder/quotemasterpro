@@ -32,12 +32,8 @@ export function VisitManagementModal({ quote, open, onOpenChange, onVisitUpdated
   const [confirmationNotes, setConfirmationNotes] = useState('');
 
   const latestVisit = visits[0];
-  
-  // Permitir agendamento se não houver visita agendada ou se a última foi confirmada
-  const canSchedule = !latestVisit || latestVisit.status === 'confirmed' || latestVisit.status === 'overdue';
-  
-  // Permitir confirmação se há uma visita agendada
-  const canConfirm = latestVisit?.status === 'scheduled';
+  const canSchedule = quote?.status === 'awaiting_visit';
+  const canConfirm = quote?.status === 'visit_scheduled' && latestVisit?.status === 'scheduled';
 
   const handleSchedule = async () => {
     if (!scheduledDate || !scheduledTime) {
@@ -92,13 +88,13 @@ export function VisitManagementModal({ quote, open, onOpenChange, onVisitUpdated
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="schedule" className="w-full">
+        <Tabs defaultValue={canSchedule ? 'schedule' : canConfirm ? 'confirm' : 'history'} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="schedule">
+            <TabsTrigger value="schedule" disabled={!canSchedule}>
               <Calendar className="h-4 w-4 mr-2" />
               Agendar
             </TabsTrigger>
-            <TabsTrigger value="confirm">
+            <TabsTrigger value="confirm" disabled={!canConfirm}>
               <CheckCircle className="h-4 w-4 mr-2" />
               Confirmar
             </TabsTrigger>
@@ -174,23 +170,14 @@ export function VisitManagementModal({ quote, open, onOpenChange, onVisitUpdated
                 </CardContent>
               </Card>
             ) : (
-              <Card className="border-orange-200 bg-orange-50">
-                <CardContent className="pt-6 text-center space-y-3">
-                  <Calendar className="h-12 w-12 mx-auto text-orange-500" />
-                  <div>
-                    <p className="font-semibold text-orange-900 mb-2">
-                      {latestVisit?.status === 'scheduled' ? '📅 Visita Já Agendada' : 
-                       latestVisit?.status === 'confirmed' ? '✅ Visita Já Confirmada' :
-                       '⏳ Agendamento Indisponível'}
-                    </p>
-                    <p className="text-sm text-orange-700">
-                      {latestVisit?.status === 'scheduled' 
-                        ? 'Há uma visita agendada. Vá para aba "Confirmar" para registrar a realização.' 
-                        : latestVisit?.status === 'confirmed' 
-                          ? 'A visita técnica já foi confirmada. Você pode enviar sua proposta.'
-                          : 'Entre em contato com o cliente para agendar a visita.'}
-                    </p>
-                  </div>
+              <Card className="border-gray-300">
+                <CardContent className="pt-6 text-center">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-muted-foreground">
+                    {quote.status === 'visit_scheduled' ? 'Visita já agendada. Vá para aba "Confirmar".' : 
+                     quote.status === 'visit_confirmed' ? 'Visita já confirmada.' :
+                     'Aguardando liberação para agendamento.'}
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -266,23 +253,14 @@ export function VisitManagementModal({ quote, open, onOpenChange, onVisitUpdated
                 </CardContent>
               </Card>
             ) : (
-              <Card className="border-blue-200 bg-blue-50">
-                <CardContent className="pt-6 text-center space-y-3">
-                  <CheckCircle className="h-12 w-12 mx-auto text-blue-500" />
-                  <div>
-                    <p className="font-semibold text-blue-900 mb-2">
-                      {!latestVisit ? '📅 Agende a Visita Primeiro' :
-                       latestVisit.status === 'confirmed' ? '✅ Visita Já Confirmada' :
-                       '⏳ Confirmação Indisponível'}
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      {!latestVisit 
-                        ? 'Vá para aba "Agendar" para definir data e hora da visita técnica.'
-                        : latestVisit.status === 'confirmed'
-                          ? 'A visita técnica já foi confirmada em ' + new Date(latestVisit.confirmed_date!).toLocaleString('pt-BR')
-                          : 'Aguarde o agendamento da visita para poder confirmar sua realização.'}
-                    </p>
-                  </div>
+              <Card className="border-gray-300">
+                <CardContent className="pt-6 text-center">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-muted-foreground">
+                    {quote.status === 'awaiting_visit' ? 'Agende a visita primeiro.' :
+                     quote.status === 'visit_confirmed' ? 'Visita já confirmada.' :
+                     'Aguardando agendamento da visita.'}
+                  </p>
                 </CardContent>
               </Card>
             )}

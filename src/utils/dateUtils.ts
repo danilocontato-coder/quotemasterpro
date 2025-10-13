@@ -76,20 +76,6 @@ export function formatFullDateTime(dateString: string | null | undefined): strin
 }
 
 /**
- * Formata data com destaque no horário
- * Exemplo: { date: "22 de outubro de 2025", time: "09:00" }
- */
-export function formatDateWithTime(dateString: string | null | undefined): { date: string; time: string } {
-  const parsedDate = parseUTCDate(dateString);
-  if (!parsedDate) return { date: '-', time: '-' };
-  
-  return {
-    date: format(parsedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
-    time: format(parsedDate, "HH:mm", { locale: ptBR })
-  };
-}
-
-/**
  * Converte data local para UTC string (para salvar no Supabase)
  */
 export function toUTCString(date: Date | string): string {

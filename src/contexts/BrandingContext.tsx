@@ -19,7 +19,6 @@ export interface BrandingSettings {
 interface BrandingContextType {
   settings: BrandingSettings;
   isLoading: boolean;
-  isReady: boolean; // Indica que o branding foi carregado e está pronto
   updateSettings: (newSettings: Partial<BrandingSettings>) => Promise<void>;
   applyBranding: () => void;
   resetToDefaults: () => Promise<void>;
@@ -53,7 +52,6 @@ export const useBranding = () => {
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<BrandingSettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
-  const [isReady, setIsReady] = useState(false);
   const { toast } = useToast();
 
   // Aplicar branding padrão imediatamente para evitar delay
@@ -139,17 +137,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 }
                 break;
               case 'company_logo':
-                // Garantir que o logo seja uma string válida
-                if (typeof value === 'string' && value.trim() && value !== '/placeholder.svg') {
-                  globalSettings.logo = value.trim();
-                  console.log('🖼️ [BRANDING] ✅ Logo carregado:', value.trim());
-                } else if (typeof settingValue === 'object' && settingValue.url) {
-                  globalSettings.logo = settingValue.url;
-                  console.log('🖼️ [BRANDING] ✅ Logo extraído do objeto:', settingValue.url);
-                } else {
-                  globalSettings.logo = defaultSettings.logo;
-                  console.log('🖼️ [BRANDING] ⚠️ Logo inválido, usando padrão');
-                }
+                globalSettings.logo = value || defaultSettings.logo;
                 break;
               case 'primary_color':
                 globalSettings.primaryColor = value || defaultSettings.primaryColor;
@@ -280,7 +268,6 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       applyBrandingToDOM(defaultSettings);
     } finally {
       setIsLoading(false);
-      setIsReady(true); // Marca como pronto mesmo em caso de erro (usa padrão)
     }
   }, []);
 
@@ -648,7 +635,6 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     <BrandingContext.Provider value={{
       settings,
       isLoading,
-      isReady,
       updateSettings,
       applyBranding,
       resetToDefaults,

@@ -16,22 +16,12 @@ export function useQuoteVisits(quoteId?: string) {
     try {
       const { data, error: fetchError } = await supabase
         .from('quote_visits')
-        .select(`
-          *,
-          suppliers!quote_visits_supplier_id_fkey(name)
-        `)
+        .select('*')
         .eq('quote_id', quoteId)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      
-      // Map to include supplier_name
-      const visitsWithSupplier = (data || []).map((v: any) => ({
-        ...v,
-        supplier_name: v.suppliers?.name
-      }));
-      
-      setVisits(visitsWithSupplier as QuoteVisit[]);
+      setVisits((data || []) as QuoteVisit[]);
     } catch (err: any) {
       console.error('Error fetching visits:', err);
       setError(err.message);

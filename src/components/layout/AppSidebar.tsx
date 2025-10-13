@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
-import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import {
   Sidebar,
   SidebarContent,
@@ -119,11 +118,18 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       {/* Logo/Brand */}
-      <div className="p-4 border-b border-sidebar-border flex justify-center">
-        <BrandedLogo 
-          size={isCollapsed ? "md" : "lg"}
-          showCompanyName={false}
-        />
+      <div className="p-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <BarChart3 className="h-5 w-5 text-primary-foreground" />
+          </div>
+          {!isCollapsed && (
+            <div>
+              <h1 className="text-lg font-semibold text-sidebar-foreground">{settings.companyName}</h1>
+              <p className="text-xs text-sidebar-foreground/70">Pro</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <SidebarContent className="py-4">
@@ -141,12 +147,6 @@ export function AppSidebar() {
                       to={item.url} 
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
                       onClick={handleLinkClick}
-                      data-tour={
-                        item.url === '/quotes' ? 'menu-quotes' :
-                        item.url === '/suppliers' ? 'menu-suppliers' :
-                        item.url === '/products' ? 'menu-products' :
-                        undefined
-                      }
                     >
                       <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
@@ -197,8 +197,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild className="h-10">
                       <TransitionNavLink 
-                        to={item.url}
-                        data-tour={item.url === '/approvals' ? 'menu-approvals' : undefined}
+                        to={item.url} 
                         className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
                         onClick={handleLinkClick}
                       >
