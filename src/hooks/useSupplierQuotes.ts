@@ -4,6 +4,7 @@ import { mockQuotes, Quote } from '@/data/mockData';
 
 export interface SupplierQuote {
   id: string;
+  local_code?: string;
   title: string;
   description: string;
   client: string;

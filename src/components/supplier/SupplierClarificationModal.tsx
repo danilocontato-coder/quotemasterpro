@@ -358,7 +358,7 @@ export function SupplierClarificationModal({
                 <DialogTitle>Esclarecimentos - Fornecedor</DialogTitle>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs">
-                    Cotação {quote.id}
+                    Cotação {quote.local_code || quote.id}
                   </Badge>
                   <Badge className="bg-blue-50 text-blue-700 border-blue-200">
                     Sistema Estruturado

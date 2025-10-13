@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 // Quote interface matching the database structure
 export interface Quote {
   id: string;
+  local_code?: string; // RFQ01, RFQ02... por cliente
   title: string;
   description?: string;
   total?: number;
@@ -74,6 +75,7 @@ export const useSupabaseQuotes = () => {
         .from('quotes')
         .select(`
           id,
+          local_code,
           title,
           description,
           total,
@@ -181,19 +183,8 @@ export const useSupabaseQuotes = () => {
 
       console.log('🔍 DEBUG: client_id obtido via RPC:', clientIdData);
 
-      // Generate sequential quote ID via RPC per client (non-random)
-      const { data: nextId, error: nextIdError } = await supabase.rpc('next_quote_id_by_client', { 
-        p_client_id: clientIdData, 
-        prefix: 'RFQ' 
-      });
-      if (nextIdError || !nextId) {
-        console.error('❌ Error generating sequential RFQ ID:', nextIdError);
-        throw nextIdError || new Error('Falha ao gerar ID da cotação');
-      }
-      const quoteId = nextId as string;
-      // Minimum payload for INSERT policy compliance
+      // Payload mínimo - trigger gerará id (UUID) e local_code (RFQ01, RFQ02...)
       const insertPayload = {
-        id: quoteId,
         title: quoteData.title,
         client_id: clientIdData,
         client_name: 'Cliente',
@@ -202,17 +193,20 @@ export const useSupabaseQuotes = () => {
 
       console.log('🔍 DEBUG: Payload mínimo para insert:', insertPayload);
 
-      // Step 1: INSERT minimum required fields
-      const { error: insertError } = await supabase
+      // Step 1: INSERT minimum required fields (trigger gera id UUID e local_code RFQxx)
+      const { data: insertedQuote, error: insertError } = await supabase
         .from('quotes')
-        .insert(insertPayload);
+        .insert(insertPayload as any)
+        .select('id, local_code')
+        .single();
 
-      if (insertError) {
+      if (insertError || !insertedQuote) {
         console.error('❌ Error inserting quote:', insertError);
-        throw insertError;
+        throw insertError || new Error('Falha ao criar cotação');
       }
 
-      console.log('✅ Quote inserted successfully, ID:', quoteId);
+      const quoteId = insertedQuote.id;
+      console.log('✅ Quote inserted successfully:', { id: quoteId, local_code: insertedQuote.local_code });
 
       // Step 2: UPDATE optional fields (items_count será atualizado automaticamente pelo trigger)
       const { error: updateError } = await supabase
@@ -282,10 +276,10 @@ export const useSupabaseQuotes = () => {
         console.log('✅ Fornecedores específicos registrados para a cotação');
       }
 
-      // Step 5: Fetch the complete quote
+      // Step 5: Fetch the complete quote (incluindo local_code)
       const { data: completeQuote, error: fetchError } = await supabase
         .from('quotes')
-        .select('*')
+        .select('*, local_code')
         .eq('id', quoteId)
         .maybeSingle();
 

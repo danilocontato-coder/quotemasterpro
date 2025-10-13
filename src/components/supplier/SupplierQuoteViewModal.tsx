@@ -307,7 +307,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {quote.title} - {quote.id}
+              {quote.title} - {quote.local_code || quote.id}
               <Badge>{quote.status}</Badge>
             </DialogTitle>
           </DialogHeader>

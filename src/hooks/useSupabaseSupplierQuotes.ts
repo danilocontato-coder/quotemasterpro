@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface SupplierQuote {
   id: string;
+  local_code?: string;
   title: string;
   description: string;
   client: string;

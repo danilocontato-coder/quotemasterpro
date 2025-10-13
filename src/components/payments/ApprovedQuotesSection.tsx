@@ -94,7 +94,7 @@ export function ApprovedQuotesSection() {
               <div key={quote.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">#{quote.id}</span>
+                    <span className="font-medium">#{quote.local_code || quote.id}</span>
                     <Badge variant="approved">Aprovada</Badge>
                   </div>
                   <p className="text-sm font-medium">{quote.title}</p>

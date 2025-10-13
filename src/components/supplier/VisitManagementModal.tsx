@@ -88,7 +88,7 @@ export function VisitManagementModal({ quote, open, onOpenChange, onVisitUpdated
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Gestão de Visita Técnica - {quote.id}
+            Gestão de Visita Técnica - {quote.local_code || quote.id}
           </DialogTitle>
         </DialogHeader>
 

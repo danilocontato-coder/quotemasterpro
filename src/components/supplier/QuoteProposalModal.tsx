@@ -383,9 +383,9 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {quote.title} - {quote.id}
+            {quote.title} - {quote.local_code || quote.id}
             <Badge variant={quote.status === 'pending' ? 'secondary' : quote.status === 'proposal_sent' ? 'default' : 'outline'}>
-              {quote.status === 'pending' ? 'Aguardando Proposta' : 
+              {quote.status === 'pending' ? 'Aguardando Proposta' :
                quote.status === 'proposal_sent' ? 'Proposta Enviada' : 
                quote.status}
             </Badge>

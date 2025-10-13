@@ -2839,6 +2839,7 @@ export type Database = {
           description: string | null
           id: string
           items_count: number | null
+          local_code: string | null
           on_behalf_of_client_id: string | null
           requires_visit: boolean | null
           responses_count: number | null
@@ -2863,6 +2864,7 @@ export type Database = {
           description?: string | null
           id: string
           items_count?: number | null
+          local_code?: string | null
           on_behalf_of_client_id?: string | null
           requires_visit?: boolean | null
           responses_count?: number | null
@@ -2887,6 +2889,7 @@ export type Database = {
           description?: string | null
           id?: string
           items_count?: number | null
+          local_code?: string | null
           on_behalf_of_client_id?: string | null
           requires_visit?: boolean | null
           responses_count?: number | null
@@ -4201,6 +4204,10 @@ export type Database = {
         Returns: boolean
       }
       next_contract_id_by_client: {
+        Args: { p_client_id: string; prefix?: string }
+        Returns: string
+      }
+      next_local_quote_code_by_client: {
         Args: { p_client_id: string; prefix?: string }
         Returns: string
       }
