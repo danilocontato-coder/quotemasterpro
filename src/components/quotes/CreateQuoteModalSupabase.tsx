@@ -244,6 +244,38 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
 
       console.log('✅ Dados validados, criando cotação...');
       
+      // 🛡️ VALIDAÇÃO: Verificar fornecedores antes de criar
+      if (formData.supplier_ids && formData.supplier_ids.length > 0) {
+        const validSupplierIds = formData.supplier_ids.filter(id => 
+          id && 
+          typeof id === 'string' && 
+          id !== 'undefined' && 
+          id.trim() !== ''
+        );
+        
+        if (validSupplierIds.length === 0) {
+          toast({
+            title: "Erro de Validação",
+            description: "Nenhum fornecedor válido selecionado. Por favor, selecione fornecedores da lista.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        // Atualizar com IDs validados
+        formData.supplier_ids = validSupplierIds;
+        
+        console.log('✅ Fornecedores validados:', {
+          original: formData.supplier_ids.length,
+          valid: validSupplierIds.length
+        });
+      } else if (!asDraft) {
+        toast({
+          title: "Atenção",
+          description: "Nenhum fornecedor selecionado. A cotação será criada como rascunho.",
+        });
+      }
+      
       // Convert form data to quote format
       const quoteData: any = {
         title: formData.title,

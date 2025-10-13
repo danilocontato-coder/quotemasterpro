@@ -258,7 +258,27 @@ export const useSupabaseQuotes = () => {
 
       // Step 4: CRÍTICO - Registrar fornecedores específicos selecionados
       if (quoteData.supplier_ids && quoteData.supplier_ids.length > 0) {
-        const quoteSuppliers = quoteData.supplier_ids.map((supplierId: string) => ({
+        // 🛡️ VALIDAÇÃO: Filtrar IDs válidos (UUID de 36 caracteres)
+        const validSupplierIds = quoteData.supplier_ids.filter((id: any) => 
+          id && 
+          typeof id === 'string' && 
+          id.length === 36 && 
+          id !== 'undefined' &&
+          id.trim() !== ''
+        );
+        
+        console.log('🔍 DEBUG: Validação de fornecedores:', {
+          original_count: quoteData.supplier_ids.length,
+          valid_count: validSupplierIds.length,
+          invalid_ids: quoteData.supplier_ids.filter((id: any) => !validSupplierIds.includes(id))
+        });
+        
+        // Se nenhum fornecedor válido, lançar erro ANTES de incrementar contador
+        if (validSupplierIds.length === 0) {
+          throw new Error('❌ Nenhum fornecedor válido foi selecionado. Por favor, selecione fornecedores da lista.');
+        }
+        
+        const quoteSuppliers = validSupplierIds.map((supplierId: string) => ({
           quote_id: quoteId,
           supplier_id: supplierId
         }));

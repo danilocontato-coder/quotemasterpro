@@ -739,6 +739,39 @@ Formato da RFQ final:
           }
         }
 
+        // 🛡️ VALIDAÇÃO: Filtrar fornecedores válidos antes de criar cotação
+        const validSelectedSuppliers = selectedSuppliers.filter((s: any) => 
+          s && 
+          s.id && 
+          typeof s.id === 'string' && 
+          s.id.length === 36 &&
+          s.id !== 'undefined'
+        );
+        
+        // Log de warning se houver fornecedores inválidos
+        if (validSelectedSuppliers.length < selectedSuppliers.length) {
+          const invalidSuppliers = selectedSuppliers.filter((s: any) => !validSelectedSuppliers.includes(s));
+          console.warn('[AI-QUOTE-CHAT] ⚠️ Fornecedores inválidos detectados e removidos:', 
+            invalidSuppliers.map((s: any) => ({ name: s?.name, id: s?.id }))
+          );
+        }
+        
+        // Se nenhum fornecedor válido, retornar erro
+        if (validSelectedSuppliers.length === 0 && selectedSuppliers.length > 0) {
+          console.error('[AI-QUOTE-CHAT] ❌ Nenhum fornecedor válido após validação');
+          return new Response(JSON.stringify({
+            error: 'Nenhum fornecedor válido foi selecionado pela IA. Por favor, tente novamente ou selecione manualmente.'
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        console.log('✅ Fornecedores validados:', {
+          original_count: selectedSuppliers.length,
+          valid_count: validSelectedSuppliers.length
+        });
+        
         // Calcular total aproximado (placeholder)
         const estimatedTotal = quoteData.items.reduce((sum: number, item: any) => {
           // Estimativa básica baseada na quantidade
@@ -757,8 +790,8 @@ Formato da RFQ final:
           deadline: quoteData.deadline_days ? 
             new Date(Date.now() + quoteData.deadline_days * 24 * 60 * 60 * 1000).toISOString() : 
             null,
-          selected_supplier_ids: selectedSuppliers.map(s => s.id),
-          suppliers_sent_count: selectedSuppliers.length,
+          selected_supplier_ids: validSelectedSuppliers.map(s => s.id),
+          suppliers_sent_count: validSelectedSuppliers.length,
           client_name: clientDisplayName,
           requires_visit: quoteData.requiresVisit || false,
           visit_deadline: quoteData.visitDeadline ? new Date(quoteData.visitDeadline).toISOString() : null
@@ -834,9 +867,9 @@ Formato da RFQ final:
           }
         }
 
-        // Inserir fornecedores selecionados
-        if (selectedSuppliers.length > 0) {
-          const quoteSuppliers = selectedSuppliers.map(supplier => ({
+        // Inserir fornecedores selecionados (já validados anteriormente)
+        if (validSelectedSuppliers.length > 0) {
+          const quoteSuppliers = validSelectedSuppliers.map(supplier => ({
             quote_id: newQuote.id,
             supplier_id: supplier.id
           }));
@@ -846,14 +879,17 @@ Formato da RFQ final:
             .insert(quoteSuppliers);
 
           if (suppliersError) {
-            console.error('Erro ao vincular fornecedores:', suppliersError);
+            console.error('❌ Erro ao vincular fornecedores:', suppliersError);
+            throw new Error(`Erro ao vincular fornecedores: ${suppliersError.message}`);
+          } else {
+            console.log(`✅ ${validSelectedSuppliers.length} fornecedores vinculados com sucesso`);
           }
         }
 
         // Definir mensagem sobre envio automático de fornecedores
         let autoSendMessage = '';
-        if (selectedSuppliers.length > 0) {
-          autoSendMessage = '\n\n📤 Fornecedores vinculados! Você pode enviar a RFQ quando estiver pronto.';
+        if (validSelectedSuppliers.length > 0) {
+          autoSendMessage = `\n\n📤 ${validSelectedSuppliers.length} fornecedor(es) vinculado(s)! Você pode enviar a RFQ quando estiver pronto.`;
         } else {
           autoSendMessage = '\n\n💡 Não se esqueça de adicionar fornecedores e enviar a RFQ.';
         }
