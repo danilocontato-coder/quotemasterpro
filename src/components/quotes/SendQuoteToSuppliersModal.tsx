@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ShortLinkDisplay } from "@/components/ui/short-link-display";
 import { selectBestSupplier } from "@/lib/supplierDeduplication";
 import { generateQuoteShortLink } from "@/lib/quoteTokens";
+import { getCachedBaseUrl } from "@/utils/systemConfig";
 
 interface SendQuoteToSuppliersModalProps {
   quote: any;
@@ -202,6 +203,10 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
     setIsLoading(true);
 
     try {
+      // Buscar URL base do sistema
+      const systemBaseUrl = await getCachedBaseUrl();
+      console.log('🌐 [SEND-QUOTE] Using system base URL:', systemBaseUrl);
+      
       // Generate personalized links for each supplier
       console.log('🔗 [SEND-QUOTE] Generating personalized links for suppliers:', selectedSuppliers);
       
@@ -249,7 +254,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           send_email: sendEmail,
           send_via: sendVia,
           short_links: validShortLinks,
-          frontend_base_url: window.location.origin
+          frontend_base_url: systemBaseUrl
         }
       });
 

@@ -195,6 +195,26 @@ const handler = async (req: Request): Promise<Response> => {
       console.warn('Error loading WhatsApp template:', error);
     }
     
+    // Buscar template de convite de registro (para fornecedores não cadastrados)
+    let registrationTemplate = null;
+    try {
+      const { data: regTemplate } = await supabase
+        .from('whatsapp_templates')
+        .select('*')
+        .eq('template_type', 'supplier_registration_invite')
+        .eq('active', true)
+        .eq('is_global', true)
+        .eq('is_default', true)
+        .maybeSingle();
+        
+      registrationTemplate = regTemplate;
+      if (registrationTemplate) {
+        console.log('📧 Registration invitation template loaded:', registrationTemplate.name);
+      }
+    } catch (error) {
+      console.warn('⚠️ Error loading registration template:', error);
+    }
+    
     // Validar template carregado
     if (!whatsappTemplate || !whatsappTemplate.message_content) {
       console.warn('⚠️ Nenhum template de WhatsApp encontrado, usando padrão do sistema');
@@ -777,16 +797,34 @@ const handler = async (req: Request): Promise<Response> => {
             // 🎯 Fornecedor NÃO cadastrado: enviar convite para completar cadastro
             const registrationLink = `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
             
-            finalMessage = 
-              `🎉 Olá, ${supplier.name}!\n\n` +
-              `Você tem *1 nova cotação* aguardando sua resposta!\n\n` +
-              `📋 *Cotação:* ${quoteTitle}\n` +
-              `🏢 *Cliente:* ${clientName}\n` +
-              `⏰ *Prazo:* ${deadline}\n\n` +
-              `⚠️ *Para visualizar e responder, você precisa completar seu cadastro.*\n\n` +
-              `✅ É rápido! Clique no link abaixo:\n` +
-              `${registrationLink}\n\n` +
-              `Após o cadastro, você receberá suas credenciais por WhatsApp e poderá responder a cotação imediatamente! 🚀`;
+            // 🆕 Usar template do banco se disponível
+            if (registrationTemplate && registrationTemplate.message_content) {
+              const regVars = {
+                supplier_name: supplier.name || 'Fornecedor',
+                quote_title: quoteTitle,
+                client_name: clientName,
+                deadline: deadline,
+                registration_link: registrationLink
+              };
+              
+              finalMessage = replaceTemplateVariables(registrationTemplate.message_content, regVars);
+              console.log(`📧 [${supplier.name}] Using database registration template: "${registrationTemplate.name}"`);
+            } else {
+              // Fallback para mensagem hardcoded (caso template não exista)
+              finalMessage = 
+                `🎉 Olá, ${supplier.name}!\n\n` +
+                `Você tem *1 nova cotação* aguardando sua resposta!\n\n` +
+                `📋 *Cotação:* ${quoteTitle}\n` +
+                `🏢 *Cliente:* ${clientName}\n` +
+                `⏰ *Prazo:* ${deadline}\n\n` +
+                `⚠️ *Para visualizar e responder, você precisa completar seu cadastro.*\n\n` +
+                `✅ É rápido! Clique no link abaixo:\n` +
+                `${registrationLink}\n\n` +
+                `Após o cadastro, você receberá suas credenciais por WhatsApp e poderá responder a cotação imediatamente! 🚀`;
+              console.warn(`⚠️ [${supplier.name}] Registration template not found, using fallback`);
+            }
+            
+            console.log(`📧 [${supplier.name}] Message type: REGISTRATION_INVITE`);
           }
 
           console.log(`📧 [${supplier.name}] Message type:`, isRegistered ? 'QUOTE_NOTIFICATION' : 'REGISTRATION_INVITE');
