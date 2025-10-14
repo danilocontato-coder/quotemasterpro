@@ -172,11 +172,8 @@ serve(async (req) => {
       console.log(`✅ New user created: ${userId}`);
     }
 
-    // 5. Atualizar fornecedor com todos os dados
+    // 5. Preparar dados de atualização do fornecedor (NÃO atualizar ainda)
     const updateData: any = {
-      status: 'active',
-      registration_status: 'active',
-      registration_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
@@ -219,17 +216,18 @@ serve(async (req) => {
       };
     }
 
+    // Atualizar dados do fornecedor (SEM mudar status ainda)
     const { error: updateError } = await supabase
       .from('suppliers')
       .update(updateData)
       .eq('id', supplier.id);
 
     if (updateError) {
-      console.error('Supplier update error:', updateError);
-      throw updateError;
+      console.error('❌ Supplier update error:', updateError);
+      throw new Error(`Failed to update supplier: ${updateError.message}`);
     }
 
-    console.log('✅ Supplier updated to active');
+    console.log('✅ Supplier data updated');
 
     // 6. Vincular profile ao fornecedor
     const { error: profileError } = await supabase
@@ -251,23 +249,27 @@ serve(async (req) => {
       });
 
     if (profileError) {
-      console.error('Profile error:', profileError);
-      throw profileError;
+      console.error('❌ Profile error:', profileError);
+      throw new Error(`Failed to link profile: ${profileError.message}`);
     }
 
     console.log('✅ Profile linked to supplier');
 
-    // 7. Criar sessão para login automático
-    const { data: sessionData, error: sessionError } = await supabase.auth.admin.createSession({
-      userId: userId
+    // 7. Criar sessão para login automático (usando método correto)
+    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: supplier.email,
+      options: {
+        redirectTo: `${Deno.env.get('PUBLIC_APP_URL') || 'https://app.quotemaster.com'}/supplier/dashboard`
+      }
     });
 
     if (sessionError) {
-      console.error('Session creation error:', sessionError);
-      throw sessionError;
+      console.error('❌ Session generation error:', sessionError);
+      throw new Error(`Failed to generate session: ${sessionError.message}`);
     }
 
-    console.log('✅ Session created for auto-login');
+    console.log('✅ Magic link generated for auto-login');
 
     // 8. Buscar nome do sistema
     const { data: systemSettings } = await supabase
@@ -296,7 +298,7 @@ serve(async (req) => {
             `🔑 *Senha temporária:* ${temporaryPassword}\n\n` +
             `⚠️ *IMPORTANTE:* Recomendamos trocar sua senha no primeiro acesso.\n\n` +
             `🔗 *Acesse agora:*\n` +
-            `${Deno.env.get('PUBLIC_APP_URL') || 'https://app.quotemaster.com'}/supplier/auth\n\n` +
+            `${Deno.env.get('PUBLIC_APP_URL') || 'https://app.quotemaster.com'}/auth/login\n\n` +
             `Você já pode responder cotações e gerenciar suas propostas! 🚀`;
 
           const result = await sendEvolutionWhatsApp(
@@ -324,7 +326,25 @@ serve(async (req) => {
       whatsappError = error.message;
     }
 
-    // 10. Criar log de auditoria
+    // 10. APENAS AGORA marcar fornecedor como ativo (após todas operações críticas)
+    const { error: statusError } = await supabase
+      .from('suppliers')
+      .update({
+        status: 'active',
+        registration_status: 'active',
+        registration_completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', supplier.id);
+
+    if (statusError) {
+      console.error('❌ Failed to activate supplier:', statusError);
+      throw new Error(`Failed to activate supplier: ${statusError.message}`);
+    }
+
+    console.log('✅ Supplier activated successfully');
+
+    // 11. Criar log de auditoria
     await supabase
       .from('audit_logs')
       .insert({
@@ -351,7 +371,8 @@ serve(async (req) => {
         user_id: userId,
         supplier_id: supplier.id,
         quote_id: tokenData.quote_id,
-        session: sessionData.session,
+        access_token: sessionData.properties?.access_token,
+        refresh_token: sessionData.properties?.refresh_token,
         temporary_password: temporaryPassword,
         whatsapp_sent: whatsappSent,
         message: 'Cadastro concluído! Credenciais enviadas por WhatsApp.'
