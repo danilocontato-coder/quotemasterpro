@@ -21,19 +21,20 @@ serve(async (req) => {
 
     const { quoteId, supplierId, supplierName, totalValue } = await req.json()
 
-    console.log('🔔 Notifying client about proposal:', {
-      quoteId,
-      supplierId,
-      supplierName,
-      totalValue
-    })
-
     // Get quote and client details
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
       .select(`
-        *,
-        clients!quotes_client_id_fkey(*)
+        id,
+        local_code,
+        title,
+        total,
+        client_id,
+        clients!quotes_client_id_fkey(
+          id,
+          name,
+          phone
+        )
       `)
       .eq('id', quoteId)
       .single()
@@ -44,6 +45,15 @@ serve(async (req) => {
     }
 
     const client = quote.clients
+    
+    console.log('🔔 Notifying client about proposal:', {
+      quoteId,
+      quoteLocalCode: quote.local_code,
+      quoteTitle: quote.title,
+      supplierId,
+      supplierName,
+      totalValue
+    })
 
     // Get users from this client to notify them
     const { data: clientUsers, error: usersError } = await supabase
@@ -121,7 +131,7 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
     // Format message with variables
     const message = messageTemplate
       .replace(/\{\{quote_title\}\}/g, quote.title)
-      .replace(/\{\{quote_id\}\}/g, quoteId)
+      .replace(/\{\{quote_id\}\}/g, quote.local_code || quoteId)
       .replace(/\{\{supplier_name\}\}/g, supplierName)
       .replace(/\{\{total_value\}\}/g, totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 }))
 
