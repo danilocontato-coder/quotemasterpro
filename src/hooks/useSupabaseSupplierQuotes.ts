@@ -173,6 +173,7 @@ export const useSupabaseSupplierQuotes = () => {
           quote_id,
           quotes!inner (
             id,
+            local_code,
             title,
             description,
             status,
@@ -209,6 +210,7 @@ export const useSupabaseSupplierQuotes = () => {
           created_at,
           quotes!inner (
             id,
+            local_code,
             title,
             description,
             status,
@@ -266,6 +268,7 @@ export const useSupabaseSupplierQuotes = () => {
         
         return {
           id: quote.id,
+          local_code: quote.local_code,
           title: quote.title,
           description: quote.description || '',
           client: clientName,
