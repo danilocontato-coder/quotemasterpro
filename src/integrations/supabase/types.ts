@@ -1750,6 +1750,53 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          message_id: string | null
+          provider: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          to_email: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          provider?: string | null
+          sent_at?: string | null
+          status: string
+          subject: string
+          to_email: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          provider?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exchange_rates: {
         Row: {
           created_at: string | null
