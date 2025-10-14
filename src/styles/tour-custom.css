@@ -5,16 +5,21 @@
   filter: none !important;
 }
 
-/* Overlay escuro */
+/* Overlay escuro com contraste forte */
 .react-joyride__overlay {
-  background-color: rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.75) !important;
 }
 
-/* Spotlight (destaque do elemento) */
+/* Spotlight (destaque do elemento) - Brilhante e elevado */
 .react-joyride__spotlight {
   border-radius: 8px !important;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 
+    0 0 0 9999px rgba(0, 0, 0, 0.75),
+    0 0 60px rgba(255, 255, 255, 0.3),
+    inset 0 0 20px rgba(255, 255, 255, 0.1) !important;
+  transform: scale(1.02) !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  transition: all 0.3s ease-out !important;
 }
 
 /* Beacon (ponto pulsante) */
@@ -44,24 +49,33 @@
   z-index: 1;
 }
 
-/* Melhorar contraste do spotlight */
+/* Borda animada com glow forte */
 .react-joyride__spotlight::before {
   content: '';
   position: absolute;
-  inset: -4px;
-  border: 2px solid hsl(var(--primary));
+  inset: -6px;
+  border: 3px solid hsl(var(--primary));
   border-radius: 10px;
   pointer-events: none;
+  box-shadow: 
+    0 0 20px hsl(var(--primary) / 0.6),
+    inset 0 0 20px hsl(var(--primary) / 0.2);
   animation: spotlightPulse 2s ease-in-out infinite;
 }
 
 @keyframes spotlightPulse {
   0%, 100% {
-    opacity: 0.6;
+    opacity: 0.5;
     transform: scale(1);
+    box-shadow: 
+      0 0 20px hsl(var(--primary) / 0.6),
+      inset 0 0 20px hsl(var(--primary) / 0.2);
   }
   50% {
     opacity: 1;
-    transform: scale(1.02);
+    transform: scale(1.03);
+    box-shadow: 
+      0 0 40px hsl(var(--primary) / 0.9),
+      inset 0 0 30px hsl(var(--primary) / 0.4);
   }
 }
