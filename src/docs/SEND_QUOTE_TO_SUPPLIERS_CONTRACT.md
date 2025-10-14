@@ -19,6 +19,7 @@
 - ✅ Fornecedores não registrados recebem link de registro + resposta
 - ✅ Base URL deve sempre vir de `system_settings` (tabela: `base_url`)
 - ✅ Tokens de acesso devem ter validade de 30 dias (padrão)
+- ✅ **Frontend valida tokens via edge function** (não query direta - RLS bloqueia!)
 
 ### 3. Templates de Mensagem
 - ✅ Templates são buscados do banco (tabela `message_templates`)
@@ -180,6 +181,55 @@ INSERT INTO products (name, client_id) VALUES ('Item Y', 'uuid-cliente-2')
 ### Triggers
 - `trg_products_set_code_before_insert` (produtos)
 - `trg_quotes_set_id` (cotações)
+
+---
+
+## 🔗 Fluxo de Link de Registro
+
+### Arquitetura
+```
+1. Backend gera token via generate-quote-token
+   ↓
+2. Link curto enviado por WhatsApp: {base_url}/s/{short_code}
+   ↓
+3. Router resolve /s/{short_code} → redireciona para /supplier/register/{full_token}
+   ↓
+4. Frontend chama edge function validate-quote-token (não query direta!)
+   ↓
+5. Edge function usa SERVICE_ROLE_KEY para bypassa RLS
+   ↓
+6. Retorna dados do fornecedor + cotação
+   ↓
+7. Fornecedor completa cadastro via complete-supplier-registration
+   ↓
+8. Redireciona para /supplier/quick-response/{quote_id}/{token}
+```
+
+### ⚠️ REGRA CRÍTICA: Validação de Token no Frontend
+
+**NUNCA** fazer query direta em `quote_tokens` do frontend:
+```typescript
+// ❌ ERRADO - Bloqueado por RLS para usuários anônimos
+const { data } = await supabase
+  .from('quote_tokens')
+  .select('*')
+  .eq('full_token', token);
+```
+
+**SEMPRE** usar edge function `validate-quote-token`:
+```typescript
+// ✅ CORRETO - Bypassa RLS com SERVICE_ROLE_KEY
+const { data } = await supabase.functions.invoke('validate-quote-token', {
+  body: { token }
+});
+```
+
+**Por quê?**
+- RLS de `quote_tokens` protege dados sensíveis
+- Apenas edge functions com `SERVICE_ROLE_KEY` podem acessar
+- Edge function valida expiração e atualiza `access_count` automaticamente
+
+**Arquivo de Referência**: `src/pages/supplier/SupplierRegisterWithToken.tsx` (linhas 32-71)
 
 ---
 

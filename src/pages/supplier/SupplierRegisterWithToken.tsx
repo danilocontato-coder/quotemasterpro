@@ -33,64 +33,42 @@ export default function SupplierRegisterWithToken() {
     try {
       setValidating(true);
       
-      // Buscar dados do convite usando o token
-      const { data: tokenData, error: tokenError } = await supabase
-        .from('quote_tokens')
-        .select('quote_id, supplier_id, expires_at')
-        .eq('full_token', token)
-        .maybeSingle();
-
-      if (tokenError || !tokenData) {
-        toast({
-          title: 'Link inválido',
-          description: 'Link de cadastro inválido ou expirado.',
-          variant: 'destructive'
-        });
-        navigate('/');
-        return;
-      }
-
-      // Verificar expiração
-      if (new Date(tokenData.expires_at) < new Date()) {
-        toast({
-          title: 'Link expirado',
-          description: 'Este link expirou. Solicite um novo convite.',
-          variant: 'destructive'
-        });
-        navigate('/');
-        return;
-      }
-
-      // Buscar dados do fornecedor
-      const { data: supplier, error: supplierError } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('id', tokenData.supplier_id)
-        .maybeSingle();
-
-      if (supplierError || !supplier) {
-        toast({
-          title: 'Erro',
-          description: 'Fornecedor não encontrado.',
-          variant: 'destructive'
-        });
-        navigate('/');
-        return;
-      }
-
-      setSupplierData(supplier);
-      setQuoteId(tokenData.quote_id);
+      console.log('🔍 Validating token via edge function:', token);
       
-      // Pré-preencher dados se já existirem
+      // ✅ Usar edge function que bypassa RLS
+      const { data, error } = await supabase.functions.invoke('validate-quote-token', {
+        body: { token }
+      });
+
+      console.log('📦 Token validation response:', { data, error });
+
+      if (error || !data?.valid) {
+        console.error('❌ Token validation failed:', error || data?.error);
+        toast({
+          title: data?.expired ? 'Link expirado' : 'Link inválido',
+          description: data?.error || 'Link de cadastro inválido ou expirado.',
+          variant: 'destructive'
+        });
+        navigate('/');
+        return;
+      }
+
+      console.log('✅ Token valid, supplier data:', data.supplier);
+
+      // Edge function retorna supplier e quote dados completos
+      setSupplierData(data.supplier);
+      setQuoteId(data.quote_id);
+      
+      // Pré-preencher formulário com dados do supplier
       setFormData({
-        cnpj: supplier.cnpj || '',
-        phone: supplier.phone || '',
-        city: supplier.city || '',
-        state: supplier.state || ''
+        cnpj: data.supplier?.cnpj || '',
+        phone: data.supplier?.phone || '',
+        city: data.supplier?.city || '',
+        state: data.supplier?.state || ''
       });
 
     } catch (error) {
-      console.error('Erro ao validar convite:', error);
+      console.error('💥 Erro ao validar convite:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao validar convite.',
