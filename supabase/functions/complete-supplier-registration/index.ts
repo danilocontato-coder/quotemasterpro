@@ -255,21 +255,18 @@ serve(async (req) => {
 
     console.log('✅ Profile linked to supplier');
 
-    // 7. Criar sessão para login automático (usando método correto)
-    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
+    // 7. Gerar tokens de acesso usando signInWithPassword
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: supplier.email,
-      options: {
-        redirectTo: `${Deno.env.get('PUBLIC_APP_URL') || 'https://app.quotemaster.com'}/supplier/dashboard`
-      }
+      password: temporaryPassword
     });
 
-    if (sessionError) {
-      console.error('❌ Session generation error:', sessionError);
-      throw new Error(`Failed to generate session: ${sessionError.message}`);
+    if (signInError || !signInData.session) {
+      console.error('❌ Sign in error:', signInError);
+      throw new Error(`Failed to generate session: ${signInError?.message || 'No session created'}`);
     }
 
-    console.log('✅ Magic link generated for auto-login');
+    console.log('✅ Session tokens generated for auto-login');
 
     // 8. Buscar nome do sistema
     const { data: systemSettings } = await supabase
@@ -371,8 +368,10 @@ serve(async (req) => {
         user_id: userId,
         supplier_id: supplier.id,
         quote_id: tokenData.quote_id,
-        access_token: sessionData.properties?.access_token,
-        refresh_token: sessionData.properties?.refresh_token,
+        session: {
+          access_token: signInData.session.access_token,
+          refresh_token: signInData.session.refresh_token
+        },
         temporary_password: temporaryPassword,
         whatsapp_sent: whatsappSent,
         message: 'Cadastro concluído! Credenciais enviadas por WhatsApp.'
