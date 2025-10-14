@@ -203,17 +203,66 @@ export default function SupplierRegisterWithToken() {
         }
       });
 
-      if (error || !data.success) {
-        throw new Error(data?.error || error?.message || 'Erro ao completar cadastro');
-      }
-
-      // Login automático
-      const { error: setSessionError } = await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token
+      console.log('📥 Registration response:', { 
+        hasError: !!error, 
+        errorMessage: error?.message,
+        hasData: !!data,
+        dataSuccess: data?.success,
+        hasSession: !!data?.session,
+        hasTokens: !!(data?.session?.access_token && data?.session?.refresh_token)
       });
 
-      if (setSessionError) throw setSessionError;
+      // Validar erro explícito da Edge Function
+      if (error && error.message) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message);
+      }
+
+      // Validar estrutura da resposta
+      if (!data || !data.success) {
+        console.error('Invalid response structure:', data);
+        throw new Error(data?.error || 'Erro ao completar cadastro');
+      }
+
+      // Validar tokens de sessão
+      if (!data.session || !data.session.access_token || !data.session.refresh_token) {
+        console.error('Missing session tokens:', data);
+        throw new Error('Sessão não foi criada corretamente');
+      }
+
+      // Tentar login automático via setSession
+      try {
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        });
+
+        if (setSessionError) {
+          console.warn('⚠️ setSession failed, trying signInWithPassword fallback:', setSessionError);
+          
+          // Fallback: login manual com senha temporária
+          if (data.temporary_password && formData.whatsapp) {
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+              email: supplierData.email,
+              password: data.temporary_password
+            });
+            
+            if (signInError) {
+              console.error('❌ signInWithPassword also failed:', signInError);
+              throw signInError;
+            }
+            
+            console.log('✅ Logged in via signInWithPassword fallback');
+          } else {
+            throw setSessionError;
+          }
+        } else {
+          console.log('✅ Session set successfully');
+        }
+      } catch (authError: any) {
+        console.error('❌ Authentication error:', authError);
+        throw new Error('Não foi possível fazer login automaticamente');
+      }
 
       setLoading(false);
       

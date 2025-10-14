@@ -362,20 +362,30 @@ serve(async (req) => {
 
     console.log('✅ Registration completed successfully');
 
+    const responsePayload = { 
+      success: true,
+      user_id: userId,
+      supplier_id: supplier.id,
+      quote_id: tokenData.quote_id,
+      session: {
+        access_token: signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token
+      },
+      temporary_password: temporaryPassword,
+      whatsapp_sent: whatsappSent,
+      message: 'Cadastro concluído! Credenciais enviadas por WhatsApp.'
+    };
+
+    console.log('📤 Returning response:', {
+      success: responsePayload.success,
+      hasSession: !!responsePayload.session,
+      hasAccessToken: !!responsePayload.session?.access_token,
+      hasRefreshToken: !!responsePayload.session?.refresh_token,
+      quoteId: responsePayload.quote_id
+    });
+
     return new Response(
-      JSON.stringify({ 
-        success: true,
-        user_id: userId,
-        supplier_id: supplier.id,
-        quote_id: tokenData.quote_id,
-        session: {
-          access_token: signInData.session.access_token,
-          refresh_token: signInData.session.refresh_token
-        },
-        temporary_password: temporaryPassword,
-        whatsapp_sent: whatsappSent,
-        message: 'Cadastro concluído! Credenciais enviadas por WhatsApp.'
-      }),
+      JSON.stringify(responsePayload),
       { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
