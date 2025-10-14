@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSupabaseSupplierDashboard } from "@/hooks/useSupabaseSupplierDashboard";
-import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator';
 import { useSupplierRoleGuard } from "@/hooks/useSupplierRoleGuard";
 
 interface MetricCardProps {
@@ -105,9 +104,6 @@ export default function SupplierDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Admin Mode Indicator */}
-      <AdminModeIndicator />
-      
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard do Fornecedor</h1>

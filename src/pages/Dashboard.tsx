@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { useSupabaseDashboard } from "@/hooks/useSupabaseDashboard";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { useSupabasePlanDetails } from '@/hooks/useSupabaseSubscriptionPlans';
-import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator';
 import { AnimatedPage, AnimatedSection, AnimatedHeader, AnimatedGrid } from '@/components/ui/animated-page';
 import { useBranding } from '@/contexts/BrandingContext';
 import heroDashboard from "@/assets/hero-dashboard.jpg";
@@ -87,9 +86,6 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="space-y-6">
-        {/* Admin Mode Indicator */}
-        <AdminModeIndicator />
-        
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
@@ -122,9 +118,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Admin Mode Indicator */}
-      <AdminModeIndicator />
-      
       {/* Page Header with gradient */}
       <div data-tour="dashboard" className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/90 to-primary/70 p-8 animate-fade-in shadow-lg">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />

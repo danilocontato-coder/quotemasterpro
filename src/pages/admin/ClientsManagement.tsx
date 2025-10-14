@@ -60,11 +60,11 @@ import { ClientCredentialsModal } from '@/components/admin/ClientCredentialsModa
 import { ClientDocumentsModal } from '@/components/admin/ClientDocumentsModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
 import { HierarchyViewModal } from '@/components/admin/HierarchyViewModal';
-import { useAdminAccess } from '@/hooks/useAdminAccess';
+import { useAdminViewClient } from '@/hooks/useAdminViewClient';
 
 export const ClientsManagement = () => {
   const { trackAsyncOperation } = usePerformanceDebug('ClientsManagement');
-  const { accessAsClient, isAccessingAs } = useAdminAccess();
+  const { viewClientData } = useAdminViewClient();
   
   console.log('🎯 ClientsManagement: Component rendering');
   
@@ -297,10 +297,10 @@ export const ClientsManagement = () => {
     setShowDeleteModal(true);
   }, []);
 
-  const handleAccessAsClient = useCallback(async (client: any) => {
-    console.log('Acessando como cliente:', client.id);
-    await accessAsClient(client.id, client.companyName || client.name);
-  }, [accessAsClient]);
+  const handleAccessAsClient = useCallback((client: any) => {
+    console.log('Visualizando cliente:', client.id);
+    viewClientData(client.id, client.companyName || client.name);
+  }, [viewClientData]);
 
   return (
     <div className="h-full flex flex-col">
@@ -646,19 +646,14 @@ export const ClientsManagement = () => {
                               Credenciais
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              disabled={isAccessingAs}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 handleAccessAsClient(client);
                               }}
                             >
-                              {isAccessingAs ? (
-                                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
-                              ) : (
-                                <LogIn className="h-4 w-4 mr-2" />
-                              )}
-                              Acessar como Cliente
+                              <Eye className="h-4 w-4 mr-2" />
+                              Visualizar como Cliente
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               disabled={statusUpdating.has(client.id)}
