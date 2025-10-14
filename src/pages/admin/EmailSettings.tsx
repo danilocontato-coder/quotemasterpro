@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Send, Loader2, CheckCircle, XCircle, Mail } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { useSystemBranding } from '@/hooks/useSystemBranding';
 
 interface EmailConfig {
   provider: 'resend' | 'sendgrid' | 'smtp';
@@ -24,6 +25,7 @@ interface EmailConfig {
 
 export default function EmailSettings() {
   const { toast } = useToast();
+  const { settings: brandingSettings } = useSystemBranding();
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -32,7 +34,7 @@ export default function EmailSettings() {
   const [config, setConfig] = useState<EmailConfig>({
     provider: 'resend',
     from_email: '',
-    from_name: 'QuoteMaster Pro',
+    from_name: brandingSettings.companyName,
     smtp_secure: true,
     smtp_port: 587
   });
@@ -198,7 +200,7 @@ export default function EmailSettings() {
                 <Label htmlFor="from_name_resend">Nome do remetente</Label>
                 <Input
                   id="from_name_resend"
-                  placeholder="QuoteMaster Pro"
+                  placeholder={brandingSettings.companyName}
                   value={config.from_name}
                   onChange={(e) => setConfig({ ...config, from_name: e.target.value })}
                 />
@@ -232,7 +234,7 @@ export default function EmailSettings() {
                 <Label htmlFor="from_name_sendgrid">Nome do remetente</Label>
                 <Input
                   id="from_name_sendgrid"
-                  placeholder="QuoteMaster Pro"
+                  placeholder={brandingSettings.companyName}
                   value={config.from_name}
                   onChange={(e) => setConfig({ ...config, from_name: e.target.value })}
                 />
@@ -308,7 +310,7 @@ export default function EmailSettings() {
                 <Label htmlFor="from_name_smtp">Nome do remetente</Label>
                 <Input
                   id="from_name_smtp"
-                  placeholder="QuoteMaster Pro"
+                  placeholder={brandingSettings.companyName}
                   value={config.from_name}
                   onChange={(e) => setConfig({ ...config, from_name: e.target.value })}
                 />

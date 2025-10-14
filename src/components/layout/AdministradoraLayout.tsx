@@ -9,9 +9,11 @@ import { useSimpleRefreshPrevention } from '@/hooks/useSimpleRefreshPrevention';
 import { AdministradoraProvider } from '@/contexts/AdministradoraContext';
 import { Badge } from '@/components/ui/badge';
 import { Shield } from 'lucide-react';
+import { useSystemBranding } from '@/hooks/useSystemBranding';
 
 export const AdministradoraLayout = () => {
   console.log('AdministradoraLayout component rendering');
+  const { settings: brandingSettings } = useSystemBranding();
 
   // Prevenção simples de refresh que não interfere com auth
   useSimpleRefreshPrevention();
@@ -52,7 +54,7 @@ export const AdministradoraLayout = () => {
             {/* Footer - Hidden on mobile */}
             <footer className="hidden md:flex h-12 bg-green-50 border-t border-green-200 items-center justify-between px-6 text-sm text-green-700 flex-shrink-0">
               <div className="flex items-center gap-4">
-                <span className="hidden lg:inline">© 2024 QuoteMaster Pro - Painel Administradora</span>
+                <span className="hidden lg:inline">© 2024 {brandingSettings.platformName} - Painel Administradora</span>
                 <Badge variant="outline" className="text-xs border-green-300">
                   <Shield className="h-3 w-3 mr-1" />
                   Ambiente Seguro

@@ -1,12 +1,12 @@
 import { Step } from 'react-joyride';
 
-export const getStepsForRole = (role: string, tenantType?: string): Step[] => {
+export const getStepsForRole = (role: string, tenantType?: string, platformName: string = 'Cotiz'): Step[] => {
   // Admin/Super Admin
   if (role === 'admin' || role === 'super_admin') {
     return [
       {
         target: '[data-tour="superadmin-header"]',
-        content: 'Bem-vindo ao painel administrativo. Aqui você tem controle total da plataforma QuoteMaster Pro.',
+        content: `Bem-vindo ao painel administrativo. Aqui você tem controle total da plataforma ${platformName}.`,
         placement: 'center',
         disableBeacon: true,
       },
@@ -43,7 +43,7 @@ export const getStepsForRole = (role: string, tenantType?: string): Step[] => {
     return [
       {
         target: '[data-tour="dashboard"]',
-        content: 'Bem-vindo ao QuoteMaster Pro! Este é seu painel de controle como fornecedor.',
+        content: `Bem-vindo ao ${platformName}! Este é seu painel de controle como fornecedor.`,
         placement: 'center',
         disableBeacon: true,
       },
@@ -79,7 +79,7 @@ export const getStepsForRole = (role: string, tenantType?: string): Step[] => {
   return [
     {
       target: '[data-tour="dashboard"]',
-      content: 'Bem-vindo ao QuoteMaster Pro! Aqui você tem uma visão completa de todas as suas cotações e atividades.',
+      content: `Bem-vindo ao ${platformName}! Aqui você tem uma visão completa de todas as suas cotações e atividades.`,
       placement: 'center',
       disableBeacon: true,
     },
