@@ -172,12 +172,15 @@ export const EditPlanModal = ({ plan, open, onClose }: EditPlanModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto z-[100]" aria-describedby="edit-plan-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Save className="h-5 w-5" />
             Editar Plano: {plan?.display_name}
           </DialogTitle>
+          <p id="edit-plan-description" className="text-sm text-muted-foreground">
+            Atualize as configurações, preços e recursos deste plano de assinatura
+          </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">

@@ -60,7 +60,8 @@ export const PlansManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [editingPlan, setEditingPlan] = useState<any>(null);
+  const [viewingPlan, setViewingPlan] = useState<any>(null);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -104,13 +105,25 @@ export const PlansManagement = () => {
   };
 
   const handleEdit = (plan: any) => {
-    setSelectedPlan(plan);
+    if (showViewModal) return; // Prevenir abertura simultânea
+    setEditingPlan(plan);
     setShowEditModal(true);
   };
 
   const handleView = (plan: any) => {
-    setSelectedPlan(plan);
+    if (showEditModal) return; // Prevenir abertura simultânea
+    setViewingPlan(plan);
     setShowViewModal(true);
+  };
+
+  const handleCloseEdit = () => {
+    setShowEditModal(false);
+    setTimeout(() => setEditingPlan(null), 300); // Cleanup após animação
+  };
+
+  const handleCloseView = () => {
+    setShowViewModal(false);
+    setTimeout(() => setViewingPlan(null), 300); // Cleanup após animação
   };
 
   const clientPlans = plans.filter(p => p.target_audience === 'clients' || p.target_audience === 'both');
@@ -211,7 +224,7 @@ export const PlansManagement = () => {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-background border z-50">
+                      <DropdownMenuContent align="end" className="bg-background border">
                         <DropdownMenuItem onClick={() => handleView(plan)}>
                           <Eye className="h-4 w-4 mr-2" />
                           Visualizar
@@ -357,25 +370,19 @@ export const PlansManagement = () => {
         onCreatePlan={createPlan}
       />
 
-      {selectedPlan && (
+      {editingPlan && (
         <EditPlanModal
-          plan={selectedPlan}
+          plan={editingPlan}
           open={showEditModal}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedPlan(null);
-          }}
+          onClose={handleCloseEdit}
         />
       )}
 
-      {selectedPlan && (
+      {viewingPlan && (
         <ViewPlanModal
-          plan={selectedPlan}
+          plan={viewingPlan}
           open={showViewModal}
-          onClose={() => {
-            setShowViewModal(false);
-            setSelectedPlan(null);
-          }}
+          onClose={handleCloseView}
         />
       )}
     </div>

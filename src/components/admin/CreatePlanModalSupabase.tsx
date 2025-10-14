@@ -181,12 +181,15 @@ export const CreatePlanModalSupabase: React.FC<CreatePlanModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto z-[100]" aria-describedby="create-plan-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Crown className="h-5 w-5 text-primary" />
             Criar Novo Plano
           </DialogTitle>
+          <p id="create-plan-description" className="text-sm text-muted-foreground">
+            Configure as informações básicas, preços, limites e recursos do novo plano de assinatura
+          </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">

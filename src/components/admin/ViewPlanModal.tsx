@@ -42,12 +42,15 @@ export const ViewPlanModal = ({ plan, open, onClose }: ViewPlanModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto z-[100]" aria-describedby="view-plan-description">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
             Detalhes do Plano: {plan.display_name}
           </DialogTitle>
+          <p id="view-plan-description" className="text-sm text-muted-foreground">
+            Visualize todas as informações, limites, recursos e estatísticas deste plano
+          </p>
         </DialogHeader>
 
         <div className="space-y-6">
