@@ -263,6 +263,24 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (error) {
       console.warn('⚠️ Error loading registration template:', error);
     }
+
+    // 📧 Carregar template de convite por e-mail (para fornecedores não registrados)
+    let emailRegistrationTemplate: any = null;
+    try {
+      const { data: emailRegTemplate } = await supabase
+        .from('whatsapp_templates')
+        .select('*')
+        .eq('template_type', 'email_supplier_invite')
+        .eq('active', true)
+        .single();
+      
+      emailRegistrationTemplate = emailRegTemplate;
+      if (emailRegistrationTemplate) {
+        console.log('📧 Email registration template loaded:', emailRegistrationTemplate.name);
+      }
+    } catch (error) {
+      console.warn('⚠️ Error loading email registration template:', error);
+    }
     
     // Validar template carregado
     if (!whatsappTemplate || !whatsappTemplate.message_content) {
@@ -404,6 +422,8 @@ const handler = async (req: Request): Promise<Response> => {
         templateVariables,
         whatsappTemplate,
         emailTemplate,
+        emailRegistrationTemplate,
+        registrationTemplate,
         templateContent: (whatsappTemplate?.message_content as string) || '',
         quoteId: quote_id,
         quote,
@@ -699,6 +719,7 @@ const handler = async (req: Request): Promise<Response> => {
       templateVariables,
       whatsappTemplate,
       emailTemplate,
+      emailRegistrationTemplate,
       registrationTemplate,
       templateContent,
       quoteId,
@@ -934,27 +955,54 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           // 📧 SEND EMAIL (if send_email = true AND supplier has email)
-          if (send_email && supplier.email && emailTemplate) {
+          if (send_email && supplier.email) {
             try {
-              console.log(`📧 [${supplier.name}] Sending email to: ${supplier.email}`);
+              // Verificar se fornecedor está registrado (mesmo critério do WhatsApp)
+              const isRegistered = supplier.registration_status === 'completed' || supplier.status === 'active';
+              
+              // Selecionar template baseado no status de registro
+              const selectedEmailTemplate = isRegistered ? 'email_quote_request' : 'email_supplier_invite';
+              const emailTemplateData: any = {
+                supplier_name: supplier.name,
+                client_name: clientName,
+                client_email: client.email || 'Não informado',
+                client_phone: client.phone || ''
+              };
+
+              if (isRegistered) {
+                // Fornecedor registrado: enviar cotação completa
+                console.log(`📧 [${supplier.name}] REGISTERED - Sending full quote email`);
+                Object.assign(emailTemplateData, {
+                  quote_title: quoteTitle,
+                  quote_id: quote.local_code || quoteId,
+                  deadline_formatted: deadline,
+                  items_count: String(items.length || 0),
+                  items_list: itemsList,
+                  total_formatted: totalFormatted,
+                  proposal_link: supplierProposalLink
+                });
+              } else {
+                // Fornecedor não registrado: enviar convite com benefícios
+                console.log(`📧 [${supplier.name}] PENDING - Sending registration invite email`);
+                Object.assign(emailTemplateData, {
+                  registration_link: supplierProposalLink,
+                  quote_preview: quoteTitle,
+                  benefit_1: '📊 Acompanhamento em tempo real de todas as suas cotações',
+                  benefit_2: '💰 Sistema transparente de negociação e pagamentos',
+                  benefit_3: '🎯 Oportunidades personalizadas para seu negócio',
+                  benefit_4: '⚡ Resposta rápida e comunicação direta com clientes',
+                  system_name: 'Cotiz',
+                  cta_text: 'Criar Conta Grátis'
+                });
+              }
+              
+              console.log(`📧 [${supplier.name}] Sending email to: ${supplier.email} (template: ${selectedEmailTemplate})`);
               
               const { error: emailError } = await supabase.functions.invoke('send-email', {
                 body: {
                   to: supplier.email,
-                  template_type: 'email_quote_request',
-                  template_data: {
-                    supplier_name: supplier.name,
-                    client_name: clientName,
-                    client_email: client.email || 'Não informado',
-                    client_phone: client.phone || '',
-                    quote_title: quoteTitle,
-                    quote_id: quote.local_code || quoteId,
-                    deadline_formatted: deadline,
-                    items_count: String(items.length || 0),
-                    items_list: itemsList,
-                    total_formatted: totalFormatted,
-                    proposal_link: supplierProposalLink
-                  },
+                  template_type: selectedEmailTemplate,
+                  template_data: emailTemplateData,
                   client_id: quote.client_id
                 }
               });
