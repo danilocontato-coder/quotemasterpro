@@ -226,7 +226,7 @@ export function generateBrandingCSS(settings: BrandingSettings): string {
   let css = `
     /* Branding CSS Gerado Automaticamente */
     :root {
-      --branding-company-name: "${settings.companyName || 'QuoteMaster Pro'}";
+      --branding-company-name: "${settings.companyName || 'Sistema'}";
     }
   `;
 

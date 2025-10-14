@@ -48,14 +48,14 @@ serve(async (req) => {
       throw new Error('Missing required parameters: supplierId, supplierName, supplierPhone');
     }
 
-    // 2. Buscar nome do sistema
+    // 2. Buscar configurações do sistema
     const { data: systemSettings } = await supabase
       .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', 'company_name')
-      .maybeSingle();
+      .select('setting_key, setting_value')
+      .in('setting_key', ['platform_name', 'base_url']);
 
-    const platformName = systemSettings?.setting_value?.value || 'QuoteMaster Pro';
+    const platformName = systemSettings?.find(s => s.setting_key === 'platform_name')?.setting_value?.value || 'Sistema de Cotações';
+    const baseUrl = systemSettings?.find(s => s.setting_key === 'base_url')?.setting_value?.value || 'https://cotiz.com.br';
     console.log('🏢 Platform name:', platformName);
 
     // 3. Buscar template de boas-vindas (prioridade: cliente-específico > global)
@@ -112,7 +112,7 @@ serve(async (req) => {
       supplier_name: supplierName,
       client_name: clientName || 'Administrador do Sistema',
       platform_name: platformName,
-      access_link: 'https://app.quotemaster.com/login',
+      access_link: `${baseUrl}/auth/login`,
       ...customVariables
     };
 

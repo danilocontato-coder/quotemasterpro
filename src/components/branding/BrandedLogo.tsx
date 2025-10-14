@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useBranding } from '@/contexts/BrandingContext';
+import { useSystemBranding } from '@/hooks/useSystemBranding';
 import { Building2 } from 'lucide-react';
 
 interface BrandedLogoProps {
@@ -16,6 +17,7 @@ export function BrandedLogo({
   className = ''
 }: BrandedLogoProps) {
   const { settings } = useBranding();
+  const { settings: systemSettings } = useSystemBranding();
   const lastLoggedLogo = useRef<string | null>(null);
 
   // ⚡ OTIMIZAÇÃO: Só logar quando o logo realmente mudar
@@ -69,7 +71,7 @@ export function BrandedLogo({
     <div className={`flex items-center gap-2 ${className}`}>
       <Building2 className={`${sizeClasses[size]} text-primary`} />
       <span className={`font-bold ${textSizeClasses[size]}`}>
-        {settings?.companyName || 'QuoteMaster Pro'}
+        {settings?.companyName || systemSettings.platformName}
       </span>
     </div>
   );

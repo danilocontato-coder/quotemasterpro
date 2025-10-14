@@ -268,14 +268,14 @@ serve(async (req) => {
 
     console.log('✅ Session tokens generated for auto-login');
 
-    // 8. Buscar nome do sistema
+    // 8. Buscar configurações do sistema (platform_name e base_url)
     const { data: systemSettings } = await supabase
       .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', 'company_name')
-      .maybeSingle();
+      .select('setting_key, setting_value')
+      .in('setting_key', ['platform_name', 'base_url']);
 
-    const platformName = systemSettings?.setting_value?.value || 'QuoteMaster Pro';
+    const platformName = systemSettings?.find(s => s.setting_key === 'platform_name')?.setting_value?.value || 'Sistema de Cotações';
+    const baseUrl = systemSettings?.find(s => s.setting_key === 'base_url')?.setting_value?.value || 'https://cotiz.com.br';
 
     // 9. Enviar WhatsApp com credenciais
     let whatsappSent = false;
@@ -295,7 +295,7 @@ serve(async (req) => {
             `🔑 *Senha temporária:* ${temporaryPassword}\n\n` +
             `⚠️ *IMPORTANTE:* Recomendamos trocar sua senha no primeiro acesso.\n\n` +
             `🔗 *Acesse agora:*\n` +
-            `${Deno.env.get('PUBLIC_APP_URL') || 'https://app.quotemaster.com'}/auth/login\n\n` +
+            `${baseUrl}/auth/login\n\n` +
             `Você já pode responder cotações e gerenciar suas propostas! 🚀`;
 
           const result = await sendEvolutionWhatsApp(

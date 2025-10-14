@@ -64,12 +64,12 @@ serve(async (req) => {
       .maybeSingle();
 
     const branding = {
-      company_name: brandingData?.company_name || 'QuoteMaster Pro',
+      company_name: brandingData?.company_name || 'Sistema de Cotações',
       logo_url: brandingData?.logo_url || '',
       primary_color: brandingData?.primary_color || '#003366',
       secondary_color: brandingData?.secondary_color || '#F5F5F5',
       accent_color: brandingData?.accent_color || '#0066CC',
-      footer_text: brandingData?.footer_text || '© 2025 QuoteMaster Pro'
+      footer_text: brandingData?.footer_text || '© 2025 Sistema de Cotações'
     };
 
     // If template_type provided, load template
