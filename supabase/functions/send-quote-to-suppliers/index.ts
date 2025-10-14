@@ -389,8 +389,8 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     const hasEvolution = Boolean(evolutionInstance && evolutionApiUrl && evolutionToken);
-    // Always prioritize direct Evolution when available and WhatsApp is selected, regardless of client hint
-    const chosenMethod: 'direct' | 'n8n' = (hasEvolution && send_whatsapp) ? 'direct' : 'n8n';
+    // Use direct method if: (has Evolution AND wants WhatsApp) OR wants email
+    const chosenMethod: 'direct' | 'n8n' = (hasEvolution && send_whatsapp) || send_email ? 'direct' : 'n8n';
 
     console.log('Chosen sending method:', { chosenMethod, client_hint: send_via, hasEvolution, send_whatsapp, quote_id, suppliers_count: suppliers.length });
 
@@ -403,8 +403,12 @@ const handler = async (req: Request): Promise<Response> => {
         evolutionToken: evolutionToken as string,
         templateVariables,
         whatsappTemplate,
+        emailTemplate,
         templateContent: (whatsappTemplate?.message_content as string) || '',
         quoteId: quote_id,
+        quote,
+        client,
+        items,
         createdBy: quote.created_by,
         resolvedEvolution,
         supplierLinks: supplier_links || [],
@@ -413,7 +417,11 @@ const handler = async (req: Request): Promise<Response> => {
         clientName: client.name,
         quoteTitle: quote.title,
         deadline: deadlineFormatted,
-        registrationTemplate
+        itemsList,
+        totalFormatted,
+        registrationTemplate,
+        send_whatsapp,
+        send_email
       });
     }
     
@@ -690,9 +698,13 @@ const handler = async (req: Request): Promise<Response> => {
       evolutionToken,
       templateVariables,
       whatsappTemplate,
+      emailTemplate,
       registrationTemplate,
       templateContent,
       quoteId,
+      quote,
+      client,
+      items,
       createdBy,
       resolvedEvolution: resolvedEvo,
       supplierLinks,
@@ -700,10 +712,14 @@ const handler = async (req: Request): Promise<Response> => {
       frontendBaseUrl,
       clientName,
       quoteTitle,
-      deadline
+      deadline,
+      itemsList,
+      totalFormatted,
+      send_whatsapp = false,
+      send_email = false
     }: any
   ) {
-    console.log('Sending directly via Evolution API');
+    console.log('Sending directly via Evolution API or Email', { send_whatsapp, send_email });
     
     // Helper function to replace all template variables
     function replaceTemplateVariables(template: string, variables: Record<string, string>): string {
@@ -721,41 +737,45 @@ const handler = async (req: Request): Promise<Response> => {
       let successCount = 0;
       let errorCount = 0;
       const errors: string[] = [];
+      let emailsSent = 0;
+      let emailErrors: Array<{ supplier: string; error: string }> = [];
 
       // Store template content for checking later
       const templateContent = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
 
-      // Preflight: check Evolution instance connection state with multiple variants
-      try {
-        const base = evolutionApiUrl.replace(/\/+$/, '')
-        const bases = Array.from(new Set([base, `${base}/api`]))
-        const headerVariants: Record<string, string>[] = [
-          { apikey: evolutionToken },
-          { Authorization: `Bearer ${evolutionToken}` },
-        ]
-        let preflightOk = false
-        let lastTxt = ''
-        let lastStatus = 0
-        for (const b of bases) {
-          for (const headers of headerVariants) {
-            const cs = await fetch(`${b}/instance/connectionState/${encodeURIComponent(evolutionInstance)}`, { headers })
-            lastStatus = cs.status
-            if (cs.ok) { preflightOk = true; break }
-            lastTxt = await cs.text().catch(() => '')
+      // Preflight: check Evolution instance connection state ONLY if sending WhatsApp
+      if (send_whatsapp) {
+        try {
+          const base = evolutionApiUrl.replace(/\/+$/, '')
+          const bases = Array.from(new Set([base, `${base}/api`]))
+          const headerVariants: Record<string, string>[] = [
+            { apikey: evolutionToken },
+            { Authorization: `Bearer ${evolutionToken}` },
+          ]
+          let preflightOk = false
+          let lastTxt = ''
+          let lastStatus = 0
+          for (const b of bases) {
+            for (const headers of headerVariants) {
+              const cs = await fetch(`${b}/instance/connectionState/${encodeURIComponent(evolutionInstance)}`, { headers })
+              lastStatus = cs.status
+              if (cs.ok) { preflightOk = true; break }
+              lastTxt = await cs.text().catch(() => '')
+            }
+            if (preflightOk) break
           }
-          if (preflightOk) break
-        }
-        if (!preflightOk) {
+          if (!preflightOk) {
+            return new Response(
+              JSON.stringify({ success: false, error: 'Evolution API indisponível para a instância', details: { status: lastStatus, response: lastTxt }, resolved_evolution: resolvedEvo }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+          }
+        } catch (e: any) {
           return new Response(
-            JSON.stringify({ success: false, error: 'Evolution API indisponível para a instância', details: { status: lastStatus, response: lastTxt }, resolved_evolution: resolvedEvo }),
+            JSON.stringify({ success: false, error: 'Falha ao conectar à Evolution API', details: e.message, resolved_evolution: resolvedEvo }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
-      } catch (e: any) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Falha ao conectar à Evolution API', details: e.message, resolved_evolution: resolvedEvo }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
       }
 
       // Send to each supplier
@@ -769,29 +789,37 @@ const handler = async (req: Request): Promise<Response> => {
       });
       
       for (const supplier of suppliers) {
-        if (!supplier.whatsapp && !supplier.phone) {
-          console.warn(`Supplier ${supplier.name} has no WhatsApp/phone number`);
-          errorCount++;
-          errors.push(`${supplier.name}: sem WhatsApp/telefone`);
-          continue;
-        }
+        // Skip phone validation if only sending email
+        let finalPhone = '';
+        if (send_whatsapp) {
+          if (!supplier.whatsapp && !supplier.phone) {
+            console.warn(`Supplier ${supplier.name} has no WhatsApp/phone number`);
+            if (!send_email || !supplier.email) {
+              errorCount++;
+              errors.push(`${supplier.name}: sem WhatsApp/telefone`);
+              continue;
+            }
+          } else {
+            // Normalize phone number and validate
+            const phone = supplier.whatsapp || supplier.phone || '';
+            finalPhone = normalizePhone(phone);
 
-        // Normalize phone number and validate
-        const phone = supplier.whatsapp || supplier.phone || '';
-        const finalPhone = normalizePhone(phone);
+            console.log(`📱 [${supplier.name}] Phone normalization:`, {
+              original: phone,
+              normalized: finalPhone,
+              length: finalPhone.length,
+              valid: finalPhone.length >= 12
+            });
 
-        console.log(`📱 [${supplier.name}] Phone normalization:`, {
-          original: phone,
-          normalized: finalPhone,
-          length: finalPhone.length,
-          valid: finalPhone.length >= 12
-        });
-
-        if (!finalPhone || finalPhone.length < 12) {
-          console.warn(`❌ [${supplier.name}] Invalid phone: "${phone}" → "${finalPhone}" (length: ${finalPhone.length})`);
-          errorCount++;
-          errors.push(`${supplier.name}: número inválido (${phone} → ${finalPhone})`);
-          continue;
+            if (!finalPhone || finalPhone.length < 12) {
+              console.warn(`❌ [${supplier.name}] Invalid phone: "${phone}" → "${finalPhone}" (length: ${finalPhone.length})`);
+              if (!send_email || !supplier.email) {
+                errorCount++;
+                errors.push(`${supplier.name}: número inválido (${phone} → ${finalPhone})`);
+                continue;
+              }
+            }
+          }
         }
 
         try {
@@ -888,22 +916,24 @@ const handler = async (req: Request): Promise<Response> => {
             finalMessage = `${customMessage.trim()}\n\n${finalMessage}`;
           }
 
-          console.log(`Sending to ${supplier.name} with link: ${supplierProposalLink.substring(0, 50)}...`);
+          // 📱 SEND WHATSAPP (if send_whatsapp = true)
+          if (send_whatsapp && finalPhone) {
+            console.log(`📱 Sending WhatsApp to ${supplier.name} with link: ${supplierProposalLink.substring(0, 50)}...`);
 
-          // Send via Evolution API using shared helper
-          const sent = await sendEvolutionWhatsApp({ apiUrl: evolutionApiUrl, token: evolutionToken, instance: evolutionInstance, scope: 'client' }, finalPhone, finalMessage);
+            // Send via Evolution API using shared helper
+            const sent = await sendEvolutionWhatsApp({ apiUrl: evolutionApiUrl, token: evolutionToken, instance: evolutionInstance, scope: 'client' }, finalPhone, finalMessage);
 
-          if (!sent.success) {
-            console.error(`Evolution API error for ${supplier.name}:`, sent.error);
-            errorCount++;
-            errors.push(`${supplier.name}: ${String(sent.error).substring(0, 100)}`);
-            continue;
+            if (!sent.success) {
+              console.error(`❌ Evolution API error for ${supplier.name}:`, sent.error);
+              errorCount++;
+              errors.push(`${supplier.name}: ${String(sent.error).substring(0, 100)}`);
+            } else {
+              console.log(`✅ Message sent to ${supplier.name} (${finalPhone}) via ${sent.endpoint}`);
+              successCount++;
+            }
           }
 
-          console.log(`Message sent to ${supplier.name} (${finalPhone}) via ${sent.endpoint}`);
-          successCount++;
-
-          // 📧 Send email if send_email is true and supplier has email
+          // 📧 SEND EMAIL (if send_email = true AND supplier has email)
           if (send_email && supplier.email && emailTemplate) {
             try {
               console.log(`📧 [${supplier.name}] Sending email to: ${supplier.email}`);
@@ -931,11 +961,25 @@ const handler = async (req: Request): Promise<Response> => {
               
               if (emailError) {
                 console.error(`❌ [${supplier.name}] Email error:`, emailError);
+                emailErrors.push({
+                  supplier: supplier.name,
+                  error: emailError.message || String(emailError)
+                });
               } else {
                 console.log(`✅ [${supplier.name}] Email sent successfully`);
+                emailsSent++;
+                
+                // If only sending email (no WhatsApp), count in success
+                if (!send_whatsapp) {
+                  successCount++;
+                }
               }
             } catch (emailError: any) {
               console.error(`❌ [${supplier.name}] Failed to send email:`, emailError);
+              emailErrors.push({
+                supplier: supplier.name,
+                error: emailError.message || String(emailError)
+              });
             }
           }
 
@@ -1041,17 +1085,20 @@ const handler = async (req: Request): Promise<Response> => {
       })().catch(err => console.error('Background activity log error:', err));
 
       const responseMessage = successCount > 0 
-        ? `Cotação enviada com sucesso para ${successCount} fornecedor(es)${errorCount > 0 ? `. ${errorCount} erro(s) encontrado(s)` : ''}`
+        ? `${successCount} fornecedor(es) notificado(s) • ${emailsSent} e-mail(s) enviado(s)`
         : `Falha ao enviar para todos os fornecedores (${errorCount} erro(s))`;
 
       return new Response(
         JSON.stringify({ 
           success: successCount > 0, 
           message: responseMessage,
-          suppliers_contacted: successCount,
+          suppliers_sent: successCount,
+          whatsapp_sent: send_whatsapp ? successCount : 0,
+          emails_sent: emailsSent,
           suppliers_total: suppliers.length,
-          errors: errorCount > 0 ? errors : undefined,
-          send_method: 'evolution_direct',
+          whatsapp_errors: send_whatsapp ? errors : [],
+          email_errors: emailErrors,
+          send_method: send_whatsapp ? 'evolution_direct' : 'email_only',
           quote_status_updated: true,
           resolved_evolution: resolvedEvo
         }),
