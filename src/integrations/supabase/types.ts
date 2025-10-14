@@ -4205,6 +4205,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_default_supplier_plan_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_or_create_client_usage: {
         Args: { client_uuid: string }
         Returns: {
