@@ -51,7 +51,7 @@ interface CreateQuoteModalSupabaseProps {
 const steps = [
   { id: 1, title: "Dados" },
   { id: 2, title: "Itens" },
-  { id: 3, title: "Fornecedor" },
+  { id: 3, title: "Pré-selecionar" },
   { id: 4, title: "Revisão" }
 ];
 
@@ -507,9 +507,18 @@ export function CreateQuoteModalSupabase({ open, onOpenChange, onQuoteCreate, ed
 
         return (
           <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold">Selecionar Fornecedores</h3>
-              <p className="text-sm text-muted-foreground">Escolha os fornecedores para enviar a cotação</p>
+            <div className="bg-muted/50 border border-border rounded-lg p-4 mb-4">
+              <h3 className="text-lg font-semibold mb-2">Pré-selecionar Fornecedores (Opcional)</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Você poderá <strong>revisar e ajustar</strong> esta seleção antes de enviar a cotação. 
+                A IA também sugerirá fornecedores compatíveis com base nos itens e localização.
+              </p>
+              <Alert className="border-blue-500/30 bg-blue-500/5">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-sm">
+                  💡 <strong>Dica:</strong> Após criar a cotação, você verá o <strong>score de compatibilidade</strong> de cada fornecedor calculado pela IA.
+                </AlertDescription>
+              </Alert>
             </div>
 
             {/* Seleção de escopo de fornecedores */}

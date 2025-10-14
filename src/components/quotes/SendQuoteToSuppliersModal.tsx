@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Mail, MessageSquare, Users } from "lucide-react";
+import { Send, Mail, MessageSquare, Users, Sparkles, Target } from "lucide-react";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
+import { useSupplierSuggestions } from "@/hooks/useSupplierSuggestions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ShortLinkDisplay } from "@/components/ui/short-link-display";
@@ -32,6 +33,8 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
   const { updateQuoteStatus } = useSupabaseQuotes();
+  const { suggestSuppliers, isLoading: loadingSuggestions } = useSupplierSuggestions();
+  const [supplierScores, setSupplierScores] = useState<Record<string, number>>({});
   
   // Filter suppliers based on quote's supplier_scope preference
   const activeSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
@@ -83,6 +86,50 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
       }
     }
   }, [deduplicatedSuppliers.length, quote?.selected_supplier_ids?.join(',')]); // Optimized dependencies
+  
+  // Calculate AI compatibility scores for suppliers
+  useEffect(() => {
+    if (!open || !quote?.client_id || deduplicatedSuppliers.length === 0) return;
+    
+    const calculateScores = async () => {
+      try {
+        // Get client info for location-based matching
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('address')
+          .eq('id', quote.client_id)
+          .maybeSingle();
+        
+        const clientAddress = clientData?.address as any;
+        const region = clientAddress?.region || '';
+        const state = clientAddress?.state || '';
+        const city = clientAddress?.city || '';
+        
+        // Get quote items categories
+        const { data: itemsData } = await supabase
+          .from('quote_items')
+          .select('product_name')
+          .eq('quote_id', quote.id);
+        
+        const categories = itemsData?.map(i => i.product_name) || [];
+        
+        // Get AI suggestions with scores
+        const suggestions = await suggestSuppliers(region, state, city, categories);
+        
+        // Build score map
+        const scores: Record<string, number> = {};
+        suggestions.forEach(s => {
+          scores[s.supplier_id] = s.match_score;
+        });
+        
+        setSupplierScores(scores);
+      } catch (error) {
+        console.error('Error calculating supplier scores:', error);
+      }
+    };
+    
+    calculateScores();
+  }, [open, quote?.id, deduplicatedSuppliers.length]);
 
   // Resolve configured webhook URL and Evolution API
   useEffect(() => {
@@ -266,8 +313,26 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
 
       if (data?.success) {
         console.log('Webhook usado:', data.webhook_url_used);
+        
+        // Preparar lista de fornecedores para toast
+        const supplierNames = validShortLinks
+          .map(link => {
+            const supplier = deduplicatedSuppliers.find(s => s.id === link.supplier_id);
+            return supplier?.name;
+          })
+          .filter(Boolean)
+          .join(', ');
+        
+        const count = selectedSuppliers.length;
         const method = data?.send_method ? `\nMétodo: ${data.send_method}` : '';
-        toast.success((data.message || 'Cotação enviada com sucesso!') + (data.webhook_url_used ? `\nWebhook: ${data.webhook_url_used}` : '') + method);
+        
+        toast.success(
+          `✅ Cotação enviada para ${count} fornecedor${count > 1 ? 'es' : ''}: ${supplierNames}`,
+          {
+            description: `Os fornecedores receberão a solicitação ${sendWhatsApp ? 'via WhatsApp' : ''}${sendWhatsApp && sendEmail ? ' e ' : ''}${sendEmail ? 'via E-mail' : ''}`,
+            duration: 5000
+          }
+        );
         
         // Status update is now handled synchronously by backend, no need to update here
         
@@ -430,48 +495,144 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
                   <p className="text-sm text-muted-foreground mt-2">Carregando fornecedores...</p>
                 </div>
               ) : deduplicatedSuppliers.length > 0 ? (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {deduplicatedSuppliers.map((supplier) => (
-                    <div
-                      key={supplier.id}
-                      className="flex items-center justify-between p-3 border rounded hover:bg-muted/20 cursor-pointer"
-                      onClick={() => handleToggleSupplier(supplier.id)}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Checkbox
-                          checked={selectedSuppliers.includes(supplier.id)}
-                          onCheckedChange={() => handleToggleSupplier(supplier.id)}
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm">{supplier.name}</p>
-                            {supplier.type === 'certified' && (
-                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                                🏆 Certificado
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            {supplier.email && (
-                              <span className="flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                {supplier.email}
-                              </span>
-                            )}
-                            {supplier.whatsapp && (
-                              <span className="flex items-center gap-1">
-                                <MessageSquare className="h-3 w-3" />
-                                {supplier.whatsapp}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {/* Recomendados pela IA (score > 100) */}
+                  {deduplicatedSuppliers.filter(s => (supplierScores[s.id] || 0) > 100).length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-950 rounded-md border border-blue-200 dark:border-blue-800">
+                        <Sparkles className="h-4 w-4 text-blue-600" />
+                        <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                          Recomendados pela IA
+                        </h4>
                       </div>
-                      <Badge variant="secondary">
-                        {supplier.specialties?.join(', ') || 'Geral'}
-                      </Badge>
+                      {deduplicatedSuppliers
+                        .filter(s => (supplierScores[s.id] || 0) > 100)
+                        .sort((a, b) => (supplierScores[b.id] || 0) - (supplierScores[a.id] || 0))
+                        .map((supplier) => {
+                          const score = supplierScores[supplier.id] || 0;
+                          const compatPercent = Math.min(Math.round((score / 155) * 100), 100);
+                          
+                          return (
+                            <div
+                              key={supplier.id}
+                              className="flex items-center justify-between p-3 border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/50 rounded-lg hover:bg-blue-100/50 dark:hover:bg-blue-900/50 cursor-pointer transition-colors"
+                              onClick={() => handleToggleSupplier(supplier.id)}
+                            >
+                              <div className="flex items-center space-x-3 flex-1">
+                                <Checkbox
+                                  checked={selectedSuppliers.includes(supplier.id)}
+                                  onCheckedChange={() => handleToggleSupplier(supplier.id)}
+                                />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-medium text-sm">{supplier.name}</p>
+                                    <Badge className="bg-blue-600 text-white border-0 text-xs">
+                                      <Target className="h-3 w-3 mr-1" />
+                                      {compatPercent}% compatível
+                                    </Badge>
+                                    {supplier.type === 'certified' && (
+                                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400">
+                                        🏆 Certificado
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    {supplier.email && (
+                                      <span className="flex items-center gap-1">
+                                        <Mail className="h-3 w-3" />
+                                        {supplier.email}
+                                      </span>
+                                    )}
+                                    {supplier.whatsapp && (
+                                      <span className="flex items-center gap-1">
+                                        <MessageSquare className="h-3 w-3" />
+                                        {supplier.whatsapp}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge variant="secondary" className="ml-2">
+                                {supplier.specialties?.slice(0, 2).join(', ') || 'Geral'}
+                              </Badge>
+                            </div>
+                          );
+                        })}
                     </div>
-                  ))}
+                  )}
+                  
+                  {/* Outros fornecedores disponíveis */}
+                  {deduplicatedSuppliers.filter(s => (supplierScores[s.id] || 0) <= 100).length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 px-2 py-1">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <h4 className="text-sm font-semibold text-muted-foreground">
+                          Outros Disponíveis
+                        </h4>
+                      </div>
+                      {deduplicatedSuppliers
+                        .filter(s => (supplierScores[s.id] || 0) <= 100)
+                        .sort((a, b) => {
+                          // Prioritize certified, then by score, then by name
+                          if (a.type === 'certified' && b.type !== 'certified') return -1;
+                          if (a.type !== 'certified' && b.type === 'certified') return 1;
+                          const scoreA = supplierScores[a.id] || 0;
+                          const scoreB = supplierScores[b.id] || 0;
+                          if (scoreB !== scoreA) return scoreB - scoreA;
+                          return a.name.localeCompare(b.name);
+                        })
+                        .map((supplier) => {
+                          const score = supplierScores[supplier.id];
+                          
+                          return (
+                            <div
+                              key={supplier.id}
+                              className="flex items-center justify-between p-3 border rounded hover:bg-muted/20 cursor-pointer transition-colors"
+                              onClick={() => handleToggleSupplier(supplier.id)}
+                            >
+                              <div className="flex items-center space-x-3 flex-1">
+                                <Checkbox
+                                  checked={selectedSuppliers.includes(supplier.id)}
+                                  onCheckedChange={() => handleToggleSupplier(supplier.id)}
+                                />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-medium text-sm">{supplier.name}</p>
+                                    {score && score > 0 && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {Math.round((score / 155) * 100)}% compatível
+                                      </Badge>
+                                    )}
+                                    {supplier.type === 'certified' && (
+                                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400">
+                                        🏆 Certificado
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    {supplier.email && (
+                                      <span className="flex items-center gap-1">
+                                        <Mail className="h-3 w-3" />
+                                        {supplier.email}
+                                      </span>
+                                    )}
+                                    {supplier.whatsapp && (
+                                      <span className="flex items-center gap-1">
+                                        <MessageSquare className="h-3 w-3" />
+                                        {supplier.whatsapp}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge variant="secondary" className="ml-2">
+                                {supplier.specialties?.slice(0, 2).join(', ') || 'Geral'}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">

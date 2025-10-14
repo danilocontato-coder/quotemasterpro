@@ -642,8 +642,15 @@ export default function Quotes() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex-shrink-0">
-                    <StatusProgressIndicator status={quote.status} />
+                  <div className="flex-shrink-0 flex items-center gap-2">
+                    {quote.status === 'draft' && (
+                      <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">
+                        🔓 NÃO ENVIADA
+                      </Badge>
+                    )}
+                    <Suspense fallback={<div className="h-8 w-8 rounded-full bg-muted animate-pulse" />}>
+                      <StatusProgressIndicator status={quote.status} />
+                    </Suspense>
                   </div>
                 </div>
               </CardHeader>
@@ -751,14 +758,26 @@ export default function Quotes() {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    {(quote.status === 'draft' || quote.status === 'sent') && (
-                      <Suspense fallback={<Button variant="secondary" size="sm" className="flex-1" disabled><Send className="h-4 w-4 mr-2" />Enviar</Button>}>
+                    {quote.status === 'draft' ? (
+                      <Suspense fallback={<Button className="btn-corporate flex-1" size="sm" disabled><Send className="h-4 w-4 mr-2" />Enviar</Button>}>
+                        <SendQuoteToSuppliersModal
+                          quote={quote}
+                          trigger={
+                            <Button className="btn-corporate flex-1" size="sm" title="Esta cotação ainda não foi enviada. Clique para enviar aos fornecedores.">
+                              <Send className="h-4 w-4 mr-2" />
+                              Enviar para Fornecedores
+                            </Button>
+                          }
+                        />
+                      </Suspense>
+                    ) : quote.status === 'sent' && (
+                      <Suspense fallback={<Button variant="secondary" size="sm" className="flex-1" disabled><Send className="h-4 w-4 mr-2" />Reenviar</Button>}>
                         <SendQuoteToSuppliersModal
                           quote={quote}
                           trigger={
                             <Button variant="secondary" size="sm" className="flex-1">
                               <Send className="h-4 w-4 mr-2" />
-                              Enviar
+                              Reenviar
                             </Button>
                           }
                         />
