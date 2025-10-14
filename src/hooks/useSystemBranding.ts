@@ -42,9 +42,9 @@ export const useSystemBranding = () => {
       };
 
       const brandingSettings: SystemBrandingSettings = {
-        platformName: getValue('platform_name', 'QuoteMaster Pro'),
+        platformName: getValue('platform_name', 'Cotiz'),
         baseUrl: getValue('base_url', window.location.origin),
-        companyName: getValue('company_name', 'QuoteMaster Pro'),
+        companyName: getValue('company_name', 'Cotiz'),
         supportEmail: getValue('support_email', 'suporte@cotiz.com.br')
       };
 
@@ -56,9 +56,9 @@ export const useSystemBranding = () => {
 
   return {
     settings: settings || {
-      platformName: 'QuoteMaster Pro',
+      platformName: 'Cotiz',
       baseUrl: window.location.origin,
-      companyName: 'QuoteMaster Pro',
+      companyName: 'Cotiz',
       supportEmail: 'suporte@cotiz.com.br'
     },
     isLoading

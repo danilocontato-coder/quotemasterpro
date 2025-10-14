@@ -60,8 +60,8 @@ class NotificationService {
       return {
         email: {
           provider: 'sendgrid',
-          fromEmail: 'noreply@cotiz.com',
-          fromName: companyName
+          fromEmail: 'noreply@cotiz.com.br',
+          fromName: companyName || 'Cotiz'
         },
         whatsapp: {
           provider: 'evolution-api'
@@ -72,8 +72,8 @@ class NotificationService {
       return {
         email: {
           provider: 'sendgrid',
-          fromEmail: 'noreply@cotiz.com',
-          fromName: 'Sistema de Cotações'
+          fromEmail: 'noreply@cotiz.com.br',
+          fromName: 'Cotiz'
         },
         whatsapp: {
           provider: 'evolution-api'
