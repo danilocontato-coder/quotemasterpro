@@ -85,14 +85,25 @@ export const useAuthSupplier = () => {
       
       // Se tem supplier_id mas onboarding não foi marcado como completed, auto-completar
       if (hasSupplierId && !profile?.onboarding_completed) {
-        console.log('🔧 Auto-completando onboarding para fornecedor já vinculado');
-        await supabase
+        console.log('🔧 Auto-completando onboarding para fornecedor já vinculado:', {
+          userId: user.id,
+          supplierId: profile.supplier_id,
+          email: user.email
+        });
+        
+        const { error: updateError } = await supabase
           .from('profiles')
           .update({ 
             onboarding_completed: true,
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id);
+        
+        if (updateError) {
+          console.error('❌ Erro ao auto-completar onboarding:', updateError);
+        } else {
+          console.log('✅ Onboarding auto-completado com sucesso');
+        }
       }
 
       setSupplierState({

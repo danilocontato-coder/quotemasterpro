@@ -160,7 +160,11 @@ export const useSupabaseSupplierQuotes = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('🎯 CRÍTICO: Buscando APENAS cotações direcionadas especificamente para:', user.supplierId);
+      console.log('🎯 Buscando cotações para fornecedor:', {
+        supplierId: user.supplierId,
+        email: user.email,
+        onboardingCompleted: user.onboardingCompleted
+      });
 
       // PASSO 1: Buscar cotações através da tabela quote_suppliers (relacionamento direto)
       const { data: targetedQuotes, error: targetedError } = await supabase
@@ -187,11 +191,14 @@ export const useSupabaseSupplierQuotes = () => {
         .eq('supplier_id', user.supplierId);
 
       if (targetedError) {
-        console.error('❌ Error fetching targeted quotes:', targetedError);
+        console.error('❌ Erro ao buscar cotações direcionadas:', targetedError);
         throw targetedError;
       }
 
-      console.log('🎯 Cotações direcionadas encontradas:', targetedQuotes?.length || 0);
+      console.log('📋 Resultados quote_suppliers:', {
+        found: targetedQuotes?.length || 0,
+        quoteIds: targetedQuotes?.map(q => q.quote_id)
+      });
 
       // PASSO 2: Buscar cotações onde já respondi
       const { data: supplierResponses, error: responsesError } = await supabase
