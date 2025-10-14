@@ -9,13 +9,14 @@ export const BrandedFooter: React.FC = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            {settings.logo !== '/placeholder.svg' && (
+            {settings.logo && settings.logo.trim() !== '' && (
               <img 
                 src={settings.logo} 
-                alt={settings.companyName} 
+                alt={settings.companyName || 'Logo'} 
                 className="h-6 w-auto object-contain"
+                loading="lazy"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
+                  (e.currentTarget as HTMLImageElement).src = '/placeholder.svg';
                 }}
               />
             )}

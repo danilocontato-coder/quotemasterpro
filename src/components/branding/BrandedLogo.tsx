@@ -52,9 +52,10 @@ export function BrandedLogo({
           src={settings.logo} 
           alt={settings.companyName || 'Logo'} 
           className={`${sizeClasses[size]} object-contain`}
+          loading="lazy"
           onError={(e) => {
-            console.error('❌ BrandedLogo: Erro ao carregar logo, usando fallback');
-            e.currentTarget.style.display = 'none';
+            console.error('❌ BrandedLogo: Erro ao carregar logo, usando placeholder');
+            e.currentTarget.src = '/placeholder.svg';
           }}
         />
         {showCompanyName && settings.companyName && (

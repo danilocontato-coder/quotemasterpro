@@ -239,9 +239,10 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!user) {
         console.log('🎨 [BRANDING] Usuário não autenticado, aplicando configurações globais');
         if (globalSettings) {
-          console.log('🎨 [BRANDING] Aplicando configurações globais para usuário não autenticado:', globalSettings);
-          setSettings(globalSettings);
-          applyBrandingToDOM(globalSettings);
+          const finalGlobal = { ...globalSettings, logo: globalSettings.logo || settings.logo || defaultSettings.logo };
+          console.log('🎨 [BRANDING] Aplicando configurações globais para usuário não autenticado:', finalGlobal);
+          setSettings(finalGlobal);
+          applyBrandingToDOM(finalGlobal);
         } else {
           console.log('🎨 [BRANDING] Nenhuma configuração global encontrada, usando padrão');
           setSettings(defaultSettings);
@@ -300,7 +301,11 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (brandingSettings) {
         const newSettings = {
           companyName: brandingSettings.company_name || brandingSettings.companyName || defaultSettings.companyName,
-          logo: brandingSettings.logo_url || brandingSettings.logo || defaultSettings.logo,
+          logo: (brandingSettings.logo_url && brandingSettings.logo_url.trim() !== '' && brandingSettings.logo_url !== '/placeholder.svg'
+            ? brandingSettings.logo_url
+            : (brandingSettings.logo && brandingSettings.logo.trim() !== '' && brandingSettings.logo !== '/placeholder.svg'
+              ? brandingSettings.logo
+              : (settings.logo || defaultSettings.logo))),
           primaryColor: brandingSettings.primary_color || brandingSettings.primaryColor || defaultSettings.primaryColor,
           secondaryColor: brandingSettings.secondary_color || brandingSettings.secondaryColor || defaultSettings.secondaryColor,
           accentColor: brandingSettings.accent_color || brandingSettings.accentColor || defaultSettings.accentColor,
