@@ -54,11 +54,13 @@ serve(async (req) => {
     const config: EmailConfig = settingsData.setting_value as EmailConfig;
     const payload: EmailPayload = await req.json();
 
-    // Load branding settings
+    // Load branding settings (buscar do cliente ou fallback para global/padrão)
     const { data: brandingData } = await supabase
       .from('branding_settings')
       .select('*')
-      .eq('is_default', true)
+      .or(`client_id.eq.${payload.client_id || 'null'},client_id.is.null`)
+      .order('client_id', { nullsFirst: false })
+      .limit(1)
       .maybeSingle();
 
     const branding = {
