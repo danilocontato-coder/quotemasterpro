@@ -22,7 +22,8 @@ import {
   Send,
   BarChart3,
   Brain,
-  User
+  User,
+  AlertTriangle
 } from 'lucide-react';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
@@ -303,19 +304,14 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         return;
       }
 
-      toast({
-        title: 'Status atualizado',
-        description: 'Cotação marcada automaticamente como "Recebida"',
-      });
-
-      // Notificar componente pai da mudança
+      // Atualização silenciosa - sem toast
       if (onStatusChange) {
         onStatusChange(quote.id, 'received');
       }
     } catch (error) {
       console.error('❌ Erro ao marcar como recebida:', error);
     }
-  }, [quote?.id, quote?.status, proposals.length, onStatusChange, toast]);
+  }, [quote?.id, quote?.status, proposals.length, onStatusChange]);
 
   // Trigger auto-marcação quando abrir modal com propostas
   useEffect(() => {
@@ -553,23 +549,55 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                         <Users className="h-4 w-4 text-green-600" />
                         <span className="text-sm font-medium text-green-900">Fornecedores Participantes</span>
                       </div>
-                      <p className="text-2xl font-bold text-green-900">{supplierNames.length}</p>
                       
                       {supplierNames.length > 0 ? (
-                        <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-                          {supplierNames.map(supplier => (
-                            <div key={supplier.id} className="flex items-center gap-2">
-                              <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
-                              <span className="text-xs text-green-800 truncate">{supplier.name}</span>
-                            </div>
-                          ))}
-                        </div>
+                        <>
+                          <p className="text-2xl font-bold text-green-900">{supplierNames.length}</p>
+                          
+                          <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                            {supplierNames.map(supplier => (
+                              <div key={supplier.id} className="flex items-center gap-2">
+                                <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+                                <span className="text-xs text-green-800 truncate">{supplier.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <Separator className="my-2" />
+                          <p className="text-xs text-green-700">
+                            Propostas recebidas: {proposals.length}/{supplierNames.length}
+                          </p>
+                        </>
                       ) : (
-                        <p className="text-xs text-green-700 mt-2">Nenhum fornecedor selecionado</p>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-yellow-900">Nenhum fornecedor selecionado</p>
+                              <p className="text-xs text-yellow-700 mt-1">
+                                {proposals.length > 0 
+                                  ? `${proposals.length} proposta(s) recebida(s) via link direto`
+                                  : 'É necessário selecionar fornecedores para enviar esta cotação.'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {quote.status === 'draft' && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                onClose();
+                                window.location.href = `/quotes/edit/${quote.id}`;
+                              }}
+                            >
+                              <Users className="h-4 w-4 mr-2" />
+                              Selecionar Fornecedores
+                            </Button>
+                          )}
+                        </div>
                       )}
-                      
-                      <Separator className="my-2" />
-                      <p className="text-xs text-green-700">Propostas recebidas: {proposals.length}/{supplierNames.length}</p>
                     </div>
                     <div className="bg-purple-50 p-4 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">

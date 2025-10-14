@@ -205,6 +205,7 @@ serve(async (req) => {
     }
 
     console.log('✅ Resposta criada com sucesso:', response.id);
+    console.log('🔄 Trigger sync_supplier_on_response adicionará automaticamente supplier_id à cotação');
 
     // Agendar visita técnica se fornecida
     if (visit_date) {
