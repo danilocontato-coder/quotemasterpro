@@ -180,6 +180,12 @@ serve(async (req) => {
       has_notes: !!notes
     });
     
+    // IMPORTANTE: Trigger 'trg_sync_supplier_on_response' irá automaticamente:
+    // 1. Adicionar supplier_id ao array selected_supplier_ids da cotação
+    // 2. Atualizar suppliers_sent_count
+    // 3. Trigger 'trg_auto_associate_quote_suppliers' irá criar registro em client_suppliers
+    // Portanto, não é necessário atualizar manualmente selected_supplier_ids aqui
+    
     const { data: response, error: responseError } = await supabase
       .from('quote_responses')
       .insert({
