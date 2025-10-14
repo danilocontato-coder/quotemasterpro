@@ -895,10 +895,12 @@ const handler = async (req: Request): Promise<Response> => {
               throw new Error(`Falha ao processar template para ${supplier.name}`);
             }
           } else {
-            // 🎯 Fornecedor NÃO cadastrado: enviar convite para completar cadastro
-            const registrationLink = `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
+            // 🎯 Fornecedor NÃO cadastrado: usar short link se disponível
+            const registrationLink = shortLinkEntry?.short_link 
+              || linkEntry?.link 
+              || `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
             
-            console.log(`🔗 [${supplier.name}] Registration link: ${registrationLink}`);
+            console.log(`🔗 [${supplier.name}] Registration link (short): ${registrationLink}`);
             
             // 🆕 Usar template do banco se disponível
             if (registrationTemplate && registrationTemplate.message_content) {

@@ -97,9 +97,26 @@ serve(async (req) => {
         .eq('id', tokenData.supplier_id)
         .single();
       
-      if (supplier?.registration_status === 'pending_registration') {
-        console.log('🆕 [RESOLVE-SHORT-LINK] Supplier pending registration, redirecting to signup');
-        redirectRoute = '/supplier/register';
+      if (supplier?.registration_status !== 'active') {
+        console.log('🆕 [RESOLVE-SHORT-LINK] Supplier not active, redirecting to registration with token');
+        redirectRoute = `/supplier/register/${tokenData.full_token}`;
+        // Return early with the registration redirect
+        const fullUrl = `${baseUrl}${redirectRoute}`;
+        console.log('✅ [RESOLVE-SHORT-LINK] Final registration redirect URL:', fullUrl);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            quote_id: tokenData.quote_id,
+            full_token: tokenData.full_token,
+            short_code: tokenData.short_code,
+            redirect_url: fullUrl,
+            redirect_path: redirectRoute,
+            expires_at: tokenData.expires_at,
+            access_count: tokenData.access_count + 1
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       } else {
         console.log('✅ [RESOLVE-SHORT-LINK] Supplier active, redirecting to quick response');
       }
