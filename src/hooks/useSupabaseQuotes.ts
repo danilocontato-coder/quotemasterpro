@@ -34,7 +34,7 @@ export const useSupabaseQuotes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { getCache, setCache } = useOptimizedCache();
+  const { getCache, setCache, clearCache } = useOptimizedCache();
   
   // Memoizar valores estáveis para evitar re-renders desnecessários
   const stableUser = useMemo(() => ({
@@ -535,6 +535,13 @@ export const useSupabaseQuotes = () => {
     }
   }, [stableUser.id, fetchQuotes]); // Dependências estabilizadas
 
+  // Refetch with cache invalidation
+  const refetch = useCallback(async () => {
+    const cacheKey = `quotes_${stableUser.role}_${stableUser.clientId || stableUser.supplierId || stableUser.id}`;
+    clearCache(cacheKey);
+    await fetchQuotes();
+  }, [stableUser.role, stableUser.clientId, stableUser.supplierId, stableUser.id, clearCache, fetchQuotes]);
+
   return {
     quotes,
     isLoading,
@@ -548,6 +555,6 @@ export const useSupabaseQuotes = () => {
     markQuoteAsUnderReview,
     markQuoteAsReceiving,
     markQuoteAsReceived,
-    refetch: fetchQuotes,
+    refetch,
   };
 };

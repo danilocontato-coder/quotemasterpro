@@ -32,7 +32,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
   const [generatedShortLinks, setGeneratedShortLinks] = useState<any[]>([]);
   
   const { suppliers, isLoading: loadingSuppliers } = useSupabaseSuppliers();
-  const { updateQuoteStatus } = useSupabaseQuotes();
+  const { updateQuoteStatus, refetch } = useSupabaseQuotes();
   const { suggestSuppliers, isLoading: loadingSuggestions } = useSupplierSuggestions();
   const [supplierScores, setSupplierScores] = useState<Record<string, number>>({});
   
@@ -334,7 +334,8 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
           }
         );
         
-        // Status update is now handled synchronously by backend, no need to update here
+        // Status update is handled by backend - invalidate cache to show fresh data
+        await refetch();
         
         // Store generated short links for display
         setGeneratedShortLinks(validShortLinks);
