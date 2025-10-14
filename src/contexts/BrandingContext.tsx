@@ -27,16 +27,16 @@ interface BrandingContextType {
 }
 
 const defaultSettings: BrandingSettings = {
-  companyName: 'Cotiz', // Nome padrão otimizado
-  logo: '/placeholder.svg',
+  companyName: '',
+  logo: '',
   primaryColor: '#003366',
   secondaryColor: '#F5F5F5',
   accentColor: '#0066CC',
-  favicon: '/favicon.ico',
-  footerText: '© 2025 Cotiz. Todos os direitos reservados.',
-  loginPageTitle: 'Bem-vindo ao Cotiz',
-  loginPageSubtitle: 'Plataforma completa de gestão de cotações',
-  dashboardWelcomeMessage: 'Bem-vindo de volta!',
+  favicon: '',
+  footerText: '',
+  loginPageTitle: '',
+  loginPageSubtitle: '',
+  dashboardWelcomeMessage: '',
   customCss: '',
 };
 
@@ -76,20 +76,22 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isReady, setIsReady] = useState(true); // ⚡ Marcar como pronto imediatamente
   const { toast } = useToast();
 
-  // ⚡ Aplicar branding padrão INSTANTANEAMENTE (sincronamente)
+  // ⚡ CARREGAR CONFIGURAÇÕES DO BANCO (sem forçar padrão)
   useEffect(() => {
     const startTime = performance.now();
     
     // 🧹 LIMPEZA: Remover cache antigo/corrompido
     localStorage.removeItem('quoteMaster_branding_cache');
     
-    console.log('🎨 [BRANDING] Aplicando configurações padrão imediatamente...');
-    applyBrandingToDOM(defaultSettings);
+    console.log('🎨 [BRANDING] Carregando configurações do banco...');
     
-    // Carregar configurações reais em background sem bloquear UI
+    // Carregar configurações reais (SEM aplicar padrão antes)
     loadSettings().then(() => {
       const loadTime = performance.now() - startTime;
       console.log(`⚡ [BRANDING] Branding carregado em ${loadTime.toFixed(2)}ms`);
+    }).catch((error) => {
+      console.error('❌ [BRANDING] Erro ao carregar, usando padrão como fallback:', error);
+      applyBrandingToDOM(defaultSettings);
     });
   }, []);
 
@@ -227,6 +229,12 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Sempre tentar carregar configurações globais primeiro
       const globalSettings = await loadGlobalSettings();
+      
+      if (globalSettings) {
+        console.log('✅ [BRANDING] Configurações globais encontradas:', globalSettings);
+      } else {
+        console.warn('⚠️ [BRANDING] Nenhuma configuração global encontrada no banco!');
+      }
       
       if (!user) {
         console.log('🎨 [BRANDING] Usuário não autenticado, aplicando configurações globais');
