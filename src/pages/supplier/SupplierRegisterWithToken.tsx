@@ -215,28 +215,29 @@ export default function SupplierRegisterWithToken() {
 
       if (setSessionError) throw setSessionError;
 
+      setLoading(false);
+      
       toast({
-        title: 'Cadastro concluído! 🎉',
-        description: data.whatsapp_sent 
-          ? 'Suas credenciais foram enviadas por WhatsApp.'
-          : 'Cadastro concluído com sucesso!'
+        title: "Cadastro Concluído!",
+        description: "Redirecionando para a cotação...",
       });
 
-      // Redirecionar para cotação
-      if (data.quote_id && token) {
-        navigate(`/supplier/quick-response/${data.quote_id}/${token}`);
-      } else {
-        navigate('/supplier/dashboard');
-      }
+      setTimeout(() => {
+        navigate(`/supplier/quotes/${data.quote_id}`);
+      }, 1500);
 
     } catch (error: any) {
-      console.error('Erro no registro:', error);
+      console.error('Registration error:', error);
+      const errorMessage = error.message || "Não foi possível completar o cadastro.";
+      const isAuthError = errorMessage.includes('Database error') || errorMessage.includes('Failed to handle');
+      
       toast({
-        title: 'Erro no cadastro',
-        description: error.message || 'Não foi possível completar o cadastro.',
-        variant: 'destructive'
+        variant: "destructive",
+        title: isAuthError ? "Erro de Autenticação" : "Erro no Cadastro",
+        description: isAuthError 
+          ? "Seu e-mail já está cadastrado. Entre em contato com o suporte se precisar de ajuda."
+          : errorMessage,
       });
-    } finally {
       setLoading(false);
     }
   };

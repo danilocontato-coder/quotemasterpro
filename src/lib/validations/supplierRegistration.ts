@@ -11,13 +11,9 @@ export const supplierRegistrationSchema = z.object({
   // Tipo de documento
   document_type: z.union([z.literal('cpf'), z.literal('cnpj')]).default('cnpj'),
   
-  // Documento validado condicionalmente
+  // Documento (validação condicional será feita no refine final)
   document_number: z.string()
-    .min(1, 'Documento é obrigatório')
-    .refine((val) => {
-      const normalized = normalizeDocument(val);
-      return normalized.length >= 11;
-    }, 'Documento inválido'),
+    .min(1, 'Documento é obrigatório'),
   
   // WhatsApp obrigatório
   whatsapp: z.string()
