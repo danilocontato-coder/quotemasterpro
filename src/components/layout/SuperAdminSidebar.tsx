@@ -33,7 +33,8 @@ import {
   Globe,
   HelpCircle,
   UserCog,
-  Palette
+  Palette,
+  Send
 } from 'lucide-react';
 
 const navigation = [
@@ -175,6 +176,12 @@ const navigation = [
         href: '/admin/ai-config',
         icon: Bot,
         description: 'Negociação automática'
+      },
+      {
+        name: 'Configuração de E-mails',
+        href: '/admin/email-settings',
+        icon: Send,
+        description: 'SMTP e Resend'
       }
     ]
   },

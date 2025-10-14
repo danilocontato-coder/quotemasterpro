@@ -61,6 +61,7 @@ const SupportDashboard = React.lazy(() => import('@/pages/dashboards/SupportDash
 const AuditLogs = React.lazy(() => import('@/pages/admin/AuditLogs'));
 const AIConfigurationManagement = React.lazy(() => import('@/pages/admin/AIConfigurationManagement'));
 const CommunicationManagement = React.lazy(() => import('@/pages/admin/CommunicationManagement'));
+const EmailSettings = React.lazy(() => import('@/pages/admin/EmailSettings'));
 const IntegrationsAndApisManagement = React.lazy(() => import('@/pages/admin/IntegrationsAndApisManagement'));
 const DomainSettings = React.lazy(() => import('@/pages/admin/DomainSettings'));
 const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialManagement'));
@@ -260,6 +261,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="ai-config" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <AIConfigurationManagement />
+          </Suspense>
+        } />
+        <Route path="email-settings" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <EmailSettings />
           </Suspense>
         } />
         <Route path="communication" element={
