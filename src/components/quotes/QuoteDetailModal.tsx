@@ -32,6 +32,8 @@ import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
 import { QuoteItemsList } from './QuoteItemsList';
 import { VisitSection } from './VisitSection';
 import { VisitsTab } from './VisitsTab';
+import { SupplierStatusCard } from './SupplierStatusCard';
+import { ProposalComparisonTable } from './ProposalComparisonTable';
 import { getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
@@ -98,6 +100,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [itemAnalysisData, setItemAnalysisData] = useState<ItemAnalysisData[]>([]);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [supplierNames, setSupplierNames] = useState<{ id: string; name: string; phone?: string; whatsapp?: string; status?: string }[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
   const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
@@ -241,14 +244,34 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     }
   }, [quote?.id]);
 
+  const fetchSupplierNames = useCallback(async () => {
+    if (!quote?.selected_supplier_ids || quote.selected_supplier_ids.length === 0) {
+      setSupplierNames([]);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, name, status, phone, whatsapp')
+        .in('id', quote.selected_supplier_ids);
+      
+      if (error) throw error;
+      setSupplierNames(data || []);
+    } catch (error) {
+      console.error('Error fetching supplier names:', error);
+    }
+  }, [quote?.selected_supplier_ids]);
+
   useEffect(() => {
     console.log('🔄 QuoteDetailModal useEffect - open:', open, 'quote?.id:', quote?.id);
     if (open && quote?.id) {
-      console.log('✅ Calling fetchQuoteItems and fetchAuditLogs');
+      console.log('✅ Calling fetchQuoteItems, fetchAuditLogs, and fetchSupplierNames');
       fetchQuoteItems();
       fetchAuditLogs();
+      fetchSupplierNames();
     }
-  }, [open, quote?.id, fetchQuoteItems, fetchAuditLogs]);
+  }, [open, quote?.id, fetchQuoteItems, fetchAuditLogs, fetchSupplierNames]);
 
   useEffect(() => {
     if (quoteItems.length > 0) {
@@ -352,6 +375,49 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     });
   };
 
+  const handleResendInvite = async (supplierId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
+        body: { 
+          quoteId: quote.id, 
+          supplierIds: [supplierId]
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Convite reenviado!",
+        description: "O fornecedor receberá um novo link por WhatsApp.",
+      });
+    } catch (error) {
+      console.error('Error resending invite:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reenviar o convite.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSendWhatsApp = (supplier: { name: string; whatsapp?: string }) => {
+    if (!supplier.whatsapp) {
+      toast({
+        title: "WhatsApp não disponível",
+        description: `${supplier.name} não possui WhatsApp cadastrado.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const message = encodeURIComponent(
+      `Olá ${supplier.name}, gostaria de conversar sobre a cotação ${quote.local_code} - ${quote.title}. Podemos negociar?`
+    );
+    
+    const whatsappNumber = supplier.whatsapp.replace(/\D/g, '');
+    window.open(`https://wa.me/55${whatsappNumber}?text=${message}`, '_blank');
+  };
+
   const refreshProposals = useCallback(() => {
     fetchProposals();
   }, [fetchProposals]);
@@ -445,13 +511,25 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                     <div className="bg-green-50 p-4 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <Users className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-900">Fornecedores</span>
+                        <span className="text-sm font-medium text-green-900">Fornecedores Participantes</span>
                       </div>
-                      <p className="text-2xl font-bold text-green-900">
-                        {Math.max(quote.suppliers_sent_count || 0, quote.selected_supplier_ids?.length || 0)}
-                      </p>
-                      <p className="text-xs text-green-700 mt-1">Convidados</p>
-                      <p className="text-xs text-green-700">Propostas: {proposals.length}</p>
+                      <p className="text-2xl font-bold text-green-900">{supplierNames.length}</p>
+                      
+                      {supplierNames.length > 0 ? (
+                        <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                          {supplierNames.map(supplier => (
+                            <div key={supplier.id} className="flex items-center gap-2">
+                              <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+                              <span className="text-xs text-green-800 truncate">{supplier.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-green-700 mt-2">Nenhum fornecedor selecionado</p>
+                      )}
+                      
+                      <Separator className="my-2" />
+                      <p className="text-xs text-green-700">Propostas recebidas: {proposals.length}/{supplierNames.length}</p>
                     </div>
                     <div className="bg-purple-50 p-4 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
@@ -545,12 +623,62 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             </TabsContent>
 
             <TabsContent value="proposals" className="space-y-6">
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <p>Carregando propostas...</p>
+              {/* Header com contador */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  Status dos Fornecedores ({proposals.length}/{supplierNames.length} responderam)
+                </h3>
+                {proposals.length > 1 && (
+                  <Button variant="outline" size="sm" onClick={() => setShowComparison(true)}>
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Comparar Propostas
+                  </Button>
+                )}
+              </div>
+
+              {/* Grid de status de fornecedores */}
+              {supplierNames.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {supplierNames.map(supplier => {
+                    const proposal = proposals.find(p => p.supplierId === supplier.id);
+                    return (
+                      <SupplierStatusCard
+                        key={supplier.id}
+                        supplier={supplier}
+                        hasResponded={!!proposal}
+                        proposal={proposal}
+                        onResendInvite={() => handleResendInvite(supplier.id)}
+                        onSendWhatsApp={() => handleSendWhatsApp(supplier)}
+                      />
+                    );
+                  })}
                 </div>
-              ) : proposals.length > 0 ? (
-                <div className="space-y-4">
+              ) : (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Nenhum fornecedor selecionado para esta cotação.</p>
+                </div>
+              )}
+
+              {/* Tabela comparativa (se houver 2+ propostas) */}
+              {proposals.length >= 2 && (
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Comparação Detalhada de Propostas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProposalComparisonTable proposals={proposals} quoteItems={quoteItems} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Propostas individuais com ações */}
+              {proposals.length > 0 && (
+                <div className="space-y-4 mt-6">
+                  <h4 className="font-semibold text-base">Ações por Proposta</h4>
                   {proposals.map((proposal) => (
                     <Card key={proposal.id}>
                       <CardHeader>
@@ -581,13 +709,6 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                           </div>
                         </div>
 
-                        {proposal.observations && (
-                          <div className="mb-4">
-                            <p className="text-sm text-muted-foreground mb-1">Observações</p>
-                            <p className="text-sm">{proposal.observations}</p>
-                          </div>
-                        )}
-
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -609,11 +730,6 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       </CardContent>
                     </Card>
                   ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Nenhuma proposta recebida ainda.</p>
                 </div>
               )}
             </TabsContent>
