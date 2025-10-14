@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -125,6 +125,25 @@ export const PlansManagement = () => {
     setShowViewModal(false);
     setTimeout(() => setViewingPlan(null), 300); // Cleanup após animação
   };
+
+  // Failsafe: Remove pointer-events residual quando todos os modais estão fechados
+  useEffect(() => {
+    if (!showCreateModal && !showEditModal && !showViewModal) {
+      const root = document.getElementById('root');
+      if (root && root.style.pointerEvents === 'none') {
+        root.style.pointerEvents = '';
+      }
+      
+      // Remove pointer-events: none de elementos órfãos (sem inert/aria-hidden)
+      document.querySelectorAll<HTMLElement>('[style*="pointer-events"]').forEach((el) => {
+        const hasInert = el.hasAttribute('inert');
+        const ariaHidden = el.getAttribute('aria-hidden') === 'true';
+        if (!hasInert && !ariaHidden && el.style.pointerEvents === 'none') {
+          el.style.pointerEvents = '';
+        }
+      });
+    }
+  }, [showCreateModal, showEditModal, showViewModal]);
 
   const clientPlans = plans.filter(p => p.target_audience === 'clients' || p.target_audience === 'both');
 
