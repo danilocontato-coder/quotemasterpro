@@ -83,58 +83,81 @@ serve(async (req) => {
 
     // 3. Gerar senha temporária
     const temporaryPassword = generateTemporaryPassword();
-    console.log('🔑 Temporary password generated for:', supplier.email);
+    console.log(`🔑 Temporary password generated for: ${supplier.email}`);
 
-    // 4. Verificar se usuário já existe ANTES de tentar criar
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-    const existingUser = users?.find(u => u.email === supplier.email);
-    
     let userId: string;
-    
-    if (existingUser) {
-      // ✅ Usuário já existe - apenas resetar senha e atualizar metadata
-      console.log('⚠️ User already exists, resetting password for:', existingUser.id);
-      
-      const { error: updateError } = await supabase.auth.admin.updateUserById(
-        existingUser.id,
-        { 
-          password: temporaryPassword,
-          user_metadata: {
-            name: supplier.name,
-            role: 'supplier'
+
+    // 4. Tentar criar usuário diretamente (mais eficiente)
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: supplier.email,
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: {
+        name: supplier.name,
+        role: 'supplier'
+      }
+    });
+
+    if (authError) {
+      // Se o erro for "email já registrado", buscar e atualizar senha
+      if (authError.message?.includes('already been registered') || authError.status === 422) {
+        console.log('⚠️ User already exists, searching and updating password...');
+        
+        try {
+          // Buscar usuário por email (com paginação para evitar bug do listUsers)
+          const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000
+          });
+
+          if (listError) {
+            console.error('❌ Error listing users:', listError);
+            throw new Error(`Failed to list users: ${listError.message}`);
           }
+
+          const existingUser = users?.find(u => u.email?.toLowerCase() === supplier.email.toLowerCase());
+          
+          if (!existingUser) {
+            throw new Error('User reported as existing but not found in list');
+          }
+
+          console.log(`📧 Found existing user: ${existingUser.id}`);
+
+          // Atualizar senha do usuário existente
+          const { error: updateError } = await supabase.auth.admin.updateUserById(
+            existingUser.id,
+            { 
+              password: temporaryPassword,
+              email_confirm: true,
+              user_metadata: {
+                name: supplier.name,
+                role: 'supplier'
+              }
+            }
+          );
+          
+          if (updateError) {
+            console.error('❌ Error updating password:', updateError);
+            throw new Error(`Failed to update password: ${updateError.message}`);
+          }
+          
+          userId = existingUser.id;
+          console.log(`✅ Password updated for existing user: ${userId}`);
+          
+        } catch (handleError: any) {
+          console.error('❌ Error handling existing user:', handleError);
+          throw new Error(`Failed to handle existing user: ${handleError.message}`);
         }
-      );
-      
-      if (updateError) {
-        console.error('Password reset error:', updateError);
-        throw updateError;
+      } else {
+        // Outro tipo de erro - lançar
+        console.error('❌ Auth creation error:', authError);
+        throw new Error(`Auth error: ${authError.message}`);
       }
-      
-      userId = existingUser.id;
-      console.log('✅ Password reset for existing user:', userId);
-      
     } else {
-      // ✅ Criar novo usuário
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: supplier.email,
-        password: temporaryPassword,
-        email_confirm: true,
-        user_metadata: {
-          name: supplier.name,
-          role: 'supplier'
-        }
-      });
-      
-      if (authError) {
-        console.error('Auth creation error:', authError);
-        throw authError;
-      }
-      
-      userId = authData.user!.id;
-      console.log('✅ New auth user created:', userId);
+      // Usuário criado com sucesso
+      userId = authData.user.id;
+      console.log(`✅ New user created: ${userId}`);
     }
-    console.log('✅ Auth user created:', userId);
 
     // 5. Atualizar fornecedor com todos os dados
     const updateData: any = {
