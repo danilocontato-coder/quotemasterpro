@@ -122,11 +122,11 @@ const SupplierQuickResponse = () => {
       }
 
       // Buscar cotação
-      const { data: quoteData, error: quoteError } = await supabase
-        .from('quotes')
-        .select('*')
-        .eq('id', quoteId)
-        .single();
+    const { data: quoteData, error: quoteError } = await supabase
+      .from('quotes')
+      .select('id, local_code, title, description, deadline, client_name, supplier_id, status')
+      .eq('id', quoteId)
+      .single();
 
       if (quoteError) throw quoteError;
 
