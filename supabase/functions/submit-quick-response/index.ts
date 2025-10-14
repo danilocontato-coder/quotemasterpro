@@ -80,10 +80,10 @@ serve(async (req) => {
 
     console.log('🔍 [Quick Response] Buscando token:', token);
 
-    // Buscar token válido (usando short_code)
+    // Buscar token válido (usando short_code) com local_code
     const { data: tokenData, error: tokenError } = await supabase
       .from('quote_tokens')
-      .select('quote_id, expires_at, client_id')
+      .select('quote_id, expires_at, client_id, quotes(local_code)')
       .or(`short_code.eq.${token},full_token.eq.${token}`)
       .maybeSingle();
 
@@ -240,7 +240,7 @@ serve(async (req) => {
     try {
       const amountNum = typeof total_amount === 'number' ? total_amount : parseFloat(String(total_amount).replace(',', '.'));
       
-      let message = `${supplier_name} enviou uma proposta de R$ ${isNaN(amountNum) ? total_amount : amountNum.toFixed(2)} para a cotação #${tokenData.quote_id}`;
+      let message = `${supplier_name} enviou uma proposta de R$ ${isNaN(amountNum) ? total_amount : amountNum.toFixed(2)} para a cotação #${tokenData.quotes?.local_code || tokenData.quote_id}`;
       
       // Adicionar info de visita se agendada
       if (visit_date) {

@@ -38,6 +38,13 @@ serve(async (req) => {
     const { quote_id, scheduled_date, delivery_address, notes } = await req.json();
     if (!quote_id || !scheduled_date) throw new Error("quote_id and scheduled_date are required");
 
+    // Buscar local_code da cotação
+    const { data: quote } = await supabase
+      .from("quotes")
+      .select("local_code")
+      .eq("id", quote_id)
+      .single();
+
     // Verificar se existe pagamento in_escrow para esta cotação
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
@@ -93,7 +100,7 @@ serve(async (req) => {
       body: {
         user_ids: [payment.client_id],
         title: 'Entrega Agendada',
-        message: `A entrega da cotação #${quote_id} foi agendada para ${new Date(scheduled_date).toLocaleDateString('pt-BR')}.`,
+        message: `A entrega da cotação #${quote?.local_code || quote_id} foi agendada para ${new Date(scheduled_date).toLocaleDateString('pt-BR')}.`,
         type: 'delivery_scheduled',
         priority: 'normal',
         metadata: {

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const createQuoteNotification = async (quoteData: {
   quote_id: string;
+  local_code: string;
   quote_title: string;
   client_id: string;
   items_count: number;
@@ -14,7 +15,7 @@ export const createQuoteNotification = async (quoteData: {
         client_id: quoteData.client_id,
         notify_all_client_users: true,
         title: 'Nova Cotação Criada',
-        message: `A cotação #${quoteData.quote_id} foi criada: ${quoteData.quote_title}`,
+        message: `A cotação #${quoteData.local_code} foi criada: ${quoteData.quote_title}`,
         type: 'quote',
         priority: 'normal',
         action_url: '/quotes',
@@ -32,6 +33,7 @@ export const createQuoteNotification = async (quoteData: {
 
 export const createProposalNotification = async (proposalData: {
   quote_id: string;
+  local_code: string;
   supplier_name: string;
   total_amount: number;
   client_id: string;
@@ -42,7 +44,7 @@ export const createProposalNotification = async (proposalData: {
         client_id: proposalData.client_id,
         notify_all_client_users: true,
         title: 'Nova Proposta Recebida',
-        message: `${proposalData.supplier_name} enviou uma proposta de R$ ${proposalData.total_amount.toFixed(2)} para a cotação #${proposalData.quote_id}`,
+        message: `${proposalData.supplier_name} enviou uma proposta de R$ ${proposalData.total_amount.toFixed(2)} para a cotação #${proposalData.local_code}`,
         type: 'proposal',
         priority: 'high',
         action_url: '/quotes',
@@ -60,6 +62,7 @@ export const createProposalNotification = async (proposalData: {
 
 export const createPaymentNotification = async (paymentData: {
   quote_id: string;
+  local_code: string;
   amount: number;
   status: 'completed' | 'failed';
   client_id: string;
@@ -73,8 +76,8 @@ export const createPaymentNotification = async (paymentData: {
         notify_all_client_users: true,
         title: isSuccess ? 'Pagamento Confirmado' : 'Falha no Pagamento',
         message: isSuccess 
-          ? `Pagamento de R$ ${paymentData.amount.toFixed(2)} foi processado com sucesso para a cotação #${paymentData.quote_id}`
-          : `Falha no pagamento de R$ ${paymentData.amount.toFixed(2)} para a cotação #${paymentData.quote_id}. Verifique os dados e tente novamente.`,
+          ? `Pagamento de R$ ${paymentData.amount.toFixed(2)} foi processado com sucesso para a cotação #${paymentData.local_code}`
+          : `Falha no pagamento de R$ ${paymentData.amount.toFixed(2)} para a cotação #${paymentData.local_code}. Verifique os dados e tente novamente.`,
         type: 'payment',
         priority: isSuccess ? 'normal' : 'high',
         action_url: '/payments',
@@ -92,6 +95,7 @@ export const createPaymentNotification = async (paymentData: {
 
 export const createDeliveryNotification = async (deliveryData: {
   quote_id: string;
+  local_code: string;
   scheduled_date: string;
   client_id: string;
   supplier_name: string;
@@ -109,7 +113,7 @@ export const createDeliveryNotification = async (deliveryData: {
         client_id: deliveryData.client_id,
         notify_all_client_users: true,
         title: 'Entrega Agendada',
-        message: `${deliveryData.supplier_name} agendou uma entrega para ${formattedDate} às ${formattedTime} - Cotação #${deliveryData.quote_id}`,
+        message: `${deliveryData.supplier_name} agendou uma entrega para ${formattedDate} às ${formattedTime} - Cotação #${deliveryData.local_code}`,
         type: 'delivery',
         priority: 'high',
         action_url: '/quotes',
@@ -127,6 +131,7 @@ export const createDeliveryNotification = async (deliveryData: {
 
 export const createApprovalNotification = async (approvalData: {
   quote_id: string;
+  local_code: string;
   status: 'approved' | 'rejected';
   approver_name: string;
   client_id: string;
@@ -140,7 +145,7 @@ export const createApprovalNotification = async (approvalData: {
         client_id: approvalData.client_id,
         notify_all_client_users: true,
         title: isApproved ? 'Cotação Aprovada' : 'Cotação Rejeitada',
-        message: `A cotação #${approvalData.quote_id} foi ${isApproved ? 'aprovada' : 'rejeitada'} por ${approvalData.approver_name}`,
+        message: `A cotação #${approvalData.local_code} foi ${isApproved ? 'aprovada' : 'rejeitada'} por ${approvalData.approver_name}`,
         type: isApproved ? 'success' : 'warning',
         priority: 'high',
         action_url: '/quotes',

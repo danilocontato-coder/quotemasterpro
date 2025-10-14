@@ -42,10 +42,10 @@ serve(async (req) => {
     const { paymentId } = await req.json();
     if (!paymentId) throw new Error("paymentId is required");
 
-    // Load payment
+    // Load payment with quote local_code
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
-      .select("id, quote_id, client_id, supplier_id, amount, status")
+      .select("id, quote_id, client_id, supplier_id, amount, status, quotes(local_code)")
       .eq("id", paymentId)
       .single();
 
@@ -65,7 +65,7 @@ serve(async (req) => {
           price_data: {
             currency: "brl",
             product_data: {
-              name: `Pagamento Cotação #${payment.quote_id}`,
+              name: `Pagamento Cotação #${payment.quotes?.local_code || payment.quote_id}`,
               metadata: {
                 payment_id: payment.id,
                 quote_id: payment.quote_id,

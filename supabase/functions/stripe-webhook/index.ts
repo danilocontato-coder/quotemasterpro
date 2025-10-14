@@ -49,10 +49,10 @@ serve(async (req) => {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         
-        // Buscar informações do pagamento
+        // Buscar informações do pagamento com local_code
         const { data: payment, error: paymentError } = await supabase
           .from('payments')
-          .select('id, quote_id, client_id, supplier_id')
+          .select('id, quote_id, client_id, supplier_id, quotes(local_code)')
           .eq('id', paymentIntent.metadata.payment_id)
           .single()
 
@@ -95,7 +95,7 @@ serve(async (req) => {
             body: {
               user_ids: [payment.supplier_id],
               title: 'Pagamento Confirmado',
-              message: `O pagamento da cotação #${payment.quote_id} foi confirmado. Prepare-se para a entrega.`,
+              message: `O pagamento da cotação #${payment.quotes?.local_code || payment.quote_id} foi confirmado. Prepare-se para a entrega.`,
               type: 'payment_confirmed',
               priority: 'high',
               metadata: {
