@@ -4054,6 +4054,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      check_quote_deadlines_for_suppliers: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       check_user_email_exists: {
         Args: { user_email: string }
         Returns: boolean
