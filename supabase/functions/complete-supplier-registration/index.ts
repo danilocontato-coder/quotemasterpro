@@ -85,51 +85,58 @@ serve(async (req) => {
     const temporaryPassword = generateTemporaryPassword();
     console.log('🔑 Temporary password generated for:', supplier.email);
 
-    // 4. Criar conta auth.users
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: supplier.email,
-      password: temporaryPassword,
-      email_confirm: true, // Auto-confirmar email
-      user_metadata: {
-        name: supplier.name,
-        role: 'supplier'
-      }
-    });
-
-    if (authError) {
-      console.error('Auth creation error:', authError);
+    // 4. Verificar se usuário já existe ANTES de tentar criar
+    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+    const existingUser = users?.find(u => u.email === supplier.email);
+    
+    let userId: string;
+    
+    if (existingUser) {
+      // ✅ Usuário já existe - apenas resetar senha e atualizar metadata
+      console.log('⚠️ User already exists, resetting password for:', existingUser.id);
       
-      // Se usuário já existe, tentar resetar senha
-      if (authError.message.includes('already registered')) {
-        console.log('⚠️ User already exists, attempting password reset');
-        
-        // Buscar o usuário existente
-        const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-        const existingUser = users?.find(u => u.email === supplier.email);
-        
-        if (existingUser) {
-          // Atualizar senha do usuário existente
-          const { error: updateError } = await supabase.auth.admin.updateUserById(
-            existingUser.id,
-            { password: temporaryPassword }
-          );
-          
-          if (updateError) throw updateError;
-          
-          // Usar o usuário existente
-          authData.user = existingUser;
-        } else {
-          throw new Error('Usuário já existe mas não foi possível encontrá-lo.');
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        existingUser.id,
+        { 
+          password: temporaryPassword,
+          user_metadata: {
+            name: supplier.name,
+            role: 'supplier'
+          }
         }
-      } else {
+      );
+      
+      if (updateError) {
+        console.error('Password reset error:', updateError);
+        throw updateError;
+      }
+      
+      userId = existingUser.id;
+      console.log('✅ Password reset for existing user:', userId);
+      
+    } else {
+      // ✅ Criar novo usuário
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: supplier.email,
+        password: temporaryPassword,
+        email_confirm: true,
+        user_metadata: {
+          name: supplier.name,
+          role: 'supplier'
+        }
+      });
+      
+      if (authError) {
+        console.error('Auth creation error:', authError);
         throw authError;
       }
+      
+      userId = authData.user!.id;
+      console.log('✅ New auth user created:', userId);
     }
-
-    const userId = authData.user!.id;
     console.log('✅ Auth user created:', userId);
 
-    // 5. Atualizar fornecedor para active e adicionar dados opcionais
+    // 5. Atualizar fornecedor com todos os dados
     const updateData: any = {
       status: 'active',
       registration_status: 'active',
@@ -137,11 +144,44 @@ serve(async (req) => {
       updated_at: new Date().toISOString()
     };
 
-    // Adicionar dados opcionais se fornecidos
-    if (supplier_data?.cnpj) updateData.cnpj = supplier_data.cnpj;
+    // Documento
+    if (supplier_data?.document_type) updateData.document_type = supplier_data.document_type;
+    if (supplier_data?.document_number) updateData.document_number = supplier_data.document_number;
+    
+    // Contato
+    if (supplier_data?.whatsapp) updateData.whatsapp = supplier_data.whatsapp;
     if (supplier_data?.phone) updateData.phone = supplier_data.phone;
-    if (supplier_data?.city) updateData.city = supplier_data.city;
-    if (supplier_data?.state) updateData.state = supplier_data.state;
+    if (supplier_data?.website) updateData.website = supplier_data.website;
+    
+    // Endereço completo como JSON
+    if (supplier_data?.cep) {
+      updateData.address = {
+        street: supplier_data.street || '',
+        number: supplier_data.number || '',
+        complement: supplier_data.complement || '',
+        neighborhood: supplier_data.neighborhood || '',
+        city: supplier_data.city || '',
+        state: supplier_data.state || '',
+        zipCode: supplier_data.cep
+      };
+      
+      // Manter campos de localização separados para queries
+      updateData.city = supplier_data.city;
+      updateData.state = supplier_data.state;
+    }
+    
+    // Especialidades
+    if (supplier_data?.specialties && Array.isArray(supplier_data.specialties)) {
+      updateData.specialties = supplier_data.specialties;
+    }
+    
+    // Business info
+    if (supplier_data?.description) {
+      updateData.business_info = {
+        ...(supplier.business_info || {}),
+        description: supplier_data.description
+      };
+    }
 
     const { error: updateError } = await supabase
       .from('suppliers')
