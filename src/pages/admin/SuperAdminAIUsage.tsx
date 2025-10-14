@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSuperAdminAIUsage } from '@/hooks/useSuperAdminAIUsage';
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
-import { Bot, DollarSign, Activity, TrendingUp, Download, Filter, BarChart3, PieChart } from 'lucide-react';
+import { Bot, DollarSign, Activity, TrendingUp, Download, Filter, BarChart3, PieChart, RefreshCw } from 'lucide-react';
 import { LineChart, Line, PieChart as RechartsPie, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -13,12 +13,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
+type Currency = 'USD' | 'BRL';
+
 export default function SuperAdminAIUsage() {
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
   const [clientId, setClientId] = useState<string>();
   const [provider, setProvider] = useState<string>();
   const [feature, setFeature] = useState<string>();
+  const [currency, setCurrency] = useState<Currency>('USD');
 
   const { data, isLoading, error } = useSuperAdminAIUsage({
     startDate,
@@ -84,10 +87,28 @@ export default function SuperAdminAIUsage() {
             Monitoramento de uso de tokens e custos de IA por cliente
           </p>
         </div>
-        <Button onClick={exportToCSV} disabled={!data?.tableData?.length}>
-          <Download className="h-4 w-4 mr-2" />
-          Exportar CSV
-        </Button>
+        <div className="flex gap-2">
+          <div className="flex items-center gap-2 border rounded-lg p-1">
+            <Button 
+              variant={currency === 'USD' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setCurrency('USD')}
+            >
+              USD
+            </Button>
+            <Button 
+              variant={currency === 'BRL' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setCurrency('BRL')}
+            >
+              BRL
+            </Button>
+          </div>
+          <Button onClick={exportToCSV} disabled={!data?.tableData?.length}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -199,10 +220,13 @@ export default function SuperAdminAIUsage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                ${(data?.summary.totalCost || 0).toFixed(2)}
+                {currency === 'USD' 
+                  ? `$${(data?.summary.totalCost || 0).toFixed(2)}` 
+                  : `R$ ${(data?.summary.totalCostBRL || 0).toFixed(2)}`
+                }
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                USD estimado
+                {currency === 'USD' ? 'Dólares' : 'Reais'} • Taxa: R$ {(data?.summary.exchangeRate || 5).toFixed(2)}
               </p>
             </CardContent>
           </Card>
@@ -214,7 +238,10 @@ export default function SuperAdminAIUsage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${(((data?.summary.totalCost || 0) as number) / ((data?.summary.totalRequests || 1) as number)).toFixed(4)}
+                {currency === 'USD' 
+                  ? `$${(((data?.summary.totalCost || 0) as number) / ((data?.summary.totalRequests || 1) as number)).toFixed(4)}`
+                  : `R$ ${(((data?.summary.totalCostBRL || 0) as number) / ((data?.summary.totalRequests || 1) as number)).toFixed(4)}`
+                }
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 por requisição
@@ -232,7 +259,10 @@ export default function SuperAdminAIUsage() {
                 {data?.summary.byClient[0]?.clientName || 'N/A'}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                ${(data?.summary.byClient[0]?.cost || 0).toFixed(2)} USD
+                {currency === 'USD' 
+                  ? `$${(data?.summary.byClient[0]?.cost || 0).toFixed(2)}`
+                  : `R$ ${(data?.summary.byClient[0]?.costBRL || 0).toFixed(2)}`
+                }
               </p>
             </CardContent>
           </Card>
@@ -263,7 +293,7 @@ export default function SuperAdminAIUsage() {
                   <Tooltip />
                   <Legend />
                   <Line yAxisId="left" type="monotone" dataKey="tokens" stroke="#3b82f6" name="Tokens" />
-                  <Line yAxisId="right" type="monotone" dataKey="cost" stroke="#10b981" name="Custo USD" />
+                  <Line yAxisId="right" type="monotone" dataKey={currency === 'USD' ? 'cost' : 'costBRL'} stroke="#10b981" name={currency === 'USD' ? 'Custo USD' : 'Custo BRL'} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -288,7 +318,7 @@ export default function SuperAdminAIUsage() {
                   <Pie
                     data={Object.entries(data?.summary.byProvider || {}).map(([name, stats]) => ({
                       name,
-                      value: stats.cost
+                      value: currency === 'USD' ? stats.cost : stats.costBRL
                     }))}
                     cx="50%"
                     cy="50%"
@@ -302,7 +332,7 @@ export default function SuperAdminAIUsage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Tooltip formatter={(value: number) => currency === 'USD' ? `$${value.toFixed(2)}` : `R$ ${value.toFixed(2)}`} />
                 </RechartsPie>
               </ResponsiveContainer>
             )}
@@ -325,7 +355,7 @@ export default function SuperAdminAIUsage() {
                   <TableHead>Cliente</TableHead>
                   <TableHead className="text-right">Requisições</TableHead>
                   <TableHead className="text-right">Tokens</TableHead>
-                  <TableHead className="text-right">Custo USD</TableHead>
+                  <TableHead className="text-right">Custo {currency}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -335,7 +365,7 @@ export default function SuperAdminAIUsage() {
                     <TableCell className="text-right">{client.requests}</TableCell>
                     <TableCell className="text-right">{client.tokens.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-semibold text-green-600">
-                      ${client.cost.toFixed(2)}
+                      {currency === 'USD' ? `$${client.cost.toFixed(2)}` : `R$ ${client.costBRL.toFixed(2)}`}
                     </TableCell>
                   </TableRow>
                 ))}

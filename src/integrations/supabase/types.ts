@@ -1750,6 +1750,39 @@ export type Database = {
           },
         ]
       }
+      exchange_rates: {
+        Row: {
+          created_at: string | null
+          currency_from: string
+          currency_to: string
+          effective_date: string
+          id: string
+          rate: number
+          source: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency_from?: string
+          currency_to?: string
+          effective_date: string
+          id?: string
+          rate: number
+          source?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency_from?: string
+          currency_to?: string
+          effective_date?: string
+          id?: string
+          rate?: number
+          source?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       financial_logs: {
         Row: {
           action: string

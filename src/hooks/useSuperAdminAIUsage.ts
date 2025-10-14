@@ -13,16 +13,19 @@ interface AIUsageFilters {
 interface AIUsageSummary {
   totalTokens: number;
   totalCost: number;
+  totalCostBRL: number;
   totalRequests: number;
-  byProvider: Record<string, { tokens: number; cost: number; requests: number }>;
-  byFeature: Record<string, { tokens: number; cost: number; requests: number }>;
-  byClient: Array<{ clientId: string; clientName: string; tokens: number; cost: number; requests: number }>;
+  exchangeRate: number;
+  byProvider: Record<string, { tokens: number; cost: number; costBRL: number; requests: number }>;
+  byFeature: Record<string, { tokens: number; cost: number; costBRL: number; requests: number }>;
+  byClient: Array<{ clientId: string; clientName: string; tokens: number; cost: number; costBRL: number; requests: number }>;
 }
 
 interface ChartDataPoint {
   date: string;
   tokens: number;
   cost: number;
+  costBRL: number;
   requests: number;
 }
 
@@ -51,6 +54,22 @@ export function useSuperAdminAIUsage(filters: AIUsageFilters = {}) {
   return useQuery({
     queryKey: ['super-admin-ai-usage', startDate, endDate, clientId, provider, feature],
     queryFn: async () => {
+      // Buscar taxa de câmbio mais recente
+      const { data: exchangeRateData, error: rateError } = await supabase
+        .from('exchange_rates')
+        .select('rate')
+        .eq('currency_from', 'USD')
+        .eq('currency_to', 'BRL')
+        .order('effective_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (rateError) {
+        console.warn('[useSuperAdminAIUsage] Erro ao buscar taxa de câmbio:', rateError);
+      }
+
+      const exchangeRate = exchangeRateData?.rate || 5.0; // Fallback para 5.0
+
       // Buscar dados brutos com joins
       let query = supabase
         .from('ai_token_usage')
@@ -85,56 +104,64 @@ export function useSuperAdminAIUsage(filters: AIUsageFilters = {}) {
       const summary: AIUsageSummary = {
         totalTokens: 0,
         totalCost: 0,
+        totalCostBRL: 0,
         totalRequests: rawData?.length || 0,
+        exchangeRate,
         byProvider: {},
         byFeature: {},
         byClient: []
       };
 
-      const clientMap = new Map<string, { clientName: string; tokens: number; cost: number; requests: number }>();
-      const dailyMap = new Map<string, { tokens: number; cost: number; requests: number }>();
+      const clientMap = new Map<string, { clientName: string; tokens: number; cost: number; costBRL: number; requests: number }>();
+      const dailyMap = new Map<string, { tokens: number; cost: number; costBRL: number; requests: number }>();
 
       rawData?.forEach((row: any) => {
         const tokens = row.total_tokens || 0;
         const cost = parseFloat(row.cost_usd) || 0;
+        const costBRL = cost * exchangeRate;
 
         summary.totalTokens += tokens;
         summary.totalCost += cost;
+        summary.totalCostBRL += costBRL;
 
         // Por provider
         if (!summary.byProvider[row.provider]) {
-          summary.byProvider[row.provider] = { tokens: 0, cost: 0, requests: 0 };
+          summary.byProvider[row.provider] = { tokens: 0, cost: 0, costBRL: 0, requests: 0 };
         }
         summary.byProvider[row.provider].tokens += tokens;
         summary.byProvider[row.provider].cost += cost;
+        summary.byProvider[row.provider].costBRL += costBRL;
         summary.byProvider[row.provider].requests += 1;
 
         // Por feature
         if (!summary.byFeature[row.feature]) {
-          summary.byFeature[row.feature] = { tokens: 0, cost: 0, requests: 0 };
+          summary.byFeature[row.feature] = { tokens: 0, cost: 0, costBRL: 0, requests: 0 };
         }
         summary.byFeature[row.feature].tokens += tokens;
         summary.byFeature[row.feature].cost += cost;
+        summary.byFeature[row.feature].costBRL += costBRL;
         summary.byFeature[row.feature].requests += 1;
 
         // Por cliente
         const clientName = row.clients?.name || 'Cliente Desconhecido';
         if (!clientMap.has(row.client_id)) {
-          clientMap.set(row.client_id, { clientName, tokens: 0, cost: 0, requests: 0 });
+          clientMap.set(row.client_id, { clientName, tokens: 0, cost: 0, costBRL: 0, requests: 0 });
         }
         const clientStats = clientMap.get(row.client_id)!;
         clientStats.tokens += tokens;
         clientStats.cost += cost;
+        clientStats.costBRL += costBRL;
         clientStats.requests += 1;
 
         // Por dia (para gráfico)
         const dateKey = format(new Date(row.created_at), 'yyyy-MM-dd');
         if (!dailyMap.has(dateKey)) {
-          dailyMap.set(dateKey, { tokens: 0, cost: 0, requests: 0 });
+          dailyMap.set(dateKey, { tokens: 0, cost: 0, costBRL: 0, requests: 0 });
         }
         const dailyStats = dailyMap.get(dateKey)!;
         dailyStats.tokens += tokens;
         dailyStats.cost += cost;
+        dailyStats.costBRL += costBRL;
         dailyStats.requests += 1;
       });
 
@@ -145,6 +172,7 @@ export function useSuperAdminAIUsage(filters: AIUsageFilters = {}) {
           clientName: stats.clientName,
           tokens: stats.tokens,
           cost: stats.cost,
+          costBRL: stats.costBRL,
           requests: stats.requests
         }))
         .sort((a, b) => b.cost - a.cost);
@@ -155,6 +183,7 @@ export function useSuperAdminAIUsage(filters: AIUsageFilters = {}) {
           date,
           tokens: stats.tokens,
           cost: stats.cost,
+          costBRL: stats.costBRL,
           requests: stats.requests
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
