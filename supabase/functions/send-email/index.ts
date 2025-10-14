@@ -111,7 +111,29 @@ serve(async (req) => {
         // Remove any remaining unreplaced variables
         htmlContent = htmlContent.replace(/{{[^}]+}}/g, '');
 
-        payload.subject = template.subject || payload.subject;
+        // Process subject with branding and template_data variables
+        let processedSubject = template.subject || payload.subject;
+        
+        // Replace branding variables in subject
+        processedSubject = processedSubject
+          .replace(/{{primary_color}}/g, branding.primary_color)
+          .replace(/{{accent_color}}/g, branding.accent_color)
+          .replace(/{{secondary_color}}/g, branding.secondary_color)
+          .replace(/{{company_name}}/g, branding.company_name)
+          .replace(/{{footer_text}}/g, branding.footer_text);
+
+        // Replace template_data variables in subject
+        if (payload.template_data) {
+          Object.entries(payload.template_data).forEach(([key, value]) => {
+            const regex = new RegExp(`{{${key}}}`, 'g');
+            processedSubject = processedSubject.replace(regex, String(value || ''));
+          });
+        }
+
+        // Remove any remaining unreplaced variables from subject
+        processedSubject = processedSubject.replace(/{{[^}]+}}/g, '');
+
+        payload.subject = processedSubject;
         payload.html = htmlContent;
         
         console.log('📝 Subject:', payload.subject);
