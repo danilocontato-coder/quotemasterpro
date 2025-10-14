@@ -26,10 +26,35 @@ serve(async (req) => {
 
     console.log('🔐 [Password Reset] Solicitação para:', email);
 
-    // 1. Verificar se usuário existe
+    // 1. Buscar URL base configurada no sistema
+    let baseUrl = 'http://localhost:3000'; // fallback para desenvolvimento local
+    
+    try {
+      const { data: settingData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'base_url')
+        .maybeSingle();
+      
+      if (settingData?.setting_value) {
+        const value = typeof settingData.setting_value === 'string'
+          ? settingData.setting_value.replace(/"/g, '')
+          : String(settingData.setting_value || '').replace(/"/g, '');
+        
+        if (value) {
+          baseUrl = value;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Erro ao buscar base_url, usando fallback:', baseUrl);
+    }
+
+    console.log('🌐 Base URL para recuperação de senha:', baseUrl);
+
+    // 2. Verificar se usuário existe
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, name, client_id')
+      .select('id, name, client_id, supplier_id, onboarding_completed')
       .eq('email', email.toLowerCase())
       .maybeSingle();
 
@@ -42,15 +67,26 @@ serve(async (req) => {
       );
     }
 
-    // 2. Gerar link de reset usando Supabase Auth
-    // Usar window.location.origin do request ou fallback para localhost
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    // 3. Validar onboarding completo
+    if (!profile.client_id && !profile.supplier_id) {
+      console.log('⚠️ Usuário sem client_id/supplier_id - onboarding incompleto');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Usuário ainda não completou o cadastro. Complete o onboarding antes de redefinir a senha.',
+          error_code: 'INCOMPLETE_ONBOARDING'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // 4. Gerar link de reset usando Supabase Auth
     
     const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: `${origin}/auth/reset-password`
+        redirectTo: `${baseUrl}/auth/reset-password`
       }
     });
 
@@ -61,7 +97,7 @@ serve(async (req) => {
 
     console.log('✅ Link de reset gerado:', resetData.properties.action_link);
 
-    // 3. Enviar e-mail via send-email com template
+    // 5. Enviar e-mail via send-email com template
     const { error: emailError } = await supabase.functions.invoke('send-email', {
       body: {
         to: email,

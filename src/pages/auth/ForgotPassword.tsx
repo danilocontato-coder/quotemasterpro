@@ -32,12 +32,19 @@ const ForgotPassword: React.FC = () => {
         return;
       }
 
+      // Tratar erro de onboarding incompleto
+      if (data?.error_code === 'INCOMPLETE_ONBOARDING') {
+        setError(data.error);
+        return;
+      }
+
       if (!data?.success) {
         setError(data?.error || 'Erro ao processar solicitação');
         return;
       }
 
       setSuccess(data.message || 'Instruções para redefinir sua senha foram enviadas para seu email.');
+      setEmail('');
     } catch (err) {
       setError('Erro inesperado. Tente novamente.');
     } finally {
