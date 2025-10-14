@@ -20,6 +20,7 @@ import Dashboard from '@/pages/Dashboard';
 const LoginPage = React.lazy(() => import('@/pages/auth/Login'));
 const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
 const ForgotPasswordPage = React.lazy(() => import('@/pages/auth/ForgotPassword'));
+const ResetPasswordPage = React.lazy(() => import('@/pages/auth/ResetPassword'));
 const Quotes = React.lazy(() => import('@/pages/Quotes'));
 const Contracts = React.lazy(() => import('@/pages/Contracts'));
 const ContractDetails = React.lazy(() => import('@/pages/contracts/ContractDetails'));
@@ -141,6 +142,12 @@ export const AppWithProviders: React.FC = () => {
       <Route path="/auth/forgot-password" element={
         <Suspense fallback={<LoadingFallback />}>
           <ForgotPasswordPage />
+        </Suspense>
+      } />
+      
+      <Route path="/auth/reset-password" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <ResetPasswordPage />
         </Suspense>
       } />
 

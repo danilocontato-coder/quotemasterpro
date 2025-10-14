@@ -21,16 +21,23 @@ const ForgotPassword: React.FC = () => {
     setSuccess('');
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email: email.toLowerCase().trim()
+        }
       });
 
       if (error) {
-        setError(error.message);
+        setError(error.message || 'Erro ao enviar e-mail de recuperação');
         return;
       }
 
-      setSuccess('Instruções para redefinir sua senha foram enviadas para seu email.');
+      if (!data?.success) {
+        setError(data?.error || 'Erro ao processar solicitação');
+        return;
+      }
+
+      setSuccess(data.message || 'Instruções para redefinir sua senha foram enviadas para seu email.');
     } catch (err) {
       setError('Erro inesperado. Tente novamente.');
     } finally {
