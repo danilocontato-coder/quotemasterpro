@@ -102,6 +102,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [supplierNames, setSupplierNames] = useState<{ id: string; name: string; phone?: string; whatsapp?: string; status?: string }[]>([]);
+  const [totalInvited, setTotalInvited] = useState<number>(0);
   const { toast } = useToast();
   const { user } = useAuth();
   const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
@@ -252,88 +253,62 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     }
 
     try {
-      // 1) IDs pela tabela quote_suppliers (pode vir vazia por RLS)
       const { data: qsRows, error: qsError } = await supabase
         .from('quote_suppliers')
         .select('supplier_id')
         .eq('quote_id', quote.id);
+      
+      if (qsError) console.error('quote_suppliers SELECT error:', qsError);
+      const idsFromQS = (qsRows || []).map((r: any) => r.supplier_id).filter(Boolean);
 
-      if (qsError) {
-        console.error('quote_suppliers SELECT error:', qsError);
-      }
-      const idsFromQS = (qsRows || [])
-        .map((r: any) => r.supplier_id)
-        .filter(Boolean);
-
-      // 2) IDs selecionados no momento da criação/edição
       const idsFromSelected = Array.isArray((quote as any).selected_supplier_ids)
         ? (quote as any).selected_supplier_ids.filter(Boolean)
         : [];
 
-      // 3) IDs de quem já respondeu
       const { data: respRows, error: respError } = await supabase
         .from('quote_responses')
         .select('supplier_id, supplier_name')
         .eq('quote_id', quote.id);
+      
+      if (respError) console.error('quote_responses SELECT error:', respError);
+      const idsFromResponses = (respRows || []).map((r: any) => r.supplier_id).filter(Boolean);
 
-      if (respError) {
-        console.error('quote_responses SELECT error:', respError);
-      }
-      const idsFromResponses = (respRows || [])
-        .map((r: any) => r.supplier_id)
-        .filter(Boolean);
+      const allIds = Array.from(new Set<string>([...idsFromQS, ...idsFromSelected, ...idsFromResponses]));
 
-      // Unir e deduplicar
-      const allIds = Array.from(new Set<string>([
-        ...idsFromQS,
-        ...idsFromSelected,
-        ...idsFromResponses,
-      ].filter(Boolean)));
+      const invitedIds = idsFromQS.length > 0 ? idsFromQS : allIds;
+      setTotalInvited(idsFromQS.length > 0 ? idsFromQS.length : (quote?.suppliers_sent_count || invitedIds.length));
 
-      let suppliersList:
-        { id: string; name: string; phone?: string; whatsapp?: string; status?: string }[] = [];
-
-      if (allIds.length > 0) {
-        // 4) Buscar dados completos em suppliers
-        const { data: suppliersData, error: suppliersError } = await supabase
+      let suppliersData: any[] = [];
+      if (invitedIds.length > 0) {
+        const { data, error } = await supabase
           .from('suppliers')
           .select('id, name, status, phone, whatsapp')
-          .in('id', allIds);
+          .in('id', invitedIds);
+        if (!error && data) suppliersData = data;
+        else console.error('suppliers SELECT error:', error);
+      }
 
-        if (!suppliersError && suppliersData) {
-          suppliersList = suppliersData.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            status: s.status,
-            phone: s.phone,
-            whatsapp: s.whatsapp,
-          }));
-        } else {
-          console.error('suppliers SELECT error:', suppliersError);
+      const suppliersMap = new Map((suppliersData || []).map((s: any) => [s.id, s]));
+      const respNameMap = new Map((respRows || []).map((r: any) => [r.supplier_id, r.supplier_name]));
+
+      const finalList = invitedIds.map((id: string) => {
+        const s = suppliersMap.get(id);
+        if (s) {
+          return { id: s.id, name: s.name, status: s.status, phone: s.phone, whatsapp: s.whatsapp };
         }
-      }
-
-      // 5) Fallback final: ainda vazio? usa supplier_name das respostas
-      if (suppliersList.length === 0 && (respRows?.length || 0) > 0) {
-        suppliersList = (respRows || [])
-          .filter((r: any) => r.supplier_id)
-          .map((r: any) => ({
-            id: r.supplier_id,
-            name: r.supplier_name || 'Fornecedor',
-          }));
-      }
-
-      console.log('✅ Fornecedores carregados (com fallback):', {
-        qtd: suppliersList.length,
-        idsFromQS,
-        idsFromSelected,
-        idsFromResponses,
-        suppliersList,
+        return { id, name: respNameMap.get(id) || 'Fornecedor convidado', status: 'invited' as const };
       });
 
-      setSupplierNames(suppliersList);
+      console.log('✅ Fornecedores (com preenchimento):', {
+        totalConvites: invitedIds.length,
+        invitedIds,
+        encontradosSuppliers: suppliersData.length,
+        finalList,
+      });
+
+      setSupplierNames(finalList);
     } catch (error) {
-      console.error('Error fetching supplier names (fallback flow):', error);
+      console.error('Error fetching supplier names (merged flow):', error);
     }
   }, [quote?.id, (quote as any)?.selected_supplier_ids]);
 
@@ -760,7 +735,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               {/* Header com contador */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">
-                  Status dos Fornecedores ({proposals.length}/{supplierNames.length} responderam)
+                  Status dos Fornecedores ({proposals.length}/{totalInvited} responderam)
                 </h3>
                 {proposals.length > 1 && (
                   <Button variant="outline" size="sm" onClick={() => setShowComparison(true)}>
