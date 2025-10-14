@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertCircle, Calendar, MapPin, Clock, Package, FileText, MessageSquare, Send, Plus } from 'lucide-react';
+import { AlertCircle, Calendar, MapPin, Clock, Package, FileText, MessageSquare, Send, Plus, Check } from 'lucide-react';
 import { SupplierQuote } from '@/hooks/useSupabaseSupplierQuotes';
 import { useQuoteVisits } from '@/hooks/useQuoteVisits';
 import { VisitTimeline } from '@/components/quotes/VisitTimeline';
@@ -51,6 +51,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
   const [paymentTerms, setPaymentTerms] = useState('30 dias');
   const [observations, setObservations] = useState('');
   const [isSendingProposal, setIsSendingProposal] = useState(false);
+  const [existingResponse, setExistingResponse] = useState<any | null>(null);
 
   // Mensagens
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
   useEffect(() => {
     if (open && quote) {
       loadQuoteItems();
-      loadExistingDraft();
+      loadExistingResponse();
       initConversation();
       fetchVisits();
     }
@@ -102,40 +103,71 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
     }
   };
 
-  const loadExistingDraft = async () => {
+  const loadExistingResponse = async () => {
     if (!quote || !user?.supplierId) return;
     
     try {
-      const { data: existingDraft } = await supabase
+      // Primeiro buscar proposta já enviada (não-draft)
+      const { data: sentResponse } = await supabase
         .from('quote_responses')
         .select('*')
         .eq('quote_id', quote.id)
         .eq('supplier_id', user.supplierId)
-        .eq('status', 'draft')
+        .neq('status', 'draft')
         .maybeSingle();
 
-      if (existingDraft) {
-        const draft: any = existingDraft;
-        setDeliveryTime(draft?.delivery_time || 7);
-        setPaymentTerms(draft?.payment_terms || '30 dias');
-        setObservations(draft?.notes || '');
+      if (sentResponse) {
+        // Proposta já foi enviada - modo leitura
+        setExistingResponse(sentResponse);
+        setDeliveryTime(sentResponse.delivery_time || 7);
+        setPaymentTerms(sentResponse.payment_terms || '30 dias');
+        setObservations(sentResponse.notes || '');
         
-        if (Array.isArray(draft?.items)) {
-          const draftItems = draft.items.map((item: any) => ({
-            id: crypto.randomUUID(),
+        if (Array.isArray(sentResponse.items)) {
+          const responseItems = sentResponse.items.map((item: any) => ({
+            id: item.id || crypto.randomUUID(),
             productName: item.product_name || '',
             description: item.product_name || '',
-            quantity: item.quantity || 1,
+            quantity: item.quantity || 0,
             unitPrice: item.unit_price || 0,
             total: item.total || 0,
             brand: '',
             specifications: item.notes || '',
           }));
-          setProposalItems(draftItems);
+          setProposalItems(responseItems);
+        }
+      } else {
+        // Não há proposta enviada, buscar rascunho
+        const { data: existingDraft } = await supabase
+          .from('quote_responses')
+          .select('*')
+          .eq('quote_id', quote.id)
+          .eq('supplier_id', user.supplierId)
+          .eq('status', 'draft')
+          .maybeSingle();
+
+        if (existingDraft) {
+          setDeliveryTime(existingDraft.delivery_time || 7);
+          setPaymentTerms(existingDraft.payment_terms || '30 dias');
+          setObservations(existingDraft.notes || '');
+          
+          if (Array.isArray(existingDraft.items)) {
+            const draftItems = existingDraft.items.map((item: any) => ({
+              id: crypto.randomUUID(),
+              productName: item.product_name || '',
+              description: item.product_name || '',
+              quantity: item.quantity || 1,
+              unitPrice: item.unit_price || 0,
+              total: item.total || 0,
+              brand: '',
+              specifications: item.notes || '',
+            }));
+            setProposalItems(draftItems);
+          }
         }
       }
     } catch (error) {
-      console.error('Error loading draft:', error);
+      console.error('Error loading response:', error);
     }
   };
 
@@ -463,6 +495,20 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
               )}
 
               <TabsContent value="proposta" className="space-y-4 mt-0">
+                {existingResponse && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Check className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <p className="font-medium text-blue-900">Proposta Enviada</p>
+                        <p className="text-sm text-blue-800">
+                          Enviada em {formatLocalDateTime(existingResponse.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <Card>
                   <CardHeader>
                     <CardTitle>Itens da Proposta</CardTitle>
@@ -485,6 +531,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                                 value={item.productName}
                                 onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
                                 placeholder="Nome do produto"
+                                disabled={!!existingResponse}
                               />
                             </TableCell>
                             <TableCell>
@@ -493,6 +540,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                                 value={item.quantity}
                                 onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                                 className="w-20"
+                                disabled={!!existingResponse}
                               />
                             </TableCell>
                             <TableCell>
@@ -502,6 +550,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                                 value={item.unitPrice}
                                 onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
                                 className="w-28"
+                                disabled={!!existingResponse}
                               />
                             </TableCell>
                             <TableCell className="font-medium">
@@ -513,29 +562,31 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                     </Table>
 
                     <div className="mt-4 flex justify-between items-center">
-                      <Button 
-                        onClick={() => {
-                          const newItem: ProposalItem = {
-                            id: crypto.randomUUID(),
-                            productName: '',
-                            description: '',
-                            quantity: 1,
-                            unitPrice: 0,
-                            total: 0,
-                            brand: '',
-                            specifications: ''
-                          };
-                          setProposalItems([...proposalItems, newItem]);
-                        }} 
-                        variant="outline" 
-                        size="sm"
-                        className="gap-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Adicionar item extra
-                      </Button>
+                      {!existingResponse && (
+                        <Button 
+                          onClick={() => {
+                            const newItem: ProposalItem = {
+                              id: crypto.randomUUID(),
+                              productName: '',
+                              description: '',
+                              quantity: 1,
+                              unitPrice: 0,
+                              total: 0,
+                              brand: '',
+                              specifications: ''
+                            };
+                            setProposalItems([...proposalItems, newItem]);
+                          }} 
+                          variant="outline" 
+                          size="sm"
+                          className="gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Adicionar item extra
+                        </Button>
+                      )}
                       
-                      <div className="text-lg font-semibold">
+                      <div className="text-lg font-semibold ml-auto">
                         Total: R$ {totalValue.toFixed(2)}
                       </div>
                     </div>
@@ -554,6 +605,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                           type="number"
                           value={deliveryTime}
                           onChange={(e) => setDeliveryTime(Number(e.target.value))}
+                          disabled={!!existingResponse}
                         />
                       </div>
                       <div>
@@ -562,6 +614,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                           value={paymentTerms}
                           onChange={(e) => setPaymentTerms(e.target.value)}
                           placeholder="Ex: 30 dias"
+                          disabled={!!existingResponse}
                         />
                       </div>
                     </div>
@@ -572,17 +625,20 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                         onChange={(e) => setObservations(e.target.value)}
                         placeholder="Informações adicionais..."
                         rows={3}
+                        disabled={!!existingResponse}
                       />
                     </div>
 
-                    <Button 
-                      onClick={handleSendProposal} 
-                      disabled={isSendingProposal || proposalItems.length === 0}
-                      className="w-full"
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      {isSendingProposal ? 'Enviando...' : 'Enviar Proposta'}
-                    </Button>
+                    {!existingResponse && (
+                      <Button 
+                        onClick={handleSendProposal} 
+                        disabled={isSendingProposal || proposalItems.length === 0}
+                        className="w-full"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        {isSendingProposal ? 'Enviando...' : 'Enviar Proposta'}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
