@@ -43,11 +43,14 @@ serve(async (req) => {
     }
 
     // 2. Gerar link de reset usando Supabase Auth
+    // Usar window.location.origin do request ou fallback para localhost
+    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    
     const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}/auth/reset-password`
+        redirectTo: `${origin}/auth/reset-password`
       }
     });
 
