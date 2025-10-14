@@ -969,6 +969,17 @@ const handler = async (req: Request): Promise<Response> => {
                 client_phone: client.phone || ''
               };
 
+              // Buscar configurações globais de branding para nome e logo do sistema
+              const { data: globalBranding } = await supabase
+                .from('branding_settings')
+                .select('*')
+                .is('client_id', null)
+                .limit(1)
+                .maybeSingle();
+
+              const systemName = globalBranding?.company_name || 'Sistema de Cotações';
+              const systemLogo = globalBranding?.logo_url || '';
+
               if (isRegistered) {
                 // Fornecedor registrado: enviar cotação completa
                 console.log(`📧 [${supplier.name}] REGISTERED - Sending full quote email`);
@@ -979,7 +990,9 @@ const handler = async (req: Request): Promise<Response> => {
                   items_count: String(items.length || 0),
                   items_list: itemsList,
                   total_formatted: totalFormatted,
-                  proposal_link: supplierProposalLink
+                  proposal_link: supplierProposalLink,
+                  system_name: systemName,
+                  system_logo: systemLogo
                 });
               } else {
                 // Fornecedor não registrado: enviar convite com benefícios
@@ -991,7 +1004,8 @@ const handler = async (req: Request): Promise<Response> => {
                   benefit_2: '💰 Sistema transparente de negociação e pagamentos',
                   benefit_3: '🎯 Oportunidades personalizadas para seu negócio',
                   benefit_4: '⚡ Resposta rápida e comunicação direta com clientes',
-                  system_name: 'Cotiz',
+                  system_name: systemName,
+                  system_logo: systemLogo,
                   cta_text: 'Criar Conta Grátis'
                 });
               }
