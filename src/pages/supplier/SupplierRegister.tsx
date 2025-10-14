@@ -1,119 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Building2, Mail, Phone, MapPin, FileText } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { Building2, Mail, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useBranding } from '@/contexts/BrandingContext';
 
 export default function SupplierRegister() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { settings: brandingSettings } = useBranding();
-  const [loading, setLoading] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    cnpj: '',
-    phone: '',
-    city: '',
-    state: '',
-    password: '',
-    confirmPassword: ''
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: 'Senhas não conferem',
-        description: 'As senhas digitadas devem ser iguais.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast({
-        title: 'Senha muito curta',
-        description: 'A senha deve ter no mínimo 6 caracteres.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // 1. Registrar usuário no Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            name: formData.name,
-            role: 'supplier'
-          }
-        }
-      });
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Falha ao criar usuário');
-
-      // 2. Criar fornecedor
-      const { data: supplierData, error: supplierError } = await supabase
-        .from('suppliers')
-        .insert({
-          name: formData.name,
-          email: formData.email,
-          cnpj: formData.cnpj.replace(/\D/g, ''),
-          phone: formData.phone,
-          city: formData.city,
-          state: formData.state,
-          status: 'active',
-          type: 'local'
-        })
-        .select()
-        .single();
-
-      if (supplierError) throw supplierError;
-
-      // 3. Atualizar profile com supplier_id
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          supplier_id: supplierData.id,
-          onboarding_completed: true,
-          tenant_type: 'supplier'
-        })
-        .eq('id', authData.user.id);
-
-      if (profileError) throw profileError;
-
-      toast({
-        title: 'Cadastro realizado com sucesso!',
-        description: 'Você já pode fazer login e responder cotações.'
-      });
-
-      // Redirecionar para login
-      navigate('/supplier/auth');
-
-    } catch (error: any) {
-      console.error('Erro no cadastro:', error);
-      toast({
-        title: 'Erro no cadastro',
-        description: error.message || 'Não foi possível completar o cadastro.',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -140,164 +35,76 @@ export default function SupplierRegister() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 max-w-2xl py-8">
+      <div className="container mx-auto px-4 max-w-2xl py-12">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="w-6 h-6" />
-              Cadastre-se como Fornecedor
+              Cadastro de Fornecedores
             </CardTitle>
             <CardDescription>
-              Preencha os dados abaixo para criar sua conta e começar a receber cotações
+              Seja bem-vindo ao {brandingSettings.companyName}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Nome da Empresa *</Label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Razão social"
-                    className="pl-10"
-                    required
-                    disabled={loading}
-                  />
-                </div>
+          <CardContent className="space-y-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>O cadastro de fornecedores é feito mediante convite.</strong>
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                Para garantir a qualidade e segurança da nossa plataforma, o cadastro de novos fornecedores 
+                é realizado através de convite enviado pelos nossos clientes ou pela administração.
+              </p>
+
+              <div className="bg-muted/50 border rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Como funciona?
+                </h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+                  <li>Um cliente cadastrado envia uma cotação para seu email</li>
+                  <li>Você recebe um link exclusivo para acessar e responder</li>
+                  <li>No primeiro acesso, você completa seu cadastro</li>
+                  <li>Pronto! Já pode responder cotações e gerenciar propostas</li>
+                </ol>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="email">E-mail *</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      placeholder="contato@empresa.com"
-                      className="pl-10"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
+              <div className="flex flex-col gap-3 pt-4">
+                <Button 
+                  onClick={() => navigate('/contact')}
+                  className="w-full"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Solicitar Convite
+                </Button>
 
-                <div>
-                  <Label htmlFor="cnpj">CNPJ *</Label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="cnpj"
-                      value={formData.cnpj}
-                      onChange={(e) => setFormData({...formData, cnpj: e.target.value})}
-                      placeholder="00.000.000/0000-00"
-                      className="pl-10"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate('/')}
+                  className="w-full"
+                >
+                  Voltar para Página Inicial
+                </Button>
               </div>
-
-              <div>
-                <Label htmlFor="phone">Telefone</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    placeholder="(00) 00000-0000"
-                    className="pl-10"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="city">Cidade</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData({...formData, city: e.target.value})}
-                      placeholder="Sua cidade"
-                      className="pl-10"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="state">Estado</Label>
-                  <Input
-                    id="state"
-                    value={formData.state}
-                    onChange={(e) => setFormData({...formData, state: e.target.value})}
-                    placeholder="UF"
-                    maxLength={2}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t">
-                <h3 className="font-semibold mb-4">Senha de Acesso</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="password">Senha *</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      placeholder="Mínimo 6 caracteres"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="confirmPassword">Confirmar Senha *</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                      placeholder="Digite a senha novamente"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Cadastrando...' : 'Criar Conta'}
-              </Button>
 
               <div className="text-center pt-4 border-t">
                 <p className="text-sm text-muted-foreground">
-                  Já tem uma conta?{' '}
+                  Já recebeu um link de cotação?{' '}
                   <Button
                     type="button"
                     variant="link"
                     className="p-0 h-auto"
                     onClick={() => navigate('/supplier/auth')}
                   >
-                    Fazer login
+                    Acesse por aqui
                   </Button>
                 </p>
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
       </div>

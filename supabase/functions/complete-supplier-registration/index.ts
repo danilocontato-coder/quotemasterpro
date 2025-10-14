@@ -101,23 +101,40 @@ serve(async (req) => {
     if (authError) {
       // Se o erro for "email já registrado", buscar e atualizar senha
       if (authError.message?.includes('already been registered') || authError.status === 422) {
-        console.log('⚠️ User already exists, attempting to find via profiles...');
+        console.log('⚠️ User already exists, attempting to find...');
         
         try {
-          // Buscar usuário existente via profiles table (evita bug de listUsers)
-          const { data: profileData, error: profileError } = await supabase
+          let existingUser = null;
+
+          // TENTATIVA 1: Buscar via profiles (mais rápido)
+          const { data: profileData } = await supabase
             .from('profiles')
             .select('id, email')
             .eq('email', supplier.email.toLowerCase())
-            .single();
-          
-          if (profileError || !profileData) {
-            console.error('❌ Error finding user in profiles:', profileError);
-            throw new Error(`Failed to find existing user: ${profileError?.message || 'Not found'}`);
+            .maybeSingle();
+
+          if (profileData) {
+            existingUser = { id: profileData.id, email: profileData.email };
+            console.log(`📧 Found via profiles: ${existingUser.id}`);
+          } else {
+            // TENTATIVA 2 (FALLBACK): Buscar via auth.admin
+            console.log('⚠️ Profile not found, checking auth.users...');
+            
+            const { data: { users } } = await supabase.auth.admin.listUsers();
+            const authUser = users?.find(u => 
+              u.email?.toLowerCase() === supplier.email.toLowerCase()
+            );
+            
+            if (authUser) {
+              existingUser = { id: authUser.id, email: authUser.email };
+              console.log(`📧 Found via auth.users: ${existingUser.id}`);
+            }
           }
-          
-          const existingUser = { id: profileData.id, email: profileData.email };
-          console.log(`📧 Found existing user: ${existingUser.id}`);
+
+          if (!existingUser) {
+            console.error('❌ User not found in profiles or auth.users');
+            throw new Error(`User with email ${supplier.email} not found`);
+          }
 
           // Atualizar senha do usuário existente
           const { error: updateError } = await supabase.auth.admin.updateUserById(
@@ -219,8 +236,8 @@ serve(async (req) => {
       .from('profiles')
       .upsert({
         id: userId,
-        email: supplier.email,
-        name: supplier.name,
+        email: supplier.email.trim().toLowerCase(),
+        name: supplier.name?.trim() || 'Fornecedor',
         role: 'supplier',
         tenant_type: 'supplier',
         supplier_id: supplier.id,
@@ -229,7 +246,8 @@ serve(async (req) => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'id'
+        onConflict: 'id',
+        ignoreDuplicates: false
       });
 
     if (profileError) {

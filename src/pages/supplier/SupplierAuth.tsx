@@ -277,12 +277,21 @@ const SupplierAuth = () => {
             console.log('🔗 Vinculando profile ao fornecedor existente:', targetSupplierId);
             const { error: profileError } = await supabase
               .from('profiles')
-              .update({ 
+              .upsert({
+                id: authData.user.id,
+                email: registerData.email.toLowerCase().trim(),
+                name: registerData.name.trim() || 'Fornecedor',
+                role: 'supplier',
+                tenant_type: 'supplier',
                 supplier_id: targetSupplierId,
                 onboarding_completed: true,
+                active: true,
+                created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
-              })
-              .eq('id', authData.user.id);
+              }, {
+                onConflict: 'id',
+                ignoreDuplicates: false
+              });
             if (profileError) throw profileError;
 
             toast({ 
@@ -310,12 +319,21 @@ const SupplierAuth = () => {
 
             const { error: profileError } = await supabase
               .from('profiles')
-              .update({ 
+              .upsert({
+                id: authData.user.id,
+                email: registerData.email.toLowerCase().trim(),
+                name: registerData.name.trim() || 'Fornecedor',
+                role: 'supplier',
+                tenant_type: 'supplier',
                 supplier_id: supplier.id,
                 onboarding_completed: true,
+                active: true,
+                created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
-              })
-              .eq('id', authData.user.id);
+              }, {
+                onConflict: 'id',
+                ignoreDuplicates: false
+              });
             if (profileError) throw profileError;
 
             toast({ title: 'Sucesso', description: 'Cadastro realizado e sessão criada.' });
