@@ -52,14 +52,17 @@ export const useBranding = () => {
 
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<BrandingSettings>(defaultSettings);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // ⚡ Iniciar como false
+  const [isReady, setIsReady] = useState(true); // ⚡ Marcar como pronto imediatamente
   const { toast } = useToast();
 
-  // Aplicar branding padrão imediatamente para evitar delay
+  // ⚡ Aplicar branding padrão INSTANTANEAMENTE (sincronamente)
   useEffect(() => {
     console.log('🎨 [BRANDING] Aplicando configurações padrão imediatamente...');
     applyBrandingToDOM(defaultSettings);
+    
+    // Carregar configurações reais em background sem bloquear UI
+    loadSettings();
   }, []);
 
   // Carregar configurações baseado no usuário atual
@@ -75,7 +78,14 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const loadGlobalSettings = async () => {
         console.log('🎨 [BRANDING] Tentando carregar via Edge Function pública (public-branding)');
         try {
-          const { data: fnData, error: fnError } = await supabase.functions.invoke('public-branding');
+          // ⚡ OTIMIZAÇÃO: Adicionar timeout de 2s para não travar
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 2000)
+          );
+          
+          const fnPromise = supabase.functions.invoke('public-branding');
+          const { data: fnData, error: fnError } = await Promise.race([fnPromise, timeoutPromise]) as any;
+          
           if (!fnError && fnData?.success && fnData?.data) {
             const d = fnData.data as any;
             const globalSettings = {

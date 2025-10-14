@@ -98,16 +98,17 @@ const Login: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (email) {
-      const timeoutId = setTimeout(() => {
-        detectUserType(email);
-      }, 800);
-      return () => clearTimeout(timeoutId);
-    } else {
-      setDetectedUserType(null);
-    }
-  }, [email]);
+  // ⚡ OTIMIZAÇÃO: Detecção automática desabilitada para melhorar performance
+  // useEffect(() => {
+  //   if (email) {
+  //     const timeoutId = setTimeout(() => {
+  //       detectUserType(email);
+  //     }, 800);
+  //     return () => clearTimeout(timeoutId);
+  //   } else {
+  //     setDetectedUserType(null);
+  //   }
+  // }, [email]);
 
   const getUserTypeInfo = () => {
     switch (detectedUserType) {
