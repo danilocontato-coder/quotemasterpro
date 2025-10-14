@@ -10,6 +10,9 @@ import { LineChart, Line, PieChart as RechartsPie, Pie, Cell, BarChart, Bar, XAx
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -22,6 +25,10 @@ export default function SuperAdminAIUsage() {
   const [provider, setProvider] = useState<string>();
   const [feature, setFeature] = useState<string>();
   const [currency, setCurrency] = useState<Currency>('USD');
+  const [isUpdatingRate, setIsUpdatingRate] = useState(false);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useSuperAdminAIUsage({
     startDate,
@@ -30,6 +37,34 @@ export default function SuperAdminAIUsage() {
     provider,
     feature
   });
+
+  const handleUpdateExchangeRate = async () => {
+    setIsUpdatingRate(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('update-exchange-rates');
+      
+      if (error) throw error;
+
+      if (result?.success) {
+        toast({
+          title: "Taxa atualizada!",
+          description: `1 USD = R$ ${result.rate.toFixed(2)}`,
+        });
+        
+        // Recarregar dados
+        queryClient.invalidateQueries({ queryKey: ['super-admin-ai-usage'] });
+      }
+    } catch (err: any) {
+      console.error('Erro ao atualizar taxa:', err);
+      toast({
+        title: "Erro ao atualizar",
+        description: err.message || "Não foi possível atualizar a taxa de câmbio",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingRate(false);
+    }
+  };
 
   const handleQuickDateFilter = (months: number) => {
     const end = endOfMonth(new Date());
@@ -225,9 +260,21 @@ export default function SuperAdminAIUsage() {
                   : `R$ ${(data?.summary.totalCostBRL || 0).toFixed(2)}`
                 }
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {currency === 'USD' ? 'Dólares' : 'Reais'} • Taxa: R$ {(data?.summary.exchangeRate || 5).toFixed(2)}
-              </p>
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs text-muted-foreground">
+                  {currency === 'USD' ? 'Dólares' : 'Reais'} • Taxa: R$ {(data?.summary.exchangeRate || 5).toFixed(2)}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
+                  onClick={handleUpdateExchangeRate}
+                  disabled={isUpdatingRate}
+                  title="Atualizar cotação do dólar"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isUpdatingRate ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
