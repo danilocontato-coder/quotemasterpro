@@ -959,8 +959,8 @@ const handler = async (req: Request): Promise<Response> => {
           // 📧 SEND EMAIL (if send_email = true AND supplier has email)
           if (send_email && supplier.email) {
             try {
-              // Verificar se fornecedor está registrado (mesmo critério do WhatsApp)
-              const isRegistered = supplier.registration_status === 'completed' || supplier.status === 'active';
+              // Verificar se fornecedor está registrado (MESMO critério do WhatsApp: active + active)
+              const isRegistered = supplier.registration_status === 'active' && supplier.status === 'active';
               
               // Selecionar template baseado no status de registro
               const selectedEmailTemplate = isRegistered ? 'email_quote_request' : 'email_supplier_invite';
@@ -985,6 +985,7 @@ const handler = async (req: Request): Promise<Response> => {
               if (isRegistered) {
                 // Fornecedor registrado: enviar cotação completa
                 console.log(`📧 [${supplier.name}] REGISTERED - Sending full quote email`);
+                console.log(`📧 [${supplier.name}] Email proposal link: ${supplierProposalLink}`);
                 Object.assign(emailTemplateData, {
                   quote_title: quoteTitle,
                   quote_id: quote.local_code || quoteId,
@@ -997,10 +998,15 @@ const handler = async (req: Request): Promise<Response> => {
                   system_logo: systemLogo
                 });
               } else {
-                // Fornecedor não registrado: enviar convite com benefícios
+                // Fornecedor NÃO registrado: usar short link para registro
+                const registrationLink = shortLinkEntry?.short_link 
+                  || linkEntry?.link 
+                  || `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
+                
                 console.log(`📧 [${supplier.name}] PENDING - Sending registration invite email`);
+                console.log(`📧 [${supplier.name}] Email registration link (short): ${registrationLink}`);
                 Object.assign(emailTemplateData, {
-                  registration_link: supplierProposalLink,
+                  registration_link: registrationLink,
                   quote_preview: quoteTitle,
                   benefit_1: '📊 Acompanhamento em tempo real de todas as suas cotações',
                   benefit_2: '💰 Sistema transparente de negociação e pagamentos',
@@ -1012,7 +1018,7 @@ const handler = async (req: Request): Promise<Response> => {
                 });
               }
               
-              console.log(`📧 [${supplier.name}] Sending email to: ${supplier.email} (template: ${selectedEmailTemplate})`);
+              console.log(`📧 [${supplier.name}] Email template: ${selectedEmailTemplate}`);
               
               const { error: emailError } = await supabase.functions.invoke('send-email', {
                 body: {
