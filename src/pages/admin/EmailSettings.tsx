@@ -27,6 +27,7 @@ export default function EmailSettings() {
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testEmail, setTestEmail] = useState('');
   
   const [config, setConfig] = useState<EmailConfig>({
     provider: 'resend',
@@ -89,17 +90,21 @@ export default function EmailSettings() {
   };
 
   const handleTestEmail = async () => {
+    if (!testEmail || !testEmail.includes('@')) {
+      toast({
+        title: 'E-mail inválido',
+        description: 'Por favor, insira um e-mail válido para o teste.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setTesting(true);
     setTestResult(null);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) {
-        throw new Error('Usuário não autenticado');
-      }
-
       const { data, error } = await supabase.functions.invoke('test-email', {
-        body: { to: user.email }
+        body: { to: testEmail }
       });
 
       if (error) throw error;
@@ -112,7 +117,7 @@ export default function EmailSettings() {
       if (data.success) {
         toast({
           title: 'E-mail de teste enviado',
-          description: `Verifique sua caixa de entrada: ${user.email}`,
+          description: `Verifique sua caixa de entrada: ${testEmail}`,
         });
       } else {
         throw new Error(data.message || 'Erro ao enviar e-mail de teste');
@@ -311,8 +316,8 @@ export default function EmailSettings() {
             </TabsContent>
           </Tabs>
 
-          <div className="flex gap-3 mt-6">
-            <Button onClick={handleSave} disabled={loading} className="flex-1">
+          <div className="space-y-4 mt-6">
+            <Button onClick={handleSave} disabled={loading} className="w-full">
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -326,23 +331,41 @@ export default function EmailSettings() {
               )}
             </Button>
 
-            <Button 
-              variant="outline" 
-              onClick={handleTestEmail} 
-              disabled={testing || !config.from_email}
-            >
-              {testing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Testando...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Testar Envio
-                </>
-              )}
-            </Button>
+            <div className="border-t pt-4">
+              <Label htmlFor="test_email" className="text-base font-medium mb-3 block">
+                Testar Envio de E-mail
+              </Label>
+              <div className="flex gap-3">
+                <Input
+                  id="test_email"
+                  type="email"
+                  placeholder="seuemail@exemplo.com"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button 
+                  variant="outline" 
+                  onClick={handleTestEmail} 
+                  disabled={testing || !config.from_email || !testEmail}
+                >
+                  {testing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Testando...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Testar
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Digite o e-mail para onde deseja enviar o teste de configuração
+              </p>
+            </div>
           </div>
 
           {testResult && (
