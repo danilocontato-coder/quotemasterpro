@@ -401,13 +401,22 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       return dbUserPlan;
     }
 
+    // ⚡ OTIMIZAÇÃO: Não logar se ainda estiver carregando cliente
+    if (!currentClient || clientLoading) {
+      return undefined;
+    }
+
     const planId = currentClient?.subscription_plan_id || '';
     
+    // ⚡ OTIMIZAÇÃO: Só logar warning uma vez (não repetir a cada render)
     if (!planId) {
-      console.warn('⚠️ [SubscriptionContext] Sem plan_id no cliente:', {
-        planId,
-        clientId: currentClient?.id
-      });
+      if (!sessionStorage.getItem('logged_no_plan_id')) {
+        console.warn('⚠️ [SubscriptionContext] Sem plan_id no cliente:', {
+          planId,
+          clientId: currentClient?.id
+        });
+        sessionStorage.setItem('logged_no_plan_id', 'true');
+      }
       return undefined;
     }
 
@@ -447,7 +456,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
 
     return foundPlan;
-  }, [dbUserPlan, currentClient?.subscription_plan_id, getPlanById, subscriptionPlans, plansLoading]);
+  }, [dbUserPlan, currentClient?.subscription_plan_id, clientLoading, getPlanById, subscriptionPlans, plansLoading]);
 
   const value = useMemo(() => ({
     currentUsage: getCurrentUsage(),

@@ -58,11 +58,15 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // ⚡ Aplicar branding padrão INSTANTANEAMENTE (sincronamente)
   useEffect(() => {
+    const startTime = performance.now(); // ⚡ FASE 2: Métrica de performance
     console.log('🎨 [BRANDING] Aplicando configurações padrão imediatamente...');
     applyBrandingToDOM(defaultSettings);
     
     // Carregar configurações reais em background sem bloquear UI
-    loadSettings();
+    loadSettings().then(() => {
+      const loadTime = performance.now() - startTime;
+      console.log(`⚡ [BRANDING] Branding carregado em ${loadTime.toFixed(2)}ms`);
+    });
   }, []);
 
   // Carregar configurações baseado no usuário atual

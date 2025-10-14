@@ -1,10 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useBranding } from '@/contexts/BrandingContext';
 
 export const FaviconUpdater = () => {
   const { settings } = useBranding();
+  const lastAppliedFavicon = useRef<string | null>(null);
 
   useEffect(() => {
+    // ⚡ OTIMIZAÇÃO: Só atualizar se o favicon realmente mudou
+    if (settings.favicon === lastAppliedFavicon.current) {
+      return;
+    }
     console.log('🎨 [FAVICON] FaviconUpdater effect disparado. Favicon atual:', settings.favicon);
     
     if (settings.favicon) {
@@ -26,6 +31,9 @@ export const FaviconUpdater = () => {
       newFavicon.href = `${settings.favicon}?v=${timestamp}&bust=${Math.random()}`;
       
       document.head.appendChild(newFavicon);
+      
+      // Atualizar referência do último favicon aplicado
+      lastAppliedFavicon.current = settings.favicon;
       
       console.log('✅ [FAVICON] Favicon atualizado com sucesso:', newFavicon.href);
       

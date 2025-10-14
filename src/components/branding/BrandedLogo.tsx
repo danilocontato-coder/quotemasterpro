@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { Building2 } from 'lucide-react';
 
@@ -16,6 +16,15 @@ export function BrandedLogo({
   className = ''
 }: BrandedLogoProps) {
   const { settings } = useBranding();
+  const lastLoggedLogo = useRef<string | null>(null);
+
+  // ⚡ OTIMIZAÇÃO: Só logar quando o logo realmente mudar
+  useEffect(() => {
+    if (settings.logo && settings.logo !== lastLoggedLogo.current) {
+      console.log('🖼️ BrandedLogo: Logo atualizado para:', settings.logo);
+      lastLoggedLogo.current = settings.logo;
+    }
+  }, [settings.logo]);
 
   const sizeClasses = {
     sm: 'h-6',
@@ -35,9 +44,6 @@ export function BrandedLogo({
 
   // Se tem logo personalizado
   if (settings?.logo && settings.logo !== '/placeholder.svg') {
-    console.log('🖼️ BrandedLogo: Renderizando logo personalizado:', settings.logo);
-    console.log('🖼️ BrandedLogo: Settings completo:', settings);
-    
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <img 
@@ -59,8 +65,6 @@ export function BrandedLogo({
   }
 
   // Fallback: Logo padrão
-  console.log('⚠️ BrandedLogo: Usando logo padrão (sem branding)');
-  
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <Building2 className={`${sizeClasses[size]} text-primary`} />
