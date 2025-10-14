@@ -76,24 +76,17 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isReady, setIsReady] = useState(true); // ⚡ Marcar como pronto imediatamente
   const { toast } = useToast();
 
-  // ⚡ Aplicar branding com cache INSTANTANEAMENTE
+  // ⚡ Aplicar branding padrão INSTANTANEAMENTE (sincronamente)
   useEffect(() => {
     const startTime = performance.now();
     
-    // ⚡ OTIMIZAÇÃO: Usar cache primeiro (se existir)
-    const cachedBranding = loadBrandingCache();
+    // 🧹 LIMPEZA: Remover cache antigo/corrompido
+    localStorage.removeItem('quoteMaster_branding_cache');
     
-    if (cachedBranding) {
-      console.log('🎨 [BRANDING] Aplicando cache instantaneamente');
-      setSettings(cachedBranding);
-      applyBrandingToDOM(cachedBranding);
-    } else {
-      // Fallback apenas se não houver cache
-      console.log('🎨 [BRANDING] Sem cache, usando padrão temporariamente');
-      applyBrandingToDOM(defaultSettings);
-    }
+    console.log('🎨 [BRANDING] Aplicando configurações padrão imediatamente...');
+    applyBrandingToDOM(defaultSettings);
     
-    // Carregar configurações reais em background (sempre)
+    // Carregar configurações reais em background sem bloquear UI
     loadSettings().then(() => {
       const loadTime = performance.now() - startTime;
       console.log(`⚡ [BRANDING] Branding carregado em ${loadTime.toFixed(2)}ms`);
@@ -313,7 +306,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         console.log('🎨 [BRANDING] ✅ Configurações finais aplicadas:', newSettings);
         setSettings(newSettings);
         applyBrandingToDOM(newSettings);
-        saveBrandingCache(newSettings); // ⚡ OTIMIZAÇÃO: Salvar cache
+        // saveBrandingCache(newSettings); // ⚠️ DESABILITADO: Cache temporariamente desativado
       } else {
         console.log('🎨 [BRANDING] Nenhuma configuração encontrada, usando padrão');
         setSettings(defaultSettings);
@@ -547,7 +540,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       // Aplicar branding imediatamente
       applyBrandingToDOM(updatedSettings);
-      saveBrandingCache(updatedSettings); // ⚡ OTIMIZAÇÃO: Salvar cache
+      // saveBrandingCache(updatedSettings); // ⚠️ DESABILITADO: Cache temporariamente desativado
       
       toast({
         title: "Branding atualizado!",
