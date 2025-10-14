@@ -78,6 +78,38 @@ return {
 };
 ```
 
+### ✅ Busca de Fornecedores em Cotações
+
+**SEMPRE buscar da tabela `quote_suppliers` (fonte de verdade):**
+
+```typescript
+// ❌ EVITAR - usar selected_supplier_ids (pode estar desatualizado)
+const { data } = await supabase
+  .from('suppliers')
+  .select('*')
+  .in('id', quote.selected_supplier_ids);
+
+// ✅ CORRETO - buscar de quote_suppliers
+const { data } = await supabase
+  .from('quote_suppliers')
+  .select(`
+    supplier_id,
+    suppliers (
+      id,
+      name,
+      status,
+      phone,
+      whatsapp
+    )
+  `)
+  .eq('quote_id', quote.id);
+```
+
+**Regras:**
+- **NUNCA** usar `selected_supplier_ids` para exibição (pode estar desatualizado)
+- **USAR** `selected_supplier_ids` apenas para criação/atualização inicial
+- **VERIFICAR** que `suppliers_sent_count` corresponde ao total em `quote_suppliers`
+
 ### ✅ Tratamento de Erros
 
 **Padrão para hooks:**

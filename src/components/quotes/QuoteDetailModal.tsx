@@ -246,23 +246,43 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   }, [quote?.id]);
 
   const fetchSupplierNames = useCallback(async () => {
-    if (!quote?.selected_supplier_ids || quote.selected_supplier_ids.length === 0) {
+    if (!quote?.id) {
       setSupplierNames([]);
       return;
     }
     
     try {
+      // Buscar fornecedores associados via quote_suppliers (fonte de verdade)
       const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, name, status, phone, whatsapp')
-        .in('id', quote.selected_supplier_ids);
+        .from('quote_suppliers')
+        .select(`
+          supplier_id,
+          suppliers (
+            id,
+            name,
+            status,
+            phone,
+            whatsapp
+          )
+        `)
+        .eq('quote_id', quote.id);
       
       if (error) throw error;
-      setSupplierNames(data || []);
+      
+      // Transformar para o formato esperado
+      const suppliersList = (data || []).map(qs => ({
+        id: qs.suppliers.id,
+        name: qs.suppliers.name,
+        status: qs.suppliers.status,
+        phone: qs.suppliers.phone,
+        whatsapp: qs.suppliers.whatsapp
+      }));
+      
+      setSupplierNames(suppliersList);
     } catch (error) {
       console.error('Error fetching supplier names:', error);
     }
-  }, [quote?.selected_supplier_ids]);
+  }, [quote?.id]);
 
   useEffect(() => {
     console.log('🔄 QuoteDetailModal useEffect - open:', open, 'quote?.id:', quote?.id);
