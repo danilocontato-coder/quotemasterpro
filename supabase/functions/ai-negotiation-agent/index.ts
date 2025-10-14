@@ -13,10 +13,12 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
 
-const createSupabaseClient = (req: Request) => {
-  const authHeader = req.headers.get('Authorization') || '';
+const createSupabaseClient = () => {
   return createClient(supabaseUrl, supabaseServiceKey, {
-    global: { headers: { Authorization: authHeader } },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
   });
 };
 
@@ -27,7 +29,7 @@ serve(async (req) => {
 
   try {
     const { action, quoteId, negotiationId } = await req.json();
-    const sb = createSupabaseClient(req);
+    const sb = createSupabaseClient();
     console.log(`AI Negotiation Agent - Action: ${action}, Quote: ${quoteId}, Negotiation: ${negotiationId}`);
 
     switch (action) {
