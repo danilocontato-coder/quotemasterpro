@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertCircle, Calendar, MapPin, Clock, Package, FileText, MessageSquare, Send } from 'lucide-react';
+import { AlertCircle, Calendar, MapPin, Clock, Package, FileText, MessageSquare, Send, Plus } from 'lucide-react';
 import { SupplierQuote } from '@/hooks/useSupabaseSupplierQuotes';
 import { useQuoteVisits } from '@/hooks/useQuoteVisits';
 import { VisitTimeline } from '@/components/quotes/VisitTimeline';
@@ -307,7 +307,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {quote.title} - {quote.local_code || quote.id}
+              {quote.id} - {quote.title}
               <Badge>{quote.status}</Badge>
             </DialogTitle>
           </DialogHeader>
@@ -345,7 +345,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-muted-foreground">Cliente</Label>
-                        <p className="font-medium">{quote.client}</p>
+                        <p className="font-medium">{quote.client_name || quote.client || 'Cliente não informado'}</p>
                       </div>
                       <div>
                         <Label className="text-muted-foreground">Prazo de Resposta</Label>
@@ -513,6 +513,28 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                     </Table>
 
                     <div className="mt-4 flex justify-between items-center">
+                      <Button 
+                        onClick={() => {
+                          const newItem: ProposalItem = {
+                            id: crypto.randomUUID(),
+                            productName: '',
+                            description: '',
+                            quantity: 1,
+                            unitPrice: 0,
+                            total: 0,
+                            brand: '',
+                            specifications: ''
+                          };
+                          setProposalItems([...proposalItems, newItem]);
+                        }} 
+                        variant="outline" 
+                        size="sm"
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Adicionar item extra
+                      </Button>
+                      
                       <div className="text-lg font-semibold">
                         Total: R$ {totalValue.toFixed(2)}
                       </div>
