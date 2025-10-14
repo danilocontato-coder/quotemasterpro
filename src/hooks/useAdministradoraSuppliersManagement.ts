@@ -317,19 +317,24 @@ export const useAdministradoraSuppliersManagement = () => {
         },
       });
 
-      if (authError) {
-        console.warn('Erro ao criar usuário de autenticação:', authError);
-        toast.warning('Fornecedor criado, mas falha ao criar acesso. Configure manualmente.');
+      if (authError || !authResult?.success) {
+        console.warn('❌ Erro ao criar usuário de autenticação:', authError || authResult?.error);
+        // Não mostrar toast aqui, o modal vai avisar
+      } else {
+        console.log('✅ Usuário de autenticação criado com sucesso');
       }
 
       toast.success('Fornecedor cadastrado com sucesso!');
       await fetchSuppliers();
       
+      // Sempre retornar credenciais para exibição, mesmo se Edge Function falhar
       return { 
         success: true, 
         supplierId: supplier.id,
         supplier, 
-        credentials: authResult ? { email: data.email, password } : null 
+        credentials: (authResult?.success) 
+          ? { email: data.email, password, user_id: authResult.user_id } 
+          : { email: data.email, password } // Credenciais sem user_id se falhou
       };
     } catch (error: any) {
       console.error('Erro ao criar fornecedor:', error);

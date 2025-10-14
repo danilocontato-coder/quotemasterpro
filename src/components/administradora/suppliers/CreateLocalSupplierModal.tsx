@@ -101,15 +101,24 @@ export const CreateLocalSupplierModal: React.FC<CreateLocalSupplierModalProps> =
     try {
       const result = await onCreateSupplier(formData, password);
       
-      if (result?.success) {
-        // O envio de WhatsApp é feito automaticamente no hook useSupabaseAdminSuppliers
-        // Apenas exibir credenciais ou fechar
-        if (result.credentials) {
-          setCredentials(result.credentials);
-        } else {
-          handleClose();
-        }
+    if (result?.success) {
+      // Sempre exibir credenciais, mesmo se a Edge Function falhar
+      const displayCredentials = result.credentials || {
+        email: formData.email,
+        password: password,
+        supplier_id: result.supplierId || ''
+      };
+      
+      setCredentials(displayCredentials);
+      
+      // Se não tem credentials da Edge Function, avisar que foi criado mas sem acesso automático
+      if (!result.credentials) {
+        toast.warning(
+          'Fornecedor criado! O acesso não foi configurado automaticamente. Use as credenciais abaixo para enviar manualmente.',
+          { duration: 6000 }
+        );
       }
+    }
     } finally {
       setIsSubmitting(false);
     }
