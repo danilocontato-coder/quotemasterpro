@@ -8,6 +8,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 interface NotificationRequest {
   type: 'email' | 'whatsapp' | 'certification' | 'whatsapp_user_credentials'
   to?: string
+  client_id?: string
   supplier_id?: string
   supplier_name?: string
   supplier_email?: string
@@ -37,9 +38,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { type, to, supplier_id, supplier_name, quoteData, user_id, user_name, user_email, temp_password, app_url }: NotificationRequest = await req.json()
+    const { type, to, client_id, supplier_id, supplier_name, quoteData, user_id, user_name, user_email, temp_password, app_url }: NotificationRequest = await req.json()
 
     console.log(`[NOTIFY] Processando notificação tipo ${type}`)
+    console.log(`📍 [NOTIFY] client_id recebido:`, client_id || 'null (usará configuração global)')
 
     let result: any = { success: false }
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -151,7 +153,8 @@ Deno.serve(async (req) => {
       } catch (logErr) { console.warn('[WHATSAPP CREDENTIALS] Falha ao registrar audit log:', logErr) }
 
     } else if (type === 'whatsapp' && quoteData) {
-      const cfg = await resolveEvolutionConfig(supabase, null)
+      const cfg = await resolveEvolutionConfig(supabase, client_id || null)
+      console.log(`📍 [NOTIFY] Escopo Evolution resolvido: ${cfg.scope}`)
       const number = normalizePhone(to || '')
       const text = `🏢 *Nova Cotação - ${quoteData.clientName}*\n\n` +
         `Olá ${supplier_name || 'Fornecedor'}!\n\n` +

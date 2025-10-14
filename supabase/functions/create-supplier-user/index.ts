@@ -91,15 +91,16 @@ Deno.serve(async (req) => {
     
     if (whatsappEnabled) {
       try {
-        // Buscar WhatsApp do fornecedor
+        // Buscar WhatsApp e client_id do fornecedor
         const { data: supplier } = await supabaseAdmin
           .from('suppliers')
-          .select('whatsapp')
+          .select('whatsapp, client_id')
           .eq('id', supplier_id)
           .single();
 
         if (supplier?.whatsapp) {
           console.log('📱 [create-supplier-user] Sending WhatsApp credentials to:', supplier.whatsapp);
+          console.log('📍 [create-supplier-user] Using client_id:', supplier.client_id);
           
           const message = `🔐 *Bem-vindo ao QuoteMaster Pro!*\n\n` +
             `Suas credenciais de acesso:\n\n` +
@@ -112,7 +113,8 @@ Deno.serve(async (req) => {
             body: {
               type: 'whatsapp',
               to: supplier.whatsapp,
-              message
+              message,
+              client_id: supplier.client_id
             }
           });
 
