@@ -269,15 +269,18 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       
       if (error) throw error;
       
-      // Transformar para o formato esperado
-      const suppliersList = (data || []).map(qs => ({
-        id: qs.suppliers.id,
-        name: qs.suppliers.name,
-        status: qs.suppliers.status,
-        phone: qs.suppliers.phone,
-        whatsapp: qs.suppliers.whatsapp
-      }));
+      // Transformar para o formato esperado com validação
+      const suppliersList = (data || [])
+        .filter(qs => qs.suppliers && qs.suppliers.id) // Filtrar entradas inválidas
+        .map(qs => ({
+          id: qs.suppliers.id,
+          name: qs.suppliers.name,
+          status: qs.suppliers.status,
+          phone: qs.suppliers.phone,
+          whatsapp: qs.suppliers.whatsapp
+        }));
       
+      console.log('✅ Fornecedores carregados:', suppliersList.length, suppliersList);
       setSupplierNames(suppliersList);
     } catch (error) {
       console.error('Error fetching supplier names:', error);
