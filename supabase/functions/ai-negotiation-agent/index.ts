@@ -60,19 +60,37 @@ serve(async (req) => {
 async function analyzeQuote(sb: any, quoteId: string) {
   console.log(`Analisando cotação: ${quoteId}`);
   
-  // Buscar chave da API do OpenAI das configurações do sistema (superadmin)
-  const { data: openaiSettings, error: openaiError } = await sb
-    .from('system_settings')
+  // Buscar chave da API do OpenAI com fallback em múltiplas tabelas
+  let openAIApiKey = '';
+  
+  // Tentar primeiro em ai_negotiation_settings
+  const { data: aiSettings } = await sb
+    .from('ai_negotiation_settings')
     .select('setting_value')
     .eq('setting_key', 'openai_api_key')
-    .single();
-
-  let openAIApiKey = '';
-  if (openaiSettings?.setting_value) {
-    openAIApiKey = typeof openaiSettings.setting_value === 'string' 
-      ? openaiSettings.setting_value 
-      : openaiSettings.setting_value.value || '';
+    .eq('active', true)
+    .maybeSingle();
+  
+  if (aiSettings?.setting_value) {
+    const val = aiSettings.setting_value;
+    openAIApiKey = typeof val === 'string' ? val : (val?.value || val?.key || '');
   }
+  
+  // Fallback para system_settings se não encontrou
+  if (!openAIApiKey) {
+    const { data: sysSettings } = await sb
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'openai_api_key')
+      .maybeSingle();
+    
+    if (sysSettings?.setting_value) {
+      const val = sysSettings.setting_value;
+      openAIApiKey = typeof val === 'string' ? val : (val?.value || val?.key || '');
+    }
+  }
+  
+  console.log(`[analyzeQuote] OpenAI API Key ${openAIApiKey ? 'encontrada' : 'NÃO encontrada'}`);
   
   // Buscar cotação, itens e respostas
   const { data: quote, error: quoteError } = await sb
@@ -328,19 +346,37 @@ Responda APENAS no formato JSON:
 async function startNegotiation(sb: any, negotiationId: string) {
   console.log(`Iniciando negociação via WhatsApp: ${negotiationId}`);
   
-  // Buscar chave da API do OpenAI das configurações do sistema (superadmin)
-  const { data: openaiSettings, error: openaiError } = await sb
-    .from('system_settings')
+  // Buscar chave da API do OpenAI com fallback em múltiplas tabelas
+  let openAIApiKey = '';
+  
+  // Tentar primeiro em ai_negotiation_settings
+  const { data: aiSettings } = await sb
+    .from('ai_negotiation_settings')
     .select('setting_value')
     .eq('setting_key', 'openai_api_key')
-    .single();
-
-  let openAIApiKey = '';
-  if (openaiSettings?.setting_value) {
-    openAIApiKey = typeof openaiSettings.setting_value === 'string' 
-      ? openaiSettings.setting_value 
-      : openaiSettings.setting_value.value || '';
+    .eq('active', true)
+    .maybeSingle();
+  
+  if (aiSettings?.setting_value) {
+    const val = aiSettings.setting_value;
+    openAIApiKey = typeof val === 'string' ? val : (val?.value || val?.key || '');
   }
+  
+  // Fallback para system_settings se não encontrou
+  if (!openAIApiKey) {
+    const { data: sysSettings } = await sb
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'openai_api_key')
+      .maybeSingle();
+    
+    if (sysSettings?.setting_value) {
+      const val = sysSettings.setting_value;
+      openAIApiKey = typeof val === 'string' ? val : (val?.value || val?.key || '');
+    }
+  }
+  
+  console.log(`[startNegotiation] OpenAI API Key ${openAIApiKey ? 'encontrada' : 'NÃO encontrada'}`);
   
   // Buscar negociação primeiro
   const { data: negotiation, error: negotiationError } = await sb
