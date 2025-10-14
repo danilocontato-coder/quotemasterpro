@@ -43,13 +43,11 @@ serve(async (req) => {
     }
 
     // 2. Gerar link de reset usando Supabase Auth
-    const redirectUrl = `${Deno.env.get('SUPABASE_URL')?.replace('https://bpsqyaxdhqejozmlejcb.supabase.co', window.location?.origin || 'https://bcadcdb0-8f04-4a14-8998-22e01e1b27d7.lovableproject.com')}/auth/reset-password`;
-    
     const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: redirectUrl
+        redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '')}/auth/reset-password`
       }
     });
 
