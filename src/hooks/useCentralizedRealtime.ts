@@ -51,7 +51,7 @@ export function useCentralizedRealtime() {
     }
     
     if (user.supplierId) {
-      // Para fornecedores: supplier_quotes, products
+      // Para fornecedores: supplier_quotes, products, notifications
       masterChannelRef.current
         .on('postgres_changes',
           { event: '*', schema: 'public', table: 'quotes' },
@@ -65,6 +65,13 @@ export function useCentralizedRealtime() {
           () => {
             console.log('🏭 [CENTRAL-REALTIME] Supplier updated');
             window.dispatchEvent(new CustomEvent('supplier-updated'));
+          }
+        )
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          () => {
+            console.log('🔔 [CENTRAL-REALTIME] Notification updated (supplier)');
+            window.dispatchEvent(new CustomEvent('notifications-updated'));
           }
         );
     }

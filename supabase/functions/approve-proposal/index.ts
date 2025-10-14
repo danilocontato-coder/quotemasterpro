@@ -229,13 +229,13 @@ Obrigado pela sua proposta! 🤝`;
             await supabase.from('notifications').insert({
               user_id: rejectedSupplierUser.auth_user_id,
               title: '📋 Proposta Não Selecionada',
-              message: `Sua proposta para "${quote.title}" não foi selecionada. Outra proposta foi aprovada pelo cliente.`,
-              type: 'proposal_rejected',
+              message: `A cotação "${quote.title}" foi finalizada. Outra proposta foi escolhida pelo cliente.`,
+              type: 'info',
               priority: 'normal',
               metadata: {
                 quote_id: quoteId,
                 response_id: rejectedResponse.id,
-                reason: 'Outra proposta foi selecionada'
+                rejected_at: new Date().toISOString()
               }
             });
           }
