@@ -28,7 +28,7 @@ import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
 import { QuoteComparison } from './QuoteComparison';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
-import { QuoteMarkAsReceivedButton } from './QuoteMarkAsReceivedButton';
+// QuoteMarkAsReceivedButton removido - marcação automática implementada
 import { QuoteItemsList } from './QuoteItemsList';
 import { VisitSection } from './VisitSection';
 import { VisitsTab } from './VisitsTab';
@@ -287,6 +287,46 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       quoteId: quote?.id 
     });
   }, [auditLogs, quote?.id]);
+
+  // Auto-marcar como recebida quando visualizar propostas
+  const autoMarkAsReceived = useCallback(async () => {
+    if (!quote?.id || quote.status !== 'receiving' || proposals.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from('quotes')
+        .update({ status: 'received' })
+        .eq('id', quote.id);
+
+      if (error) {
+        console.error('❌ Erro ao marcar como recebida:', error);
+        return;
+      }
+
+      toast({
+        title: 'Status atualizado',
+        description: 'Cotação marcada automaticamente como "Recebida"',
+      });
+
+      // Notificar componente pai da mudança
+      if (onStatusChange) {
+        onStatusChange(quote.id, 'received');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao marcar como recebida:', error);
+    }
+  }, [quote?.id, quote?.status, proposals.length, onStatusChange, toast]);
+
+  // Trigger auto-marcação quando abrir modal com propostas
+  useEffect(() => {
+    if (open && proposals.length > 0 && quote?.status === 'receiving') {
+      const timer = setTimeout(() => {
+        autoMarkAsReceived();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [open, proposals.length, quote?.status, autoMarkAsReceived]);
 
   const negotiation = quote ? getNegotiationByQuoteId(quote.id) : null;
 
@@ -584,13 +624,6 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                         <Send className="h-4 w-4" />
                         Enviar para Fornecedores
                       </Button>
-                    )}
-                    
-                    {quote.status === 'receiving' && (
-                      <QuoteMarkAsReceivedButton
-                        quoteId={quote.id}
-                        currentStatus={quote.status}
-                      />
                     )}
 
                     {proposals.length > 0 && (

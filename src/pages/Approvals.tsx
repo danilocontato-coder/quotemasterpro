@@ -26,7 +26,6 @@ import {
   Users
 } from "lucide-react";
 import { ApprovalDetailModal } from "@/components/approvals/ApprovalDetailModal";
-import { QuoteMarkAsReceivedButton } from "@/components/quotes/QuoteMarkAsReceivedButton";
 import { useSupabaseApprovals, type Approval } from "@/hooks/useSupabaseApprovals";
 import { useSupabaseApprovalLevels, type ApprovalLevel } from "@/hooks/useSupabaseApprovalLevels";
 import { PageLoader } from "@/components/ui/page-loader";
