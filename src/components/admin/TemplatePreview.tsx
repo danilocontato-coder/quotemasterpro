@@ -48,6 +48,7 @@ const getTemplateTypeColor = (type: string) => {
 
 export function TemplatePreview({ template, variables = {} }: TemplatePreviewProps) {
   const Icon = getTemplateTypeIcon(template.template_type);
+  const isEmailTemplate = template.template_type.startsWith('email_');
   
   // Replace template variables for preview
   const renderContent = (content: string) => {
@@ -58,6 +59,42 @@ export function TemplatePreview({ template, variables = {} }: TemplatePreviewPro
     return rendered;
   };
 
+  // For email templates, render HTML
+  if (isEmailTemplate) {
+    const htmlContent = renderContent(template.message_content);
+    
+    return (
+      <Card className="max-w-2xl">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4" />
+              <CardTitle className="text-sm font-medium">{template.name}</CardTitle>
+            </div>
+            <Badge 
+              variant="outline" 
+              className={`text-xs ${getTemplateTypeColor(template.template_type)}`}
+            >
+              E-MAIL
+            </Badge>
+          </div>
+          {template.subject && (
+            <p className="text-sm text-muted-foreground font-medium">
+              <strong>Assunto:</strong> {renderContent(template.subject)}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div 
+            className="border rounded-lg overflow-hidden bg-white"
+            dangerouslySetInnerHTML={{ __html: htmlContent }}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // For WhatsApp templates, render as text
   return (
     <Card className="max-w-md">
       <CardHeader className="pb-3">

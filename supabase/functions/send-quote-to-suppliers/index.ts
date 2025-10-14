@@ -171,6 +171,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Load WhatsApp template with new default logic
     let whatsappTemplate = null;
+    let emailTemplate = null;
     
     try {
       // First try to find client-specific default template
@@ -178,6 +179,16 @@ const handler = async (req: Request): Promise<Response> => {
         .from('whatsapp_templates')
         .select('*')
         .eq('template_type', 'quote_request')
+        .eq('active', true)
+        .eq('client_id', quote.client_id)
+        .eq('is_default', true)
+        .maybeSingle();
+
+      // Load email template in parallel
+      let { data: clientEmailTemplate } = await supabase
+        .from('whatsapp_templates')
+        .select('*')
+        .eq('template_type', 'email_quote_request')
         .eq('active', true)
         .eq('client_id', quote.client_id)
         .eq('is_default', true)
@@ -213,8 +224,24 @@ const handler = async (req: Request): Promise<Response> => {
           whatsappTemplate = fallbackTemplate;
         }
       }
+
+      // Same logic for email template
+      if (clientEmailTemplate) {
+        emailTemplate = clientEmailTemplate;
+      } else {
+        const { data: globalEmailTemplate } = await supabase
+          .from('whatsapp_templates')
+          .select('*')
+          .eq('template_type', 'email_quote_request')
+          .eq('active', true)
+          .eq('is_global', true)
+          .eq('is_default', true)
+          .maybeSingle();
+        
+        emailTemplate = globalEmailTemplate;
+      }
     } catch (error) {
-      console.warn('Error loading WhatsApp template:', error);
+      console.warn('Error loading templates:', error);
     }
     
     // Buscar template de convite de registro (para fornecedores não cadastrados)
@@ -875,6 +902,42 @@ const handler = async (req: Request): Promise<Response> => {
 
           console.log(`Message sent to ${supplier.name} (${finalPhone}) via ${sent.endpoint}`);
           successCount++;
+
+          // 📧 Send email if send_email is true and supplier has email
+          if (send_email && supplier.email && emailTemplate) {
+            try {
+              console.log(`📧 [${supplier.name}] Sending email to: ${supplier.email}`);
+              
+              const { error: emailError } = await supabase.functions.invoke('send-email', {
+                body: {
+                  to: supplier.email,
+                  template_type: 'email_quote_request',
+                  template_data: {
+                    supplier_name: supplier.name,
+                    client_name: clientName,
+                    client_email: client.email || 'Não informado',
+                    client_phone: client.phone || '',
+                    quote_title: quoteTitle,
+                    quote_id: quote.local_code || quoteId,
+                    deadline_formatted: deadline,
+                    items_count: String(items.length || 0),
+                    items_list: itemsList,
+                    total_formatted: totalFormatted,
+                    proposal_link: supplierProposalLink
+                  },
+                  client_id: quote.client_id
+                }
+              });
+              
+              if (emailError) {
+                console.error(`❌ [${supplier.name}] Email error:`, emailError);
+              } else {
+                console.log(`✅ [${supplier.name}] Email sent successfully`);
+              }
+            } catch (emailError: any) {
+              console.error(`❌ [${supplier.name}] Failed to send email:`, emailError);
+            }
+          }
 
         } catch (error: any) {
           console.error(`Error sending to ${supplier.name}:`, error);

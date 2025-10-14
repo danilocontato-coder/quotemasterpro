@@ -54,6 +54,70 @@ serve(async (req) => {
     const config: EmailConfig = settingsData.setting_value as EmailConfig;
     const payload: EmailPayload = await req.json();
 
+    // Load branding settings
+    const { data: brandingData } = await supabase
+      .from('branding_settings')
+      .select('*')
+      .eq('is_default', true)
+      .maybeSingle();
+
+    const branding = {
+      company_name: brandingData?.company_name || 'QuoteMaster Pro',
+      logo_url: brandingData?.logo_url || '',
+      primary_color: brandingData?.primary_color || '#003366',
+      secondary_color: brandingData?.secondary_color || '#F5F5F5',
+      accent_color: brandingData?.accent_color || '#0066CC',
+      footer_text: brandingData?.footer_text || '© 2025 QuoteMaster Pro'
+    };
+
+    // If template_type provided, load template
+    if (payload.template_type) {
+      console.log('📧 Loading template:', payload.template_type);
+      
+      const { data: template } = await supabase
+        .from('whatsapp_templates')
+        .select('*')
+        .eq('template_type', payload.template_type)
+        .eq('active', true)
+        .or(`client_id.eq.${payload.client_id || 'null'},is_global.eq.true`)
+        .order('client_id', { nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (template) {
+        console.log('✅ Template loaded:', template.name);
+        
+        // Replace branding variables
+        let htmlContent = template.message_content;
+        
+        // Inject branding
+        htmlContent = htmlContent
+          .replace(/{{primary_color}}/g, branding.primary_color)
+          .replace(/{{accent_color}}/g, branding.accent_color)
+          .replace(/{{secondary_color}}/g, branding.secondary_color)
+          .replace(/{{company_name}}/g, branding.company_name)
+          .replace(/{{footer_text}}/g, branding.footer_text);
+
+        // Replace template_data variables
+        if (payload.template_data) {
+          Object.entries(payload.template_data).forEach(([key, value]) => {
+            const regex = new RegExp(`{{${key}}}`, 'g');
+            htmlContent = htmlContent.replace(regex, String(value || ''));
+          });
+        }
+
+        // Remove any remaining unreplaced variables
+        htmlContent = htmlContent.replace(/{{[^}]+}}/g, '');
+
+        payload.subject = template.subject || payload.subject;
+        payload.html = htmlContent;
+        
+        console.log('📝 Subject:', payload.subject);
+      } else {
+        console.warn('⚠️ Template not found:', payload.template_type);
+      }
+    }
+
     console.log('📧 Enviando e-mail via:', config.provider);
 
     let result: any;
