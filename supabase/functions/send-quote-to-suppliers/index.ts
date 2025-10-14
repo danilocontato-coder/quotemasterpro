@@ -1079,24 +1079,28 @@ const handler = async (req: Request): Promise<Response> => {
               client_name: templateVariables.client_name,
               deadline: templateVariables.deadline_formatted
             },
+            client_id: quote.client_id,  // ✅ ADICIONAR client_id
             supplier_id: supplier.id,
             notify_all_supplier_users: true
           }));
 
-          // Create notifications for all suppliers
+          // Create notifications for all suppliers (non-blocking)
           for (const notificationData of supplierNotifications) {
             try {
+              console.log('📬 Creating notification for supplier:', notificationData.supplier_id);
+              
               const { error: notificationError } = await supabase.functions.invoke('create-notification', {
                 body: notificationData
               });
 
               if (notificationError) {
-                console.error('Failed to create supplier notification:', notificationError);
+                console.warn('⚠️ Notification failed (non-critical):', notificationError);
               } else {
-                console.log(`Created notification for supplier: ${notificationData.supplier_id}`);
+                console.log(`✅ Notification created for supplier: ${notificationData.supplier_id}`);
               }
-            } catch (notifyError) {
-              console.error('Error creating supplier notification:', notifyError);
+            } catch (notifyError: any) {
+              // Não bloquear fluxo principal se notificação falhar
+              console.warn('⚠️ Failed to create notification (non-critical):', notifyError.message);
             }
           }
         } catch (error) {

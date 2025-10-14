@@ -43,6 +43,21 @@ serve(async (req) => {
       notify_all_supplier_users = false
     } = body
 
+    // Validar que pelo menos um identificador foi fornecido
+    if (!user_id && !client_id && !supplier_id && !notify_all_client_users && !notify_all_supplier_users) {
+      console.error('❌ Missing required parameters')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'É necessário fornecer user_id, client_id, supplier_id ou notify_all_*' 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
+        }
+      )
+    }
+
     console.log('🔔 Creating notification:', { 
       user_id, 
       client_id, 
@@ -85,6 +100,11 @@ serve(async (req) => {
 
       targetUserIds = supplierUsers?.map(user => user.id) || []
       console.log('🏭 Found supplier users for notifications:', targetUserIds.length)
+      
+      // Se não encontrou usuários, logar mas não falhar
+      if (targetUserIds.length === 0) {
+        console.warn('⚠️ No active users found for supplier, notification will be skipped')
+      }
     } else if (supplier_id && !notify_all_supplier_users) {
       // Buscar usuários do fornecedor (modo individual)
       const { data: supplierUsers, error: supplierUsersError } = await supabaseClient
@@ -107,12 +127,17 @@ serve(async (req) => {
     }
 
     if (targetUserIds.length === 0) {
-      console.log('⚠️ No target users found')
+      console.log('⚠️ No target users found - returning success (non-critical)')
       return new Response(
-        JSON.stringify({ success: false, error: 'No target users found' }),
+        JSON.stringify({ 
+          success: true, 
+          message: 'No active users found for notification target',
+          notifications_created: 0,
+          target_users: 0
+        }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
+          status: 200
         }
       )
     }
