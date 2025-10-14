@@ -685,7 +685,7 @@ export default function Quotes() {
                       Respostas
                     </span>
                     <span className="font-semibold text-sm">
-                      {quote.responses_count || 0}/{quote.suppliers_sent_count || 0}
+                      {quote.responses_count || 0}/{quote.selected_supplier_ids?.length || 0}
                     </span>
                   </div>
                   
