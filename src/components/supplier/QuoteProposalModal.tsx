@@ -383,7 +383,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {quote.title} - {quote.local_code || quote.id}
+            {quote.id} - {quote.title}
             <Badge variant={quote.status === 'pending' ? 'secondary' : quote.status === 'proposal_sent' ? 'default' : 'outline'}>
               {quote.status === 'pending' ? 'Aguardando Proposta' :
                quote.status === 'proposal_sent' ? 'Proposta Enviada' : 
@@ -428,7 +428,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Cliente</Label>
-                    <p className="font-medium">{quote.client || 'Nome do cliente não disponível'}</p>
+                    <p className="font-medium">{quote.client_name || quote.client || 'Cliente não informado'}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Prazo</Label>
@@ -616,6 +616,20 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                     </Card>
                   ))}
                 </div>
+
+                {canEdit && proposalItems.length > 0 && (
+                  <div className="flex justify-center pt-4">
+                    <Button 
+                      onClick={handleAddItem} 
+                      variant="outline" 
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Adicionar outro item
+                    </Button>
+                  </div>
+                )}
 
                 <Separator className="my-6" />
 
