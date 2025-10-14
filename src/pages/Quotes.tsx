@@ -202,7 +202,7 @@ export default function Quotes() {
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (quote.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quote.id.toLowerCase().includes(searchTerm.toLowerCase());
+                         (quote.local_code || quote.id).toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
     if (activeFilter === "draft") {

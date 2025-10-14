@@ -106,7 +106,7 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
                   {approvedQuotes.map((quote) => (
                     <SelectItem key={quote.id} value={quote.id}>
                       <div className="flex flex-col">
-                        <span className="font-medium">#{quote.local_code || quote.id} - {quote.title}</span>
+                        <span className="font-medium">#{quote.local_code} - {quote.title}</span>
                         <span className="text-sm text-muted-foreground">
                           Valor: R$ {quote.total?.toFixed(2) || '0,00'} | Cliente: {quote.client_name}
                           {quote.supplier_name && ` | Fornecedor: ${quote.supplier_name}`}

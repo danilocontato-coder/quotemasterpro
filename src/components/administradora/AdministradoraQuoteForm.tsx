@@ -203,14 +203,10 @@ export function AdministradoraQuoteForm({
       const clientId = administradoraId;
       const onBehalfOfClientId = formData.targetType === 'condominio' ? formData.targetCondominioId : null;
 
-      // Gerar ID temporário
-      const tempId = `RFQ${Date.now().toString().slice(-6)}`;
-      
-      // Criar cotação
+      // Criar cotação (sem id manual - deixar o trigger do banco gerar id e local_code)
       const { data: quotes, error: quoteError } = await supabase
         .from('quotes')
         .insert([{
-          id: tempId,
           client_id: clientId,
           client_name: administradoraName,
           title: formData.title,
@@ -226,7 +222,7 @@ export function AdministradoraQuoteForm({
           selected_supplier_ids: formData.supplier_ids,
           requires_visit: formData.requires_visit || false,
           visit_deadline: formData.visit_deadline ? new Date(formData.visit_deadline).toISOString() : null
-        }])
+        } as any]) // Cast para contornar verificação de id/local_code (gerados pelo trigger)
         .select();
 
       if (quoteError || !quotes || quotes.length === 0) {

@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 
 // Quote interface matching the database structure
 export interface Quote {
-  id: string;
-  local_code?: string; // RFQ01, RFQ02... por cliente
+  id: string; // UUID técnico interno (gerado pelo banco)
+  local_code?: string; // RFQ01, RFQ02... (código visual para usuário, gerado pelo banco)
   title: string;
   description?: string;
   total?: number;

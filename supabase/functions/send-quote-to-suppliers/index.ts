@@ -291,7 +291,7 @@ const handler = async (req: Request): Promise<Response> => {
       client_email: client.email || 'Não informado',
       client_phone: client.phone || '',
       quote_title: quote.title,
-      quote_id: quote.id,
+      quote_id: quote.local_code || quote.id, // Usar local_code (RFQ01) ao invés de UUID
       deadline: deadlineFormatted,
       deadline_formatted: deadlineFormatted,
       total: totalFormatted,

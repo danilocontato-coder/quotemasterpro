@@ -71,7 +71,7 @@ export function DeleteConfirmationModal({
             <div>
               <AlertDialogTitle>{title}</AlertDialogTitle>
               <AlertDialogDescription className="text-left mt-1">
-                <strong>{quote.local_code || quote.id}</strong> - {quote.title}
+                <strong>{quote.local_code}</strong> - {quote.title}
               </AlertDialogDescription>
             </div>
           </div>

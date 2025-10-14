@@ -393,7 +393,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   {quote.title}
                 </DialogTitle>
                 <p className="text-muted-foreground mt-1">
-                  {quote.local_code || quote.id} • Empresa: {quote.client_name}
+                  #{quote.local_code} • Empresa: {quote.client_name}
                 </p>
               </div>
               <div className="flex items-center gap-3">

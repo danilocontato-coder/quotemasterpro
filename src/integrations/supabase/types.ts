@@ -2847,7 +2847,7 @@ export type Database = {
           description: string | null
           id: string
           items_count: number | null
-          local_code: string | null
+          local_code: string
           on_behalf_of_client_id: string | null
           requires_visit: boolean | null
           responses_count: number | null
@@ -2872,7 +2872,7 @@ export type Database = {
           description?: string | null
           id: string
           items_count?: number | null
-          local_code?: string | null
+          local_code: string
           on_behalf_of_client_id?: string | null
           requires_visit?: boolean | null
           responses_count?: number | null
@@ -2897,7 +2897,7 @@ export type Database = {
           description?: string | null
           id?: string
           items_count?: number | null
-          local_code?: string | null
+          local_code?: string
           on_behalf_of_client_id?: string | null
           requires_visit?: boolean | null
           responses_count?: number | null
