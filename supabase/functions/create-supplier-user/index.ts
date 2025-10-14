@@ -62,7 +62,21 @@ Deno.serve(async (req) => {
 
     console.log('✅ [create-supplier-user] Auth user created:', authUser.user.id);
 
-    // 2. Vincular usuário ao fornecedor na tabela profiles
+    // 2. Buscar client_id do fornecedor
+    const { data: supplierInfo, error: supplierFetchError } = await supabaseAdmin
+      .from('suppliers')
+      .select('client_id')
+      .eq('id', supplier_id)
+      .single();
+
+    if (supplierFetchError) {
+      console.error('❌ [create-supplier-user] Erro ao buscar client_id do fornecedor:', supplierFetchError);
+    }
+
+    const linkedClientId = supplierInfo?.client_id;
+    console.log('🔗 [create-supplier-user] Client ID vinculado ao fornecedor:', linkedClientId);
+
+    // 3. Vincular usuário ao fornecedor na tabela profiles
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
@@ -71,6 +85,7 @@ Deno.serve(async (req) => {
         name,
         role: 'supplier',
         supplier_id,
+        client_id: linkedClientId,
         tenant_type: 'supplier',
         active: true,
         onboarding_completed: true,
@@ -84,6 +99,42 @@ Deno.serve(async (req) => {
       console.warn('⚠️ [create-supplier-user] Continuando mesmo com erro no profile');
     } else {
       console.log('✅ [create-supplier-user] Profile linked successfully');
+    }
+
+    // 4. Criar registro na tabela users (módulo "Usuários")
+    const { error: usersError } = await supabaseAdmin
+      .from('users')
+      .upsert({
+        auth_user_id: authUser.user.id,
+        client_id: linkedClientId,
+        name,
+        email,
+        role: 'supplier',
+        status: 'active'
+      }, {
+        onConflict: 'auth_user_id'
+      });
+
+    if (usersError) {
+      console.error('❌ [create-supplier-user] Erro ao criar registro em users:', usersError);
+    } else {
+      console.log('✅ [create-supplier-user] Registro criado em users com client_id:', linkedClientId);
+    }
+
+    // 5. Criar registro na tabela user_roles
+    const { error: rolesError } = await supabaseAdmin
+      .from('user_roles')
+      .insert({
+        user_id: authUser.user.id,
+        role: 'supplier'
+      })
+      .select()
+      .single();
+
+    if (rolesError && rolesError.code !== '23505') { // 23505 = unique violation (já existe)
+      console.error('❌ [create-supplier-user] Erro ao criar user_role:', rolesError);
+    } else {
+      console.log('✅ [create-supplier-user] Role "supplier" atribuída ao usuário');
     }
 
     // 3. Opcional: Enviar credenciais via WhatsApp (se configurado)
