@@ -820,7 +820,7 @@ const handler = async (req: Request): Promise<Response> => {
             }
           } else {
             // 🎯 Fornecedor NÃO cadastrado: enviar convite para completar cadastro
-            const registrationLink = `${systemBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
+            const registrationLink = `${frontendBaseUrl}/supplier/register/${linkEntry?.token || 'token'}`;
             
             console.log(`🔗 [${supplier.name}] Registration link: ${registrationLink}`);
             
