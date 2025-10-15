@@ -6,6 +6,9 @@ export const getStatusText = (status: string) => {
     case 'receiving': return 'Recebendo Propostas';
     case 'received': return 'Recebida';
     case 'ai_analyzing': return 'IA Analisando';
+    case 'ai_negotiating': return 'IA Negociando';
+    case 'awaiting_ai_approval': return 'Aguardando Aprovação da IA';
+    case 'pending_approval': return 'Aguardando Aprovação Manual';
     case 'under_review': return 'Em Análise';
     case 'approved': return 'Aprovada';
     case 'rejected': return 'Rejeitada';
@@ -29,6 +32,9 @@ export const getStatusColor = (status: string) => {
     case 'receiving': return 'bg-cyan-100 text-cyan-800';
     case 'received': return 'bg-emerald-100 text-emerald-800';
     case 'ai_analyzing': return 'bg-purple-100 text-purple-800';
+    case 'ai_negotiating': return 'bg-indigo-100 text-indigo-800';
+    case 'awaiting_ai_approval': return 'bg-violet-100 text-violet-800';
+    case 'pending_approval': return 'bg-orange-100 text-orange-800';
     case 'under_review': return 'bg-yellow-100 text-yellow-800';
     case 'approved': return 'bg-green-100 text-green-800';
     case 'rejected': return 'bg-red-100 text-red-800';
@@ -61,7 +67,17 @@ export const getValidStatusTransitions = (currentStatus: string): string[] => {
     case 'visit_overdue':
       return ['visit_scheduled', 'cancelled'];
     case 'receiving':
-      return ['under_review', 'cancelled'];
+      return ['received', 'cancelled'];
+    case 'received':
+      return ['ai_analyzing', 'pending_approval', 'under_review', 'approved', 'rejected'];
+    case 'ai_analyzing':
+      return ['ai_negotiating', 'pending_approval', 'rejected'];
+    case 'ai_negotiating':
+      return ['awaiting_ai_approval', 'rejected'];
+    case 'awaiting_ai_approval':
+      return ['pending_approval', 'approved', 'rejected'];
+    case 'pending_approval':
+      return ['approved', 'rejected'];
     case 'under_review':
       return ['approved', 'rejected', 'receiving'];
     case 'approved':

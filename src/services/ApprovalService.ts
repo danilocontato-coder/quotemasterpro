@@ -218,15 +218,34 @@ export class ApprovalService {
     }
   }
 
-  // Verificar se uma cotação precisa de aprovação
+  // Verificar se uma cotação precisa de aprovação (usa valor negociado se existir)
   static async checkIfApprovalRequired(quoteId: string, amount: number, clientId: string) {
     try {
+      // Verificar se existe negociação IA aprovada para esta cotação
+      const { data: aiNegotiation } = await supabase
+        .from('ai_negotiations')
+        .select('negotiated_amount, status, human_approved')
+        .eq('quote_id', quoteId)
+        .eq('human_approved', true)
+        .single();
+
+      // Usar o valor negociado pela IA se existir e foi aprovado
+      const finalAmount = aiNegotiation?.negotiated_amount || amount;
+
+      console.log('[ApprovalService] Checking approval requirement:', {
+        quoteId,
+        originalAmount: amount,
+        negotiatedAmount: aiNegotiation?.negotiated_amount,
+        finalAmount,
+        aiApproved: !!aiNegotiation
+      });
+
       const { data: approvalLevels, error } = await supabase
         .from('approval_levels')
         .select('*')
         .eq('client_id', clientId)
         .eq('active', true)
-        .lte('amount_threshold', amount)
+        .lte('amount_threshold', finalAmount)
         .order('amount_threshold', { ascending: false })
         .limit(1);
 

@@ -627,11 +627,11 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       }
     ];
 
-    // Atualizar negociação para status 'negotiating'
+    // Atualizar negociação para status 'awaiting_approval'
     const { data: updatedNegotiation, error: updateError } = await sb
       .from('ai_negotiations')
       .update({
-        status: 'negotiating',
+        status: 'awaiting_approval',
         conversation_log: conversationLog,
         updated_at: new Date().toISOString()
       })
@@ -642,6 +642,15 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     if (updateError) {
       throw new Error('Erro ao atualizar negociação');
     }
+
+    // Atualizar status da cotação para aguardar aprovação da IA
+    await sb
+      .from('quotes')
+      .update({ 
+        status: 'awaiting_ai_approval',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', updatedNegotiation.quote_id);
 
     console.log(`Negociação ${negotiationId} iniciada via WhatsApp. Aguardando resposta do fornecedor.`);
 
