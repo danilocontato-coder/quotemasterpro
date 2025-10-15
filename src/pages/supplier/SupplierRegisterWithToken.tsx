@@ -90,7 +90,7 @@ export default function SupplierRegisterWithToken() {
           ...prev,
           document_number: data.supplier.document_number || data.supplier.cnpj || '',
           document_type: data.supplier.document_type || 'cnpj',
-          whatsapp: data.supplier.whatsapp || data.supplier.phone || '',
+          whatsapp: formatPhoneNumber(data.supplier.whatsapp || data.supplier.phone || ''),
           city: data.supplier.city || '',
           state: data.supplier.state || '',
           specialties: data.supplier.specialties || []
