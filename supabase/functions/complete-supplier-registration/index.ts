@@ -284,7 +284,8 @@ serve(async (req) => {
     let whatsappError = null;
 
     try {
-      const evolutionConfig = await resolveEvolutionConfig(supabase, supplier.client_id, true);
+      // CRITICAL: Usar instância GLOBAL para enviar credenciais, nunca a instância do cliente
+      const evolutionConfig = await resolveEvolutionConfig(supabase, null, true);
       
       if (evolutionConfig.apiUrl && evolutionConfig.token) {
         const phone = normalizePhone(supplier.whatsapp || supplier.phone || '');
