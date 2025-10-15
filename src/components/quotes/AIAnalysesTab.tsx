@@ -282,14 +282,25 @@ export function AIAnalysesTab({ quoteId, onReanalyze }: AIAnalysesTabProps) {
         )}
       </div>
 
-      {/* Modal de Visualização */}
+      {/* Modal de Visualização - Análise Comparativa */}
       {selectedAnalysis && selectedAnalysis.type === 'comparative' && (
         <ConsultantAnalysisModal
           open={!!selectedAnalysis}
           onClose={() => setSelectedAnalysis(null)}
           comparativeAnalysis={selectedAnalysis.data}
-          individualAnalyses={new Map()} // Poderia ser populado se necessário
+          individualAnalyses={new Map()}
           proposals={selectedAnalysis.proposals || []}
+        />
+      )}
+
+      {/* Modal de Visualização - Análise Individual */}
+      {selectedAnalysis && selectedAnalysis.type === 'individual' && (
+        <ConsultantAnalysisModal
+          open={!!selectedAnalysis}
+          onClose={() => setSelectedAnalysis(null)}
+          comparativeAnalysis={null}
+          individualAnalyses={selectedAnalysis.data as Map<string, ProposalQualitativeAnalysis>}
+          proposals={[]}
         />
       )}
     </div>

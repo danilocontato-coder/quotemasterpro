@@ -113,8 +113,35 @@ export function useProposalConsultant() {
         const proposal = proposals[i];
         setAnalysisProgress({ current: i + 1, total: proposals.length + 1 });
         
-        const analysis = await proposalConsultantService.analyzeProposal(proposal);
-        analyses.set(proposal.id, analysis);
+        try {
+          console.log(`🔍 Analisando proposta ${i + 1}/${proposals.length}: ${proposal.supplierName}`);
+          
+          const analysis = await proposalConsultantService.analyzeProposal(proposal);
+          analyses.set(proposal.id, analysis);
+
+          // Salvar análise individual no banco
+          await saveAnalysisToDatabase(
+            proposal.quoteId,
+            'individual',
+            analysis,
+            proposal.id,
+            proposal.supplierId,
+            proposal.supplierName
+          );
+
+          toast({
+            title: 'Análise Individual Concluída',
+            description: `${proposal.supplierName} analisado com sucesso.`,
+          });
+        } catch (error) {
+          console.error(`Erro ao analisar ${proposal.supplierName}:`, error);
+          toast({
+            title: 'Erro na Análise Individual',
+            description: `Falha ao analisar ${proposal.supplierName}. Continuando...`,
+            variant: 'destructive'
+          });
+          // Continua para próxima proposta mesmo com erro
+        }
       }
 
       setIndividualAnalyses(analyses);
@@ -150,7 +177,7 @@ export function useProposalConsultant() {
       setIsAnalyzing(false);
       setAnalysisProgress({ current: 0, total: 0 });
     }
-  }, [toast]);
+  }, [toast, saveAnalysisToDatabase]);
 
   const getAnalysis = useCallback((proposalId: string) => {
     return individualAnalyses.get(proposalId);
