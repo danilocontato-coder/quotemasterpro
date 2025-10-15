@@ -182,8 +182,10 @@ serve(async (req) => {
     if (supplier_data?.document_number) updateData.document_number = supplier_data.document_number;
     
     // Contato
-    if (supplier_data?.whatsapp) updateData.whatsapp = supplier_data.whatsapp;
-    if (supplier_data?.phone) updateData.phone = supplier_data.phone;
+    if (supplier_data?.whatsapp) {
+      updateData.whatsapp = normalizePhone(supplier_data.whatsapp);
+      updateData.phone = normalizePhone(supplier_data.whatsapp); // Manter phone sincronizado
+    }
     if (supplier_data?.website) updateData.website = supplier_data.website;
     
     // Endereço completo como JSON

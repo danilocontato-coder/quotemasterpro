@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import { validateCPF, validateCNPJ, normalizeDocument } from '@/utils/documentValidation';
 
-// Validação de telefone brasileiro (com ou sem formatação)
-const phoneRegex = /^(\(\d{2}\)\s?)?\d{4,5}-?\d{4}$/;
-
 // Validação de CEP (com ou sem formatação)
 const cepRegex = /^\d{5}-?\d{3}$/;
 
@@ -18,7 +15,11 @@ export const supplierRegistrationSchema = z.object({
   // WhatsApp obrigatório
   whatsapp: z.string()
     .min(1, 'WhatsApp é obrigatório')
-    .refine((val) => phoneRegex.test(val), 'WhatsApp deve estar no formato (XX) XXXXX-XXXX'),
+    .transform(val => val.replace(/\D/g, '')) // Remove formatação
+    .refine(val => val.length === 10 || val.length === 11, 
+      'WhatsApp deve ter 10 ou 11 dígitos')
+    .refine(val => /^[1-9]{2}9?[0-9]{8}$/.test(val), 
+      'WhatsApp inválido'),
   
   // Endereço completo
   cep: z.string()

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Building2, Mail, Phone, MapPin, FileText, Loader2, ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { supplierRegistrationSchema, type SupplierRegistrationData } from '@/lib/validations/supplierRegistration';
 import { formatDocument, normalizeDocument } from '@/utils/documentValidation';
+import { formatPhoneNumber } from '@/utils/phoneUtils';
 
 // Categorias disponíveis para especialidades
 const SPECIALTY_OPTIONS = [
@@ -361,16 +362,18 @@ export default function SupplierRegisterWithToken() {
         <Label htmlFor="whatsapp">WhatsApp *</Label>
         <div className="relative">
           <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            id="whatsapp"
-            value={formData.whatsapp}
-            onChange={(e) => {
-              setFormData({...formData, whatsapp: e.target.value});
-              if (errors.whatsapp) setErrors({...errors, whatsapp: undefined});
-            }}
-            placeholder="(00) 00000-0000"
-            className="pl-10"
-          />
+              <Input
+                id="whatsapp"
+                value={formData.whatsapp}
+                onChange={(e) => {
+                  const formatted = formatPhoneNumber(e.target.value);
+                  setFormData({...formData, whatsapp: formatted});
+                  if (errors.whatsapp) setErrors({...errors, whatsapp: undefined});
+                }}
+                placeholder="(00) 00000-0000"
+                className="pl-10"
+                maxLength={15}
+              />
         </div>
         {errors.whatsapp && (
           <p className="text-sm text-destructive mt-1">{errors.whatsapp}</p>
