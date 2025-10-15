@@ -101,7 +101,7 @@ export class ApprovalService {
 
       if (approvalError) throw approvalError;
 
-  // Atualizar status da cotação para 'approved'
+      // Atualizar status da cotação de 'pending_approval' para 'approved'
       const { error: updateError } = await supabase
         .from('quotes')
         .update({ status: 'approved' })

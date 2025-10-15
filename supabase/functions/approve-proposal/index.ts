@@ -97,11 +97,11 @@ serve(async (req) => {
         );
       }
 
-      // Update quote status to 'under_review'
+      // Update quote status to 'pending_approval' (bloqueada aguardando aprovação)
       const { error: quoteUpdateError } = await supabase
         .from('quotes')
         .update({ 
-          status: 'under_review',
+          status: 'pending_approval',
           supplier_id: response.supplier_id,
           supplier_name: response.supplier_name
         })

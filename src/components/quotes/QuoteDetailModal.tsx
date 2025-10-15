@@ -666,6 +666,20 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 </Badge>
               </div>
             </div>
+
+            {/* Aviso quando cotação está aguardando aprovação */}
+            {quote.status === 'pending_approval' && (
+              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center gap-2 text-orange-800">
+                  <AlertTriangle className="h-5 w-5" />
+                  <p className="font-semibold">Aguardando Aprovação Formal</p>
+                </div>
+                <p className="text-sm text-orange-700 mt-1">
+                  A proposta do fornecedor <strong>{quote.supplier_name}</strong> foi selecionada e está aguardando aprovação. 
+                  Não é possível fazer alterações nesta cotação até que seja aprovada ou rejeitada.
+                </p>
+              </div>
+            )}
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

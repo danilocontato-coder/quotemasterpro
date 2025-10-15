@@ -10,6 +10,7 @@ export const getStatusText = (status: string) => {
     case 'awaiting_ai_approval': return 'Aguardando Aprovação da IA';
     case 'pending_approval': return 'Aguardando Aprovação Manual';
     case 'under_review': return 'Em Análise';
+    case 'pending_approval': return 'Aguardando Aprovação';
     case 'approved': return 'Aprovada';
     case 'rejected': return 'Rejeitada';
     case 'finalized': return 'Finalizada';
@@ -36,6 +37,7 @@ export const getStatusColor = (status: string) => {
     case 'awaiting_ai_approval': return 'bg-violet-100 text-violet-800';
     case 'pending_approval': return 'bg-orange-100 text-orange-800';
     case 'under_review': return 'bg-yellow-100 text-yellow-800';
+    case 'pending_approval': return 'bg-orange-100 text-orange-800';
     case 'approved': return 'bg-green-100 text-green-800';
     case 'rejected': return 'bg-red-100 text-red-800';
     case 'finalized': return 'bg-purple-100 text-purple-800';
@@ -79,7 +81,9 @@ export const getValidStatusTransitions = (currentStatus: string): string[] => {
     case 'pending_approval':
       return ['approved', 'rejected'];
     case 'under_review':
-      return ['approved', 'rejected', 'receiving'];
+      return ['pending_approval', 'approved', 'rejected', 'receiving'];
+    case 'pending_approval':
+      return ['approved', 'rejected'];
     case 'approved':
       return ['finalized', 'cancelled'];
     case 'rejected':
