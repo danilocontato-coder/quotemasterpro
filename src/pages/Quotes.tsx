@@ -723,40 +723,25 @@ export default function Quotes() {
 
                 {/* Actions */}
                 <div className="pt-3 border-t border-border mt-auto">
-                  {/* Status-based comparison button */}
-                  {quote.responses_count >= 2 ? (
-                    <div className="mb-2">
-                      <Suspense fallback={<Button variant="outline" size="sm" className="w-full" disabled><BarChart3 className="h-4 w-4 mr-2" />Carregando...</Button>}>
-                        <QuoteComparisonButton
-                          quoteId={quote.id}
-                          quoteTitle={quote.title}
-                          responsesCount={quote.responses_count}
-                        />
-                      </Suspense>
-                    </div>
-                  ) : (
-                    <div className="mb-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full opacity-60 cursor-not-allowed"
-                        disabled
-                      >
-                        <Clock className="h-4 w-4 mr-2" />
-                        Aguardando Propostas ({quote.responses_count || 0}/{quote.suppliers_sent_count || 0})
-                      </Button>
-                    </div>
-                  )}
-                  
+                  {/* Single contextual button */}
                   <div className="flex items-center gap-2 mb-2">
                     <Button 
-                      variant="default" 
+                      variant={quote.responses_count >= 2 ? "default" : "default"}
                       size="sm"
-                      className="flex-1"
+                      className={`flex-1 ${quote.responses_count >= 2 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                       onClick={() => handleViewClick(quote)}
                     >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
+                      {quote.responses_count >= 2 ? (
+                        <>
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          Visualizar Propostas ({quote.responses_count})
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Visualizar Cotação
+                        </>
+                      )}
                     </Button>
                     <Button 
                       variant="outline" 
@@ -912,6 +897,7 @@ export default function Quotes() {
           onStatusChange={(quoteId, newStatus) => {
             updateQuote(quoteId, { status: newStatus });
           }}
+          defaultTab={viewingQuote && viewingQuote.responses_count >= 2 ? "proposals" : "overview"}
         />
       </Suspense>
 

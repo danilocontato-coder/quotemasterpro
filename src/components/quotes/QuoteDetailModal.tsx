@@ -35,6 +35,8 @@ import { VisitSection } from './VisitSection';
 import { VisitsTab } from './VisitsTab';
 import { SupplierStatusCard } from './SupplierStatusCard';
 import { ProposalComparisonTable } from './ProposalComparisonTable';
+import { ProposalDashboardMetrics } from './ProposalDashboardMetrics';
+import { ProposalRecommendationBadge, getProposalScore } from './ProposalRecommendationBadge';
 import { getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
@@ -76,6 +78,7 @@ interface QuoteDetailModalProps {
   quote: Quote | null;
   onStatusChange?: (quoteId: string, newStatus: Quote['status']) => void;
   onApprove?: (proposal: QuoteProposal) => void;
+  defaultTab?: string;
 }
 
 // Interface para os itens da cotação
@@ -92,7 +95,8 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   onClose,
   quote,
   onStatusChange,
-  onApprove
+  onApprove,
+  defaultTab = "overview"
 }) => {
   const [proposals, setProposals] = useState<QuoteProposal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -103,9 +107,17 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [supplierNames, setSupplierNames] = useState<{ id: string; name: string; phone?: string; whatsapp?: string; status?: string }[]>([]);
   const [totalInvited, setTotalInvited] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const { toast } = useToast();
   const { user } = useAuth();
   const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
+
+  // Reset activeTab when modal opens or defaultTab changes
+  React.useEffect(() => {
+    if (open) {
+      setActiveTab(defaultTab);
+    }
+  }, [open, defaultTab]);
 
   // Fetch quote items from Supabase
   const fetchQuoteItems = useCallback(async () => {
@@ -558,7 +570,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="overview" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-5' : 'grid-cols-4'}`}>
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="proposals">
@@ -721,50 +733,37 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             </TabsContent>
 
             <TabsContent value="proposals" className="space-y-6">
-              {/* Header com contador */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">
-                  Status dos Fornecedores ({proposals.length}/{totalInvited} responderam)
-                </h3>
-                {proposals.length > 1 && (
-                  <Button variant="outline" size="sm" onClick={() => setShowComparison(true)}>
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Comparar Propostas
-                  </Button>
-                )}
-              </div>
+              {/* Dashboard Metrics */}
+              {proposals.length > 0 && (
+                <ProposalDashboardMetrics
+                  totalProposals={proposals.length}
+                  bestPrice={Math.min(...proposals.map(p => p.totalPrice))}
+                  averageDeliveryTime={proposals.reduce((sum, p) => sum + p.deliveryTime, 0) / proposals.length}
+                  potentialSavings={Math.max(...proposals.map(p => p.totalPrice)) - Math.min(...proposals.map(p => p.totalPrice))}
+                />
+              )}
 
-              {/* Grid de status de fornecedores */}
-              {supplierNames.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {supplierNames.map(supplier => {
-                    const proposal = proposals.find(p => p.supplierId === supplier.id);
-                    return (
-                      <SupplierStatusCard
-                        key={supplier.id}
-                        supplier={supplier}
-                        hasResponded={!!proposal}
-                        proposal={proposal}
-                        onResendInvite={() => handleResendInvite(supplier.id)}
-                        onSendWhatsApp={() => handleSendWhatsApp(supplier)}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Nenhum fornecedor selecionado para esta cotação.</p>
+              {/* Advanced Analysis Button (se houver 2+ propostas) */}
+              {proposals.length >= 2 && (
+                <div className="flex justify-center">
+                  <Button 
+                    size="lg"
+                    onClick={() => setShowComparison(true)}
+                    className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg flex items-center gap-2"
+                  >
+                    <BarChart3 className="h-5 w-5" />
+                    🔬 Análise Detalhada e Comparação Avançada
+                  </Button>
                 </div>
               )}
 
-              {/* Tabela comparativa (se houver 2+ propostas) */}
+              {/* Tabela comparativa simplificada (se houver 2+ propostas) */}
               {proposals.length >= 2 && (
-                <Card className="mt-6">
+                <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5" />
-                      Comparação Detalhada de Propostas
+                      Comparação Rápida
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -773,16 +772,28 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 </Card>
               )}
 
-              {/* Propostas individuais com ações */}
+              {/* Cards de Ação por Fornecedor com Recomendação */}
               {proposals.length > 0 && (
-                <div className="space-y-4 mt-6">
-                  <h4 className="font-semibold text-base">Ações por Proposta</h4>
-                  {proposals.map((proposal) => (
-                    <Card key={proposal.id}>
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-base">Propostas Recebidas</h4>
+                  {proposals
+                    .sort((a, b) => {
+                      const scoreA = getProposalScore(a, proposals);
+                      const scoreB = getProposalScore(b, proposals);
+                      return scoreB - scoreA;
+                    })
+                    .map((proposal) => (
+                    <Card key={proposal.id} className="relative">
                       <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{proposal.supplierName}</CardTitle>
-                          <Badge className="bg-blue-100 text-blue-800">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg mb-2">{proposal.supplierName}</CardTitle>
+                            <ProposalRecommendationBadge 
+                              proposal={proposal} 
+                              allProposals={proposals} 
+                            />
+                          </div>
+                          <Badge className="bg-blue-100 text-blue-800 text-base px-3 py-1">
                             R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </Badge>
                         </div>
@@ -791,43 +802,93 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                           <div>
                             <p className="text-sm text-muted-foreground">Prazo de Entrega</p>
-                            <p className="font-medium">{proposal.deliveryTime} dias</p>
+                            <p className="font-medium text-base">{proposal.deliveryTime} dias</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Frete</p>
-                            <p className="font-medium">R$ {proposal.shippingCost.toFixed(2)}</p>
+                            <p className="font-medium text-base">R$ {proposal.shippingCost.toFixed(2)}</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Garantia</p>
-                            <p className="font-medium">{proposal.warrantyMonths} meses</p>
+                            <p className="font-medium text-base">{proposal.warrantyMonths} meses</p>
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Reputação</p>
-                            <p className="font-medium">{proposal.reputation}/5 ⭐</p>
+                            <p className="font-medium text-base">{proposal.reputation}/5 ⭐</p>
                           </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             size="sm"
                             onClick={() => onApprove?.(proposal)}
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white"
                           >
-                            <CheckCircle className="h-3 w-3" />
-                            Aprovar
+                            <CheckCircle className="h-4 w-4" />
+                            Aprovar Proposta
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                          >
+                            <Brain className="h-4 w-4" />
+                            Negociar via IA
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center gap-1 text-green-600 border-green-300 hover:bg-green-50"
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                            WhatsApp
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             className="flex items-center gap-1"
                           >
-                            <MessageSquare className="h-3 w-3" />
-                            Negociar
+                            <MessageSquare className="h-4 w-4" />
+                            Enviar Mensagem
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+
+              {/* Status de fornecedores que não responderam */}
+              {supplierNames.length > proposals.length && (
+                <div className="mt-6">
+                  <h4 className="font-semibold text-base mb-3 text-muted-foreground">
+                    Aguardando Resposta ({supplierNames.length - proposals.length})
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {supplierNames
+                      .filter(supplier => !proposals.find(p => p.supplierId === supplier.id))
+                      .map(supplier => (
+                        <SupplierStatusCard
+                          key={supplier.id}
+                          supplier={supplier}
+                          hasResponded={false}
+                          proposal={undefined}
+                          onResendInvite={() => handleResendInvite(supplier.id)}
+                          onSendWhatsApp={() => handleSendWhatsApp(supplier)}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {proposals.length === 0 && supplierNames.length === 0 && (
+                <div className="text-center py-12">
+                  <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhum fornecedor selecionado</h3>
+                  <p className="text-muted-foreground">
+                    Envie esta cotação para fornecedores para começar a receber propostas.
+                  </p>
                 </div>
               )}
             </TabsContent>
