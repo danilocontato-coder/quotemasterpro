@@ -14,9 +14,25 @@ serve(async (req) => {
   try {
     const { type, prompt } = await req.json();
     
-    const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+    // Criar cliente Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Buscar chave da API Perplexity do sistema
+    const { data: settingData, error: settingError } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'perplexity_api_key')
+      .single();
+    
+    if (settingError || !settingData) {
+      throw new Error('PERPLEXITY_API_KEY não configurada no sistema');
+    }
+    
+    const PERPLEXITY_API_KEY = settingData.setting_value?.value;
     if (!PERPLEXITY_API_KEY) {
-      throw new Error('PERPLEXITY_API_KEY não configurada');
+      throw new Error('PERPLEXITY_API_KEY vazia');
     }
 
     console.log('🧠 Consultoria IA - Tipo:', type);
