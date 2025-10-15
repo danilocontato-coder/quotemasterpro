@@ -2683,10 +2683,12 @@ export type Database = {
           notes: string | null
           payment_terms: string | null
           quote_id: string | null
+          shipping_cost: number | null
           status: string | null
           supplier_id: string
           supplier_name: string
           total_amount: number
+          warranty_months: number | null
         }
         Insert: {
           created_at?: string | null
@@ -2696,10 +2698,12 @@ export type Database = {
           notes?: string | null
           payment_terms?: string | null
           quote_id?: string | null
+          shipping_cost?: number | null
           status?: string | null
           supplier_id: string
           supplier_name: string
           total_amount: number
+          warranty_months?: number | null
         }
         Update: {
           created_at?: string | null
@@ -2709,10 +2713,12 @@ export type Database = {
           notes?: string | null
           payment_terms?: string | null
           quote_id?: string | null
+          shipping_cost?: number | null
           status?: string | null
           supplier_id?: string
           supplier_name?: string
           total_amount?: number
+          warranty_months?: number | null
         }
         Relationships: [
           {

@@ -1,18 +1,18 @@
 export interface WeightConfig {
-  price: number;        // 0-100
-  deliveryTime: number; // 0-100
-  shippingCost: number; // 0-100
-  sla: number;          // 0-100
-  warranty: number;     // 0-100
-  reputation: number;   // 0-100
+  price: number;          // 0-100
+  deliveryTime: number;   // 0-100
+  shippingCost: number;   // 0-100
+  warranty: number;       // 0-100
+  deliveryScore: number;  // 0-100 (substitui sla)
+  reputation: number;     // 0-100
 }
 
 export interface ProposalMetrics {
   price: number;
   deliveryTime: number;
   shippingCost: number;
-  sla: number;
   warranty: number;
+  deliveryScore: number;  // substitui sla
   reputation: number;
 }
 
@@ -62,9 +62,9 @@ export const calculateWeightedScore = (
     max: Math.max(...allProposals.map(p => p.shippingCost))
   };
   
-  const slaRange = {
-    min: Math.min(...allProposals.map(p => p.sla)),
-    max: Math.max(...allProposals.map(p => p.sla))
+  const deliveryScoreRange = {
+    min: Math.min(...allProposals.map(p => p.deliveryScore)),
+    max: Math.max(...allProposals.map(p => p.deliveryScore))
   };
   
   const warrantyRange = {
@@ -81,7 +81,7 @@ export const calculateWeightedScore = (
   const priceScore = normalize(proposal.price, priceRange.min, priceRange.max, true);
   const timeScore = normalize(proposal.deliveryTime, timeRange.min, timeRange.max, true);
   const shippingScore = normalize(proposal.shippingCost, shippingRange.min, shippingRange.max, true);
-  const slaScore = normalize(proposal.sla, slaRange.min, slaRange.max, false); // maior SLA = melhor
+  const deliveryScoreNormalized = normalize(proposal.deliveryScore, deliveryScoreRange.min, deliveryScoreRange.max, false); // maior = melhor
   const warrantyScore = normalize(proposal.warranty, warrantyRange.min, warrantyRange.max, false);
   const reputationScore = normalize(proposal.reputation, reputationRange.min, reputationRange.max, false);
   
@@ -90,7 +90,7 @@ export const calculateWeightedScore = (
     (priceScore * weights.price / 100) +
     (timeScore * weights.deliveryTime / 100) +
     (shippingScore * weights.shippingCost / 100) +
-    (slaScore * weights.sla / 100) +
+    (deliveryScoreNormalized * weights.deliveryScore / 100) +
     (warrantyScore * weights.warranty / 100) +
     (reputationScore * weights.reputation / 100);
   
@@ -113,32 +113,32 @@ export const DEFAULT_WEIGHT_TEMPLATES = {
     price: 40,
     deliveryTime: 20,
     shippingCost: 15,
-    sla: 8,
     warranty: 12,
+    deliveryScore: 8,
     reputation: 5
   },
   focoPreco: {
     price: 70,
     deliveryTime: 10,
     shippingCost: 15,
-    sla: 0,
     warranty: 3,
+    deliveryScore: 0,
     reputation: 2
   },
   focoQualidade: {
     price: 20,
     deliveryTime: 15,
     shippingCost: 10,
-    sla: 20,
     warranty: 25,
-    reputation: 10
+    deliveryScore: 15,
+    reputation: 15
   },
   urgente: {
     price: 25,
     deliveryTime: 50,
     shippingCost: 10,
-    sla: 10,
     warranty: 3,
+    deliveryScore: 10,
     reputation: 2
   }
 };

@@ -41,7 +41,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
         price: p.totalPrice,
         deliveryTime: p.deliveryTime,
         shippingCost: p.shippingCost,
-        sla: p.sla,
+        deliveryScore: p.deliveryScore || 50,
         warranty: p.warrantyMonths,
         reputation: p.reputation
       } as ProposalMetrics,

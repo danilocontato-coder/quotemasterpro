@@ -62,6 +62,8 @@ const SupplierQuickResponse = () => {
   const [proposalData, setProposalData] = useState({
     totalAmount: '',
     deliveryDays: '',
+    warrantyMonths: '12',
+    shippingCost: '0',
     notes: ''
   });
 
@@ -267,6 +269,8 @@ const SupplierQuickResponse = () => {
           supplier_name: supplierData.name,
           total_amount: parseFloat(proposalData.totalAmount),
           delivery_time: parseInt(proposalData.deliveryDays),
+          warranty_months: parseInt(proposalData.warrantyMonths) || 12,
+          shipping_cost: parseFloat(proposalData.shippingCost) || 0,
           notes: proposalData.notes,
           status: 'pending'
         });
@@ -549,6 +553,42 @@ const SupplierQuickResponse = () => {
                         className="pl-10"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="warrantyMonths">Garantia (meses) *</Label>
+                    <Input
+                      id="warrantyMonths"
+                      type="number"
+                      min="0"
+                      max="120"
+                      value={proposalData.warrantyMonths}
+                      onChange={(e) => setProposalData({ ...proposalData, warrantyMonths: e.target.value })}
+                      placeholder="Ex: 12"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Período de garantia oferecido (0-120 meses)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="shippingCost">Custo de Frete (R$) *</Label>
+                    <div className="relative">
+                      <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="shippingCost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={proposalData.shippingCost}
+                        onChange={(e) => setProposalData({ ...proposalData, shippingCost: e.target.value })}
+                        placeholder="Ex: 150.00"
+                        className="pl-10"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Informe 0 se o frete for grátis
+                    </p>
                   </div>
                 </div>
 

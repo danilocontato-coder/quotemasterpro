@@ -58,7 +58,7 @@ export interface QuoteProposal {
   price: number; // Alias para compatibilidade
   deliveryTime: number;
   shippingCost: number;
-  sla: number;
+  deliveryScore: number; // Substitui sla
   warrantyMonths: number;
   reputation: number;
   observations?: string;
@@ -192,10 +192,10 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         totalPrice: response.total_amount,
         price: response.total_amount, // Para compatibilidade
         deliveryTime: response.delivery_time || 7,
-        shippingCost: 0,
-        sla: 24,
-        warrantyMonths: 12,
-        reputation: 4.0,
+        shippingCost: response.shipping_cost || 0,
+        deliveryScore: 50, // TODO: calcular do histórico com calculateDeliveryScore
+        warrantyMonths: response.warranty_months || 12,
+        reputation: 3.0,
         observations: response.notes || '',
         submittedAt: response.created_at,
         status: 'pending'

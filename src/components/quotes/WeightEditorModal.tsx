@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WeightConfig, validateWeights, DEFAULT_WEIGHT_TEMPLATES } from '@/utils/decisionMatrixCalculator';
-import { DollarSign, Clock, Package, Shield, Star, Zap, AlertCircle, Check } from 'lucide-react';
+import { DollarSign, Clock, Package, Shield, Star, Zap, AlertCircle, Check, HelpCircle } from 'lucide-react';
 import { useDecisionMatrixTemplates } from '@/hooks/useDecisionMatrixTemplates';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface WeightEditorModalProps {
   open: boolean;
@@ -38,8 +39,54 @@ export const WeightEditorModal: React.FC<WeightEditorModalProps> = ({
   const totalWeight = Object.values(weights).reduce((sum, val) => sum + val, 0);
   const isValid = validateWeights(weights);
 
+  const redistributeWeights = (
+    changedKey: keyof WeightConfig, 
+    newValue: number, 
+    currentWeights: WeightConfig
+  ): WeightConfig => {
+    const keys = Object.keys(currentWeights) as Array<keyof WeightConfig>;
+    const otherKeys = keys.filter(k => k !== changedKey);
+    
+    // Calcular quanto sobra para os outros
+    const remaining = 100 - newValue;
+    
+    // Soma atual dos outros pesos
+    const otherSum = otherKeys.reduce((sum, key) => sum + currentWeights[key], 0);
+    
+    if (otherSum === 0) {
+      // Se todos outros são zero, distribuir igualmente
+      const equalShare = remaining / otherKeys.length;
+      const result = { ...currentWeights, [changedKey]: newValue };
+      otherKeys.forEach(key => result[key] = Math.round(equalShare * 10) / 10);
+      return result;
+    }
+    
+    // Redistribuir proporcionalmente
+    const factor = remaining / otherSum;
+    const result = { ...currentWeights, [changedKey]: newValue };
+    
+    otherKeys.forEach(key => {
+      result[key] = Math.round(currentWeights[key] * factor * 10) / 10;
+    });
+    
+    // Ajustar arredondamento para somar exatamente 100
+    const sum = Object.values(result).reduce((a, b) => a + b, 0);
+    const diff = 100 - sum;
+    if (Math.abs(diff) > 0.01) {
+      // Adicionar diferença ao maior peso (exceto o alterado)
+      const largestOtherKey = otherKeys.reduce((max, key) => 
+        result[key] > result[max] ? key : max
+      );
+      result[largestOtherKey] += diff;
+      result[largestOtherKey] = Math.round(result[largestOtherKey] * 10) / 10;
+    }
+    
+    return result;
+  };
+
   const handleWeightChange = (key: keyof WeightConfig, value: number) => {
-    setWeights(prev => ({ ...prev, [key]: value }));
+    const newWeights = redistributeWeights(key, value, weights);
+    setWeights(newWeights);
   };
 
   const handlePresetSelect = (preset: keyof typeof DEFAULT_WEIGHT_TEMPLATES) => {
@@ -48,8 +95,14 @@ export const WeightEditorModal: React.FC<WeightEditorModalProps> = ({
 
   const handleLoadTemplate = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
-    if (template) {
-      setWeights(template.weights as WeightConfig);
+    if (template && template.weights) {
+      // Converter template antigo (com sla) para novo formato (com deliveryScore)
+      const weights = template.weights as any;
+      if ('sla' in weights && !('deliveryScore' in weights)) {
+        weights.deliveryScore = weights.sla;
+        delete weights.sla;
+      }
+      setWeights(weights as WeightConfig);
     }
   };
 
@@ -103,7 +156,7 @@ export const WeightEditorModal: React.FC<WeightEditorModalProps> = ({
     { key: 'deliveryTime' as const, label: 'Prazo de Entrega', icon: Clock, color: 'text-blue-600' },
     { key: 'shippingCost' as const, label: 'Custo de Frete', icon: Package, color: 'text-orange-600' },
     { key: 'warranty' as const, label: 'Garantia', icon: Shield, color: 'text-purple-600' },
-    { key: 'sla' as const, label: 'SLA', icon: Zap, color: 'text-yellow-600' },
+    { key: 'deliveryScore' as const, label: 'Pontualidade', icon: Zap, color: 'text-cyan-600', tooltip: 'Baseado no histórico de entregas no prazo' },
     { key: 'reputation' as const, label: 'Reputação', icon: Star, color: 'text-amber-600' },
   ];
 
@@ -191,12 +244,27 @@ export const WeightEditorModal: React.FC<WeightEditorModalProps> = ({
 
           {/* Weight Sliders */}
           <div className="space-y-4">
-            {weightItems.map(({ key, label, icon: Icon, color }) => (
+            <p className="text-xs text-muted-foreground">
+              💡 Ajuste automático: ao mudar um peso, os outros se reequilibram proporcionalmente
+            </p>
+            {weightItems.map(({ key, label, icon: Icon, color, tooltip }) => (
               <div key={key} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
                     <Icon className={`h-4 w-4 ${color}`} />
                     {label}
+                    {tooltip && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">{tooltip}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </Label>
                   <Badge variant="outline">{weights[key]}%</Badge>
                 </div>
