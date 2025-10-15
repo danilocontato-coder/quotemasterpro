@@ -851,22 +851,6 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                             <Brain className="h-4 w-4" />
                             Negociar via IA
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1 text-green-600 border-green-300 hover:bg-green-50"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                            WhatsApp
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                            Enviar Mensagem
-                          </Button>
                         </div>
                       </CardContent>
                     </Card>
