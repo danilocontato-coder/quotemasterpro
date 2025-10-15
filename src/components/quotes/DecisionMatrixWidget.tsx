@@ -68,7 +68,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   };
 
   const handleSaveMatrix = () => {
-    saveMatrix.mutate({
+    saveMatrix({
       name: `Matriz - ${quoteName}`,
       quote_id: quoteId,
       quote_title: quoteName,
@@ -149,7 +149,6 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
                     size="sm"
                     variant="outline"
                     onClick={handleSaveMatrix}
-                    disabled={saveMatrix.isPending}
                     className="flex items-center gap-2"
                   >
                     <Save className="h-4 w-4" />
