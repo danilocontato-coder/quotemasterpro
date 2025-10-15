@@ -35,7 +35,14 @@ serve(async (req) => {
       throw new Error('PERPLEXITY_API_KEY vazia');
     }
 
+    // Validar formato da API key
+    if (!PERPLEXITY_API_KEY.startsWith('pplx-')) {
+      throw new Error('PERPLEXITY_API_KEY com formato inválido. Deve começar com "pplx-"');
+    }
+
     console.log('🧠 Consultoria IA - Tipo:', type);
+    console.log('🔑 API Key configurada:', PERPLEXITY_API_KEY ? 'Sim' : 'Não');
+    console.log('✅ PERPLEXITY_API_KEY válida');
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -44,7 +51,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online',
+        model: 'sonar-pro',
         temperature: 0.3,
         max_tokens: 3000,
         messages: [
@@ -61,7 +68,13 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Perplexity API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ Erro Perplexity:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`Perplexity API error: ${response.status} - ${errorText}`);
     }
 
     const aiData = await response.json();
