@@ -40,10 +40,36 @@ export const supplierRegistrationSchema = z.object({
     .min(1, 'Selecione ao menos uma especialidade')
     .max(10, 'Máximo de 10 especialidades'),
   
-  // Website opcional
+  // Website opcional com normalização automática
   website: z.string()
     .optional()
-    .refine((val) => !val || val.startsWith('http'), 'Website deve começar com http:// ou https://'),
+    .transform(val => {
+      // Tratar string vazia como undefined
+      if (!val || val.trim() === '') return undefined;
+      
+      const trimmed = val.trim();
+      
+      // Se não tem protocolo, adicionar https://
+      if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+        return `https://${trimmed}`;
+      }
+      
+      return trimmed;
+    })
+    .refine(
+      (val) => {
+        if (!val) return true; // undefined é válido (campo opcional)
+        
+        // Validar se é uma URL real
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      'URL inválida. Use um formato válido como empresa.com.br'
+    ),
   
   // Descrição opcional
   description: z.string()
