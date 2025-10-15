@@ -20,7 +20,7 @@ import { toast } from "sonner";
 // Lazy load modais pesados
 const CreateQuoteModalSupabase = lazy(() => import("@/components/quotes/CreateQuoteModalSupabase").then(m => ({ default: m.CreateQuoteModalSupabase })));
 const DeleteConfirmationModal = lazy(() => import("@/components/quotes/DeleteConfirmationModal").then(m => ({ default: m.DeleteConfirmationModal })));
-const QuoteComparisonButton = lazy(() => import("@/components/quotes/QuoteComparisonButton").then(m => ({ default: m.QuoteComparisonButton })));
+
 const DecisionMatrixManager = lazy(() => import("@/components/quotes/DecisionMatrixManager").then(m => ({ default: m.DecisionMatrixManager })));
 const QuoteDetailModal = lazy(() => import("@/components/quotes/QuoteDetailModal").then(m => ({ default: m.QuoteDetailModal })));
 const StatusProgressIndicator = lazy(() => import("@/components/quotes/StatusProgressIndicator").then(m => ({ default: m.StatusProgressIndicator })));

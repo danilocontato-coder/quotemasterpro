@@ -1,4 +1,4 @@
-import { QuoteProposal } from "@/components/quotes/QuoteComparison";
+import { QuoteProposal } from "@/components/quotes/QuoteDetailModal";
 
 export const mockProposals: QuoteProposal[] = [
   {
@@ -6,6 +6,8 @@ export const mockProposals: QuoteProposal[] = [
     quoteId: 'RFQ009',
     supplierId: '1',
     supplierName: 'Materiais Santos Ltda',
+    items: [],
+    totalPrice: 2850.00,
     price: 2850.00,
     deliveryTime: 5,
     shippingCost: 120.00,
@@ -14,12 +16,15 @@ export const mockProposals: QuoteProposal[] = [
     reputation: 4.5,
     observations: 'Materiais de primeira qualidade, entrega expressa disponível',
     submittedAt: '2025-08-19T08:30:00Z',
+    status: 'pending' as const,
   },
   {
     id: 'prop-002',
     quoteId: 'RFQ009',
     supplierId: '2',
     supplierName: 'Limpeza Total SA',
+    items: [],
+    totalPrice: 3200.00,
     price: 3200.00,
     deliveryTime: 3,
     shippingCost: 80.00,
@@ -28,12 +33,15 @@ export const mockProposals: QuoteProposal[] = [
     reputation: 4.8,
     observations: 'Serviço completo incluindo instalação e treinamento',
     submittedAt: '2025-08-19T10:15:00Z',
+    status: 'pending' as const,
   },
   {
     id: 'prop-003',
     quoteId: 'RFQ009',
     supplierId: '3',
     supplierName: 'Elétrica Silva & Cia',
+    items: [],
+    totalPrice: 2650.00,
     price: 2650.00,
     deliveryTime: 7,
     shippingCost: 150.00,
@@ -42,12 +50,15 @@ export const mockProposals: QuoteProposal[] = [
     reputation: 4.2,
     observations: 'Melhor preço da região, experiência de 15 anos no mercado',
     submittedAt: '2025-08-19T14:45:00Z',
+    status: 'pending' as const,
   },
   {
     id: 'prop-004',
     quoteId: 'RFQ009',
     supplierId: '5',
     supplierName: 'Hidráulica Rápida',
+    items: [],
+    totalPrice: 3050.00,
     price: 3050.00,
     deliveryTime: 4,
     shippingCost: 100.00,
@@ -56,6 +67,7 @@ export const mockProposals: QuoteProposal[] = [
     reputation: 4.6,
     observations: 'Garantia estendida e suporte técnico 24h',
     submittedAt: '2025-08-19T16:20:00Z',
+    status: 'pending' as const,
   }
 ];
 
@@ -65,6 +77,8 @@ export const mockProposalsAlternative: QuoteProposal[] = [
     quoteId: 'RFQ008',
     supplierId: '4',
     supplierName: 'Jardins Verdes',
+    items: [],
+    totalPrice: 1850.00,
     price: 1850.00,
     deliveryTime: 10,
     shippingCost: 200.00,
@@ -73,12 +87,15 @@ export const mockProposalsAlternative: QuoteProposal[] = [
     reputation: 3.8,
     observations: 'Especialista em paisagismo, inclui projeto personalizado',
     submittedAt: '2025-08-18T09:00:00Z',
+    status: 'pending' as const,
   },
   {
     id: 'prop-006',
     quoteId: 'RFQ008',
     supplierId: '1',
     supplierName: 'Materiais Santos Ltda',
+    items: [],
+    totalPrice: 2100.00,
     price: 2100.00,
     deliveryTime: 6,
     shippingCost: 120.00,
@@ -87,5 +104,6 @@ export const mockProposalsAlternative: QuoteProposal[] = [
     reputation: 4.5,
     observations: 'Fornecimento de todos os materiais e ferramentas',
     submittedAt: '2025-08-18T11:30:00Z',
+    status: 'pending' as const,
   }
 ];

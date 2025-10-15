@@ -27,7 +27,9 @@ import {
 } from 'lucide-react';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
-import { QuoteComparison } from './QuoteComparison';
+import { ConsultantAnalysisCard } from './ConsultantAnalysisCard';
+import { ConsultantAnalysisModal } from './ConsultantAnalysisModal';
+import { useProposalConsultant } from '@/hooks/useProposalConsultant';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
 // QuoteMarkAsReceivedButton removido - marcação automática implementada
 import { QuoteItemsList } from './QuoteItemsList';
@@ -100,7 +102,15 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 }) => {
   const [proposals, setProposals] = useState<QuoteProposal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
+  const [showConsultantAnalysis, setShowConsultantAnalysis] = useState(false);
+  const { 
+    individualAnalyses, 
+    comparativeAnalysis, 
+    isAnalyzing, 
+    analysisProgress,
+    analyzeAllProposals,
+    hasAnalyses 
+  } = useProposalConsultant();
   const [showItemAnalysis, setShowItemAnalysis] = useState(false);
   const [itemAnalysisData, setItemAnalysisData] = useState<ItemAnalysisData[]>([]);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
@@ -743,18 +753,36 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 />
               )}
 
-              {/* Advanced Analysis Button (se houver 2+ propostas) */}
-              {proposals.length >= 2 && (
+              {/* AI Consultant Analysis Button */}
+              {proposals.length >= 2 && !hasAnalyses && (
                 <div className="flex justify-center">
                   <Button 
                     size="lg"
-                    onClick={() => setShowComparison(true)}
-                    className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg flex items-center gap-2"
+                    onClick={() => analyzeAllProposals(proposals.map(p => ({
+                      id: p.id,
+                      supplierName: p.supplierName,
+                      items: p.items,
+                      totalPrice: p.totalPrice,
+                      deliveryTime: p.deliveryTime,
+                      warrantyMonths: p.warrantyMonths,
+                      shippingCost: p.shippingCost
+                    })))}
+                    disabled={isAnalyzing}
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg"
                   >
-                    <BarChart3 className="h-5 w-5" />
-                    🔬 Análise Detalhada e Comparação Avançada
+                    <Brain className="h-5 w-5 mr-2" />
+                    {isAnalyzing ? `Analisando... (${analysisProgress.current}/${analysisProgress.total})` : '🧠 Análise Completa do Consultor IA'}
                   </Button>
                 </div>
+              )}
+
+              {/* Consultant Analysis Card */}
+              {hasAnalyses && comparativeAnalysis && (
+                <ConsultantAnalysisCard
+                  analysis={comparativeAnalysis}
+                  proposals={proposals}
+                  onViewDetails={() => setShowConsultantAnalysis(true)}
+                />
               )}
 
               {/* Tabela comparativa simplificada (se houver 2+ propostas) */}
@@ -1095,11 +1123,12 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       </Dialog>
 
       {/* Modals */}
-      <QuoteComparison
-        open={showComparison}
-        onClose={() => setShowComparison(false)}
+      <ConsultantAnalysisModal
+        open={showConsultantAnalysis}
+        onClose={() => setShowConsultantAnalysis(false)}
+        comparativeAnalysis={comparativeAnalysis}
+        individualAnalyses={individualAnalyses}
         proposals={proposals}
-        quoteTitle={quote?.title || ''}
       />
 
       <ItemAnalysisModal
