@@ -21,11 +21,19 @@ export interface Approval {
     total: number;
     client_id?: string;
     client_name: string;
+    supplier_id?: string;
     supplier_name?: string;
     status: string;
     deadline?: string;
     items_count?: number;
     created_at: string;
+  };
+  quote_response?: {
+    id: string;
+    total_amount: number;
+    supplier_name: string;
+    delivery_time?: number;
+    payment_terms?: string;
   };
 }
 
@@ -109,6 +117,7 @@ export const useSupabaseApprovals = () => {
             total,
             client_id,
             client_name,
+            supplier_id,
             supplier_name,
             status,
             deadline,
@@ -117,10 +126,32 @@ export const useSupabaseApprovals = () => {
           `)
           .in('id', quoteIds);
 
-        // Combinar aprovações com dados das cotações
+        // Buscar respostas dos fornecedores para cotações com supplier_id definido
+        const quotesWithSupplier = quotesData?.filter(q => q.supplier_id) || [];
+        let responsesByQuote: Record<string, any> = {};
+        
+        if (quotesWithSupplier.length > 0) {
+          const { data: responsesData } = await supabase
+            .from('quote_responses')
+            .select('id, quote_id, supplier_id, total_amount, supplier_name, delivery_time, payment_terms')
+            .in('quote_id', quotesWithSupplier.map(q => q.id));
+          
+          // Mapear respostas por quote_id e supplier_id
+          responsesData?.forEach(response => {
+            const quote = quotesWithSupplier.find(q => 
+              q.id === response.quote_id && q.supplier_id === response.supplier_id
+            );
+            if (quote) {
+              responsesByQuote[response.quote_id] = response;
+            }
+          });
+        }
+
+        // Combinar aprovações com dados das cotações e respostas
         approvalsWithQuotes = approvalsData.map(approval => ({
           ...approval,
-          quotes: quotesData?.find(quote => quote.id === approval.quote_id)
+          quotes: quotesData?.find(quote => quote.id === approval.quote_id),
+          quote_response: responsesByQuote[approval.quote_id]
         })) as Approval[];
       }
 

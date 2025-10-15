@@ -184,8 +184,17 @@ const getStatusBadgeColor = (status: string) => {
                     <p className="text-sm">{quoteData.supplier_name || 'Não informado'}</p>
                   </div>
                   <div>
-                    <span className="text-sm font-medium">Valor Total:</span>
-                    <p className="text-lg font-semibold text-primary">{formatCurrency(quoteData.total)}</p>
+                    <span className="text-sm font-medium">Valor da Proposta Aprovada:</span>
+                    <p className="text-lg font-semibold text-primary">
+                      {approval.quote_response 
+                        ? formatCurrency(approval.quote_response.total_amount)
+                        : formatCurrency(quoteData.total)}
+                    </p>
+                    {approval.quote_response && quoteData.total !== approval.quote_response.total_amount && (
+                      <p className="text-xs text-muted-foreground">
+                        Valor original da cotação: {formatCurrency(quoteData.total)}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <span className="text-sm font-medium">Status da Cotação:</span>

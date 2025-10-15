@@ -311,18 +311,27 @@ export function Approvals() {
                                  )}
                                </div>
                              </TableCell>
-                             <TableCell>
-                               <div>
-                                 <div className="font-semibold">
-                                   {quote ? formatCurrency(quote.total || 0) : 'Carregando...'}
-                                 </div>
-                                 {quote?.items_count && (
-                                   <div className="text-sm text-muted-foreground">
-                                     {quote.items_count} {quote.items_count === 1 ? 'item' : 'itens'}
-                                   </div>
-                                 )}
-                               </div>
-                             </TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-semibold">
+                                    {approval.quote_response 
+                                      ? formatCurrency(approval.quote_response.total_amount || 0)
+                                      : quote 
+                                        ? formatCurrency(quote.total || 0) 
+                                        : 'Carregando...'}
+                                  </div>
+                                  {approval.quote_response && quote && quote.total !== approval.quote_response.total_amount && (
+                                    <div className="text-xs text-muted-foreground">
+                                      Original: {formatCurrency(quote.total || 0)}
+                                    </div>
+                                  )}
+                                  {quote?.items_count && (
+                                    <div className="text-sm text-muted-foreground">
+                                      {quote.items_count} {quote.items_count === 1 ? 'item' : 'itens'}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
                              <TableCell>
                                {approvalLevel ? (
                                  <TooltipProvider>
