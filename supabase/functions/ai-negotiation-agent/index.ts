@@ -292,7 +292,7 @@ Responda APENAS no formato JSON:
         model: model,
         viable: shouldNegotiate
       },
-      status: 'completed'
+      status: 'analyzed'
     };
 
     let negotiation;

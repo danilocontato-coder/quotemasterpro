@@ -41,7 +41,6 @@ export function buildEndpoints(cfg: EvolutionConfig): string[] {
       `${baseRaw}/message/sendText/${instance}`,
       `${baseRaw}/message/send/${instance}`,
       `${baseRaw}/messages/sendText/${instance}`,
-      `${baseRaw}/chat/sendText/${instance}`,
       `${baseRaw}/sendMessage/${instance}`,
       `${baseRaw}/api/message/sendText/${instance}`,
       `${baseRaw}/api/message/send/${instance}`,

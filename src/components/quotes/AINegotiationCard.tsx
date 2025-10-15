@@ -204,7 +204,7 @@ export function AINegotiationCard({
             </Button>
           )}
 
-          {(negotiation.status === 'analyzed' || negotiation.status === 'completed') && !negotiation.human_approved && (
+          {negotiation.status === 'analyzed' && (
             <>
               <Button 
                 size="sm" 
