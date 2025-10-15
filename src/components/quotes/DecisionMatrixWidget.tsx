@@ -28,6 +28,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   const [isExpanded, setIsExpanded] = useState(defaultOpen);
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [weights, setWeights] = useState<WeightConfig>(DEFAULT_WEIGHT_TEMPLATES.equilibrado);
+  const [isSaving, setIsSaving] = useState(false);
   const { saveMatrix } = useSavedDecisionMatrices();
   const { toast } = useToast();
 
@@ -68,6 +69,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   };
 
   const handleSaveMatrix = () => {
+    setIsSaving(true);
     saveMatrix({
       name: `Matriz - ${quoteName}`,
       quote_id: quoteId,
@@ -80,6 +82,8 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
         metrics: r.metrics
       })) as any
     });
+    // Reset saving state after a short delay
+    setTimeout(() => setIsSaving(false), 1000);
   };
 
   const weightItems = [
@@ -149,10 +153,11 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
                     size="sm"
                     variant="outline"
                     onClick={handleSaveMatrix}
+                    disabled={isSaving}
                     className="flex items-center gap-2"
                   >
                     <Save className="h-4 w-4" />
-                    Salvar Matriz
+                    {isSaving ? 'Salvando...' : 'Salvar Matriz'}
                   </Button>
                 </div>
               </div>
