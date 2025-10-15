@@ -7,11 +7,14 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Save, Download, Trophy, TrendingUp, TrendingDown, BarChart3, CheckCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Save, Download, Trophy, TrendingUp, TrendingDown, BarChart3, CheckCircle, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
 import type { ItemAnalysisData } from '@/hooks/useItemAnalysis';
+import { useDecisionMatrixTemplates } from '@/hooks/useDecisionMatrixTemplates';
+import { useSavedDecisionMatrices } from '@/hooks/useSavedDecisionMatrices';
 
 export interface QuoteProposal {
   id: string;
@@ -67,7 +70,10 @@ export function QuoteComparison({
   const [isApproving, setIsApproving] = useState(false);
   const [itemsForAnalysis, setItemsForAnalysis] = useState<ItemAnalysisData[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const { toast } = useToast();
+  const { templates, isLoading: templatesLoading } = useDecisionMatrixTemplates();
+  const { saveMatrix } = useSavedDecisionMatrices();
 
   const handleOpenMarketAnalysis = async () => {
     try {
@@ -215,25 +221,28 @@ export function QuoteComparison({
       return;
     }
 
-    const matrix = {
+    const quoteId = proposals[0]?.quoteId || '';
+
+    saveMatrix({
       name: matrixName,
-      quoteTitle,
+      quote_id: quoteId,
+      quote_title: quoteTitle,
       weights,
       proposals: normalizedScores,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Save to localStorage for now (in real app, save to backend)
-    const savedMatrices = JSON.parse(localStorage.getItem('decision-matrices') || '[]');
-    savedMatrices.push(matrix);
-    localStorage.setItem('decision-matrices', JSON.stringify(savedMatrices));
-
-    toast({
-      title: "Matriz salva!",
-      description: "Matriz de decisão salva com sucesso.",
     });
     
     setMatrixName('');
+  };
+
+  const applyTemplate = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      setWeights(template.weights);
+      toast({
+        title: 'Template aplicado',
+        description: `Template "${template.name}" aplicado com sucesso.`,
+      });
+    }
   };
 
   const handleApproveProposal = async (proposal: any, isRecommended: boolean = false) => {
@@ -374,6 +383,50 @@ export function QuoteComparison({
                   <br />
                   <span className="text-xs">💡 Configure sua API key Perplexity para funcionalidade completa</span>
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Templates Section */}
+          <Card className="border-purple-200 bg-purple-50">
+            <CardHeader>
+              <CardTitle className="text-purple-800 flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Templates de Análise
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="template-select" className="text-purple-900">Aplicar Template Pré-Configurado</Label>
+                  <Select value={selectedTemplateId} onValueChange={(value) => {
+                    setSelectedTemplateId(value);
+                    applyTemplate(value);
+                  }}>
+                    <SelectTrigger id="template-select" className="bg-white">
+                      <SelectValue placeholder="Selecione um template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{template.name}</span>
+                            {template.description && (
+                              <span className="text-xs text-muted-foreground">{template.description}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedTemplateId && (
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <p className="text-sm text-purple-800">
+                      ✨ Template aplicado! Você pode ajustar os pesos abaixo conforme necessário.
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -1650,6 +1650,47 @@ export type Database = {
           },
         ]
       }
+      decision_matrix_templates: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          updated_at: string
+          weights: Json
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          updated_at?: string
+          weights?: Json
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          updated_at?: string
+          weights?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_matrix_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deliveries: {
         Row: {
           actual_delivery_date: string | null
@@ -3019,6 +3060,57 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_decision_matrices: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          name: string
+          proposals: Json
+          quote_id: string
+          quote_title: string
+          updated_at: string
+          weights: Json
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          name: string
+          proposals?: Json
+          quote_id: string
+          quote_title: string
+          updated_at?: string
+          weights?: Json
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          proposals?: Json
+          quote_id?: string
+          quote_title?: string
+          updated_at?: string
+          weights?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_decision_matrices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_decision_matrices_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
