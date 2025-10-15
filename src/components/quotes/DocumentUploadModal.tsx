@@ -128,7 +128,16 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           description: `A IA extraiu ${data.quote.items.length} itens do documento e criou uma RFQ.`,
         });
       } else {
-        throw new Error(data.error || 'Erro ao processar documento');
+        // Tratar erros específicos
+        if (data.error === 'unsupported_media_type') {
+          throw new Error('Formato não suportado. Envie um PDF válido.');
+        } else if (data.error === 'rate_limit_exceeded') {
+          throw new Error('Muitas requisições. Por favor, tente novamente em alguns instantes.');
+        } else if (data.error === 'credits_exhausted') {
+          throw new Error('Créditos de IA esgotados. Entre em contato com o suporte.');
+        } else {
+          throw new Error(data.error || 'Erro ao processar documento');
+        }
       }
     } catch (error) {
       console.error('Error processing document:', error);
