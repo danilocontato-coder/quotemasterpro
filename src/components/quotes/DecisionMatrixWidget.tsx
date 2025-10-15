@@ -2,12 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { WeightConfig, ProposalMetrics, calculateWeightedScore, DEFAULT_WEIGHT_TEMPLATES } from '@/utils/decisionMatrixCalculator';
 import { WeightEditorModal } from './WeightEditorModal';
-import { ChevronDown, ChevronUp, Settings, DollarSign, Clock, Package, Shield, Star, Zap, Save, CheckCircle } from 'lucide-react';
+import { NegotiationConfirmModal } from './NegotiationConfirmModal';
+import { NegotiationResultModal } from './NegotiationResultModal';
+import { DollarSign, Clock, Package, Shield, Star, Zap, Save, CheckCircle, Settings, Brain } from 'lucide-react';
 import { QuoteProposal } from './QuoteDetailModal';
 import { useSavedDecisionMatrices } from '@/hooks/useSavedDecisionMatrices';
+import { useAINegotiation } from '@/hooks/useAINegotiation';
 import { useToast } from '@/hooks/use-toast';
 
 interface DecisionMatrixWidgetProps {
@@ -25,11 +28,19 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   defaultOpen = false,
   onApprove
 }) => {
-  const [isExpanded, setIsExpanded] = useState(defaultOpen);
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [weights, setWeights] = useState<WeightConfig>(DEFAULT_WEIGHT_TEMPLATES.equilibrado);
   const [isSaving, setIsSaving] = useState(false);
+  const [showNegotiationModal, setShowNegotiationModal] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<QuoteProposal | null>(null);
+  const [negotiationAttempts, setNegotiationAttempts] = useState<Record<string, number>>({});
+  const [isNegotiating, setIsNegotiating] = useState(false);
+  const [negotiationResult, setNegotiationResult] = useState<'success' | 'failure'>('failure');
+  const [negotiatedTerms, setNegotiatedTerms] = useState<any>(null);
+  
   const { saveMatrix } = useSavedDecisionMatrices();
+  const { startAnalysis, startNegotiation, getNegotiationByQuoteId } = useAINegotiation();
   const { toast } = useToast();
 
   // Converter propostas para métricas
@@ -64,6 +75,21 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
 
   const winner = rankedProposals[0];
 
+  const getActionButtons = (proposal: any, index: number, topScore: number) => {
+    const isWinner = index === 0;
+    const scoreDiff = topScore - proposal.score;
+    const isViableForAI = proposal.score >= 70 && scoreDiff <= 15;
+
+    return {
+      showApprove: true,
+      showNegotiate: !isWinner && (index <= 2 || isViableForAI),
+      approveLabel: isWinner ? 'Aprovar Melhor Proposta' : 'Aprovar Proposta',
+      negotiateLabel: index === 1 
+        ? `Tentar Negociar (${scoreDiff.toFixed(1)} pts do líder)`
+        : 'Negociar com IA'
+    };
+  };
+
   const handleSaveWeights = (newWeights: WeightConfig) => {
     setWeights(newWeights);
   };
@@ -82,8 +108,67 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
         metrics: r.metrics
       })) as any
     });
-    // Reset saving state after a short delay
     setTimeout(() => setIsSaving(false), 1000);
+  };
+
+  const handleConfirmNegotiation = async () => {
+    if (!selectedProposal) return;
+    
+    setShowNegotiationModal(false);
+    setIsNegotiating(true);
+    
+    try {
+      // 1. Iniciar análise se não existir
+      const existingNegotiation = await getNegotiationByQuoteId(quoteId);
+      let negotiationId = existingNegotiation?.id;
+      
+      if (!negotiationId) {
+        const analysis = await startAnalysis(quoteId);
+        negotiationId = analysis.id;
+      }
+      
+      // 2. Iniciar negociação
+      const result = await startNegotiation(negotiationId);
+      
+      // 3. Incrementar contador de tentativas
+      setNegotiationAttempts(prev => ({
+        ...prev,
+        [selectedProposal.id]: (prev[selectedProposal.id] || 0) + 1
+      }));
+      
+      // 4. Simular resultado (em produção, viria da edge function)
+      const mockSuccess = Math.random() > 0.5;
+      setNegotiationResult(mockSuccess ? 'success' : 'failure');
+      
+      if (mockSuccess) {
+        setNegotiatedTerms({
+          price: selectedProposal.totalPrice * 0.92,
+          deliveryTime: Math.max(1, selectedProposal.deliveryTime - 2),
+          warrantyMonths: selectedProposal.warrantyMonths + 3
+        });
+      }
+      
+      setShowResultModal(true);
+      
+      toast({
+        title: "Negociação concluída",
+        description: mockSuccess ? "A IA conseguiu negociar melhores condições!" : "O fornecedor manteve a proposta original.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao negociar",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsNegotiating(false);
+      setSelectedProposal(null);
+    }
+  };
+
+  const handleRetryNegotiation = () => {
+    setShowResultModal(false);
+    setShowNegotiationModal(true);
   };
 
   const weightItems = [
@@ -106,31 +191,26 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
 
   return (
     <>
-      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <Card className="border-2 border-primary/20">
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl">📊</div>
-                  <div>
-                    <CardTitle className="text-lg">Matriz de Decisão - Análise Ponderada</CardTitle>
-                    {!isExpanded && winner && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Vencedor: <span className="font-semibold text-foreground">{winner.name}</span> ({winner.score.toFixed(1)} pontos)
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-primary/10">
-                    {proposals.length} propostas
-                  </Badge>
-                  {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+      <Collapsible open={true} className="w-full">
+        <Card className="border-2 border-primary/20 shadow-lg">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="text-2xl">📊</div>
+                <div>
+                  <CardTitle className="text-lg">Matriz de Decisão - Análise Ponderada</CardTitle>
+                  {winner && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Vencedor: <span className="font-semibold text-foreground">{winner.name}</span> ({winner.score.toFixed(1)} pontos)
+                    </p>
+                  )}
                 </div>
               </div>
-            </CardHeader>
-          </CollapsibleTrigger>
+              <Badge variant="outline" className="bg-primary/10">
+                {proposals.length} propostas
+              </Badge>
+            </div>
+          </CardHeader>
 
           <CollapsibleContent>
             <CardContent className="space-y-6 pt-6">
@@ -189,63 +269,94 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
                 <h4 className="font-semibold flex items-center gap-2">
                   🏆 Ranking Ponderado
                 </h4>
-                {rankedProposals.map((item, index) => (
-                  <Card key={item.id} className={index === 0 ? 'border-2 border-green-500 shadow-lg' : ''}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="text-2xl">{getMedalEmoji(index)}</div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold text-base">{item.name}</span>
-                              {index === 0 && (
-                                <Badge className="bg-green-100 text-green-800 border-green-300">
-                                  Melhor Escolha
-                                </Badge>
-                              )}
+                {rankedProposals.map((item, index) => {
+                  const buttons = getActionButtons(item, index, rankedProposals[0].score);
+                  const attempts = negotiationAttempts[item.id] || 0;
+
+                  return (
+                    <Card key={item.id} className={index === 0 ? 'border-2 border-green-500 shadow-lg' : ''}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="text-2xl">{getMedalEmoji(index)}</div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-base">{item.name}</span>
+                                {index === 0 && (
+                                  <Badge className="bg-green-100 text-green-800 border-green-300">
+                                    Melhor Escolha
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-3 w-3" />
+                                  R$ {item.metrics.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {item.metrics.deliveryTime}d
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Shield className="h-3 w-3" />
+                                  {item.metrics.warranty}m
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Star className="h-3 w-3" />
+                                  {item.metrics.reputation}/5
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="h-3 w-3" />
-                                R$ {item.metrics.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {item.metrics.deliveryTime}d
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Shield className="h-3 w-3" />
-                                {item.metrics.warranty}m
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Star className="h-3 w-3" />
-                                {item.metrics.reputation}/5
-                              </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-primary">
+                                {item.score.toFixed(1)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">pontos</div>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-primary">
-                              {item.score.toFixed(1)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">pontos</div>
-                          </div>
-                          {index === 0 && onApprove && (
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-2 mt-4">
+                          {buttons.showApprove && (
                             <Button
                               size="sm"
-                              onClick={() => onApprove(item.proposal)}
-                              className="bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => onApprove?.(item.proposal)}
+                              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
                             >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Aprovar
+                              <CheckCircle className="h-4 w-4" />
+                              {buttons.approveLabel}
                             </Button>
                           )}
+                          
+                          {buttons.showNegotiate && attempts < 2 && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedProposal(item.proposal);
+                                setShowNegotiationModal(true);
+                              }}
+                              variant="outline"
+                              disabled={isNegotiating}
+                              className="flex items-center gap-2 text-blue-600 border-blue-300"
+                            >
+                              <Brain className="h-4 w-4" />
+                              {buttons.negotiateLabel}
+                            </Button>
+                          )}
+                          
+                          {attempts >= 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              Limite de negociações atingido
+                            </Badge>
+                          )}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
 
               {/* Info */}
@@ -264,6 +375,43 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
         initialWeights={weights}
         onSave={handleSaveWeights}
       />
+
+      {selectedProposal && (
+        <>
+          <NegotiationConfirmModal
+            open={showNegotiationModal}
+            onClose={() => setShowNegotiationModal(false)}
+            onConfirm={handleConfirmNegotiation}
+            proposalDetails={{
+              supplierName: selectedProposal.supplierName,
+              totalPrice: selectedProposal.totalPrice,
+              currentScore: rankedProposals.find(p => p.id === selectedProposal.id)?.score || 0
+            }}
+          />
+
+          <NegotiationResultModal
+            open={showResultModal}
+            onClose={() => setShowResultModal(false)}
+            result={negotiationResult}
+            original={{
+              price: selectedProposal.totalPrice,
+              deliveryTime: selectedProposal.deliveryTime,
+              warrantyMonths: selectedProposal.warrantyMonths
+            }}
+            negotiated={negotiatedTerms}
+            remainingAttempts={2 - (negotiationAttempts[selectedProposal.id] || 0)}
+            onApproveNegotiated={() => {
+              setShowResultModal(false);
+              onApprove?.(selectedProposal);
+            }}
+            onApproveOriginal={() => {
+              setShowResultModal(false);
+              onApprove?.(selectedProposal);
+            }}
+            onRetry={handleRetryNegotiation}
+          />
+        </>
+      )}
     </>
   );
 };

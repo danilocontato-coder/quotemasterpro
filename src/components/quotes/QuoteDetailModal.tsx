@@ -800,68 +800,6 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
               {/* Comparação Rápida removida - agora está na tab "Combinação Inteligente" */}
 
-              {/* Cards de Ação por Fornecedor com Recomendação */}
-              {proposals.length > 0 && (
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-base">Propostas Recebidas</h4>
-                  {proposals
-                    .sort((a, b) => a.totalPrice - b.totalPrice) // Ordenar por menor preço
-                    .map((proposal) => (
-                    <Card key={proposal.id} className="relative">
-                      <CardHeader>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg mb-2">{proposal.supplierName}</CardTitle>
-                          </div>
-                          <Badge className="bg-blue-100 text-blue-800 text-base px-3 py-1">
-                            R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Prazo de Entrega</p>
-                            <p className="font-medium text-base">{proposal.deliveryTime} dias</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Frete</p>
-                            <p className="font-medium text-base">R$ {proposal.shippingCost.toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Garantia</p>
-                            <p className="font-medium text-base">{proposal.warrantyMonths} meses</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Reputação</p>
-                            <p className="font-medium text-base">{proposal.reputation}/5 ⭐</p>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => onApprove?.(proposal)}
-                            className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            Aprovar Proposta
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
-                          >
-                            <Brain className="h-4 w-4" />
-                            Negociar via IA
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
               {/* Status de fornecedores que não responderam */}
               {supplierNames.length > proposals.length && (
                 <div className="mt-6">
