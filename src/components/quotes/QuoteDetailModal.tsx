@@ -1129,6 +1129,32 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               )}
             </TabsContent>
 
+            {/* AI Analyses History Tab */}
+            <TabsContent value="ai-history" className="space-y-6">
+              <AIAnalysesTab 
+                quoteId={quote.id}
+                onReanalyze={() => {
+                  analyzeAllProposals(proposals.map(p => ({
+                    id: p.id,
+                    quoteId: quote.id,
+                    supplierId: p.supplierId,
+                    supplierName: p.supplierName,
+                    items: p.items.map(item => ({
+                      productName: item.productName,
+                      brand: item.brand,
+                      specifications: item.specifications,
+                      quantity: item.quantity,
+                      unitPrice: item.unitPrice
+                    })),
+                    totalAmount: p.totalPrice,
+                    deliveryTime: `${p.deliveryTime} dias`,
+                    warranty: `${p.warrantyMonths} meses`,
+                    paymentTerms: 'Não especificado'
+                  })));
+                }}
+              />
+            </TabsContent>
+
             {/* Visits Tab */}
             {quote.requires_visit && (
               <TabsContent value="visits" className="space-y-6">
