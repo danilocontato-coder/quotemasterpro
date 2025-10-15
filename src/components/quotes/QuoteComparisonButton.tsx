@@ -119,6 +119,13 @@ export function QuoteComparisonButton({
     finalDisabled: disabled || !hasProposals || isLoading
   });
 
+  // Status message based on responses
+  const statusMessage = isLoading 
+    ? 'Carregando...' 
+    : proposals.length >= 2 
+      ? `✅ Recebidas - Comparar (${proposals.length})`
+      : `Comparar ${proposals.length} Proposta${proposals.length !== 1 ? 's' : ''}`;
+
   return (
     <>
       <Button
@@ -126,11 +133,11 @@ export function QuoteComparisonButton({
         size="sm"
         onClick={() => setShowComparison(true)}
         disabled={disabled || !hasProposals || isLoading}
-        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white"
         title={hasProposals ? 'Comparar propostas recebidas' : 'Aguardando propostas'}
       >
         <BarChart3 className="h-4 w-4" />
-        {isLoading ? 'Carregando...' : `Comparar Propostas (${proposals.length})`}
+        {statusMessage}
       </Button>
 
       <QuoteComparison

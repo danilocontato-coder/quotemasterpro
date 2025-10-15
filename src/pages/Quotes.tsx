@@ -723,16 +723,28 @@ export default function Quotes() {
 
                 {/* Actions */}
                 <div className="pt-3 border-t border-border mt-auto">
-                  {/* Compare Button - Featured when multiple responses */}
-                  {quote.responses_count >= 2 && (
+                  {/* Status-based comparison button */}
+                  {quote.responses_count >= 2 ? (
                     <div className="mb-2">
-                      <Suspense fallback={<Button variant="outline" size="sm" className="w-full" disabled><BarChart3 className="h-4 w-4 mr-2" />Comparar</Button>}>
+                      <Suspense fallback={<Button variant="outline" size="sm" className="w-full" disabled><BarChart3 className="h-4 w-4 mr-2" />Carregando...</Button>}>
                         <QuoteComparisonButton
                           quoteId={quote.id}
                           quoteTitle={quote.title}
                           responsesCount={quote.responses_count}
                         />
                       </Suspense>
+                    </div>
+                  ) : (
+                    <div className="mb-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full opacity-60 cursor-not-allowed"
+                        disabled
+                      >
+                        <Clock className="h-4 w-4 mr-2" />
+                        Aguardando Propostas ({quote.responses_count || 0}/{quote.suppliers_sent_count || 0})
+                      </Button>
                     </div>
                   )}
                   

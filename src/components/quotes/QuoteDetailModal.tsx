@@ -702,17 +702,6 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       </Button>
                     )}
 
-                    {proposals.length > 0 && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowComparison(true)}
-                        className="flex items-center gap-2"
-                      >
-                        <BarChart3 className="h-4 w-4" />
-                        Comparar Propostas
-                      </Button>
-                    )}
-
                     <Button
                       variant="outline"
                       onClick={() => setShowItemAnalysis(true)}
