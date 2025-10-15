@@ -41,10 +41,9 @@ serve(async (req) => {
     }
 
     console.log('Processing PDF extraction for:', filename);
+    console.log('Base64 content length:', base64Content.length);
 
-    // Simplified PDF handling - just use filename and base for analysis
-    const pdfText = `PDF Document uploaded: ${filename}. Manual content analysis needed.`;
-
+    // Usar OpenAI Vision API para processar PDF diretamente
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -95,14 +94,21 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Por favor, extraia os dados desta proposta comercial do PDF. 
-            
-            Conteúdo do documento: ${pdfText}
-            
-            Se o PDF não pôde ser processado adequadamente, crie uma estrutura básica com campos vazios para que o usuário possa preencher manualmente.`
+            content: [
+              {
+                type: 'text',
+                text: 'Por favor, extraia os dados desta proposta comercial do PDF. Se não conseguir identificar itens, retorne um array vazio em "items".'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:application/pdf;base64,${base64Content}`
+                }
+              }
+            ]
           }
         ],
-        max_completion_tokens: 2000
+        max_tokens: 2000
       }),
     });
 

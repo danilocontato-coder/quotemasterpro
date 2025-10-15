@@ -108,12 +108,24 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       if (error) throw error;
 
       if (data.success && data.quote) {
+        // Verificar se extraiu itens válidos
+        if (!data.quote.items || data.quote.items.length === 0) {
+          toast({
+            title: 'PDF sem conteúdo extraível',
+            description: 'Não foi possível extrair itens do PDF. Por favor, crie a cotação manualmente.',
+            variant: 'destructive'
+          });
+          onOpenChange(false);
+          setUploadedFile(null);
+          return;
+        }
+
         onQuoteGenerated(data.quote);
         onOpenChange(false);
         setUploadedFile(null);
         toast({
           title: 'Documento Processado!',
-          description: `A IA extraiu ${data.quote.items?.length || 0} itens do documento e criou uma RFQ.`,
+          description: `A IA extraiu ${data.quote.items.length} itens do documento e criou uma RFQ.`,
         });
       } else {
         throw new Error(data.error || 'Erro ao processar documento');

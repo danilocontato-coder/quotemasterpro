@@ -312,12 +312,17 @@ export function CreateQuoteModalSupabase({
     }
   };
   const canProceed = () => {
+    // Verificação de segurança: evitar erro se items for undefined
+    if (!formData.items || formData.items.length === 0) {
+      if (currentStep === 2) return false; // Bloquear step de items se não houver items
+    }
+
     // DEBUG: Log do estado atual
     console.log('🔍 DEBUG canProceed - Current step:', currentStep);
     console.log('🔍 DEBUG canProceed - Form data:', {
       title: formData.title,
       titleLength: formData.title.length,
-      itemsCount: formData.items.length,
+      itemsCount: formData.items?.length || 0,
       suppliersCount: formData.supplier_ids.length,
       emailMethod: formData.communicationMethods.email,
       whatsappMethod: formData.communicationMethods.whatsapp
@@ -325,7 +330,7 @@ export function CreateQuoteModalSupabase({
 
     // Sempre permitir se estivermos na última etapa (Revisão)
     if (currentStep === steps.length) {
-      const canProceedFinal = formData.title.trim() !== "" && formData.items.length > 0;
+      const canProceedFinal = formData.title.trim() !== "" && (formData.items?.length || 0) > 0;
       console.log('🔍 DEBUG canProceed - Final step result:', canProceedFinal);
       return canProceedFinal;
     }
