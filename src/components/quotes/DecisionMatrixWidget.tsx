@@ -176,7 +176,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
     { key: 'deliveryTime' as const, label: 'Prazo', icon: Clock, color: 'bg-blue-100 text-blue-700' },
     { key: 'shippingCost' as const, label: 'Frete', icon: Package, color: 'bg-orange-100 text-orange-700' },
     { key: 'warranty' as const, label: 'Garantia', icon: Shield, color: 'bg-purple-100 text-purple-700' },
-    { key: 'sla' as const, label: 'SLA', icon: Zap, color: 'bg-yellow-100 text-yellow-700' },
+    { key: 'sla' as const, label: 'Pontualidade', icon: Zap, color: 'bg-yellow-100 text-yellow-700' },
     { key: 'reputation' as const, label: 'Reputação', icon: Star, color: 'bg-amber-100 text-amber-700' },
   ];
 
