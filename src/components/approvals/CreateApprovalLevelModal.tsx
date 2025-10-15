@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { X, AlertCircle, Info } from "lucide-react";
 import { useSupabaseApprovalLevels } from "@/hooks/useSupabaseApprovalLevels";
-import { useSupabaseUsers } from "@/hooks/useSupabaseUsers";
+import { useSupabaseApprovers } from "@/hooks/useSupabaseApprovers";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/useCurrency";
 
@@ -20,7 +20,7 @@ interface CreateApprovalLevelModalProps {
 
 export function CreateApprovalLevelModal({ open, onClose }: CreateApprovalLevelModalProps) {
   const { createApprovalLevel } = useSupabaseApprovalLevels();
-  const { users } = useSupabaseUsers();
+  const { approvers, isLoading: loadingApprovers } = useSupabaseApprovers();
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 const [formData, setFormData] = useState({
@@ -82,10 +82,7 @@ setFormData({
     }
   };
 
-  // Filter users that can approve (only managers and admins)
-  const approverUsers = users.filter(u => 
-    u.status === 'active' && (u.role === 'manager' || u.role === 'admin')
-  );
+  // approvers already filtered by useSupabaseApprovers hook from profiles table
 
   const isFormValid = 
     formData.name.trim() !== "" &&
@@ -172,29 +169,33 @@ setFormData({
               </Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-2 border rounded">
-              {approverUsers.map((user) => (
-                <div key={user.id} className="flex items-center space-x-3">
+              {loadingApprovers ? (
+                <div className="col-span-2 text-center py-4 text-muted-foreground">
+                  Carregando aprovadores...
+                </div>
+              ) : approvers.map((approver) => (
+                <div key={approver.id} className="flex items-center space-x-3">
                   <Checkbox
-                    id={user.id}
-                    checked={formData.approvers.includes(user.id)}
+                    id={approver.id}
+                    checked={formData.approvers.includes(approver.id)}
                     onCheckedChange={(checked) => 
-                      handleUserChange(user.id, checked as boolean)
+                      handleUserChange(approver.id, checked as boolean)
                     }
                   />
-                  <Label htmlFor={user.id} className="text-sm cursor-pointer">
+                  <Label htmlFor={approver.id} className="text-sm cursor-pointer">
                     <div>
-                      <div className="font-medium">{user.name}</div>
+                      <div className="font-medium">{approver.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {user.role} • {user.email}
+                        {approver.role} • {approver.email}
                       </div>
                     </div>
                   </Label>
                 </div>
               ))}
             </div>
-            {approverUsers.length === 0 && (
+            {!loadingApprovers && approvers.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Nenhum usuário com permissão de aprovação encontrado. Apenas usuários com papel "Manager" ou "Admin" podem aprovar.
+                Nenhum usuário com permissão de aprovação encontrado. Apenas usuários com papel "Manager", "Admin" ou "Admin Cliente" podem aprovar.
               </p>
             )}
           </div>

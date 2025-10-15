@@ -696,6 +696,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "approvals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "approvals_quote_id_fkey"
             columns: ["quote_id"]
             isOneToOne: false
@@ -4255,6 +4262,48 @@ export type Database = {
           },
         ]
       }
+      approvals_with_details: {
+        Row: {
+          approved_at: string | null
+          approver_active: boolean | null
+          approver_email: string | null
+          approver_id: string | null
+          approver_name: string | null
+          comments: string | null
+          created_at: string | null
+          id: string | null
+          quote_client_id: string | null
+          quote_id: string | null
+          quote_status: string | null
+          quote_title: string | null
+          quote_total: number | null
+          status: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approvals_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["quote_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       approve_offline_payment: {
@@ -4623,6 +4672,16 @@ export type Database = {
       user_has_module_access: {
         Args: { _module_key: string }
         Returns: boolean
+      }
+      validate_approval_level_approvers: {
+        Args: { p_level_id: string }
+        Returns: {
+          approver_email: string
+          approver_id: string
+          approver_name: string
+          is_active: boolean
+          is_valid: boolean
+        }[]
       }
       validate_coupon: {
         Args: {

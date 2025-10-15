@@ -111,10 +111,23 @@ serve(async (req) => {
         console.error('❌ Error updating quote to under_review:', quoteUpdateError);
       }
 
-      // Create approval records for each approver
+      // Create approval records for each approver (now validated by RPC)
       const approverIds = approvalLevel.approvers || [];
+      let validApproversCount = 0;
       
       for (const approverId of approverIds) {
+        // Validate approver exists in profiles before creating approval
+        const { data: approverProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, name, email, active')
+          .eq('id', approverId)
+          .single();
+        
+        if (profileError || !approverProfile || !approverProfile.active) {
+          console.error(`⚠️ Skipping invalid/inactive approver ${approverId}:`, profileError?.message);
+          continue;
+        }
+        
         const { error: approvalError } = await supabase
           .from('approvals')
           .insert({
@@ -126,23 +139,66 @@ serve(async (req) => {
 
         if (approvalError) {
           console.error(`❌ Error creating approval for ${approverId}:`, approvalError);
-        } else {
-          // Notify approver
-          await supabase.from('notifications').insert({
-            user_id: approverId,
-            title: '📋 Nova Aprovação Pendente',
-            message: `Cotação "${quote.title}" aguarda sua aprovação. Valor: R$ ${response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            type: 'approval_pending',
-            priority: 'high',
-            action_url: '/approvals',
-            metadata: {
-              quote_id: quoteId,
-              response_id: responseId,
-              amount: response.total_amount,
-              approval_level: approvalLevel.name
-            }
-          });
+          continue;
         }
+        
+        validApproversCount++;
+        
+        // Notify approver
+        await supabase.from('notifications').insert({
+          user_id: approverId,
+          title: '📋 Nova Aprovação Pendente',
+          message: `Cotação "${quote.title}" aguarda sua aprovação. Valor: R$ ${response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          type: 'approval_pending',
+          priority: 'high',
+          action_url: '/approvals',
+          metadata: {
+            quote_id: quoteId,
+            response_id: responseId,
+            amount: response.total_amount,
+            approval_level: approvalLevel.name,
+            approver_name: approverProfile.name
+          }
+        });
+      }
+      
+      // If no valid approvers were found, fall back to direct approval with warning
+      if (validApproversCount === 0) {
+        console.error(`⚠️ CRITICAL: No valid approvers for level "${approvalLevel.name}". Auto-approving with audit log.`);
+        
+        // Update quote response and quote to approved
+        await supabase.from('quote_responses').update({ status: 'approved' }).eq('id', responseId);
+        await supabase.from('quotes').update({ status: 'approved' }).eq('id', quoteId);
+        
+        // Log critical audit event
+        await supabase.from('audit_logs').insert({
+          user_id: quote.created_by,
+          action: 'AUTO_APPROVED_NO_APPROVERS',
+          entity_type: 'approvals',
+          entity_id: quoteId,
+          panel_type: 'system',
+          details: {
+            quote_id: quoteId,
+            response_id: responseId,
+            approval_level_id: approvalLevel.id,
+            approval_level_name: approvalLevel.name,
+            reason: 'no_valid_approvers_found',
+            configured_approvers: approverIds,
+            amount: response.total_amount
+          }
+        });
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            approval_required: false,
+            auto_approved: true,
+            warning: 'Nível de aprovação sem aprovadores válidos. Cotação aprovada automaticamente. Verifique configuração de níveis de aprovação.',
+            message: 'Proposta aprovada automaticamente (nível sem aprovadores válidos)',
+            amount: response.total_amount
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       // Log audit trail for approval creation
@@ -162,7 +218,7 @@ serve(async (req) => {
         }
       });
 
-      console.log(`✅ Created approval workflow with ${approverIds.length} approvers`);
+      console.log(`✅ Created approval workflow with ${validApproversCount} valid approvers`);
 
       return new Response(
         JSON.stringify({
@@ -170,7 +226,8 @@ serve(async (req) => {
           approval_required: true,
           message: 'Proposta selecionada! Aguardando aprovação conforme nível configurado.',
           approval_level: approvalLevel.name,
-          approvers_count: approverIds.length,
+          approvers_count: validApproversCount,
+          total_configured: approverIds.length,
           amount: response.total_amount
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

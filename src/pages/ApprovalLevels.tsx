@@ -57,8 +57,8 @@ useEffect(() => {
       if (allApproverIds.length === 0) return;
       
       const { data: users, error } = await supabase
-        .from('users')
-        .select('id, name')
+        .from('profiles')
+        .select('id, name, active')
         .in('id', allApproverIds);
         
       if (error) throw error;
