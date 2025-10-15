@@ -120,6 +120,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [supplierNames, setSupplierNames] = useState<{ id: string; name: string; phone?: string; whatsapp?: string; status?: string }[]>([]);
   const [totalInvited, setTotalInvited] = useState<number>(0);
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const [manualOverride, setManualOverride] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
@@ -397,6 +398,42 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   }, [open, proposals.length, quote?.status, autoMarkAsReceived]);
 
   const negotiation = quote ? getNegotiationByQuoteId(quote.id) : null;
+
+  // Verifica se o prazo da cotação expirou
+  const isDeadlineExpired = useMemo(() => {
+    if (!quote?.deadline) return false;
+    return new Date(quote.deadline) < new Date();
+  }, [quote?.deadline]);
+
+  // Lógica híbrida para exibir a Matriz de Decisão
+  const shouldShowMatrix = useMemo(() => {
+    // Cotação única (1 fornecedor) -> NUNCA mostra matriz
+    if (totalInvited === 1 || supplierNames.length === 1) {
+      return false;
+    }
+
+    // Precisa de pelo menos 2 propostas
+    if (proposals.length < 2) {
+      return false;
+    }
+
+    // CENÁRIO 1: Todos os fornecedores responderam
+    if (supplierNames.length > 0 && proposals.length === supplierNames.length) {
+      return true;
+    }
+
+    // CENÁRIO 2: Prazo expirou
+    if (isDeadlineExpired) {
+      return true;
+    }
+
+    // CENÁRIO 3: Cliente forçou manualmente
+    if (manualOverride) {
+      return true;
+    }
+
+    return false;
+  }, [proposals.length, supplierNames.length, totalInvited, isDeadlineExpired, manualOverride]);
 
   // Calculate best combination (multi-supplier optimization)
   const bestCombination = useMemo(() => {
@@ -755,13 +792,46 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 />
               )}
 
+              {/* Alert quando há 2+ propostas mas matriz ainda não deve aparecer */}
+              {proposals.length >= 2 && !shouldShowMatrix && totalInvited > 1 && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-blue-900 mb-1">
+                          Aguardando {supplierNames.length - proposals.length} fornecedor(es)
+                        </h4>
+                        <p className="text-sm text-blue-700 mb-3">
+                          {quote.deadline 
+                            ? `A Matriz de Decisão aparecerá automaticamente quando o prazo (${formatLocalDate(quote.deadline)}) expirar ou todos responderem.`
+                            : 'A Matriz de Decisão aparecerá quando todos os fornecedores responderem.'}
+                        </p>
+                        <p className="text-xs text-blue-600 mb-3">
+                          Você já pode prosseguir com as {proposals.length} propostas atuais se não quiser aguardar.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => setManualOverride(true)}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          Prosseguir com Propostas Atuais
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Decision Matrix Widget */}
-              {proposals.length >= 2 && (
+              {shouldShowMatrix && (
                 <DecisionMatrixWidget
                   proposals={proposals}
                   quoteId={quote.id}
                   quoteName={quote.title}
-                  defaultOpen={false}
+                  defaultOpen={true}
                   onApprove={onApprove}
                 />
               )}
