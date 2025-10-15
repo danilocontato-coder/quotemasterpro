@@ -32,7 +32,7 @@ export function ItemAnalysisModal({
   open, 
   onClose, 
   items, 
-  title = "Análise de Mercado - Itens"
+  title = "🧩 Combinação Inteligente - Melhores Preços por Item"
 }: ItemAnalysisModalProps) {
   const { toast } = useToast();
   const {
@@ -166,7 +166,7 @@ export function ItemAnalysisModal({
             <div>
               <DialogTitle className="text-xl">{title}</DialogTitle>
               <DialogDescription>
-                Análise de preços de mercado para {items.length} item(ns)
+                Monte a compra ideal combinando os melhores preços de cada fornecedor • {items.length} item(ns)
               </DialogDescription>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>

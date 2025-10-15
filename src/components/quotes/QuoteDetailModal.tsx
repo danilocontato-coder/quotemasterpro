@@ -23,7 +23,8 @@ import {
   BarChart3,
   Brain,
   User,
-  AlertTriangle
+  AlertTriangle,
+  ShoppingCart
 } from 'lucide-react';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
@@ -586,7 +587,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               <TabsTrigger value="proposals">
                 Propostas ({proposals.length})
               </TabsTrigger>
-              <TabsTrigger value="analysis">Análise Inteligente</TabsTrigger>
+              <TabsTrigger value="analysis">🧩 Combinação Inteligente</TabsTrigger>
               {quote.requires_visit && (
                 <TabsTrigger value="visits">
                   <Calendar className="h-4 w-4 mr-1" />
@@ -729,8 +730,8 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       onClick={() => setShowItemAnalysis(true)}
                       className="flex items-center gap-2"
                     >
-                      <Brain className="h-4 w-4" />
-                      Análise Detalhada
+                      <Package className="h-4 w-4" />
+                      🧩 Combinação Inteligente
                     </Button>
 
                     <Button variant="outline" className="flex items-center gap-2">
@@ -785,20 +786,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 />
               )}
 
-              {/* Tabela comparativa simplificada (se houver 2+ propostas) */}
-              {proposals.length >= 2 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5" />
-                      Comparação Rápida
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ProposalComparisonTable proposals={proposals} quoteItems={quoteItems} />
-                  </CardContent>
-                </Card>
-              )}
+              {/* Comparação Rápida removida - agora está na tab "Combinação Inteligente" */}
 
               {/* Cards de Ação por Fornecedor com Recomendação */}
               {proposals.length > 0 && (
@@ -935,54 +923,58 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Brain className="h-5 w-5" />
-                      Análise Inteligente
+                      <Package className="h-5 w-5" />
+                      🧩 Combinação Inteligente
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Nenhuma análise foi iniciada para esta cotação.
+                      Nenhuma análise foi iniciada ainda. Clique abaixo para iniciar a otimização que encontra o melhor preço por item.
                     </p>
                     <Button onClick={() => startAnalysis(quote.id)} className="flex items-center gap-2">
-                      <Brain className="h-4 w-4" />
-                      Executar análise IA
+                      <Package className="h-4 w-4" />
+                      Executar Combinação Inteligente
                     </Button>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Smart Economy Analysis */}
+              {/* Smart Combination Analysis */}
               {bestCombination && (
                 <>
-                  <Card>
+                  <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-green-700">
-                        <TrendingDown className="h-5 w-5" />
-                        Análise de Economia Inteligente
+                        <Package className="h-5 w-5" />
+                        🧩 Combinação Inteligente - Melhores Preços
                       </CardTitle>
+                      <p className="text-sm text-green-700 mt-2">
+                        💡 <strong>Monte a compra ideal:</strong> Veja quanto você economiza comprando cada item do fornecedor 
+                        que oferece o melhor preço, mesmo que isso signifique comprar de múltiplos fornecedores.
+                      </p>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-sm text-muted-foreground">Economia Total</p>
+                          <p className="text-sm text-muted-foreground">💰 Economia Total</p>
                           <p className="text-2xl font-bold text-green-600">
                             R$ {bestCombination.totalSavings.toFixed(2)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Percentual</p>
+                          <p className="text-sm text-muted-foreground">📊 Percentual</p>
                           <p className="text-2xl font-bold text-green-600">
                             {bestCombination.savingsPercentage.toFixed(1)}%
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Custo Final</p>
+                          <p className="text-sm text-muted-foreground">💵 Custo Otimizado</p>
                           <p className="text-2xl font-bold text-blue-600">
                             R$ {bestCombination.totalCost.toFixed(2)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground">Fornecedores</p>
+                          <p className="text-sm text-muted-foreground">🏪 Fornecedores</p>
                           <p className="text-2xl font-bold">
                             {bestCombination.uniqueSuppliers.length}
                           </p>
@@ -990,10 +982,24 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       </div>
                       
                       {bestCombination.isMultiSupplier && (
-                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                          <p className="text-sm text-yellow-800">
-                            💡 <strong>Estratégia Multi-fornecedor:</strong> A melhor economia é obtida comprando de diferentes fornecedores.
-                          </p>
+                        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-yellow-900">
+                                ⚠️ Estratégia Multi-fornecedor Detectada
+                              </p>
+                              <p className="text-sm text-yellow-800">
+                                Comprar de <strong>{bestCombination.uniqueSuppliers.length} fornecedores diferentes</strong> pode 
+                                gerar múltiplos fretes e complexidade logística. Considere:
+                              </p>
+                              <ul className="text-sm text-yellow-800 space-y-1 ml-4">
+                                <li>• Negociar frete grátis com os fornecedores</li>
+                                <li>• Verificar se a economia compensa os custos adicionais</li>
+                                <li>• Consultar a análise do <strong>Consultor IA</strong> para uma visão mais completa</li>
+                              </ul>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </CardContent>
