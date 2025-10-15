@@ -16,6 +16,7 @@ import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate } from "@/utils/dateUtils";
 import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Lazy load modais pesados
 const CreateQuoteModalSupabase = lazy(() => import("@/components/quotes/CreateQuoteModalSupabase").then(m => ({ default: m.CreateQuoteModalSupabase })));
@@ -896,6 +897,47 @@ export default function Quotes() {
           quote={viewingQuote}
           onStatusChange={(quoteId, newStatus) => {
             updateQuote(quoteId, { status: newStatus });
+          }}
+          onApprove={async (proposal: any) => {
+            try {
+              const { data, error } = await supabase.functions.invoke('approve-proposal', {
+                body: {
+                  responseId: proposal.id,
+                  quoteId: proposal.quoteId,
+                  comments: ''
+                }
+              });
+              
+              if (error) throw error;
+              
+              if (data.approval_required) {
+                toast.success(`✅ ${data.message}`, {
+                  description: `Nível: ${data.approval_level} (${data.approvers_count} aprovadores)`,
+                  duration: 5000
+                });
+              } else {
+                toast.success(`🎉 ${data.message}`, {
+                  description: `Fornecedor: ${data.supplier_name} | Valor: R$ ${data.approved_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                  duration: 5000
+                });
+                
+                if (data.whatsapp_sent) {
+                  toast.info('📱 WhatsApp enviado com sucesso!');
+                }
+                if (data.email_sent) {
+                  toast.info('📧 E-mail enviado com sucesso!');
+                }
+              }
+              
+              await refetch();
+              setIsDetailModalOpen(false);
+              setViewingQuote(null);
+            } catch (err: any) {
+              console.error('Erro ao aprovar proposta:', err);
+              toast.error('Erro ao aprovar proposta', {
+                description: err.message || 'Tente novamente mais tarde'
+              });
+            }
           }}
           defaultTab={viewingQuote && viewingQuote.responses_count >= 2 ? "proposals" : "overview"}
         />

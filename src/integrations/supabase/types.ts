@@ -1899,6 +1899,62 @@ export type Database = {
           },
         ]
       }
+      email_templates: {
+        Row: {
+          active: boolean
+          client_id: string | null
+          created_at: string
+          html_content: string
+          id: string
+          is_default: boolean | null
+          is_global: boolean
+          name: string
+          plain_text_content: string | null
+          subject: string
+          template_type: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          active?: boolean
+          client_id?: string | null
+          created_at?: string
+          html_content: string
+          id?: string
+          is_default?: boolean | null
+          is_global?: boolean
+          name: string
+          plain_text_content?: string | null
+          subject: string
+          template_type?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          active?: boolean
+          client_id?: string | null
+          created_at?: string
+          html_content?: string
+          id?: string
+          is_default?: boolean | null
+          is_global?: boolean
+          name?: string
+          plain_text_content?: string | null
+          subject?: string
+          template_type?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exchange_rates: {
         Row: {
           created_at: string | null
@@ -4208,6 +4264,10 @@ export type Database = {
       associate_supplier_to_client: {
         Args: { p_client_id?: string; p_supplier_id: string }
         Returns: string
+      }
+      check_approval_required: {
+        Args: { p_amount: number; p_client_id: string; p_quote_id: string }
+        Returns: Json
       }
       check_overdue_accounts: {
         Args: Record<PropertyKey, never>

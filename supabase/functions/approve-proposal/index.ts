@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.33.2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { resolveEvolutionConfig, sendEvolutionWhatsApp } from '../_shared/evolution.ts';
+import { resolveEmailConfig, sendEmail, replaceVariables } from '../_shared/email.ts';
 
 interface ApprovalRequest {
   responseId: string;
@@ -64,7 +65,122 @@ serve(async (req) => {
       );
     }
 
-    // 3. Update quote response status to approved
+    // 3. Check if approval workflow is required (NEW)
+    const { data: approvalCheck } = await supabase.rpc('check_approval_required', {
+      p_quote_id: quoteId,
+      p_amount: response.total_amount,
+      p_client_id: quote.client_id
+    });
+
+    console.log('🔍 Approval check result:', approvalCheck);
+
+    // If approval is required, create approval workflow instead of direct approval
+    if (approvalCheck?.required) {
+      console.log('📋 Approval required - creating approval workflow');
+      
+      const approvalLevel = approvalCheck.level;
+      
+      // Update quote response to 'selected' (not approved yet)
+      const { error: updateError } = await supabase
+        .from('quote_responses')
+        .update({ 
+          status: 'selected',
+          notes: comments ? `${response.notes || ''}\n\nSelecionada para aprovação: ${comments}` : response.notes
+        })
+        .eq('id', responseId);
+
+      if (updateError) {
+        console.error('❌ Error updating quote response:', updateError);
+        return new Response(
+          JSON.stringify({ error: 'Erro ao selecionar proposta' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update quote status to 'under_review'
+      const { error: quoteUpdateError } = await supabase
+        .from('quotes')
+        .update({ 
+          status: 'under_review',
+          supplier_id: response.supplier_id,
+          supplier_name: response.supplier_name
+        })
+        .eq('id', quoteId);
+
+      if (quoteUpdateError) {
+        console.error('❌ Error updating quote to under_review:', quoteUpdateError);
+      }
+
+      // Create approval records for each approver
+      const approverIds = approvalLevel.approvers || [];
+      
+      for (const approverId of approverIds) {
+        const { error: approvalError } = await supabase
+          .from('approvals')
+          .insert({
+            quote_id: quoteId,
+            approver_id: approverId,
+            status: 'pending',
+            comments: `Proposta de ${response.supplier_name} - R$ ${response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+          });
+
+        if (approvalError) {
+          console.error(`❌ Error creating approval for ${approverId}:`, approvalError);
+        } else {
+          // Notify approver
+          await supabase.from('notifications').insert({
+            user_id: approverId,
+            title: '📋 Nova Aprovação Pendente',
+            message: `Cotação "${quote.title}" aguarda sua aprovação. Valor: R$ ${response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+            type: 'approval_pending',
+            priority: 'high',
+            action_url: '/approvals',
+            metadata: {
+              quote_id: quoteId,
+              response_id: responseId,
+              amount: response.total_amount,
+              approval_level: approvalLevel.name
+            }
+          });
+        }
+      }
+
+      // Log audit trail for approval creation
+      await supabase.from('audit_logs').insert({
+        user_id: quote.created_by,
+        action: 'APPROVAL_WORKFLOW_CREATED',
+        entity_type: 'approvals',
+        entity_id: quoteId,
+        panel_type: 'client',
+        details: {
+          quote_id: quoteId,
+          response_id: responseId,
+          approval_level: approvalLevel.name,
+          approvers_count: approverIds.length,
+          amount: response.total_amount,
+          supplier_name: response.supplier_name
+        }
+      });
+
+      console.log(`✅ Created approval workflow with ${approverIds.length} approvers`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          approval_required: true,
+          message: 'Proposta selecionada! Aguardando aprovação conforme nível configurado.',
+          approval_level: approvalLevel.name,
+          approvers_count: approverIds.length,
+          amount: response.total_amount
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Continue with direct approval if no approval required
+    console.log('✅ No approval required - proceeding with direct approval');
+
+    // 4. Update quote response status to approved
     const { error: updateError } = await supabase
       .from('quote_responses')
       .update({ 
@@ -84,7 +200,7 @@ serve(async (req) => {
       );
     }
 
-    // 4. Update quote status to approved and set selected supplier
+    // 5. Update quote status to approved and set selected supplier
     const { error: quoteUpdateError } = await supabase
       .from('quotes')
       .update({ 
@@ -98,7 +214,7 @@ serve(async (req) => {
       console.error('❌ Error updating quote:', quoteUpdateError);
     }
 
-    // 5. Reject all other proposals for this quote automatically
+    // 6. Reject all other proposals for this quote automatically
     const { data: otherResponses, error: otherResponsesError } = await supabase
       .from('quote_responses')
       .update({ 
@@ -116,14 +232,26 @@ serve(async (req) => {
       console.log(`✅ Auto-rejected ${otherResponses?.length || 0} other proposals`);
     }
 
-    // 6. Send WhatsApp notification to approved supplier
+    // 7. Send WhatsApp notification to approved supplier
     let whatsappResult = null;
     if (response.suppliers?.whatsapp) {
       try {
         const evolutionConfig = await resolveEvolutionConfig(supabase, quote.client_id);
         
         if (evolutionConfig.apiUrl && evolutionConfig.token) {
-          const message = `🎉 *Parabéns! Sua proposta foi APROVADA!*
+          // Buscar template de WhatsApp
+          const { data: whatsappTemplate } = await supabase
+            .from('whatsapp_templates')
+            .select('*')
+            .eq('template_type', 'proposal_approved')
+            .eq('active', true)
+            .or(`client_id.eq.${quote.client_id},is_global.eq.true`)
+            .order('is_default', { ascending: false })
+            .order('client_id', { ascending: false, nullsFirst: false })
+            .limit(1)
+            .single();
+
+          let message = `🎉 *Parabéns! Sua proposta foi APROVADA!*
 
 *Cotação:* ${quote.title}
 *Valor aprovado:* R$ ${response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -134,6 +262,17 @@ ${comments ? `*Observações:* ${comments}` : ''}
 Em breve entraremos em contato para finalizar os detalhes da compra.
 
 Obrigado pela sua proposta! 🤝`;
+
+          if (whatsappTemplate) {
+            const variables = {
+              quote_title: quote.title,
+              client_name: quote.client_name,
+              approved_amount: response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+              delivery_time: response.delivery_time || 'A definir',
+              comments: comments || ''
+            };
+            message = replaceVariables(whatsappTemplate.message_content, variables);
+          }
 
           whatsappResult = await sendEvolutionWhatsApp(
             evolutionConfig,
@@ -150,7 +289,62 @@ Obrigado pela sua proposta! 🤝`;
       }
     }
 
-    // 7. Create notification for approved supplier
+    // 8. Send Email notification to approved supplier
+    let emailResult = null;
+    if (response.suppliers?.email) {
+      try {
+        const emailConfig = await resolveEmailConfig(supabase, quote.client_id);
+        
+        if (emailConfig) {
+          // Buscar template de e-mail
+          const { data: emailTemplate } = await supabase
+            .from('email_templates')
+            .select('*')
+            .eq('template_type', 'proposal_approved')
+            .eq('active', true)
+            .or(`client_id.eq.${quote.client_id},is_global.eq.true`)
+            .order('is_default', { ascending: false })
+            .order('client_id', { ascending: false, nullsFirst: false })
+            .limit(1)
+            .single();
+          
+          if (emailTemplate) {
+            const variables = {
+              quote_title: quote.title,
+              client_name: quote.client_name,
+              approved_amount: response.total_amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+              delivery_time: response.delivery_time || 'A definir',
+              comments: comments || '',
+              dashboard_url: `${Deno.env.get('SUPABASE_URL')}/supplier/dashboard`,
+              client_email: quote.client_email || ''
+            };
+            
+            const subject = replaceVariables(emailTemplate.subject, variables);
+            const htmlContent = replaceVariables(emailTemplate.html_content, variables);
+            const plainText = emailTemplate.plain_text_content 
+              ? replaceVariables(emailTemplate.plain_text_content, variables)
+              : undefined;
+            
+            emailResult = await sendEmail(emailConfig, {
+              to: response.suppliers.email,
+              subject,
+              html: htmlContent,
+              plainText
+            });
+            
+            console.log('📧 Email notification result:', emailResult);
+          } else {
+            console.log('⚠️ No email template found for proposal_approved');
+          }
+        } else {
+          console.log('⚠️ Email config not configured');
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending email:', emailError);
+      }
+    }
+
+    // 9. Create notification for approved supplier
     const { data: supplierUser } = await supabase
       .from('users')
       .select('auth_user_id')
@@ -171,6 +365,7 @@ Obrigado pela sua proposta! 🤝`;
             response_id: responseId,
             approved_amount: response.total_amount,
             whatsapp_sent: whatsappResult?.success || false,
+            email_sent: emailResult?.success || false,
             comments: comments
           }
         });
@@ -182,8 +377,7 @@ Obrigado pela sua proposta! 🤝`;
       console.log('⚠️ Supplier user not found for notification');
     }
 
-
-    // 8. Check if should notify rejected suppliers (configurable)
+    // 10. Check if should notify rejected suppliers (configurable)
     let shouldNotifyRejected = true;
     
     try {
@@ -215,7 +409,7 @@ Obrigado pela sua proposta! 🤝`;
 
     console.log('📤 Should notify rejected suppliers:', shouldNotifyRejected);
 
-    // 9. Create notifications for rejected suppliers (if enabled)
+    // 11. Create notifications for rejected suppliers (if enabled)
     if (shouldNotifyRejected && otherResponses && otherResponses.length > 0) {
       for (const rejectedResponse of otherResponses) {
         try {
@@ -248,7 +442,7 @@ Obrigado pela sua proposta! 🤝`;
       console.log('📤 Skipped notifying rejected suppliers (disabled by client setting)');
     }
 
-    // 10. Log audit trail
+    // 12. Log audit trail
     const { error: auditError } = await supabase
       .from('audit_logs')
       .insert({
@@ -264,6 +458,7 @@ Obrigado pela sua proposta! 🤝`;
           approved_amount: response.total_amount,
           comments: comments,
           whatsapp_sent: whatsappResult?.success || false,
+          email_sent: emailResult?.success || false,
           other_proposals_rejected: otherResponses?.length || 0,
           rejected_suppliers_notified: shouldNotifyRejected && otherResponses ? otherResponses.length : 0
         }
@@ -278,8 +473,10 @@ Obrigado pela sua proposta! 🤝`;
     return new Response(
       JSON.stringify({
         success: true,
+        approval_required: false,
         message: 'Proposta aprovada com sucesso!',
         whatsapp_sent: whatsappResult?.success || false,
+        email_sent: emailResult?.success || false,
         approved_amount: response.total_amount,
         supplier_name: response.supplier_name
       }),
