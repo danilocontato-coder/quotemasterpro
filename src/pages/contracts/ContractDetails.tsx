@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
-  Edit, 
-  Trash2, 
   FileText, 
   Calendar, 
   DollarSign, 
@@ -41,12 +39,19 @@ import {
 } from '@/components/ui/dialog';
 import { ModuleGuard } from '@/components/common/ModuleGuard';
 import { ContractStatusBadge } from '@/components/contracts/ContractStatusBadge';
+import { ContractActionsMenu } from '@/components/contracts/ContractActionsMenu';
+import { RenewContractModal, type RenewalData } from '@/components/contracts/RenewContractModal';
+import { TerminateContractModal, type TerminationData } from '@/components/contracts/TerminateContractModal';
+import { AddendumModal, type AddendumData } from '@/components/contracts/AddendumModal';
+import { AdjustValueModal, type AdjustmentData } from '@/components/contracts/AdjustValueModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CONTRACT_TYPES } from '@/constants/contracts';
 import type { Database } from '@/integrations/supabase/types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
 
@@ -64,71 +69,81 @@ const ContractDetails = () => {
   const [isAttachmentLoading, setIsAttachmentLoading] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { history, isLoading: isHistoryLoading } = useContractHistory(id || '');
+  const { history, isLoading: isHistoryLoading, addHistoryEvent } = useContractHistory(id || '');
+  
+  // Modals state
+  const [renewModalOpen, setRenewModalOpen] = useState(false);
+  const [terminateModalOpen, setTerminateModalOpen] = useState(false);
+  const [addendumModalOpen, setAddendumModalOpen] = useState(false);
+  const [adjustModalOpen, setAdjustModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchContract = async () => {
-      if (!id) {
+  const fetchContract = async () => {
+    if (!id) {
+      navigate('/contracts');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        toast({
+          title: 'Contrato não encontrado',
+          description: 'O contrato solicitado não existe',
+          variant: 'destructive'
+        });
         navigate('/contracts');
         return;
       }
 
-      try {
-        const { data, error } = await supabase
-          .from('contracts')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
+      setContract(data);
 
-        if (error) throw error;
-
-        if (!data) {
-          toast({
-            title: 'Contrato não encontrado',
-            description: 'O contrato solicitado não existe',
-            variant: 'destructive'
-          });
-          navigate('/contracts');
-          return;
-        }
-
-        setContract(data);
-
-        // Buscar nome do fornecedor
-        if (data.supplier_id) {
-          const { data: supplier } = await supabase
-            .from('suppliers')
-            .select('name')
-            .eq('id', data.supplier_id)
-            .single();
-          
-          if (supplier) setSupplierName(supplier.name);
-        }
-
-        // Buscar nome do centro de custo
-        if (data.cost_center_id) {
-          const { data: costCenter } = await supabase
-            .from('cost_centers')
-            .select('name, code')
-            .eq('id', data.cost_center_id)
-            .single();
-          
-          if (costCenter) setCostCenterName(`${costCenter.code} - ${costCenter.name}`);
-        }
-      } catch (error: any) {
-        console.error('Error fetching contract:', error);
-        toast({
-          title: 'Erro ao carregar contrato',
-          description: error.message,
-          variant: 'destructive'
-        });
-        navigate('/contracts');
-      } finally {
-        setIsLoading(false);
+      // Buscar nome do fornecedor
+      if (data.supplier_id) {
+        const { data: supplier } = await supabase
+          .from('suppliers')
+          .select('name')
+          .eq('id', data.supplier_id)
+          .single();
+        
+        if (supplier) setSupplierName(supplier.name);
       }
+
+      // Buscar nome do centro de custo
+      if (data.cost_center_id) {
+        const { data: costCenter } = await supabase
+          .from('cost_centers')
+          .select('name, code')
+          .eq('id', data.cost_center_id)
+          .single();
+        
+        if (costCenter) setCostCenterName(`${costCenter.code} - ${costCenter.name}`);
+      }
+    } catch (error: any) {
+      console.error('Error fetching contract:', error);
+      toast({
+        title: 'Erro ao carregar contrato',
+        description: error.message,
+        variant: 'destructive'
+      });
+      navigate('/contracts');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadContract = async () => {
+      await fetchContract();
     };
 
-    fetchContract();
+    loadContract();
   }, [id, navigate, toast]);
 
   // Carregar blob quando abrir um anexo (evita bloqueio de iframe por extensões)
@@ -163,6 +178,276 @@ const ContractDetails = () => {
     };
   }, [viewingAttachment]);
 
+
+  // Action Handlers
+  const handleRenew = async (data: RenewalData) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('contracts')
+        .update({
+          start_date: data.new_start_date,
+          end_date: data.new_end_date,
+          total_value: data.new_value,
+          status: 'ativo',
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Add history event
+      await addHistoryEvent({
+        event_type: 'renovacao',
+        event_date: new Date().toISOString().split('T')[0],
+        description: `Contrato renovado. ${data.observations}`,
+        old_value: contract?.total_value,
+        new_value: data.new_value,
+      });
+
+      toast({
+        title: 'Contrato renovado',
+        description: 'O contrato foi renovado com sucesso',
+      });
+
+      fetchContract();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao renovar contrato',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleTerminate = async (data: TerminationData) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('contracts')
+        .update({
+          status: data.final_status,
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      await addHistoryEvent({
+        event_type: data.final_status === 'cancelado' ? 'cancelamento' : 'expiracao',
+        event_date: data.termination_date,
+        description: `Contrato encerrado. Motivo: ${data.termination_reason}. ${data.observations}`,
+      });
+
+      toast({
+        title: 'Contrato encerrado',
+        description: 'O contrato foi encerrado com sucesso',
+      });
+
+      navigate('/contracts');
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao encerrar contrato',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAddendum = async (data: AddendumData) => {
+    try {
+      const updateData: any = {};
+      if (data.addendum_type === 'valor' && data.new_value) {
+        updateData.total_value = data.new_value;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: updateError } = await supabase
+          .from('contracts')
+          .update(updateData)
+          .eq('id', id);
+
+        if (updateError) throw updateError;
+      }
+
+      await addHistoryEvent({
+        event_type: 'aditivo',
+        event_date: data.effective_date,
+        description: `Aditivo criado (${data.addendum_type}): ${data.description}`,
+        old_value: contract?.total_value,
+        new_value: data.new_value,
+      });
+
+      toast({
+        title: 'Aditivo criado',
+        description: 'O aditivo contratual foi registrado com sucesso',
+      });
+
+      fetchContract();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao criar aditivo',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAdjust = async (data: AdjustmentData) => {
+    try {
+      // Update contract value
+      const { error: updateError } = await supabase
+        .from('contracts')
+        .update({
+          total_value: data.new_value,
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Create adjustment record
+      const { error: adjustError } = await supabase
+        .from('contract_adjustments')
+        .insert({
+          contract_id: id,
+          adjustment_date: data.adjustment_date,
+          index_type: data.index_type,
+          percentage: data.percentage,
+          previous_value: data.previous_value,
+          new_value: data.new_value,
+          justification: data.justification,
+          status: 'aplicado',
+        });
+
+      if (adjustError) throw adjustError;
+
+      await addHistoryEvent({
+        event_type: 'reajuste',
+        event_date: data.adjustment_date,
+        description: `Reajuste aplicado (${data.index_type}): ${data.justification}`,
+        old_value: data.previous_value,
+        new_value: data.new_value,
+      });
+
+      toast({
+        title: 'Reajuste aplicado',
+        description: 'O reajuste de valor foi aplicado com sucesso',
+      });
+
+      fetchContract();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao aplicar reajuste',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSuspend = async () => {
+    try {
+      const { error } = await supabase
+        .from('contracts')
+        .update({ status: 'suspenso' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await addHistoryEvent({
+        event_type: 'suspensao',
+        event_date: new Date().toISOString().split('T')[0],
+        description: 'Contrato suspenso',
+      });
+
+      toast({
+        title: 'Contrato suspenso',
+        description: 'O contrato foi suspenso com sucesso',
+      });
+
+      fetchContract();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao suspender contrato',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleReactivate = async () => {
+    try {
+      const { error } = await supabase
+        .from('contracts')
+        .update({ status: 'ativo' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await addHistoryEvent({
+        event_type: 'reativacao',
+        event_date: new Date().toISOString().split('T')[0],
+        description: 'Contrato reativado',
+      });
+
+      toast({
+        title: 'Contrato reativado',
+        description: 'O contrato foi reativado com sucesso',
+      });
+
+      fetchContract();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao reativar contrato',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDuplicate = async () => {
+    toast({
+      title: 'Funcionalidade em desenvolvimento',
+      description: 'A duplicação de contratos estará disponível em breve',
+    });
+  };
+
+  const handleExportPDF = () => {
+    if (!contract) return;
+
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Relatório de Contrato', 14, 20);
+    
+    doc.setFontSize(12);
+    doc.text(`Número: ${contract.contract_number}`, 14, 35);
+    doc.text(`Título: ${contract.title}`, 14, 42);
+    doc.text(`Status: ${contract.status}`, 14, 49);
+    doc.text(`Tipo: ${contract.contract_type}`, 14, 56);
+    
+    doc.text(`Início: ${format(new Date(contract.start_date), 'dd/MM/yyyy')}`, 14, 70);
+    doc.text(`Término: ${format(new Date(contract.end_date), 'dd/MM/yyyy')}`, 14, 77);
+    doc.text(`Valor: R$ ${contract.total_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 14, 84);
+    
+    if (supplierName) {
+      doc.text(`Fornecedor: ${supplierName}`, 14, 98);
+    }
+
+    if (history.length > 0) {
+      autoTable(doc, {
+        startY: 110,
+        head: [['Data', 'Evento', 'Descrição']],
+        body: history.map(h => [
+          format(new Date(h.event_date), 'dd/MM/yyyy'),
+          h.event_type,
+          h.description || '-'
+        ]),
+      });
+    }
+
+    doc.save(`contrato-${contract.contract_number}.pdf`);
+
+    toast({
+      title: 'PDF exportado',
+      description: 'O relatório do contrato foi gerado com sucesso',
+    });
+  };
 
   const handleDelete = async () => {
     if (!contract) return;
@@ -239,16 +524,19 @@ const ContractDetails = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={() => navigate(`/contracts/${contract.id}/edit`)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
-            <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Excluir
-            </Button>
-          </div>
+          <ContractActionsMenu
+            contractStatus={contract.status}
+            onRenew={() => setRenewModalOpen(true)}
+            onAddendum={() => setAddendumModalOpen(true)}
+            onAdjust={() => setAdjustModalOpen(true)}
+            onSuspend={handleSuspend}
+            onReactivate={handleReactivate}
+            onTerminate={() => setTerminateModalOpen(true)}
+            onDuplicate={handleDuplicate}
+            onExportPDF={handleExportPDF}
+            onEdit={() => navigate(`/contracts/edit/${id}`)}
+            onDelete={() => setShowDeleteDialog(true)}
+          />
         </div>
 
         {/* Status e Vigência */}
@@ -521,6 +809,43 @@ const ContractDetails = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Action Modals */}
+      {contract && (
+        <>
+          <RenewContractModal
+            open={renewModalOpen}
+            onClose={() => setRenewModalOpen(false)}
+            onConfirm={handleRenew}
+            currentContract={{
+              id: contract.id,
+              contract_number: contract.contract_number,
+              total_value: contract.total_value,
+              start_date: contract.start_date,
+              end_date: contract.end_date,
+            }}
+          />
+          <TerminateContractModal
+            open={terminateModalOpen}
+            onClose={() => setTerminateModalOpen(false)}
+            onConfirm={handleTerminate}
+            contractNumber={contract.contract_number}
+          />
+          <AddendumModal
+            open={addendumModalOpen}
+            onClose={() => setAddendumModalOpen(false)}
+            onConfirm={handleAddendum}
+            contractNumber={contract.contract_number}
+          />
+          <AdjustValueModal
+            open={adjustModalOpen}
+            onClose={() => setAdjustModalOpen(false)}
+            onConfirm={handleAdjust}
+            contractNumber={contract.contract_number}
+            currentValue={contract.total_value}
+          />
+        </>
+      )}
     </ModuleGuard>
   );
 };
