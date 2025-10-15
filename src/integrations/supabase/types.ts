@@ -4330,6 +4330,15 @@ export type Database = {
         Args: { user_email: string }
         Returns: boolean
       }
+      clean_invalid_approvers: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          level_id: string
+          level_name: string
+          removed_approvers: string[]
+          valid_approvers_count: number
+        }[]
+      }
       create_default_cost_centers: {
         Args: { p_client_id: string }
         Returns: undefined
