@@ -87,3 +87,6 @@ verify_jwt = false
 
 [functions.create-supplier-user]
 verify_jwt = true
+
+[functions.ai-proposal-consultant]
+verify_jwt = true
