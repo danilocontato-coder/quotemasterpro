@@ -110,7 +110,8 @@ export function Approvals() {
 
   const filteredApprovals = approvals.filter(approval => {
     const quote = approval.quotes;
-    const matchesSearch = approval.quote_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = approval.quotes?.local_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         approval.quote_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote?.client_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -288,16 +289,16 @@ export function Approvals() {
                          const approvalLevel = approvalLevelsMap[approval.id];
                          return (
                            <TableRow key={approval.id}>
-                             <TableCell>
-                               <div>
-                                 <div className="font-medium">#{approval.quote_id}</div>
-                                 {quote?.title && (
-                                   <div className="text-sm text-muted-foreground">
-                                     {quote.title}
-                                   </div>
-                                 )}
-                               </div>
-                             </TableCell>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">#{approval.quotes?.local_code || approval.quote_id}</div>
+                                  {quote?.title && (
+                                    <div className="text-sm text-muted-foreground">
+                                      {quote.title}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
                              <TableCell>
                                <div>
                                  <div className="font-medium">

@@ -201,7 +201,7 @@ const getStatusBadgeColor = (status: string) => {
               ) : (
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
                   <p className="text-sm text-muted-foreground">
-                    Cotação #{approval.quote_id} não encontrada ou ainda não carregada
+                    Cotação #{approval.quotes?.local_code || approval.quote_id} não encontrada ou ainda não carregada
                   </p>
                 </div>
               )}

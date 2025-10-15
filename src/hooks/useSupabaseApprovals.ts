@@ -15,6 +15,7 @@ export interface Approval {
   updated_at: string;
   quotes?: {
     id: string;
+    local_code?: string;
     title: string;
     description?: string;
     total: number;
@@ -102,6 +103,7 @@ export const useSupabaseApprovals = () => {
           .from('quotes')
           .select(`
             id,
+            local_code,
             title,
             description,
             total,
