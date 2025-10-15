@@ -59,17 +59,11 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     // Allow only numbers, comma, and dot
     const cleanValue = inputValue.replace(/[^\d,.]/g, '');
     
-    // Limit to 2 decimal places after comma
-    const parts = cleanValue.split(',');
-    if (parts[1] && parts[1].length > 2) {
-      parts[1] = parts[1].substring(0, 2);
-    }
-    const formattedValue = parts.join(',');
-    
-    setDisplayValue(formattedValue);
+    // Don't limit decimals during typing, only on blur
+    setDisplayValue(cleanValue);
     
     // Parse and notify parent component
-    const numericValue = parseFromBR(formattedValue);
+    const numericValue = parseFromBR(cleanValue);
     onChange(numericValue);
   };
 
