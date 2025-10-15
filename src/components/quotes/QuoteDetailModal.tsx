@@ -40,6 +40,7 @@ import { SupplierStatusCard } from './SupplierStatusCard';
 import { ProposalComparisonTable } from './ProposalComparisonTable';
 import { ProposalDashboardMetrics } from './ProposalDashboardMetrics';
 import { ProposalRecommendationBadge, getProposalScore } from './ProposalRecommendationBadge';
+import { DecisionMatrixWidget } from './DecisionMatrixWidget';
 import { getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
@@ -751,6 +752,17 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   bestPrice={Math.min(...proposals.map(p => p.totalPrice))}
                   averageDeliveryTime={proposals.reduce((sum, p) => sum + p.deliveryTime, 0) / proposals.length}
                   potentialSavings={Math.max(...proposals.map(p => p.totalPrice)) - Math.min(...proposals.map(p => p.totalPrice))}
+                />
+              )}
+
+              {/* Decision Matrix Widget */}
+              {proposals.length >= 2 && (
+                <DecisionMatrixWidget
+                  proposals={proposals}
+                  quoteId={quote.id}
+                  quoteName={quote.title}
+                  defaultOpen={false}
+                  onApprove={onApprove}
                 />
               )}
 
