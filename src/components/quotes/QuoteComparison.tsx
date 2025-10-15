@@ -1,20 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, Download, Trophy, TrendingUp, TrendingDown, BarChart3, CheckCircle, Sparkles } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Save, Download, Trophy, BarChart3, CheckCircle, Sparkles, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
 import type { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { useDecisionMatrixTemplates } from '@/hooks/useDecisionMatrixTemplates';
 import { useSavedDecisionMatrices } from '@/hooks/useSavedDecisionMatrices';
+import { ComparisonProgressBar } from './ComparisonProgressBar';
+import { ProposalDetailsTooltip } from './ProposalDetailsTooltip';
 
 export interface QuoteProposal {
   id: string;
@@ -65,12 +66,13 @@ export function QuoteComparison({
   onProposalApproved,
 }: QuoteComparisonProps) {
   const [weights, setWeights] = useState<ComparisonCriteria>(defaultWeights);
-  const [matrixName, setMatrixName] = useState('');
   const [isMarketAnalysisOpen, setIsMarketAnalysisOpen] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [itemsForAnalysis, setItemsForAnalysis] = useState<ItemAnalysisData[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [showWeights, setShowWeights] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const { toast } = useToast();
   const { templates, isLoading: templatesLoading } = useDecisionMatrixTemplates();
   const { saveMatrix } = useSavedDecisionMatrices();
@@ -212,26 +214,23 @@ export function QuoteComparison({
   };
 
   const saveDecisionMatrix = () => {
-    if (!matrixName.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Digite um nome para salvar a matriz de decisão.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    const timestamp = new Date().toLocaleDateString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const autoName = `Análise - ${quoteTitle} - ${timestamp}`;
     const quoteId = proposals[0]?.quoteId || '';
 
     saveMatrix({
-      name: matrixName,
+      name: autoName,
       quote_id: quoteId,
       quote_title: quoteTitle,
       weights,
       proposals: normalizedScores,
     });
-    
-    setMatrixName('');
   };
 
   const applyTemplate = (templateId: string) => {
@@ -337,73 +336,62 @@ export function QuoteComparison({
   const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
   const bestProposal = normalizedScores.length > 0 ? normalizedScores[0] : null;
 
+  const criteriaLabels: Record<keyof ComparisonCriteria, string> = {
+    price: 'Preço',
+    deliveryTime: 'Prazo',
+    shippingCost: 'Frete',
+    sla: 'SLA',
+    warranty: 'Garantia',
+    reputation: 'Reputação'
+  };
+
+  const weightsSummary = Object.entries(weights)
+    .map(([key, value]) => `${criteriaLabels[key as keyof ComparisonCriteria]} (${value}%)`)
+    .join(' • ');
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            Comparador Inteligente - {quoteTitle}
-          </DialogTitle>
-          <DialogDescription>
-            Ajuste critérios, compare propostas e use IA de mercado para decisões melhores.
-          </DialogDescription>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5" />
+              Comparador Inteligente
+            </DialogTitle>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleOpenMarketAnalysis}
+                disabled={isLoadingItems}
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Analisar Mercado
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowTemplates(!showTemplates)}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Templates
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Análise de Mercado */}
-          <Card className="border-green-200 bg-green-50">
-            <CardHeader>
-              <CardTitle className="text-green-800 flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Análise Inteligente de Mercado
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-green-200">
-                <div>
-                  <h3 className="text-lg font-bold text-green-900">Comparação com Preços de Mercado</h3>
-                  <p className="text-sm text-green-700">
-                    Use IA para comparar propostas com preços reais do mercado brasileiro
-                  </p>
-                </div>
-                <Button
-                  onClick={handleOpenMarketAnalysis}
-                  disabled={isLoadingItems}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  {isLoadingItems ? 'Carregando itens...' : 'Analisar Mercado'}
-                </Button>
-              </div>
-              <div className="mt-3 p-3 bg-green-100 rounded-lg">
-                <p className="text-sm text-green-800">
-                  🧠 <strong>Análise com IA</strong>: Compare automaticamente os preços propostos com a média do mercado brasileiro, 
-                  identificando oportunidades de economia e fornecedores mais competitivos.
-                  <br />
-                  <span className="text-xs">💡 Configure sua API key Perplexity para funcionalidade completa</span>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Templates Section */}
-          <Card className="border-purple-200 bg-purple-50">
-            <CardHeader>
-              <CardTitle className="text-purple-800 flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                Templates de Análise
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="template-select" className="text-purple-900">Aplicar Template Pré-Configurado</Label>
+        <div className="space-y-4">
+          {/* Templates Modal/Section */}
+          {showTemplates && (
+            <Card className="border-purple-200 bg-purple-50">
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <Label htmlFor="template-select" className="text-sm font-medium">Aplicar Template Pré-Configurado</Label>
                   <Select value={selectedTemplateId} onValueChange={(value) => {
                     setSelectedTemplateId(value);
                     applyTemplate(value);
                   }}>
-                    <SelectTrigger id="template-select" className="bg-white">
+                    <SelectTrigger id="template-select" className="bg-background">
                       <SelectValue placeholder="Selecione um template..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -420,193 +408,135 @@ export function QuoteComparison({
                     </SelectContent>
                   </Select>
                 </div>
-                {selectedTemplateId && (
-                  <div className="p-3 bg-purple-100 rounded-lg">
-                    <p className="text-sm text-purple-800">
-                      ✨ Template aplicado! Você pode ajustar os pesos abaixo conforme necessário.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Recomendação do Sistema */}
+          {/* Recomendação do Sistema - Compacta */}
           {bestProposal && (
-            <Card className="border-blue-200 bg-blue-50">
-              <CardHeader>
-                <CardTitle className="text-blue-800 flex items-center gap-2">
-                  <Trophy className="h-5 w-5" />
-                  Recomendação do Sistema
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-blue-200">
-                  <div>
-                    <h3 className="text-lg font-bold text-blue-900">{bestProposal.supplierName}</h3>
-                    <p className="text-sm text-blue-700">
-                      Melhor opção baseada nos critérios definidos
-                    </p>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-blue-600">
-                      <span>Preço: R$ {bestProposal.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                      <span>•</span>
-                      <span>Prazo: {bestProposal.deliveryTime} dias</span>
-                      <span>•</span>
-                      <span>Reputação: {bestProposal.reputation}/5 ⭐</span>
+            <Card className="border-primary">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    <Badge className="h-8 px-3">
+                      <Trophy className="h-4 w-4 mr-1" />
+                      #1
+                    </Badge>
+                    <div>
+                      <h3 className="font-semibold text-base">{bestProposal.supplierName}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        R$ {bestProposal.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} • {bestProposal.deliveryTime} dias
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-900">{bestProposal.finalScore.toFixed(1)}</div>
-                      <div className="text-sm text-blue-600">Score Final</div>
+                      <div className="text-2xl font-bold text-primary">{bestProposal.finalScore.toFixed(1)}</div>
+                      <div className="text-xs text-muted-foreground">Score</div>
                     </div>
                     <Button
                       onClick={() => handleApproveProposal(bestProposal, true)}
-                      className="bg-green-600 hover:bg-green-700 text-white"
                       disabled={isApproving}
+                      className="bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      {isApproving ? 'Processando...' : 'Aprovar Recomendação'}
+                      {isApproving ? 'Processando...' : 'Aprovar'}
                     </Button>
                   </div>
-                </div>
-                <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    📊 <strong>Baseado nos seus critérios</strong>, recomendamos a compra do fornecedor{' '}
-                    <strong>{bestProposal.supplierName}</strong> que oferece a melhor relação 
-                    custo-benefício com score de <strong>{bestProposal.finalScore.toFixed(1)} pontos</strong>.
-                    <br />
-                    <span className="text-xs mt-1 block">
-                      💡 Você pode escolher qualquer fornecedor da lista abaixo se preferir outra opção.
-                    </span>
-                  </p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Configuração de Pesos */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Configuração de Critérios</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Ajuste os pesos conforme a importância de cada critério (Total: {totalWeight}%)
-                {totalWeight !== 100 && (
-                  <span className="text-red-600 font-medium"> - Os pesos serão ajustados automaticamente para 100%</span>
-                )}
-              </p>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {Object.entries(weights).map(([key, value]) => (
-                <div key={key} className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    {key === 'price' && 'Preço'}
-                    {key === 'deliveryTime' && 'Prazo de Entrega'}
-                    {key === 'shippingCost' && 'Frete'}
-                    {key === 'sla' && 'SLA'}
-                    {key === 'warranty' && 'Garantia'}
-                    {key === 'reputation' && 'Reputação'}
-                    <span className="ml-2 font-normal text-muted-foreground">({value}%)</span>
-                  </Label>
-                  <Slider
-                    value={[value]}
-                    onValueChange={(newValue) => updateWeight(key as keyof ComparisonCriteria, newValue[0])}
-                    max={80}
-                    min={5}
-                    step={5}
-                    className="w-full"
-                  />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          {/* Resumo de Critérios - Collapsible */}
+          <div className="space-y-2">
+            <Collapsible open={showWeights} onOpenChange={setShowWeights}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-3 h-auto">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    <span className="text-sm font-medium">Critérios: {weightsSummary}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {showWeights ? '▲ Ocultar' : '▼ Ajustar'}
+                  </span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <Card>
+                  <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {Object.entries(weights).map(([key, value]) => (
+                      <div key={key} className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          {criteriaLabels[key as keyof ComparisonCriteria]}
+                          <span className="ml-2 font-normal text-muted-foreground">({value}%)</span>
+                        </Label>
+                        <Slider
+                          value={[value]}
+                          onValueChange={(newValue) => updateWeight(key as keyof ComparisonCriteria, newValue[0])}
+                          max={80}
+                          min={5}
+                          step={5}
+                          className="w-full"
+                        />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
 
-          {/* Tabela de Comparação */}
+          {/* Tabela Simplificada - 5 Colunas */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Comparação Detalhada das Propostas</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Análise completa de todas as propostas com scores individuais por critério
-              </p>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <div className="min-w-[900px]">
-                <div className="grid grid-cols-9 gap-4 mb-4 text-xs font-medium text-muted-foreground border-b pb-2">
+            <CardContent className="p-4">
+              <div className="space-y-2">
+                <div className="grid grid-cols-5 gap-4 pb-2 border-b text-xs font-medium text-muted-foreground">
                   <div>Fornecedor</div>
-                  <div>Preço ({weights.price}%)</div>
-                  <div>Prazo ({weights.deliveryTime}%)</div>
-                  <div>Frete ({weights.shippingCost}%)</div>
-                  <div>SLA ({weights.sla}%)</div>
-                  <div>Garantia ({weights.warranty}%)</div>
-                  <div>Reputação ({weights.reputation}%)</div>
-                  <div>Score Final</div>
+                  <div>Valor Total</div>
+                  <div>Prazo</div>
+                  <div>Score</div>
                   <div>Ação</div>
                 </div>
                 
                 {normalizedScores.map((proposal, index) => (
-                  <div key={proposal.id} className={`grid grid-cols-9 gap-4 p-4 rounded-lg border mb-2 ${
-                    index === 0 ? 'bg-blue-50 border-blue-200' : 'bg-card'
-                  }`}>
+                  <div 
+                    key={proposal.id} 
+                    className={`grid grid-cols-5 gap-4 p-3 rounded-lg border ${
+                      index === 0 ? 'bg-primary/5 border-primary/20' : 'bg-card'
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
                       <Badge variant={getBadgeVariant(index)} className="shrink-0">
-                        {index === 0 && <Trophy className="h-3 w-3 mr-1" />}
                         #{index + 1}
                       </Badge>
-                      <div>
-                        <span className="font-medium text-sm">{proposal.supplierName}</span>
-                        {index === 0 && (
-                          <div className="text-xs text-blue-600 font-medium">RECOMENDADO</div>
-                        )}
-                      </div>
+                      <ProposalDetailsTooltip
+                        proposal={{
+                          supplierName: proposal.supplierName,
+                          sla: `${proposal.sla}h`,
+                          warranty: `${proposal.warrantyMonths} meses`,
+                          reputation: proposal.reputation,
+                          shippingCost: proposal.shippingCost
+                        }}
+                      >
+                        <button className="font-medium text-sm text-left hover:underline">
+                          {proposal.supplierName}
+                        </button>
+                      </ProposalDetailsTooltip>
                     </div>
                     
-                    <div className="flex items-center gap-1 text-sm">
-                      <span>R$ {proposal.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                      {proposal.price === Math.min(...proposals.map(p => p.price)) && (
-                        <TrendingDown className="h-3 w-3 text-green-600" />
-                      )}
+                    <div className="flex items-center text-sm">
+                      R$ {(proposal.price + proposal.shippingCost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </div>
                     
-                    <div className="flex items-center gap-1 text-sm">
-                      <span>{proposal.deliveryTime} dias</span>
-                      {proposal.deliveryTime === Math.min(...proposals.map(p => p.deliveryTime)) && (
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1 text-sm">
-                      <span>R$ {proposal.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                      {proposal.shippingCost === Math.min(...proposals.map(p => p.shippingCost)) && (
-                        <TrendingDown className="h-3 w-3 text-green-600" />
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1 text-sm">
-                      <span>{proposal.sla}h</span>
-                      {proposal.sla === Math.min(...proposals.map(p => p.sla)) && (
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1 text-sm">
-                      <span>{proposal.warrantyMonths} meses</span>
-                      {proposal.warrantyMonths === Math.max(...proposals.map(p => p.warrantyMonths)) && (
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <span>{proposal.reputation}/5 ⭐</span>
-                      {proposal.reputation === Math.max(...proposals.map(p => p.reputation)) && (
-                        <TrendingUp className="h-3 w-3 text-green-600" />
-                      )}
+                    <div className="flex items-center text-sm">
+                      {proposal.deliveryTime} dias
                     </div>
                     
                     <div className="flex items-center">
-                      <Badge variant={index === 0 ? 'default' : 'secondary'} className="font-bold">
-                        {proposal.finalScore.toFixed(1)}
-                        {index === 0 && ' 🏆'}
-                      </Badge>
+                      <div className="w-full">
+                        <ComparisonProgressBar value={proposal.finalScore} showValue={true} />
+                      </div>
                     </div>
                     
                     <div className="flex items-center">
@@ -615,10 +545,9 @@ export function QuoteComparison({
                         variant={index === 0 ? 'default' : 'outline'}
                         onClick={() => handleApproveProposal(proposal, index === 0)}
                         disabled={isApproving}
-                        className={index === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
                       >
                         <CheckCircle className="h-3 w-3 mr-1" />
-                        {isApproving ? 'Processando...' : 'Aprovar'}
+                        Aprovar
                       </Button>
                     </div>
                   </div>
@@ -627,34 +556,19 @@ export function QuoteComparison({
             </CardContent>
           </Card>
 
-          <Separator />
-
-          {/* Ações */}
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="matrix-name">Nome da Matriz de Decisão</Label>
-              <Input
-                id="matrix-name"
-                placeholder="Ex: Materiais de Construção - Janeiro 2025"
-                value={matrixName}
-                onChange={(e) => setMatrixName(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex gap-2">
-              <Button onClick={saveDecisionMatrix} className="flex items-center gap-2">
-                <Save className="h-4 w-4" />
-                Salvar Matriz
-              </Button>
-              
-              <Button onClick={exportComparison} variant="outline" className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Exportar
-              </Button>
-            </div>
+          {/* Footer Ações - Simplificado */}
+          <div className="flex justify-end gap-2">
+            <Button onClick={saveDecisionMatrix} className="flex items-center gap-2">
+              <Save className="h-4 w-4" />
+              Salvar Análise
+            </Button>
+            <Button onClick={exportComparison} variant="outline" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
           </div>
 
-          {/* Market Analysis Modal (Analyzing Items with ItemAnalysisModal) */}
+          {/* Market Analysis Modal */}
           <ItemAnalysisModal
             open={isMarketAnalysisOpen}
             onClose={() => setIsMarketAnalysisOpen(false)}
