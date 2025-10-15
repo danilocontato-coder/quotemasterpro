@@ -56,18 +56,22 @@ export function Approvals() {
   }, []);
 
   // Fetch approver names and match approval levels
+  // Fetch approver names from both approvals and approval levels
   useEffect(() => {
     const fetchApproverNames = async () => {
-      if (approvals.length === 0) return;
+      if (approvals.length === 0 && (!approvalLevels || approvalLevels.length === 0)) return;
 
-      // Fetch approver names
-      const approverIds = [...new Set(approvals.map(a => a.approver_id).filter(Boolean))];
-      if (approverIds.length > 0) {
+      // Collect all approver IDs from approvals and approval levels
+      const approverIdsFromApprovals = approvals.map(a => a.approver_id).filter(Boolean);
+      const approverIdsFromLevels = approvalLevels?.flatMap(level => level.approvers || []) || [];
+      const allApproverIds = [...new Set([...approverIdsFromApprovals, ...approverIdsFromLevels])];
+      
+      if (allApproverIds.length > 0) {
         try {
           const { data: users } = await supabase
             .from('profiles')
             .select('id, name')
-            .in('id', approverIds);
+            .in('id', allApproverIds);
           
           const namesMap = users?.reduce((acc, user) => {
             acc[user.id] = user.name;
@@ -82,7 +86,7 @@ export function Approvals() {
     };
 
     fetchApproverNames();
-  }, [approvals]);
+  }, [approvals.length, approvalLevels?.length]);
 
   // Match each approval to its approval level based on quote value
   useEffect(() => {
