@@ -86,18 +86,21 @@ export function Approvals() {
 
   // Match each approval to its approval level based on quote value
   useEffect(() => {
-    if (!approvalLevels || approvalLevels.length === 0) return;
+    if (!approvalLevels || approvalLevels.length === 0 || !approvals || approvals.length === 0) {
+      setApprovalLevelsMap({});
+      return;
+    }
     
     const levelsMap: Record<string, ApprovalLevel> = {};
     
     approvals.forEach(approval => {
-      const quoteAmount = approval.quotes?.total || 0;
+      const quoteAmount = approval.quote_response?.total_amount || approval.quotes?.total || 0;
       
       // Find matching approval level
       const matchingLevel = approvalLevels.find(level => 
         level.active && 
         quoteAmount >= level.amount_threshold &&
-        quoteAmount <= (level as any).max_amount_threshold
+        quoteAmount <= level.max_amount_threshold
       );
       
       if (matchingLevel) {
@@ -106,7 +109,7 @@ export function Approvals() {
     });
     
     setApprovalLevelsMap(levelsMap);
-  }, [approvals, approvalLevels]);
+  }, [approvals.length, approvalLevels.length]); // Only re-run when counts change
 
   const filteredApprovals = approvals.filter(approval => {
     const quote = approval.quotes;
