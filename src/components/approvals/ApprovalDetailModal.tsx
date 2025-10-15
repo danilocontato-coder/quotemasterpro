@@ -105,6 +105,19 @@ const getStatusBadgeColor = (status: string) => {
   return colors[status as keyof typeof colors] || "bg-gray-100 text-gray-800";
 };
 
+const getQuoteStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    draft: "Rascunho",
+    sent: "Enviada",
+    receiving: "Recebendo Propostas",
+    received: "Propostas Recebidas",
+    approved: "Aprovada",
+    rejected: "Rejeitada",
+    cancelled: "Cancelada"
+  };
+  return statusMap[status] || status;
+};
+
   if (!approval) {
     return null;
   }
@@ -198,7 +211,7 @@ const getStatusBadgeColor = (status: string) => {
                   </div>
                   <div>
                     <span className="text-sm font-medium">Status da Cotação:</span>
-                    <Badge variant="outline" className="ml-2">{quoteData.status}</Badge>
+                    <Badge variant="outline" className="ml-2">{getQuoteStatusText(quoteData.status)}</Badge>
                   </div>
                   {quoteData.deadline && (
                     <div>
