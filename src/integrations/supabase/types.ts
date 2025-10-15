@@ -304,6 +304,67 @@ export type Database = {
           },
         ]
       }
+      ai_proposal_analyses: {
+        Row: {
+          analysis_data: Json
+          analysis_type: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          proposal_id: string | null
+          quote_id: string
+          supplier_id: string | null
+          supplier_name: string | null
+        }
+        Insert: {
+          analysis_data?: Json
+          analysis_type: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          proposal_id?: string | null
+          quote_id: string
+          supplier_id?: string | null
+          supplier_name?: string | null
+        }
+        Update: {
+          analysis_data?: Json
+          analysis_type?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          proposal_id?: string | null
+          quote_id?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_proposal_analyses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_proposal_analyses_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_proposal_analyses_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_settings: {
         Row: {
           aggressiveness: string

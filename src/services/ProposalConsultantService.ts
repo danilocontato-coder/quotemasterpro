@@ -82,12 +82,14 @@ export interface ProposalItem {
 
 export interface ProposalForAnalysis {
   id: string;
+  quoteId: string;
+  supplierId: string;
   supplierName: string;
   items: ProposalItem[];
-  totalPrice: number;
-  deliveryTime: number;
-  warrantyMonths: number;
-  shippingCost: number;
+  totalAmount: number;
+  deliveryTime: string;
+  warranty: string;
+  paymentTerms?: string;
 }
 
 class ProposalConsultantService {
@@ -149,10 +151,10 @@ PRODUTOS OFERTADOS:
 ${itemsDescription}
 
 CONDIÇÕES:
-- Prazo de entrega: ${proposal.deliveryTime} dias
-- Garantia: ${proposal.warrantyMonths} meses
-- Frete: R$ ${proposal.shippingCost.toFixed(2)}
-- Valor total: R$ ${proposal.totalPrice.toFixed(2)}
+- Prazo de entrega: ${proposal.deliveryTime}
+- Garantia: ${proposal.warranty}
+- Valor total: R$ ${proposal.totalAmount.toFixed(2)}
+- Condições de pagamento: ${proposal.paymentTerms || 'Não especificado'}
 
 ANÁLISE REQUERIDA (responda em JSON estruturado):
 1. Reputação e confiabilidade das marcas oferecidas
@@ -205,9 +207,9 @@ Responda EXCLUSIVAMENTE em JSON válido:
     const proposalsDescription = proposals.map((p, i) => `
 PROPOSTA ${i+1} - ${p.supplierName}:
 Produtos: ${p.items.map(item => `${item.productName}${item.brand ? ` (${item.brand})` : ''}`).join(', ')}
-Valor: R$ ${p.totalPrice.toFixed(2)}
-Prazo: ${p.deliveryTime} dias
-Garantia: ${p.warrantyMonths} meses
+Valor: R$ ${p.totalAmount.toFixed(2)}
+Prazo: ${p.deliveryTime}
+Garantia: ${p.warranty}
 `).join('\n');
 
     return `Você é um consultor de compras. Compare estas ${proposals.length} propostas recebidas:

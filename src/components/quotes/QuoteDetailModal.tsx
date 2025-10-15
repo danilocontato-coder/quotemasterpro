@@ -31,6 +31,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ConsultantAnalysisCard } from './ConsultantAnalysisCard';
 import { ConsultantAnalysisModal } from './ConsultantAnalysisModal';
 import { useProposalConsultant } from '@/hooks/useProposalConsultant';
+import type { ProposalForAnalysis } from '@/services/ProposalConsultantService';
+import { AIAnalysesTab } from './AIAnalysesTab';
 import { ItemAnalysisModal } from './ItemAnalysisModal';
 // QuoteMarkAsReceivedButton removido - marcação automática implementada
 import { QuoteItemsList } from './QuoteItemsList';
@@ -108,11 +110,16 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const { 
     individualAnalyses, 
     comparativeAnalysis, 
-    isAnalyzing, 
+    isAnalyzing,
     analysisProgress,
     analyzeAllProposals,
-    hasAnalyses 
+    clearAnalyses,
+    loadSavedAnalyses,
+    hasAnalyses
   } = useProposalConsultant();
+
+  const [analysesCount, setAnalysesCount] = useState(0);
+  const [hasAnalysesHistory, setHasAnalysesHistory] = useState(false);
   const [showItemAnalysis, setShowItemAnalysis] = useState(false);
   const [itemAnalysisData, setItemAnalysisData] = useState<ItemAnalysisData[]>([]);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
@@ -340,12 +347,23 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   useEffect(() => {
     console.log('🔄 QuoteDetailModal useEffect - open:', open, 'quote?.id:', quote?.id);
     if (open && quote?.id) {
-      console.log('✅ Calling fetchQuoteItems, fetchAuditLogs, and fetchSupplierNames');
+      console.log('✅ Calling fetchQuoteItems, fetchAuditLogs, fetchSupplierNames, and loadSavedAnalyses');
       fetchQuoteItems();
       fetchAuditLogs();
       fetchSupplierNames();
+      loadSavedAnalyses(quote.id);
+      
+      // Verificar se há análises salvas
+      supabase
+        .from('ai_proposal_analyses')
+        .select('id', { count: 'exact' })
+        .eq('quote_id', quote.id)
+        .then(({ count }) => {
+          setAnalysesCount(count || 0);
+          setHasAnalysesHistory((count || 0) > 0);
+        });
     }
-  }, [open, quote?.id, proposals.length, fetchQuoteItems, fetchAuditLogs, fetchSupplierNames]);
+  }, [open, quote?.id, proposals.length, fetchQuoteItems, fetchAuditLogs, fetchSupplierNames, loadSavedAnalyses]);
 
   useEffect(() => {
     if (quoteItems.length > 0) {
@@ -520,6 +538,37 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     });
   };
 
+  const runAIAnalysis = async () => {
+    if (!quote || proposals.length === 0) {
+      toast({
+        title: 'Não há propostas',
+        description: 'Aguarde o recebimento de propostas para analisar.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const proposalsForAnalysis: ProposalForAnalysis[] = proposals.map(p => ({
+      id: p.id,
+      quoteId: quote.id,
+      supplierId: p.supplierId,
+      supplierName: p.supplierName,
+      items: p.items.map(item => ({
+        productName: item.productName,
+        brand: item.brand,
+        specifications: item.specifications,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice
+      })),
+      totalAmount: p.totalPrice,
+      deliveryTime: `${p.deliveryTime} dias`,
+      warranty: `${p.warrantyMonths} meses`,
+      paymentTerms: 'Não especificado'
+    }));
+
+    await analyzeAllProposals(proposalsForAnalysis);
+  };
+
   const handleResendInvite = async (supplierId: string) => {
     try {
       const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
@@ -620,7 +669,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-5' : 'grid-cols-4'}`}>
+            <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-6' : 'grid-cols-5'}`}>
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="proposals">
                 Propostas ({proposals.length})
@@ -632,6 +681,13 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   Visitas
                 </TabsTrigger>
               )}
+              <TabsTrigger value="ai-history" className="flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                Análises IA
+                {hasAnalysesHistory && (
+                  <Badge variant="secondary" className="ml-1 text-xs">{analysesCount}</Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="history">Histórico</TabsTrigger>
             </TabsList>
 
@@ -843,12 +899,20 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                     size="lg"
                     onClick={() => analyzeAllProposals(proposals.map(p => ({
                       id: p.id,
+                      quoteId: quote.id,
+                      supplierId: p.supplierId,
                       supplierName: p.supplierName,
-                      items: p.items,
-                      totalPrice: p.totalPrice,
-                      deliveryTime: p.deliveryTime,
-                      warrantyMonths: p.warrantyMonths,
-                      shippingCost: p.shippingCost
+                      items: p.items.map(item => ({
+                        productName: item.productName,
+                        brand: item.brand,
+                        specifications: item.specifications,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice
+                      })),
+                      totalAmount: p.totalPrice,
+                      deliveryTime: `${p.deliveryTime} dias`,
+                      warranty: `${p.warrantyMonths} meses`,
+                      paymentTerms: 'Não especificado'
                     })))}
                     disabled={isAnalyzing}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg"

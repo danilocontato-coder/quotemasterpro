@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
   proposalConsultantService, 
   ProposalQualitativeAnalysis, 
@@ -6,6 +6,7 @@ import {
   ProposalForAnalysis
 } from '@/services/ProposalConsultantService';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useProposalConsultant() {
   const [individualAnalyses, setIndividualAnalyses] = useState<Map<string, ProposalQualitativeAnalysis>>(new Map());
@@ -13,6 +14,48 @@ export function useProposalConsultant() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState({ current: 0, total: 0 });
   const { toast } = useToast();
+
+  const saveAnalysisToDatabase = useCallback(async (
+    quoteId: string,
+    analysisType: 'individual' | 'comparative',
+    analysisData: any,
+    proposalId?: string,
+    supplierId?: string,
+    supplierName?: string
+  ) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.client_id) return;
+
+      const { error } = await supabase
+        .from('ai_proposal_analyses')
+        .insert({
+          quote_id: quoteId,
+          client_id: profile.client_id,
+          analysis_type: analysisType,
+          proposal_id: proposalId,
+          supplier_id: supplierId,
+          supplier_name: supplierName,
+          analysis_data: analysisData,
+          created_by: user.id
+        });
+
+      if (error) {
+        console.error('Erro ao salvar análise:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Erro ao salvar análise no banco:', error);
+    }
+  }, []);
 
   const analyzeProposal = useCallback(async (proposal: ProposalForAnalysis) => {
     try {
@@ -24,6 +67,16 @@ export function useProposalConsultant() {
         newMap.set(proposal.id, analysis);
         return newMap;
       });
+
+      // Salvar no banco de dados
+      await saveAnalysisToDatabase(
+        proposal.quoteId,
+        'individual',
+        analysis,
+        proposal.id,
+        proposal.supplierId,
+        proposal.supplierName
+      );
 
       return analysis;
     } catch (error) {
@@ -37,7 +90,7 @@ export function useProposalConsultant() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [toast]);
+  }, [toast, saveAnalysisToDatabase]);
 
   const analyzeAllProposals = useCallback(async (proposals: ProposalForAnalysis[]) => {
     if (proposals.length === 0) {
@@ -71,6 +124,15 @@ export function useProposalConsultant() {
       const comparative = await proposalConsultantService.compareProposals(proposals);
       setComparativeAnalysis(comparative);
 
+      // Salvar análise comparativa no banco
+      if (proposals.length > 0) {
+        await saveAnalysisToDatabase(
+          proposals[0].quoteId,
+          'comparative',
+          comparative
+        );
+      }
+
       toast({
         title: 'Análise Concluída! 🎉',
         description: `${proposals.length} propostas analisadas com sucesso pelo consultor IA.`,
@@ -99,6 +161,43 @@ export function useProposalConsultant() {
     setComparativeAnalysis(null);
   }, []);
 
+  const loadSavedAnalyses = useCallback(async (quoteId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('ai_proposal_analyses')
+        .select('*')
+        .eq('quote_id', quoteId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const individualMap = new Map<string, ProposalQualitativeAnalysis>();
+        let comparativeData: ComparativeConsultantAnalysis | null = null;
+
+        data.forEach(record => {
+          if (record.analysis_type === 'individual' && record.proposal_id) {
+            individualMap.set(record.proposal_id, record.analysis_data as unknown as ProposalQualitativeAnalysis);
+          } else if (record.analysis_type === 'comparative') {
+            comparativeData = record.analysis_data as unknown as ComparativeConsultantAnalysis;
+          }
+        });
+
+        if (individualMap.size > 0 || comparativeData) {
+          setIndividualAnalyses(individualMap);
+          setComparativeAnalysis(comparativeData);
+          
+          toast({
+            title: 'Análises Carregadas',
+            description: 'Análises anteriores foram restauradas.',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar análises salvas:', error);
+    }
+  }, [toast]);
+
   return {
     individualAnalyses,
     comparativeAnalysis,
@@ -108,6 +207,7 @@ export function useProposalConsultant() {
     analyzeAllProposals,
     getAnalysis,
     clearAnalyses,
+    loadSavedAnalyses,
     hasAnalyses: individualAnalyses.size > 0
   };
 }
