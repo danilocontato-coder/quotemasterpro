@@ -825,6 +825,17 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   <CardTitle>Ações</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {quote.status === 'pending_approval' && (
+                    <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5" />
+                        <p className="text-sm text-orange-800">
+                          <strong>Cotação bloqueada:</strong> Uma proposta foi selecionada e está aguardando aprovação formal.
+                          Nenhuma ação pode ser realizada até que seja aprovada ou rejeitada.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-3">
                     {quote.status === 'draft' && (
                       <Button onClick={handleSendToSuppliers} className="flex items-center gap-2">
@@ -836,13 +847,18 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                     <Button
                       variant="outline"
                       onClick={() => setShowItemAnalysis(true)}
+                      disabled={quote.status === 'pending_approval' || quote.status === 'approved'}
                       className="flex items-center gap-2"
                     >
                       <Package className="h-4 w-4" />
                       🧩 Combinação Inteligente
                     </Button>
 
-                    <Button variant="outline" className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      disabled={quote.status === 'pending_approval'}
+                      className="flex items-center gap-2"
+                    >
                       <Download className="h-4 w-4" />
                       Exportar PDF
                     </Button>
@@ -903,6 +919,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   quoteName={quote.title}
                   defaultOpen={true}
                   onApprove={onApprove}
+                  quoteStatus={quote.status}
                 />
               )}
 

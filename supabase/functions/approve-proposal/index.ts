@@ -65,7 +65,18 @@ serve(async (req) => {
       );
     }
 
-    // 3. Check if approval workflow is required (NEW)
+    // 3. Verificar se cotação já está bloqueada
+    if (quote.status === 'pending_approval' || quote.status === 'approved') {
+      console.log('⚠️ Quote is already locked:', quote.status);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Esta cotação já possui uma proposta selecionada e não pode ser alterada.' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 4. Check if approval workflow is required
     const { data: approvalCheck } = await supabase.rpc('check_approval_required', {
       p_quote_id: quoteId,
       p_amount: response.total_amount,

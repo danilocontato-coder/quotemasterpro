@@ -267,6 +267,20 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
   const handleSendProposal = async () => {
     if (!quote || !user?.supplierId) return;
 
+    // Verificar se cotação está bloqueada
+    const { data: quoteCheck } = await supabase
+      .from('quotes')
+      .select('status')
+      .eq('id', quote.id)
+      .single();
+
+    if (quoteCheck?.status === 'pending_approval' || 
+        quoteCheck?.status === 'approved' || 
+        quoteCheck?.status === 'finalized') {
+      toast.error('Esta cotação está bloqueada e não aceita mais propostas.');
+      return;
+    }
+
     // Validações
     if (proposalItems.length === 0) {
       toast.error('Adicione pelo menos um item à proposta');
@@ -327,6 +341,10 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
 
   if (!quote) return null;
 
+  // Verificar se cotação foi aprovada/finalizada (status do fornecedor)
+  const isQuoteLocked = quote.status === 'approved' || 
+                        quote.status === 'paid' || 
+                        quote.status === 'delivering';
   const totalValue = proposalItems.reduce((sum, item) => sum + item.total, 0);
   const latestVisit = visits[0];
   const canSchedule = quote.requires_visit && (!latestVisit || latestVisit.status === 'confirmed' || latestVisit.status === 'overdue');
@@ -526,12 +544,12 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                       <TableBody>
                         {proposalItems.map((item, index) => (
                           <TableRow key={item.id}>
-                            <TableCell>
+                             <TableCell>
                               <Input
                                 value={item.productName}
                                 onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
                                 placeholder="Nome do produto"
-                                disabled={!!existingResponse}
+                                disabled={!!existingResponse || isQuoteLocked}
                               />
                             </TableCell>
                             <TableCell>
@@ -540,7 +558,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                                 value={item.quantity}
                                 onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                                 className="w-20"
-                                disabled={!!existingResponse}
+                                disabled={!!existingResponse || isQuoteLocked}
                               />
                             </TableCell>
                             <TableCell>
@@ -550,7 +568,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                                 value={item.unitPrice}
                                 onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
                                 className="w-28"
-                                disabled={!!existingResponse}
+                                disabled={!!existingResponse || isQuoteLocked}
                               />
                             </TableCell>
                             <TableCell className="font-medium">
@@ -562,7 +580,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                     </Table>
 
                     <div className="mt-4 flex justify-between items-center">
-                      {!existingResponse && (
+                      {!existingResponse && !isQuoteLocked && (
                         <Button 
                           onClick={() => {
                             const newItem: ProposalItem = {
@@ -605,7 +623,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                           type="number"
                           value={deliveryTime}
                           onChange={(e) => setDeliveryTime(Number(e.target.value))}
-                          disabled={!!existingResponse}
+                          disabled={!!existingResponse || isQuoteLocked}
                         />
                       </div>
                       <div>
@@ -614,7 +632,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                           value={paymentTerms}
                           onChange={(e) => setPaymentTerms(e.target.value)}
                           placeholder="Ex: 30 dias"
-                          disabled={!!existingResponse}
+                          disabled={!!existingResponse || isQuoteLocked}
                         />
                       </div>
                     </div>
@@ -625,11 +643,27 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                         onChange={(e) => setObservations(e.target.value)}
                         placeholder="Informações adicionais..."
                         rows={3}
-                        disabled={!!existingResponse}
+                        disabled={!!existingResponse || isQuoteLocked}
                       />
                     </div>
 
-                    {!existingResponse && (
+                    {isQuoteLocked && (
+                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-orange-900">Cotação Bloqueada</p>
+                            <p className="text-xs text-orange-700 mt-0.5">
+                              {quote.status === 'approved'
+                                ? 'Uma proposta foi selecionada e aprovada. Esta cotação está finalizada.'
+                                : 'Esta cotação já foi finalizada e não aceita mais propostas.'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!existingResponse && !isQuoteLocked && (
                       <Button 
                         onClick={handleSendProposal} 
                         disabled={isSendingProposal || proposalItems.length === 0}

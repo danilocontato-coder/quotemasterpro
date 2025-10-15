@@ -19,6 +19,7 @@ interface DecisionMatrixWidgetProps {
   quoteName: string;
   defaultOpen?: boolean;
   onApprove?: (proposal: QuoteProposal) => void;
+  quoteStatus: string;
 }
 
 export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
@@ -26,8 +27,10 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   quoteId,
   quoteName,
   defaultOpen = false,
-  onApprove
+  onApprove,
+  quoteStatus
 }) => {
+  const isQuoteLocked = quoteStatus === 'pending_approval' || quoteStatus === 'approved';
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [weights, setWeights] = useState<WeightConfig>(DEFAULT_WEIGHT_TEMPLATES.equilibrado);
   const [isSaving, setIsSaving] = useState(false);
@@ -324,10 +327,11 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
                             <Button
                               size="sm"
                               onClick={() => onApprove?.(item.proposal)}
+                              disabled={isQuoteLocked}
                               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
                             >
                               <CheckCircle className="h-4 w-4" />
-                              {buttons.approveLabel}
+                              {isQuoteLocked ? 'Proposta Já Selecionada' : buttons.approveLabel}
                             </Button>
                           )}
                           
