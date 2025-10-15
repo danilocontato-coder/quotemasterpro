@@ -213,11 +213,6 @@ export function useProposalConsultant() {
         if (individualMap.size > 0 || comparativeData) {
           setIndividualAnalyses(individualMap);
           setComparativeAnalysis(comparativeData);
-          
-          toast({
-            title: 'Análises Carregadas',
-            description: 'Análises anteriores foram restauradas.',
-          });
         }
       }
     } catch (error) {
