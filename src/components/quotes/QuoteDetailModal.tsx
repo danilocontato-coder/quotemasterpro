@@ -39,7 +39,7 @@ import { VisitsTab } from './VisitsTab';
 import { SupplierStatusCard } from './SupplierStatusCard';
 import { ProposalComparisonTable } from './ProposalComparisonTable';
 import { ProposalDashboardMetrics } from './ProposalDashboardMetrics';
-import { ProposalRecommendationBadge, getProposalScore } from './ProposalRecommendationBadge';
+// ProposalRecommendationBadge removido - usar apenas DecisionMatrixWidget
 import { DecisionMatrixWidget } from './DecisionMatrixWidget';
 import { getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
@@ -805,21 +805,13 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 <div className="space-y-4">
                   <h4 className="font-semibold text-base">Propostas Recebidas</h4>
                   {proposals
-                    .sort((a, b) => {
-                      const scoreA = getProposalScore(a, proposals);
-                      const scoreB = getProposalScore(b, proposals);
-                      return scoreB - scoreA;
-                    })
+                    .sort((a, b) => a.totalPrice - b.totalPrice) // Ordenar por menor preço
                     .map((proposal) => (
                     <Card key={proposal.id} className="relative">
                       <CardHeader>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <CardTitle className="text-lg mb-2">{proposal.supplierName}</CardTitle>
-                            <ProposalRecommendationBadge 
-                              proposal={proposal} 
-                              allProposals={proposals} 
-                            />
                           </div>
                           <Badge className="bg-blue-100 text-blue-800 text-base px-3 py-1">
                             R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

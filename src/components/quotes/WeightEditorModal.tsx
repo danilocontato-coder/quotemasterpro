@@ -206,20 +206,24 @@ export const WeightEditorModal: React.FC<WeightEditorModalProps> = ({
             </div>
           </div>
 
-          {/* Load from Saved Templates */}
-          {templates.length > 0 && (
+          {/* Load from Saved Templates - Apenas customizados */}
+          {templates.filter(t => !t.is_system).length > 0 && (
             <div>
-              <Label className="mb-2 block">Carregar Template Salvo</Label>
+              <Label className="mb-2 block flex items-center gap-2">
+                <span>Meus Templates Personalizados</span>
+              </Label>
               <Select onValueChange={handleLoadTemplate}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um template..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates.map(template => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name} {template.is_system && '(Sistema)'}
-                    </SelectItem>
-                  ))}
+                  {templates
+                    .filter(t => !t.is_system)
+                    .map(template => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

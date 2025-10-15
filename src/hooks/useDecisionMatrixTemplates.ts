@@ -10,7 +10,7 @@ export interface DecisionMatrixTemplate {
     price: number;
     deliveryTime: number;
     shippingCost: number;
-    sla: number;
+    deliveryScore: number;
     warranty: number;
     reputation: number;
   };

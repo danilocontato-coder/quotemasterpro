@@ -1,7 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { QuoteProposal } from './QuoteDetailModal';
-import { getProposalScore } from './ProposalRecommendationBadge';
 
 interface QuoteItem {
   id: string;
@@ -24,12 +23,6 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
       </p>
     );
   }
-
-  // Calcular scores
-  const proposalsWithScores = proposals.map(p => ({
-    ...p,
-    score: getProposalScore(p, proposals)
-  }));
 
   return (
     <div className="overflow-x-auto">
@@ -138,28 +131,6 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
                   {isFastest && (
                     <Badge variant="secondary" className="text-xs mt-1 bg-blue-100 text-blue-700">
                       🚀 Mais Rápido
-                    </Badge>
-                  )}
-                </td>
-              );
-            })}
-          </tr>
-          
-          {/* Score row */}
-          <tr className="border-t-2 border-border bg-amber-50/30">
-            <td className="p-3 font-bold">Score Geral (Custo-Benefício)</td>
-            {proposalsWithScores.map(p => {
-              const maxScore = Math.max(...proposalsWithScores.map(pr => pr.score));
-              const isBest = p.score === maxScore;
-              
-              return (
-                <td key={p.id} className={`text-center p-3 ${isBest ? 'bg-amber-100' : ''}`}>
-                  <p className={`font-bold text-lg ${isBest ? 'text-amber-600' : ''}`}>
-                    {p.score}
-                  </p>
-                  {isBest && (
-                    <Badge className="text-xs mt-1 bg-amber-600 text-white">
-                      🏆 Melhor Custo-Benefício
                     </Badge>
                   )}
                 </td>
