@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSupabaseFinancial, Subscription, Invoice } from '@/hooks/useSupabaseFinancial';
 import { CouponIntegrationPanel } from '@/components/admin/CouponIntegrationPanel';
+import { AsaasBillingConfigPanel } from '@/components/admin/AsaasBillingConfigPanel';
 import { toast } from 'sonner';
 
 export const FinancialManagement = () => {
@@ -370,7 +371,12 @@ export const FinancialManagement = () => {
         )}
 
         {/* Gestão de Cupons (quando configurações expandidas) */}
-        {showSettings && <CouponIntegrationPanel />}
+        {showSettings && (
+          <>
+            <AsaasBillingConfigPanel />
+            <CouponIntegrationPanel />
+          </>
+        )}
 
         <Tabs defaultValue="subscriptions" className="space-y-6">
           <div className="flex items-center justify-between">

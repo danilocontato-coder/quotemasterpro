@@ -310,6 +310,26 @@ export function useSupabaseAdminClients() {
         planSalvo: insertData?.subscription_plan_id
       });
 
+      // Criar cliente no Asaas automaticamente
+      try {
+        console.log('📤 Criando cliente no Asaas...', createdClientId);
+        const { data: asaasData, error: asaasError } = await supabase.functions.invoke(
+          'create-asaas-customer',
+          {
+            body: { clientId: createdClientId }
+          }
+        );
+
+        if (asaasError) {
+          console.error('⚠️ Erro ao criar cliente no Asaas (não bloqueante):', asaasError);
+        } else if (asaasData?.success) {
+          console.log('✅ Cliente criado no Asaas:', asaasData.asaasCustomerId);
+        }
+      } catch (asaasErr) {
+        console.error('⚠️ Falha ao criar cliente no Asaas (não bloqueante):', asaasErr);
+        // Não bloqueia a criação do cliente se falhar
+      }
+
       // 2) Tenta criar usuário de autenticação (opcional - não bloqueia se falhar)
       try {
         const password = clientData.loginCredentials.password || generateTemporaryPassword();

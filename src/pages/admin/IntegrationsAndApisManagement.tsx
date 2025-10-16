@@ -40,7 +40,6 @@ import { IntegrationDetailsModal } from '@/components/admin/IntegrationDetailsMo
 import { StripeIntegrationPanel } from '@/components/admin/StripeIntegrationPanel';
 import { BoletoIntegrationPanel } from '@/components/admin/BoletoIntegrationPanel';
 import { AsaasIntegrationPanel } from '@/components/admin/AsaasIntegrationPanel';
-import { AsaasBillingConfigPanel } from '@/components/admin/AsaasBillingConfigPanel';
 import { useSupabaseIntegrations, Integration } from '@/hooks/useSupabaseIntegrations';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -421,10 +420,6 @@ export const IntegrationsAndApisManagement = () => {
               <StripeIntegrationPanel />
               <BoletoIntegrationPanel />
               <AsaasIntegrationPanel />
-            </div>
-            
-            <div className="mt-6">
-              <AsaasBillingConfigPanel />
             </div>
           </TabsContent>
 
