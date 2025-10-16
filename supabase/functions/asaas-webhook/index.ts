@@ -17,6 +17,38 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Validar token de webhook para segurança
+    const webhookToken = req.headers.get('asaas-access-token');
+    const { data: tokenSettings } = await supabaseClient
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'asaas_webhook_token')
+      .single();
+
+    if (tokenSettings?.setting_value?.token && webhookToken !== tokenSettings.setting_value.token) {
+      console.error('Unauthorized webhook attempt - invalid token');
+      
+      // Log de segurança
+      await supabaseClient
+        .from('audit_logs')
+        .insert({
+          action: 'WEBHOOK_UNAUTHORIZED_ATTEMPT',
+          entity_type: 'webhooks',
+          entity_id: 'asaas-webhook',
+          panel_type: 'system',
+          details: {
+            ip: req.headers.get('x-forwarded-for') || 'unknown',
+            user_agent: req.headers.get('user-agent'),
+            timestamp: new Date().toISOString()
+          }
+        });
+
+      return new Response('Unauthorized', { 
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const webhook = await req.json();
     console.log('Received Asaas webhook:', webhook.event);
 
