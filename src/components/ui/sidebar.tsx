@@ -177,6 +177,25 @@ const Sidebar = React.forwardRef<
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
+    // Ensure pointer-events/scroll lock cleanup after mobile sheet closes
+    React.useEffect(() => {
+      if (isMobile && !openMobile) {
+        const cleanup = window.setTimeout(() => {
+          const root = document.getElementById('root') as HTMLElement | null;
+          const body = document.body;
+          if (root && (root.style.pointerEvents === 'none' || root.getAttribute('style')?.includes('pointer-events'))) {
+            root.style.pointerEvents = '';
+          }
+          if (body.style.pointerEvents === 'none' || body.getAttribute('style')?.includes('pointer-events')) {
+            body.style.pointerEvents = '';
+          }
+          body.classList.remove('overflow-hidden');
+          body.removeAttribute('inert');
+        }, 350);
+        return () => window.clearTimeout(cleanup);
+      }
+    }, [isMobile, openMobile]);
+
     if (collapsible === "none") {
       return (
         <div

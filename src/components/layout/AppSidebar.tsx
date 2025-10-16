@@ -95,7 +95,7 @@ export function AppSidebar() {
       // Force close sidebar on mobile
       setOpen(false);
       // Also set to collapsed state for extra safety
-      document.body.click(); // trigger outside click
+      
     }
   };
 

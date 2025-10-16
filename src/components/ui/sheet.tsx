@@ -60,6 +60,16 @@ const SheetContent = React.forwardRef<
     <SheetPrimitive.Content
       ref={ref}
       className={cn(sheetVariants({ side }), className)}
+      onAnimationEnd={(e) => {
+        try { (props as any)?.onAnimationEnd?.(e) } catch {}
+        const target = e.currentTarget as HTMLElement;
+        const state = target.getAttribute('data-state');
+        if (state === 'closed') {
+          const root = document.getElementById('root') || document.body;
+          if (root) (root as HTMLElement).style.pointerEvents = '';
+          document.body.style.pointerEvents = '';
+        }
+      }}
       {...props}
     >
       {children}
