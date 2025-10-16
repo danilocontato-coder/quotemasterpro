@@ -4933,6 +4933,10 @@ export type Database = {
           visibility_scope: string
         }[]
       }
+      trigger_send_overdue_reminders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       user_has_all_modules_access: {
         Args: { _module_keys: string[] }
         Returns: boolean
