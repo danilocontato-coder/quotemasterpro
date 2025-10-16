@@ -24,6 +24,7 @@ import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { ReleaseEscrowModal } from "@/components/payments/ReleaseEscrowModal";
 import { EscrowDashboard } from "@/components/payments/EscrowDashboard";
+import { OfflinePaymentModal } from "@/components/payments/OfflinePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,8 @@ export default function Payments() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReleaseEscrowModal, setShowReleaseEscrowModal] = useState(false);
+  const [showOfflinePaymentModal, setShowOfflinePaymentModal] = useState(false);
+  const [selectedOfflinePayment, setSelectedOfflinePayment] = useState<any>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -136,6 +139,11 @@ export default function Payments() {
 
   const handleViewPayment = (payment: any) => {
     setSelectedPayment(payment);
+  };
+
+  const handleOfflinePayment = (payment: any) => {
+    setSelectedOfflinePayment(payment);
+    setShowOfflinePaymentModal(true);
   };
 
   const getPaymentStatusIcon = (status: string) => {
@@ -383,6 +391,7 @@ export default function Payments() {
                 }
               }}
               onViewDetails={handleViewPayment}
+              onOfflinePayment={handleOfflinePayment}
             />
           ))}
         </div>
@@ -470,6 +479,16 @@ export default function Payments() {
         onOpenChange={setShowReleaseEscrowModal}
         payment={selectedPayment}
         onConfirm={handleReleaseEscrow}
+      />
+
+      <OfflinePaymentModal
+        payment={selectedOfflinePayment}
+        open={showOfflinePaymentModal}
+        onOpenChange={setShowOfflinePaymentModal}
+        onConfirm={() => {
+          refetch();
+          toast.success('Pagamento offline registrado com sucesso!');
+        }}
       />
     </div>
   );

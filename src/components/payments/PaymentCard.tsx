@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   CreditCard, 
   Clock, 
@@ -8,14 +10,18 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  Lock
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface PaymentCardProps {
   payment: any;
   onPay: (paymentId: string) => void;
   onConfirmDelivery: (paymentId: string) => void;
   onViewDetails: (payment: any) => void;
+  onOfflinePayment?: (payment: any) => void;
 }
 
 const getStatusInfo = (status: string) => {
@@ -72,9 +78,64 @@ const getStatusInfo = (status: string) => {
   }
 };
 
-export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails }: PaymentCardProps) {
+export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, onOfflinePayment }: PaymentCardProps) {
+  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const statusInfo = getStatusInfo(payment.status);
   const StatusIcon = statusInfo.icon;
+
+  // Handler para criar pagamento Asaas
+  const handleAsaasPayment = async () => {
+    // Validar wallet antes de criar pagamento
+    if (!payment.supplier_id) {
+      toast.error('Pagamento sem fornecedor associado');
+      return;
+    }
+
+    if (!payment.suppliers?.asaas_wallet_id) {
+      toast.error(
+        'Fornecedor ainda não configurou a carteira Asaas. Entre em contato com o administrador.',
+        { duration: 5000 }
+      );
+      return;
+    }
+
+    setIsCreatingPayment(true);
+    try {
+      console.log('🚀 Criando pagamento Asaas para:', payment.id);
+      
+      const { data, error } = await supabase.functions.invoke('create-asaas-payment', {
+        body: { paymentId: payment.id }
+      });
+
+      if (error) {
+        console.error('❌ Erro ao criar pagamento Asaas:', error);
+        
+        // Detectar erro de wallet não configurada
+        if (error.message?.includes('wallet') || error.message?.includes('carteira')) {
+          toast.error(
+            'Fornecedor ainda não configurou a carteira Asaas. Entre em contato com o administrador.',
+            { duration: 5000 }
+          );
+        } else {
+          toast.error('Erro ao criar pagamento: ' + (error.message || 'Erro desconhecido'));
+        }
+        return;
+      }
+
+      if (data?.invoiceUrl) {
+        console.log('✅ Pagamento criado com sucesso! URL:', data.invoiceUrl);
+        toast.success('Pagamento criado! Abrindo link seguro...');
+        window.open(data.invoiceUrl, '_blank');
+      } else {
+        toast.error('Link de pagamento não disponível');
+      }
+    } catch (err) {
+      console.error('❌ Erro inesperado:', err);
+      toast.error('Erro ao criar pagamento');
+    } finally {
+      setIsCreatingPayment(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString('pt-BR', {
@@ -127,35 +188,28 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails }
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          {payment.status === 'pending' && (
-            <>
-              <Button 
-                onClick={async () => {
-                  const { supabase } = await import('@/integrations/supabase/client');
-                  const { toast } = await import('sonner');
-                  
-                  try {
-                    const { data, error } = await supabase.functions.invoke('create-asaas-payment', {
-                      body: { paymentId: payment.id }
-                    });
-
-                    if (error) throw error;
-
-                    if (data?.asaas_invoice_url) {
-                      window.open(data.asaas_invoice_url, '_blank');
-                      toast.success("Pagamento Asaas criado! Abrindo link...");
-                    }
-                  } catch (error: any) {
-                    console.error('Error creating Asaas payment:', error);
-                    toast.error(error.message || "Erro ao criar pagamento Asaas");
-                  }
-                }}
-                className="flex-1 min-w-[120px]"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                💳 Pagar com Asaas
-              </Button>
-            </>
+          {payment.status === 'pending' && payment.supplier_id && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex-1 min-w-[120px]">
+                    <Button 
+                      onClick={handleAsaasPayment}
+                      disabled={!payment.suppliers?.asaas_wallet_id || isCreatingPayment}
+                      className="w-full"
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      {isCreatingPayment ? 'Criando...' : '🔒 Pagar com Segurança'}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                {!payment.suppliers?.asaas_wallet_id && (
+                  <TooltipContent>
+                    <p>Fornecedor precisa configurar carteira Asaas</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           )}
           
           {payment.status === 'in_escrow' && (
@@ -177,14 +231,14 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails }
             Ver Detalhes
           </Button>
           
-          {payment.status === 'pending' && (
+          {payment.status === 'pending' && onOfflinePayment && (
             <Button 
-              variant="outline" 
+              onClick={() => onOfflinePayment(payment)}
+              variant="secondary"
               size="sm"
-              disabled
             >
               <FileText className="h-4 w-4 mr-1" />
-              Pagar Offline
+              📝 Informar Pagamento
             </Button>
           )}
         </div>
