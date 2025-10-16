@@ -27,6 +27,7 @@ const ResetPassword: React.FC = () => {
       // Ler parâmetros do hash (#...)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
       const hashType = hashParams.get('type');
 
       // Ler parâmetros da query (?...)
@@ -47,15 +48,17 @@ const ResetPassword: React.FC = () => {
       try {
         // Fluxo 1: Se há code (PKCE), trocar por sessão
         if (code) {
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          console.log('🔄 PKCE code -> exchangeCodeForSession');
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href);
           if (exchangeError || !data.session) {
+            console.error('❌ exchangeCodeForSession failed:', exchangeError);
             setHasValidToken(false);
-            setError('Link de recuperação inválido ou expirado');
+            setError('Link de recuperação inválido ou expirado. Solicite um novo.');
             setIsCheckingToken(false);
             return;
           }
           
-          // Sessão criada com sucesso
+          console.log('✅ Sessão criada via PKCE');
           setHasValidToken(true);
           setIsCheckingToken(false);
           
@@ -64,10 +67,62 @@ const ResetPassword: React.FC = () => {
           return;
         }
 
-        // Fluxo 2: Verificar sessão existente
+        // Fluxo 2: Se há access_token + refresh_token no hash e type=recovery
+        if (accessToken && refreshToken && hashType === 'recovery') {
+          console.log('🔄 Hash tokens -> setSession');
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (sessionError || !data.session) {
+            console.error('❌ setSession failed:', sessionError);
+            setHasValidToken(false);
+            setError('Link de recuperação inválido ou expirado. Solicite um novo.');
+            setIsCheckingToken(false);
+            return;
+          }
+          
+          console.log('✅ Sessão criada via hash tokens');
+          setHasValidToken(true);
+          setIsCheckingToken(false);
+          
+          // Limpar URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+
+        // Fluxo 3: Se há token na query com type=recovery
+        if (queryToken && queryType === 'recovery') {
+          console.log('🔄 Query token -> verifyOtp');
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            type: 'recovery',
+            token_hash: queryToken
+          });
+          
+          if (verifyError || !data.session) {
+            console.error('❌ verifyOtp failed:', verifyError);
+            setHasValidToken(false);
+            setError('Link de recuperação inválido ou expirado. Solicite um novo.');
+            setIsCheckingToken(false);
+            return;
+          }
+          
+          console.log('✅ Sessão criada via query token');
+          setHasValidToken(true);
+          setIsCheckingToken(false);
+          
+          // Limpar URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+
+        // Fluxo 4: Verificar sessão existente
+        console.log('🔍 Session encontrada via getSession');
         const { data: sessionData } = await supabase.auth.getSession();
         
         if (sessionData.session) {
+          console.log('✅ Sessão existente encontrada');
           setHasValidToken(true);
           setIsCheckingToken(false);
           
@@ -78,27 +133,22 @@ const ResetPassword: React.FC = () => {
           return;
         }
 
-        // Fluxo 3: Validar access_token no hash
+        // Fluxo 5: Se há apenas access_token no hash (fallback para compatibilidade)
         if (accessToken && hashType === 'recovery') {
-          setHasValidToken(true);
-          setIsCheckingToken(false);
-          return;
-        }
-
-        // Fluxo 4: Validar token na query
-        if (queryToken && queryType === 'recovery') {
+          console.log('⚠️ Usando access_token simples (fallback)');
           setHasValidToken(true);
           setIsCheckingToken(false);
           return;
         }
 
         // Nenhum token/sessão válido encontrado
+        console.log('❌ Nenhum token/sessão válido encontrado');
         setHasValidToken(false);
-        setError('Link de recuperação inválido ou expirado');
+        setError('Link de recuperação inválido ou expirado. Solicite um novo.');
       } catch (err) {
-        console.error('Erro ao validar token:', err);
+        console.error('❌ Erro ao validar token:', err);
         setHasValidToken(false);
-        setError('Erro ao validar link de recuperação');
+        setError('Erro ao validar link de recuperação. Tente novamente.');
       } finally {
         setIsCheckingToken(false);
       }
@@ -150,6 +200,14 @@ const ResetPassword: React.FC = () => {
     }
 
     try {
+      // Verificar se há sessão ativa antes de tentar atualizar
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError('Sua sessão de recuperação expirou. Gere um novo link e tente novamente.');
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({
         password: password
       });
