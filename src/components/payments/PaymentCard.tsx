@@ -202,7 +202,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          {payment.status === 'pending' && payment.supplier_id && (
+          {payment.status === 'pending' && payment.supplier_id && payment.amount > 0 && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -224,6 +224,17 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                 )}
               </Tooltip>
             </TooltipProvider>
+          )}
+          
+          {payment.status === 'pending' && (!payment.supplier_id || payment.amount <= 0) && (
+            <div className="flex-1 min-w-[200px] text-sm text-amber-600 flex items-center gap-2 p-2 bg-amber-50 rounded">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>
+                {!payment.supplier_id 
+                  ? 'Pagamento sem fornecedor. Entre em contato com o suporte.'
+                  : 'Pagamento sem valor definido. Entre em contato com o suporte.'}
+              </span>
+            </div>
           )}
           
           {payment.status === 'in_escrow' && (
