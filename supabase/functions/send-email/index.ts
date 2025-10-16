@@ -70,7 +70,10 @@ serve(async (req) => {
       .eq('setting_key', 'base_url')
       .maybeSingle();
 
-    const baseUrl = (baseUrlData?.setting_value as string) || 'https://cotiz.com.br';
+    // Remover aspas extras do JSON
+    const baseUrl = typeof baseUrlData?.setting_value === 'string'
+      ? (baseUrlData.setting_value as string).replace(/"/g, '')
+      : String(baseUrlData?.setting_value || 'https://cotiz.com.br').replace(/"/g, '');
 
     // Converter logo_url relativo em absoluto
     let logoUrl = brandingData?.logo_url || '/placeholder.svg';
