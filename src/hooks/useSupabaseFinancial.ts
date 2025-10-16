@@ -99,7 +99,7 @@ export function useSupabaseFinancial() {
           *,
           clients:client_id(id, name, company_name),
           suppliers:supplier_id(id, name),
-          subscription_plans:plan_id(id, display_name, price)
+          subscription_plans:plan_id(*)
         `)
         .order('created_at', { ascending: false });
 
@@ -110,8 +110,8 @@ export function useSupabaseFinancial() {
         ...sub,
         customerName: sub.clients?.company_name || sub.clients?.name || sub.suppliers?.name || 'N/A',
         customerType: sub.client_id ? 'client' : 'supplier',
-        planName: sub.subscription_plans?.display_name || sub.plan_id,
-        planPrice: sub.subscription_plans?.price || 0
+        planName: sub.subscription_plans?.display_name || sub.subscription_plans?.name || sub.plan_id,
+        planPrice: sub.subscription_plans?.monthly_price || sub.subscription_plans?.yearly_price || 0
       }));
       
       setSubscriptions(enrichedData as Subscription[]);
