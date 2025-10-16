@@ -90,7 +90,8 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
     clientType: 'direct' as 'direct' | 'administradora' | 'condominio_vinculado',
     parentClientId: '',
     brandingSettingsId: '',
-    requiresApproval: true
+    requiresApproval: true,
+    createAsaasSubscription: true
   });
 
   const [contacts, setContacts] = useState<ClientContact[]>([{
@@ -153,6 +154,55 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
         description: "Não foi possível copiar para a área de transferência.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleCepChange = async (cep: string) => {
+    const cepNumerico = cep.replace(/\D/g, '');
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      address: { ...prev.address, zipCode: cep }
+    }));
+
+    if (cepNumerico.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cepNumerico}/json/`);
+        const data = await response.json();
+        
+        if (!data.erro) {
+          setFormData(prev => ({
+            ...prev,
+            address: {
+              ...prev.address,
+              zipCode: cep,
+              street: data.logradouro || prev.address.street,
+              neighborhood: data.bairro || prev.address.neighborhood,
+              city: data.localidade || prev.address.city,
+              state: data.uf || prev.address.state,
+              complement: data.complemento || prev.address.complement,
+            }
+          }));
+          
+          toast({
+            title: "Endereço encontrado",
+            description: "Os dados foram preenchidos automaticamente."
+          });
+        } else {
+          toast({
+            title: "CEP não encontrado",
+            description: "Preencha o endereço manualmente.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao buscar CEP:', error);
+        toast({
+          title: "Erro ao buscar CEP",
+          description: "Verifique sua conexão e tente novamente.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -308,7 +358,8 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
         clientType: 'direct',
         parentClientId: '',
         brandingSettingsId: '',
-        requiresApproval: true
+        requiresApproval: true,
+        createAsaasSubscription: true
       });
       setContacts([{
         name: '',
@@ -550,6 +601,23 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                       />
                     </div>
                   )}
+
+                  {/* Toggle de Faturamento Asaas */}
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="createAsaasSubscription">Criar Assinatura Imediatamente</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Ao desativar, o cliente será criado no Asaas mas sem cobrança recorrente
+                      </p>
+                    </div>
+                    <Switch 
+                      id="createAsaasSubscription"
+                      checked={formData.createAsaasSubscription}
+                      onCheckedChange={(checked) => {
+                        setFormData(prev => ({ ...prev, createAsaasSubscription: checked }));
+                      }}
+                    />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -562,60 +630,19 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-2 space-y-2">
-                      <Label htmlFor="street">Logradouro</Label>
-                      <Input
-                        id="street"
-                        value={formData.address.street}
-                        onChange={(e) => setFormData(prev => ({ 
-                          ...prev, 
-                          address: { ...prev.address, street: e.target.value }
-                        }))}
-                        placeholder="Rua, Avenida, etc."
-                      />
-                    </div>
                     <div className="space-y-2">
-                      <Label htmlFor="number">Número</Label>
+                      <Label htmlFor="zipCode">CEP *</Label>
                       <Input
-                        id="number"
-                        value={formData.address.number}
-                        onChange={(e) => setFormData(prev => ({ 
-                          ...prev, 
-                          address: { ...prev.address, number: e.target.value }
-                        }))}
-                        placeholder="123"
+                        id="zipCode"
+                        value={formData.address.zipCode}
+                        onChange={(e) => handleCepChange(e.target.value)}
+                        placeholder="00000-000"
+                        maxLength={9}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Digite o CEP para buscar o endereço automaticamente
+                      </p>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="complement">Complemento</Label>
-                      <Input
-                        id="complement"
-                        value={formData.address.complement}
-                        onChange={(e) => setFormData(prev => ({ 
-                          ...prev, 
-                          address: { ...prev.address, complement: e.target.value }
-                        }))}
-                        placeholder="Apto, Sala, etc."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="neighborhood">Bairro</Label>
-                      <Input
-                        id="neighborhood"
-                        value={formData.address.neighborhood}
-                        onChange={(e) => setFormData(prev => ({ 
-                          ...prev, 
-                          address: { ...prev.address, neighborhood: e.target.value }
-                        }))}
-                        placeholder="Centro"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="city">Cidade</Label>
                       <Input
@@ -632,24 +659,94 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                       <Label htmlFor="state">Estado</Label>
                       <Input
                         id="state"
+                        maxLength={2}
                         value={formData.address.state}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
-                          address: { ...prev.address, state: e.target.value }
+                          address: { ...prev.address, state: e.target.value.toUpperCase() }
                         }))}
                         placeholder="SP"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zipCode">CEP</Label>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="street">Logradouro</Label>
                       <Input
-                        id="zipCode"
-                        value={formData.address.zipCode}
+                        id="street"
+                        value={formData.address.street}
                         onChange={(e) => setFormData(prev => ({ 
                           ...prev, 
-                          address: { ...prev.address, zipCode: e.target.value }
+                          address: { ...prev.address, street: e.target.value }
                         }))}
-                        placeholder="00000-000"
+                        placeholder="Rua, Avenida, etc."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="number">Número *</Label>
+                      <Input
+                        id="number"
+                        value={formData.address.number}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          address: { ...prev.address, number: e.target.value }
+                        }))}
+                        placeholder="123"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="neighborhood">Bairro</Label>
+                      <Input
+                        id="neighborhood"
+                        value={formData.address.neighborhood}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          address: { ...prev.address, neighborhood: e.target.value }
+                        }))}
+                        placeholder="Centro"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="complement">Complemento</Label>
+                      <Input
+                        id="complement"
+                        value={formData.address.complement}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          address: { ...prev.address, complement: e.target.value }
+                        }))}
+                        placeholder="Apto, Sala, etc."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="street">Logradouro</Label>
+                      <Input
+                        id="street"
+                        value={formData.address.street}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          address: { ...prev.address, street: e.target.value }
+                        }))}
+                        placeholder="Rua, Avenida, etc."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="number">Número *</Label>
+                      <Input
+                        id="number"
+                        value={formData.address.number}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          address: { ...prev.address, number: e.target.value }
+                        }))}
+                        placeholder="123"
                       />
                     </div>
                   </div>

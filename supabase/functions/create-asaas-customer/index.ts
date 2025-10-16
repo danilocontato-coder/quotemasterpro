@@ -18,7 +18,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { clientId } = await req.json();
+    const { clientId, createAsaasSubscription = true } = await req.json();
 
     if (!clientId) {
       throw new Error('clientId é obrigatório');
@@ -115,14 +115,19 @@ serve(async (req) => {
 
     // Criar assinatura recorrente no Asaas
     let asaasSubscriptionId = null;
-    if (planPrice > 0) {
+    if (planPrice > 0 && createAsaasSubscription !== false) {
       console.log(`💰 Criando assinatura recorrente no Asaas - Valor: R$ ${planPrice}`);
+      
+      // Calcular D+2 (2 dias úteis após criação)
+      const today = new Date();
+      const dueDate = new Date(today);
+      dueDate.setDate(today.getDate() + 2); // D+2
       
       const subscriptionData = {
         customer: asaasCustomer.id,
         billingType: 'BOLETO', // Pode ser: BOLETO, CREDIT_CARD, PIX, UNDEFINED
         value: planPrice,
-        nextDueDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0], // Próximo mês
+        nextDueDate: dueDate.toISOString().split('T')[0], // D+2 formato YYYY-MM-DD
         cycle: 'MONTHLY', // Recorrência mensal
         description: `Assinatura ${client.subscription_plan_id}`,
       };
@@ -164,6 +169,8 @@ serve(async (req) => {
             }
           });
       }
+    } else if (planPrice > 0 && createAsaasSubscription === false) {
+      console.warn(`⚠️ Cliente criado sem assinatura (decisão do usuário)`);
     } else {
       console.warn(`⚠️ Plano sem valor definido (${planPrice}), assinatura NÃO será criada`);
     }

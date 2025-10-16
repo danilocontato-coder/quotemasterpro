@@ -52,6 +52,38 @@ serve(async (req) => {
 
     console.log(`Issuing NFS-e for charge: ${chargeId}`);
 
+    // Buscar dados da fatura
+    const { data: invoice, error: invoiceError } = await supabaseClient
+      .from('invoices')
+      .select('*')
+      .or(`asaas_charge_id.eq.${chargeId},id.eq.${invoice_id}`)
+      .single();
+
+    if (invoiceError || !invoice) {
+      console.error('Erro ao buscar invoice:', invoiceError);
+      throw new Error('Invoice não encontrada');
+    }
+
+    // Buscar dados do cliente
+    const { data: client, error: clientError } = await supabaseClient
+      .from('clients')
+      .select('address, company_name, email, cnpj')
+      .eq('id', invoice.client_id)
+      .single();
+
+    if (clientError || !client) {
+      throw new Error('Cliente não encontrado');
+    }
+
+    // Validar CEP
+    const address = typeof client.address === 'string' 
+      ? JSON.parse(client.address) 
+      : client.address;
+
+    if (!address?.zipCode || address.zipCode.replace(/\D/g, '').length !== 8) {
+      throw new Error('CEP do cliente é obrigatório para emissão de NF-e. Atualize o cadastro do cliente.');
+    }
+
     const { apiKey, baseUrl } = await getAsaasConfig(supabaseClient);
 
     // Buscar configurações de NFS-e

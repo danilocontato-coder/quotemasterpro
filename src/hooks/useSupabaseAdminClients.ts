@@ -72,6 +72,7 @@ export interface AdminClient {
   brandingSettingsId?: string;
   requiresApproval?: boolean;
   subscriptionPlanId?: string;
+  createAsaasSubscription?: boolean;
 }
 
 // Utilities
@@ -366,7 +367,10 @@ export function useSupabaseAdminClients() {
         const { data: asaasData, error: asaasError } = await supabase.functions.invoke(
           'create-asaas-customer',
           {
-            body: { clientId: createdClientId }
+            body: { 
+              clientId: createdClientId,
+              createAsaasSubscription: clientData.createAsaasSubscription
+            }
           }
         );
 
