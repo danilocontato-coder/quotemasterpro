@@ -18,7 +18,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { clientId, createAsaasSubscription = true } = await req.json();
+    const { clientId, createAsaasSubscription = true, firstDueDateOption = 'next_month' } = await req.json();
 
     if (!clientId) {
       throw new Error('clientId é obrigatório');
@@ -118,10 +118,19 @@ serve(async (req) => {
     if (planPrice > 0 && createAsaasSubscription !== false) {
       console.log(`💰 Criando assinatura recorrente no Asaas - Valor: R$ ${planPrice}`);
       
-      // Calcular D+2 (2 dias úteis após criação)
+      // Calcular data do primeiro vencimento baseado na opção escolhida
       const today = new Date();
       const dueDate = new Date(today);
-      dueDate.setDate(today.getDate() + 2); // D+2
+
+      if (firstDueDateOption === 'immediate') {
+        dueDate.setDate(today.getDate() + 2); // D+2
+        console.log(`💰 Primeiro vencimento: D+2 (${dueDate.toISOString().split('T')[0]})`);
+      } else {
+        // Próximo mês, dia 1
+        dueDate.setMonth(today.getMonth() + 1);
+        dueDate.setDate(1);
+        console.log(`💰 Primeiro vencimento: Próximo mês (${dueDate.toISOString().split('T')[0]})`);
+      }
       
       const subscriptionData = {
         customer: asaasCustomer.id,
@@ -134,7 +143,8 @@ serve(async (req) => {
 
       console.log(`📤 Enviando requisição para Asaas Subscriptions API:`, {
         url: `${asaasConfig.baseUrl}/subscriptions`,
-        data: subscriptionData
+        data: subscriptionData,
+        firstDueDateOption: firstDueDateOption
       });
 
       const subscriptionResponse = await fetch(`${asaasConfig.baseUrl}/subscriptions`, {

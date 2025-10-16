@@ -73,6 +73,7 @@ export interface AdminClient {
   requiresApproval?: boolean;
   subscriptionPlanId?: string;
   createAsaasSubscription?: boolean;
+  firstDueDateOption?: 'immediate' | 'next_month';
 }
 
 // Utilities

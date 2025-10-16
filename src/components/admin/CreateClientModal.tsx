@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
 import { useAdministradoras } from '@/hooks/useAdministradoras';
@@ -91,7 +92,8 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
     parentClientId: '',
     brandingSettingsId: '',
     requiresApproval: true,
-    createAsaasSubscription: true
+    createAsaasSubscription: true,
+    firstDueDateOption: 'next_month' as 'immediate' | 'next_month'
   });
 
   const [contacts, setContacts] = useState<ClientContact[]>([{
@@ -359,7 +361,8 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
         parentClientId: '',
         brandingSettingsId: '',
         requiresApproval: true,
-        createAsaasSubscription: true
+        createAsaasSubscription: true,
+        firstDueDateOption: 'next_month' as 'immediate' | 'next_month'
       });
       setContacts([{
         name: '',
@@ -618,6 +621,36 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
                       }}
                     />
                   </div>
+
+                  {/* Data do Primeiro Vencimento (condicional) */}
+                  {formData.createAsaasSubscription && (
+                    <div className="mt-4 space-y-4 p-4 border rounded-lg bg-muted/50">
+                      <Label>Data do Primeiro Vencimento</Label>
+                      <RadioGroup 
+                        value={formData.firstDueDateOption}
+                        onValueChange={(value: 'immediate' | 'next_month') => {
+                          setFormData(prev => ({ ...prev, firstDueDateOption: value }));
+                        }}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="immediate" id="immediate" />
+                          <Label htmlFor="immediate" className="font-normal cursor-pointer">
+                            Imediato (D+2) - Primeira cobrança em 2 dias
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="next_month" id="next_month" />
+                          <Label htmlFor="next_month" className="font-normal cursor-pointer">
+                            Próximo mês - Primeira cobrança a partir do dia 1º do próximo mês
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                      
+                      <p className="text-xs text-muted-foreground">
+                        ⚠️ Após a primeira cobrança, o Asaas gerará automaticamente as próximas mensalmente.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
