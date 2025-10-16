@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -72,26 +72,35 @@ export const useBranding = () => {
 
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<BrandingSettings>(defaultSettings);
-  const [isLoading, setIsLoading] = useState(false); // ⚡ Iniciar como false
-  const [isReady, setIsReady] = useState(true); // ⚡ Marcar como pronto imediatamente
+  const [isLoading, setIsLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
   const { toast } = useToast();
+  const isLoadingRef = useRef(false);
 
   // ⚡ CARREGAR CONFIGURAÇÕES DO BANCO (sem forçar padrão)
   useEffect(() => {
+    // ✅ PREVENIR carregamento duplicado
+    if (isLoadingRef.current) {
+      return;
+    }
+    
+    isLoadingRef.current = true;
     const startTime = performance.now();
     
     // 🧹 LIMPEZA: Remover cache antigo/corrompido
     localStorage.removeItem('quoteMaster_branding_cache');
     
-    console.log('🎨 [BRANDING] Carregando configurações do banco...');
+    console.log('🎨 [BRANDING] Iniciando carregamento...');
     
     // Carregar configurações reais (SEM aplicar padrão antes)
     loadSettings().then(() => {
       const loadTime = performance.now() - startTime;
       console.log(`⚡ [BRANDING] Branding carregado em ${loadTime.toFixed(2)}ms`);
+      isLoadingRef.current = false;
     }).catch((error) => {
-      console.error('❌ [BRANDING] Erro ao carregar, usando padrão como fallback:', error);
+      console.error('❌ [BRANDING] Erro ao carregar:', error);
       applyBrandingToDOM(defaultSettings);
+      isLoadingRef.current = false;
     });
   }, []);
 

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { useSystemBranding } from '@/hooks/useSystemBranding';
 import { Building2 } from 'lucide-react';
@@ -16,17 +16,8 @@ export function BrandedLogo({
   showCompanyName = false,
   className = ''
 }: BrandedLogoProps) {
-  const { settings } = useBranding();
+  const { settings, isReady } = useBranding();
   const { settings: systemSettings } = useSystemBranding();
-  const lastLoggedLogo = useRef<string | null>(null);
-
-  // ⚡ OTIMIZAÇÃO: Só logar quando o logo realmente mudar
-  useEffect(() => {
-    if (settings.logo && settings.logo !== lastLoggedLogo.current) {
-      console.log('🖼️ BrandedLogo: Logo atualizado para:', settings.logo);
-      lastLoggedLogo.current = settings.logo;
-    }
-  }, [settings.logo]);
 
   const sizeClasses = {
     sm: 'h-6',
@@ -44,6 +35,18 @@ export function BrandedLogo({
     xxl: 'text-5xl'
   };
 
+  // ✅ Aguardar branding estar pronto
+  if (!isReady) {
+    return (
+      <div className={`flex items-center gap-2 ${className}`}>
+        <div className={`${sizeClasses[size]} w-16 bg-muted animate-pulse rounded`}></div>
+        {showCompanyName && (
+          <div className={`${sizeClasses[size]} w-32 bg-muted animate-pulse rounded`}></div>
+        )}
+      </div>
+    );
+  }
+
   // Se tem logo personalizado
   if (settings?.logo && settings.logo !== '/placeholder.svg') {
     return (
@@ -52,9 +55,9 @@ export function BrandedLogo({
           src={settings.logo} 
           alt={settings.companyName || 'Logo'} 
           className={`${sizeClasses[size]} object-contain`}
-          loading="lazy"
+          loading="eager"
           onError={(e) => {
-            console.error('❌ BrandedLogo: Erro ao carregar logo, usando placeholder');
+            console.error('❌ BrandedLogo: Erro ao carregar logo');
             e.currentTarget.src = '/placeholder.svg';
           }}
         />
