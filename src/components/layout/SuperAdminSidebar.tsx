@@ -126,9 +126,10 @@ const navigation = [
       },
       {
         name: 'E-mail Marketing',
-        href: '/admin/email',
+        href: '/admin/email-marketing',
         icon: Mail,
-        description: 'Campanhas de e-mail'
+        description: 'Campanhas de e-mail',
+        badge: 'IA'
       },
       {
         name: 'Templates & Mensagens',
