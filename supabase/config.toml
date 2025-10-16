@@ -1,5 +1,11 @@
 project_id = "bpsqyaxdhqejozmlejcb"
 
+[functions.save-asaas-key]
+verify_jwt = true
+
+[functions.test-asaas-connection]
+verify_jwt = true
+
 [functions.create-asaas-wallet]
 verify_jwt = true
 
