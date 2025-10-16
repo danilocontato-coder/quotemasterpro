@@ -2325,9 +2325,68 @@ export type Database = {
           },
         ]
       }
+      payment_disputes: {
+        Row: {
+          created_at: string | null
+          description: string
+          evidence: Json | null
+          id: string
+          opened_by: string
+          opened_by_role: string
+          payment_id: string
+          reason: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          evidence?: Json | null
+          id?: string
+          opened_by: string
+          opened_by_role: string
+          payment_id: string
+          reason: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          evidence?: Json | null
+          id?: string
+          opened_by?: string
+          opened_by_role?: string
+          payment_id?: string
+          reason?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_disputes_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
+          asaas_invoice_url: string | null
+          asaas_payment_id: string | null
+          auto_release_enabled: boolean | null
           client_id: string
           cost_center_id: string | null
           created_at: string | null
@@ -2336,7 +2395,10 @@ export type Database = {
           offline_attachments: string[] | null
           offline_notes: string | null
           payment_method: string | null
+          payment_type: string | null
           quote_id: string
+          related_payment_id: string | null
+          release_reason: string | null
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -2344,10 +2406,17 @@ export type Database = {
           stripe_session_id: string | null
           supplier_id: string | null
           transaction_id: string | null
+          transfer_date: string | null
+          transfer_method: string | null
+          transfer_notes: string | null
+          transfer_status: string | null
           updated_at: string | null
         }
         Insert: {
           amount: number
+          asaas_invoice_url?: string | null
+          asaas_payment_id?: string | null
+          auto_release_enabled?: boolean | null
           client_id: string
           cost_center_id?: string | null
           created_at?: string | null
@@ -2356,7 +2425,10 @@ export type Database = {
           offline_attachments?: string[] | null
           offline_notes?: string | null
           payment_method?: string | null
+          payment_type?: string | null
           quote_id: string
+          related_payment_id?: string | null
+          release_reason?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2364,10 +2436,17 @@ export type Database = {
           stripe_session_id?: string | null
           supplier_id?: string | null
           transaction_id?: string | null
+          transfer_date?: string | null
+          transfer_method?: string | null
+          transfer_notes?: string | null
+          transfer_status?: string | null
           updated_at?: string | null
         }
         Update: {
           amount?: number
+          asaas_invoice_url?: string | null
+          asaas_payment_id?: string | null
+          auto_release_enabled?: boolean | null
           client_id?: string
           cost_center_id?: string | null
           created_at?: string | null
@@ -2376,7 +2455,10 @@ export type Database = {
           offline_attachments?: string[] | null
           offline_notes?: string | null
           payment_method?: string | null
+          payment_type?: string | null
           quote_id?: string
+          related_payment_id?: string | null
+          release_reason?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2384,6 +2466,10 @@ export type Database = {
           stripe_session_id?: string | null
           supplier_id?: string | null
           transaction_id?: string | null
+          transfer_date?: string | null
+          transfer_method?: string | null
+          transfer_notes?: string | null
+          transfer_status?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2406,6 +2492,13 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_related_payment_id_fkey"
+            columns: ["related_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
           {
@@ -3089,6 +3182,8 @@ export type Database = {
       }
       quotes: {
         Row: {
+          advance_payment_percentage: number | null
+          advance_payment_required: boolean | null
           client_id: string
           client_name: string
           cost_center_id: string | null
@@ -3114,6 +3209,8 @@ export type Database = {
           visit_deadline: string | null
         }
         Insert: {
+          advance_payment_percentage?: number | null
+          advance_payment_required?: boolean | null
           client_id: string
           client_name: string
           cost_center_id?: string | null
@@ -3139,6 +3236,8 @@ export type Database = {
           visit_deadline?: string | null
         }
         Update: {
+          advance_payment_percentage?: number | null
+          advance_payment_required?: boolean | null
           client_id?: string
           client_name?: string
           cost_center_id?: string | null
@@ -3567,6 +3666,8 @@ export type Database = {
       suppliers: {
         Row: {
           address: Json | null
+          asaas_wallet_id: string | null
+          bank_data: Json | null
           business_info: Json | null
           certification_date: string | null
           certification_expires_at: string | null
@@ -3601,6 +3702,8 @@ export type Database = {
         }
         Insert: {
           address?: Json | null
+          asaas_wallet_id?: string | null
+          bank_data?: Json | null
           business_info?: Json | null
           certification_date?: string | null
           certification_expires_at?: string | null
@@ -3635,6 +3738,8 @@ export type Database = {
         }
         Update: {
           address?: Json | null
+          asaas_wallet_id?: string | null
+          bank_data?: Json | null
           business_info?: Json | null
           certification_date?: string | null
           certification_expires_at?: string | null

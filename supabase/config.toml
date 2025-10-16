@@ -1,5 +1,17 @@
 project_id = "bpsqyaxdhqejozmlejcb"
 
+[functions.create-asaas-wallet]
+verify_jwt = true
+
+[functions.create-asaas-payment]
+verify_jwt = true
+
+[functions.asaas-webhook]
+verify_jwt = false
+
+[functions.release-escrow-payment]
+verify_jwt = true
+
 [functions.evolution-webhook]
 verify_jwt = false
 
