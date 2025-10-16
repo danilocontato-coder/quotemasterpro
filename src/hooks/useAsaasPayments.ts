@@ -5,6 +5,8 @@ import { useToast } from '@/hooks/use-toast';
 export interface AsaasPayment {
   id: string;
   customer: string;
+  customerName?: string;
+  customerType?: 'client' | 'supplier' | 'unknown';
   billingType: string;
   value: number;
   netValue: number;
@@ -18,26 +20,48 @@ export interface AsaasPayment {
   deleted: boolean;
 }
 
+export interface PaymentStats {
+  totalPending: number;
+  totalOverdue: number;
+  totalReceived: number;
+  totalPendingValue: number;
+  totalReceivedValue: number;
+  totalOverdueValue: number;
+}
+
+export interface PaymentFilters {
+  customerId?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export const useAsaasPayments = () => {
   const [payments, setPayments] = useState<AsaasPayment[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const listPayments = async (filters?: { customerId?: string; status?: string; limit?: number; offset?: number }) => {
+  const listPayments = async (filters?: PaymentFilters) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('asaas-list-payments', {
         body: {
           customerId: filters?.customerId,
           status: filters?.status,
-          limit: filters?.limit || 100,
+          limit: filters?.limit || 10,
           offset: filters?.offset || 0,
+          dateFrom: filters?.dateFrom,
+          dateTo: filters?.dateTo,
         },
       });
 
       if (error) throw error;
 
       setPayments(data?.data || []);
+      setTotalCount(data?.totalCount || data?.data?.length || 0);
       return data;
     } catch (error: any) {
       console.error('Erro ao listar cobranças:', error);
@@ -50,6 +74,32 @@ export const useAsaasPayments = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const calculateStats = (): PaymentStats => {
+    const stats: PaymentStats = {
+      totalPending: 0,
+      totalOverdue: 0,
+      totalReceived: 0,
+      totalPendingValue: 0,
+      totalReceivedValue: 0,
+      totalOverdueValue: 0,
+    };
+
+    payments.forEach(payment => {
+      if (payment.status === 'PENDING') {
+        stats.totalPending++;
+        stats.totalPendingValue += payment.value;
+      } else if (payment.status === 'OVERDUE') {
+        stats.totalOverdue++;
+        stats.totalOverdueValue += payment.value;
+      } else if (payment.status === 'RECEIVED' || payment.status === 'CONFIRMED') {
+        stats.totalReceived++;
+        stats.totalReceivedValue += payment.value;
+      }
+    });
+
+    return stats;
   };
 
   const updatePayment = async (paymentId: string, updates: { dueDate?: string; value?: number; description?: string }) => {
@@ -186,6 +236,7 @@ export const useAsaasPayments = () => {
 
   return {
     payments,
+    totalCount,
     isLoading,
     listPayments,
     updatePayment,
@@ -193,5 +244,6 @@ export const useAsaasPayments = () => {
     createPayment,
     getStatusText,
     getStatusColor,
+    calculateStats,
   };
 };

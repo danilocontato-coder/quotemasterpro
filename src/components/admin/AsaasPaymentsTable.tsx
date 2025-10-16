@@ -8,25 +8,58 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Edit, Trash2, FileText, RefreshCw, ExternalLink, Plus } from 'lucide-react';
 import { EditPaymentModal } from './EditPaymentModal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { format, addDays } from 'date-fns';
+import { PaymentsStats } from './PaymentsStats';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { usePagination } from '@/hooks/usePagination';
+import { format, addDays, subDays, startOfMonth, endOfDay } from 'date-fns';
 import { toast } from 'sonner';
 
 export const AsaasPaymentsTable = () => {
-  const { payments, isLoading, listPayments, deletePayment, createPayment, getStatusText, getStatusColor } = useAsaasPayments();
+  const { payments, totalCount, isLoading, listPayments, deletePayment, createPayment, getStatusText, getStatusColor, calculateStats } = useAsaasPayments();
   const [selectedPayment, setSelectedPayment] = useState<AsaasPayment | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [periodFilter, setPeriodFilter] = useState<string>('30d');
+  
+  const pagination = usePagination(payments, {
+    initialPageSize: 10,
+    pageSizeOptions: [10, 25, 50, 100],
+  });
+
+  const loadPayments = () => {
+    let dateFrom: string | undefined;
+    let dateTo: string | undefined;
+
+    // Calcular filtro de período
+    if (periodFilter === '7d') {
+      dateFrom = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+      dateTo = format(endOfDay(new Date()), 'yyyy-MM-dd');
+    } else if (periodFilter === '30d') {
+      dateFrom = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+      dateTo = format(endOfDay(new Date()), 'yyyy-MM-dd');
+    } else if (periodFilter === 'month') {
+      dateFrom = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+      dateTo = format(endOfDay(new Date()), 'yyyy-MM-dd');
+    }
+
+    listPayments({
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      dateFrom,
+      dateTo,
+      limit: 100, // Buscar mais para filtrar localmente
+    });
+  };
 
   useEffect(() => {
-    listPayments();
-  }, []);
+    loadPayments();
+  }, [periodFilter, statusFilter]);
 
   const handleDelete = async (paymentId: string) => {
     await deletePayment(paymentId);
     setShowDeleteDialog(false);
-    listPayments();
+    loadPayments();
   };
 
   const handleGenerateNewBoleto = async (payment: AsaasPayment) => {
@@ -41,25 +74,42 @@ export const AsaasPaymentsTable = () => {
     });
 
     toast.success('Novo boleto gerado com sucesso!');
-    listPayments();
+    loadPayments();
   };
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
+  const filteredPayments = pagination.paginatedData.filter(payment => {
     const matchesSearch = 
       payment.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesSearch;
   });
 
+  const stats = calculateStats();
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Estatísticas */}
+      <PaymentsStats stats={stats} />
+
       {/* Filtros */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 w-full sm:w-auto">
+          <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+              <SelectItem value="month">Este mês</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -74,14 +124,14 @@ export const AsaasPaymentsTable = () => {
 
           <Input
             type="text"
-            placeholder="Buscar por cliente, ID ou descrição..."
+            placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md"
+            className="w-full sm:max-w-md"
           />
         </div>
 
-        <Button variant="outline" onClick={() => listPayments()} disabled={isLoading}>
+        <Button variant="outline" onClick={loadPayments} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Atualizar
         </Button>
@@ -94,23 +144,24 @@ export const AsaasPaymentsTable = () => {
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Cliente</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Valor</TableHead>
               <TableHead>Vencimento</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>Cobrança</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Carregando cobranças...
                 </TableCell>
               </TableRow>
             ) : filteredPayments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   {searchTerm || statusFilter !== 'all' 
                     ? 'Nenhuma cobrança encontrada com os filtros aplicados' 
                     : 'Nenhuma cobrança encontrada'}
@@ -122,8 +173,24 @@ export const AsaasPaymentsTable = () => {
                   <TableCell className="font-mono text-xs">
                     {payment.id.slice(0, 12)}...
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate">
-                    {payment.customer}
+                  <TableCell className="max-w-[200px]">
+                    <div className="flex flex-col">
+                      <span className="font-medium truncate">
+                        {payment.customerName || payment.customer}
+                      </span>
+                      {payment.customerName && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {payment.customer.slice(0, 12)}...
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {payment.customerType === 'client' ? 'Cliente' : 
+                       payment.customerType === 'supplier' ? 'Fornecedor' : 
+                       'Não identificado'}
+                    </Badge>
                   </TableCell>
                   <TableCell className="font-semibold">
                     R$ {payment.value.toFixed(2)}
@@ -205,6 +272,9 @@ export const AsaasPaymentsTable = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Paginação */}
+      <DataTablePagination {...pagination} showCard={false} />
 
       {/* Modals */}
       {showEditModal && selectedPayment && (

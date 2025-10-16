@@ -56,7 +56,7 @@ serve(async (req) => {
 
     console.log(`✅ Usuário autenticado: ${user.email} (Admin)`);
 
-    const { customerId, status, limit = 100, offset = 0 } = await req.json();
+    const { customerId, status, limit = 100, offset = 0, dateFrom, dateTo } = await req.json();
 
     const asaasConfig = await getAsaasConfig(supabaseClient);
 
@@ -68,6 +68,8 @@ serve(async (req) => {
     
     if (customerId) params.append('customer', customerId);
     if (status) params.append('status', status);
+    if (dateFrom) params.append('dateCreated[ge]', dateFrom);
+    if (dateTo) params.append('dateCreated[le]', dateTo);
 
     console.log(`📋 Buscando cobranças do Asaas: ${asaasConfig.baseUrl}/payments?${params}`);
 
@@ -85,10 +87,49 @@ serve(async (req) => {
       throw new Error(`Erro Asaas: ${error}`);
     }
 
-    const payments = await response.json();
-    console.log(`✅ ${payments.data?.length || 0} cobranças encontradas`);
+    const paymentsData = await response.json();
+    console.log(`✅ ${paymentsData.data?.length || 0} cobranças encontradas`);
 
-    return new Response(JSON.stringify(payments), {
+    // Enriquecer dados com nome do cliente
+    const enrichedPayments = await Promise.all(
+      (paymentsData.data || []).map(async (payment: any) => {
+        // Buscar nome do cliente/fornecedor via asaas_customer_id
+        const { data: subscription } = await supabaseClient
+          .from('subscriptions')
+          .select(`
+            client_id,
+            supplier_id,
+            clients:client_id(name, company_name),
+            suppliers:supplier_id(name)
+          `)
+          .eq('asaas_customer_id', payment.customer)
+          .single();
+
+        let customerName = payment.customer; // fallback para ID
+        let customerType = 'unknown';
+
+        if (subscription) {
+          if (subscription.client_id && subscription.clients) {
+            customerName = subscription.clients.company_name || subscription.clients.name;
+            customerType = 'client';
+          } else if (subscription.supplier_id && subscription.suppliers) {
+            customerName = subscription.suppliers.name;
+            customerType = 'supplier';
+          }
+        }
+
+        return {
+          ...payment,
+          customerName,
+          customerType,
+        };
+      })
+    );
+
+    return new Response(JSON.stringify({
+      ...paymentsData,
+      data: enrichedPayments,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
