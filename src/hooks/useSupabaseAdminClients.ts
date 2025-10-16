@@ -702,6 +702,27 @@ export function useSupabaseAdminClients() {
       // Buscar dados do cliente antes de excluir para log de auditoria
       const clientToDelete = clients.find(c => c.id === id);
       
+      // Primeiro, deletar do Asaas se existir asaas_customer_id
+      try {
+        console.log('🔧 [AdminClients] Deletando cliente do Asaas');
+        const { data: deleteAsaasData, error: deleteAsaasError } = await supabase.functions.invoke(
+          'delete-asaas-customer',
+          {
+            body: { clientId: id }
+          }
+        );
+
+        if (deleteAsaasError) {
+          console.error('⚠️ [AdminClients] Erro ao deletar do Asaas (não bloqueante):', deleteAsaasError);
+          toast.warning('Cliente será excluído localmente, mas houve erro ao excluir do Asaas');
+        } else {
+          console.log('✅ [AdminClients] Cliente deletado do Asaas:', deleteAsaasData);
+        }
+      } catch (asaasError) {
+        console.error('⚠️ [AdminClients] Erro ao chamar função de exclusão Asaas:', asaasError);
+        // Continuar mesmo se falhar no Asaas
+      }
+      
       console.log('🗑️ [AdminClients] Excluindo do Supabase (CASCADE ativado)');
       const { error } = await supabase.from("clients").delete().eq("id", id);
       if (error) {
