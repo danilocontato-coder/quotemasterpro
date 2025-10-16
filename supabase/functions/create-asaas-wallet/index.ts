@@ -98,6 +98,42 @@ serve(async (req) => {
       }
     }
 
+    // Calcular incomeValue (renda/faturamento) - obrigatório pela API Asaas
+    const bi = supplier.business_info || {};
+    const parseNum = (v: any) => {
+      if (typeof v === 'number' && v > 0) return v;
+      if (typeof v === 'string') {
+        const cleaned = v.replace(/[^\d.]/g, '');
+        const parsed = Number(cleaned);
+        return parsed > 0 ? parsed : NaN;
+      }
+      return NaN;
+    };
+
+    let incomeValue = 
+      parseNum(bi.incomeValue) ||
+      parseNum(bi.monthly_revenue) ||
+      parseNum(bi.faturamento_mensal);
+
+    let usedFallback = false;
+
+    // Se não há valor válido, aplicar fallback conservador (sandbox)
+    if (!incomeValue || isNaN(incomeValue) || incomeValue <= 0) {
+      // Tentar mapear faixas como "1k-5k"
+      const range = typeof bi.revenue_range === 'string' ? bi.revenue_range : '';
+      if (range.includes('1k') && range.includes('5k')) {
+        incomeValue = 3000;
+      } else if (range.includes('5k') && range.includes('10k')) {
+        incomeValue = 7500;
+      } else if (range.includes('10k') && range.includes('50k')) {
+        incomeValue = 30000;
+      } else {
+        // Fallback final por tipo de documento
+        incomeValue = supplier.document_type === 'cpf' ? 5000 : 10000;
+        usedFallback = true;
+      }
+    }
+
     console.log('📝 Criando wallet Asaas para fornecedor:', {
       supplierName: supplier.name,
       supplierId: supplierId,
@@ -105,6 +141,8 @@ serve(async (req) => {
       document: cleanDocument,
       companyType: companyType,
       email: supplier.email,
+      incomeValue: incomeValue,
+      incomeValueSource: usedFallback ? 'fallback' : (bi.faturamento_mensal ? 'faturamento_mensal' : 'business_info'),
       hasPhone: !!(supplier.phone || supplier.whatsapp),
       hasAddress: !!supplier.address
     });
@@ -123,6 +161,7 @@ serve(async (req) => {
         email: supplier.email,
         cpfCnpj: cleanDocument,
         companyType: companyType,
+        incomeValue: Number(incomeValue),
         mobilePhone: supplier.phone || supplier.whatsapp,
         address: supplier.address?.street,
         addressNumber: supplier.address?.number,
@@ -169,6 +208,8 @@ serve(async (req) => {
         details: {
           wallet_id: wallet.id,
           supplier_name: supplier.name,
+          income_value: incomeValue,
+          income_value_used_fallback: usedFallback,
         },
       })
 

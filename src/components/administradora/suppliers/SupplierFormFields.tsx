@@ -137,6 +137,31 @@ export const SupplierFormFields: React.FC<SupplierFormFieldsProps> = ({
             placeholder="https://www.exemplo.com"
           />
         </div>
+
+        <div>
+          <Label htmlFor="faturamento_mensal">
+            Faturamento Mensal (R$)
+            <span className="text-xs text-muted-foreground ml-1">(Opcional, mas recomendado para carteira Asaas)</span>
+          </Label>
+          <Input
+            id="faturamento_mensal"
+            type="number"
+            min="0"
+            step="0.01"
+            value={formData.business_info?.faturamento_mensal || ''}
+            onChange={(e) => {
+              const value = e.target.value ? parseFloat(e.target.value) : null;
+              onChange('business_info', {
+                ...formData.business_info,
+                faturamento_mensal: value
+              });
+            }}
+            placeholder="Ex: 10000.00"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Informe o faturamento mensal estimado. Este campo é usado para criar a carteira digital Asaas (obrigatório pela regulação).
+          </p>
+        </div>
       </div>
 
       {/* Localização */}
