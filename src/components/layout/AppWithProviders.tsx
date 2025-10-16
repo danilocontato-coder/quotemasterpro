@@ -66,6 +66,11 @@ const EmailSettings = React.lazy(() => import('@/pages/admin/EmailSettings'));
 const IntegrationsAndApisManagement = React.lazy(() => import('@/pages/admin/IntegrationsAndApisManagement'));
 const DomainSettings = React.lazy(() => import('@/pages/admin/DomainSettings'));
 const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialManagement'));
+const EmailMarketingDashboard = React.lazy(() => import('@/pages/admin/EmailMarketing/index'));
+const EmailMarketingEditor = React.lazy(() => import('@/pages/admin/EmailMarketing/Editor'));
+const EmailMarketingCampaigns = React.lazy(() => import('@/pages/admin/EmailMarketing/Campaigns'));
+const EmailMarketingAnalytics = React.lazy(() => import('@/pages/admin/EmailMarketing/Analytics'));
+const EmailMarketingTemplates = React.lazy(() => import('@/pages/admin/EmailMarketing/Templates'));
 
 // Supplier pages
 const SupplierDashboard = React.lazy(() => import('@/pages/supplier/SupplierDashboard'));
@@ -278,6 +283,31 @@ export const AppWithProviders: React.FC = () => {
         <Route path="communication" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <CommunicationManagement />
+          </Suspense>
+        } />
+        <Route path="email-marketing" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <EmailMarketingDashboard />
+          </Suspense>
+        } />
+        <Route path="email-marketing/editor" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <EmailMarketingEditor />
+          </Suspense>
+        } />
+        <Route path="email-marketing/campaigns" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <EmailMarketingCampaigns />
+          </Suspense>
+        } />
+        <Route path="email-marketing/analytics/:id" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <EmailMarketingAnalytics />
+          </Suspense>
+        } />
+        <Route path="email-marketing/templates" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <EmailMarketingTemplates />
           </Suspense>
         } />
         <Route path="api" element={
