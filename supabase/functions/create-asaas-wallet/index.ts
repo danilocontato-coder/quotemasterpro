@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getAsaasConfig } from '../_shared/asaas-utils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,19 +53,17 @@ serve(async (req) => {
       )
     }
 
-    const asaasApiKey = Deno.env.get('ASAAS_API_KEY')
-    if (!asaasApiKey) {
-      throw new Error('ASAAS_API_KEY não configurada')
-    }
+    // Obter configuração do Asaas (incluindo ambiente e URL)
+    const { apiKey, baseUrl } = await getAsaasConfig(supabase);
 
     const bankData = supplier.bank_data || {}
     
     // Criar subconta no Asaas
-    const asaasResponse = await fetch('https://api.asaas.com/v3/accounts', {
+    const asaasResponse = await fetch(`${baseUrl}/accounts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'access_token': asaasApiKey,
+        'access_token': apiKey,
       },
       body: JSON.stringify({
         name: supplier.name,

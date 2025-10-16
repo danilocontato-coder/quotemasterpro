@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getAsaasConfig } from '../_shared/asaas-utils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,20 +59,11 @@ serve(async (req) => {
       )
     }
 
-    // Buscar configuração de comissão
-    const { data: config } = await supabase
-      .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', 'asaas_config')
-      .single()
+    // Obter configuração do Asaas (incluindo ambiente, URL e comissões)
+    const { apiKey, baseUrl, config } = await getAsaasConfig(supabase);
 
-    const commissionPercentage = config?.setting_value?.platform_commission_percentage || 5.0
-    const autoReleaseDays = config?.setting_value?.auto_release_days || 7
-
-    const asaasApiKey = Deno.env.get('ASAAS_API_KEY')
-    if (!asaasApiKey) {
-      throw new Error('ASAAS_API_KEY não configurada')
-    }
+    const commissionPercentage = config.platform_commission_percentage || 5.0
+    const autoReleaseDays = config.auto_release_days || 7
 
     // Calcular split: plataforma fica com X%, fornecedor recebe (100-X)%
     const platformAmount = payment.amount * (commissionPercentage / 100)
@@ -81,11 +73,11 @@ serve(async (req) => {
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 1) // Vencimento amanhã
 
-    const asaasResponse = await fetch('https://api.asaas.com/v3/payments', {
+    const asaasResponse = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'access_token': asaasApiKey,
+        'access_token': apiKey,
       },
       body: JSON.stringify({
         customer: payment.clients.email, // Usar email como identificador

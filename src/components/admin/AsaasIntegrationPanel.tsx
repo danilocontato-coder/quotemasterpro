@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, CheckCircle, Settings, DollarSign, Eye, EyeOff } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, CheckCircle, Settings, DollarSign, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { useAsaasIntegration } from '@/hooks/useAsaasIntegration';
 import { toast } from 'sonner';
 
@@ -18,7 +20,8 @@ export function AsaasIntegrationPanel() {
     api_key_configured: false,
     platform_commission_percentage: 5.0,
     auto_release_days: 7,
-    split_enabled: true
+    split_enabled: true,
+    environment: 'sandbox' as 'sandbox' | 'production'
   });
   const [apiKey, setApiKey] = useState('');
 
@@ -125,6 +128,35 @@ export function AsaasIntegrationPanel() {
           </TabsList>
 
           <TabsContent value="config" className="space-y-4">
+            {asaasConfig.environment === 'sandbox' && (
+              <Alert className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+                <AlertTitle>Modo Sandbox Ativo</AlertTitle>
+                <AlertDescription>
+                  Você está usando o ambiente de testes. Nenhum pagamento real será processado.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="asaas-environment">Ambiente da API</Label>
+              <Select 
+                value={asaasConfig.environment || 'sandbox'} 
+                onValueChange={(val) => setAsaasConfig({...asaasConfig, environment: val as 'sandbox' | 'production'})}
+              >
+                <SelectTrigger id="asaas-environment">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sandbox">🟡 Sandbox (Testes)</SelectItem>
+                  <SelectItem value="production">🟢 Produção</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                Use Sandbox para testes e Produção para pagamentos reais
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="asaas-api-key">Chave da API Asaas</Label>
               <div className="flex gap-2">
@@ -147,7 +179,17 @@ export function AsaasIntegrationPanel() {
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                Obtenha sua chave em: <a href="https://www.asaas.com/api/v3/apiKey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">https://www.asaas.com/api/v3/apiKey</a>
+                Obtenha sua chave em: <a 
+                  href={asaasConfig.environment === 'sandbox' 
+                    ? "https://sandbox.asaas.com/api/v3/apiKey" 
+                    : "https://www.asaas.com/api/v3/apiKey"
+                  } 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-primary hover:underline"
+                >
+                  {asaasConfig.environment === 'sandbox' ? 'Sandbox' : 'Produção'} API Key
+                </a>
               </p>
             </div>
 
@@ -164,9 +206,10 @@ export function AsaasIntegrationPanel() {
               <div className="mt-4 p-4 bg-muted rounded-lg space-y-2">
                 <p className="text-sm font-medium">Status Atual:</p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>Ambiente: <span className="font-semibold">{asaasConfig.environment === 'sandbox' ? '🟡 Sandbox' : '🟢 Produção'}</span></div>
                   <div>Comissão: <span className="font-semibold">{asaasConfig.platform_commission_percentage}%</span></div>
                   <div>Liberação: <span className="font-semibold">{asaasConfig.auto_release_days} dias</span></div>
-                  <div className="col-span-2">
+                  <div>
                     Split Automático: <span className="font-semibold">{asaasConfig.split_enabled ? '✓ Ativado' : '✗ Desativado'}</span>
                   </div>
                 </div>

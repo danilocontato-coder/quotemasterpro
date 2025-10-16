@@ -7,6 +7,7 @@ interface AsaasConfig {
   platform_commission_percentage: number;
   auto_release_days: number;
   split_enabled: boolean;
+  environment?: 'sandbox' | 'production';
 }
 
 interface AsaasSettings {
@@ -39,7 +40,8 @@ export function useAsaasIntegration() {
           api_key_configured: value?.api_key_configured ?? false,
           platform_commission_percentage: value?.platform_commission_percentage ?? 5.0,
           auto_release_days: value?.auto_release_days ?? 7,
-          split_enabled: value?.split_enabled ?? true
+          split_enabled: value?.split_enabled ?? true,
+          environment: value?.environment ?? 'sandbox'
         }});
       } else {
         // Valores padrão
@@ -48,7 +50,8 @@ export function useAsaasIntegration() {
             api_key_configured: false,
             platform_commission_percentage: 5.0,
             auto_release_days: 7,
-            split_enabled: true
+            split_enabled: true,
+            environment: 'sandbox'
           }
         });
       }
