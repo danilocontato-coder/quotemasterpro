@@ -21,11 +21,9 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
   
   const { quotes, isLoading: quotesLoading } = useSupabaseQuotes();
 
-  // Filter only approved quotes that have value > 0 (supplier_id can be null)
+  // Filter only approved quotes (valor será validado no backend ao criar pagamento)
   const approvedQuotes = quotes.filter(quote => 
-    quote.status === 'approved' && 
-    quote.total !== null && 
-    quote.total > 0
+    quote.status === 'approved'
   );
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -35,17 +35,38 @@ export const useAutomaticPayments = () => {
                   .single();
                 
                 if (!existingPayment) {
-                  // Create automatic payment
+                  // Calcular valor com fallback se necessário
+                  let totalAmount = updatedQuote.total || 0;
+
+                  if (!totalAmount || totalAmount <= 0) {
+                    // Buscar itens para calcular total
+                    const { data: fullQuote } = await supabase
+                      .from('quotes')
+                      .select(`*, quote_items(quantity, unit_price)`) 
+                      .eq('id', updatedQuote.id)
+                      .maybeSingle();
+
+                    if (fullQuote?.quote_items?.length) {
+                      totalAmount = fullQuote.quote_items.reduce((sum: number, item: any) => sum + ((item.quantity || 0) * (item.unit_price || 0)), 0);
+                    }
+                  }
+
+                  if (!totalAmount || totalAmount <= 0) {
+                    console.warn('Skipping automatic payment creation due to zero amount for quote:', updatedQuote.id);
+                    return;
+                  }
+
+                  // Create automatic payment (ID gerado por trigger)
                   const { error } = await supabase
                     .from('payments')
                     .insert({
-                      id: `PAY-${updatedQuote.id}-${Date.now()}`,
                       quote_id: updatedQuote.id,
                       client_id: updatedQuote.client_id,
-                      supplier_id: updatedQuote.supplier_id,
-                      amount: updatedQuote.total || 0,
+                      supplier_id: updatedQuote.supplier_id || null,
+                      amount: totalAmount,
                       status: 'pending'
-                    });
+                    } as any);
+
                   
                   if (error) {
                     console.error('Error creating automatic payment:', error);
