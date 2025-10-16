@@ -117,3 +117,12 @@ verify_jwt = true
 
 [functions.ai-proposal-consultant]
 verify_jwt = true
+
+[functions.generate-email-content]
+verify_jwt = true
+
+[functions.send-email-campaign]
+verify_jwt = false
+
+[functions.track-email-events]
+verify_jwt = false
