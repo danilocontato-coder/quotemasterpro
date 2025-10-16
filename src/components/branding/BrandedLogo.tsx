@@ -48,17 +48,17 @@ export function BrandedLogo({
   }
 
   // Se tem logo personalizado
-  if (settings?.logo && settings.logo !== '/placeholder.svg') {
+  if (settings?.logo && settings.logo !== '/placeholder.svg' && settings.logo.trim() !== '') {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <img 
-          src={settings.logo} 
+          src={`${settings.logo}?t=${Date.now()}`}
           alt={settings.companyName || 'Logo'} 
           className={`${sizeClasses[size]} object-contain`}
           loading="eager"
           onError={(e) => {
             console.error('❌ BrandedLogo: Erro ao carregar logo');
-            e.currentTarget.src = '/placeholder.svg';
+            e.currentTarget.style.display = 'none';
           }}
         />
         {showCompanyName && settings.companyName && (
@@ -70,13 +70,15 @@ export function BrandedLogo({
     );
   }
 
-  // Fallback: Logo padrão
+  // Fallback: Apenas ícone (sem texto hardcoded)
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <Building2 className={`${sizeClasses[size]} text-primary`} />
-      <span className={`font-bold ${textSizeClasses[size]}`}>
-        {settings?.companyName || systemSettings.platformName}
-      </span>
+      {showCompanyName && settings?.companyName && (
+        <span className={`font-bold ${textSizeClasses[size]}`}>
+          {settings.companyName}
+        </span>
+      )}
     </div>
   );
 }

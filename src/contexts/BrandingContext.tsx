@@ -190,14 +190,14 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               case 'company_logo':
                 // Garantir que o logo seja uma string válida
                 if (typeof value === 'string' && value.trim() && value !== '/placeholder.svg') {
-                  globalSettings.logo = value.trim();
+                  globalSettings.logo = `${value.trim()}?t=${Date.now()}`;
                   console.log('🖼️ [BRANDING] ✅ Logo carregado:', value.trim());
                 } else if (typeof settingValue === 'object' && settingValue.url) {
-                  globalSettings.logo = settingValue.url;
+                  globalSettings.logo = `${settingValue.url}?t=${Date.now()}`;
                   console.log('🖼️ [BRANDING] ✅ Logo extraído do objeto:', settingValue.url);
                 } else {
-                  globalSettings.logo = defaultSettings.logo;
-                  console.log('🖼️ [BRANDING] ⚠️ Logo inválido, usando padrão');
+                  globalSettings.logo = '';
+                  console.log('🖼️ [BRANDING] ⚠️ Logo inválido, não usando fallback');
                 }
                 break;
               case 'primary_color':

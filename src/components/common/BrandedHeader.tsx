@@ -17,26 +17,21 @@ export const BrandedHeader: React.FC<BrandedHeaderProps> = ({
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      {settings.logo && settings.logo.trim() !== '' ? (
-        <>
-          <img 
-            src={settings.logo} 
-            alt={settings.companyName || 'Logo'} 
-            className="h-8 w-auto object-contain"
-            loading="lazy"
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.src = '/placeholder.svg';
-            }}
-          />
-        </>
+      {settings.logo && settings.logo.trim() !== '' && settings.logo !== '/placeholder.svg' ? (
+        <img 
+          src={`${settings.logo}?t=${Date.now()}`}
+          alt={settings.companyName || 'Logo'} 
+          className="h-8 w-auto object-contain"
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
       ) : (
-        <div className="h-8 w-16 bg-primary/20 rounded flex items-center justify-center">
-          <Building2 className="h-4 w-4 text-primary" />
-        </div>
+        <Building2 className="h-8 w-8 text-primary" />
       )}
       
-      {showTitle && (
+      {showTitle && settings.companyName && (
         <span className={titleClassName}>
           {settings.companyName}
         </span>

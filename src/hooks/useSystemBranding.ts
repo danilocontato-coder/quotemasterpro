@@ -42,9 +42,9 @@ export const useSystemBranding = () => {
       };
 
       const brandingSettings: SystemBrandingSettings = {
-        platformName: getValue('platform_name', 'Cotiz'),
+        platformName: getValue('platform_name', ''),
         baseUrl: getValue('base_url', window.location.origin),
-        companyName: getValue('company_name', 'Cotiz'),
+        companyName: getValue('company_name', ''),
         supportEmail: getValue('support_email', 'suporte@cotiz.com.br')
       };
 
@@ -56,9 +56,9 @@ export const useSystemBranding = () => {
 
   return {
     settings: settings || {
-      platformName: 'Cotiz',
+      platformName: '',
       baseUrl: window.location.origin,
-      companyName: 'Cotiz',
+      companyName: '',
       supportEmail: 'suporte@cotiz.com.br'
     },
     isLoading
