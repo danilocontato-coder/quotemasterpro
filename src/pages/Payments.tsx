@@ -158,34 +158,66 @@ export default function Payments() {
           <CreatePaymentModal
             onPaymentCreate={async (quoteId: string, amount: number) => {
               try {
-                // Buscar dados da cotação
-                const quote = quotes.find(q => q.id === quoteId);
-                if (!quote) {
+                // Buscar dados completos da cotação incluindo itens
+                const { data: quoteData, error: quoteError } = await supabase
+                  .from('quotes')
+                  .select(`
+                    *,
+                    quote_items(quantity, unit_price)
+                  `)
+                  .eq('id', quoteId)
+                  .single();
+
+                if (quoteError || !quoteData) {
+                  console.error('Quote fetch error:', quoteError);
                   toast.error('Cotação não encontrada');
                   throw new Error('Quote not found');
                 }
 
+                // Calcular total real da cotação
+                let totalAmount = quoteData.total || 0;
+                
+                // Se total for zero, calcular a partir dos itens
+                if (totalAmount === 0 && quoteData.quote_items?.length > 0) {
+                  totalAmount = quoteData.quote_items.reduce((sum: number, item: any) => {
+                    return sum + ((item.quantity || 0) * (item.unit_price || 0));
+                  }, 0);
+                }
+
+                // Validar valor mínimo
+                if (totalAmount <= 0) {
+                  toast.error('O valor do pagamento deve ser maior que zero. Verifique se a cotação possui itens válidos.');
+                  throw new Error('Invalid payment amount');
+                }
+
+                console.log('Creating payment with amount:', totalAmount, 'for quote:', quoteId);
+
+                // Criar pagamento (ID será gerado automaticamente pelo trigger)
                 const { data, error } = await supabase
                   .from('payments')
                   .insert({
-                    id: '', // Será gerado automaticamente pelo trigger
                     quote_id: quoteId,
-                    client_id: quote.client_id,
-                    supplier_id: quote.supplier_id || null,
-                    amount: amount,
+                    client_id: quoteData.client_id,
+                    supplier_id: quoteData.supplier_id || null,
+                    amount: totalAmount,
                     status: 'pending'
-                  })
+                  } as any)
                   .select()
                   .single();
                 
-                if (error) throw error;
+                if (error) {
+                  console.error('Payment insert error:', error);
+                  throw error;
+                }
+
+                console.log('Payment created successfully:', data);
                 
-                toast.success('Pagamento criado com sucesso!');
+                toast.success(`Pagamento ${data.id} criado com sucesso no valor de R$ ${totalAmount.toFixed(2)}`);
                 refetch();
                 return data.id;
               } catch (error) {
                 console.error('Error creating payment:', error);
-                toast.error('Erro ao criar pagamento');
+                toast.error(error instanceof Error ? error.message : 'Erro ao criar pagamento');
                 throw error;
               }
             }}

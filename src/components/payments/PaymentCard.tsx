@@ -90,7 +90,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails }
           <div>
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-lg">Pagamento {payment.id}</h3>
+              <h3 className="font-semibold text-lg">#{payment.id}</h3>
             </div>
             <div className="space-y-1 text-sm text-muted-foreground">
               <p>

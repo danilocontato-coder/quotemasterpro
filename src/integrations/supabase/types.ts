@@ -5000,6 +5000,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_friendly_payment_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_accessible_client_ids: {
         Args: { p_user_id: string }
         Returns: string[]
