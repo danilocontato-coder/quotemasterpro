@@ -67,6 +67,7 @@ export const FinancialManagement = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showSettings, setShowSettings] = useState(false);
 
   const formatCurrency = (value: number) => {
@@ -95,6 +96,13 @@ export const FinancialManagement = () => {
     return <Badge className={config.class}>{config.label}</Badge>;
   };
 
+  const isNearExpiration = (date: string) => {
+    const daysUntilExpiration = Math.floor(
+      (new Date(date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+    );
+    return daysUntilExpiration <= 7 && daysUntilExpiration >= 0;
+  };
+
   const handleSubscriptionAction = async (action: string, subscriptionId: string) => {
     switch (action) {
       case 'suspend':
@@ -112,9 +120,11 @@ export const FinancialManagement = () => {
   };
 
   const filteredSubscriptions = subscriptions.filter(sub => {
-    const matchesSearch = sub.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = sub.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          sub.customerName?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesType = typeFilter === 'all' || sub.customerType === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   const filteredInvoices = invoices.filter(inv => {
@@ -411,6 +421,16 @@ export const FinancialManagement = () => {
                   <SelectItem value="open">Em Aberto</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="client">Cliente</SelectItem>
+                  <SelectItem value="supplier">Fornecedor</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -427,8 +447,10 @@ export const FinancialManagement = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
-                      <TableHead>Cliente</TableHead>
+                      <TableHead>Cliente/Fornecedor</TableHead>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Plano</TableHead>
+                      <TableHead>Valor</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Ciclo</TableHead>
                       <TableHead>Próximo Venc.</TableHead>
@@ -438,13 +460,13 @@ export const FinancialManagement = () => {
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={9} className="text-center py-8">
                           Carregando assinaturas...
                         </TableCell>
                       </TableRow>
                     ) : filteredSubscriptions.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={9} className="text-center py-8">
                           Nenhuma assinatura encontrada
                         </TableCell>
                       </TableRow>
@@ -454,13 +476,51 @@ export const FinancialManagement = () => {
                           <TableCell className="font-mono text-sm">
                             {subscription.id.slice(0, 8)}...
                           </TableCell>
-                          <TableCell>{subscription.client_id}</TableCell>
-                          <TableCell>{subscription.plan_id}</TableCell>
+                          
+                          {/* Nome do Cliente/Fornecedor */}
+                          <TableCell className="font-medium">
+                            {subscription.customerName || 'N/A'}
+                          </TableCell>
+                          
+                          {/* Tipo (Cliente/Fornecedor) */}
+                          <TableCell>
+                            {subscription.customerType === 'client' && (
+                              <Badge className="bg-blue-500 text-white">Cliente</Badge>
+                            )}
+                            {subscription.customerType === 'supplier' && (
+                              <Badge className="bg-green-500 text-white">Fornecedor</Badge>
+                            )}
+                          </TableCell>
+                          
+                          {/* Nome do Plano */}
+                          <TableCell>{subscription.planName}</TableCell>
+                          
+                          {/* Valor da Assinatura */}
+                          <TableCell className="font-semibold">
+                            {formatCurrency(subscription.planPrice || 0)}
+                          </TableCell>
+                          
+                          {/* Status */}
                           <TableCell>{getStatusBadge(subscription.status)}</TableCell>
+                          
+                          {/* Ciclo */}
                           <TableCell className="capitalize">
                             {subscription.billing_cycle === 'monthly' ? 'Mensal' : 'Anual'}
                           </TableCell>
-                          <TableCell>{formatDate(subscription.current_period_end)}</TableCell>
+                          
+                          {/* Próximo Vencimento com Indicador */}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {formatDate(subscription.current_period_end)}
+                              {isNearExpiration(subscription.current_period_end) && (
+                                <Badge variant="outline" className="bg-yellow-50 text-yellow-600 border-yellow-200 text-xs">
+                                  Vence em breve
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          
+                          {/* Ações */}
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -494,6 +554,16 @@ export const FinancialManagement = () => {
                                   <Eye className="h-4 w-4 mr-2" />
                                   Ver Detalhes
                                 </DropdownMenuItem>
+                                
+                                {/* Link para Asaas (se existir) */}
+                                {subscription.asaas_subscription_id && (
+                                  <DropdownMenuItem 
+                                    onClick={() => window.open(`https://sandbox.asaas.com/subscriptions/${subscription.asaas_subscription_id}`, '_blank')}
+                                  >
+                                    <CreditCard className="h-4 w-4 mr-2" />
+                                    Ver no Asaas
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

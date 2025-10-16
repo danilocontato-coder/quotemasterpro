@@ -13,11 +13,18 @@ export interface Subscription {
   current_period_end: string;
   stripe_subscription_id?: string;
   stripe_customer_id?: string;
+  asaas_subscription_id?: string;
+  asaas_customer_id?: string;
   trial_end?: string;
   cancel_at_period_end: boolean;
   cancelled_at?: string;
   created_at: string;
   updated_at: string;
+  // Campos enriquecidos
+  customerName?: string;
+  customerType?: 'client' | 'supplier';
+  planName?: string;
+  planPrice?: number;
 }
 
 export interface Invoice {
@@ -88,11 +95,26 @@ export function useSupabaseFinancial() {
     try {
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*')
+        .select(`
+          *,
+          clients:client_id(id, name, company_name),
+          suppliers:supplier_id(id, name),
+          subscription_plans:plan_id(id, display_name, price)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSubscriptions((data as Subscription[]) || []);
+      
+      // Enriquecer dados
+      const enrichedData = (data || []).map((sub: any) => ({
+        ...sub,
+        customerName: sub.clients?.company_name || sub.clients?.name || sub.suppliers?.name || 'N/A',
+        customerType: sub.client_id ? 'client' : 'supplier',
+        planName: sub.subscription_plans?.display_name || sub.plan_id,
+        planPrice: sub.subscription_plans?.price || 0
+      }));
+      
+      setSubscriptions(enrichedData as Subscription[]);
     } catch (error) {
       console.error('Erro ao carregar assinaturas:', error);
       toast.error('Erro ao carregar assinaturas');
