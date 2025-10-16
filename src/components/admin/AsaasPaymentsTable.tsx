@@ -186,11 +186,17 @@ export const AsaasPaymentsTable = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {payment.customerType === 'client' ? 'Cliente' : 
-                       payment.customerType === 'supplier' ? 'Fornecedor' : 
-                       'Não identificado'}
-                    </Badge>
+                    {payment.customerType === 'client' && (
+                      <Badge className="bg-blue-500 text-white">Cliente</Badge>
+                    )}
+                    {payment.customerType === 'supplier' && (
+                      <Badge className="bg-green-500 text-white">Fornecedor</Badge>
+                    )}
+                    {payment.customerType === 'unknown' && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Não identificado
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="font-semibold">
                     R$ {payment.value.toFixed(2)}

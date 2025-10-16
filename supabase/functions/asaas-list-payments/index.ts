@@ -58,6 +58,8 @@ serve(async (req) => {
 
     const { customerId, status, limit = 100, offset = 0, dateFrom, dateTo } = await req.json();
 
+    console.log(`🔍 Parâmetros da busca:`, { customerId, status, limit, offset, dateFrom, dateTo });
+
     const asaasConfig = await getAsaasConfig(supabaseClient);
 
     // Buscar cobranças do Asaas
@@ -93,28 +95,36 @@ serve(async (req) => {
     // Enriquecer dados com nome do cliente
     const enrichedPayments = await Promise.all(
       (paymentsData.data || []).map(async (payment: any) => {
-        // Buscar nome do cliente/fornecedor via asaas_customer_id
-        const { data: subscription } = await supabaseClient
-          .from('subscriptions')
-          .select(`
-            client_id,
-            supplier_id,
-            clients:client_id(name, company_name),
-            suppliers:supplier_id(name)
-          `)
-          .eq('asaas_customer_id', payment.customer)
-          .single();
-
-        let customerName = payment.customer; // fallback para ID
+        let customerName = payment.customer; // fallback para ID do Asaas
         let customerType = 'unknown';
 
-        if (subscription) {
-          if (subscription.client_id && subscription.clients) {
-            customerName = subscription.clients.company_name || subscription.clients.name;
-            customerType = 'client';
-          } else if (subscription.supplier_id && subscription.suppliers) {
-            customerName = subscription.suppliers.name;
+        // 🔍 PASSO 1: Buscar em CLIENTS usando asaas_customer_id
+        const { data: client } = await supabaseClient
+          .from('clients')
+          .select('id, name, company_name')
+          .eq('asaas_customer_id', payment.customer)
+          .maybeSingle();
+
+        if (client) {
+          customerName = client.company_name || client.name || 'Cliente sem nome';
+          customerType = 'client';
+          console.log(`✅ Cliente encontrado: ${customerName} (ID: ${client.id})`);
+        } else {
+          // 🔍 PASSO 2: Se não encontrou em clients, tentar em SUPPLIERS
+          const { data: supplier } = await supabaseClient
+            .from('suppliers')
+            .select('id, name')
+            .eq('asaas_wallet_id', payment.customer)
+            .maybeSingle();
+
+          if (supplier) {
+            customerName = supplier.name || 'Fornecedor sem nome';
             customerType = 'supplier';
+            console.log(`✅ Fornecedor encontrado: ${customerName} (ID: ${supplier.id})`);
+          } else {
+            console.warn(`⚠️ Cliente/Fornecedor não encontrado para customer_id: ${payment.customer}`);
+            customerName = `ID Asaas: ${payment.customer}`;
+            customerType = 'unknown';
           }
         }
 
