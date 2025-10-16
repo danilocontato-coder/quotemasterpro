@@ -1804,6 +1804,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "deliveries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "deliveries_quote_id_fkey"
             columns: ["quote_id"]
             isOneToOne: false

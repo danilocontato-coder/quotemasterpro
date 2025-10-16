@@ -24,6 +24,9 @@ interface Client {
   status: string;
   quotesCount: number;
   revenue: number;
+  usersCount?: number;
+  hasActiveSubscription?: boolean;
+  hasPendingPayments?: boolean;
 }
 
 interface DeleteClientModalProps {
@@ -118,6 +121,21 @@ export const DeleteClientModal: React.FC<DeleteClientModalProps> = ({
                 <p className="text-sm text-red-700 mt-1">
                   Esta ação não pode ser desfeita. Todos os dados relacionados ao cliente serão permanentemente removidos do sistema.
                 </p>
+                {client.hasActiveSubscription && (
+                  <p className="text-sm text-red-700 mt-2 font-medium">
+                    ⚠️ Este cliente possui assinatura ativa no Asaas que será cancelada.
+                  </p>
+                )}
+                {client.hasPendingPayments && (
+                  <p className="text-sm text-red-700 mt-2 font-medium">
+                    ⚠️ Este cliente possui pagamentos pendentes.
+                  </p>
+                )}
+                {(client.quotesCount || 0) > 0 && (
+                  <p className="text-sm text-red-700 mt-2 font-medium">
+                    ⚠️ Este cliente possui {client.quotesCount} cotação(ões) que será(ão) excluída(s).
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -158,7 +176,7 @@ export const DeleteClientModal: React.FC<DeleteClientModalProps> = ({
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <Users className="h-4 w-4 text-purple-600" />
-                    <span className="font-medium text-purple-600">5</span>
+                    <span className="font-medium text-purple-600">{client.usersCount || 0}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">Usuários</p>
                 </div>
@@ -177,7 +195,11 @@ export const DeleteClientModal: React.FC<DeleteClientModalProps> = ({
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                  Histórico de cotações e propostas
+                  {client.quotesCount || 0} cotação(ões) e propostas
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                  {client.usersCount || 0} usuário(s) e permissões
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
@@ -185,7 +207,7 @@ export const DeleteClientModal: React.FC<DeleteClientModalProps> = ({
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                  Usuários e permissões
+                  Assinatura e histórico de pagamentos
                 </li>
                 <li className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>

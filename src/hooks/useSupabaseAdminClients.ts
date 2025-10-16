@@ -162,6 +162,56 @@ export function useSupabaseAdminClients() {
 
         console.log('🔄 [AdminClients] Mapeando', clientsResult.data?.length || 0, 'clientes com hierarquia');
         
+        // Buscar contagens em paralelo para todos os clientes
+        const clientIds = clientsResult.data?.map((c: any) => c.id) || [];
+        
+        const [usersCountsResult, quotesCountsResult, subscriptionsResult, paymentsResult] = await Promise.all([
+          // Contagem de usuários por cliente
+          supabase
+            .from('profiles')
+            .select('client_id', { count: 'exact' })
+            .in('client_id', clientIds),
+          // Contagem de cotações por cliente
+          supabase
+            .from('quotes')
+            .select('client_id', { count: 'exact' })
+            .in('client_id', clientIds),
+          // Verificar assinaturas ativas
+          supabase
+            .from('subscriptions')
+            .select('client_id, status')
+            .in('client_id', clientIds)
+            .eq('status', 'active'),
+          // Verificar pagamentos pendentes
+          supabase
+            .from('payments')
+            .select('client_id, status')
+            .in('client_id', clientIds)
+            .in('status', ['pending', 'processing'])
+        ]);
+
+        // Criar mapas de contagens
+        const usersCountMap = new Map<string, number>();
+        const quotesCountMap = new Map<string, number>();
+        const activeSubsMap = new Set<string>();
+        const pendingPaymentsMap = new Set<string>();
+
+        // Popular mapa de usuários (contar por client_id)
+        clientIds.forEach(clientId => {
+          const count = usersCountsResult.data?.filter((p: any) => p.client_id === clientId).length || 0;
+          usersCountMap.set(clientId, count);
+        });
+
+        // Popular mapa de cotações
+        clientIds.forEach(clientId => {
+          const count = quotesCountsResult.data?.filter((q: any) => q.client_id === clientId).length || 0;
+          quotesCountMap.set(clientId, count);
+        });
+
+        // Popular conjuntos de assinaturas e pagamentos
+        subscriptionsResult.data?.forEach((s: any) => activeSubsMap.add(s.client_id));
+        paymentsResult.data?.forEach((p: any) => pendingPaymentsMap.add(p.client_id));
+        
         const mapped: AdminClient[] = (clientsResult.data || []).map((c: any) => ({
           id: c.id,
           companyName: c.company_name || c.name || '',
@@ -184,7 +234,7 @@ export function useSupabaseAdminClients() {
           },
           documents: [],
           revenue: 0,
-          quotesCount: 0,
+          quotesCount: quotesCountMap.get(c.id) || 0,
           notes: c.notes || undefined,
           // Novos campos de hierarquia
           clientType: (c.client_type || 'direct') as 'direct' | 'administradora' | 'condominio_vinculado',
@@ -646,17 +696,43 @@ export function useSupabaseAdminClients() {
   };
 
   const deleteClient = async (id: string) => {
-    console.log('deleteClient: iniciando exclusão do cliente', id);
+    console.log('🗑️ [AdminClients] Iniciando exclusão do cliente', id);
     setLoading(true);
     try {
-      console.log('deleteClient: excluindo do Supabase');
-      const { error } = await supabase.from("clients").delete().eq("id", id);
-      if (error) throw error;
+      // Buscar dados do cliente antes de excluir para log de auditoria
+      const clientToDelete = clients.find(c => c.id === id);
       
-      console.log('deleteClient: exclusão do Supabase bem-sucedida, atualizando estado local');
+      console.log('🗑️ [AdminClients] Excluindo do Supabase (CASCADE ativado)');
+      const { error } = await supabase.from("clients").delete().eq("id", id);
+      if (error) {
+        console.error('❌ [AdminClients] Erro ao excluir:', error);
+        throw error;
+      }
+      
+      // Registrar auditoria da exclusão
+      try {
+        await supabase.from('audit_logs').insert({
+          action: 'CLIENT_DELETED',
+          entity_type: 'clients',
+          entity_id: id,
+          panel_type: 'admin',
+          details: {
+            company_name: clientToDelete?.companyName,
+            cnpj: clientToDelete?.cnpj,
+            users_count: clientToDelete?.quotesCount || 0,
+            quotes_count: clientToDelete?.quotesCount || 0,
+            deleted_at: new Date().toISOString()
+          }
+        });
+        console.log('📝 [AdminClients] Log de auditoria criado');
+      } catch (auditError) {
+        console.error('⚠️ [AdminClients] Erro ao criar log de auditoria (não bloqueante):', auditError);
+      }
+      
+      console.log('✅ [AdminClients] Exclusão bem-sucedida, atualizando estado local');
       setClients((prev) => {
         const newClients = prev.filter((c) => c.id !== id);
-        console.log('deleteClient: novo array de clientes:', newClients.length, 'clientes');
+        console.log('📊 [AdminClients] Novo total de clientes:', newClients.length);
         return newClients;
       });
       
