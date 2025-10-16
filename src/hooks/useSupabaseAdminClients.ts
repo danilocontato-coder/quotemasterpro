@@ -390,10 +390,23 @@ export function useSupabaseAdminClients() {
         console.log('📋 Criando assinatura no Supabase...');
         const currentDate = new Date();
         const billingDay = 10; // Será buscado de financial_settings futuramente
-        const firstDueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), billingDay);
+
+        // Calcular data baseada no dia de cobrança
+        let firstDueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), billingDay);
         if (firstDueDate <= currentDate) {
           firstDueDate.setMonth(firstDueDate.getMonth() + 1);
         }
+
+        // Garantir D+2 mínimo
+        const minDueDate = new Date();
+        minDueDate.setDate(minDueDate.getDate() + 2);
+
+        if (firstDueDate < minDueDate) {
+          firstDueDate = minDueDate;
+          console.log(`⚠️ Data ajustada para D+2: ${firstDueDate.toISOString().split('T')[0]}`);
+        }
+
+        console.log(`📅 Primeira data de vencimento: ${firstDueDate.toISOString().split('T')[0]}`);
 
         const { data: subscriptionData, error: subError } = await supabase
           .from('subscriptions')

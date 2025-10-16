@@ -121,9 +121,17 @@ serve(async (req) => {
 
     const billingType = settings?.asaas_billing_type || 'BOLETO';
 
-    // 4. Calcular próxima data de vencimento
-    const nextDueDate = new Date(subscription.current_period_end);
+    // 4. Calcular próxima data de vencimento com regra D+2
+    const minDueDate = new Date();
+    minDueDate.setDate(minDueDate.getDate() + 2); // D+2
+
+    const configuredDueDate = new Date(subscription.current_period_end);
+
+    // Usar a data mais tardia entre D+2 e a data configurada
+    const nextDueDate = configuredDueDate > minDueDate ? configuredDueDate : minDueDate;
     const nextDueDateStr = nextDueDate.toISOString().split('T')[0];
+
+    console.log(`📅 Data de vencimento: Configurada=${configuredDueDate.toISOString().split('T')[0]}, Mínima (D+2)=${minDueDate.toISOString().split('T')[0]}, Escolhida=${nextDueDateStr}`);
 
     // 5. Criar assinatura recorrente no Asaas
     console.log(`Creating Asaas subscription with value: ${subscriptionValue}`);

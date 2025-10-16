@@ -64,11 +64,21 @@ serve(async (req) => {
 
     const asaasConfig = await getAsaasConfig(supabaseClient);
 
+    // Validar e ajustar para D+2 mínimo
+    const providedDueDate = new Date(dueDate);
+    const minDueDate = new Date();
+    minDueDate.setDate(minDueDate.getDate() + 2);
+
+    const finalDueDate = providedDueDate > minDueDate ? providedDueDate : minDueDate;
+    const finalDueDateStr = finalDueDate.toISOString().split('T')[0];
+
+    console.log(`📅 Data de vencimento manual: Solicitada=${dueDate}, Mínima (D+2)=${minDueDate.toISOString().split('T')[0]}, Final=${finalDueDateStr}`);
+
     const paymentData = {
       customer: customerId,
       billingType,
       value: parseFloat(value),
-      dueDate,
+      dueDate: finalDueDateStr,
       description: description || 'Cobrança gerada manualmente',
     };
 
