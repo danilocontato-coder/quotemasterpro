@@ -1160,6 +1160,8 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          asaas_customer_id: string | null
+          asaas_subscription_id: string | null
           branding_settings_id: string | null
           client_type: Database["public"]["Enums"]["client_type"]
           cnpj: string
@@ -1183,6 +1185,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           branding_settings_id?: string | null
           client_type?: Database["public"]["Enums"]["client_type"]
           cnpj: string
@@ -1206,6 +1210,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           branding_settings_id?: string | null
           client_type?: Database["public"]["Enums"]["client_type"]
           cnpj?: string

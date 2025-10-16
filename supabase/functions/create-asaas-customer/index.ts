@@ -92,17 +92,60 @@ serve(async (req) => {
     const asaasCustomer = await asaasResponse.json();
     console.log('Cliente criado no Asaas:', asaasCustomer);
 
-    // Atualizar cliente no Supabase com o ID do Asaas
+    // Buscar informações do plano do cliente
+    const { data: planData } = await supabaseClient
+      .from('subscription_plans')
+      .select('price')
+      .eq('id', client.subscription_plan_id)
+      .single();
+
+    const planPrice = planData?.price || 0;
+
+    // Criar assinatura recorrente no Asaas
+    let asaasSubscriptionId = null;
+    if (planPrice > 0) {
+      console.log(`Criando assinatura recorrente no Asaas - Valor: R$ ${planPrice}`);
+      
+      const subscriptionData = {
+        customer: asaasCustomer.id,
+        billingType: 'BOLETO', // Pode ser: BOLETO, CREDIT_CARD, PIX, UNDEFINED
+        value: planPrice,
+        nextDueDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0], // Próximo mês
+        cycle: 'MONTHLY', // Recorrência mensal
+        description: `Assinatura ${client.subscription_plan_id}`,
+      };
+
+      const subscriptionResponse = await fetch(`${asaasConfig.baseUrl}/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': asaasConfig.apiKey,
+        },
+        body: JSON.stringify(subscriptionData),
+      });
+
+      if (subscriptionResponse.ok) {
+        const asaasSubscription = await subscriptionResponse.json();
+        asaasSubscriptionId = asaasSubscription.id;
+        console.log('Assinatura criada no Asaas:', asaasSubscription);
+      } else {
+        const errorData = await subscriptionResponse.json();
+        console.error('Erro ao criar assinatura no Asaas:', errorData);
+      }
+    }
+
+    // Atualizar cliente no Supabase com o ID do Asaas e da assinatura
     const { error: updateError } = await supabaseClient
       .from('clients')
       .update({ 
         asaas_customer_id: asaasCustomer.id,
+        asaas_subscription_id: asaasSubscriptionId,
         updated_at: new Date().toISOString()
       })
       .eq('id', clientId);
 
     if (updateError) {
-      console.error('Erro ao atualizar cliente com asaas_customer_id:', updateError);
+      console.error('Erro ao atualizar cliente com dados Asaas:', updateError);
     }
 
     // Log de auditoria
@@ -115,7 +158,9 @@ serve(async (req) => {
         panel_type: 'system',
         details: {
           asaas_customer_id: asaasCustomer.id,
+          asaas_subscription_id: asaasSubscriptionId,
           customer_name: asaasCustomer.name,
+          plan_price: planPrice,
           timestamp: new Date().toISOString()
         }
       });
@@ -124,7 +169,9 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         asaasCustomerId: asaasCustomer.id,
-        customer: asaasCustomer
+        asaasSubscriptionId: asaasSubscriptionId,
+        customer: asaasCustomer,
+        planPrice: planPrice
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
