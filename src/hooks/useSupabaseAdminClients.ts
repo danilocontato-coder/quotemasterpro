@@ -330,6 +330,58 @@ export function useSupabaseAdminClients() {
         // Não bloqueia a criação do cliente se falhar
       }
 
+      // 3) Criar registro de assinatura no Supabase
+      try {
+        console.log('📋 Criando assinatura no Supabase...');
+        const currentDate = new Date();
+        const billingDay = 10; // Será buscado de financial_settings futuramente
+        const firstDueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), billingDay);
+        if (firstDueDate <= currentDate) {
+          firstDueDate.setMonth(firstDueDate.getMonth() + 1);
+        }
+
+        const { data: subscriptionData, error: subError } = await supabase
+          .from('subscriptions')
+          .insert({
+            client_id: createdClientId,
+            plan_id: clientData.plan,
+            billing_cycle: 'monthly',
+            status: 'active',
+            current_period_start: currentDate.toISOString(),
+            current_period_end: firstDueDate.toISOString()
+          })
+          .select('id')
+          .single();
+
+        if (subError) {
+          console.error('⚠️ Erro ao criar assinatura (não bloqueante):', subError);
+        } else if (subscriptionData?.id) {
+          console.log('✅ Assinatura criada no Supabase:', subscriptionData.id);
+
+          // 4) Configurar cobrança automática (boleto + NF-e)
+          try {
+            console.log('💳 Configurando cobrança automática...');
+            const { data: billingResult, error: billingError } = await supabase.functions.invoke(
+              'setup-client-billing',
+              { body: { subscription_id: subscriptionData.id } }
+            );
+
+            if (billingError) {
+              console.error('⚠️ Erro ao configurar cobrança (não bloqueante):', billingError);
+            } else if (billingResult?.success) {
+              console.log('✅ Cobrança configurada:', {
+                boleto: billingResult.boleto_url,
+                nfse: billingResult.nfse_issued ? 'Emitida' : 'Não emitida'
+              });
+            }
+          } catch (billingErr) {
+            console.error('⚠️ Falha ao configurar cobrança:', billingErr);
+          }
+        }
+      } catch (subscriptionErr) {
+        console.error('⚠️ Falha ao criar assinatura:', subscriptionErr);
+      }
+
       // 2) Tenta criar usuário de autenticação (opcional - não bloqueia se falhar)
       try {
         const password = clientData.loginCredentials.password || generateTemporaryPassword();
