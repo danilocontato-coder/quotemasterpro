@@ -63,9 +63,26 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
+    // Buscar base_url para construir URLs absolutas
+    const { data: baseUrlData } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'base_url')
+      .maybeSingle();
+
+    const baseUrl = (baseUrlData?.setting_value as string) || 'https://cotiz.com.br';
+
+    // Converter logo_url relativo em absoluto
+    let logoUrl = brandingData?.logo_url || '/placeholder.svg';
+    if (logoUrl && !logoUrl.startsWith('http')) {
+      logoUrl = `${baseUrl}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
+    }
+
+    console.log('🎨 Logo URL para email:', logoUrl);
+
     const branding = {
       company_name: brandingData?.company_name || 'Sistema de Cotações',
-      logo_url: brandingData?.logo_url || '',
+      logo_url: logoUrl,
       primary_color: brandingData?.primary_color || '#003366',
       secondary_color: brandingData?.secondary_color || '#F5F5F5',
       accent_color: brandingData?.accent_color || '#0066CC',

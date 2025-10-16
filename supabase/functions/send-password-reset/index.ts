@@ -97,6 +97,14 @@ serve(async (req) => {
 
     console.log('✅ Link de reset gerado:', resetData.properties.action_link);
 
+    // Verificar e corrigir localhost no link
+    let finalResetLink = resetData.properties.action_link;
+    if (finalResetLink.includes('localhost')) {
+      console.warn('⚠️ Link contém localhost! Substituindo por base_url...');
+      finalResetLink = finalResetLink.replace(/https?:\/\/localhost(:\d+)?/g, baseUrl);
+      console.log('🔧 Link corrigido:', finalResetLink);
+    }
+
     // 5. Enviar e-mail via send-email com template
     const { error: emailError } = await supabase.functions.invoke('send-email', {
       body: {
@@ -104,7 +112,7 @@ serve(async (req) => {
         template_type: 'email_password_reset',
         template_data: {
           user_name: profile.name || 'Usuário',
-          reset_link: resetData.properties.action_link,
+          reset_link: finalResetLink,
           expiry_time: '1 hora'
         },
         client_id: profile.client_id || client_id
