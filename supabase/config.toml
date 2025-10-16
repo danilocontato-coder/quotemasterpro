@@ -1,5 +1,8 @@
 project_id = "bpsqyaxdhqejozmlejcb"
 
+[functions.send-overdue-reminders]
+verify_jwt = false
+
 [functions.save-asaas-key]
 verify_jwt = true
 

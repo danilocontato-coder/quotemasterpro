@@ -2065,6 +2065,10 @@ export type Database = {
           nfse_municipal_service_code: string | null
           nfse_municipal_service_id: string | null
           nfse_service_description: string | null
+          overdue_reminder_channels: Json | null
+          overdue_reminder_enabled: boolean | null
+          overdue_reminder_schedule: Json | null
+          overdue_reminder_stop_after_days: number | null
           reminder_intervals: Json | null
           stripe_webhook_secret: string | null
           updated_at: string | null
@@ -2089,6 +2093,10 @@ export type Database = {
           nfse_municipal_service_code?: string | null
           nfse_municipal_service_id?: string | null
           nfse_service_description?: string | null
+          overdue_reminder_channels?: Json | null
+          overdue_reminder_enabled?: boolean | null
+          overdue_reminder_schedule?: Json | null
+          overdue_reminder_stop_after_days?: number | null
           reminder_intervals?: Json | null
           stripe_webhook_secret?: string | null
           updated_at?: string | null
@@ -2113,6 +2121,10 @@ export type Database = {
           nfse_municipal_service_code?: string | null
           nfse_municipal_service_id?: string | null
           nfse_service_description?: string | null
+          overdue_reminder_channels?: Json | null
+          overdue_reminder_enabled?: boolean | null
+          overdue_reminder_schedule?: Json | null
+          overdue_reminder_stop_after_days?: number | null
           reminder_intervals?: Json | null
           stripe_webhook_secret?: string | null
           updated_at?: string | null
@@ -2373,6 +2385,94 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "ai_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      overdue_reminders: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          days_overdue: number
+          email_error: string | null
+          email_message_id: string | null
+          email_sent_at: string | null
+          id: string
+          invoice_amount: number
+          invoice_due_date: string
+          invoice_id: string
+          reminder_day: number
+          sent_at: string
+          sent_via_email: boolean | null
+          sent_via_whatsapp: boolean | null
+          subscription_id: string | null
+          updated_at: string | null
+          whatsapp_error: string | null
+          whatsapp_message_id: string | null
+          whatsapp_sent_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          days_overdue: number
+          email_error?: string | null
+          email_message_id?: string | null
+          email_sent_at?: string | null
+          id?: string
+          invoice_amount: number
+          invoice_due_date: string
+          invoice_id: string
+          reminder_day: number
+          sent_at?: string
+          sent_via_email?: boolean | null
+          sent_via_whatsapp?: boolean | null
+          subscription_id?: string | null
+          updated_at?: string | null
+          whatsapp_error?: string | null
+          whatsapp_message_id?: string | null
+          whatsapp_sent_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          days_overdue?: number
+          email_error?: string | null
+          email_message_id?: string | null
+          email_sent_at?: string | null
+          id?: string
+          invoice_amount?: number
+          invoice_due_date?: string
+          invoice_id?: string
+          reminder_day?: number
+          sent_at?: string
+          sent_via_email?: boolean | null
+          sent_via_whatsapp?: boolean | null
+          subscription_id?: string | null
+          updated_at?: string | null
+          whatsapp_error?: string | null
+          whatsapp_message_id?: string | null
+          whatsapp_sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overdue_reminders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overdue_reminders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overdue_reminders_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
