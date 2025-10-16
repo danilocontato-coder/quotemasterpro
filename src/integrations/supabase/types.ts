@@ -2033,7 +2033,9 @@ export type Database = {
       }
       financial_settings: {
         Row: {
+          asaas_billing_type: string | null
           auto_billing_enabled: boolean | null
+          auto_issue_nfse: boolean | null
           auto_suspend_enabled: boolean | null
           billing_day: number | null
           boleto_config: Json | null
@@ -2044,13 +2046,20 @@ export type Database = {
           default_billing_cycle: string | null
           due_days: number | null
           id: string
+          issue_nfse_with_invoice: boolean | null
           late_fee_percentage: number | null
+          nfse_default_observations: string | null
+          nfse_municipal_service_code: string | null
+          nfse_municipal_service_id: string | null
+          nfse_service_description: string | null
           reminder_intervals: Json | null
           stripe_webhook_secret: string | null
           updated_at: string | null
         }
         Insert: {
+          asaas_billing_type?: string | null
           auto_billing_enabled?: boolean | null
+          auto_issue_nfse?: boolean | null
           auto_suspend_enabled?: boolean | null
           billing_day?: number | null
           boleto_config?: Json | null
@@ -2061,13 +2070,20 @@ export type Database = {
           default_billing_cycle?: string | null
           due_days?: number | null
           id?: string
+          issue_nfse_with_invoice?: boolean | null
           late_fee_percentage?: number | null
+          nfse_default_observations?: string | null
+          nfse_municipal_service_code?: string | null
+          nfse_municipal_service_id?: string | null
+          nfse_service_description?: string | null
           reminder_intervals?: Json | null
           stripe_webhook_secret?: string | null
           updated_at?: string | null
         }
         Update: {
+          asaas_billing_type?: string | null
           auto_billing_enabled?: boolean | null
+          auto_issue_nfse?: boolean | null
           auto_suspend_enabled?: boolean | null
           billing_day?: number | null
           boleto_config?: Json | null
@@ -2078,7 +2094,12 @@ export type Database = {
           default_billing_cycle?: string | null
           due_days?: number | null
           id?: string
+          issue_nfse_with_invoice?: boolean | null
           late_fee_percentage?: number | null
+          nfse_default_observations?: string | null
+          nfse_municipal_service_code?: string | null
+          nfse_municipal_service_id?: string | null
+          nfse_service_description?: string | null
           reminder_intervals?: Json | null
           stripe_webhook_secret?: string | null
           updated_at?: string | null
@@ -2124,6 +2145,7 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          asaas_charge_id: string | null
           boleto_barcode: string | null
           boleto_url: string | null
           client_id: string | null
@@ -2131,6 +2153,11 @@ export type Database = {
           currency: string | null
           due_date: string
           id: string
+          nfse_id: string | null
+          nfse_issued_at: string | null
+          nfse_number: string | null
+          nfse_status: string | null
+          nfse_url: string | null
           paid_at: string | null
           payment_method: string | null
           status: string
@@ -2141,6 +2168,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          asaas_charge_id?: string | null
           boleto_barcode?: string | null
           boleto_url?: string | null
           client_id?: string | null
@@ -2148,6 +2176,11 @@ export type Database = {
           currency?: string | null
           due_date: string
           id?: string
+          nfse_id?: string | null
+          nfse_issued_at?: string | null
+          nfse_number?: string | null
+          nfse_status?: string | null
+          nfse_url?: string | null
           paid_at?: string | null
           payment_method?: string | null
           status?: string
@@ -2158,6 +2191,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          asaas_charge_id?: string | null
           boleto_barcode?: string | null
           boleto_url?: string | null
           client_id?: string | null
@@ -2165,6 +2199,11 @@ export type Database = {
           currency?: string | null
           due_date?: string
           id?: string
+          nfse_id?: string | null
+          nfse_issued_at?: string | null
+          nfse_number?: string | null
+          nfse_status?: string | null
+          nfse_url?: string | null
           paid_at?: string | null
           payment_method?: string | null
           status?: string
@@ -3532,6 +3571,8 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          asaas_customer_id: string | null
+          asaas_subscription_id: string | null
           billing_cycle: string
           cancel_at_period_end: boolean | null
           cancelled_at: string | null
@@ -3549,6 +3590,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           billing_cycle?: string
           cancel_at_period_end?: boolean | null
           cancelled_at?: string | null
@@ -3566,6 +3609,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           billing_cycle?: string
           cancel_at_period_end?: boolean | null
           cancelled_at?: string | null

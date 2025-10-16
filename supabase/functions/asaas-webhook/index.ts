@@ -1,134 +1,215 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    );
 
-    const webhook = await req.json()
-    console.log('Webhook Asaas recebido:', webhook)
+    const webhook = await req.json();
+    console.log('Received Asaas webhook:', webhook.event);
 
-    const { event, payment } = webhook
+    const event = webhook.event;
+    const payment = webhook.payment;
 
-    if (!payment?.externalReference) {
-      console.log('Webhook sem externalReference, ignorando')
-      return new Response('OK', { status: 200 })
-    }
+    // Processar eventos de pagamento
+    if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
+      console.log(`Payment received: ${payment.id}`);
 
-    const paymentId = payment.externalReference
+      // Buscar invoice pelo asaas_charge_id
+      const { data: invoice, error: invError } = await supabaseClient
+        .from('invoices')
+        .select('*, subscriptions!subscription_id(id, client_id, supplier_id)')
+        .eq('asaas_charge_id', payment.id)
+        .single();
 
-    // Atualizar status baseado no evento
-    switch (event) {
-      case 'PAYMENT_RECEIVED':
-        // Cliente pagou, fundos entram em escrow
-        await supabase
-          .from('payments')
+      if (invError || !invoice) {
+        console.log('Invoice not found for payment:', payment.id);
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Atualizar invoice
+      await supabaseClient
+        .from('invoices')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invoice.id);
+
+      // Atualizar subscription para active
+      if (invoice.subscription_id) {
+        await supabaseClient
+          .from('subscriptions')
           .update({
-            status: 'in_escrow',
-            transfer_method: payment.billingType.toLowerCase(),
-            updated_at: new Date().toISOString(),
+            status: 'active',
+            updated_at: new Date().toISOString()
           })
-          .eq('id', paymentId)
+          .eq('id', invoice.subscription_id);
 
-        // Notificar cliente e fornecedor
-        const { data: paymentData } = await supabase
-          .from('payments')
-          .select('client_id, supplier_id, amount, quote_id')
-          .eq('id', paymentId)
-          .single()
-
-        if (paymentData) {
-          // Notificar cliente
-          await supabase.rpc('notify_client_users', {
-            p_client_id: paymentData.client_id,
-            p_title: 'Pagamento Recebido',
-            p_message: `Pagamento ${paymentId} confirmado! Fundos em garantia até confirmação de entrega.`,
-            p_type: 'payment',
-            p_priority: 'normal',
-          })
-
-          // Notificar fornecedor
-          await supabase.rpc('create_notification', {
-            p_user_id: paymentData.supplier_id,
-            p_title: 'Pagamento em Garantia',
-            p_message: `Cliente pagou R$ ${paymentData.amount}. Realize a entrega para liberar os fundos.`,
-            p_type: 'payment',
-            p_priority: 'high',
-          })
+        // Reativar cliente se estava suspenso
+        if (invoice.subscriptions.client_id) {
+          await supabaseClient
+            .from('clients')
+            .update({
+              active: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', invoice.subscriptions.client_id);
         }
 
-        console.log(`Pagamento ${paymentId} recebido e em escrow`)
-        break
+        if (invoice.subscriptions.supplier_id) {
+          await supabaseClient
+            .from('suppliers')
+            .update({
+              status: 'active',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', invoice.subscriptions.supplier_id);
+        }
+      }
 
-      case 'PAYMENT_CONFIRMED':
-        // Confirmação adicional (redundante com PAYMENT_RECEIVED)
-        console.log(`Pagamento ${paymentId} confirmado`)
-        break
+      // Verificar se deve emitir NFS-e automaticamente
+      const { data: settings } = await supabaseClient
+        .from('financial_settings')
+        .select('auto_issue_nfse')
+        .single();
 
-      case 'PAYMENT_OVERDUE':
-        // Pagamento vencido
-        await supabase
-          .from('payments')
-          .update({
-            status: 'failed',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', paymentId)
-        console.log(`Pagamento ${paymentId} vencido`)
-        break
+      if (settings?.auto_issue_nfse) {
+        console.log('Auto-issuing NFS-e for payment:', payment.id);
+        await supabaseClient.functions.invoke('issue-nfse', {
+          body: { asaas_charge_id: payment.id }
+        });
+      }
 
-      case 'PAYMENT_DELETED':
-      case 'PAYMENT_REFUNDED':
-        // Pagamento cancelado/reembolsado
-        await supabase
-          .from('payments')
-          .update({
-            status: 'refunded',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', paymentId)
-        console.log(`Pagamento ${paymentId} reembolsado`)
-        break
-
-      default:
-        console.log(`Evento não tratado: ${event}`)
+      console.log('Payment processed successfully');
     }
 
-    // Log de auditoria
-    await supabase
-      .from('audit_logs')
-      .insert({
-        action: `ASAAS_WEBHOOK_${event}`,
-        entity_type: 'payments',
-        entity_id: paymentId,
-        panel_type: 'system',
-        details: {
-          event,
-          payment_id: payment.id,
-          billing_type: payment.billingType,
-          value: payment.value,
-        },
-      })
+    // Processar eventos de inadimplência
+    if (event === 'PAYMENT_OVERDUE') {
+      console.log(`Payment overdue: ${payment.id}`);
 
-    return new Response('OK', { status: 200, headers: corsHeaders })
+      const { data: invoice } = await supabaseClient
+        .from('invoices')
+        .select('*, subscriptions!subscription_id(id, client_id, supplier_id)')
+        .eq('asaas_charge_id', payment.id)
+        .single();
 
-  } catch (error) {
-    console.error('Error processing Asaas webhook:', error)
+      if (invoice) {
+        // Atualizar status da invoice
+        await supabaseClient
+          .from('invoices')
+          .update({
+            status: 'past_due',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', invoice.id);
+
+        // Buscar configurações de suspensão
+        const { data: settings } = await supabaseClient
+          .from('financial_settings')
+          .select('days_before_suspension, auto_suspend')
+          .single();
+
+        if (settings?.auto_suspend) {
+          const dueDate = new Date(invoice.due_date);
+          const daysSinceDue = Math.floor((Date.now() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (daysSinceDue >= (settings.days_before_suspension || 7)) {
+            console.log(`Suspending subscription for overdue payment (${daysSinceDue} days)`);
+
+            if (invoice.subscription_id) {
+              // Suspender assinatura
+              await supabaseClient
+                .from('subscriptions')
+                .update({
+                  status: 'suspended',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', invoice.subscription_id);
+
+              // Desativar cliente/fornecedor
+              if (invoice.subscriptions.client_id) {
+                await supabaseClient
+                  .from('clients')
+                  .update({
+                    active: false,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', invoice.subscriptions.client_id);
+              }
+
+              if (invoice.subscriptions.supplier_id) {
+                await supabaseClient
+                  .from('suppliers')
+                  .update({
+                    status: 'suspended',
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', invoice.subscriptions.supplier_id);
+              }
+
+              // Log de auditoria
+              await supabaseClient
+                .from('audit_logs')
+                .insert({
+                  action: 'SUBSCRIPTION_SUSPENDED',
+                  entity_type: 'subscriptions',
+                  entity_id: invoice.subscription_id,
+                  panel_type: 'system',
+                  details: {
+                    reason: 'payment_overdue',
+                    days_overdue: daysSinceDue,
+                    invoice_id: invoice.id
+                  }
+                });
+            }
+          }
+        }
+      }
+    }
+
+    // Processar eventos de assinatura
+    if (event === 'SUBSCRIPTION_UPDATED' || event === 'SUBSCRIPTION_EXPIRED') {
+      const subscription = webhook.subscription;
+      console.log(`Subscription ${event}: ${subscription.id}`);
+
+      await supabaseClient
+        .from('subscriptions')
+        .update({
+          status: event === 'SUBSCRIPTION_EXPIRED' ? 'expired' : 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('asaas_subscription_id', subscription.id);
+    }
+
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+      JSON.stringify({ ok: true }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error: any) {
+    console.error('Error in asaas-webhook:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
   }
-})
+});
