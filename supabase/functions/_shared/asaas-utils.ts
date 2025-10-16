@@ -38,6 +38,8 @@ export async function getAsaasConfig(supabaseClient: any): Promise<AsaasConfig> 
     ? 'https://api.asaas.com/v3' 
     : 'https://sandbox.asaas.com/api/v3';
 
+  console.log(`🔧 Asaas Config: Environment=${environment}, BaseURL=${baseUrl}`);
+
   return {
     apiKey,
     environment,

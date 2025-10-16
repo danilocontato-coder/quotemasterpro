@@ -93,18 +93,30 @@ serve(async (req) => {
     console.log('Cliente criado no Asaas:', asaasCustomer);
 
     // Buscar informações do plano do cliente
-    const { data: planData } = await supabaseClient
+    const { data: planData, error: planError } = await supabaseClient
       .from('subscription_plans')
-      .select('price')
+      .select('monthly_price, yearly_price')
       .eq('id', client.subscription_plan_id)
       .single();
 
-    const planPrice = planData?.price || 0;
+    if (planError) {
+      console.error('Erro ao buscar plano:', planError);
+    }
+
+    // Usar monthly_price como padrão para assinaturas mensais
+    const planPrice = planData?.monthly_price || 0;
+
+    console.log(`📊 Dados do Plano:`, {
+      plan_id: client.subscription_plan_id,
+      monthly_price: planData?.monthly_price,
+      yearly_price: planData?.yearly_price,
+      selected_price: planPrice
+    });
 
     // Criar assinatura recorrente no Asaas
     let asaasSubscriptionId = null;
     if (planPrice > 0) {
-      console.log(`Criando assinatura recorrente no Asaas - Valor: R$ ${planPrice}`);
+      console.log(`💰 Criando assinatura recorrente no Asaas - Valor: R$ ${planPrice}`);
       
       const subscriptionData = {
         customer: asaasCustomer.id,
@@ -114,6 +126,11 @@ serve(async (req) => {
         cycle: 'MONTHLY', // Recorrência mensal
         description: `Assinatura ${client.subscription_plan_id}`,
       };
+
+      console.log(`📤 Enviando requisição para Asaas Subscriptions API:`, {
+        url: `${asaasConfig.baseUrl}/subscriptions`,
+        data: subscriptionData
+      });
 
       const subscriptionResponse = await fetch(`${asaasConfig.baseUrl}/subscriptions`, {
         method: 'POST',
@@ -127,11 +144,28 @@ serve(async (req) => {
       if (subscriptionResponse.ok) {
         const asaasSubscription = await subscriptionResponse.json();
         asaasSubscriptionId = asaasSubscription.id;
-        console.log('Assinatura criada no Asaas:', asaasSubscription);
+        console.log('✅ Assinatura criada no Asaas:', asaasSubscription);
       } else {
         const errorData = await subscriptionResponse.json();
-        console.error('Erro ao criar assinatura no Asaas:', errorData);
+        console.error('❌ Erro ao criar assinatura no Asaas:', errorData);
+        
+        // Registrar erro mas NÃO bloquear criação do customer
+        await supabaseClient
+          .from('audit_logs')
+          .insert({
+            action: 'ASAAS_SUBSCRIPTION_FAILED',
+            entity_type: 'clients',
+            entity_id: clientId,
+            panel_type: 'system',
+            details: {
+              error: errorData,
+              plan_price: planPrice,
+              asaas_customer_id: asaasCustomer.id
+            }
+          });
       }
+    } else {
+      console.warn(`⚠️ Plano sem valor definido (${planPrice}), assinatura NÃO será criada`);
     }
 
     // Atualizar cliente no Supabase com o ID do Asaas e da assinatura
@@ -171,7 +205,11 @@ serve(async (req) => {
         asaasCustomerId: asaasCustomer.id,
         asaasSubscriptionId: asaasSubscriptionId,
         customer: asaasCustomer,
-        planPrice: planPrice
+        planPrice: planPrice,
+        subscriptionCreated: asaasSubscriptionId !== null,
+        warnings: asaasSubscriptionId === null && planPrice > 0 
+          ? ['Assinatura não foi criada apesar do plano ter valor'] 
+          : []
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
