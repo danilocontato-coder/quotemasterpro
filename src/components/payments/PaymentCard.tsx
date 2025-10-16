@@ -128,23 +128,43 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails }
 
         <div className="flex gap-2 flex-wrap">
           {payment.status === 'pending' && (
-            <Button 
-              onClick={() => onPay(payment.id)}
-              className="flex-1 min-w-[120px]"
-            >
-              <CreditCard className="h-4 w-4 mr-2" />
-              Pagar Online
-            </Button>
+            <>
+              <Button 
+                onClick={async () => {
+                  const { supabase } = await import('@/integrations/supabase/client');
+                  const { toast } = await import('sonner');
+                  
+                  try {
+                    const { data, error } = await supabase.functions.invoke('create-asaas-payment', {
+                      body: { paymentId: payment.id }
+                    });
+
+                    if (error) throw error;
+
+                    if (data?.asaas_invoice_url) {
+                      window.open(data.asaas_invoice_url, '_blank');
+                      toast.success("Pagamento Asaas criado! Abrindo link...");
+                    }
+                  } catch (error: any) {
+                    console.error('Error creating Asaas payment:', error);
+                    toast.error(error.message || "Erro ao criar pagamento Asaas");
+                  }
+                }}
+                className="flex-1 min-w-[120px]"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                💳 Pagar com Asaas
+              </Button>
+            </>
           )}
           
           {payment.status === 'in_escrow' && (
             <Button 
-              onClick={() => onConfirmDelivery(payment.id)}
-              variant="outline"
-              className="flex-1 min-w-[120px]"
+              onClick={() => onConfirmDelivery(payment)}
+              className="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700"
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              Confirmar Entrega
+              🔓 Liberar Fundos
             </Button>
           )}
 
@@ -157,13 +177,16 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails }
             Ver Detalhes
           </Button>
           
-          <Button 
-            variant="outline" 
-            size="sm"
-          >
-            <FileText className="h-4 w-4 mr-1" />
-            Pagar Offline
-          </Button>
+          {payment.status === 'pending' && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              disabled
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              Pagar Offline
+            </Button>
+          )}
         </div>
 
         <div className="mt-4 pt-4 border-t text-xs text-muted-foreground">

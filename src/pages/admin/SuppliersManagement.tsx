@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle, Key, LogIn, Eye } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle, Key, LogIn, Eye, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -166,6 +166,33 @@ export const SuppliersManagement = () => {
       });
     } finally {
       setToggleStatusLoading(null);
+    }
+  };
+
+  const handleCreateAsaasWallet = async (supplier: any) => {
+    setIsProcessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-asaas-wallet', {
+        body: { supplierId: supplier.id }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Wallet Asaas Criada",
+        description: `Wallet ID: ${data.walletId}`,
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error('Erro ao criar wallet:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível criar a wallet Asaas",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -375,12 +402,13 @@ export const SuppliersManagement = () => {
           ) : (
             <>
               <Table>
-                <TableHeader>
+                  <TableHeader>
                   <TableRow>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead>Contato</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Wallet Asaas</TableHead>
                     <TableHead>Avaliação</TableHead>
                     <TableHead>Região</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -427,6 +455,20 @@ export const SuppliersManagement = () => {
                            supplier.status === 'pending' ? 'Pendente' : 'Suspenso'}
                         </Badge>
                       </TableCell>
+
+                      <TableCell>
+                        {(supplier as any).asaas_wallet_id ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Configurada
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Não configurada
+                          </Badge>
+                        )}
+                      </TableCell>
                       
                       <TableCell>
                         {supplier.rating ? (
@@ -454,6 +496,17 @@ export const SuppliersManagement = () => {
                               Editar
                             </DropdownMenuItem>
                             
+                            {!(supplier as any).asaas_wallet_id && (
+                              <DropdownMenuItem
+                                onClick={() => handleCreateAsaasWallet(supplier)}
+                                disabled={isProcessing}
+                                className="text-blue-600"
+                              >
+                                <Wallet className="h-4 w-4 mr-2" />
+                                {isProcessing ? 'Criando Wallet...' : 'Criar Wallet Asaas'}
+                              </DropdownMenuItem>
+                            )}
+
                             <DropdownMenuItem 
                               onClick={() => setCertifyingSupplier({ supplier, action: supplier.type === 'certified' ? 'remove' : 'certify' })}
                               className={supplier.type === 'certified' ? 'text-yellow-600' : 'text-purple-600'}

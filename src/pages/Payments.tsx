@@ -22,12 +22,15 @@ import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
+import { ReleaseEscrowModal } from "@/components/payments/ReleaseEscrowModal";
+import { EscrowDashboard } from "@/components/payments/EscrowDashboard";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { toast } from "sonner";
 import { useAutomaticPayments } from "@/hooks/useAutomaticPayments";
+import { useToast } from "@/hooks/use-toast";
 
 
 export default function Payments() {
@@ -35,10 +38,13 @@ export default function Payments() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showReleaseEscrowModal, setShowReleaseEscrowModal] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+  
+  const { toast: showToast } = useToast();
 
   const {
     payments,
@@ -91,6 +97,42 @@ export default function Payments() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, activeFilter]);
+
+  const handleConfirmDelivery = (payment: any) => {
+    setSelectedPayment(payment);
+    setShowReleaseEscrowModal(true);
+  };
+
+  const handleReleaseEscrow = async (notes: string, deliveryConfirmed: boolean) => {
+    if (!selectedPayment) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('release-escrow-payment', {
+        body: {
+          paymentId: selectedPayment.id,
+          deliveryConfirmed,
+          notes,
+        },
+      });
+
+      if (error) throw error;
+
+      showToast({
+        title: "Fundos Liberados!",
+        description: "O pagamento foi liberado e transferido ao fornecedor.",
+      });
+
+      refetch();
+      setShowReleaseEscrowModal(false);
+    } catch (error: any) {
+      console.error('Error releasing escrow:', error);
+      showToast({
+        title: "Erro",
+        description: error.message || "Não foi possível liberar os fundos",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleViewPayment = (payment: any) => {
     setSelectedPayment(payment);
@@ -230,6 +272,9 @@ export default function Payments() {
           />
         </div>
       </div>
+
+      {/* Escrow Dashboard */}
+      <EscrowDashboard payments={payments} />
 
       {/* Filter Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -418,6 +463,13 @@ export default function Payments() {
         onConfirmDelivery={() => {}}
         onReportDelay={() => {}}
         onOpenDispute={() => {}}
+      />
+
+      <ReleaseEscrowModal
+        open={showReleaseEscrowModal}
+        onOpenChange={setShowReleaseEscrowModal}
+        payment={selectedPayment}
+        onConfirm={handleReleaseEscrow}
       />
     </div>
   );
