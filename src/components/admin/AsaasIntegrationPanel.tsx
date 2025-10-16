@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle, Settings, DollarSign, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { AlertCircle, CheckCircle, Settings, DollarSign, Eye, EyeOff, AlertTriangle, FileText, Calendar } from 'lucide-react';
 import { useAsaasIntegration } from '@/hooks/useAsaasIntegration';
 import { toast } from 'sonner';
 
