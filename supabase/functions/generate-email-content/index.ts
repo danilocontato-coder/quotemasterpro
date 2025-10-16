@@ -16,6 +16,17 @@ serve(async (req) => {
   try {
     const payload = await req.json();
     console.log('📧 Generating email content with AI:', payload);
+
+    const defaultBranding = {
+      company_name: 'Cotiz',
+      logo_url: '',
+      primary_color: '#003366',
+      secondary_color: '#F5F5F5',
+      accent_color: '#0066CC',
+      footer_text: 'Enviado por Cotiz'
+    };
+    
+    const branding = { ...defaultBranding, ...(payload.branding || {}) };
     
     // 1. Gerar conteúdo textual com Lovable AI
     const textResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -38,24 +49,36 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Crie um e-mail marketing profissional com as seguintes características:
-            - Objetivo: ${payload.objective || 'engajamento'}
-            - Tom: ${payload.tone || 'profissional'}
-            - Público: ${payload.target_audience || 'clientes B2B'}
-            - Pontos principais: ${(payload.key_points || []).join(', ')}
-            ${payload.brand_voice ? `- Voz da marca: ${payload.brand_voice}` : ''}
-            ${payload.max_length ? `- Máximo de ${payload.max_length} palavras` : ''}
-            
-            ${payload.generate_variants ? 'Gere 3 variações de assunto para teste A/B.' : 'Gere 1 assunto otimizado.'}
-            
-            Retorne APENAS um JSON válido (sem markdown, sem \`\`\`json):
-            {
-              "subject_lines": ["assunto 1", "assunto 2", "assunto 3"],
-              "preview_text": "texto do pre-header atraente",
-              "html_body": "HTML completo responsivo com inline styles",
-              "plain_text_body": "versão texto puro limpa",
-              "suggested_cta": {"text": "texto do botão CTA", "url": "#"}
-            }`
+            content: `Crie um e-mail marketing profissional em HTML com as seguintes características:
+- Objetivo: ${payload.objective || 'engajamento'}
+- Tom: ${payload.tone || 'profissional'}
+- Público: ${payload.target_audience || 'clientes B2B'}
+- Pontos principais: ${(payload.key_points || []).join(', ')}
+- Voz da marca: ${payload.brand_voice || 'profissional e confiável'}
+
+IMPORTANTE - BRANDING:
+- Nome da empresa: ${branding.company_name}
+- Logo URL: ${branding.logo_url}
+- Cor primária: ${branding.primary_color}
+- Cor secundária: ${branding.secondary_color}
+- Cor de destaque: ${branding.accent_color}
+- Texto do rodapé: ${branding.footer_text}
+
+O e-mail DEVE incluir:
+1. CABEÇALHO com logo centralizada (se logo_url fornecida, usar: <img src="${branding.logo_url}" alt="${branding.company_name}" style="max-width:200px;height:auto;margin:0 auto;display:block;">)
+2. Corpo usando as cores do branding fornecidas
+3. RODAPÉ com: "${branding.footer_text}" e link {{unsubscribe_url}} para descadastro
+
+${payload.generate_variants ? 'Gere 3 variações de assunto para teste A/B.' : 'Gere 1 assunto otimizado.'}
+
+Retorne APENAS um JSON válido (sem markdown, sem \`\`\`json):
+{
+  "subject_lines": ["assunto 1", "assunto 2", "assunto 3"],
+  "preview_text": "texto do pre-header atraente",
+  "html_body": "HTML completo responsivo com inline styles",
+  "plain_text_body": "versão texto puro limpa",
+  "suggested_cta": {"text": "texto do botão CTA", "url": "#"}
+}`
           }
         ]
       })

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useBranding } from '@/contexts/BrandingContext';
 
 export interface AIEmailGenerationRequest {
   objective?: string;
@@ -42,6 +43,7 @@ export function useAIEmailGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<AIEmailGenerationResponse['content'] | null>(null);
   const { toast } = useToast();
+  const { settings } = useBranding();
 
   const generateContent = async (request: AIEmailGenerationRequest): Promise<AIEmailGenerationResponse> => {
     try {
@@ -49,7 +51,17 @@ export function useAIEmailGeneration() {
       console.log('🤖 Generating email content with AI...', request);
 
       const { data, error } = await supabase.functions.invoke('generate-email-content', {
-        body: request
+        body: {
+          ...request,
+          branding: {
+            company_name: settings.companyName,
+            logo_url: settings.logo,
+            primary_color: settings.primaryColor,
+            secondary_color: settings.secondaryColor,
+            accent_color: settings.accentColor,
+            footer_text: settings.footerText || `Enviado por ${settings.companyName}`
+          }
+        }
       });
 
       if (error) throw error;

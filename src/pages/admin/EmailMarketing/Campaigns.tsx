@@ -113,6 +113,10 @@ export default function CampaignsList() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => navigate(`/admin/email-marketing/details/${campaign.id}`)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Detalhes
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate(`/admin/email-marketing/analytics/${campaign.id}`)}>
                         <Eye className="h-4 w-4 mr-2" />
                         Ver Analytics

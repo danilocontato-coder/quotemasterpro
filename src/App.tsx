@@ -13,14 +13,12 @@ import { AppWithProviders } from '@/components/layout/AppWithProviders';
 import { TourProvider } from '@/components/tour/TourProvider';
 import '@/styles/tour-custom.css';
 
-// Carregar test helpers em desenvolvimento
 if (import.meta.env.DEV) {
   import('./utils/testHelpers').catch(err => {
     console.error('Erro ao carregar test helpers:', err);
   });
 }
 
-// Query client otimizado
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -39,7 +37,6 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Sistema de log já disponível via systemLogger
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -49,10 +46,9 @@ function App() {
               <SubscriptionProvider>
                 <TourProvider>
                   <Router>
-                    {/* GlobalNavigationProvider removido - integrado no AppWithProviders */}
-                    <AppWithProviders />
-                    
-                    {/* Toast notifications */}
+                    <GlobalNavigationProvider>
+                      <AppWithProviders />
+                    </GlobalNavigationProvider>
                     <Toaster />
                     <Sonner />
                   </Router>
