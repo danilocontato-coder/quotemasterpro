@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,20 +15,111 @@ const ResetPassword: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [hasValidToken, setHasValidToken] = useState(true);
+  const [hasValidToken, setHasValidToken] = useState<boolean | null>(null);
+  const [isCheckingToken, setIsCheckingToken] = useState(true);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Verificar se há um token de recuperação válido
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const type = hashParams.get('type');
+    const validateToken = async () => {
+      setIsCheckingToken(true);
 
-    if (!accessToken || type !== 'recovery') {
-      setHasValidToken(false);
-      setError('Link de recuperação inválido ou expirado');
-    }
-  }, []);
+      // Ler parâmetros do hash (#...)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const hashType = hashParams.get('type');
+
+      // Ler parâmetros da query (?...)
+      const queryType = searchParams.get('type');
+      const queryToken = searchParams.get('token');
+      const code = searchParams.get('code');
+      const urlError = searchParams.get('error');
+      const errorDescription = searchParams.get('error_description');
+
+      // Se veio erro explícito na URL
+      if (urlError === 'token_expired' || urlError === 'invalid_token' || errorDescription?.includes('expired')) {
+        setHasValidToken(false);
+        setError('Seu link de redefinição expirou ou é inválido. Solicite um novo link.');
+        setIsCheckingToken(false);
+        return;
+      }
+
+      try {
+        // Fluxo 1: Se há code (PKCE), trocar por sessão
+        if (code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError || !data.session) {
+            setHasValidToken(false);
+            setError('Link de recuperação inválido ou expirado');
+            setIsCheckingToken(false);
+            return;
+          }
+          
+          // Sessão criada com sucesso
+          setHasValidToken(true);
+          setIsCheckingToken(false);
+          
+          // Limpar URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+
+        // Fluxo 2: Verificar sessão existente
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (sessionData.session) {
+          setHasValidToken(true);
+          setIsCheckingToken(false);
+          
+          // Limpar tokens da URL se existirem
+          if (accessToken || queryToken) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          return;
+        }
+
+        // Fluxo 3: Validar access_token no hash
+        if (accessToken && hashType === 'recovery') {
+          setHasValidToken(true);
+          setIsCheckingToken(false);
+          return;
+        }
+
+        // Fluxo 4: Validar token na query
+        if (queryToken && queryType === 'recovery') {
+          setHasValidToken(true);
+          setIsCheckingToken(false);
+          return;
+        }
+
+        // Nenhum token/sessão válido encontrado
+        setHasValidToken(false);
+        setError('Link de recuperação inválido ou expirado');
+      } catch (err) {
+        console.error('Erro ao validar token:', err);
+        setHasValidToken(false);
+        setError('Erro ao validar link de recuperação');
+      } finally {
+        setIsCheckingToken(false);
+      }
+    };
+
+    validateToken();
+
+    // Assinar mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session) {
+          setHasValidToken(true);
+          setIsCheckingToken(false);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [searchParams]);
 
   const validatePassword = (pwd: string): string | null => {
     if (pwd.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
@@ -78,6 +169,19 @@ const ResetPassword: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Estado de carregamento
+  if (isCheckingToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
