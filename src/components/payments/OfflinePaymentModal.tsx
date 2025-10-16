@@ -36,7 +36,29 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    setAttachments(prev => [...prev, ...files]);
+    
+    // Validar tamanho de cada arquivo (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+    
+    files.forEach(file => {
+      if (file.size > maxSize) {
+        invalidFiles.push(`${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Arquivos muito grandes",
+        description: `Os seguintes arquivos excedem 10MB: ${invalidFiles.join(', ')}`,
+        variant: "destructive"
+      });
+    }
+    
+    setAttachments(prev => [...prev, ...validFiles]);
   };
 
   const removeAttachment = (index: number) => {
@@ -52,13 +74,39 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
       });
       return;
     }
+    
+    // Validar transaction_id para PIX
+    if (paymentMethod === 'pix' && !transactionId.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Para pagamento via PIX, o código da transação é obrigatório.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validar se tem pelo menos um comprovante
+    if (attachments.length === 0) {
+      toast({
+        title: "Comprovante necessário",
+        description: "Adicione pelo menos um comprovante de pagamento.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
       // Upload attachments if any
       let attachmentUrls: string[] = [];
+      let uploadErrors: string[] = [];
       
       if (attachments.length > 0) {
+        toast({
+          title: "Upload em progresso",
+          description: `Enviando ${attachments.length} arquivo(s)...`,
+        });
+        
         for (const file of attachments) {
           const fileExt = file.name.split('.').pop();
           const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
@@ -70,9 +118,18 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
 
           if (uploadError) {
             console.error('Upload error:', uploadError);
+            uploadErrors.push(file.name);
           } else {
             attachmentUrls.push(filePath);
           }
+        }
+        
+        if (uploadErrors.length > 0) {
+          toast({
+            title: "Erro no upload",
+            description: `Falha ao enviar: ${uploadErrors.join(', ')}`,
+            variant: "destructive"
+          });
         }
       }
 
@@ -262,29 +319,49 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
               </div>
             </div>
 
-            {/* Attachment List */}
+            {/* Attachment List with Preview */}
             {attachments.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Arquivos selecionados:</p>
-                {attachments.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span className="text-sm">{file.name}</span>
-                      <span className="text-xs text-gray-500">
-                        ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                      </span>
+                <p className="text-sm font-medium">
+                  Arquivos selecionados: <span className="text-muted-foreground">({attachments.length})</span>
+                </p>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {attachments.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 border rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {file.type.startsWith('image/') ? (
+                          <div className="relative h-10 w-10 rounded overflow-hidden bg-gray-200 flex-shrink-0">
+                            <img 
+                              src={URL.createObjectURL(file)} 
+                              alt={file.name}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <FileText className="h-10 w-10 text-gray-400 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{file.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                            {file.size > 5 * 1024 * 1024 && (
+                              <span className="text-amber-600 ml-1">(⚠️ Arquivo grande)</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeAttachment(index)}
+                        className="flex-shrink-0"
+                      >
+                        Remover
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeAttachment(index)}
-                    >
-                      Remover
-                    </Button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>

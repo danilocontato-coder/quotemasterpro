@@ -168,9 +168,23 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                 </p>
               )}
               {payment.suppliers?.name && (
-                <p>
-                  <span className="font-medium">Fornecedor:</span> {payment.suppliers.name}
-                </p>
+                <div className="flex items-center gap-1">
+                  <p>
+                    <span className="font-medium">Fornecedor:</span> {payment.suppliers.name}
+                  </p>
+                  {payment.supplier_id && !payment.suppliers?.asaas_wallet_id && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertCircle className="h-3 w-3 text-amber-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>⚠️ Fornecedor precisa configurar carteira Asaas para receber pagamentos</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
               )}
             </div>
           </div>

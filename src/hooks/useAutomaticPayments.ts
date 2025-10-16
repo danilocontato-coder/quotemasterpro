@@ -27,6 +27,17 @@ export const useAutomaticPayments = () => {
               if (oldQuote.status !== 'approved' && updatedQuote.status === 'approved') {
                 console.log('Creating automatic payment for approved quote:', updatedQuote.id);
                 
+                // Validar se cotação tem fornecedor
+                if (!updatedQuote.supplier_id) {
+                  console.error('❌ Cotação sem fornecedor associado. Não é possível criar pagamento:', updatedQuote.id);
+                  toast({
+                    title: 'Erro ao Criar Pagamento',
+                    description: `Cotação ${updatedQuote.id} não tem fornecedor associado. Adicione um fornecedor antes de aprovar.`,
+                    variant: 'destructive'
+                  });
+                  return;
+                }
+                
                 // Check if payment already exists
                 const { data: existingPayment } = await supabase
                   .from('payments')
