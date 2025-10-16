@@ -56,6 +56,59 @@ serve(async (req) => {
     // Obter configuração do Asaas (incluindo ambiente e URL)
     const { apiKey, baseUrl } = await getAsaasConfig(supabase);
 
+    // Validar campos obrigatórios
+    if (!supplier.email) {
+      return new Response(
+        JSON.stringify({ error: 'Email do fornecedor é obrigatório para criar wallet Asaas' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!supplier.cnpj && !supplier.document_number) {
+      return new Response(
+        JSON.stringify({ error: 'CPF/CNPJ do fornecedor é obrigatório para criar wallet Asaas' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Limpar e validar documento
+    const cleanDocument = (supplier.cnpj || supplier.document_number).replace(/\D/g, '')
+    if (cleanDocument.length !== 11 && cleanDocument.length !== 14) {
+      return new Response(
+        JSON.stringify({ error: 'CPF/CNPJ inválido. Deve ter 11 (CPF) ou 14 (CNPJ) dígitos' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Determinar companyType baseado no document_type
+    let companyType: string
+    
+    if (supplier.document_type === 'cpf') {
+      companyType = 'INDIVIDUAL' // Pessoa Física
+    } else {
+      // Para CNPJ, tentar extrair do business_info ou usar LIMITED como padrão
+      const businessType = supplier.business_info?.company_type
+      
+      if (businessType === 'mei') {
+        companyType = 'MEI'
+      } else if (businessType === 'association') {
+        companyType = 'ASSOCIATION'
+      } else {
+        companyType = 'LIMITED' // Padrão para empresas (Ltda, S/A, etc)
+      }
+    }
+
+    console.log('📝 Criando wallet Asaas para fornecedor:', {
+      supplierName: supplier.name,
+      supplierId: supplierId,
+      documentType: supplier.document_type,
+      document: cleanDocument,
+      companyType: companyType,
+      email: supplier.email,
+      hasPhone: !!(supplier.phone || supplier.whatsapp),
+      hasAddress: !!supplier.address
+    });
+
     const bankData = supplier.bank_data || {}
     
     // Criar subconta no Asaas
@@ -68,21 +121,30 @@ serve(async (req) => {
       body: JSON.stringify({
         name: supplier.name,
         email: supplier.email,
-        cpfCnpj: supplier.cnpj?.replace(/\D/g, '') || supplier.document_number?.replace(/\D/g, ''),
+        cpfCnpj: cleanDocument,
+        companyType: companyType,
         mobilePhone: supplier.phone || supplier.whatsapp,
         address: supplier.address?.street,
         addressNumber: supplier.address?.number,
         complement: supplier.address?.complement,
         province: supplier.address?.neighborhood,
         postalCode: supplier.address?.postal_code,
-        accountType: 'SUPPLIER', // Subconta de fornecedor
+        accountType: 'SUPPLIER',
       }),
     })
 
     if (!asaasResponse.ok) {
       const error = await asaasResponse.json()
-      console.error('Erro ao criar wallet Asaas:', error)
-      throw new Error(`Falha ao criar wallet: ${error.errors?.[0]?.description || 'Erro desconhecido'}`)
+      console.error('❌ Erro Asaas ao criar wallet:', {
+        status: asaasResponse.status,
+        error: error
+      })
+      
+      // Extrair mensagem específica
+      const errorMessage = error.errors?.[0]?.description || 'Erro desconhecido'
+      const errorCode = error.errors?.[0]?.code || 'unknown'
+      
+      throw new Error(`Falha ao criar wallet Asaas: ${errorMessage} (${errorCode})`)
     }
 
     const wallet = await asaasResponse.json()
