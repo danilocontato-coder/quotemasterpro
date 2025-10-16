@@ -29,10 +29,16 @@ export const useAutomaticPayments = () => {
                 
                 // ✅ VALIDAÇÃO 1: Garantir que cotação tem fornecedor
                 if (!updatedQuote.supplier_id) {
-                  console.error('❌ Cotação sem fornecedor. Não é possível criar pagamento:', updatedQuote.id);
+                  console.error('❌ Cotação sem fornecedor:', {
+                    quote_id: updatedQuote.id,
+                    quote_title: updatedQuote.title,
+                    quote_status: updatedQuote.status,
+                    hint: 'Verifique se existe quote_response com status=selected ou approved',
+                    suggestion: 'O trigger SQL deveria ter atualizado automaticamente. Verificar quote_responses.'
+                  });
                   toast({
                     title: 'Erro ao Criar Pagamento',
-                    description: `Cotação "${updatedQuote.title || updatedQuote.id}" não tem fornecedor associado. Selecione um fornecedor antes de aprovar.`,
+                    description: `Cotação "${updatedQuote.title || updatedQuote.id}" não tem fornecedor vinculado. Selecione uma proposta antes de aprovar.`,
                     variant: 'destructive'
                   });
                   return;
