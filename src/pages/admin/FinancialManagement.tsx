@@ -47,6 +47,7 @@ import {
 import { useSupabaseFinancial, Subscription, Invoice } from '@/hooks/useSupabaseFinancial';
 import { CouponIntegrationPanel } from '@/components/admin/CouponIntegrationPanel';
 import { AsaasBillingConfigPanel } from '@/components/admin/AsaasBillingConfigPanel';
+import { AsaasPaymentsTable } from '@/components/admin/AsaasPaymentsTable';
 import { toast } from 'sonner';
 
 export const FinancialManagement = () => {
@@ -380,9 +381,10 @@ export const FinancialManagement = () => {
 
         <Tabs defaultValue="subscriptions" className="space-y-6">
           <div className="flex items-center justify-between">
-            <TabsList className="grid w-full max-w-md grid-cols-3">
+            <TabsList className="grid w-full max-w-md grid-cols-4">
               <TabsTrigger value="subscriptions">Assinaturas</TabsTrigger>
               <TabsTrigger value="invoices">Faturas</TabsTrigger>
+              <TabsTrigger value="asaas">Cobranças Asaas</TabsTrigger>
               <TabsTrigger value="integrations">Integrações</TabsTrigger>
             </TabsList>
 
@@ -579,6 +581,20 @@ export const FinancialManagement = () => {
                     )}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="asaas">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cobranças do Asaas</CardTitle>
+                <CardDescription>
+                  Gerencie cobranças diretamente no Asaas: alterar, cancelar e gerar novos boletos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AsaasPaymentsTable />
               </CardContent>
             </Card>
           </TabsContent>
