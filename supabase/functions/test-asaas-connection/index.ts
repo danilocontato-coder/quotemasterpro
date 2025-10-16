@@ -33,7 +33,10 @@ Deno.serve(async (req) => {
     // Obter configuração do Asaas (incluindo ambiente e URL)
     const { apiKey, baseUrl, environment } = await getAsaasConfig(supabaseClient);
 
-    console.log(`Testando conexão Asaas no ambiente: ${environment}`);
+    console.log(`Testing Asaas connection...`);
+    console.log(`Environment: ${environment}`);
+    console.log(`Base URL: ${baseUrl}`);
+    console.log(`API Key configured: ${apiKey ? 'Yes' : 'No'}`);
 
     // Testar conexão com API do Asaas (timeout de 10s)
     const controller = new AbortController();
@@ -55,10 +58,12 @@ Deno.serve(async (req) => {
 
       if (!response.ok) {
         console.error('Asaas API error:', responseData);
-        throw new Error(responseData.errors?.[0]?.description || 'Failed to connect to Asaas API');
+        const errorMsg = responseData.errors?.[0]?.description || 'Failed to connect to Asaas API';
+        throw new Error(`${errorMsg} (Ambiente: ${environment}, URL: ${baseUrl})`);
       }
 
       console.log('Asaas connection successful');
+      console.log('Balance:', responseData.balance);
 
       // Log successful test
       await supabaseClient
@@ -82,6 +87,7 @@ Deno.serve(async (req) => {
           success: true, 
           message: 'Connection successful',
           environment,
+          baseUrl,
           balance: responseData.balance
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

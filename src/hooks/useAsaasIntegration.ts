@@ -121,13 +121,24 @@ export function useAsaasIntegration() {
     try {
       const { data, error } = await supabase.functions.invoke('test-asaas-connection');
       
-      if (error) {
-        throw error;
+      if (error) throw error;
+      
+      if (data.success) {
+        toast.success(
+          `Conexão bem-sucedida! Ambiente: ${data.environment || 'desconhecido'}. Saldo: R$ ${data.balance?.toFixed(2) || '0.00'}`
+        );
+        return { success: true };
+      } else {
+        throw new Error(data.error || 'Failed to test connection');
       }
-
-      return { success: data?.success || false };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error testing Asaas connection:', error);
+      const errorMsg = error.message || "Não foi possível conectar com o Asaas.";
+      toast.error(
+        errorMsg.includes('Ambiente:') 
+          ? errorMsg 
+          : `${errorMsg} Verifique se a chave de API corresponde ao ambiente selecionado.`
+      );
       return { success: false };
     }
   };
