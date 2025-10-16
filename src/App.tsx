@@ -46,9 +46,8 @@ function App() {
               <SubscriptionProvider>
                 <TourProvider>
                   <Router>
-                    <GlobalNavigationProvider>
-                      <AppWithProviders />
-                    </GlobalNavigationProvider>
+                    <GlobalNavigationProvider />
+                    <AppWithProviders />
                     <Toaster />
                     <Sonner />
                   </Router>
