@@ -103,12 +103,28 @@ export function OfflinePaymentSupplierView({
         p_notes: confirmationNotes || null
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro RPC:', error);
+        
+        // Extrair mensagem específica do erro
+        const errorMessage = String(error.message || '') || 
+          (error.code === '42501' ? 'Permissão negada - verifique suas credenciais' : 
+          String(error.hint || '') || 'Erro desconhecido');
+        
+        throw new Error(errorMessage);
+      }
+
+      // Verificar resposta da função
+      if (data && typeof data === 'object' && 'success' in data) {
+        if (!data.success) {
+          throw new Error(String(data.message || 'Operação falhou'));
+        }
+      }
 
       toast({
         title: approve ? "Pagamento confirmado" : "Pagamento rejeitado",
         description: approve 
-          ? "O pagamento foi confirmado e os fundos serão liberados."
+          ? "O pagamento foi confirmado e os fundos serão liberados em escrow."
           : "O pagamento foi rejeitado e o cliente será notificado.",
         variant: approve ? "default" : "destructive"
       });
