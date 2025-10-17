@@ -1,6 +1,7 @@
-// Status utility functions for quotes
+// Status utility functions for quotes and payments
 export const getStatusText = (status: string) => {
   switch (status) {
+    // Quote statuses
     case 'draft': return 'Rascunho';
     case 'sent': return 'Enviada';
     case 'receiving': return 'Recebendo Propostas';
@@ -22,6 +23,13 @@ export const getStatusText = (status: string) => {
     case 'visit_partial_confirmed': return 'Visitas Parciais Confirmadas';
     case 'visit_confirmed': return 'Visitas Confirmadas';
     case 'visit_overdue': return 'Visita Atrasada';
+    // Payment statuses
+    case 'pending': return 'Pendente';
+    case 'processing': return 'Processando';
+    case 'completed': return 'Recebido';
+    case 'in_escrow': return 'Em Custódia';
+    case 'manual_confirmation': return 'Confirmação Pagamento Manual';
+    case 'failed': return 'Falhou';
     default: return status;
   }
 };

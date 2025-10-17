@@ -27,9 +27,11 @@ import {
   Calendar,
   CreditCard,
   PieChart,
-  BarChart3
+  BarChart3,
+  Eye
 } from "lucide-react";
 import { useSupplierFinancialReal } from "@/hooks/useSupplierFinancialReal";
+import { OfflinePaymentSupplierView } from "@/components/payments/OfflinePaymentSupplierView";
 
 export default function SupplierFinancial() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,6 +39,8 @@ export default function SupplierFinancial() {
   const [dateRange, setDateRange] = useState("30");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const { 
     payments, 
@@ -125,7 +129,21 @@ export default function SupplierFinancial() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* Offline Payment Modal */}
+      {selectedPayment && (
+        <OfflinePaymentSupplierView
+          payment={selectedPayment}
+          open={showPaymentModal}
+          onOpenChange={setShowPaymentModal}
+          onConfirm={() => {
+            // Refresh payments list
+            window.location.reload();
+          }}
+        />
+      )}
+
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -348,9 +366,32 @@ export default function SupplierFinancial() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm">
-                              Ver Detalhes
-                            </Button>
+                            <div className="flex gap-2">
+                              {payment.status === 'manual_confirmation' && (
+                                <Button 
+                                  variant="default" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedPayment(payment);
+                                    setShowPaymentModal(true);
+                                  }}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Confirmar
+                                </Button>
+                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedPayment(payment);
+                                  setShowPaymentModal(true);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Ver
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -491,5 +532,6 @@ export default function SupplierFinancial() {
         </TabsContent>
       </Tabs>
     </div>
+    </>
   );
 }
