@@ -51,14 +51,6 @@ serve(async (req) => {
       )
     }
 
-    // Verificar se fornecedor tem wallet
-    if (!payment.suppliers.asaas_wallet_id) {
-      return new Response(
-        JSON.stringify({ error: 'Fornecedor precisa configurar wallet Asaas primeiro' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Obter configuração do Asaas (incluindo ambiente, URL e comissões)
     const { apiKey, baseUrl, config } = await getAsaasConfig(supabase);
 
@@ -105,14 +97,42 @@ serve(async (req) => {
 
     const commissionPercentage = config.platform_commission_percentage || 5.0
     const autoReleaseDays = config.auto_release_days || 7
+    const splitEnabled = config.split_enabled !== false // Default true
 
     // Calcular split: plataforma fica com X%, fornecedor recebe (100-X)%
     const platformAmount = payment.amount * (commissionPercentage / 100)
     const supplierAmount = payment.amount - platformAmount
 
-    // Criar cobrança no Asaas com split
+    // Criar cobrança no Asaas (com ou sem split)
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 1) // Vencimento amanhã
+
+    // Determinar se deve incluir split
+    const shouldIncludeSplit = splitEnabled && payment.suppliers.asaas_wallet_id
+
+    const paymentBody: any = {
+      customer: asaasCustomerId,
+      billingType: 'UNDEFINED', // Cliente escolhe: PIX, Boleto ou Cartão
+      value: payment.amount,
+      dueDate: dueDate.toISOString().split('T')[0],
+      description: `Pagamento da cotação ${payment.quote_id}`,
+      externalReference: payment.id,
+      postalService: false,
+    }
+
+    // Incluir split somente se habilitado e wallet válida
+    if (shouldIncludeSplit) {
+      paymentBody.split = [
+        {
+          walletId: payment.suppliers.asaas_wallet_id,
+          fixedValue: supplierAmount,
+          percentualValue: null,
+        }
+      ]
+      console.log(`Split habilitado: R$ ${supplierAmount} para fornecedor (wallet: ${payment.suppliers.asaas_wallet_id})`)
+    } else {
+      console.log(`Split desabilitado ou wallet inválida - cobrança sem split`)
+    }
 
     const asaasResponse = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
@@ -120,27 +140,50 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'access_token': apiKey,
       },
-      body: JSON.stringify({
-        customer: asaasCustomerId, // ID do customer criado/existente
-        billingType: 'UNDEFINED', // Cliente escolhe: PIX, Boleto ou Cartão
-        value: payment.amount,
-        dueDate: dueDate.toISOString().split('T')[0],
-        description: `Pagamento da cotação ${payment.quote_id}`,
-        externalReference: payment.id,
-        postalService: false, // Não enviar pelos Correios (= escrow manual)
-        split: [
-          {
-            walletId: payment.suppliers.asaas_wallet_id,
-            fixedValue: supplierAmount,
-            percentualValue: null,
-          }
-        ],
-      }),
+      body: JSON.stringify(paymentBody),
     })
 
     if (!asaasResponse.ok) {
       const error = await asaasResponse.json()
       console.error('Erro ao criar cobrança Asaas:', error)
+      
+      // Verificar se é erro de wallet inválida
+      const isWalletError = error.errors?.some((e: any) => 
+        e.code === 'invalid_action' && e.description?.includes('Wallet') && e.description?.includes('inexistente')
+      )
+      
+      if (isWalletError) {
+        const walletId = payment.suppliers.asaas_wallet_id
+        const errorMessage = `Wallet Asaas do fornecedor inválida para o ambiente atual (${config.environment || 'sandbox'}). Atualize o asaas_wallet_id do fornecedor com um WalletId válido do Asaas ${config.environment === 'production' ? 'Produção' : 'Sandbox'}.`
+        
+        // Log de auditoria do erro
+        await supabase.from('audit_logs').insert({
+          action: 'ASAAS_PAYMENT_ERROR',
+          entity_type: 'payments',
+          entity_id: paymentId,
+          user_id: user.id,
+          details: {
+            error_type: 'invalid_wallet',
+            wallet_id: walletId,
+            environment: config.environment || 'sandbox',
+            supplier_id: payment.supplier_id,
+            asaas_error: error.errors?.[0]?.description
+          },
+        })
+        
+        return new Response(
+          JSON.stringify({ 
+            error: errorMessage,
+            details: {
+              wallet_id: walletId,
+              environment: config.environment || 'sandbox',
+              suggestion: 'Desative split_enabled temporariamente ou atualize o wallet do fornecedor'
+            }
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
       throw new Error(`Falha ao criar cobrança: ${error.errors?.[0]?.description || 'Erro desconhecido'}`)
     }
 
@@ -171,10 +214,16 @@ serve(async (req) => {
           amount: payment.amount,
           commission: platformAmount,
           supplier_amount: supplierAmount,
+          split_enabled: shouldIncludeSplit,
+          environment: config.environment || 'sandbox',
         },
       })
 
-    console.log(`Cobrança Asaas criada: ${asaasPayment.id} - Split: R$ ${supplierAmount} para fornecedor`)
+    const logMessage = shouldIncludeSplit 
+      ? `Cobrança Asaas criada: ${asaasPayment.id} - Split: R$ ${supplierAmount} para fornecedor`
+      : `Cobrança Asaas criada: ${asaasPayment.id} - SEM split (valor total na plataforma)`
+    
+    console.log(logMessage)
 
     return new Response(
       JSON.stringify({
