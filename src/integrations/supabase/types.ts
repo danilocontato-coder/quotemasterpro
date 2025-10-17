@@ -1753,6 +1753,36 @@ export type Database = {
           },
         ]
       }
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          metadata: Json | null
+          reason: string
+          reference_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+          reference_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+          reference_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       decision_matrix_templates: {
         Row: {
           client_id: string | null
@@ -4927,6 +4957,45 @@ export type Database = {
           },
         ]
       }
+      user_credits: {
+        Row: {
+          available_credits: number
+          client_id: string
+          created_at: string
+          current_level: string
+          id: string
+          level_multiplier: number
+          total_earned: number
+          total_spent: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available_credits?: number
+          client_id: string
+          created_at?: string
+          current_level?: string
+          id?: string
+          level_multiplier?: number
+          total_earned?: number
+          total_spent?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available_credits?: number
+          client_id?: string
+          created_at?: string
+          current_level?: string
+          id?: string
+          level_multiplier?: number
+          total_earned?: number
+          total_spent?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_group_memberships: {
         Row: {
           created_at: string
@@ -5332,6 +5401,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_adjust_credits: {
+        Args: { p_amount: number; p_reason: string; p_user_id: string }
+        Returns: undefined
+      }
+      admin_reset_gamification: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       approve_offline_payment: {
         Args: { p_approved: boolean; p_notes?: string; p_payment_id: string }
         Returns: Json
@@ -5339,6 +5416,13 @@ export type Database = {
       associate_supplier_to_client: {
         Args: { p_client_id?: string; p_supplier_id: string }
         Returns: string
+      }
+      calculate_user_level: {
+        Args: { total_earned_credits: number }
+        Returns: {
+          level_multiplier: number
+          level_name: string
+        }[]
       }
       check_approval_required: {
         Args: { p_amount: number; p_client_id: string; p_quote_id: string }

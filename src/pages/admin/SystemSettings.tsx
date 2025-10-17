@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AIQuoteFeatureToggle } from '@/components/admin/AIQuoteFeatureToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { PasswordChange } from '@/components/settings/PasswordChange';
+import { GamificationPanel } from '@/components/admin/gamification/GamificationPanel';
 
 export const SystemSettings = () => {
   const { toast } = useToast();
@@ -119,9 +120,10 @@ export const SystemSettings = () => {
 
       <div className="p-6">
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="ai">IA</TabsTrigger>
+            <TabsTrigger value="gamification">🎮 Gamificação</TabsTrigger>
             <TabsTrigger value="security">Segurança</TabsTrigger>
             <TabsTrigger value="integrations">Integrações</TabsTrigger>
             <TabsTrigger value="notifications">Notificações</TabsTrigger>
@@ -191,6 +193,11 @@ export const SystemSettings = () => {
           {/* Configurações de IA */}
           <TabsContent value="ai" className="space-y-6">
             <AIQuoteFeatureToggle />
+          </TabsContent>
+
+          {/* Configurações de Gamificação */}
+          <TabsContent value="gamification" className="space-y-6">
+            <GamificationPanel />
           </TabsContent>
 
           {/* Configurações de Segurança */}
