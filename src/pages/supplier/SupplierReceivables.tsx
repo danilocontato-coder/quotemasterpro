@@ -6,13 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, TrendingUp, Clock, CreditCard, Search, Filter } from 'lucide-react';
-import { useSupplierReceivables } from '@/hooks/useSupplierReceivables';
+import { DollarSign, TrendingUp, Clock, CreditCard, Search, Filter, Eye, CheckCircle } from 'lucide-react';
+import { useSupplierReceivables, SupplierReceivable } from '@/hooks/useSupplierReceivables';
+import { OfflinePaymentSupplierView } from '@/components/payments/OfflinePaymentSupplierView';
 
 export default function SupplierReceivables() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedPayment, setSelectedPayment] = useState<SupplierReceivable | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const itemsPerPage = 10;
 
   const { 
@@ -20,7 +23,8 @@ export default function SupplierReceivables() {
     metrics, 
     isLoading, 
     getStatusText, 
-    getStatusColor 
+    getStatusColor,
+    refreshReceivables
   } = useSupplierReceivables();
 
   const formatCurrency = (value: number) => {
@@ -187,45 +191,74 @@ export default function SupplierReceivables() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cotação</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Método</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentReceivables.map((receivable) => (
-                      <TableRow key={receivable.id}>
-                        <TableCell className="font-mono">
-                          {receivable.quote_local_code || `#${receivable.quote_id.substring(0, 8)}`}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{receivable.client_name}</div>
-                            <div className="text-sm text-muted-foreground">{receivable.quote_title}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-bold">
-                          {formatCurrency(receivable.amount)}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(receivable.status)}</TableCell>
-                        <TableCell>
-                          {new Date(receivable.created_at).toLocaleDateString('pt-BR')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-muted-foreground" />
-                            {receivable.payment_method || 'Online'}
-                          </div>
-                        </TableCell>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cotação</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Ações</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
+                    </TableHeader>
+                    <TableBody>
+                      {currentReceivables.map((receivable) => (
+                        <TableRow key={receivable.id}>
+                          <TableCell className="font-mono">
+                            {receivable.quote_local_code || `#${receivable.quote_id.substring(0, 8)}`}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{receivable.client_name}</div>
+                              <div className="text-sm text-muted-foreground">{receivable.quote_title}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-bold">
+                            {formatCurrency(receivable.amount)}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(receivable.status)}</TableCell>
+                          <TableCell>
+                            {new Date(receivable.created_at).toLocaleDateString('pt-BR')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="h-4 w-4 text-muted-foreground" />
+                              {receivable.payment_method || 'Online'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {receivable.status === 'pending' && receivable.payment_method === 'manual_confirmation' && (
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedPayment(receivable);
+                                    setIsDialogOpen(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Ver
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedPayment(receivable);
+                                    setIsDialogOpen(true);
+                                  }}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Confirmar
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
                 </Table>
 
                 {filteredReceivables.length === 0 && !isLoading && (
@@ -300,6 +333,29 @@ export default function SupplierReceivables() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog de confirmação de pagamento offline */}
+      {selectedPayment && (
+        <OfflinePaymentSupplierView
+          payment={{
+            id: selectedPayment.id,
+            quote_id: selectedPayment.quote_id,
+            amount: selectedPayment.amount,
+            status: selectedPayment.status,
+            payment_method: selectedPayment.payment_method || '',
+            client_name: selectedPayment.client_name || '',
+            quote_title: selectedPayment.quote_title || '',
+            created_at: selectedPayment.created_at
+          }}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          onConfirm={() => {
+            refreshReceivables();
+            setIsDialogOpen(false);
+            setSelectedPayment(null);
+          }}
+        />
+      )}
     </div>
   );
 }
