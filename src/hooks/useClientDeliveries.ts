@@ -35,7 +35,7 @@ export function useClientDeliveries() {
 
     setIsLoading(true);
     try {
-      // Query principal sem delivery_confirmations
+      // Query principal sem delivery_confirmations e sem join direto com suppliers
       const { data, error } = await supabase
         .from('deliveries')
         .select(`
@@ -50,9 +50,8 @@ export function useClientDeliveries() {
           tracking_code,
           notes,
           created_at,
-          quotes!inner(title, local_code),
-          payments!inner(id, amount, status),
-          suppliers!inner(name)
+          quotes!inner(title, local_code, supplier_id, supplier_name),
+          payments!inner(id, amount, status)
         `)
         .eq('client_id', user.clientId)
         .order('created_at', { ascending: false });
@@ -86,8 +85,8 @@ export function useClientDeliveries() {
         payment_id: delivery.payment_id,
         payment_amount: delivery.payments?.amount || 0,
         payment_status: delivery.payments?.status || '',
-        supplier_id: delivery.supplier_id,
-        supplier_name: delivery.suppliers?.name || '',
+        supplier_id: delivery.quotes?.supplier_id || delivery.supplier_id,
+        supplier_name: delivery.quotes?.supplier_name || '',
         status: delivery.status,
         scheduled_date: delivery.scheduled_date,
         actual_delivery_date: delivery.actual_delivery_date,
