@@ -15,7 +15,8 @@ import {
   Brain,
   TreePine,
   HelpCircle,
-  FileSignature
+  FileSignature,
+  Truck
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -61,6 +62,7 @@ const approvalItems: NavItem[] = [
 // Módulos AVANÇADOS - financeiro
 const financialItems: NavItem[] = [
   { title: "Pagamentos", url: "/payments", icon: CreditCard, requiredModule: 'payments' },
+  { title: "Entregas", url: "/client/deliveries", icon: Truck, requiredModule: 'delivery_management' },
   { title: "Centros de Custo", url: "/cost-centers", icon: TreePine, requiredModule: 'cost_centers' },
 ];
 
