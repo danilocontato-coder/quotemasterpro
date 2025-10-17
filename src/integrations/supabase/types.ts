@@ -4877,6 +4877,56 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_description: string | null
+          achievement_icon: string
+          achievement_name: string
+          achievement_type: string
+          client_id: string | null
+          created_at: string | null
+          earned_at: string | null
+          id: string
+          progress: number | null
+          progress_max: number | null
+          user_id: string
+        }
+        Insert: {
+          achievement_description?: string | null
+          achievement_icon: string
+          achievement_name: string
+          achievement_type: string
+          client_id?: string | null
+          created_at?: string | null
+          earned_at?: string | null
+          id?: string
+          progress?: number | null
+          progress_max?: number | null
+          user_id: string
+        }
+        Update: {
+          achievement_description?: string | null
+          achievement_icon?: string
+          achievement_name?: string
+          achievement_type?: string
+          client_id?: string | null
+          created_at?: string | null
+          earned_at?: string | null
+          id?: string
+          progress?: number | null
+          progress_max?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_group_memberships: {
         Row: {
           created_at: string

@@ -129,10 +129,45 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
 
       if (error) throw error;
 
-      toast({
-        title: "Sucesso!",
-        description: "Avaliação enviada com sucesso."
-      });
+      // Verificar se desbloqueou nova conquista
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: latestAchievements } = await supabase
+          .from('user_achievements')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('earned_at', new Date(Date.now() - 5000).toISOString()) // Últimos 5 segundos
+          .order('earned_at', { ascending: false })
+          .limit(1);
+
+        if (latestAchievements && latestAchievements.length > 0) {
+          const achievement = latestAchievements[0];
+          
+          // Toast especial de conquista
+          toast({
+            title: "🎉 Nova Conquista Desbloqueada!",
+            description: (
+              <div className="flex items-center gap-3 mt-2">
+                <div className="text-3xl">{achievement.achievement_icon}</div>
+                <div>
+                  <p className="font-semibold text-foreground">{achievement.achievement_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {achievement.achievement_description}
+                  </p>
+                </div>
+              </div>
+            ),
+            duration: 6000,
+            className: "border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50",
+          });
+        } else {
+          // Toast normal de sucesso
+          toast({
+            title: "Sucesso!",
+            description: "Avaliação enviada com sucesso."
+          });
+        }
+      }
 
       onRatingSubmitted?.();
       onClose();

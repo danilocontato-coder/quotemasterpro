@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Star, Clock, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
+import { Star, Clock, CheckCircle, AlertCircle, TrendingUp, Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,8 @@ import SupplierRatingModal from '@/components/ratings/SupplierRatingModal';
 import { RatingPrompts } from '@/components/ratings/RatingPrompts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAchievements } from '@/hooks/useAchievements';
+import { AchievementCard } from '@/components/achievements/AchievementCard';
 
 interface PendingRating {
   id: string;
@@ -48,6 +50,7 @@ export default function ClientRatings() {
     wouldRecommendRate: 0,
   });
   const { toast } = useToast();
+  const { achievements, isLoading: achievementsLoading } = useAchievements();
 
   useEffect(() => {
     fetchData();
@@ -244,6 +247,43 @@ export default function ClientRatings() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Seção de Conquistas */}
+      {!isLoading && !achievementsLoading && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              Suas Conquistas
+            </CardTitle>
+            <CardDescription>
+              Desbloqueie badges avaliando fornecedores e ajude a comunidade
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {achievements.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {achievements.map((achievement) => (
+                  <AchievementCard
+                    key={achievement.id}
+                    icon={achievement.achievement_icon}
+                    name={achievement.achievement_name}
+                    description={achievement.achievement_description}
+                    progress={achievement.progress}
+                    progressMax={achievement.progress_max}
+                    earned={achievement.earned_at !== null}
+                    earnedAt={achievement.earned_at}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Comece a avaliar fornecedores para desbloquear conquistas! 🎯
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Tabs */}
