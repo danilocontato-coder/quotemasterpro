@@ -13,6 +13,7 @@ interface SupplierRatingModalProps {
   quoteId: string;
   supplierId: string;
   supplierName: string;
+  deliveryId?: string;
   onRatingSubmitted?: () => void;
 }
 
@@ -30,6 +31,7 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
   quoteId,
   supplierId,
   supplierName,
+  deliveryId,
   onRatingSubmitted
 }) => {
   const [ratings, setRatings] = useState<RatingCriteria>({
@@ -115,6 +117,7 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
           supplier_id: supplierId,
           client_id: profile.client_id,
           rater_id: (await supabase.auth.getUser()).data.user?.id,
+          delivery_id: deliveryId || null,
           rating: ratings.overall,
           quality_rating: ratings.quality || null,
           delivery_rating: ratings.delivery || null,

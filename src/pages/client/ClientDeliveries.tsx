@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DeliveryMetrics } from '@/components/client/DeliveryMetrics';
 import { DeliveryCard } from '@/components/client/DeliveryCard';
 import { DeliveryConfirmationModal } from '@/components/supplier/DeliveryConfirmationModal';
-import { useClientDeliveries } from '@/hooks/useClientDeliveries';
+import { useClientDeliveries, ClientDelivery } from '@/hooks/useClientDeliveries';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ClientDeliveries() {
@@ -13,16 +13,19 @@ export default function ClientDeliveries() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
+  const [selectedDelivery, setSelectedDelivery] = useState<ClientDelivery | null>(null);
 
   const handleConfirm = (deliveryId: string) => {
-    setSelectedDeliveryId(deliveryId);
-    setShowConfirmModal(true);
+    const delivery = deliveries.find(d => d.id === deliveryId);
+    if (delivery) {
+      setSelectedDelivery(delivery);
+      setShowConfirmModal(true);
+    }
   };
 
   const handleConfirmed = () => {
     refetch();
-    setSelectedDeliveryId(null);
+    setSelectedDelivery(null);
   };
 
   const filteredDeliveries = deliveries.filter(delivery => {

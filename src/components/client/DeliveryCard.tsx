@@ -2,13 +2,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ClientDelivery } from '@/hooks/useClientDeliveries';
-import { Package, MapPin, Calendar, DollarSign, Building2, Truck, Key, CheckCircle2, Clock } from 'lucide-react';
+import { Package, MapPin, Calendar, DollarSign, Building2, Truck, Key, CheckCircle2, Clock, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { UberDeliveryTracking } from '@/components/client/delivery/UberDeliveryTracking';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
+import SupplierRatingModal from '@/components/ratings/SupplierRatingModal';
 
 interface DeliveryCardProps {
   delivery: ClientDelivery;
@@ -18,22 +19,36 @@ interface DeliveryCardProps {
 export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
   const navigate = useNavigate();
   const [deliveryMethod, setDeliveryMethod] = useState<string>('own');
+  const [hasRating, setHasRating] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
 
   useEffect(() => {
-    const fetchDeliveryMethod = async () => {
-      const { data } = await supabase
+    const fetchDeliveryData = async () => {
+      // Buscar método de entrega
+      const { data: deliveryData } = await supabase
         .from('deliveries')
         .select('delivery_method')
         .eq('id', delivery.id)
         .single();
       
-      if (data?.delivery_method) {
-        setDeliveryMethod(data.delivery_method);
+      if (deliveryData?.delivery_method) {
+        setDeliveryMethod(deliveryData.delivery_method);
+      }
+
+      // Verificar se já tem avaliação
+      if (delivery.status === 'delivered') {
+        const { data: ratingData } = await supabase
+          .from('supplier_ratings')
+          .select('id')
+          .eq('delivery_id', delivery.id)
+          .maybeSingle();
+        
+        setHasRating(!!ratingData);
       }
     };
 
-    fetchDeliveryMethod();
-  }, [delivery.id]);
+    fetchDeliveryData();
+  }, [delivery.id, delivery.status]);
 
   const getStatusConfig = () => {
     switch (delivery.status) {
@@ -187,7 +202,7 @@ export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
           <div className="border-t" />
 
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {delivery.can_confirm && (
               <Button 
                 onClick={() => onConfirm(delivery.id)}
@@ -197,10 +212,21 @@ export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
                 Confirmar Recebimento
               </Button>
             )}
+            
+            {delivery.status === 'delivered' && !hasRating && (
+              <Button 
+                onClick={() => setShowRatingModal(true)}
+                className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Avaliar Fornecedor
+              </Button>
+            )}
+            
             <Button 
               variant="outline"
               onClick={() => navigate(`/client/payments#${delivery.payment_id}`)}
-              className={delivery.can_confirm ? '' : 'flex-1'}
+              className={delivery.can_confirm || (delivery.status === 'delivered' && !hasRating) ? '' : 'flex-1'}
             >
               <DollarSign className="h-4 w-4 mr-2" />
               Ver Pagamento
@@ -208,6 +234,22 @@ export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
           </div>
         </div>
       </CardContent>
+      
+      {/* Modal de Avaliação */}
+      {showRatingModal && (
+        <SupplierRatingModal
+          open={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          supplierId={delivery.supplier_id}
+          supplierName={delivery.supplier_name}
+          quoteId={delivery.quote_id}
+          deliveryId={delivery.id}
+          onRatingSubmitted={() => {
+            setShowRatingModal(false);
+            setHasRating(true);
+          }}
+        />
+      )}
     </Card>
   );
 }

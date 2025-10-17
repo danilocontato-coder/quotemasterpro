@@ -9,6 +9,7 @@ export interface SupplierRating {
   supplier_name?: string;
   quote_id?: string;
   payment_id?: string;
+  delivery_id?: string;
   client_id: string;
   user_id: string;
   rating: number; // 1-5 stars

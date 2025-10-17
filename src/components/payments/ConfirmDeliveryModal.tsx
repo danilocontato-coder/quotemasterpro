@@ -4,23 +4,44 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { CheckCircle, AlertTriangle } from "lucide-react";
+import SupplierRatingModal from "@/components/ratings/SupplierRatingModal";
 
 interface ConfirmDeliveryModalProps {
   payment: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (notes?: string) => void;
+  deliveryId?: string;
+  supplierId?: string;
+  supplierName?: string;
+  quoteId?: string;
 }
 
-export function ConfirmDeliveryModal({ payment, open, onOpenChange, onConfirm }: ConfirmDeliveryModalProps) {
+export function ConfirmDeliveryModal({ 
+  payment, 
+  open, 
+  onOpenChange, 
+  onConfirm,
+  deliveryId,
+  supplierId,
+  supplierName,
+  quoteId
+}: ConfirmDeliveryModalProps) {
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
 
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      onConfirm(notes.trim() || undefined);
+      await onConfirm(notes.trim() || undefined);
       setNotes("");
+      onOpenChange(false);
+      
+      // Abrir modal de avaliação após confirmação
+      if (supplierId && quoteId) {
+        setTimeout(() => setShowRatingModal(true), 300);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -36,7 +57,8 @@ export function ConfirmDeliveryModal({ payment, open, onOpenChange, onConfirm }:
   if (!payment) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -113,5 +135,19 @@ export function ConfirmDeliveryModal({ payment, open, onOpenChange, onConfirm }:
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Modal de Avaliação */}
+    {showRatingModal && supplierId && quoteId && (
+      <SupplierRatingModal
+        open={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        supplierId={supplierId}
+        supplierName={supplierName || 'Fornecedor'}
+        quoteId={quoteId}
+        deliveryId={deliveryId}
+        onRatingSubmitted={() => setShowRatingModal(false)}
+      />
+    )}
+    </>
   );
 }

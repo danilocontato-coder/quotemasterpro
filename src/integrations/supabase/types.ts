@@ -4413,6 +4413,7 @@ export type Database = {
           comments: string | null
           communication_rating: number | null
           created_at: string
+          delivery_id: string | null
           delivery_rating: number | null
           id: string
           payment_id: string | null
@@ -4431,6 +4432,7 @@ export type Database = {
           comments?: string | null
           communication_rating?: number | null
           created_at?: string
+          delivery_id?: string | null
           delivery_rating?: number | null
           id?: string
           payment_id?: string | null
@@ -4449,6 +4451,7 @@ export type Database = {
           comments?: string | null
           communication_rating?: number | null
           created_at?: string
+          delivery_id?: string | null
           delivery_rating?: number | null
           id?: string
           payment_id?: string | null
@@ -4462,7 +4465,15 @@ export type Database = {
           user_id?: string | null
           would_recommend?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "supplier_ratings_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supplier_transfers: {
         Row: {
