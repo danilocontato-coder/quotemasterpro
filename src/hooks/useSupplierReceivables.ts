@@ -41,6 +41,7 @@ export const useSupplierReceivables = () => {
       setIsLoading(true);
 
       // Buscar pagamentos onde o fornecedor é o beneficiário
+      // Usando LEFT JOIN (implícito) para evitar que RLS de quotes oculte pagamentos
       const { data: paymentsData, error } = await supabase
         .from('payments')
         .select(`
@@ -52,7 +53,7 @@ export const useSupplierReceivables = () => {
           payment_method,
           client_id,
           offline_attachments,
-          quotes!inner(title, client_name, local_code)
+          quotes(title, client_name, local_code)
         `)
         .eq('supplier_id', user.supplierId)
         .order('created_at', { ascending: false });

@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod";
+
+const notesSchema = z.string().max(500, "Observações devem ter no máximo 500 caracteres");
 
 interface OfflinePaymentSupplierViewProps {
   payment: any;
@@ -83,6 +86,7 @@ export function OfflinePaymentSupplierView({
   };
 
   const handleConfirm = async (approve: boolean) => {
+    // Validação de notas para rejeição
     if (!approve && !confirmationNotes.trim()) {
       toast({
         title: "Justificativa necessária",
@@ -92,11 +96,38 @@ export function OfflinePaymentSupplierView({
       return;
     }
 
+    // Validação de tamanho das notas
+    const notesValidation = notesSchema.safeParse(confirmationNotes);
+    if (!notesValidation.success) {
+      toast({
+        title: "Observações muito longas",
+        description: notesValidation.error.issues[0]?.message || "Observações inválidas",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     setAction(approve ? 'approve' : 'reject');
 
     try {
-      // Call approve_offline_payment function
+      // Pré-checagem: verificar acesso ao módulo payments
+      const { data: hasAccess, error: accessError } = await supabase.rpc('user_has_module_access', {
+        _module_key: 'payments'
+      });
+
+      if (accessError || !hasAccess) {
+        toast({
+          title: "Acesso negado",
+          description: "Você não tem acesso ao módulo de pagamentos. Contate o administrador do seu plano.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        setAction(null);
+        return;
+      }
+
+      // Chamar RPC para aprovar/rejeitar
       const { data, error } = await supabase.rpc('approve_offline_payment', {
         p_payment_id: payment.id,
         p_approved: approve,
@@ -106,10 +137,18 @@ export function OfflinePaymentSupplierView({
       if (error) {
         console.error('Erro RPC:', error);
         
-        // Extrair mensagem específica do erro
-        const errorMessage = String(error.message || '') || 
-          (error.code === '42501' ? 'Permissão negada - verifique suas credenciais' : 
-          String(error.hint || '') || 'Erro desconhecido');
+        // Mensagens de erro mais claras
+        let errorMessage = "Erro desconhecido ao processar confirmação.";
+        
+        if (error.code === '42501') {
+          errorMessage = "Permissão negada. Verifique se você tem permissão para confirmar este pagamento.";
+        } else if (error.code === '400' || error.code === 'PGRST116') {
+          errorMessage = "Dados inválidos. Verifique as informações enviadas.";
+        } else if (error.message) {
+          errorMessage = String(error.message);
+        } else if (error.hint) {
+          errorMessage = String(error.hint);
+        }
         
         throw new Error(errorMessage);
       }
@@ -117,15 +156,15 @@ export function OfflinePaymentSupplierView({
       // Verificar resposta da função
       if (data && typeof data === 'object' && 'success' in data) {
         if (!data.success) {
-          throw new Error(String(data.message || 'Operação falhou'));
+          throw new Error(String(data.message || 'Operação falhou sem detalhes'));
         }
       }
 
       toast({
         title: approve ? "Pagamento confirmado" : "Pagamento rejeitado",
         description: approve 
-          ? "O pagamento foi confirmado e os fundos serão liberados em escrow."
-          : "O pagamento foi rejeitado e o cliente será notificado.",
+          ? "O pagamento foi confirmado e os fundos foram liberados em garantia (escrow)."
+          : "O pagamento foi rejeitado. O status retornou para pendente e o cliente será notificado.",
         variant: approve ? "default" : "destructive"
       });
 
@@ -137,7 +176,7 @@ export function OfflinePaymentSupplierView({
       console.error('Error confirming payment:', error);
       toast({
         title: "Erro ao processar",
-        description: error.message || "Não foi possível processar a confirmação.",
+        description: error.message || "Não foi possível processar a confirmação. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -280,7 +319,7 @@ export function OfflinePaymentSupplierView({
           <Button
             variant="destructive"
             onClick={() => handleConfirm(false)}
-            disabled={isLoading || action === 'approve'}
+            disabled={isLoading}
           >
             {isLoading && action === 'reject' ? (
               "Rejeitando..."
@@ -293,7 +332,7 @@ export function OfflinePaymentSupplierView({
           </Button>
           <Button
             onClick={() => handleConfirm(true)}
-            disabled={isLoading || action === 'reject'}
+            disabled={isLoading}
             className="bg-green-600 hover:bg-green-700"
           >
             {isLoading && action === 'approve' ? (
