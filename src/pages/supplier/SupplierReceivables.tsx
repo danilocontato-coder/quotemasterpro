@@ -204,60 +204,70 @@ export default function SupplierReceivables() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {currentReceivables.map((receivable) => (
-                        <TableRow key={receivable.id}>
-                          <TableCell className="font-mono">
-                            {receivable.quote_local_code || `#${receivable.quote_id.substring(0, 8)}`}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{receivable.client_name}</div>
-                              <div className="text-sm text-muted-foreground">{receivable.quote_title}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-bold">
-                            {formatCurrency(receivable.amount)}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(receivable.status)}</TableCell>
-                          <TableCell>
-                            {new Date(receivable.created_at).toLocaleDateString('pt-BR')}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <CreditCard className="h-4 w-4 text-muted-foreground" />
-                              {receivable.payment_method || 'Online'}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {receivable.status === 'pending' && receivable.payment_method === 'manual_confirmation' && (
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedPayment(receivable);
-                                    setIsDialogOpen(true);
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Ver
-                                </Button>
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedPayment(receivable);
-                                    setIsDialogOpen(true);
-                                  }}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  Confirmar
-                                </Button>
+                      {currentReceivables.map((receivable) => {
+                        // Debug log
+                        console.log('Receivable:', {
+                          id: receivable.id,
+                          status: receivable.status,
+                          payment_method: receivable.payment_method,
+                          shouldShowButtons: receivable.status === 'manual_confirmation'
+                        });
+
+                        return (
+                          <TableRow key={receivable.id}>
+                            <TableCell className="font-mono">
+                              {receivable.quote_local_code || `#${receivable.quote_id.substring(0, 8)}`}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{receivable.client_name}</div>
+                                <div className="text-sm text-muted-foreground">{receivable.quote_title}</div>
                               </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell className="font-bold">
+                              {formatCurrency(receivable.amount)}
+                            </TableCell>
+                            <TableCell>{getStatusBadge(receivable.status)}</TableCell>
+                            <TableCell>
+                              {new Date(receivable.created_at).toLocaleDateString('pt-BR')}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                                {receivable.payment_method || 'Online'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {receivable.status === 'manual_confirmation' && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedPayment(receivable);
+                                      setIsDialogOpen(true);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Ver
+                                  </Button>
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedPayment(receivable);
+                                      setIsDialogOpen(true);
+                                    }}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Confirmar
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                 </Table>
 

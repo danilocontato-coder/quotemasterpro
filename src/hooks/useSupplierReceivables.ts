@@ -7,7 +7,7 @@ export interface SupplierReceivable {
   quote_id: string;
   quote_local_code?: string;
   amount: number;
-  status: 'pending' | 'in_escrow' | 'completed' | 'failed';
+  status: 'pending' | 'in_escrow' | 'completed' | 'failed' | 'manual_confirmation';
   created_at: string;
   completed_at?: string;
   client_id: string;
@@ -145,6 +145,7 @@ export const useSupplierReceivables = () => {
       case 'in_escrow': return 'Em Garantia';
       case 'completed': return 'Recebido';
       case 'failed': return 'Falhou';
+      case 'manual_confirmation': return 'Aguardando Confirmação';
       default: return status;
     }
   };
@@ -155,6 +156,7 @@ export const useSupplierReceivables = () => {
       case 'in_escrow': return 'bg-blue-500';
       case 'completed': return 'bg-green-500';
       case 'failed': return 'bg-red-500';
+      case 'manual_confirmation': return 'bg-orange-500';
       default: return 'bg-gray-500';
     }
   };
