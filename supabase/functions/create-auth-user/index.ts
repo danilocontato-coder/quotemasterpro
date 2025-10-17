@@ -200,7 +200,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
           const { error: usersUpdateErr } = await supabaseAdmin
             .from('users')
             .update({ force_password_change: temporaryPassword ?? true })
-            .eq('auth_user_id', existingUser.id);
+            .eq('auth_user_id', profile.id);
           
           if (usersUpdateErr) {
             console.error('Erro ao atualizar force_password_change:', usersUpdateErr);
@@ -209,12 +209,12 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
           }
         }
 
-        console.log('Password reset successful for user:', existingUser.id);
+        console.log('Password reset successful for user:', profile.id);
         return new Response(
           JSON.stringify({ 
             success: true, 
-            auth_user_id: existingUser.id,
-            email: existingUser.email,
+            auth_user_id: profile.id,
+            email: email,
             password_reset: true
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
