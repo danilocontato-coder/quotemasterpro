@@ -104,6 +104,32 @@ const apiConfigurations: Record<string, ApiKey[]> = {
       required: false,
       configured: false
     }
+  ],
+  uber: [
+    {
+      name: 'UBER_CUSTOMER_ID',
+      description: 'ID do cliente Uber Direct (encontrado no dashboard)',
+      required: true,
+      configured: false
+    },
+    {
+      name: 'UBER_CLIENT_ID',
+      description: 'Client ID da API Uber Direct',
+      required: true,
+      configured: false
+    },
+    {
+      name: 'UBER_CLIENT_SECRET',
+      description: 'Client Secret da API Uber Direct',
+      required: true,
+      configured: false
+    },
+    {
+      name: 'UBER_API_URL',
+      description: 'URL da API Uber (sandbox: https://sandbox-api.uber.com | produção: https://api.uber.com)',
+      required: true,
+      configured: false
+    }
   ]
 };
 
@@ -162,6 +188,8 @@ const getServiceIcon = (service: string) => {
       return '🤖';
     case 'perplexity':
       return '🧠';
+    case 'uber':
+      return '🚕';
     default:
       return '🔧';
   }
@@ -179,6 +207,8 @@ const getServiceName = (service: string) => {
       return 'OpenAI (Inteligência Artificial)';
     case 'perplexity':
       return 'Perplexity (Análise de Mercado)';
+    case 'uber':
+      return 'Uber Direct (Entregas)';
     default:
       return service;
   }
@@ -266,10 +296,34 @@ export const IntegrationsAndApisManagement = () => {
         perplexityConfigured = typeof candidate === 'string' && candidate.trim().length > 0;
       }
 
+      // Fetch Uber credentials
+      const { data: uberData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'uber_credentials')
+        .single();
+
+      let uberCustomerIdConfigured = false;
+      let uberClientIdConfigured = false;
+      let uberClientSecretConfigured = false;
+      let uberApiUrlConfigured = false;
+      
+      if (uberData?.setting_value && typeof uberData.setting_value === 'object') {
+        const uberVal = uberData.setting_value as any;
+        uberCustomerIdConfigured = !!uberVal.customer_id?.trim();
+        uberClientIdConfigured = !!uberVal.client_id?.trim();
+        uberClientSecretConfigured = !!uberVal.client_secret?.trim();
+        uberApiUrlConfigured = !!uberVal.api_url?.trim();
+      }
+
       setConfiguredKeys(prev => ({ 
         ...prev, 
         OPENAI_API_KEY: openaiConfigured,
-        PERPLEXITY_API_KEY: perplexityConfigured
+        PERPLEXITY_API_KEY: perplexityConfigured,
+        UBER_CUSTOMER_ID: uberCustomerIdConfigured,
+        UBER_CLIENT_ID: uberClientIdConfigured,
+        UBER_CLIENT_SECRET: uberClientSecretConfigured,
+        UBER_API_URL: uberApiUrlConfigured
       }));
     } catch (e) {
       console.error('[IntegrationsAndApis] fetchConfigured error', e);
@@ -317,6 +371,44 @@ export const IntegrationsAndApisManagement = () => {
           await supabase
             .from('system_settings')
             .insert({ setting_key: 'perplexity_api_key', setting_value: { value: raw }, description: 'Chave da API Perplexity para análise de mercado' });
+        }
+      } else if (keyName.startsWith('UBER_')) {
+        // Buscar credenciais Uber existentes
+        const { data: existing } = await supabase
+          .from('system_settings')
+          .select('*')
+          .eq('setting_key', 'uber_credentials')
+          .single();
+
+        let currentValue: any = existing?.setting_value || {};
+        if (typeof currentValue !== 'object' || Array.isArray(currentValue)) {
+          currentValue = {};
+        }
+
+        // Atualizar o campo específico
+        if (keyName === 'UBER_CUSTOMER_ID') {
+          currentValue.customer_id = raw;
+        } else if (keyName === 'UBER_CLIENT_ID') {
+          currentValue.client_id = raw;
+        } else if (keyName === 'UBER_CLIENT_SECRET') {
+          currentValue.client_secret = raw;
+        } else if (keyName === 'UBER_API_URL') {
+          currentValue.api_url = raw;
+        }
+
+        if (existing?.id) {
+          await supabase
+            .from('system_settings')
+            .update({ setting_value: currentValue })
+            .eq('id', existing.id);
+        } else {
+          await supabase
+            .from('system_settings')
+            .insert({ 
+              setting_key: 'uber_credentials', 
+              setting_value: currentValue, 
+              description: 'Credenciais da API Uber Direct para entregas' 
+            });
         }
       }
 
@@ -426,7 +518,7 @@ export const IntegrationsAndApisManagement = () => {
           {/* Tab Chaves de API */}
           <TabsContent value="api-keys" className="space-y-6">
             <Tabs defaultValue="stripe" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 {Object.keys(apiConfigurations).map((service) => (
                   <TabsTrigger key={service} value={service} className="flex items-center gap-2">
                     <span>{getServiceIcon(service)}</span>
