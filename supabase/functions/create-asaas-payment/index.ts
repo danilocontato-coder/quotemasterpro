@@ -189,12 +189,19 @@ serve(async (req) => {
 
     const asaasPayment = await asaasResponse.json()
 
+    // Determinar URL de pagamento com fallback inteligente
+    const invoiceUrl = asaasPayment.invoiceUrl 
+      || asaasPayment.bankSlipUrl 
+      || `${baseUrl.replace('/api/v3', '')}/i/${asaasPayment.id}`
+    
+    console.log(`📋 Invoice URL gerada: ${invoiceUrl}`)
+
     // Atualizar pagamento com dados do Asaas
     await supabase
       .from('payments')
       .update({
         asaas_payment_id: asaasPayment.id,
-        asaas_invoice_url: asaasPayment.invoiceUrl,
+        asaas_invoice_url: invoiceUrl,
         status: 'processing',
         escrow_release_date: new Date(Date.now() + autoReleaseDays * 24 * 60 * 60 * 1000).toISOString(),
         updated_at: new Date().toISOString(),
@@ -228,7 +235,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         payment_id: asaasPayment.id,
-        invoice_url: asaasPayment.invoiceUrl,
+        invoice_url: invoiceUrl,
         due_date: dueDate.toISOString(),
         message: 'Cobrança criada com sucesso',
       }),
