@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,7 +81,7 @@ export const PixQRCodeModal = ({
 
         const { error: uploadError } = await supabase.storage
           .from('attachments')
-          .upload(filePath, file);
+          .upload(filePath, file, { upsert: true });
 
         if (uploadError) throw uploadError;
 
@@ -147,6 +148,9 @@ export const PixQRCodeModal = ({
           <DialogTitle className="flex items-center gap-2">
             💰 Pagar via PIX - {supplierName}
           </DialogTitle>
+          <DialogDescription>
+            Escaneie o QR Code ou copie a chave PIX. Após pagar, anexe o comprovante para registrar.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
