@@ -1774,6 +1774,7 @@ export type Database = {
           delivery_method: string | null
           id: string
           notes: string | null
+          payment_id: string | null
           quote_id: string
           scheduled_date: string
           status: string
@@ -1798,6 +1799,7 @@ export type Database = {
           delivery_method?: string | null
           id?: string
           notes?: string | null
+          payment_id?: string | null
           quote_id: string
           scheduled_date: string
           status?: string
@@ -1822,6 +1824,7 @@ export type Database = {
           delivery_method?: string | null
           id?: string
           notes?: string | null
+          payment_id?: string | null
           quote_id?: string
           scheduled_date?: string
           status?: string
@@ -1844,6 +1847,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
           {
