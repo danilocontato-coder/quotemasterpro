@@ -150,3 +150,9 @@ verify_jwt = true
 
 [functions.generate-restock-suggestions]
 verify_jwt = true
+
+[functions.get-supplier-balance]
+verify_jwt = true
+
+[functions.request-supplier-transfer]
+verify_jwt = true

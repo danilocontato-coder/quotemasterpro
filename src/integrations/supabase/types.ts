@@ -4422,6 +4422,65 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_transfers: {
+        Row: {
+          amount: number
+          asaas_transfer_id: string | null
+          bank_account: Json
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          notes: string | null
+          processed_at: string | null
+          requested_at: string
+          status: string
+          supplier_id: string
+          transfer_method: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          asaas_transfer_id?: string | null
+          bank_account: Json
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          requested_at?: string
+          status?: string
+          supplier_id: string
+          transfer_method: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          asaas_transfer_id?: string | null
+          bank_account?: Json
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          requested_at?: string
+          status?: string
+          supplier_id?: string
+          transfer_method?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_transfers_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: Json | null

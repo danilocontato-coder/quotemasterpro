@@ -6,9 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, TrendingUp, Clock, CreditCard, Search, Filter, Eye, CheckCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, CreditCard, Search, Filter, Eye, CheckCircle, Wallet, ArrowDownCircle, RefreshCw } from 'lucide-react';
 import { useSupplierReceivables, SupplierReceivable } from '@/hooks/useSupplierReceivables';
 import { OfflinePaymentSupplierView } from '@/components/payments/OfflinePaymentSupplierView';
+import { useSupplierBalance } from '@/hooks/useSupplierBalance';
+import { useSupplierTransfers } from '@/hooks/useSupplierTransfers';
+import { RequestTransferDialog } from '@/components/supplier/RequestTransferDialog';
 
 export default function SupplierReceivables() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,6 +19,7 @@ export default function SupplierReceivables() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPayment, setSelectedPayment] = useState<SupplierReceivable | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const itemsPerPage = 10;
 
   const { 
@@ -26,6 +30,14 @@ export default function SupplierReceivables() {
     getStatusColor,
     refreshReceivables
   } = useSupplierReceivables();
+
+  const { balance, isLoading: isLoadingBalance, fetchBalance } = useSupplierBalance();
+  const { 
+    transfers, 
+    isLoading: isLoadingTransfers, 
+    getStatusText: getTransferStatusText, 
+    getStatusColor: getTransferStatusColor 
+  } = useSupplierTransfers();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -305,6 +317,79 @@ export default function SupplierReceivables() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="transfers" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Histórico de Transferências ({transfers.length})</span>
+                <Button onClick={() => setIsTransferDialogOpen(true)} size="sm">
+                  <ArrowDownCircle className="h-4 w-4 mr-2" />
+                  Nova Transferência
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingTransfers ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
+                  <p className="text-muted-foreground">Carregando...</p>
+                </div>
+              ) : transfers.length === 0 ? (
+                <div className="text-center py-8">
+                  <ArrowDownCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Nenhuma transferência realizada ainda</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Método</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Banco</TableHead>
+                      <TableHead>Observações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transfers.map((transfer) => (
+                      <TableRow key={transfer.id}>
+                        <TableCell>
+                          {new Date(transfer.requested_at).toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="font-bold">
+                          {formatCurrency(transfer.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{transfer.transfer_method}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`${getTransferStatusColor(transfer.status)} text-white`}>
+                            {getTransferStatusText(transfer.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="font-medium">
+                              {transfer.bank_account?.bank_name || `Banco ${transfer.bank_account?.bank_code}`}
+                            </div>
+                            <div className="text-muted-foreground">
+                              Ag: {transfer.bank_account?.agency} / Conta: {transfer.bank_account?.account}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">
+                          {transfer.error_message || transfer.notes || '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="settings" className="space-y-4">
           <Card>
             <CardHeader>
@@ -359,6 +444,16 @@ export default function SupplierReceivables() {
           }}
         />
       )}
+
+      {/* Dialog de solicitação de transferência */}
+      <RequestTransferDialog
+        open={isTransferDialogOpen}
+        onOpenChange={setIsTransferDialogOpen}
+        availableBalance={balance?.availableForTransfer || 0}
+        onSuccess={() => {
+          fetchBalance();
+        }}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ export interface SupplierData {
   status: string;
   subscription_plan_id?: string;
   planDisplayName?: string;
+  bank_data?: any;
 }
 
 export const useSupplierData = () => {
@@ -50,7 +51,8 @@ export const useSupplierData = () => {
           phone: supplier.phone,
           status: supplier.status,
           subscription_plan_id: supplier.subscription_plan_id,
-          planDisplayName: supplier.subscription_plans?.display_name || 'Basic'
+          planDisplayName: supplier.subscription_plans?.display_name || 'Basic',
+          bank_data: supplier.bank_data
         });
       }
     } catch (error) {
