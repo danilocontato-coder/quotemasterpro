@@ -20,10 +20,16 @@ export interface Payment {
     title: string;
     total: number;
     client_name: string;
+    suppliers?: {
+      id: string;
+      name: string;
+      asaas_wallet_id?: string;
+    };
   };
   suppliers?: {
     id: string;
     name: string;
+    asaas_wallet_id?: string;
   };
   clients?: {
     id: string;
@@ -45,8 +51,8 @@ export const useSupabasePayments = () => {
         .from('payments')
         .select(`
           *,
-          quotes(id, local_code, title, total, client_name, supplier_id, suppliers(id, name)),
-          suppliers(id, name),
+          quotes(id, local_code, title, total, client_name, supplier_id, suppliers(id, name, asaas_wallet_id)),
+          suppliers(id, name, asaas_wallet_id),
           clients(id, name)
         `)
         .order('created_at', { ascending: false });

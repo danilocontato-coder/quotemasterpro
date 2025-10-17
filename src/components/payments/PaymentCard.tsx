@@ -91,7 +91,9 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
       return;
     }
 
-    if (!payment.suppliers?.asaas_wallet_id) {
+    const walletId = payment.suppliers?.asaas_wallet_id || payment.quotes?.suppliers?.asaas_wallet_id;
+    
+    if (!walletId) {
       toast.error(
         'Fornecedor ainda não configurou a carteira Asaas. Entre em contato com o administrador.',
         { duration: 5000 }
@@ -172,7 +174,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                   <p>
                     <span className="font-medium">Fornecedor:</span> {payment.suppliers.name}
                   </p>
-                  {payment.supplier_id && !payment.suppliers?.asaas_wallet_id && (
+                  {payment.supplier_id && !payment.suppliers?.asaas_wallet_id && !payment.quotes?.suppliers?.asaas_wallet_id && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -209,7 +211,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                   <div className="flex-1 min-w-[120px]">
                     <Button 
                       onClick={handleAsaasPayment}
-                      disabled={!payment.suppliers?.asaas_wallet_id || isCreatingPayment}
+                      disabled={(!payment.suppliers?.asaas_wallet_id && !payment.quotes?.suppliers?.asaas_wallet_id) || isCreatingPayment}
                       className="w-full"
                     >
                       <Lock className="h-4 w-4 mr-2" />
@@ -217,7 +219,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                     </Button>
                   </div>
                 </TooltipTrigger>
-                {!payment.suppliers?.asaas_wallet_id && (
+                {(!payment.suppliers?.asaas_wallet_id && !payment.quotes?.suppliers?.asaas_wallet_id) && (
                   <TooltipContent>
                     <p>Fornecedor precisa configurar carteira Asaas</p>
                   </TooltipContent>
