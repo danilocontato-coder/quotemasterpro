@@ -186,20 +186,48 @@ export function useSupabaseNotifications() {
   };
 
   const markAllAsRead = async () => {
+    if (!user?.id) return;
+    
     try {
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('read', false);
 
       if (error) throw error;
 
+      // Update local state
       setNotifications(prev =>
         prev.map(notification => ({ ...notification, read: true }))
       );
+
+      console.log('✅ All notifications marked as read');
     } catch (err) {
-      console.error('Error marking all notifications as read:', err);
+      console.error('❌ Error marking all notifications as read:', err);
+      toast.error('Erro ao marcar notificações como lidas');
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Clear local state
+      setNotifications([]);
+      
+      toast.success('Todas as notificações foram removidas');
+      console.log('✅ All notifications cleared');
+    } catch (err) {
+      console.error('❌ Error clearing notifications:', err);
+      toast.error('Erro ao limpar notificações');
     }
   };
 
@@ -262,6 +290,7 @@ export function useSupabaseNotifications() {
     error,
     markAsRead,
     markAllAsRead,
+    clearAllNotifications,
     createNotification,
     refetch: fetchNotifications,
   };

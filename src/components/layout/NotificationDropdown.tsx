@@ -37,7 +37,7 @@ const getNotificationIcon = (type: string) => {
 };
 
 export const NotificationDropdown = React.memo(function NotificationDropdown() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useSupabaseNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAllNotifications, isLoading } = useSupabaseNotifications();
   const navigate = useNavigate();
 
   console.log('🔔 [DROPDOWN] Rendering with notifications:', {
@@ -62,19 +62,31 @@ export const NotificationDropdown = React.memo(function NotificationDropdown() {
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-80 bg-background">
         <div className="flex items-center justify-between p-4">
           <DropdownMenuLabel className="p-0">Notificações</DropdownMenuLabel>
-          {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={markAllAsRead}
-              className="text-xs"
-            >
-              Marcar todas como lidas
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {unreadCount > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={markAllAsRead}
+                className="text-xs h-7 px-2"
+              >
+                Marcar lidas
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearAllNotifications}
+                className="text-xs h-7 px-2 text-destructive hover:text-destructive"
+              >
+                Limpar tudo
+              </Button>
+            )}
+          </div>
         </div>
         
         <DropdownMenuSeparator />
