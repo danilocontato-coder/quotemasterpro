@@ -42,6 +42,7 @@ const NotificationsTesting = React.lazy(() => import('@/pages/NotificationsTesti
 const SuperAdminAIUsage = React.lazy(() => import('@/pages/admin/SuperAdminAIUsage'));
 const PlansPage = React.lazy(() => import('@/pages/client/PlansPage'));
 const ClientDeliveries = React.lazy(() => import('@/pages/client/ClientDeliveries'));
+const ClientRatings = React.lazy(() => import('@/pages/client/ClientRatings'));
 const CostCenters = React.lazy(() => import('@/pages/CostCenters'));
 const DebugCostCenters = React.lazy(() => import('@/pages/DebugCostCenters'));
 const Help = React.lazy(() => import('@/pages/Help'));
@@ -506,6 +507,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="client/deliveries" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <ClientDeliveries />
+          </Suspense>
+        } />
+        <Route path="client/ratings" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <ClientRatings />
           </Suspense>
         } />
         <Route path="reports" element={

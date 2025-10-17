@@ -16,7 +16,8 @@ import {
   TreePine,
   HelpCircle,
   FileSignature,
-  Truck
+  Truck,
+  Star
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -50,6 +51,7 @@ const navigationItems: NavItem[] = [
   { title: "Contratos", url: "/contracts", icon: FileSignature, requiredModule: 'contracts' },
   { title: "Fornecedores", url: "/suppliers", icon: Users, requiredModule: 'suppliers' },
   { title: "Itens", url: "/products", icon: Package },
+  { title: "Minhas Avaliações", url: "/client/ratings", icon: Star },
 ];
 
 // Módulos AVANÇADOS - aprovações
