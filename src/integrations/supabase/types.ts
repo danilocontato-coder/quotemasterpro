@@ -933,6 +933,35 @@ export type Database = {
           },
         ]
       }
+      client_delivery_counters: {
+        Row: {
+          client_id: string
+          created_at: string
+          current_counter: number
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          current_counter?: number
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          current_counter?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_delivery_counters_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_groups: {
         Row: {
           client_count: number | null
@@ -1773,6 +1802,7 @@ export type Database = {
           delivery_address: string
           delivery_method: string | null
           id: string
+          local_code: string | null
           notes: string | null
           payment_id: string | null
           quote_id: string
@@ -1798,6 +1828,7 @@ export type Database = {
           delivery_address: string
           delivery_method?: string | null
           id?: string
+          local_code?: string | null
           notes?: string | null
           payment_id?: string | null
           quote_id: string
@@ -1823,6 +1854,7 @@ export type Database = {
           delivery_address?: string
           delivery_method?: string | null
           id?: string
+          local_code?: string | null
           notes?: string | null
           payment_id?: string | null
           quote_id?: string
@@ -5518,6 +5550,10 @@ export type Database = {
         Returns: Json
       }
       next_contract_id_by_client: {
+        Args: { p_client_id: string; prefix?: string }
+        Returns: string
+      }
+      next_delivery_id_by_client: {
         Args: { p_client_id: string; prefix?: string }
         Returns: string
       }

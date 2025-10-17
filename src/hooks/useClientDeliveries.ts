@@ -35,7 +35,7 @@ export function useClientDeliveries() {
 
     setIsLoading(true);
     try {
-      // Query principal sem delivery_confirmations e sem join direto com suppliers
+      // Query principal com local_code e sem join direto com suppliers
       const { data, error } = await supabase
         .from('deliveries')
         .select(`
@@ -43,6 +43,7 @@ export function useClientDeliveries() {
           quote_id,
           payment_id,
           supplier_id,
+          local_code,
           status,
           scheduled_date,
           actual_delivery_date,

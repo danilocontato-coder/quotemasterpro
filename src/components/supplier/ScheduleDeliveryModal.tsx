@@ -83,7 +83,7 @@ export function ScheduleDeliveryModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Agendar Entrega - Cotação #{quote.local_code || quote.id}
+            Agendar Entrega - Cotação {quote.local_code || `#${quote.id}`}
           </DialogTitle>
         </DialogHeader>
 

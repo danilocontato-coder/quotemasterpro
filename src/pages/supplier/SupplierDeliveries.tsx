@@ -99,6 +99,7 @@ const DeliveryCodeDisplay = ({ deliveryId }: { deliveryId: string }) => {
 interface Delivery {
   id: string;
   quote_id: string;
+  local_code?: string;
   status: string;
   scheduled_date?: string;
   tracking_code?: string;
@@ -110,6 +111,7 @@ interface Delivery {
     quotes?: {
       title: string;
       client_name: string;
+      local_code?: string;
     };
   };
 }
@@ -134,12 +136,13 @@ export default function SupplierDeliveries() {
         return;
       }
       
-      // Buscar entregas (sem JOINs, pois não há FKs registradas para PostgREST)
+      // Buscar entregas com local_code
       const { data: deliveriesData, error } = await supabase
         .from('deliveries')
         .select(`
           id,
           quote_id,
+          local_code,
           status,
           scheduled_date,
           actual_delivery_date,
@@ -168,7 +171,7 @@ export default function SupplierDeliveries() {
       const [quotesRes, paymentsRes] = await Promise.all([
         supabase
           .from('quotes')
-          .select('id, title, client_name, total')
+          .select('id, local_code, title, client_name, total')
           .in('id', quoteIds),
         supabase
           .from('payments')
@@ -176,7 +179,7 @@ export default function SupplierDeliveries() {
           .in('quote_id', quoteIds)
       ]);
 
-      const quotes = (quotesRes.data || []) as Array<{ id: string; title: string; client_name: string; total: number }>;
+      const quotes = (quotesRes.data || []) as Array<{ id: string; local_code: string; title: string; client_name: string; total: number }>;
       const payments = (paymentsRes.data || []) as Array<{ quote_id: string; amount: number; status: string }>;
 
       const quoteMap = new Map(quotes.map((q) => [q.id, q]));
@@ -199,7 +202,11 @@ export default function SupplierDeliveries() {
           payments: quote
             ? {
                 amount: pay?.amount ?? quote.total ?? 0,
-                quotes: { title: quote.title, client_name: quote.client_name }
+                quotes: { 
+                  title: quote.title, 
+                  client_name: quote.client_name,
+                  local_code: quote.local_code 
+                }
               }
             : undefined
         } as Delivery;
@@ -405,7 +412,7 @@ export default function SupplierDeliveries() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Package className="h-5 w-5" />
-                    Entrega #{delivery.id.slice(-6)}
+                    Entrega {delivery.local_code || `#${delivery.id.slice(-6)}`}
                   </CardTitle>
                   <Badge className={`${getStatusColor(delivery.status)} text-white`}>
                     {getStatusText(delivery.status)}
@@ -417,7 +424,9 @@ export default function SupplierDeliveries() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Cotação</p>
-                    <p className="font-medium">#{delivery.quote_id}</p>
+                    <p className="font-medium">
+                      {delivery.payments?.quotes?.local_code || `#${delivery.quote_id}`}
+                    </p>
                     {delivery.payments?.quotes && (
                       <p className="text-sm text-muted-foreground">
                         {delivery.payments.quotes.title}
