@@ -35,6 +35,7 @@ export function useClientDeliveries() {
 
     setIsLoading(true);
     try {
+      // Query principal sem delivery_confirmations
       const { data, error } = await supabase
         .from('deliveries')
         .select(`
@@ -51,13 +52,31 @@ export function useClientDeliveries() {
           created_at,
           quotes!inner(title, local_code),
           payments!inner(id, amount, status),
-          suppliers!inner(name),
-          delivery_confirmations(confirmation_code, is_used, expires_at)
+          suppliers!inner(name)
         `)
         .eq('client_id', user.clientId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      // Query separada para códigos de confirmação
+      const deliveryIds = (data || []).map((d: any) => d.id);
+      let confirmationsMap: Record<string, string> = {};
+
+      if (deliveryIds.length > 0) {
+        const { data: confirmationsData } = await supabase
+          .from('delivery_confirmations')
+          .select('delivery_id, confirmation_code, is_used, expires_at')
+          .in('delivery_id', deliveryIds)
+          .eq('is_used', false);
+
+        if (confirmationsData) {
+          confirmationsMap = confirmationsData.reduce((acc: any, conf: any) => {
+            acc[conf.delivery_id] = conf.confirmation_code;
+            return acc;
+          }, {});
+        }
+      }
 
       const formattedDeliveries: ClientDelivery[] = (data || []).map((delivery: any) => ({
         id: delivery.id,
@@ -75,7 +94,7 @@ export function useClientDeliveries() {
         delivery_address: delivery.delivery_address,
         tracking_code: delivery.tracking_code,
         notes: delivery.notes,
-        confirmation_code: delivery.delivery_confirmations?.[0]?.confirmation_code,
+        confirmation_code: confirmationsMap[delivery.id],
         can_confirm: delivery.status === 'in_transit' || delivery.status === 'scheduled',
         created_at: delivery.created_at,
       }));
