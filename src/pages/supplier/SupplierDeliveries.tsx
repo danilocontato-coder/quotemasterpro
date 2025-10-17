@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Truck, Calendar, MapPin, Clock, CheckCircle, Copy, Key } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { UberDeliveryForm } from "@/components/supplier/delivery/UberDeliveryForm";
 
 // Componente para mostrar código de confirmação
 const DeliveryCodeDisplay = ({ deliveryId }: { deliveryId: string }) => {
@@ -499,56 +501,85 @@ export default function SupplierDeliveries() {
 
       {/* Modal de agendamento */}
       {selectedDelivery && selectedDelivery.status === 'pending' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Agendar Entrega</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="scheduledDate">Data da Entrega</Label>
-                <Input
-                  id="scheduledDate"
-                  type="datetime-local"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="deliveryNotes">Observações</Label>
-                <Textarea
-                  id="deliveryNotes"
-                  placeholder="Informações sobre a entrega..."
-                  value={deliveryNotes}
-                  onChange={(e) => setDeliveryNotes(e.target.value)}
-                />
-              </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="w-full max-w-2xl my-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Agendar Entrega</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="own" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="own">
+                      <Truck className="h-4 w-4 mr-2" />
+                      Entrega Própria
+                    </TabsTrigger>
+                    <TabsTrigger value="uber">
+                      <Package className="h-4 w-4 mr-2" />
+                      Entrega via Uber
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="own" className="space-y-4 mt-4">
+                    <div>
+                      <Label htmlFor="scheduledDate">Data da Entrega</Label>
+                      <Input
+                        id="scheduledDate"
+                        type="datetime-local"
+                        value={scheduledDate}
+                        onChange={(e) => setScheduledDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="deliveryNotes">Observações</Label>
+                      <Textarea
+                        id="deliveryNotes"
+                        placeholder="Informações sobre a entrega..."
+                        value={deliveryNotes}
+                        onChange={(e) => setDeliveryNotes(e.target.value)}
+                      />
+                    </div>
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedDelivery(null)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={() => {
-                    updateDeliveryStatus(selectedDelivery.id, 'scheduled', {
-                      scheduled_date: scheduledDate || new Date().toISOString(),
-                      delivery_notes: deliveryNotes
-                    });
-                    setScheduledDate("");
-                    setDeliveryNotes("");
-                  }}
-                  className="flex-1"
-                  disabled={!scheduledDate}
-                >
-                  Agendar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedDelivery(null)}
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          updateDeliveryStatus(selectedDelivery.id, 'scheduled', {
+                            scheduled_date: scheduledDate || new Date().toISOString(),
+                            delivery_notes: deliveryNotes,
+                            delivery_method: 'own'
+                          });
+                          setScheduledDate("");
+                          setDeliveryNotes("");
+                        }}
+                        className="flex-1"
+                        disabled={!scheduledDate}
+                      >
+                        Agendar
+                      </Button>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="uber" className="mt-4">
+                    <UberDeliveryForm
+                      deliveryId={selectedDelivery.id}
+                      onSuccess={() => {
+                        setSelectedDelivery(null);
+                        fetchDeliveries();
+                      }}
+                      onCancel={() => setSelectedDelivery(null)}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </div>

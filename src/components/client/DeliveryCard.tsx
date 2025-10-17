@@ -6,6 +6,9 @@ import { Package, MapPin, Calendar, DollarSign, Building2, Truck, Key, CheckCirc
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { UberDeliveryTracking } from '@/components/client/delivery/UberDeliveryTracking';
+import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
 
 interface DeliveryCardProps {
   delivery: ClientDelivery;
@@ -14,6 +17,23 @@ interface DeliveryCardProps {
 
 export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
   const navigate = useNavigate();
+  const [deliveryMethod, setDeliveryMethod] = useState<string>('own');
+
+  useEffect(() => {
+    const fetchDeliveryMethod = async () => {
+      const { data } = await supabase
+        .from('deliveries')
+        .select('delivery_method')
+        .eq('id', delivery.id)
+        .single();
+      
+      if (data?.delivery_method) {
+        setDeliveryMethod(data.delivery_method);
+      }
+    };
+
+    fetchDeliveryMethod();
+  }, [delivery.id]);
 
   const getStatusConfig = () => {
     switch (delivery.status) {
@@ -152,6 +172,13 @@ export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
                   <CheckCircle2 className="h-4 w-4" />
                   <span className="font-medium">Pagamento liberado automaticamente</span>
                 </p>
+              </div>
+            )}
+
+            {/* Rastreamento Uber */}
+            {deliveryMethod === 'uber' && (
+              <div className="mt-4">
+                <UberDeliveryTracking deliveryId={delivery.id} />
               </div>
             )}
           </div>

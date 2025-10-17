@@ -1,5 +1,14 @@
 project_id = "bpsqyaxdhqejozmlejcb"
 
+[functions.uber-delivery-quote]
+verify_jwt = true
+
+[functions.uber-delivery-create]
+verify_jwt = true
+
+[functions.uber-delivery-webhook]
+verify_jwt = false
+
 [functions.send-overdue-reminders]
 verify_jwt = false
 
