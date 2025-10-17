@@ -55,7 +55,8 @@ export const SystemSettings = () => {
     whatsapp: { connected: false, service: 'Twilio', status: 'inactive' },
     payment: { connected: true, service: 'Stripe', status: 'active' },
     sms: { connected: false, service: 'Twilio SMS', status: 'inactive' },
-    storage: { connected: true, service: 'Supabase Storage', status: 'active' }
+    storage: { connected: true, service: 'Supabase Storage', status: 'active' },
+    uber: { connected: false, service: 'Uber Direct', status: 'inactive' }
   });
 
   const handleSave = async (section: string) => {
@@ -462,6 +463,84 @@ export const SystemSettings = () => {
                     <TestTube className="h-4 w-4 mr-2" />
                     Testar Conexão
                   </Button>
+                </CardContent>
+              </Card>
+
+              {/* Uber Direct */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5" />
+                    Uber Direct API
+                  </CardTitle>
+                  <CardDescription>Integração para entregas via Uber</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Status</span>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(integrationStatus.uber.status)}
+                      <Badge variant={integrationStatus.uber.connected ? 'default' : 'secondary'}>
+                        {integrationStatus.uber.connected ? 'Conectado' : 'Desconectado'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="uberCustomerId">Customer ID</Label>
+                    <Input
+                      id="uberCustomerId"
+                      placeholder="customer-xxxxx-xxxxx"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      ID do cliente Uber Direct (encontrado no dashboard)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="uberClientId">Client ID</Label>
+                    <Input
+                      id="uberClientId"
+                      placeholder="xxxxxxxxxxxxx"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="uberClientSecret">Client Secret</Label>
+                    <Input
+                      id="uberClientSecret"
+                      type="password"
+                      placeholder="***************"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="uberApiUrl">URL da API</Label>
+                    <Input
+                      id="uberApiUrl"
+                      placeholder="https://api.uber.com"
+                      defaultValue="https://sandbox-api.uber.com"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Use https://sandbox-api.uber.com para testes ou https://api.uber.com para produção
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => testIntegration('Uber Direct')}
+                      disabled={isLoading}
+                    >
+                      <TestTube className="h-4 w-4 mr-2" />
+                      Testar
+                    </Button>
+                    <Button size="sm" onClick={() => handleSave('Uber Direct')}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Salvar
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
