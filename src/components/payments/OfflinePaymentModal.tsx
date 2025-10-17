@@ -114,7 +114,9 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
 
           const { error: uploadError } = await supabase.storage
             .from('attachments')
-            .upload(filePath, file);
+            .upload(filePath, file, {
+              upsert: true // Substituir se já existir
+            });
 
           if (uploadError) {
             console.error('Upload error:', uploadError);
@@ -130,6 +132,12 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
             description: `Falha ao enviar: ${uploadErrors.join(', ')}`,
             variant: "destructive"
           });
+          
+          // Se todos os uploads falharam, não continuar
+          if (attachmentUrls.length === 0) {
+            setIsLoading(false);
+            return;
+          }
         }
       }
 
@@ -148,19 +156,24 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
 
       if (error) throw error;
 
-      // Create audit log
-      await supabase
-        .from('audit_logs')
-        .insert({
-          action: 'OFFLINE_PAYMENT_SUBMITTED',
-          entity_type: 'payments',
-          entity_id: payment.id,
-          details: {
-            payment_method: paymentMethod,
-            transaction_id: transactionId,
-            attachments_count: attachmentUrls.length
-          }
-        });
+      // Create audit log (user_id será preenchido automaticamente pelo RLS)
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            user_id: user.id, // Adicionar explicitamente
+            action: 'OFFLINE_PAYMENT_SUBMITTED',
+            entity_type: 'payments',
+            entity_id: payment.id,
+            details: {
+              payment_method: paymentMethod,
+              transaction_id: transactionId,
+              attachments_count: attachmentUrls.length
+            }
+          });
+      }
 
       toast({
         title: "Pagamento offline registrado",
