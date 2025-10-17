@@ -152,6 +152,38 @@ export const useSupabasePayments = () => {
     }
   };
 
+  const confirmManualReceipt = async (paymentId: string, notes?: string) => {
+    try {
+      const { data, error } = await supabase.rpc('mark_payment_as_manually_received', {
+        p_payment_id: paymentId,
+        p_notes: notes
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; message?: string } | null;
+
+      if (result?.success) {
+        toast({
+          title: "Pagamento confirmado",
+          description: "Recebimento manual confirmado com sucesso.",
+        });
+        fetchPayments();
+        return { success: true };
+      } else {
+        throw new Error(result?.message || 'Erro ao confirmar pagamento');
+      }
+    } catch (error: any) {
+      console.error('Error confirming manual receipt:', error);
+      toast({
+        title: "Erro ao confirmar recebimento",
+        description: error.message || "Não foi possível confirmar o recebimento manual.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
   // Real-time subscription
   useEffect(() => {
     fetchPayments();
@@ -182,6 +214,7 @@ export const useSupabasePayments = () => {
     refetch: fetchPayments,
     createPaymentIntent,
     createCheckoutSession,
-    confirmDelivery
+    confirmDelivery,
+    confirmManualReceipt
   };
 };

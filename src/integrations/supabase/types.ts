@@ -5513,6 +5513,10 @@ export type Database = {
         Args: { target_client_id: string; user_id: string }
         Returns: boolean
       }
+      mark_payment_as_manually_received: {
+        Args: { p_notes?: string; p_payment_id: string }
+        Returns: Json
+      }
       next_contract_id_by_client: {
         Args: { p_client_id: string; prefix?: string }
         Returns: string
