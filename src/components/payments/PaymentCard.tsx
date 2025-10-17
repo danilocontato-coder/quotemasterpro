@@ -99,7 +99,6 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
       const { data, error } = await supabase.functions.invoke('create-asaas-payment', {
         body: { paymentId: payment.id }
       });
-      console.log('🔎 create-asaas-payment response:', data, error);
 
       if (error) {
         console.error('❌ Erro ao criar pagamento Asaas:', error);
