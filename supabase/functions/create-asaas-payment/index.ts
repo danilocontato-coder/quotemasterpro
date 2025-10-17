@@ -38,7 +38,7 @@ serve(async (req) => {
         *,
         quotes!inner(id, title, client_id),
         suppliers!inner(id, name, email, asaas_wallet_id),
-        clients!inner(id, name, email)
+        clients!inner(id, name, email, cnpj, asaas_customer_id)
       `)
       .eq('id', paymentId)
       .eq('status', 'pending')
@@ -62,6 +62,47 @@ serve(async (req) => {
     // Obter configuração do Asaas (incluindo ambiente, URL e comissões)
     const { apiKey, baseUrl, config } = await getAsaasConfig(supabase);
 
+    // Verificar/Criar customer no Asaas
+    let asaasCustomerId = payment.clients.asaas_customer_id;
+
+    if (!asaasCustomerId) {
+      console.log(`Criando customer Asaas para cliente: ${payment.clients.name}`);
+      
+      const createCustomerResponse = await fetch(`${baseUrl}/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': apiKey,
+        },
+        body: JSON.stringify({
+          name: payment.clients.name,
+          email: payment.clients.email,
+          cpfCnpj: payment.clients.cnpj,
+          externalReference: payment.client_id,
+          notificationDisabled: false,
+        }),
+      });
+
+      if (!createCustomerResponse.ok) {
+        const error = await createCustomerResponse.json();
+        console.error('Erro ao criar customer Asaas:', error);
+        throw new Error(`Falha ao criar cliente no Asaas: ${error.errors?.[0]?.description || 'Erro desconhecido'}`);
+      }
+
+      const asaasCustomer = await createCustomerResponse.json();
+      asaasCustomerId = asaasCustomer.id;
+
+      // Salvar customer ID no banco
+      await supabase
+        .from('clients')
+        .update({ asaas_customer_id: asaasCustomerId })
+        .eq('id', payment.client_id);
+
+      console.log(`Customer Asaas criado: ${asaasCustomerId}`);
+    } else {
+      console.log(`Reutilizando customer Asaas existente: ${asaasCustomerId}`);
+    }
+
     const commissionPercentage = config.platform_commission_percentage || 5.0
     const autoReleaseDays = config.auto_release_days || 7
 
@@ -80,7 +121,7 @@ serve(async (req) => {
         'access_token': apiKey,
       },
       body: JSON.stringify({
-        customer: payment.clients.email, // Usar email como identificador
+        customer: asaasCustomerId, // ID do customer criado/existente
         billingType: 'UNDEFINED', // Cliente escolhe: PIX, Boleto ou Cartão
         value: payment.amount,
         dueDate: dueDate.toISOString().split('T')[0],
