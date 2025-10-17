@@ -27,6 +27,7 @@ import { EscrowDashboard } from "@/components/payments/EscrowDashboard";
 import { OfflinePaymentModal } from "@/components/payments/OfflinePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { CreateAsaasWalletTest } from "@/components/debug/CreateAsaasWalletTest";
+import { PixQRCodeModal } from "@/components/payments/PixQRCodeModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +56,9 @@ export default function Payments() {
   const [selectedOfflinePayment, setSelectedOfflinePayment] = useState<any>(null);
   const [showOfflinePaymentAlert, setShowOfflinePaymentAlert] = useState(false);
   const [pendingOfflinePayment, setPendingOfflinePayment] = useState<any>(null);
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [selectedPaymentForPix, setSelectedPaymentForPix] = useState<any>(null);
+  const [supplierPixData, setSupplierPixData] = useState<{ name: string; pixKey: string } | null>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -153,15 +157,50 @@ export default function Payments() {
     setSelectedPayment(payment);
   };
 
-  const handleOfflinePayment = (payment: any) => {
+  const handleOfflinePayment = async (payment: any) => {
+    // Fetch supplier data to check if they have PIX registered
+    const { data: supplierData, error } = await supabase
+      .from('suppliers')
+      .select('name, bank_data')
+      .eq('id', payment.supplier_id)
+      .single();
+
+    if (error) {
+      showToast({
+        title: 'Erro ao carregar dados do fornecedor',
+        description: 'Tente novamente',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const bankData = supplierData?.bank_data as any;
+    const pixKey = bankData?.pix_key;
+
+    if (pixKey) {
+      // Supplier has PIX, show PIX option
+      setSupplierPixData({
+        name: supplierData.name,
+        pixKey: pixKey,
+      });
+      setSelectedPaymentForPix(payment);
+    }
+
     setPendingOfflinePayment(payment);
     setShowOfflinePaymentAlert(true);
   };
 
   const handleConfirmOfflinePayment = () => {
-    setSelectedOfflinePayment(pendingOfflinePayment);
-    setShowOfflinePaymentModal(true);
     setShowOfflinePaymentAlert(false);
+    
+    if (supplierPixData && selectedPaymentForPix) {
+      // Open PIX QR Code modal
+      setShowPixModal(true);
+    } else if (pendingOfflinePayment) {
+      // Open traditional offline payment modal
+      setSelectedOfflinePayment(pendingOfflinePayment);
+      setShowOfflinePaymentModal(true);
+    }
   };
 
   const getPaymentStatusIcon = (status: string) => {
@@ -478,40 +517,56 @@ export default function Payments() {
       )}
       </div>
 
-      {/* Modals */}
       <AlertDialog open={showOfflinePaymentAlert} onOpenChange={setShowOfflinePaymentAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-green-600" />
-              Pagar pela Plataforma é Mais Seguro
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {supplierPixData ? 'Pagar Fora da Plataforma via PIX?' : 'Pagamento Fora da Plataforma'}
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3 text-base">
-              <p>
-                <strong>Recomendamos fortemente que você pague através da nossa plataforma.</strong> 
-                Isso garante proteção para ambas as partes.
+            <AlertDialogDescription className="space-y-3 text-left">
+              <p className="font-medium text-foreground">
+                {supplierPixData 
+                  ? 'Você está prestes a pagar diretamente ao fornecedor via PIX.'
+                  : 'Você está prestes a registrar um pagamento direto ao fornecedor.'
+                }
               </p>
-              <p className="text-amber-600 font-medium">
-                ⚠️ Ao pagar diretamente ao fornecedor, você perde:
-              </p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Proteção contra fraudes e disputas</li>
-                <li>Garantia de escrow (pagamento retido até entrega)</li>
-                <li>Suporte da plataforma em caso de problemas</li>
-                <li>Registro automático e comprovação de pagamento</li>
-              </ul>
-              <p className="text-sm text-muted-foreground mt-4">
-                Apenas continue se você já realizou o pagamento diretamente ao fornecedor e precisa informar isso.
-              </p>
+              
+              <div className="space-y-2 text-sm">
+                <p className="font-semibold text-destructive">⚠️ Importante:</p>
+                <ul className="space-y-1 ml-4">
+                  <li>• Pagamentos diretos NÃO têm proteção da plataforma</li>
+                  <li>• Sem garantia de devolução em caso de problemas</li>
+                  <li>• Sem suporte para disputas</li>
+                  <li>• Você precisará confirmar o pagamento manualmente</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2 text-sm bg-primary/5 p-3 rounded-lg">
+                <p className="font-semibold text-primary">✅ Pagar pela plataforma oferece:</p>
+                <ul className="space-y-1 ml-4">
+                  <li>• 🔒 Pagamento em garantia (escrow)</li>
+                  <li>• 🛡️ Proteção contra fraudes</li>
+                  <li>• 📞 Suporte completo da equipe</li>
+                  <li>• ✅ Registro automático e rastreável</li>
+                </ul>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel onClick={() => {
+              setShowOfflinePaymentAlert(false);
+              setPendingOfflinePayment(null);
+              setSelectedPaymentForPix(null);
+              setSupplierPixData(null);
+            }}>
+              Voltar e Pagar com Segurança
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleConfirmOfflinePayment}
-              className="bg-amber-600 hover:bg-amber-700"
+              className="bg-amber-500 hover:bg-amber-600"
             >
-              Já Paguei Direto ao Fornecedor
+              {supplierPixData ? 'Continuar com PIX do Fornecedor' : 'Continuar com Pagamento Direto'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -542,6 +597,32 @@ export default function Payments() {
           toast.success('Pagamento offline registrado com sucesso!');
         }}
       />
+
+      {/* PIX QR Code Modal */}
+      {selectedPaymentForPix && supplierPixData && (
+        <PixQRCodeModal
+          isOpen={showPixModal}
+          onClose={() => {
+            setShowPixModal(false);
+            setSelectedPaymentForPix(null);
+            setSupplierPixData(null);
+            setPendingOfflinePayment(null);
+          }}
+          payment={{
+            id: selectedPaymentForPix.id,
+            amount: selectedPaymentForPix.amount,
+            supplier_id: selectedPaymentForPix.supplier_id || '',
+          }}
+          supplierName={supplierPixData.name}
+          pixKey={supplierPixData.pixKey}
+          onSuccess={() => {
+            refetch();
+            setSelectedPaymentForPix(null);
+            setSupplierPixData(null);
+            setPendingOfflinePayment(null);
+          }}
+        />
+      )}
     </div>
   );
 }
