@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface SupplierReceivable {
   id: string;
   quote_id: string;
+  quote_local_code?: string;
   amount: number;
   status: 'pending' | 'in_escrow' | 'completed' | 'failed';
   created_at: string;
@@ -49,7 +50,7 @@ export const useSupplierReceivables = () => {
           created_at,
           payment_method,
           client_id,
-          quotes!inner(title, client_name)
+          quotes!inner(title, client_name, local_code)
         `)
         .eq('supplier_id', user.supplierId)
         .order('created_at', { ascending: false });
@@ -62,6 +63,7 @@ export const useSupplierReceivables = () => {
       const formattedReceivables: SupplierReceivable[] = (paymentsData || []).map(payment => ({
         id: payment.id,
         quote_id: payment.quote_id,
+        quote_local_code: payment.quotes?.local_code,
         amount: payment.amount,
         status: payment.status as any,
         created_at: payment.created_at,

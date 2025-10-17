@@ -40,6 +40,7 @@ export default function SupplierReceivables() {
 
   const filteredReceivables = receivables.filter(receivable => {
     const matchesSearch = !searchTerm || 
+      receivable.quote_local_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       receivable.quote_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       receivable.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       receivable.quote_title?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -201,7 +202,7 @@ export default function SupplierReceivables() {
                     {currentReceivables.map((receivable) => (
                       <TableRow key={receivable.id}>
                         <TableCell className="font-mono">
-                          #{receivable.quote_id}
+                          {receivable.quote_local_code || `#${receivable.quote_id.substring(0, 8)}`}
                         </TableCell>
                         <TableCell>
                           <div>
