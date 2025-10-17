@@ -151,11 +151,11 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
           <div>
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-lg">#{payment.id}</h3>
+              <h3 className="font-semibold text-lg">{payment.id?.startsWith('#') ? payment.id : `#${payment.id}`}</h3>
             </div>
             <div className="space-y-1 text-sm text-muted-foreground">
               <p>
-                <span className="font-medium">Cotação:</span> #{payment.quote_id}
+                <span className="font-medium">Cotação:</span> {payment.quotes?.local_code || `#${payment.quote_id}`}
               </p>
               {payment.quotes?.title && (
                 <p>
@@ -196,7 +196,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
               </Badge>
             </div>
             <div className="text-lg font-bold text-primary">
-              {formatCurrency(payment.amount)}
+              {formatCurrency(payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0))}
             </div>
           </div>
         </div>

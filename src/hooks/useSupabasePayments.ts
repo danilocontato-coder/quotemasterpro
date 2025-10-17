@@ -16,7 +16,9 @@ export interface Payment {
   updated_at: string;
   quotes?: {
     id: string;
+    local_code: string;
     title: string;
+    total: number;
     client_name: string;
   };
   suppliers?: {
@@ -43,7 +45,7 @@ export const useSupabasePayments = () => {
         .from('payments')
         .select(`
           *,
-          quotes(id, title, client_name, supplier_id, suppliers(id, name)),
+          quotes(id, local_code, title, total, client_name, supplier_id, suppliers(id, name)),
           suppliers(id, name),
           clients(id, name)
         `)
