@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { getStatusText } from "@/utils/statusUtils";
 
 interface OfflinePaymentSupplierViewProps {
   payment: any;
@@ -149,11 +148,11 @@ export function OfflinePaymentSupplierView({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Cotação</p>
-                  <p className="font-medium">{payment.quotes?.local_code || payment.quote_id}</p>
+                  <p className="font-medium">{payment.quote_local_code || payment.quote_title || `#${payment.quote_id.substring(0, 8)}`}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Cliente</p>
-                  <p className="font-medium">{payment.clients?.name}</p>
+                  <p className="font-medium">{payment.client_name}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Valor</p>
@@ -162,7 +161,7 @@ export function OfflinePaymentSupplierView({
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge className="bg-yellow-100 text-yellow-800">
-                    {getStatusText(payment.status)}
+                    Confirmação Pagamento Manual
                   </Badge>
                 </div>
               </div>
@@ -170,7 +169,7 @@ export function OfflinePaymentSupplierView({
               {payment.payment_method && (
                 <div>
                   <p className="text-sm text-muted-foreground">Método de Pagamento</p>
-                  <p className="font-medium capitalize">{payment.payment_method.replace('_', ' ')}</p>
+                  <p className="font-medium capitalize">Pix</p>
                 </div>
               )}
 
@@ -197,8 +196,8 @@ export function OfflinePaymentSupplierView({
               <div className="flex-1">
                 <p className="font-medium text-amber-900 mb-1">Confirmação Necessária</p>
                 <p className="text-sm text-amber-800">
-                  Confirme apenas se você realmente recebeu o pagamento. Os fundos serão liberados 
-                  automaticamente após a confirmação. Em caso de dúvida, revise os comprovantes anexados.
+                  O cliente informou que já realizou o pagamento offline. Revise os comprovantes anexados e confirme 
+                  apenas se você realmente recebeu o valor. Após a confirmação, a entrega será autorizada automaticamente.
                 </p>
               </div>
             </div>

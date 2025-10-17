@@ -14,6 +14,7 @@ export interface SupplierReceivable {
   quote_title?: string;
   client_name?: string;
   payment_method?: string;
+  offline_attachments?: string[];
 }
 
 export interface ReceivablesMetrics {
@@ -50,6 +51,7 @@ export const useSupplierReceivables = () => {
           created_at,
           payment_method,
           client_id,
+          offline_attachments,
           quotes!inner(title, client_name, local_code)
         `)
         .eq('supplier_id', user.supplierId)
@@ -70,7 +72,8 @@ export const useSupplierReceivables = () => {
         client_id: payment.client_id,
         payment_method: payment.payment_method,
         quote_title: payment.quotes?.title,
-        client_name: payment.quotes?.client_name
+        client_name: payment.quotes?.client_name,
+        offline_attachments: payment.offline_attachments || []
       }));
 
       setReceivables(formattedReceivables);
