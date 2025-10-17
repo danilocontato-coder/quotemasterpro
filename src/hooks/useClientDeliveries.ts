@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface ClientDelivery {
   id: string;
+  local_code: string;
   quote_id: string;
   quote_local_code: string;
   quote_title: string;
@@ -80,6 +81,7 @@ export function useClientDeliveries() {
 
       const formattedDeliveries: ClientDelivery[] = (data || []).map((delivery: any) => ({
         id: delivery.id,
+        local_code: delivery.local_code || '',
         quote_id: delivery.quote_id,
         quote_local_code: delivery.quotes?.local_code || '',
         quote_title: delivery.quotes?.title || '',

@@ -105,7 +105,7 @@ export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
                 <StatusIcon className={`h-5 w-5 ${statusConfig.iconColor}`} />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">Entrega #{delivery.id.substring(0, 8)}</h3>
+                <h3 className="font-semibold text-lg">Entrega #{delivery.local_code || delivery.id.substring(0, 8)}</h3>
                 <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
               </div>
             </div>
