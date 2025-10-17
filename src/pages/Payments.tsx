@@ -27,6 +27,16 @@ import { EscrowDashboard } from "@/components/payments/EscrowDashboard";
 import { OfflinePaymentModal } from "@/components/payments/OfflinePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { CreateAsaasWalletTest } from "@/components/debug/CreateAsaasWalletTest";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
@@ -43,6 +53,8 @@ export default function Payments() {
   const [showReleaseEscrowModal, setShowReleaseEscrowModal] = useState(false);
   const [showOfflinePaymentModal, setShowOfflinePaymentModal] = useState(false);
   const [selectedOfflinePayment, setSelectedOfflinePayment] = useState<any>(null);
+  const [showOfflinePaymentAlert, setShowOfflinePaymentAlert] = useState(false);
+  const [pendingOfflinePayment, setPendingOfflinePayment] = useState<any>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -129,7 +141,6 @@ export default function Payments() {
       refetch();
       setShowReleaseEscrowModal(false);
     } catch (error: any) {
-      console.error('Error releasing escrow:', error);
       showToast({
         title: "Erro",
         description: error.message || "Não foi possível liberar os fundos",
@@ -143,8 +154,14 @@ export default function Payments() {
   };
 
   const handleOfflinePayment = (payment: any) => {
-    setSelectedOfflinePayment(payment);
+    setPendingOfflinePayment(payment);
+    setShowOfflinePaymentAlert(true);
+  };
+
+  const handleConfirmOfflinePayment = () => {
+    setSelectedOfflinePayment(pendingOfflinePayment);
     setShowOfflinePaymentModal(true);
+    setShowOfflinePaymentAlert(false);
   };
 
   const getPaymentStatusIcon = (status: string) => {
@@ -220,7 +237,6 @@ export default function Payments() {
                   .single();
 
                 if (quoteError || !quoteData) {
-                  console.error('Quote fetch error:', quoteError);
                   toast.error('Cotação não encontrada');
                   throw new Error('Quote not found');
                 }
@@ -241,8 +257,6 @@ export default function Payments() {
                   throw new Error('Invalid payment amount');
                 }
 
-                console.log('Creating payment with amount:', totalAmount, 'for quote:', quoteId);
-
                 // Criar pagamento (ID será gerado automaticamente pelo trigger)
                 const { data, error } = await supabase
                   .from('payments')
@@ -257,17 +271,13 @@ export default function Payments() {
                   .single();
                 
                 if (error) {
-                  console.error('Payment insert error:', error);
                   throw error;
                 }
-
-                console.log('Payment created successfully:', data);
                 
                 toast.success(`Pagamento ${data.id} criado com sucesso no valor de R$ ${totalAmount.toFixed(2)}`);
                 refetch();
                 return data.id;
               } catch (error) {
-                console.error('Error creating payment:', error);
                 toast.error(error instanceof Error ? error.message : 'Erro ao criar pagamento');
                 throw error;
               }
@@ -384,14 +394,14 @@ export default function Payments() {
                     }
                   }
                 } catch (error) {
-                  console.error('Payment error:', error);
+                  // Error already handled by toast
                 }
               }}
               onConfirmDelivery={async (paymentId) => {
                 try {
                   await confirmDelivery(paymentId);
                 } catch (error) {
-                  console.error('Delivery confirmation error:', error);
+                  // Error already handled by toast
                 }
               }}
               onViewDetails={handleViewPayment}
@@ -469,6 +479,44 @@ export default function Payments() {
       </div>
 
       {/* Modals */}
+      <AlertDialog open={showOfflinePaymentAlert} onOpenChange={setShowOfflinePaymentAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-green-600" />
+              Pagar pela Plataforma é Mais Seguro
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-base">
+              <p>
+                <strong>Recomendamos fortemente que você pague através da nossa plataforma.</strong> 
+                Isso garante proteção para ambas as partes.
+              </p>
+              <p className="text-amber-600 font-medium">
+                ⚠️ Ao pagar diretamente ao fornecedor, você perde:
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>Proteção contra fraudes e disputas</li>
+                <li>Garantia de escrow (pagamento retido até entrega)</li>
+                <li>Suporte da plataforma em caso de problemas</li>
+                <li>Registro automático e comprovação de pagamento</li>
+              </ul>
+              <p className="text-sm text-muted-foreground mt-4">
+                Apenas continue se você já realizou o pagamento diretamente ao fornecedor e precisa informar isso.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmOfflinePayment}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Já Paguei Direto ao Fornecedor
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <PaymentDetailModal
         payment={selectedPayment}
         open={!!selectedPayment}

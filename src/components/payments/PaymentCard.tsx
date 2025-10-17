@@ -94,15 +94,11 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
 
     setIsCreatingPayment(true);
     try {
-      console.log('🚀 Criando pagamento Asaas para:', payment.id);
-      
       const { data, error } = await supabase.functions.invoke('create-asaas-payment', {
         body: { paymentId: payment.id }
       });
 
       if (error) {
-        console.error('❌ Erro ao criar pagamento Asaas:', error);
-        
         // Detectar erro de wallet não configurada
         if (error.message?.includes('wallet') || error.message?.includes('carteira')) {
           toast.error(
@@ -117,14 +113,12 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
 
       const link = data?.invoice_url || data?.invoiceUrl || (data?.payment_id ? `https://sandbox.asaas.com/i/${data.payment_id}` : undefined);
       if (link) {
-        console.log('✅ Pagamento criado com sucesso! URL:', link);
         toast.success('Pagamento criado! Abrindo link seguro...');
         window.open(link, '_blank');
       } else {
         toast.error('Link de pagamento não disponível');
       }
     } catch (err) {
-      console.error('❌ Erro inesperado:', err);
       toast.error('Erro ao criar pagamento');
     } finally {
       setIsCreatingPayment(false);
@@ -252,7 +246,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
               size="sm"
             >
               <FileText className="h-4 w-4 mr-1" />
-              📝 Informar Pagamento
+              💰 Pagar Direto ao Fornecedor
             </Button>
           )}
         </div>
