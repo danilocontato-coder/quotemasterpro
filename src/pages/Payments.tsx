@@ -26,6 +26,7 @@ import { ReleaseEscrowModal } from "@/components/payments/ReleaseEscrowModal";
 import { EscrowDashboard } from "@/components/payments/EscrowDashboard";
 import { OfflinePaymentModal } from "@/components/payments/OfflinePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
+import { CreateAsaasWalletTest } from "@/components/debug/CreateAsaasWalletTest";
 
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
@@ -283,6 +284,9 @@ export default function Payments() {
 
       {/* Escrow Dashboard */}
       <EscrowDashboard payments={payments} />
+
+      {/* Debug: Create Asaas Wallet */}
+      <CreateAsaasWalletTest />
 
       {/* Filter Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
