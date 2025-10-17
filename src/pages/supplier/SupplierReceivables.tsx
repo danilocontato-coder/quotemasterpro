@@ -12,8 +12,6 @@ import { OfflinePaymentSupplierView } from '@/components/payments/OfflinePayment
 import { useSupplierBalance } from '@/hooks/useSupplierBalance';
 import { useSupplierTransfers } from '@/hooks/useSupplierTransfers';
 import { RequestTransferDialog } from '@/components/supplier/RequestTransferDialog';
-import { useSupabasePayments } from '@/hooks/useSupabasePayments';
-import { useToast } from '@/hooks/use-toast';
 
 export default function SupplierReceivables() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,18 +38,6 @@ export default function SupplierReceivables() {
     getStatusText: getTransferStatusText, 
     getStatusColor: getTransferStatusColor 
   } = useSupplierTransfers();
-
-  const { confirmManualReceipt } = useSupabasePayments();
-  const { toast } = useToast();
-
-  const handleConfirmManualReceipt = async (paymentId: string) => {
-    try {
-      await confirmManualReceipt(paymentId, 'Recebimento manual confirmado pelo fornecedor');
-      refreshReceivables();
-    } catch (error) {
-      console.error('Error confirming manual receipt:', error);
-    }
-  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -281,16 +267,6 @@ export default function SupplierReceivables() {
                                   Confirmar
                                 </Button>
                               </div>
-                            )}
-                            {receivable.status === 'in_escrow' && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => handleConfirmManualReceipt(receivable.id)}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Recebi Manualmente
-                              </Button>
                             )}
                           </TableCell>
                         </TableRow>

@@ -178,7 +178,7 @@ export function OfflinePaymentSupplierView({
       toast({
         title: approve ? "Pagamento confirmado" : "Pagamento rejeitado",
         description: approve 
-          ? "O pagamento foi confirmado e os fundos foram liberados em garantia (escrow)."
+          ? "Pagamento confirmado e marcado como Recebido. A entrega foi autorizada automaticamente."
           : "O pagamento foi rejeitado. O status retornou para pendente e o cliente será notificado.",
         variant: approve ? "default" : "destructive"
       });
