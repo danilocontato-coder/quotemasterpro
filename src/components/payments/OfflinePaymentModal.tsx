@@ -214,7 +214,7 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Cotação</p>
-                  <p className="font-medium">#{payment.quote_id}</p>
+                  <p className="font-medium">{payment.quotes?.local_code || payment.quote_id}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Valor</p>
