@@ -91,15 +91,6 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
       return;
     }
 
-    const walletId = payment.suppliers?.asaas_wallet_id || payment.quotes?.suppliers?.asaas_wallet_id;
-    
-    if (!walletId) {
-      toast.error(
-        'Fornecedor ainda não configurou a carteira Asaas. Entre em contato com o administrador.',
-        { duration: 5000 }
-      );
-      return;
-    }
 
     setIsCreatingPayment(true);
     try {
@@ -108,6 +99,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
       const { data, error } = await supabase.functions.invoke('create-asaas-payment', {
         body: { paymentId: payment.id }
       });
+      console.log('🔎 create-asaas-payment response:', data, error);
 
       if (error) {
         console.error('❌ Erro ao criar pagamento Asaas:', error);
@@ -124,10 +116,11 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
         return;
       }
 
-      if (data?.invoiceUrl) {
-        console.log('✅ Pagamento criado com sucesso! URL:', data.invoiceUrl);
+      const link = data?.invoice_url || data?.invoiceUrl || (data?.payment_id ? `https://sandbox.asaas.com/i/${data.payment_id}` : undefined);
+      if (link) {
+        console.log('✅ Pagamento criado com sucesso! URL:', link);
         toast.success('Pagamento criado! Abrindo link seguro...');
-        window.open(data.invoiceUrl, '_blank');
+        window.open(link, '_blank');
       } else {
         toast.error('Link de pagamento não disponível');
       }
@@ -211,7 +204,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                   <div className="flex-1 min-w-[120px]">
                     <Button 
                       onClick={handleAsaasPayment}
-                      disabled={(!payment.suppliers?.asaas_wallet_id && !payment.quotes?.suppliers?.asaas_wallet_id) || isCreatingPayment}
+                      disabled={isCreatingPayment}
                       className="w-full"
                     >
                       <Lock className="h-4 w-4 mr-2" />
@@ -219,13 +212,6 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                     </Button>
                   </div>
                 </TooltipTrigger>
-                {(!payment.suppliers?.asaas_wallet_id && !payment.quotes?.suppliers?.asaas_wallet_id) && (
-                  <TooltipContent>
-                    <p className="font-medium">⚠️ Carteira Asaas não configurada</p>
-                    <p className="text-xs mt-1">O fornecedor precisa configurar sua carteira digital Asaas para receber pagamentos com segurança.</p>
-                    <p className="text-xs mt-1 text-amber-400">Entre em contato com o administrador para resolver.</p>
-                  </TooltipContent>
-                )}
               </Tooltip>
             </TooltipProvider>
           )}
