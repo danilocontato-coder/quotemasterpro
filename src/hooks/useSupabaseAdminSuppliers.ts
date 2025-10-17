@@ -247,6 +247,85 @@ export const useSupabaseAdminSuppliers = () => {
     }
   };
 
+  const checkSupplierHasUser = async (email: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+      
+      return !!data && !error;
+    } catch {
+      return false;
+    }
+  };
+
+  const createSupplierCredentials = async (supplierId: string, email: string, name: string) => {
+    try {
+      console.log('🔑 Creating credentials for supplier:', { supplierId, email, name });
+      
+      // Generate temporary password
+      const genPassword = () => {
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        let pwd = '';
+        for (let i = 0; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+        return pwd;
+      };
+      const newPassword = genPassword();
+
+      // Create auth user
+      const { data: authResp, error: fnErr } = await supabase.functions.invoke('create-auth-user', {
+        body: {
+          email: email.trim(),
+          password: newPassword,
+          name: name,
+          role: 'supplier',
+          supplierId,
+          temporaryPassword: true,
+          action: 'create', // Important: not a reset!
+        },
+      });
+
+      if (fnErr || !authResp?.success) {
+        console.error('❌ Error creating credentials:', fnErr || authResp?.error);
+        toast({
+          title: 'Falha ao criar credenciais',
+          description: authResp?.error || 'Não foi possível criar as credenciais de acesso.',
+          variant: 'destructive',
+        });
+        return null;
+      }
+
+      // Copy credentials to clipboard
+      const credentials = `Email: ${email}\nSenha inicial: ${newPassword}`;
+      try {
+        await navigator.clipboard.writeText(credentials);
+        toast({ 
+          title: 'Credenciais criadas', 
+          description: 'Credenciais copiadas para a área de transferência.' 
+        });
+      } catch {
+        toast({ 
+          title: 'Credenciais criadas', 
+          description: `Anote a senha: ${newPassword}` 
+        });
+      }
+
+      // Refresh suppliers list to update hasUser status
+      await fetchSuppliers();
+      return newPassword;
+    } catch (error) {
+      console.error('❌ Error creating supplier credentials:', error);
+      toast({ 
+        title: 'Erro', 
+        description: 'Erro inesperado ao criar credenciais.', 
+        variant: 'destructive' 
+      });
+      return null;
+    }
+  };
+
   const resetSupplierPassword = async (supplierId: string, email: string) => {
     try {
       console.log('🔐 Resetting supplier password:', { supplierId, email });
@@ -304,5 +383,7 @@ export const useSupabaseAdminSuppliers = () => {
     updateSupplier,
     deleteSupplier,
     resetSupplierPassword,
+    createSupplierCredentials,
+    checkSupplierHasUser,
   };
 };

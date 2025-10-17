@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { UserPlus, Shield, MapPin, User, Lock, Eye, EyeOff, Globe } from "lucide-react";
+import { UserPlus, Shield, MapPin, User, Lock, Eye, EyeOff, Globe, Key, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brazilStates } from '@/data/brazilStates';
 
@@ -17,12 +17,25 @@ interface CreateSupplierModalProps {
   onClose: () => void;
   onCreateSupplier: (supplierData: any, credentials: any) => Promise<any>;
   editingSupplier?: any;
+  onCreateCredentials?: (supplierId: string, email: string, name: string) => Promise<any>;
+  onResetPassword?: (supplierId: string, email: string) => Promise<any>;
+  checkSupplierHasUser?: (email: string) => Promise<boolean>;
 }
 
-export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSupplier }: CreateSupplierModalProps) {
+export function CreateSupplierModal({ 
+  open, 
+  onClose, 
+  onCreateSupplier, 
+  editingSupplier,
+  onCreateCredentials,
+  onResetPassword,
+  checkSupplierHasUser 
+}: CreateSupplierModalProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [hasUser, setHasUser] = useState<boolean | null>(null);
+  const [checkingUser, setCheckingUser] = useState(false);
   
   // Supplier data state
   const [supplierData, setSupplierData] = useState({
@@ -121,6 +134,26 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
     setSpecialtiesInput('');
   };
 
+  // Check if supplier has user when editing
+  useEffect(() => {
+    if (!open || !editingSupplier || !checkSupplierHasUser) return;
+    
+    const checkUser = async () => {
+      setCheckingUser(true);
+      try {
+        const userExists = await checkSupplierHasUser(editingSupplier.email);
+        setHasUser(userExists);
+      } catch (error) {
+        console.error('Error checking user:', error);
+        setHasUser(null);
+      } finally {
+        setCheckingUser(false);
+      }
+    };
+    
+    checkUser();
+  }, [open, editingSupplier, checkSupplierHasUser]);
+
   // Load editing data
   useEffect(() => {
     if (!open) return;
@@ -178,6 +211,7 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
       }
     } else {
       resetForm();
+      setHasUser(null);
     }
   }, [open, editingSupplier]);
 
@@ -598,8 +632,9 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
             </CardContent>
           </Card>
 
-          {/* Credenciais de Acesso (apenas para novos fornecedores) */}
-          {!editingSupplier && (
+          {/* Credenciais de Acesso */}
+          {!editingSupplier ? (
+            // Novo fornecedor - exibir formulário de credenciais
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -677,6 +712,77 @@ export function CreateSupplierModal({ open, onClose, onCreateSupplier, editingSu
                   />
                   <Label htmlFor="forcePasswordChange">Forçar alteração de senha no primeiro login</Label>
                 </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Edição - exibir status e ações de credenciais
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  Credenciais de Acesso
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {checkingUser ? (
+                  <div className="text-sm text-muted-foreground">Verificando status do usuário...</div>
+                ) : hasUser === false ? (
+                  <>
+                    <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      <p className="text-sm text-orange-800">
+                        Este fornecedor não possui credenciais de acesso criadas.
+                      </p>
+                    </div>
+                    {onCreateCredentials && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          setIsLoading(true);
+                          try {
+                            await onCreateCredentials(editingSupplier.id, editingSupplier.email, editingSupplier.name);
+                            const userExists = checkSupplierHasUser && await checkSupplierHasUser(editingSupplier.email);
+                            setHasUser(!!userExists);
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        }}
+                        disabled={isLoading}
+                      >
+                        <Key className="h-4 w-4 mr-2" />
+                        Criar Credenciais de Acesso
+                      </Button>
+                    )}
+                  </>
+                ) : hasUser === true ? (
+                  <>
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <Key className="h-4 w-4 text-green-600" />
+                      <p className="text-sm text-green-800">
+                        Credenciais de acesso já criadas para este fornecedor.
+                      </p>
+                    </div>
+                    {onResetPassword && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          setIsLoading(true);
+                          try {
+                            await onResetPassword(editingSupplier.id, editingSupplier.email);
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        }}
+                        disabled={isLoading}
+                      >
+                        <Lock className="h-4 w-4 mr-2" />
+                        Resetar Senha
+                      </Button>
+                    )}
+                  </>
+                ) : null}
               </CardContent>
             </Card>
           )}

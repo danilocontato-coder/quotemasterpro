@@ -25,7 +25,17 @@ interface SupplierStats {
 }
 
 export const SuppliersManagement = () => {
-  const { suppliers, isLoading, refetch, createSupplierWithUser, updateSupplier, deleteSupplier, resetSupplierPassword } = useSupabaseAdminSuppliers();
+  const { 
+    suppliers, 
+    isLoading, 
+    refetch, 
+    createSupplierWithUser, 
+    updateSupplier, 
+    deleteSupplier, 
+    resetSupplierPassword,
+    createSupplierCredentials,
+    checkSupplierHasUser 
+  } = useSupabaseAdminSuppliers();
   const { viewSupplierData } = useAdminViewClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -625,6 +635,9 @@ export const SuppliersManagement = () => {
             console.error('Error saving supplier:', error);
           }
         }}
+        onCreateCredentials={createSupplierCredentials}
+        onResetPassword={resetSupplierPassword}
+        checkSupplierHasUser={checkSupplierHasUser}
       />
 
       {/* Modal de Exclusão de Fornecedor */}
