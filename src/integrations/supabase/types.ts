@@ -1771,6 +1771,7 @@ export type Database = {
           client_id: string
           created_at: string
           delivery_address: string
+          delivery_method: string | null
           id: string
           notes: string | null
           quote_id: string
@@ -1778,6 +1779,15 @@ export type Database = {
           status: string
           supplier_id: string
           tracking_code: string | null
+          uber_courier_location: Json | null
+          uber_courier_name: string | null
+          uber_courier_phone: string | null
+          uber_delivery_id: string | null
+          uber_fee: number | null
+          uber_metadata: Json | null
+          uber_quote_id: string | null
+          uber_status: string | null
+          uber_tracking_url: string | null
           updated_at: string
         }
         Insert: {
@@ -1785,6 +1795,7 @@ export type Database = {
           client_id: string
           created_at?: string
           delivery_address: string
+          delivery_method?: string | null
           id?: string
           notes?: string | null
           quote_id: string
@@ -1792,6 +1803,15 @@ export type Database = {
           status?: string
           supplier_id: string
           tracking_code?: string | null
+          uber_courier_location?: Json | null
+          uber_courier_name?: string | null
+          uber_courier_phone?: string | null
+          uber_delivery_id?: string | null
+          uber_fee?: number | null
+          uber_metadata?: Json | null
+          uber_quote_id?: string | null
+          uber_status?: string | null
+          uber_tracking_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -1799,6 +1819,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           delivery_address?: string
+          delivery_method?: string | null
           id?: string
           notes?: string | null
           quote_id?: string
@@ -1806,6 +1827,15 @@ export type Database = {
           status?: string
           supplier_id?: string
           tracking_code?: string | null
+          uber_courier_location?: Json | null
+          uber_courier_name?: string | null
+          uber_courier_phone?: string | null
+          uber_delivery_id?: string | null
+          uber_fee?: number | null
+          uber_metadata?: Json | null
+          uber_quote_id?: string | null
+          uber_status?: string | null
+          uber_tracking_url?: string | null
           updated_at?: string
         }
         Relationships: [
