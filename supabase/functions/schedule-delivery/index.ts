@@ -45,16 +45,20 @@ serve(async (req) => {
       .eq("id", quote_id)
       .single();
 
-    // Verificar se existe pagamento in_escrow para esta cotação
+    // Verificar se existe pagamento para esta cotação
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
       .select("id, client_id, supplier_id, status")
       .eq("quote_id", quote_id)
-      .eq("status", "in_escrow")
       .single();
 
     if (paymentError || !payment) {
-      throw new Error("Nenhum pagamento em custódia encontrado para esta cotação. Aguarde a confirmação do pagamento.");
+      throw new Error("Nenhum pagamento encontrado para esta cotação.");
+    }
+
+    // Verificar se pagamento está em custódia
+    if (payment.status !== "in_escrow") {
+      throw new Error("O pagamento precisa estar em custódia para agendar a entrega.");
     }
 
     // Verificar se usuário é o fornecedor da cotação

@@ -567,7 +567,7 @@ export default function SupplierDeliveries() {
                         onClick={() => {
                           updateDeliveryStatus(selectedDelivery.id, 'scheduled', {
                             scheduled_date: scheduledDate || new Date().toISOString(),
-                            delivery_notes: deliveryNotes,
+                            notes: deliveryNotes,
                             delivery_method: 'own'
                           });
                           setScheduledDate("");
