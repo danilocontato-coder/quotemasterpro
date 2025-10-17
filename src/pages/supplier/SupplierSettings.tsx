@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Bell, Palette, Settings as SettingsIcon, Building2, Package, Shield, Star } from "lucide-react";
+import { User, Lock, Bell, Palette, Settings as SettingsIcon, Building2, Package, Shield, Star, Wallet } from "lucide-react";
+import { AsaasWalletSettings } from "@/components/supplier/AsaasWalletSettings";
 import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
@@ -48,7 +49,10 @@ function SupplierSettings() {
     website: '',
     address: null,
     specialties: [],
-    business_info: {}
+    business_info: {},
+    asaas_wallet_id: '',
+    bank_data: null as any,
+    created_at: ''
   });
 
   const [isLoadingSupplier, setIsLoadingSupplier] = useState(true);
@@ -85,7 +89,10 @@ function SupplierSettings() {
               website: supplier.website || '',
               address: supplier.address || null,
               specialties: supplier.specialties || [],
-              business_info: supplier.business_info || {}
+              business_info: supplier.business_info || {},
+              asaas_wallet_id: supplier.asaas_wallet_id || '',
+              bank_data: supplier.bank_data || null,
+              created_at: supplier.created_at || ''
             });
           }
         }
@@ -225,7 +232,7 @@ function SupplierSettings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile">
             <User className="h-4 w-4 mr-2" />
             Perfil
@@ -233,6 +240,10 @@ function SupplierSettings() {
           <TabsTrigger value="company">
             <Building2 className="h-4 w-4 mr-2" />
             Empresa
+          </TabsTrigger>
+          <TabsTrigger value="wallet">
+            <Wallet className="h-4 w-4 mr-2" />
+            Pagamentos
           </TabsTrigger>
           <TabsTrigger value="security">
             <Lock className="h-4 w-4 mr-2" />
@@ -421,6 +432,18 @@ function SupplierSettings() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Wallet/Payments Tab */}
+        <TabsContent value="wallet" className="space-y-4">
+          <AsaasWalletSettings 
+            supplierData={{
+              asaas_wallet_id: supplierData.asaas_wallet_id,
+              bank_data: supplierData.bank_data,
+              created_at: supplierData.created_at,
+              status: 'active'
+            }} 
+          />
         </TabsContent>
 
         {/* Security Tab */}
