@@ -1,5 +1,11 @@
 project_id = "bpsqyaxdhqejozmlejcb"
 
+[functions.send-delivery-code-whatsapp]
+verify_jwt = false
+
+[functions.send-delivery-code-email]
+verify_jwt = false
+
 [functions.uber-delivery-quote]
 verify_jwt = true
 
