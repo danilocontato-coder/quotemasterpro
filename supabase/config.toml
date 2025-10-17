@@ -135,3 +135,18 @@ verify_jwt = false
 
 [functions.track-email-events]
 verify_jwt = false
+
+[functions.ai-negotiation-agent]
+verify_jwt = true
+
+[functions.scheduled-ai-analysis]
+verify_jwt = false
+
+[functions.analyze-product-pricing]
+verify_jwt = true
+
+[functions.analyze-inventory-optimization]
+verify_jwt = true
+
+[functions.generate-restock-suggestions]
+verify_jwt = true

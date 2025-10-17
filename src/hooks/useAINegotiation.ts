@@ -256,6 +256,34 @@ export function useAINegotiation() {
     return negotiations.find(n => n.quote_id === quoteId);
   };
 
+  // Polling inteligente para negociações travadas em "analyzing"
+  useEffect(() => {
+    const checkStuckAnalysis = async () => {
+      const stuck = negotiations.filter(n => {
+        if (n.status !== 'analyzing') return false;
+        const created = new Date(n.created_at).getTime();
+        const now = Date.now();
+        const minutesStuck = (now - created) / 1000 / 60;
+        return minutesStuck > 2; // Travada por mais de 2 minutos
+      });
+
+      if (stuck.length > 0) {
+        console.log(`[useAINegotiation] ${stuck.length} negociações travadas, acionando análise automática...`);
+        for (const negotiation of stuck) {
+          try {
+            await startAnalysis(negotiation.quote_id);
+          } catch (err) {
+            console.error('[useAINegotiation] Erro ao reprocessar análise:', err);
+          }
+        }
+      }
+    };
+
+    // Verificar a cada 30 segundos se há negociações travadas
+    const interval = setInterval(checkStuckAnalysis, 30000);
+    return () => clearInterval(interval);
+  }, [negotiations, startAnalysis]);
+
   // Real-time subscriptions with throttling and debouncing
   useEffect(() => {
     fetchNegotiations();
