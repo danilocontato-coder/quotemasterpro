@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -107,6 +107,16 @@ export function OfflinePaymentSupplierView({
       return;
     }
 
+    // Validação de status: só pode confirmar se estiver em manual_confirmation
+    if (payment.status !== 'manual_confirmation') {
+      toast({
+        title: "Status inválido",
+        description: "Este pagamento não está aguardando confirmação manual.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     setAction(approve ? 'approve' : 'reject');
 
@@ -127,11 +137,14 @@ export function OfflinePaymentSupplierView({
         return;
       }
 
+      // Preparar p_notes: aprovar = null, rejeitar = texto simples (sem JSON.stringify)
+      const notesToSend = approve ? null : (confirmationNotes.trim() || null);
+
       // Chamar RPC para aprovar/rejeitar
       const { data, error } = await supabase.rpc('approve_offline_payment', {
         p_payment_id: payment.id,
         p_approved: approve,
-        p_notes: confirmationNotes || null
+        p_notes: notesToSend
       });
 
       if (error) {
@@ -140,7 +153,9 @@ export function OfflinePaymentSupplierView({
         // Mensagens de erro mais claras
         let errorMessage = "Erro desconhecido ao processar confirmação.";
         
-        if (error.code === '42501') {
+        if (error.code === '22P02') {
+          errorMessage = "Erro de formato de dados. As observações foram ajustadas. Por favor, tente novamente.";
+        } else if (error.code === '42501') {
           errorMessage = "Permissão negada. Verifique se você tem permissão para confirmar este pagamento.";
         } else if (error.code === '400' || error.code === 'PGRST116') {
           errorMessage = "Dados inválidos. Verifique as informações enviadas.";
@@ -194,6 +209,9 @@ export function OfflinePaymentSupplierView({
             <Receipt className="h-5 w-5" />
             Confirmar Pagamento Offline
           </DialogTitle>
+          <DialogDescription>
+            Revise cuidadosamente os comprovantes anexados e confirme apenas se você realmente recebeu o pagamento.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
