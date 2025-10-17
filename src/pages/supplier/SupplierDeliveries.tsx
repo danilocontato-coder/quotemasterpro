@@ -464,7 +464,7 @@ export default function SupplierDeliveries() {
                 )}
 
                 <div className="flex gap-2 pt-2">
-                  {delivery.status === 'pending' && (
+                  {delivery.status === 'pending' && delivery.payments && (
                     <Button
                       onClick={() => setSelectedDelivery(delivery)}
                       size="sm"
@@ -472,6 +472,12 @@ export default function SupplierDeliveries() {
                       <Calendar className="h-4 w-4 mr-2" />
                       Agendar Entrega
                     </Button>
+                  )}
+
+                  {delivery.status === 'pending' && !delivery.payments && (
+                    <div className="text-sm text-muted-foreground p-2 bg-muted rounded">
+                      Aguardando confirmação de pagamento
+                    </div>
                   )}
 
                   {delivery.status === 'scheduled' && (

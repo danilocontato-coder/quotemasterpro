@@ -54,7 +54,7 @@ serve(async (req) => {
       .single();
 
     if (paymentError || !payment) {
-      throw new Error("No payment in escrow found for this quote");
+      throw new Error("Nenhum pagamento em custódia encontrado para esta cotação. Aguarde a confirmação do pagamento.");
     }
 
     // Verificar se usuário é o fornecedor da cotação
@@ -65,7 +65,19 @@ serve(async (req) => {
       .single();
 
     if (!profile?.supplier_id || profile.supplier_id !== payment.supplier_id) {
-      throw new Error("Only the assigned supplier can schedule delivery");
+      throw new Error("Apenas o fornecedor designado pode agendar a entrega");
+    }
+
+    // Verificar se já existe uma entrega para esta cotação + fornecedor
+    const { data: existingDelivery } = await supabase
+      .from("deliveries")
+      .select("id")
+      .eq("quote_id", quote_id)
+      .eq("supplier_id", profile.supplier_id)
+      .maybeSingle();
+
+    if (existingDelivery) {
+      throw new Error("Já existe uma entrega agendada para esta cotação");
     }
 
     // Criar agendamento de entrega

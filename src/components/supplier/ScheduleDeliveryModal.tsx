@@ -25,14 +25,18 @@ export function ScheduleDeliveryModal({
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleScheduleDelivery = async () => {
+    if (isSubmitting) return; // Prevenir duplo clique
+    
     if (!scheduledDate) {
       toast.error("Data de entrega é obrigatória");
       return;
     }
 
     setIsLoading(true);
+    setIsSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke('schedule-delivery', {
         body: {
@@ -55,9 +59,12 @@ export function ScheduleDeliveryModal({
       setNotes("");
     } catch (error: any) {
       console.error('Error scheduling delivery:', error);
-      toast.error(error.message || "Erro ao agendar entrega");
+      const errorMessage = error.message || 
+        'Erro ao agendar entrega. Verifique se já existe uma entrega para esta cotação ou se o pagamento foi confirmado.';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
