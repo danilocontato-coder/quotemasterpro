@@ -186,47 +186,45 @@ export function useSupabaseNotifications() {
   };
 
   const markAllAsRead = async () => {
-    if (!user?.id) return;
-    
     try {
+      const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+      
+      if (unreadIds.length === 0) return;
+
       const { error } = await supabase
         .from('notifications')
         .update({ read: true })
-        .eq('user_id', user.id)
-        .eq('read', false);
+        .in('id', unreadIds);
 
       if (error) throw error;
 
-      // Update local state
+      console.log('✅ [NOTIFICATIONS] Marked all as read:', unreadIds.length, 'notifications');
+
       setNotifications(prev =>
         prev.map(notification => ({ ...notification, read: true }))
       );
-
-      console.log('✅ All notifications marked as read');
+      
+      toast.success('Todas as notificações foram marcadas como lidas');
     } catch (err) {
-      console.error('❌ Error marking all notifications as read:', err);
+      console.error('❌ [NOTIFICATIONS] Error marking all as read:', err);
       toast.error('Erro ao marcar notificações como lidas');
     }
   };
 
   const clearAllNotifications = async () => {
-    if (!user?.id) return;
-    
     try {
       const { error } = await supabase
         .from('notifications')
         .delete()
-        .eq('user_id', user.id);
+        .eq('user_id', user?.id);
 
       if (error) throw error;
 
-      // Clear local state
+      console.log('✅ [NOTIFICATIONS] Cleared all notifications');
       setNotifications([]);
-      
       toast.success('Todas as notificações foram removidas');
-      console.log('✅ All notifications cleared');
     } catch (err) {
-      console.error('❌ Error clearing notifications:', err);
+      console.error('❌ [NOTIFICATIONS] Error clearing notifications:', err);
       toast.error('Erro ao limpar notificações');
     }
   };

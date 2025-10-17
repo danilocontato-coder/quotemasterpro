@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, CheckCircle, AlertTriangle, Info, X, FileText, Truck, CreditCard } from "lucide-react";
+import { Bell, CheckCircle, AlertTriangle, Info, X, FileText, Truck, CreditCard, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -62,17 +62,18 @@ export const NotificationDropdown = React.memo(function NotificationDropdown() {
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-80 bg-background">
+      <DropdownMenuContent align="end" className="w-80 bg-background z-50">
         <div className="flex items-center justify-between p-4">
           <DropdownMenuLabel className="p-0">Notificações</DropdownMenuLabel>
-          <div className="flex gap-1">
+          <div className="flex gap-2">
             {unreadCount > 0 && (
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={markAllAsRead}
-                className="text-xs h-7 px-2"
+                className="text-xs h-8"
               >
+                <CheckCircle className="h-3 w-3 mr-1" />
                 Marcar lidas
               </Button>
             )}
@@ -81,9 +82,10 @@ export const NotificationDropdown = React.memo(function NotificationDropdown() {
                 variant="ghost" 
                 size="sm" 
                 onClick={clearAllNotifications}
-                className="text-xs h-7 px-2 text-destructive hover:text-destructive"
+                className="text-xs h-8 text-destructive hover:text-destructive"
               >
-                Limpar tudo
+                <Trash2 className="h-3 w-3 mr-1" />
+                Limpar
               </Button>
             )}
           </div>
