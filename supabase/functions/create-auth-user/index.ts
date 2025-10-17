@@ -162,27 +162,26 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       try {
         console.log('🔄 Iniciando reset de senha para:', email);
         
-        // Find existing user by email
-        const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-        if (listErr) {
-          console.error('Erro ao listar usuários:', listErr);
-          throw listErr;
-        }
-
-        const existingUser = (usersList as any)?.users?.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase());
-        if (!existingUser) {
-          console.error('Usuário não encontrado no Auth:', email);
+        // Find user auth_id from profiles table (avoid listUsers which may fail)
+        const { data: profile, error: profileErr } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('email', email.toLowerCase())
+          .single();
+        
+        if (profileErr || !profile) {
+          console.error('Usuário não encontrado no profiles:', email, profileErr);
           return new Response(
             JSON.stringify({ success: false, error: 'Usuário não encontrado', error_code: 'user_not_found' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         }
 
-        console.log('✅ Usuário encontrado:', existingUser.id);
+        console.log('✅ Usuário encontrado:', profile.id);
 
-        // Update user password
+        // Update user password using profile.id (which is the auth user id)
         const { data: updateData, error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
-          existingUser.id,
+          profile.id,
           { password }
         );
 
