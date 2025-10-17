@@ -24,6 +24,8 @@ export const CONTRACT_STATUS_COLORS = {
   cancelado: 'bg-gray-100 text-gray-600'
 } as const;
 
+export const TERMINATED_STATUSES = ['cancelado', 'expirado'] as const;
+
 export const ALERT_TYPES = {
   vencimento_proximo: 'Vencimento Próximo',
   renovacao_pendente: 'Renovação Pendente',

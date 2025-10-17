@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContractStatusBadge } from './ContractStatusBadge';
 import { Button } from '@/components/ui/button';
-import { Eye, Edit, Trash2, FileText, Calendar, DollarSign } from 'lucide-react';
+import { Eye, Edit, Trash2, FileText, Calendar, DollarSign, Archive } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { TERMINATED_STATUSES } from '@/constants/contracts';
 import type { Database } from '@/integrations/supabase/types';
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
@@ -22,21 +23,33 @@ export const ContractCard = ({ contract, onView, onEdit, onDelete }: ContractCar
 
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 30 && daysUntilExpiry >= 0;
   const isExpired = daysUntilExpiry !== null && daysUntilExpiry < 0;
+  const isTerminated = TERMINATED_STATUSES.includes(contract.status as any);
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className={`hover:shadow-lg transition-shadow ${isTerminated ? 'opacity-60 border-muted' : ''}`}>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
+              {isTerminated ? (
+                <Archive className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <FileText className="h-5 w-5 text-primary" />
+              )}
               {contract.title}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {contract.contract_number}
             </p>
           </div>
-          <ContractStatusBadge status={contract.status as any} />
+          <div className="flex flex-col gap-1 items-end">
+            <ContractStatusBadge status={contract.status as any} />
+            {isTerminated && (
+              <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">
+                ENCERRADO
+              </span>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -82,7 +95,7 @@ export const ContractCard = ({ contract, onView, onEdit, onDelete }: ContractCar
                 Ver
               </Button>
             )}
-            {onEdit && (
+            {onEdit && !isTerminated && (
               <Button
                 variant="outline"
                 size="sm"
@@ -92,7 +105,7 @@ export const ContractCard = ({ contract, onView, onEdit, onDelete }: ContractCar
                 Editar
               </Button>
             )}
-            {onDelete && (
+            {onDelete && !isTerminated && (
               <Button
                 variant="outline"
                 size="sm"

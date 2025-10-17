@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, FileText, CheckCircle, AlertCircle, Clock, DollarSign, RefreshCw } from 'lucide-react';
+import { Plus, Search, Filter, FileText, CheckCircle, AlertCircle, Clock, DollarSign, RefreshCw, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CONTRACT_STATUSES } from '@/constants/contracts';
+import { CONTRACT_STATUSES, TERMINATED_STATUSES } from '@/constants/contracts';
 import type { Database } from '@/integrations/supabase/types';
 
 type Contract = Database['public']['Tables']['contracts']['Row'];
@@ -37,7 +37,9 @@ const Contracts = () => {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(now.getDate() + 30);
 
-    const total = contracts.length;
+    // Filtrar contratos não encerrados para o total
+    const activeContracts = contracts.filter(c => !TERMINATED_STATUSES.includes(c.status as any));
+    const total = activeContracts.length;
     const active = contracts.filter(c => c.status === 'ativo').length;
     
     const dueSoon = contracts.filter(c => {
@@ -53,6 +55,9 @@ const Contracts = () => {
 
     const renewalPending = contracts.filter(c => c.status === 'renovacao_pendente').length;
 
+    // Contratos encerrados
+    const terminated = contracts.filter(c => TERMINATED_STATUSES.includes(c.status as any)).length;
+
     const totalValue = contracts
       .filter(c => c.status === 'ativo')
       .reduce((sum, c) => sum + (c.total_value || 0), 0);
@@ -63,6 +68,7 @@ const Contracts = () => {
       dueSoon,
       expired,
       renewalPending,
+      terminated,
       totalValue
     };
   }, [contracts]);
@@ -70,6 +76,18 @@ const Contracts = () => {
   const filteredContracts = contracts.filter(contract => {
     const matchesSearch = contract.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.contract_number.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
+    
+    // Se filtro é "terminated", mostrar apenas encerrados
+    if (activeFilter === 'terminated') {
+      return TERMINATED_STATUSES.includes(contract.status as any) && matchesSearch && matchesStatus;
+    }
+    
+    // Para outros filtros, excluir contratos encerrados por padrão
+    if (TERMINATED_STATUSES.includes(contract.status as any)) {
+      return false;
+    }
     
     let matchesFilter = true;
     if (activeFilter === 'active') {
@@ -87,7 +105,6 @@ const Contracts = () => {
       matchesFilter = contract.status === 'renovacao_pendente';
     }
     
-    const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
     return matchesSearch && matchesFilter && matchesStatus;
   });
 
@@ -146,7 +163,7 @@ const Contracts = () => {
         </div>
 
         {/* Filter Metrics Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 md:gap-4">
           <div className="animate-scale-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
             <FilterMetricCard
               title="Total"
@@ -198,6 +215,16 @@ const Contracts = () => {
             />
           </div>
           <div className="animate-scale-in" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
+            <FilterMetricCard
+              title="Encerrados"
+              value={metrics.terminated}
+              icon={<Archive />}
+              isActive={activeFilter === 'terminated'}
+              onClick={() => setActiveFilter('terminated')}
+              variant="secondary"
+            />
+          </div>
+          <div className="animate-scale-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
             <div className="relative group cursor-pointer">
               <div className={cn(
                 "h-full border rounded-lg p-3 transition-all",
