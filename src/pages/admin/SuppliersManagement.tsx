@@ -179,18 +179,34 @@ export const SuppliersManagement = () => {
     }
   };
 
-  const handleCreateAsaasWallet = async (supplier: any) => {
+  const handleCreateAsaasWallet = async (supplier: any, force: boolean = false) => {
     setIsProcessing(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-asaas-wallet', {
-        body: { supplierId: supplier.id }
+        body: { supplierId: supplier.id, force }
       });
 
       if (error) throw error;
 
+      // Verificar se precisa forçar recriação
+      if (data?.code === 'WALLET_INVALID_NEEDS_FORCE') {
+        toast({
+          title: "Wallet Inválida",
+          description: "A wallet cadastrada não existe no Asaas. Deseja recriar?",
+          variant: "destructive",
+        });
+        
+        // Oferecer opção de recriar
+        const recreate = confirm('A wallet cadastrada no banco não existe mais no Asaas. Deseja recriar?');
+        if (recreate) {
+          await handleCreateAsaasWallet(supplier, true);
+        }
+        return;
+      }
+
       toast({
-        title: "Wallet Asaas Criada",
-        description: `Wallet ID: ${data.walletId}`,
+        title: force ? "Wallet Recriada" : "Wallet Validada",
+        description: `Wallet ID: ${data.wallet_id} - ${data.message}`,
       });
 
       refetch();
@@ -198,7 +214,7 @@ export const SuppliersManagement = () => {
       console.error('Erro ao criar wallet:', error);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível criar a wallet Asaas",
+        description: error.message || "Não foi possível processar a wallet Asaas",
         variant: "destructive",
       });
     } finally {
@@ -506,15 +522,34 @@ export const SuppliersManagement = () => {
                               Editar
                             </DropdownMenuItem>
                             
-                            {!(supplier as any).asaas_wallet_id && (
+                            {!(supplier as any).asaas_wallet_id ? (
                               <DropdownMenuItem
-                                onClick={() => handleCreateAsaasWallet(supplier)}
+                                onClick={() => handleCreateAsaasWallet(supplier, false)}
                                 disabled={isProcessing}
                                 className="text-blue-600"
                               >
                                 <Wallet className="h-4 w-4 mr-2" />
                                 {isProcessing ? 'Criando Wallet...' : 'Criar Wallet Asaas'}
                               </DropdownMenuItem>
+                            ) : (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => handleCreateAsaasWallet(supplier, false)}
+                                  disabled={isProcessing}
+                                  className="text-blue-600"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Revalidar Wallet
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleCreateAsaasWallet(supplier, true)}
+                                  disabled={isProcessing}
+                                  className="text-purple-600"
+                                >
+                                  <Wallet className="h-4 w-4 mr-2" />
+                                  Recriar Wallet (Forçar)
+                                </DropdownMenuItem>
+                              </>
                             )}
 
                             <DropdownMenuItem 

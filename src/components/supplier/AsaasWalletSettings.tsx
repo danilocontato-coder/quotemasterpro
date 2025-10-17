@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Wallet, CheckCircle2, AlertTriangle, Clock, Info, Shield } from "lucide-react";
+import { Wallet, CheckCircle2, AlertTriangle, Clock, Info, Shield, RefreshCw, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface AsaasWalletSettingsProps {
   supplierData: {
+    id?: string;
     asaas_wallet_id?: string;
     bank_data?: {
       bank_name?: string;
@@ -27,6 +32,63 @@ interface AsaasWalletSettingsProps {
 export function AsaasWalletSettings({ supplierData }: AsaasWalletSettingsProps) {
   const hasWallet = !!supplierData.asaas_wallet_id;
   const bankData = supplierData.bank_data || {};
+  const [isValidating, setIsValidating] = useState(false);
+  const [isRecreating, setIsRecreating] = useState(false);
+  
+  const handleValidateWallet = async () => {
+    if (!supplierData.id) {
+      toast.error('ID do fornecedor não disponível');
+      return;
+    }
+    
+    setIsValidating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-asaas-wallet', {
+        body: { supplierId: supplierData.id, force: false }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.code === 'WALLET_INVALID_NEEDS_FORCE') {
+        toast.error('⚠️ Wallet inválida! A wallet cadastrada não existe no Asaas. Use "Recriar Wallet".');
+      } else {
+        toast.success('✅ Wallet validada com sucesso!');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao validar wallet');
+    } finally {
+      setIsValidating(false);
+    }
+  };
+  
+  const handleRecreateWallet = async () => {
+    if (!supplierData.id) {
+      toast.error('ID do fornecedor não disponível');
+      return;
+    }
+    
+    const confirm = window.confirm(
+      'Tem certeza que deseja recriar a wallet? Isso irá buscar ou criar uma nova subconta no Asaas.'
+    );
+    
+    if (!confirm) return;
+    
+    setIsRecreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-asaas-wallet', {
+        body: { supplierId: supplierData.id, force: true }
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`✅ Wallet recriada! ID: ${data.wallet_id}`);
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao recriar wallet');
+    } finally {
+      setIsRecreating(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -112,8 +174,30 @@ export function AsaasWalletSettings({ supplierData }: AsaasWalletSettingsProps) 
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm font-medium">ID da Subconta Asaas</span>
-                  <code className="text-xs bg-background px-2 py-1 rounded">{supplierData.asaas_wallet_id}</code>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium">ID da Subconta Asaas</span>
+                    <code className="block text-xs bg-background px-2 py-1 rounded mt-1">{supplierData.asaas_wallet_id}</code>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleValidateWallet}
+                      disabled={isValidating || !supplierData.id}
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${isValidating ? 'animate-spin' : ''}`} />
+                      Revalidar
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="secondary"
+                      onClick={handleRecreateWallet}
+                      disabled={isRecreating || !supplierData.id}
+                    >
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      Recriar
+                    </Button>
+                  </div>
                 </div>
 
                 {supplierData.created_at && (

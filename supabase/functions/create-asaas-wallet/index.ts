@@ -29,7 +29,7 @@ serve(async (req) => {
       )
     }
 
-    const { supplierId } = await req.json()
+    const { supplierId, force = false } = await req.json()
 
     // Buscar dados do fornecedor
     const { data: supplier, error: supplierError } = await supabase
@@ -47,10 +47,51 @@ serve(async (req) => {
 
     // Verificar se já tem wallet
     if (supplier.asaas_wallet_id) {
-      return new Response(
-        JSON.stringify({ wallet_id: supplier.asaas_wallet_id, message: 'Wallet já existe' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      // Se force não está habilitado, validar se a wallet existe no Asaas
+      if (!force) {
+        console.log('🔍 Validando wallet existente no Asaas:', supplier.asaas_wallet_id);
+        
+        // Obter configuração do Asaas
+        const { apiKey, baseUrl } = await getAsaasConfig(supabase);
+        
+        // Tentar buscar conta por CPF/CNPJ para validar
+        const cleanDocument = (supplier.cnpj || supplier.document_number).replace(/\D/g, '');
+        const searchResponse = await fetch(`${baseUrl}/accounts?cpfCnpj=${cleanDocument}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': apiKey,
+          },
+        });
+        
+        if (searchResponse.ok) {
+          const searchData = await searchResponse.json();
+          const accounts = searchData.data || [];
+          const existingAccount = accounts.find((acc: any) => acc.id === supplier.asaas_wallet_id);
+          
+          if (existingAccount) {
+            console.log('✅ Wallet válida no Asaas');
+            return new Response(
+              JSON.stringify({ wallet_id: supplier.asaas_wallet_id, message: 'Wallet já existe e é válida' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        
+        // Wallet não encontrada no Asaas
+        console.warn('⚠️ Wallet cadastrada no banco mas não existe no Asaas');
+        return new Response(
+          JSON.stringify({ 
+            code: 'WALLET_INVALID_NEEDS_FORCE',
+            wallet_id: supplier.asaas_wallet_id,
+            message: 'Wallet cadastrada no banco, mas não existe no Asaas. Use force=true para recriar.'
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Se force=true, continuar para recriar/validar a wallet
+      console.log('🔄 Forçando recriação/validação da wallet');
     }
 
     // Obter configuração do Asaas (incluindo ambiente e URL)
@@ -134,7 +175,7 @@ serve(async (req) => {
       }
     }
 
-    console.log('📝 Criando wallet Asaas para fornecedor:', {
+    console.log('📝 Criando/validando wallet Asaas para fornecedor:', {
       supplierName: supplier.name,
       supplierId: supplierId,
       documentType: supplier.document_type,
@@ -144,12 +185,76 @@ serve(async (req) => {
       incomeValue: incomeValue,
       incomeValueSource: usedFallback ? 'fallback' : (bi.faturamento_mensal ? 'faturamento_mensal' : 'business_info'),
       hasPhone: !!(supplier.phone || supplier.whatsapp),
-      hasAddress: !!supplier.address
+      hasAddress: !!supplier.address,
+      forceMode: force
     });
 
     const bankData = supplier.bank_data || {}
+    let walletId = supplier.asaas_wallet_id;
+    let walletSource: 'existing' | 'found_by_cpfCnpj' | 'created_new' = 'existing';
     
-    // Criar subconta no Asaas
+    // Se force=true e já existe wallet, primeiro buscar no Asaas por CPF/CNPJ
+    if (force && supplier.asaas_wallet_id) {
+      console.log('🔍 Buscando conta existente no Asaas por CPF/CNPJ...');
+      const searchResponse = await fetch(`${baseUrl}/accounts?cpfCnpj=${cleanDocument}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': apiKey,
+        },
+      });
+      
+      if (searchResponse.ok) {
+        const searchData = await searchResponse.json();
+        const accounts = searchData.data || [];
+        
+        if (accounts.length > 0) {
+          // Usar a primeira conta encontrada
+          walletId = accounts[0].id;
+          walletSource = 'found_by_cpfCnpj';
+          console.log('✅ Conta encontrada no Asaas:', walletId);
+          
+          // Atualizar no banco
+          await supabase
+            .from('suppliers')
+            .update({ 
+              asaas_wallet_id: walletId,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', supplierId);
+          
+          // Log de auditoria
+          await supabase
+            .from('audit_logs')
+            .insert({
+              action: 'ASAAS_WALLET_VALIDATED',
+              entity_type: 'suppliers',
+              entity_id: supplierId,
+              user_id: user.id,
+              details: {
+                wallet_id: walletId,
+                previous_wallet_id: supplier.asaas_wallet_id,
+                supplier_name: supplier.name,
+                source: walletSource,
+              },
+            });
+          
+          return new Response(
+            JSON.stringify({
+              wallet_id: walletId,
+              message: 'Wallet existente no Asaas foi vinculada com sucesso',
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+    
+    // Criar subconta no Asaas (se não encontrou ou não existe)
+    if (!force || walletSource === 'existing') {
+      console.log('🆕 Criando nova subconta no Asaas...');
+    }
+    
     const asaasResponse = await fetch(`${baseUrl}/accounts`, {
       method: 'POST',
       headers: {
@@ -183,10 +288,68 @@ serve(async (req) => {
       const errorMessage = error.errors?.[0]?.description || 'Erro desconhecido'
       const errorCode = error.errors?.[0]?.code || 'unknown'
       
+      // Se CPF/CNPJ já existe, buscar a conta existente
+      if (errorCode === 'invalid_action' && errorMessage.includes('já')) {
+        console.log('📋 CPF/CNPJ já cadastrado, buscando conta existente...');
+        const searchResponse = await fetch(`${baseUrl}/accounts?cpfCnpj=${cleanDocument}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': apiKey,
+          },
+        });
+        
+        if (searchResponse.ok) {
+          const searchData = await searchResponse.json();
+          const accounts = searchData.data || [];
+          
+          if (accounts.length > 0) {
+            walletId = accounts[0].id;
+            walletSource = 'found_by_cpfCnpj';
+            console.log('✅ Conta existente encontrada:', walletId);
+            
+            // Atualizar no banco
+            await supabase
+              .from('suppliers')
+              .update({ 
+                asaas_wallet_id: walletId,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', supplierId);
+            
+            // Log de auditoria
+            await supabase
+              .from('audit_logs')
+              .insert({
+                action: 'ASAAS_WALLET_RECREATED',
+                entity_type: 'suppliers',
+                entity_id: supplierId,
+                user_id: user.id,
+                details: {
+                  wallet_id: walletId,
+                  previous_wallet_id: supplier.asaas_wallet_id,
+                  supplier_name: supplier.name,
+                  source: walletSource,
+                },
+              });
+            
+            return new Response(
+              JSON.stringify({
+                wallet_id: walletId,
+                message: 'Wallet existente vinculada com sucesso',
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+      }
+      
       throw new Error(`Falha ao criar wallet Asaas: ${errorMessage} (${errorCode})`)
     }
 
     const wallet = await asaasResponse.json()
+    walletId = wallet.id
+    walletSource = 'created_new'
 
     // Atualizar fornecedor com wallet_id
     await supabase
@@ -198,27 +361,31 @@ serve(async (req) => {
       .eq('id', supplierId)
 
     // Log de auditoria
+    const auditAction = force && supplier.asaas_wallet_id ? 'ASAAS_WALLET_RECREATED' : 'ASAAS_WALLET_CREATED';
     await supabase
       .from('audit_logs')
       .insert({
-        action: 'ASAAS_WALLET_CREATED',
+        action: auditAction,
         entity_type: 'suppliers',
         entity_id: supplierId,
         user_id: user.id,
         details: {
-          wallet_id: wallet.id,
+          wallet_id: walletId,
+          previous_wallet_id: supplier.asaas_wallet_id,
           supplier_name: supplier.name,
           income_value: incomeValue,
           income_value_used_fallback: usedFallback,
+          source: walletSource,
+          force_mode: force,
         },
       })
 
-    console.log(`Wallet Asaas criada para fornecedor ${supplier.name}: ${wallet.id}`)
+    console.log(`✅ Wallet Asaas ${auditAction === 'ASAAS_WALLET_RECREATED' ? 'recriada' : 'criada'} para fornecedor ${supplier.name}: ${walletId}`)
 
     return new Response(
       JSON.stringify({
-        wallet_id: wallet.id,
-        message: 'Wallet criada com sucesso',
+        wallet_id: walletId,
+        message: auditAction === 'ASAAS_WALLET_RECREATED' ? 'Wallet recriada com sucesso' : 'Wallet criada com sucesso',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

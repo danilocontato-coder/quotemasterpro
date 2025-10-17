@@ -221,7 +221,9 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                 </TooltipTrigger>
                 {(!payment.suppliers?.asaas_wallet_id && !payment.quotes?.suppliers?.asaas_wallet_id) && (
                   <TooltipContent>
-                    <p>Fornecedor precisa configurar carteira Asaas</p>
+                    <p className="font-medium">⚠️ Carteira Asaas não configurada</p>
+                    <p className="text-xs mt-1">O fornecedor precisa configurar sua carteira digital Asaas para receber pagamentos com segurança.</p>
+                    <p className="text-xs mt-1 text-amber-400">Entre em contato com o administrador para resolver.</p>
                   </TooltipContent>
                 )}
               </Tooltip>
