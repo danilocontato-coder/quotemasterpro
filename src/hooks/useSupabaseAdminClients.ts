@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePerformanceDebug } from "./usePerformanceDebug";
@@ -952,12 +952,12 @@ export function useSupabaseAdminClients() {
     setClients((prev) => prev.map((c) => (c.groupId === id ? { ...c, groupId: undefined, groupName: undefined } : c)));
   };
 
-  const generateTemporaryPassword = () => {
+  const generateTemporaryPassword = useCallback(() => {
     const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
     let password = "";
     for (let i = 0; i < 10; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
     return password;
-  };
+  }, []);
 
   // Aplicar características do plano ao cliente
   const applyPlanCharacteristicsToClient = async (clientId: string, planId: string) => {
@@ -1074,12 +1074,12 @@ export function useSupabaseAdminClients() {
     );
   };
 
-  const resetClientPassword = async (clientId: string, email: string) => {
+  const resetClientPassword = async (clientId: string, email: string, desiredPassword?: string) => {
     console.log('resetClientPassword: resetando senha para cliente', clientId, email);
     setLoading(true);
     try {
-      const password = generateTemporaryPassword();
-      console.log('resetClientPassword: nova senha gerada');
+      const password = desiredPassword || generateTemporaryPassword();
+      console.log('resetClientPassword: senha a ser usada:', desiredPassword ? 'fornecida' : 'nova gerada');
       
       const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
         body: {

@@ -37,7 +37,7 @@ interface ClientCredentialsModalProps {
   client: Client | null;
   onGenerateUsername: (companyName: string) => string;
   onGeneratePassword: () => string;
-  onResetPassword: (clientId: string, email: string) => Promise<string>;
+  onResetPassword: (clientId: string, email: string, desiredPassword?: string) => Promise<string>;
   onSendCredentials?: (
     clientId: string,
     credentials: { email: string; password: string },
@@ -67,19 +67,26 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     sendByWhatsApp: false
   });
   const { toast } = useToast();
+  const initializedRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (client && open) {
-      // Usar o email como username em vez do código gerado
-      const username = client.email;
-      const password = onGeneratePassword();
-      setCredentials({
-        username,
-        password,
-        temporaryPassword: true
-      });
+    if (open && client) {
+      // Só inicializar se ainda não foi inicializado para este cliente
+      if (initializedRef.current !== client.id) {
+        const username = client.email;
+        const password = onGeneratePassword();
+        setCredentials({
+          username,
+          password,
+          temporaryPassword: true
+        });
+        initializedRef.current = client.id;
+      }
+    } else if (!open) {
+      // Limpar referência quando fechar o modal
+      initializedRef.current = null;
     }
-  }, [client, open, onGeneratePassword]);
+  }, [open, client?.id, onGeneratePassword]);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -132,9 +139,17 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     
     setIsSending(true);
     try {
+      // CRÍTICO: Sincronizar a senha no Supabase antes de enviar
+      console.log('🔄 Sincronizando senha no Supabase antes do envio...');
+      const syncedPassword = await onResetPassword(client.id, client.email, credentials.password);
+      
+      // Atualizar o estado local com a senha sincronizada
+      setCredentials(prev => ({ ...prev, password: syncedPassword }));
+      
+      // Agora enviar usando a senha sincronizada
       await onSendCredentials(client.id, {
         email: credentials.username,
-        password: credentials.password
+        password: syncedPassword
       }, sendOptions);
       
       const methods = [];
@@ -146,6 +161,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
         description: `As credenciais foram enviadas por ${methods.join(" e ")}`,
       });
     } catch (error) {
+      console.error('Erro ao enviar credenciais:', error);
       toast({
         title: "Erro",
         description: "Não foi possível enviar as credenciais.",
