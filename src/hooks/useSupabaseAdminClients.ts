@@ -554,7 +554,7 @@ export function useSupabaseAdminClients() {
                       user_email: clientData.email,
                       temp_password: password,
                       user_name: clientData.companyName,
-                      app_url: window.location.origin + "/auth/login"
+                      app_url: "https://cotiz.com.br/auth/login"
                     }
                   });
 
@@ -637,7 +637,7 @@ export function useSupabaseAdminClients() {
                           
                           <!-- Botão de Ação -->
                           <div style="text-align: center; margin: 30px 0;">
-                            <a href="${window.location.origin}/auth/login" 
+                            <a href="https://cotiz.com.br/auth/login" 
                                style="background: #003366; color: white; padding: 16px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(0,51,102,0.3); transition: all 0.3s;">
                               🚀 Acessar o Sistema
                             </a>
