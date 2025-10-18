@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, CheckCircle, AlertTriangle, Info, X, FileText, Truck, CreditCard } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,33 +12,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseNotifications } from "@/hooks/useSupabaseNotifications";
 import { useNavigate } from "react-router-dom";
-
-const getNotificationIcon = (type: string) => {
-  switch (type) {
-    case 'success':
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
-    case 'warning':
-      return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-    case 'error':
-      return <X className="h-4 w-4 text-red-500" />;
-    case 'proposal':
-      return <FileText className="h-4 w-4 text-purple-500" />;
-    case 'delivery':
-      return <Truck className="h-4 w-4 text-orange-500" />;
-    case 'payment':
-      return <CreditCard className="h-4 w-4 text-green-600" />;
-    case 'quote':
-      return <FileText className="h-4 w-4 text-blue-500" />;
-    case 'ticket':
-      return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-    default:
-      return <Info className="h-4 w-4 text-blue-500" />;
-  }
-};
+import { NotificationContent } from "@/components/notifications/NotificationContent";
+import { useToast } from "@/hooks/use-toast";
 
 export function RoleBasedNotificationDropdown() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } = useSupabaseNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAllNotifications, isLoading } = useSupabaseNotifications();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleClearAll = () => {
+    if (window.confirm('Deseja realmente limpar todas as notificações? Esta ação não pode ser desfeita.')) {
+      clearAllNotifications();
+      toast({
+        title: "Notificações limpas",
+        description: "Todas as notificações foram removidas com sucesso.",
+      });
+    }
+  };
 
   console.log('🔔 [ROLE-BASED-DROPDOWN] Rendering with real Supabase notifications:', {
     total: notifications.length,
@@ -62,19 +52,32 @@ export function RoleBasedNotificationDropdown() {
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-96 max-w-[95vw]">
         <div className="flex items-center justify-between p-4">
           <DropdownMenuLabel className="p-0">Notificações</DropdownMenuLabel>
-          {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={markAllAsRead}
-              className="text-xs"
-            >
-              Marcar todas como lidas
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {unreadCount > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={markAllAsRead}
+                className="text-xs"
+              >
+                Marcar como lidas
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleClearAll}
+                className="text-xs text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Limpar
+              </Button>
+            )}
+          </div>
         </div>
         
         <DropdownMenuSeparator />
@@ -105,23 +108,13 @@ export function RoleBasedNotificationDropdown() {
                   }
                 }}
               >
-                <div className="flex gap-3 w-full">
-                  {getNotificationIcon(notification.type)}
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{notification.title}</p>
-                      {!notification.read && (
-                        <div className="w-2 h-2 bg-primary rounded-full" />
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(notification.created_at).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-                </div>
+                <NotificationContent
+                  notification={notification}
+                  onNavigate={(url) => {
+                    markAsRead(notification.id);
+                    navigate(url);
+                  }}
+                />
               </DropdownMenuItem>
             ))
           )}
