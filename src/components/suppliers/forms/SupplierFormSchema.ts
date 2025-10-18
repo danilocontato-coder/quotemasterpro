@@ -29,6 +29,8 @@ export const supplierFormSchema = z.object({
     .trim()
     .min(1, 'Documento é obrigatório'),
   
+  client_id: z.string().trim().optional(),
+  
   // Contato
   email: z
     .string()
@@ -105,6 +107,7 @@ export const basicInfoSchema = supplierFormSchema.pick({
   document_type: true,
   document_number: true,
   type: true,
+  client_id: true,
 });
 
 export const contactSchema = supplierFormSchema.pick({

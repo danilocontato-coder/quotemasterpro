@@ -4,10 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building, AlertCircle, Loader2, FileText, User } from 'lucide-react';
 import { BasicInfoData } from './SupplierFormSchema';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDocument, normalizeDocument, getDocumentPlaceholder } from '@/utils/documentValidation';
 
 interface ExistingSupplier {
@@ -38,9 +40,44 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
   const [existingSuppliers, setExistingSuppliers] = useState<ExistingSupplier[]>([]);
   const [showExistingOptions, setShowExistingOptions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [clients, setClients] = useState<{ id: string; name: string; cnpj: string }[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const documentType = (data.document_type as 'cpf' | 'cnpj') || 'cnpj';
+  const isAdmin = user?.role === 'admin';
+  const supplierType = data.type || 'local';
+
+  // Buscar clientes quando admin e tipo for local
+  useEffect(() => {
+    if (isAdmin && supplierType === 'local') {
+      fetchClients();
+    }
+  }, [isAdmin, supplierType]);
+
+  const fetchClients = async () => {
+    setLoadingClients(true);
+    try {
+      const { data: clientsData, error } = await supabase
+        .from('clients')
+        .select('id, name, cnpj')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) throw error;
+      setClients(clientsData || []);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      toast({
+        title: 'Erro ao carregar clientes',
+        description: 'Não foi possível carregar a lista de clientes.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingClients(false);
+    }
+  };
 
   const searchSupplierByDocument = async (searchDoc: string, docType: 'cpf' | 'cnpj') => {
     const cleanDoc = normalizeDocument(searchDoc);
@@ -138,6 +175,39 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
             </div>
           )}
         </div>
+
+        {/* Seleção de Cliente (apenas para admin criando fornecedor local) */}
+        {isAdmin && supplierType === 'local' && (
+          <div className="space-y-2">
+            <Label htmlFor="client_id" className="text-sm font-medium">
+              Cliente Vinculado *
+            </Label>
+            <Select
+              value={data.client_id || ''}
+              onValueChange={(value) => onChange('client_id', value)}
+            >
+              <SelectTrigger className={errors.client_id ? "border-destructive" : ""}>
+                <SelectValue placeholder={loadingClients ? "Carregando..." : "Selecione o cliente"} />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name} {client.cnpj && `(${client.cnpj})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.client_id && (
+              <div className="flex items-center gap-1 text-xs text-destructive">
+                <AlertCircle className="h-3 w-3" />
+                {errors.client_id}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Fornecedores locais devem estar vinculados a um cliente específico
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label className="text-sm font-medium">Tipo de Documento *</Label>

@@ -38,6 +38,7 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     specialties: editingSupplier?.specialties || [],
     type: editingSupplier?.type || 'local',
     status: editingSupplier?.status || 'active',
+    client_id: editingSupplier?.client_id || '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof SupplierFormData, string>>>({});
 
