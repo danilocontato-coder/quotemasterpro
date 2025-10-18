@@ -152,10 +152,11 @@ const Login: React.FC = () => {
           .from('profiles')
           .select('id, name, email, role, client_id')
           .eq('id', data.user.id)
-          .single();
+          .maybeSingle();
 
         if (!profile) {
-          setError('Usuário não encontrado no sistema.');
+          // Mensagem mais diagnóstica
+          setError('Sua conta foi criada recentemente e ainda está sendo sincronizada. Aguarde alguns instantes e tente novamente. Se o problema persistir, contate o suporte.');
           await supabase.auth.signOut();
           return;
         }

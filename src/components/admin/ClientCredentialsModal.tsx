@@ -139,21 +139,29 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     
     setIsSending(true);
     try {
-      // 🆕 Tentar sincronizar senha, mas continuar mesmo se falhar
-      let syncedPassword = credentials.password;
+      // 🔐 CRÍTICO: Sincronizar senha no Supabase ANTES de enviar
+      console.log('🔄 [SEND_CREDENTIALS] Sincronizando senha no Supabase...');
+      
+      let syncedPassword: string;
       try {
-        console.log('🔄 Tentando sincronizar senha no Supabase...');
         syncedPassword = await onResetPassword(client.id, client.email, credentials.password);
-        console.log('✅ Senha sincronizada com sucesso');
+        console.log('✅ [SEND_CREDENTIALS] Senha sincronizada com sucesso');
         
         // Atualizar estado local
         setCredentials(prev => ({ ...prev, password: syncedPassword }));
-      } catch (syncError) {
-        console.warn('⚠️ Não foi possível sincronizar senha (usuário pode não existir ainda):', syncError);
-        // Continuar com a senha atual, sem bloquear o envio
+      } catch (syncError: any) {
+        console.error('❌ [SEND_CREDENTIALS] Falha na sincronização:', syncError);
+        
+        // BLOQUEAR envio se sincronização falhar
+        toast({
+          title: "Erro ao preparar credenciais",
+          description: syncError?.message || "Não foi possível sincronizar o acesso do usuário. Tente novamente.",
+          variant: "destructive"
+        });
+        return; // NÃO enviar credenciais sem sincronização
       }
       
-      // Enviar credenciais (com senha sincronizada ou senha atual)
+      // Enviar credenciais (com senha sincronizada)
       await onSendCredentials(client.id, {
         email: credentials.username,
         password: syncedPassword

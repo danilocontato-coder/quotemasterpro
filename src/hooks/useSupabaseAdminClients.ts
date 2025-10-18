@@ -477,16 +477,42 @@ export function useSupabaseAdminClients() {
           const authPayload = authResp as any;
           if (authPayload?.success !== false && authPayload?.auth_user_id) {
             const createdAuthUserId = authPayload.auth_user_id;
-            console.log('✅ DEBUG: Auth user criado com ID', createdAuthUserId);
+            console.log('✅ [CREATE_CLIENT] Auth user criado com ID', createdAuthUserId);
 
-            // Verificar se profile foi criado corretamente
-            const { data: profileCheck } = await supabase
-              .from('profiles')
-              .select('id, client_id, role')
-              .eq('id', createdAuthUserId)
-              .maybeSingle();
-            
-            console.log('👤 DEBUG: Profile criado:', profileCheck);
+            // 🆕 VERIFICAÇÃO COM RETRY: Confirmar que profile existe antes de enviar credenciais
+            let profileConfirmed = false;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              console.log(`🔍 [CREATE_CLIENT] Tentativa ${attempt}/3: verificando profile...`);
+              
+              const { data: profileCheck } = await supabase
+                .from('profiles')
+                .select('id, client_id, role')
+                .eq('id', createdAuthUserId)
+                .maybeSingle();
+              
+              if (profileCheck?.id) {
+                console.log('✅ [CREATE_CLIENT] Profile confirmado:', profileCheck);
+                profileConfirmed = true;
+                break;
+              }
+              
+              if (attempt < 3) {
+                console.warn(`⚠️ [CREATE_CLIENT] Profile não encontrado, aguardando ${attempt * 500}ms...`);
+                await new Promise(resolve => setTimeout(resolve, attempt * 500));
+              }
+            }
+
+            if (!profileConfirmed) {
+              console.error('❌ [CREATE_CLIENT] Profile não foi criado após 3 tentativas');
+              toast.warning('Cliente criado com sucesso', {
+                description: 'O sistema de acesso ainda está sincronizando. Reenvie as credenciais em alguns instantes.',
+                duration: 8000
+              });
+              
+              // NÃO enviar credenciais neste caso
+              setLoading(false);
+              return;
+            }
 
             // Verificar se user foi criado corretamente
             const { data: userCheck } = await supabase
@@ -495,7 +521,7 @@ export function useSupabaseAdminClients() {
               .eq('auth_user_id', createdAuthUserId)
               .maybeSingle();
             
-            console.log('👥 DEBUG: User criado:', userCheck);
+            console.log('👥 [CREATE_CLIENT] User criado:', userCheck);
             
             // Mostrar credenciais criadas com toast melhorado
             const copyToClipboard = async (text: string) => {
@@ -1075,35 +1101,79 @@ export function useSupabaseAdminClients() {
   };
 
   const resetClientPassword = async (clientId: string, email: string, desiredPassword?: string) => {
-    console.log('resetClientPassword: verificando usuário', clientId, email);
+    console.log('🔄 [RESET_PASSWORD] Iniciando sincronização de senha', { clientId, email });
     setLoading(true);
     try {
-      // 🆕 PASSO 1: Verificar se usuário existe em profiles
+      // PASSO 1: Verificar se usuário existe em profiles
       const { data: existingProfile, error: profileCheckErr } = await supabase
         .from('profiles')
-        .select('id, email')
+        .select('id, email, name, role')
         .eq('email', email.toLowerCase())
         .maybeSingle();
 
       const password = desiredPassword || generateTemporaryPassword();
 
-      // 🆕 PASSO 2: Se usuário não existe, retornar a senha sem fazer reset
+      // PASSO 2: Se usuário NÃO existe, criar primeiro
       if (!existingProfile) {
-        console.warn('⚠️ Usuário não existe em profiles, retornando senha sem reset');
-        toast.warning('Credenciais preparadas', {
-          description: 'O usuário será criado quando o cliente fizer o primeiro login.'
+        console.warn('⚠️ [RESET_PASSWORD] Usuário não existe em profiles, criando...');
+        
+        // Buscar dados do cliente para criar usuário
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('company_name, name')
+          .eq('id', clientId)
+          .single();
+        
+        const clientName = clientData?.company_name || clientData?.name || 'Cliente';
+        
+        // Criar usuário Auth + Profile + Users
+        const { data: createResp, error: createErr } = await supabase.functions.invoke("create-auth-user", {
+          body: {
+            email,
+            password,
+            name: clientName,
+            role: "manager",
+            clientId,
+            temporaryPassword: true,
+            action: 'create',
+          },
         });
-        return password;
+
+        if (createErr || !createResp?.success) {
+          console.error('❌ [RESET_PASSWORD] Falha ao criar usuário:', createErr);
+          throw new Error(createErr?.message || 'Não foi possível criar o usuário de acesso');
+        }
+
+        console.log('✅ [RESET_PASSWORD] Usuário criado com sucesso');
+        
+        // Aguardar propagação (profile pode demorar alguns ms)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verificar se profile foi criado
+        const { data: newProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', email.toLowerCase())
+          .maybeSingle();
+        
+        if (!newProfile) {
+          console.error('❌ [RESET_PASSWORD] Profile não foi criado após tentativa');
+          throw new Error('Usuário criado mas ainda não está disponível. Tente reenviar em alguns instantes.');
+        }
+        
+        console.log('✅ [RESET_PASSWORD] Profile confirmado, senha já definida na criação');
+        return password; // Senha já foi definida na criação
       }
 
-      console.log('✅ Usuário encontrado, prosseguindo com reset de senha');
+      // PASSO 3: Usuário existe, fazer reset de senha
+      console.log('✅ [RESET_PASSWORD] Usuário encontrado, resetando senha');
       
       const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
         body: {
           email,
           password,
-          name: "Reset Password", // não usado no reset
-          role: "manager", // não usado no reset
+          name: existingProfile.name || "Reset Password",
+          role: existingProfile.role || "manager",
           clientId,
           temporaryPassword: true,
           action: 'reset_password',
@@ -1111,7 +1181,7 @@ export function useSupabaseAdminClients() {
       });
 
       if (!fnErr && authResp?.success) {
-        console.log('resetClientPassword: senha resetada com sucesso');
+        console.log('✅ [RESET_PASSWORD] Senha resetada com sucesso');
         
         const copyToClipboard = async (text: string) => {
           try {
