@@ -566,7 +566,6 @@ export function useSupabaseAdminClients() {
               
               // ABORTAR: não enviar credenciais
               setLoading(false);
-              await refetch();
               return;
             }
             
