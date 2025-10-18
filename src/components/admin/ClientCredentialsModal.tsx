@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,7 +38,11 @@ interface ClientCredentialsModalProps {
   onGenerateUsername: (companyName: string) => string;
   onGeneratePassword: () => string;
   onResetPassword: (clientId: string, email: string) => Promise<string>;
-  onSendCredentials?: (clientId: string, options: { sendByEmail: boolean; sendByWhatsApp: boolean }) => Promise<void>;
+  onSendCredentials?: (
+    clientId: string,
+    credentials: { email: string; password: string },
+    options: { sendByEmail: boolean; sendByWhatsApp: boolean }
+  ) => Promise<void>;
 }
 
 export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
@@ -56,6 +61,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [sendOptions, setSendOptions] = useState({
     sendByEmail: true,
     sendByWhatsApp: false
@@ -124,8 +130,12 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
       return;
     }
     
+    setIsSending(true);
     try {
-      await onSendCredentials(client.id, sendOptions);
+      await onSendCredentials(client.id, {
+        email: credentials.username,
+        password: credentials.password
+      }, sendOptions);
       
       const methods = [];
       if (sendOptions.sendByEmail) methods.push("e-mail");
@@ -141,6 +151,8 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
         description: "Não foi possível enviar as credenciais.",
         variant: "destructive"
       });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -148,7 +160,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
@@ -338,17 +350,19 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-between">
-          <Button
+        <div className="flex justify-end gap-2 pt-4 pb-2 border-t sticky bottom-0 bg-background">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
+            Fechar
+          </Button>
+          <LoadingButton
             variant="default"
             onClick={handleSendCredentials}
             disabled={!onSendCredentials || (!sendOptions.sendByEmail && !sendOptions.sendByWhatsApp)}
+            isLoading={isSending}
+            loadingText="Enviando..."
           >
             Enviar Credenciais
-          </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
+          </LoadingButton>
         </div>
       </DialogContent>
     </Dialog>

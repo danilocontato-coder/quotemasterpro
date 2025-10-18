@@ -14,6 +14,79 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_credit_transactions: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          id: string
+          reason: string
+          reference_id: string | null
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          id?: string
+          reason: string
+          reference_id?: string | null
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          reference_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_credit_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_credits: {
+        Row: {
+          available_credits: number
+          client_id: string
+          created_at: string
+          id: string
+          total_earned: number
+          total_spent: number
+          updated_at: string
+        }
+        Insert: {
+          available_credits?: number
+          client_id: string
+          created_at?: string
+          id?: string
+          total_earned?: number
+          total_spent?: number
+          updated_at?: string
+        }
+        Update: {
+          available_credits?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          total_earned?: number
+          total_spent?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_credits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_leads: {
         Row: {
           ai_insights: Json
@@ -1620,6 +1693,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "cost_centers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cost_centers_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
@@ -2108,6 +2188,62 @@ export type Database = {
           },
         ]
       }
+      email_contacts: {
+        Row: {
+          bounced_at: string | null
+          client_id: string
+          created_at: string | null
+          custom_fields: Json | null
+          email: string
+          id: string
+          name: string | null
+          phone: string | null
+          source: string | null
+          status: string | null
+          tags: string[] | null
+          unsubscribed_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          bounced_at?: string | null
+          client_id: string
+          created_at?: string | null
+          custom_fields?: Json | null
+          email: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          bounced_at?: string | null
+          client_id?: string
+          created_at?: string | null
+          custom_fields?: Json | null
+          email?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          source?: string | null
+          status?: string | null
+          tags?: string[] | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           client_id: string | null
@@ -2170,6 +2306,7 @@ export type Database = {
           click_rate: number | null
           clicked_count: number | null
           client_id: string | null
+          contact_tags: string[] | null
           created_at: string | null
           created_by: string | null
           delivered_count: number | null
@@ -2189,6 +2326,7 @@ export type Database = {
           sent_count: number | null
           status: string
           subject_line: string
+          target_all_contacts: boolean | null
           target_segment: Json
           timezone: string | null
           unsubscribed_count: number | null
@@ -2208,6 +2346,7 @@ export type Database = {
           click_rate?: number | null
           clicked_count?: number | null
           client_id?: string | null
+          contact_tags?: string[] | null
           created_at?: string | null
           created_by?: string | null
           delivered_count?: number | null
@@ -2227,6 +2366,7 @@ export type Database = {
           sent_count?: number | null
           status?: string
           subject_line: string
+          target_all_contacts?: boolean | null
           target_segment?: Json
           timezone?: string | null
           unsubscribed_count?: number | null
@@ -2246,6 +2386,7 @@ export type Database = {
           click_rate?: number | null
           clicked_count?: number | null
           client_id?: string | null
+          contact_tags?: string[] | null
           created_at?: string | null
           created_by?: string | null
           delivered_count?: number | null
@@ -2265,6 +2406,7 @@ export type Database = {
           sent_count?: number | null
           status?: string
           subject_line?: string
+          target_all_contacts?: boolean | null
           target_segment?: Json
           timezone?: string | null
           unsubscribed_count?: number | null
@@ -5510,6 +5652,10 @@ export type Database = {
       current_user_can_see_quote: {
         Args: { quote_id_param: string }
         Returns: boolean
+      }
+      debit_ai_credits: {
+        Args: { p_amount: number; p_client_id: string }
+        Returns: undefined
       }
       find_or_create_supplier_by_cnpj: {
         Args: {

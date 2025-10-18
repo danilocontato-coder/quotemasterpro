@@ -139,43 +139,115 @@ export const ClientsManagement = () => {
   }, [resetClientPassword]);
 
   const handleSendCredentials = useCallback(async (
-    clientId: string, 
+    clientId: string,
+    receivedCredentials: { email: string; password: string },
     options: { sendByEmail: boolean; sendByWhatsApp: boolean }
   ) => {
     try {
       const client = clients.find(c => c.id === clientId);
       if (!client) throw new Error('Cliente não encontrado');
 
-      // Simular o envio de credenciais (aqui seria a lógica real)
       const credentials = {
-        email: client.email,
-        password: generateTemporaryPassword(), // Gerar nova senha
+        email: receivedCredentials.email,
+        password: receivedCredentials.password,
         companyName: client.companyName,
-        loginUrl: window.location.origin + "/auth/login"
+        loginUrl: "https://cotiz.com.br/auth/login"
       };
+
+      // Enviar via E-mail se solicitado
+      if (options.sendByEmail) {
+        console.log('📧 Enviando credenciais por e-mail para:', client.email);
+        
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-email', {
+          body: {
+            to: client.email,
+            subject: '🎉 Suas Credenciais de Acesso - Cotiz',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff;">
+                <div style="background: linear-gradient(135deg, #003366 0%, #005599 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center;">
+                  <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🎉 Bem-vindo ao Cotiz!</h1>
+                  <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Plataforma de Gestão de Cotações</p>
+                </div>
+                <div style="background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px;">
+                  <p style="font-size: 16px; color: #333; margin: 0 0 10px 0;">Olá <strong>${credentials.companyName}</strong>,</p>
+                  <p style="font-size: 14px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">Seu acesso à plataforma foi criado com sucesso! Use as credenciais abaixo para fazer seu primeiro login:</p>
+                  <div style="background: white; border: 2px solid #003366; border-radius: 8px; padding: 20px; margin: 0 0 25px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #666; font-size: 13px;">📧 E-mail:</span></td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong style="color: #003366; font-size: 14px;">${credentials.email}</strong></td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;"><span style="color: #666; font-size: 13px;">🔑 Senha temporária:</span></td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;"><code style="background: #f3f4f6; padding: 6px 12px; border-radius: 4px; font-size: 15px; color: #dc2626; font-weight: bold; letter-spacing: 1px;">${credentials.password}</code></td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 12px 0;"><span style="color: #666; font-size: 13px;">🏢 Empresa:</span></td>
+                        <td style="padding: 12px 0; text-align: right;"><strong style="color: #003366; font-size: 14px;">${credentials.companyName}</strong></td>
+                      </tr>
+                    </table>
+                  </div>
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${credentials.loginUrl}" style="background: #003366; color: white; padding: 16px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(0,51,102,0.3);">🚀 Acessar o Sistema</a>
+                  </div>
+                  <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0 0 0; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;"><strong>⚠️ Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.</p>
+                  </div>
+                  <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin: 20px 0 0 0;">
+                    <p style="margin: 0 0 10px 0; font-size: 13px; color: #666; font-weight: 600;">💬 Precisa de ajuda?</p>
+                    <p style="margin: 0; font-size: 12px; color: #999; line-height: 1.6;">
+                      Entre em contato com nosso suporte:<br>
+                      📧 <a href="mailto:suporte@cotiz.com.br" style="color: #003366; text-decoration: none;">suporte@cotiz.com.br</a><br>
+                      📱 WhatsApp: +55 (71) 99999-9999
+                    </p>
+                  </div>
+                </div>
+                <div style="text-align: center; padding: 20px; color: #999; font-size: 11px; line-height: 1.6;">
+                  <p style="margin: 0 0 5px 0;">© ${new Date().getFullYear()} <strong>Cotiz</strong> - Plataforma de Gestão de Cotações</p>
+                  <p style="margin: 0;">🌐 www.cotiz.com.br</p>
+                </div>
+              </div>
+            `,
+            text: `Bem-vindo ao Cotiz!\n\nOlá ${credentials.companyName},\n\nSeu acesso foi criado com sucesso!\n\nE-mail: ${credentials.email}\nSenha temporária: ${credentials.password}\nEmpresa: ${credentials.companyName}\n\nAcesse: ${credentials.loginUrl}\n\n⚠️ Por segurança, altere sua senha após o primeiro acesso.\n\nPrecisa de ajuda?\n📧 suporte@cotiz.com.br\n📱 +55 (71) 99999-9999\n\nCotiz - Plataforma de Gestão de Cotações\nwww.cotiz.com.br`
+          }
+        });
+
+        if (emailError) {
+          console.error('❌ Erro ao enviar e-mail:', emailError);
+          throw new Error(`Falha no envio de e-mail: ${emailError.message}`);
+        }
+        
+        console.log('✅ E-mail enviado com sucesso:', emailData);
+      }
 
       // Enviar via WhatsApp se solicitado
       if (options.sendByWhatsApp && client.phone) {
-        // Usar a mesma função notify que usamos no cadastro
-        await supabase.functions.invoke("notify", {
+        console.log('📱 Enviando credenciais por WhatsApp para:', client.phone);
+        
+        const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke("notify", {
           body: {
             type: "whatsapp_user_credentials",
             to: client.phone,
-            userData: credentials
+            user_email: credentials.email,
+            temp_password: credentials.password,
+            user_name: credentials.companyName,
+            app_url: credentials.loginUrl
           }
         });
-      }
 
-      // Simular envio por email (implementar quando necessário)
-      if (options.sendByEmail) {
-        console.log('Enviaria por email para:', client.email);
+        if (whatsappError) {
+          console.error('❌ Erro ao enviar WhatsApp:', whatsappError);
+          throw new Error(`Falha no envio de WhatsApp: ${whatsappError.message}`);
+        }
+        
+        console.log('✅ WhatsApp enviado com sucesso:', whatsappData);
       }
 
     } catch (error) {
-      console.error('Erro ao enviar credenciais:', error);
+      console.error('❌ Erro ao enviar credenciais:', error);
       throw error;
     }
-  }, [clients, generateTemporaryPassword]);
+  }, [clients]);
 
   // Filtered clients based on search and filters
   const filteredClients = useMemo(() => {

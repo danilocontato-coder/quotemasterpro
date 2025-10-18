@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useEmailCampaigns } from '@/hooks/useEmailCampaigns';
-import { Mail, Send, MousePointer, TrendingUp, Plus, Sparkles } from 'lucide-react';
+import { Mail, Send, MousePointer, TrendingUp, Plus, Sparkles, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function EmailMarketingDashboard() {
@@ -26,10 +26,16 @@ export default function EmailMarketingDashboard() {
           <h1 className="text-3xl font-bold">E-mail Marketing</h1>
           <p className="text-muted-foreground">Crie campanhas inteligentes com IA</p>
         </div>
-        <Button onClick={() => navigate('/admin/email-marketing/editor')} size="lg">
-          <Sparkles className="h-4 w-4 mr-2" />
-          Criar Campanha com IA
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate('/admin/email-marketing/contacts')} variant="outline" size="lg">
+            <Users className="h-4 w-4 mr-2" />
+            Gerenciar Contatos
+          </Button>
+          <Button onClick={() => navigate('/admin/email-marketing/editor')} size="lg">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Criar Campanha com IA
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

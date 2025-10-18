@@ -15,3 +15,23 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// NOVO: Limpar storage automaticamente quando sessão for inválida
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+    // Limpar possíveis tokens antigos do localStorage
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('supabase.auth.')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // Limpar sessionStorage também
+    sessionStorage.clear();
+    
+    console.log('[Supabase Client] Storage limpo devido a sessão inválida:', event);
+  }
+});
