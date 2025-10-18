@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,6 +61,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [sendOptions, setSendOptions] = useState({
     sendByEmail: true,
     sendByWhatsApp: false
@@ -128,6 +130,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
       return;
     }
     
+    setIsSending(true);
     try {
       await onSendCredentials(client.id, {
         email: credentials.username,
@@ -148,6 +151,8 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
         description: "Não foi possível enviar as credenciais.",
         variant: "destructive"
       });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -346,16 +351,18 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
         </Card>
 
         <div className="flex justify-end gap-2 pt-4 pb-2 border-t sticky bottom-0 bg-background">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
             Fechar
           </Button>
-          <Button
+          <LoadingButton
             variant="default"
             onClick={handleSendCredentials}
             disabled={!onSendCredentials || (!sendOptions.sendByEmail && !sendOptions.sendByWhatsApp)}
+            isLoading={isSending}
+            loadingText="Enviando..."
           >
             Enviar Credenciais
-          </Button>
+          </LoadingButton>
         </div>
       </DialogContent>
     </Dialog>
