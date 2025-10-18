@@ -210,8 +210,8 @@ export function CreateSupplierModal({
     }
   }, [open, editingSupplier]);
 
-  // Handle state change
-  const handleStateChange = (stateCode: string) => {
+  // Handle state change (async for awaitable city loading)
+  const handleStateChange = async (stateCode: string) => {
     const state = brazilStates.find(s => s.code === stateCode);
     if (state) {
       setSelectedState(stateCode);
@@ -223,9 +223,46 @@ export function CreateSupplierModal({
         city: '',
         address: {
           ...prev.address,
-          state: state.name
+          state: state.name,
+          city: ''
         }
       }));
+      return true;
+    }
+    return false;
+  };
+
+  // Handle address from CEP (awaits state change before updating city)
+  const handleAddressFromCEP = async (addressData: {
+    state: string;
+    city: string;
+    street?: string;
+    neighborhood?: string;
+  }) => {
+    const stateObj = brazilStates.find(s => s.name === addressData.state);
+    
+    if (stateObj) {
+      // 1. Update state and wait for cities to load
+      await handleStateChange(stateObj.code);
+      
+      // 2. After cities are loaded, update city and address
+      setSupplierData(prev => ({
+        ...prev,
+        state: stateObj.name,
+        city: addressData.city,
+        address: {
+          ...prev.address,
+          state: stateObj.name,
+          city: addressData.city,
+          street: addressData.street || prev.address.street,
+          neighborhood: addressData.neighborhood || prev.address.neighborhood
+        }
+      }));
+
+      toast({
+        title: "CEP encontrado",
+        description: "Endereço preenchido automaticamente!"
+      });
     }
   };
 
@@ -482,6 +519,23 @@ export function CreateSupplierModal({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
+                {/* CEP primeiro - linha inteira */}
+                <div className="col-span-2">
+                  <CEPInput
+                    value={supplierData.address.zipCode}
+                    onChange={(cep) => setSupplierData(prev => ({
+                      ...prev,
+                      address: { ...prev.address, zipCode: cep }
+                    }))}
+                    onAddressFound={handleAddressFromCEP}
+                    label="CEP"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Digite o CEP primeiro para preencher automaticamente estado, cidade e endereço
+                  </p>
+                </div>
+
+                {/* Estado e Cidade - lado a lado */}
                 <div>
                   <Label>Estado *</Label>
                   <Select value={selectedState} onValueChange={handleStateChange}>
@@ -522,6 +576,7 @@ export function CreateSupplierModal({
                   </Select>
                 </div>
 
+                {/* Endereço e Número - lado a lado */}
                 <div>
                   <Label>Endereço</Label>
                   <Input
@@ -546,6 +601,7 @@ export function CreateSupplierModal({
                   />
                 </div>
 
+                {/* Bairro e Complemento - lado a lado */}
                 <div>
                   <Label>Bairro</Label>
                   <Input
@@ -559,28 +615,14 @@ export function CreateSupplierModal({
                 </div>
 
                 <div>
-                  <CEPInput
-                    value={supplierData.address.zipCode}
-                    onChange={(cep) => setSupplierData(prev => ({
-                      ...prev,
-                      address: { ...prev.address, zipCode: cep }
+                  <Label>Complemento</Label>
+                  <Input
+                    value={supplierData.address.complement}
+                    onChange={(e) => setSupplierData(prev => ({ 
+                      ...prev, 
+                      address: { ...prev.address, complement: e.target.value }
                     }))}
-                    onAddressFound={(addressData) => {
-                      const stateObj = brazilStates.find(s => s.name === addressData.state);
-                      if (stateObj) {
-                        handleStateChange(stateObj.code);
-                        setSupplierData(prev => ({
-                          ...prev,
-                          city: addressData.city,
-                          address: {
-                            ...prev.address,
-                            street: addressData.street || prev.address.street,
-                            neighborhood: addressData.neighborhood || prev.address.neighborhood
-                          }
-                        }));
-                      }
-                    }}
-                    label="CEP"
+                    placeholder="Apto, Sala..."
                   />
                 </div>
               </div>
