@@ -188,13 +188,37 @@ export const useSupabaseAdminSuppliers = () => {
           variant: 'destructive',
         });
       } else {
-        console.log('✅ Auth user created for supplier:', authResp);
+        console.log('✅ Auth user created, verificando profile...');
         
-        // Fornecedor receberá convite para completar cadastro ao receber a primeira cotação
-        toast({
-          title: '✅ Fornecedor criado!',
-          description: 'Ele receberá o convite para registro ao receber a primeira cotação.',
-        });
+        // Verificação ativa do profile com até 3 tentativas
+        let profileConfirmed = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 500));
+          
+          const { data: checkProfile } = await supabase
+            .from('profiles')
+            .select('id, supplier_id')
+            .eq('email', supplierData.email.toLowerCase())
+            .maybeSingle();
+          
+          if (checkProfile?.supplier_id === (supplier as any).id) {
+            profileConfirmed = true;
+            console.log(`✅ Profile confirmado (tentativa ${attempt})`);
+            break;
+          }
+        }
+
+        if (!profileConfirmed) {
+          toast({
+            title: 'Fornecedor criado, mas sincronização pendente',
+            description: 'O acesso do fornecedor ainda está sendo configurado. Reenvie as credenciais em alguns instantes.',
+          });
+        } else {
+          toast({
+            title: '✅ Fornecedor criado com sucesso!',
+            description: 'O fornecedor foi cadastrado e pode acessar o sistema.'
+          });
+        }
       }
 
       // Update local state
@@ -263,63 +287,23 @@ export const useSupabaseAdminSuppliers = () => {
 
   const createSupplierCredentials = async (supplierId: string, email: string, name: string) => {
     try {
-      console.log('🔑 Creating credentials for supplier:', { supplierId, email, name });
+      console.log('🔑 Creating credentials via resetSupplierPassword:', { supplierId, email });
       
-      // Generate temporary password
-      const genPassword = () => {
-        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-        let pwd = '';
-        for (let i = 0; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
-        return pwd;
-      };
-      const newPassword = genPassword();
-
-      // Create auth user
-      const { data: authResp, error: fnErr } = await supabase.functions.invoke('create-auth-user', {
-        body: {
-          email: email.trim(),
-          password: newPassword,
-          name: name,
-          role: 'supplier',
-          supplierId,
-          temporaryPassword: true,
-          action: 'create', // Important: not a reset!
-        },
-      });
-
-      if (fnErr || !authResp?.success) {
-        console.error('❌ Error creating credentials:', fnErr || authResp?.error);
-        toast({
-          title: 'Falha ao criar credenciais',
-          description: authResp?.error || 'Não foi possível criar as credenciais de acesso.',
-          variant: 'destructive',
-        });
-        return null;
+      // Usar a lógica robusta de reset (que cria se necessário)
+      const newPassword = await resetSupplierPassword(supplierId, email);
+      
+      if (!newPassword) {
+        throw new Error('Falha ao criar/resetar senha');
       }
-
-      // Copy credentials to clipboard
-      const credentials = `Email: ${email}\nSenha inicial: ${newPassword}`;
-      try {
-        await navigator.clipboard.writeText(credentials);
-        toast({ 
-          title: 'Credenciais criadas', 
-          description: 'Credenciais copiadas para a área de transferência.' 
-        });
-      } catch {
-        toast({ 
-          title: 'Credenciais criadas', 
-          description: `Anote a senha: ${newPassword}` 
-        });
-      }
-
+      
       // Refresh suppliers list to update hasUser status
       await fetchSuppliers();
       return newPassword;
     } catch (error) {
       console.error('❌ Error creating supplier credentials:', error);
       toast({ 
-        title: 'Erro', 
-        description: 'Erro inesperado ao criar credenciais.', 
+        title: 'Erro ao criar credenciais', 
+        description: 'Não foi possível preparar o acesso do fornecedor.', 
         variant: 'destructive' 
       });
       return null;
@@ -329,6 +313,14 @@ export const useSupabaseAdminSuppliers = () => {
   const resetSupplierPassword = async (supplierId: string, email: string) => {
     try {
       console.log('🔐 Resetting supplier password:', { supplierId, email });
+      
+      // Verificar se profile existe
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id, supplier_id')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
       const genPassword = () => {
         const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
         let pwd = '';
@@ -337,26 +329,93 @@ export const useSupabaseAdminSuppliers = () => {
       };
       const newPassword = genPassword();
 
-      const { data: authResp, error: fnErr } = await supabase.functions.invoke('create-auth-user', {
-        body: {
-          email: (email || '').trim(),
-          password: newPassword,
-          name: 'Reset Supplier Password',
-          role: 'supplier',
-          supplierId,
-          temporaryPassword: true,
-          action: 'reset_password',
-        },
-      });
+      // Se profile NÃO existe, criar o usuário primeiro
+      if (!existingProfile) {
+        console.log('⚠️ Profile não existe, criando Auth user primeiro...');
+        
+        // Buscar dados do fornecedor
+        const { data: supplierData } = await supabase
+          .from('suppliers')
+          .select('id, name')
+          .eq('id', supplierId)
+          .single();
 
-      if (fnErr || !authResp?.success) {
-        console.error('❌ Error resetting supplier password:', fnErr || authResp?.error);
-        toast({
-          title: 'Falha ao resetar senha',
-          description: authResp?.error || 'Não foi possível resetar a senha do fornecedor.',
-          variant: 'destructive',
+        if (!supplierData) {
+          throw new Error('Fornecedor não encontrado');
+        }
+
+        // Criar usuário
+        const { data: createResp, error: createErr } = await supabase.functions.invoke('create-auth-user', {
+          body: {
+            email: email.trim(),
+            password: newPassword,
+            name: supplierData.name,
+            role: 'supplier',
+            supplierId,
+            temporaryPassword: true,
+            action: 'create'
+          }
         });
-        return null;
+
+        if (createErr || !createResp?.success) {
+          console.error('❌ Error creating supplier auth user:', createErr || createResp?.error);
+          toast({
+            title: 'Falha ao criar usuário',
+            description: createResp?.error || 'Não foi possível preparar o acesso do fornecedor.',
+            variant: 'destructive',
+          });
+          return null;
+        }
+
+        // Verificar criação do profile com até 3 tentativas
+        let profileConfirmed = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 500));
+          
+          const { data: checkProfile } = await supabase
+            .from('profiles')
+            .select('id, supplier_id')
+            .eq('email', email.toLowerCase())
+            .maybeSingle();
+          
+          if (checkProfile?.supplier_id === supplierId) {
+            profileConfirmed = true;
+            console.log(`✅ Profile confirmado após criação (tentativa ${attempt})`);
+            break;
+          }
+        }
+
+        if (!profileConfirmed) {
+          toast({
+            title: 'Usuário criado, mas sincronização pendente',
+            description: 'Aguarde alguns instantes e tente novamente.',
+          });
+          return null;
+        }
+      } else {
+        // Profile existe, fazer reset normal
+        console.log('✅ Profile existe, resetando senha...');
+        const { data: authResp, error: fnErr } = await supabase.functions.invoke('create-auth-user', {
+          body: {
+            email: email.trim(),
+            password: newPassword,
+            name: 'Reset Supplier Password',
+            role: 'supplier',
+            supplierId,
+            temporaryPassword: true,
+            action: 'reset_password',
+          },
+        });
+
+        if (fnErr || !authResp?.success) {
+          console.error('❌ Error resetting supplier password:', fnErr || authResp?.error);
+          toast({
+            title: 'Falha ao resetar senha',
+            description: authResp?.error || 'Não foi possível resetar a senha do fornecedor.',
+            variant: 'destructive',
+          });
+          return null;
+        }
       }
 
       const credentials = `Email: ${email}\nNova senha: ${newPassword}`;
