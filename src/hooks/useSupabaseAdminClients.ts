@@ -460,17 +460,50 @@ export function useSupabaseAdminClients() {
           email: clientData.email,
           role: 'manager',
           clientId: createdClientId,
-          temporaryPassword: isTemporary
+          temporaryPassword: isTemporary,
+          hasManualPassword: !!clientData.loginCredentials.password
         });
+
+        // PRÉ-VERIFICAÇÃO: Checar se auth user já existe
+        const { data: existingAuthData, error: existingAuthError } = await supabase.rpc('check_auth_user_exists', {
+          email_param: clientData.email.trim().toLowerCase()
+        });
+
+        let authAction: 'create' | 'reset_password' = 'create';
+        let existingAuthUserId: string | null = null;
+
+        if (!existingAuthError && existingAuthData && existingAuthData.length > 0) {
+          console.log('⚠️ Auth user já existe:', existingAuthData[0].id);
+          existingAuthUserId = existingAuthData[0].id;
+          authAction = 'reset_password';
+          
+          // Conciliar profile antes de resetar senha
+          const { error: profileError } = await supabase.rpc('create_profile_for_existing_auth', {
+            auth_id: existingAuthUserId,
+            p_client_id: createdClientId,
+            email_param: clientData.email.trim().toLowerCase(),
+            name_param: clientData.companyName,
+            role_param: 'manager'
+          });
+
+          if (profileError) {
+            console.error('Erro ao conciliar profile:', profileError);
+            toast.error('Erro ao vincular usuário ao cliente');
+            return;
+          }
+
+          console.log('✅ Profile conciliado antes de resetar senha');
+        }
         
         const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
           body: {
-            email: clientData.email.trim(),
+            email: clientData.email.trim().toLowerCase(),
             password: intendedPassword, // FONTE ÚNICA
             name: clientData.companyName,
             role: "manager",
             clientId: createdClientId,
             temporaryPassword: isTemporary,
+            action: authAction
           },
         });
 
@@ -480,14 +513,14 @@ export function useSupabaseAdminClients() {
           const authPayload = authResp as any;
           if (authPayload?.success !== false && authPayload?.auth_user_id) {
             const createdAuthUserId = authPayload.auth_user_id;
-            console.log('✅ DEBUG: Auth user criado com ID', createdAuthUserId);
+            console.log('✅ DEBUG: Auth user criado/atualizado com ID', createdAuthUserId);
 
-            // ===== GATE DE SINCRONIZAÇÃO =====
+            // ===== GATE DE SINCRONIZAÇÃO ROBUSTO (15s) =====
             console.log('⏳ Aguardando sincronização do profile...');
             let profileConfirmed = false;
             let retries = 0;
-            const maxRetries = 5;
-            const delays = [300, 600, 1200, 2400, 4800]; // backoff exponencial
+            const maxRetries = 7;
+            const delays = [300, 600, 1200, 2400, 4800, 5000, 5000]; // total ~15s
             
             while (!profileConfirmed && retries < maxRetries) {
               await new Promise(resolve => setTimeout(resolve, delays[retries]));
@@ -496,9 +529,10 @@ export function useSupabaseAdminClients() {
                 .from('profiles')
                 .select('id, client_id, role')
                 .eq('id', createdAuthUserId)
+                .eq('client_id', createdClientId)
                 .maybeSingle();
               
-              if (profileCheck) {
+              if (profileCheck && profileCheck.client_id === createdClientId) {
                 profileConfirmed = true;
                 console.log('✅ Profile confirmado:', profileCheck);
               } else {
@@ -508,12 +542,14 @@ export function useSupabaseAdminClients() {
             }
             
             if (!profileConfirmed) {
-              console.error('❌ Profile não confirmado após', maxRetries, 'tentativas');
-              toast.error('Conta criada, mas sincronização pendente. Aguarde e tente reenviar credenciais.');
+              console.error('❌ Profile não confirmado após', maxRetries, 'tentativas (~15s)');
+              toast.warning(
+                'Cliente criado, mas sincronização pendente. Use o painel de debug em /admin/debug-auth para reenviar credenciais.',
+                { duration: 8000 }
+              );
               
               // Registrar auditoria de falha
               await supabase.from('audit_logs').insert({
-                user_id: createdAuthUserId,
                 action: 'CLIENT_AUTH_CREATED_NO_SYNC',
                 entity_type: 'clients',
                 entity_id: createdClientId,
@@ -522,12 +558,15 @@ export function useSupabaseAdminClients() {
                   email: clientData.email,
                   temporary: isTemporary,
                   delivery_attempted: false,
-                  reason: 'profile_sync_timeout'
+                  reason: 'profile_sync_timeout',
+                  attempts: maxRetries,
+                  auth_action: authAction
                 }
               });
               
-              // Continua e atualiza state localmente
+              // ABORTAR: não enviar credenciais
               setLoading(false);
+              await refetch();
               return;
             }
             
@@ -625,7 +664,7 @@ export function useSupabaseAdminClients() {
               }
             }
 
-            // Enviar credenciais via E-mail se solicitado
+            // Enviar credenciais via E-mail se solicitado (APÓS CONFIRMAR PROFILE)
             if (notificationOptions?.sendByEmail) {
               try {
                 console.log('📧 [EMAIL_SEND] Enviando credenciais para', {
@@ -633,19 +672,22 @@ export function useSupabaseAdminClients() {
                   client: clientData.companyName
                 });
                 
+                const passwordLabel = isTemporary ? 'Senha temporária' : 'Senha de acesso';
+                const securityNote = isTemporary 
+                  ? '<p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;"><strong>⚠️ Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.</p>'
+                  : '';
+                
                 const { data: emailResp, error: emailErr } = await supabase.functions.invoke("send-email", {
                   body: {
                     to: clientData.email,
                     subject: "🎉 Suas Credenciais de Acesso - Cotiz",
                     html: `
                       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff;">
-                        <!-- Cabeçalho com gradiente -->
                         <div style="background: linear-gradient(135deg, #003366 0%, #005599 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center;">
                           <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🎉 Bem-vindo ao Cotiz!</h1>
                           <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Plataforma de Gestão de Cotações</p>
                         </div>
                         
-                        <!-- Conteúdo -->
                         <div style="background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px;">
                           <p style="font-size: 16px; color: #333; margin: 0 0 10px 0;">
                             Olá <strong>${clientData.companyName}</strong>,
@@ -655,7 +697,6 @@ export function useSupabaseAdminClients() {
                             Seu acesso à plataforma foi criado com sucesso! Use as credenciais abaixo para fazer seu primeiro login:
                           </p>
                           
-                          <!-- Box de Credenciais -->
                           <div style="background: white; border: 2px solid #003366; border-radius: 8px; padding: 20px; margin: 0 0 25px 0;">
                             <table style="width: 100%; border-collapse: collapse;">
                               <tr>
@@ -668,7 +709,7 @@ export function useSupabaseAdminClients() {
                               </tr>
                               <tr>
                                 <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                                  <span style="color: #666; font-size: 13px;">🔑 ${isTemporary ? 'Senha temporária' : 'Senha de acesso'}:</span>
+                                  <span style="color: #666; font-size: 13px;">🔑 ${passwordLabel}:</span>
                                 </td>
                                 <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
                                   <code style="background: #f3f4f6; padding: 6px 12px; border-radius: 4px; font-size: 15px; color: #dc2626; font-weight: bold; letter-spacing: 1px;">${intendedPassword}</code>
@@ -685,42 +726,34 @@ export function useSupabaseAdminClients() {
                             </table>
                           </div>
                           
-                          <!-- Botão de Ação -->
                           <div style="text-align: center; margin: 30px 0;">
                             <a href="https://cotiz.com.br/auth/login" 
-                               style="background: #003366; color: white; padding: 16px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(0,51,102,0.3); transition: all 0.3s;">
+                               style="background: #003366; color: white; padding: 16px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">
                               🚀 Acessar o Sistema
                             </a>
                           </div>
                           
-                          <!-- Aviso de Segurança -->
                           <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0 0 0; border-radius: 4px;">
-                            <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;">
-                              <strong>⚠️ Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.
-                            </p>
+                            ${securityNote}
                           </div>
-                          
-                          <!-- Ajuda -->
-                          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin: 20px 0 0 0;">
-                            <p style="margin: 0 0 10px 0; font-size: 13px; color: #666; font-weight: 600;">
-                              💬 Precisa de ajuda?
-                            </p>
-                            <p style="margin: 0; font-size: 12px; color: #999; line-height: 1.6;">
-                              Entre em contato com nosso suporte:<br>
-                              📧 <a href="mailto:suporte@cotiz.com.br" style="color: #003366; text-decoration: none;">suporte@cotiz.com.br</a><br>
-                              📱 WhatsApp: +55 (71) 99999-9999
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <!-- Rodapé -->
-                        <div style="text-align: center; padding: 20px; color: #999; font-size: 11px; line-height: 1.6;">
-                          <p style="margin: 0 0 5px 0;">© ${new Date().getFullYear()} <strong>Cotiz</strong> - Plataforma de Gestão de Cotações</p>
-                          <p style="margin: 0;">Você está recebendo este e-mail porque uma conta foi criada para sua empresa.</p>
                         </div>
                       </div>
                     `,
-                    client_id: createdClientId
+                    plainText: `
+Bem-vindo ao Cotiz!
+
+Olá ${clientData.companyName},
+
+Sua conta foi criada com sucesso! Use as credenciais abaixo para fazer seu primeiro login:
+
+📧 E-mail: ${clientData.email}
+🔑 ${passwordLabel}: ${intendedPassword}
+🏢 Empresa: ${clientData.companyName}
+
+${isTemporary ? '⚠️ Importante: Esta é uma senha temporária. Você será solicitado a alterá-la no primeiro acesso.' : ''}
+
+Acesse a plataforma em: https://cotiz.com.br/auth/login
+                    `
                   }
                 });
 
@@ -729,13 +762,36 @@ export function useSupabaseAdminClients() {
                   toast.error(`Erro ao enviar e-mail: ${emailErr.message || 'Verifique a configuração'}`);
                 } else {
                   console.log('✅ [EMAIL_SUCCESS]', emailResp);
-                  toast.success(`📧 Credenciais enviadas para ${clientData.email}`);
+                  toast.success(`📧 Credenciais enviadas via e-mail para ${clientData.email}`);
                 }
               } catch (emailError: any) {
                 console.error('❌ [EMAIL_EXCEPTION]', emailError);
                 toast.error(`Falha ao enviar e-mail: ${emailError.message || 'Erro desconhecido'}`);
               }
             }
+            
+            // Registrar auditoria de sucesso completo
+            await supabase.from('audit_logs').insert({
+              action: 'CLIENT_AUTH_CREATED',
+              entity_type: 'clients',
+              entity_id: createdClientId,
+              panel_type: 'admin',
+              details: {
+                client_name: clientData.companyName,
+                email: clientData.email,
+                temporary: isTemporary,
+                delivery_channels: [
+                  notificationOptions?.sendByEmail && 'email',
+                  notificationOptions?.sendByWhatsApp && 'whatsapp'
+                ].filter(Boolean),
+                sent: true,
+                synced: true,
+                auth_action: authAction
+              }
+            });
+
+            // Mostrar toast de sucesso
+            toast.success('✅ Cliente criado e credenciais enviadas com sucesso!');
           }
         } else {
           console.warn('useSupabaseAdminClients: Falha ao criar usuário de auth (não crítico)', fnErr);

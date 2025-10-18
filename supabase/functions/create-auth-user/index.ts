@@ -241,95 +241,50 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       }
     });
 
-if (authError) {
+    if (authError) {
       console.error('Error creating auth user:', authError);
       const rawMsg = (authError as any).message || '';
       const isEmailExists = rawMsg.includes('already registered') || (authError as any)?.code === 'email_exists';
 
       if (isEmailExists) {
-        // Try to fetch existing auth user by email and link to client
+        console.log('⚠️ Email já existe, tentando obter auth_user_id...');
+        
+        // Try to fetch existing auth user by email
         let existingUserId: string | null = null;
 
-        // 1) Try profiles by email
+        // 1) Try profiles by email first (faster)
         const { data: existingProfile } = await supabaseAdmin
           .from('profiles')
           .select('id')
-          .eq('email', email)
+          .eq('email', email.toLowerCase())
           .maybeSingle();
-        if (existingProfile?.id) existingUserId = existingProfile.id as string;
+        
+        if (existingProfile?.id) {
+          existingUserId = existingProfile.id as string;
+          console.log('✅ Auth user encontrado via profiles:', existingUserId);
+        }
 
         // 2) Fallback: list users and match by email
         if (!existingUserId) {
           const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
           if (!listErr && (usersList as any)?.users?.length) {
             const match = (usersList as any).users.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase());
-            if (match?.id) existingUserId = match.id as string;
+            if (match?.id) {
+              existingUserId = match.id as string;
+              console.log('✅ Auth user encontrado via listUsers:', existingUserId);
+            }
           }
         }
 
         if (existingUserId) {
-          try {
-            if (clientId || effectiveSupplierId) {
-              // Ensure profile exists and is linked to client and/or supplier
-              await supabaseAdmin
-                .from('profiles')
-                .upsert({
-                  id: existingUserId,
-                  email,
-                  name,
-                  role: effectiveRole,
-                  client_id: effectiveClientId,
-                  supplier_id: effectiveSupplierId ?? null,
-                  company_name: name,
-                  tenant_type: effectiveSupplierId ? 'supplier' : 'client',
-                  onboarding_completed: effectiveSupplierId ? true : undefined,
-                }, { onConflict: 'id' });
-
-              // Upsert into public.users by auth_user_id
-              const { data: existingUserRow } = await supabaseAdmin
-                .from('users')
-                .select('id')
-                .eq('auth_user_id', existingUserId)
-                .maybeSingle();
-
-              const userPayload: any = {
-                name,
-                email,
-                role: effectiveRole,
-                status: 'active',
-                client_id: clientId ?? null,
-                supplier_id: effectiveSupplierId ?? null,
-                force_password_change: temporaryPassword ?? true,
-              };
-
-              if (existingUserRow?.id) {
-                await supabaseAdmin
-                  .from('users')
-                  .update(userPayload)
-                  .eq('id', existingUserRow.id);
-              } else {
-                await supabaseAdmin
-                  .from('users')
-                  .insert({
-                    ...userPayload,
-                    auth_user_id: existingUserId,
-                  });
-              }
-            }
-
-            // If a password was provided, update it for the existing auth user
-            if (password) {
-              const { error: updatePwdErr } = await supabaseAdmin.auth.admin.updateUserById(existingUserId, { password });
-              if (updatePwdErr) {
-                console.error('Error updating existing user password:', updatePwdErr);
-              }
-            }
-          } catch (linkErr) {
-            console.error('Error linking existing user:', linkErr);
-          }
-
+          // Return the existing user ID instead of error
           return new Response(
-            JSON.stringify({ success: true, auth_user_id: existingUserId, email, linked_existing: true, password_updated: !!password }),
+            JSON.stringify({ 
+              success: true, 
+              auth_user_id: existingUserId,
+              already_existed: true,
+              message: 'Auth user já existia'
+            }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         }

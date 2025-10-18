@@ -5608,6 +5608,15 @@ export type Database = {
         Args: { p_amount: number; p_client_id: string; p_quote_id: string }
         Returns: Json
       }
+      check_auth_user_exists: {
+        Args: { email_param: string }
+        Returns: {
+          created_at: string
+          email: string
+          email_confirmed_at: string
+          id: string
+        }[]
+      }
       check_overdue_accounts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -5642,6 +5651,26 @@ export type Database = {
           p_title: string
           p_type?: string
           p_user_id: string
+        }
+        Returns: string
+      }
+      create_profile_for_existing_auth: {
+        Args: {
+          auth_id: string
+          email_param: string
+          name_param: string
+          p_client_id: string
+          role_param?: string
+        }
+        Returns: string
+      }
+      create_profile_for_existing_auth_supplier: {
+        Args: {
+          auth_id: string
+          email_param: string
+          name_param: string
+          p_supplier_id: string
+          role_param?: string
         }
         Returns: string
       }

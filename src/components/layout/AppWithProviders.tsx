@@ -74,6 +74,7 @@ const EmailMarketingCampaigns = React.lazy(() => import('@/pages/admin/EmailMark
 const EmailMarketingContacts = React.lazy(() => import('@/pages/admin/EmailMarketing/Contacts'));
 const EmailMarketingAnalytics = React.lazy(() => import('@/pages/admin/EmailMarketing/Analytics'));
 const EmailMarketingTemplates = React.lazy(() => import('@/pages/admin/EmailMarketing/Templates'));
+const DebugAuth = React.lazy(() => import('@/pages/admin/DebugAuth'));
 
 // Supplier pages
 const SupplierDashboard = React.lazy(() => import('@/pages/supplier/SupplierDashboard'));
@@ -328,6 +329,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="domain" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <DomainSettings />
+          </Suspense>
+        } />
+        <Route path="debug-auth" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <DebugAuth />
           </Suspense>
         } />
       </Route>
