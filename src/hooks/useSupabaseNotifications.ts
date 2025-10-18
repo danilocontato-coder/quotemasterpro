@@ -36,13 +36,31 @@ export function useSupabaseNotifications() {
 
       console.log('🔔 [NOTIFICATIONS] Fetching notifications for user:', user.id);
 
-      // Buscar notificações diretas do usuário
-      const { data, error } = await supabase
+      // Buscar client_id do usuário
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      const clientId = profile?.client_id;
+      console.log('🔔 [NOTIFICATIONS] User client_id:', clientId);
+
+      // Buscar notificações próprias do usuário ou broadcast para seu cliente
+      let query = supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
+
+      if (clientId) {
+        // Buscar notificações do usuário OU do cliente
+        query = query.or(`user_id.eq.${user.id},client_id.eq.${clientId}`);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -60,6 +78,8 @@ export function useSupabaseNotifications() {
         .select('*')
         .in('notification_id', notificationIds)
         .eq('user_id', user.id);
+
+      console.log('🔔 [NOTIFICATIONS] User states:', statesData?.length || 0);
 
       // Criar mapa de estados
       const statesMap = new Map(
@@ -88,7 +108,7 @@ export function useSupabaseNotifications() {
         });
 
       console.log('🔔 [NOTIFICATIONS] Processed:', {
-        total: data.length,
+        fetched: data.length,
         visible: processedNotifications.length,
         unread: processedNotifications.filter(n => !n.read).length,
       });
