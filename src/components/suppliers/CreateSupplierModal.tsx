@@ -54,7 +54,7 @@ export function CreateSupplierModal({
       neighborhood: '',
       city: '',
       state: '',
-      zipCode: ''
+      postal_code: ''
     },
     business_info: {
       description: '',
@@ -102,7 +102,7 @@ export function CreateSupplierModal({
         neighborhood: '',
         city: '',
         state: '',
-        zipCode: ''
+        postal_code: ''
       },
       business_info: {
         description: '',
@@ -561,10 +561,10 @@ export function CreateSupplierModal({
                 {/* CEP primeiro - linha inteira */}
                 <div className="col-span-2">
                   <CEPInput
-                    value={supplierData.address.zipCode}
+                    value={supplierData.address.postal_code}
                     onChange={(cep) => setSupplierData(prev => ({
                       ...prev,
-                      address: { ...prev.address, zipCode: cep }
+                      address: { ...prev.address, postal_code: cep }
                     }))}
                     onAddressFound={handleAddressFromCEP}
                     label="CEP"

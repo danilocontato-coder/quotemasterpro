@@ -161,30 +161,33 @@ export const SupplierFormFields: React.FC<SupplierFormFieldsProps> = ({
           value={formData.address?.postal_code || ''}
           onChange={(value) => onChange('address', { ...formData.address, postal_code: value })}
           onAddressFound={(addressData) => {
-            // Buscar sigla do estado
-            const stateCode = STATES.find(s => {
-              const stateNames: Record<string, string> = {
-                'Acre': 'AC', 'Alagoas': 'AL', 'Amapá': 'AP', 'Amazonas': 'AM',
-                'Bahia': 'BA', 'Ceará': 'CE', 'Distrito Federal': 'DF', 'Espírito Santo': 'ES',
-                'Goiás': 'GO', 'Maranhão': 'MA', 'Mato Grosso': 'MT', 'Mato Grosso do Sul': 'MS',
-                'Minas Gerais': 'MG', 'Pará': 'PA', 'Paraíba': 'PB', 'Paraná': 'PR',
-                'Pernambuco': 'PE', 'Piauí': 'PI', 'Rio de Janeiro': 'RJ', 'Rio Grande do Norte': 'RN',
-                'Rio Grande do Sul': 'RS', 'Rondônia': 'RO', 'Roraima': 'RR', 'Santa Catarina': 'SC',
-                'São Paulo': 'SP', 'Sergipe': 'SE', 'Tocantins': 'TO'
-              };
-              return stateNames[addressData.state] === s;
-            });
+            // Map full state name to state code (sigla)
+            const stateNames: Record<string, string> = {
+              'Acre': 'AC', 'Alagoas': 'AL', 'Amapá': 'AP', 'Amazonas': 'AM',
+              'Bahia': 'BA', 'Ceará': 'CE', 'Distrito Federal': 'DF', 'Espírito Santo': 'ES',
+              'Goiás': 'GO', 'Maranhão': 'MA', 'Mato Grosso': 'MT', 'Mato Grosso do Sul': 'MS',
+              'Minas Gerais': 'MG', 'Pará': 'PA', 'Paraíba': 'PB', 'Paraná': 'PR',
+              'Pernambuco': 'PE', 'Piauí': 'PI', 'Rio de Janeiro': 'RJ', 'Rio Grande do Norte': 'RN',
+              'Rio Grande do Sul': 'RS', 'Rondônia': 'RO', 'Roraima': 'RR', 'Santa Catarina': 'SC',
+              'São Paulo': 'SP', 'Sergipe': 'SE', 'Tocantins': 'TO'
+            };
             
+            const stateCode = stateNames[addressData.state];
+            
+            // Update ALL fields (root + address JSONB) synchronously
             if (stateCode) {
-              onChange('state', stateCode);
-            }
-            onChange('city', addressData.city);
-            
-            if (addressData.street) {
+              // Root fields
+              onChange('state', stateCode);                    // ROOT: "BA" (sigla)
+              onChange('city', addressData.city);              // ROOT: "Feira de Santana"
+              
+              // Address JSONB fields
               onChange('address', { 
-                ...formData.address, 
-                street: addressData.street,
-                neighborhood: addressData.neighborhood || ''
+                ...formData.address,
+                postal_code: formData.address?.postal_code,    // Keep existing CEP
+                state: addressData.state,                      // JSONB: "Bahia" (full name)
+                city: addressData.city,                        // JSONB: "Feira de Santana"
+                street: addressData.street || formData.address?.street || '',
+                neighborhood: addressData.neighborhood || formData.address?.neighborhood || ''
               });
             }
           }}
