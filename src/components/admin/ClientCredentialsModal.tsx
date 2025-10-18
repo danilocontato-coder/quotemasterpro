@@ -37,7 +37,11 @@ interface ClientCredentialsModalProps {
   onGenerateUsername: (companyName: string) => string;
   onGeneratePassword: () => string;
   onResetPassword: (clientId: string, email: string) => Promise<string>;
-  onSendCredentials?: (clientId: string, options: { sendByEmail: boolean; sendByWhatsApp: boolean }) => Promise<void>;
+  onSendCredentials?: (
+    clientId: string,
+    credentials: { email: string; password: string },
+    options: { sendByEmail: boolean; sendByWhatsApp: boolean }
+  ) => Promise<void>;
 }
 
 export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
@@ -125,7 +129,10 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     }
     
     try {
-      await onSendCredentials(client.id, sendOptions);
+      await onSendCredentials(client.id, {
+        email: credentials.username,
+        password: credentials.password
+      }, sendOptions);
       
       const methods = [];
       if (sendOptions.sendByEmail) methods.push("e-mail");
@@ -148,7 +155,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
@@ -338,16 +345,16 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-between">
+        <div className="flex justify-end gap-2 pt-4 pb-2 border-t sticky bottom-0 bg-background">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
           <Button
             variant="default"
             onClick={handleSendCredentials}
             disabled={!onSendCredentials || (!sendOptions.sendByEmail && !sendOptions.sendByWhatsApp)}
           >
             Enviar Credenciais
-          </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
           </Button>
         </div>
       </DialogContent>

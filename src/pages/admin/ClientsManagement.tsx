@@ -139,7 +139,8 @@ export const ClientsManagement = () => {
   }, [resetClientPassword]);
 
   const handleSendCredentials = useCallback(async (
-    clientId: string, 
+    clientId: string,
+    receivedCredentials: { email: string; password: string },
     options: { sendByEmail: boolean; sendByWhatsApp: boolean }
   ) => {
     try {
@@ -147,8 +148,8 @@ export const ClientsManagement = () => {
       if (!client) throw new Error('Cliente não encontrado');
 
       const credentials = {
-        email: client.email,
-        password: generateTemporaryPassword(),
+        email: receivedCredentials.email,
+        password: receivedCredentials.password,
         companyName: client.companyName,
         loginUrl: "https://cotiz.com.br/auth/login"
       };
@@ -246,7 +247,7 @@ export const ClientsManagement = () => {
       console.error('❌ Erro ao enviar credenciais:', error);
       throw error;
     }
-  }, [clients, generateTemporaryPassword]);
+  }, [clients]);
 
   // Filtered clients based on search and filters
   const filteredClients = useMemo(() => {
