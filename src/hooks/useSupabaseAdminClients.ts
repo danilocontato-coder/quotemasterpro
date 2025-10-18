@@ -570,6 +570,53 @@ export function useSupabaseAdminClients() {
                 toast.error("Número de telefone não informado para envio via WhatsApp");
               }
             }
+
+            // Enviar credenciais via E-mail se solicitado
+            if (notificationOptions?.sendByEmail) {
+              try {
+                console.log('📧 DEBUG: Enviando credenciais via E-mail para', clientData.email);
+                
+                const { data: emailResp, error: emailErr } = await supabase.functions.invoke("send-email", {
+                  body: {
+                    to: clientData.email,
+                    subject: "Suas Credenciais de Acesso - Cotiz",
+                    html: `
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <h2 style="color: #003366;">Bem-vindo ao Cotiz!</h2>
+                        <p>Olá ${clientData.companyName},</p>
+                        <p>Seu acesso ao sistema foi criado com sucesso. Seguem suas credenciais:</p>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                          <p><strong>E-mail:</strong> ${clientData.email}</p>
+                          <p><strong>Senha temporária:</strong> ${password}</p>
+                          <p><strong>Empresa:</strong> ${clientData.companyName}</p>
+                        </div>
+                        <p>
+                          <a href="${window.location.origin}/auth/login" 
+                             style="background: #003366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                            Acessar Sistema
+                          </a>
+                        </p>
+                        <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                          Por segurança, você deverá alterar a senha no primeiro login.
+                        </p>
+                      </div>
+                    `,
+                    client_id: createdClientId
+                  }
+                });
+
+                if (emailErr) {
+                  console.error('Erro ao enviar E-mail:', emailErr);
+                  toast.error("Erro ao enviar credenciais via E-mail");
+                } else {
+                  console.log('✅ E-mail enviado com sucesso:', emailResp);
+                  toast.success(`📧 Credenciais enviadas para ${clientData.email}`);
+                }
+              } catch (emailError) {
+                console.error('Erro no envio de E-mail:', emailError);
+                toast.error("Falha ao enviar E-mail - verifique a configuração");
+              }
+            }
           }
         } else {
           console.warn('useSupabaseAdminClients: Falha ao criar usuário de auth (não crítico)', fnErr);
