@@ -541,64 +541,133 @@ export function useSupabaseAdminClients() {
               
               if (phoneNumber) {
                 try {
-                  console.log('📱 DEBUG: Enviando credenciais via WhatsApp para', phoneNumber);
+                  console.log('📱 [WHATSAPP_SEND] Enviando credenciais para', {
+                    phone: phoneNumber,
+                    client: clientData.companyName,
+                    email: clientData.email
+                  });
+                  
                   const { data: notifyResp, error: notifyErr } = await supabase.functions.invoke("notify", {
                     body: {
                       type: "whatsapp_user_credentials",
                       to: phoneNumber,
-                      userData: {
-                        email: clientData.email,
-                        password: password,
-                        companyName: clientData.companyName,
-                        loginUrl: window.location.origin + "/auth/login"
-                      }
+                      user_email: clientData.email,
+                      temp_password: password,
+                      user_name: clientData.companyName,
+                      app_url: window.location.origin + "/auth/login"
                     }
                   });
 
                   if (notifyErr) {
-                    console.error('Erro ao enviar WhatsApp:', notifyErr);
-                    toast.error("Erro ao enviar credenciais via WhatsApp");
+                    console.error('❌ [WHATSAPP_ERROR]', notifyErr);
+                    toast.error(`Erro ao enviar WhatsApp: ${notifyErr.message || 'Verifique a configuração'}`);
                   } else {
-                    console.log('✅ WhatsApp enviado com sucesso:', notifyResp);
+                    console.log('✅ [WHATSAPP_SUCCESS]', notifyResp);
                     toast.success(`📱 Credenciais enviadas via WhatsApp para ${phoneNumber}`);
                   }
-                } catch (whatsappError) {
-                  console.error('Erro no envio WhatsApp:', whatsappError);
-                  toast.error("Falha ao enviar WhatsApp - verifique a configuração");
+                } catch (whatsappError: any) {
+                  console.error('❌ [WHATSAPP_EXCEPTION]', whatsappError);
+                  toast.error(`Falha ao enviar WhatsApp: ${whatsappError.message || 'Erro desconhecido'}`);
                 }
               } else {
-                toast.error("Número de telefone não informado para envio via WhatsApp");
+                console.warn('⚠️ [WHATSAPP_SKIP] Número de telefone não informado');
+                toast.warning("Número de telefone não informado para envio via WhatsApp");
               }
             }
 
             // Enviar credenciais via E-mail se solicitado
             if (notificationOptions?.sendByEmail) {
               try {
-                console.log('📧 DEBUG: Enviando credenciais via E-mail para', clientData.email);
+                console.log('📧 [EMAIL_SEND] Enviando credenciais para', {
+                  email: clientData.email,
+                  client: clientData.companyName
+                });
                 
                 const { data: emailResp, error: emailErr } = await supabase.functions.invoke("send-email", {
                   body: {
                     to: clientData.email,
-                    subject: "Suas Credenciais de Acesso - Cotiz",
+                    subject: "🎉 Suas Credenciais de Acesso - Cotiz",
                     html: `
-                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                        <h2 style="color: #003366;">Bem-vindo ao Cotiz!</h2>
-                        <p>Olá ${clientData.companyName},</p>
-                        <p>Seu acesso ao sistema foi criado com sucesso. Seguem suas credenciais:</p>
-                        <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                          <p><strong>E-mail:</strong> ${clientData.email}</p>
-                          <p><strong>Senha temporária:</strong> ${password}</p>
-                          <p><strong>Empresa:</strong> ${clientData.companyName}</p>
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff;">
+                        <!-- Cabeçalho com gradiente -->
+                        <div style="background: linear-gradient(135deg, #003366 0%, #005599 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center;">
+                          <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🎉 Bem-vindo ao Cotiz!</h1>
+                          <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Plataforma de Gestão de Cotações</p>
                         </div>
-                        <p>
-                          <a href="${window.location.origin}/auth/login" 
-                             style="background: #003366; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                            Acessar Sistema
-                          </a>
-                        </p>
-                        <p style="color: #666; font-size: 12px; margin-top: 30px;">
-                          Por segurança, você deverá alterar a senha no primeiro login.
-                        </p>
+                        
+                        <!-- Conteúdo -->
+                        <div style="background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px;">
+                          <p style="font-size: 16px; color: #333; margin: 0 0 10px 0;">
+                            Olá <strong>${clientData.companyName}</strong>,
+                          </p>
+                          
+                          <p style="font-size: 14px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">
+                            Seu acesso à plataforma foi criado com sucesso! Use as credenciais abaixo para fazer seu primeiro login:
+                          </p>
+                          
+                          <!-- Box de Credenciais -->
+                          <div style="background: white; border: 2px solid #003366; border-radius: 8px; padding: 20px; margin: 0 0 25px 0;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                              <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                  <span style="color: #666; font-size: 13px;">📧 E-mail:</span>
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
+                                  <strong style="color: #003366; font-size: 14px;">${clientData.email}</strong>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                  <span style="color: #666; font-size: 13px;">🔑 Senha temporária:</span>
+                                </td>
+                                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
+                                  <code style="background: #f3f4f6; padding: 6px 12px; border-radius: 4px; font-size: 15px; color: #dc2626; font-weight: bold; letter-spacing: 1px;">${password}</code>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 12px 0;">
+                                  <span style="color: #666; font-size: 13px;">🏢 Empresa:</span>
+                                </td>
+                                <td style="padding: 12px 0; text-align: right;">
+                                  <strong style="color: #003366; font-size: 14px;">${clientData.companyName}</strong>
+                                </td>
+                              </tr>
+                            </table>
+                          </div>
+                          
+                          <!-- Botão de Ação -->
+                          <div style="text-align: center; margin: 30px 0;">
+                            <a href="${window.location.origin}/auth/login" 
+                               style="background: #003366; color: white; padding: 16px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(0,51,102,0.3); transition: all 0.3s;">
+                              🚀 Acessar o Sistema
+                            </a>
+                          </div>
+                          
+                          <!-- Aviso de Segurança -->
+                          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0 0 0; border-radius: 4px;">
+                            <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;">
+                              <strong>⚠️ Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.
+                            </p>
+                          </div>
+                          
+                          <!-- Ajuda -->
+                          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin: 20px 0 0 0;">
+                            <p style="margin: 0 0 10px 0; font-size: 13px; color: #666; font-weight: 600;">
+                              💬 Precisa de ajuda?
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #999; line-height: 1.6;">
+                              Entre em contato com nosso suporte:<br>
+                              📧 <a href="mailto:suporte@cotiz.com.br" style="color: #003366; text-decoration: none;">suporte@cotiz.com.br</a><br>
+                              📱 WhatsApp: +55 (71) 99999-9999
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <!-- Rodapé -->
+                        <div style="text-align: center; padding: 20px; color: #999; font-size: 11px; line-height: 1.6;">
+                          <p style="margin: 0 0 5px 0;">© ${new Date().getFullYear()} <strong>Cotiz</strong> - Plataforma de Gestão de Cotações</p>
+                          <p style="margin: 0;">Você está recebendo este e-mail porque uma conta foi criada para sua empresa.</p>
+                        </div>
                       </div>
                     `,
                     client_id: createdClientId
@@ -606,15 +675,15 @@ export function useSupabaseAdminClients() {
                 });
 
                 if (emailErr) {
-                  console.error('Erro ao enviar E-mail:', emailErr);
-                  toast.error("Erro ao enviar credenciais via E-mail");
+                  console.error('❌ [EMAIL_ERROR]', emailErr);
+                  toast.error(`Erro ao enviar e-mail: ${emailErr.message || 'Verifique a configuração'}`);
                 } else {
-                  console.log('✅ E-mail enviado com sucesso:', emailResp);
+                  console.log('✅ [EMAIL_SUCCESS]', emailResp);
                   toast.success(`📧 Credenciais enviadas para ${clientData.email}`);
                 }
-              } catch (emailError) {
-                console.error('Erro no envio de E-mail:', emailError);
-                toast.error("Falha ao enviar E-mail - verifique a configuração");
+              } catch (emailError: any) {
+                console.error('❌ [EMAIL_EXCEPTION]', emailError);
+                toast.error(`Falha ao enviar e-mail: ${emailError.message || 'Erro desconhecido'}`);
               }
             }
           }
