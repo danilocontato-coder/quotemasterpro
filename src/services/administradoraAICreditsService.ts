@@ -12,9 +12,14 @@ export const CREDIT_COSTS = {
 export const administradoraAICreditsService = {
   async checkCredits(clientId: string, required: number): Promise<boolean> {
     try {
-      // For now, return true as placeholder until ai_credits table exists
-      // TODO: Implement real credit checking once table is created
-      return true;
+      const { data, error } = await supabase
+        .from('ai_credits')
+        .select('available_credits')
+        .eq('client_id', clientId)
+        .single();
+
+      if (error) throw error;
+      return (data?.available_credits || 0) >= required;
     } catch (error) {
       console.error('Error checking credits:', error);
       return false;
@@ -23,13 +28,14 @@ export const administradoraAICreditsService = {
 
   async getCredits(clientId: string): Promise<any> {
     try {
-      // Placeholder until ai_credits table exists
-      return {
-        client_id: clientId,
-        available_credits: 1000,
-        total_earned: 1000,
-        total_spent: 0,
-      };
+      const { data, error } = await supabase
+        .from('ai_credits')
+        .select('*')
+        .eq('client_id', clientId)
+        .single();
+
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Error getting credits:', error);
       return null;
@@ -43,8 +49,26 @@ export const administradoraAICreditsService = {
     referenceId?: string
   ): Promise<boolean> {
     try {
-      // Placeholder until debit_ai_credits RPC exists
-      console.log('Debiting credits:', { clientId, amount, reason, referenceId });
+      // Call RPC to debit credits
+      const { error: rpcError } = await supabase.rpc('debit_ai_credits', {
+        p_client_id: clientId,
+        p_amount: amount,
+      });
+
+      if (rpcError) throw rpcError;
+
+      // Log transaction
+      const { error: logError } = await supabase
+        .from('ai_credit_transactions')
+        .insert({
+          client_id: clientId,
+          amount: -amount,
+          reason,
+          reference_id: referenceId,
+        });
+
+      if (logError) console.error('Error logging transaction:', logError);
+
       return true;
     } catch (error) {
       console.error('Error debiting credits:', error);
@@ -54,8 +78,15 @@ export const administradoraAICreditsService = {
 
   async getTransactions(clientId: string, limit = 50) {
     try {
-      // Placeholder until ai_credit_transactions table exists
-      return [];
+      const { data, error } = await supabase
+        .from('ai_credit_transactions')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data || [];
     } catch (error) {
       console.error('Error getting transactions:', error);
       return [];
