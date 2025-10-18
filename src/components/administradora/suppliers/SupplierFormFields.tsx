@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,25 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SpecialtiesInput } from '@/components/common/SpecialtiesInput';
+import { CEPInput } from '@/components/common/CEPInput';
 
 interface SupplierFormFieldsProps {
   formData: any;
   onChange: (field: string, value: any) => void;
   errors?: Record<string, string>;
 }
-
-const SPECIALTIES = [
-  'Limpeza',
-  'Manutenção',
-  'Segurança',
-  'Jardinagem',
-  'Elétrica',
-  'Hidráulica',
-  'Pintura',
-  'Marcenaria',
-  'Alvenaria',
-  'Outros',
-];
 
 const STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -168,6 +157,41 @@ export const SupplierFormFields: React.FC<SupplierFormFieldsProps> = ({
       <div className="space-y-3">
         <h3 className="text-sm font-medium">Localização</h3>
         
+        <CEPInput
+          value={formData.address?.postal_code || ''}
+          onChange={(value) => onChange('address', { ...formData.address, postal_code: value })}
+          onAddressFound={(addressData) => {
+            // Buscar sigla do estado
+            const stateCode = STATES.find(s => {
+              const stateNames: Record<string, string> = {
+                'Acre': 'AC', 'Alagoas': 'AL', 'Amapá': 'AP', 'Amazonas': 'AM',
+                'Bahia': 'BA', 'Ceará': 'CE', 'Distrito Federal': 'DF', 'Espírito Santo': 'ES',
+                'Goiás': 'GO', 'Maranhão': 'MA', 'Mato Grosso': 'MT', 'Mato Grosso do Sul': 'MS',
+                'Minas Gerais': 'MG', 'Pará': 'PA', 'Paraíba': 'PB', 'Paraná': 'PR',
+                'Pernambuco': 'PE', 'Piauí': 'PI', 'Rio de Janeiro': 'RJ', 'Rio Grande do Norte': 'RN',
+                'Rio Grande do Sul': 'RS', 'Rondônia': 'RO', 'Roraima': 'RR', 'Santa Catarina': 'SC',
+                'São Paulo': 'SP', 'Sergipe': 'SE', 'Tocantins': 'TO'
+              };
+              return stateNames[addressData.state] === s;
+            });
+            
+            if (stateCode) {
+              onChange('state', stateCode);
+            }
+            onChange('city', addressData.city);
+            
+            if (addressData.street) {
+              onChange('address', { 
+                ...formData.address, 
+                street: addressData.street,
+                neighborhood: addressData.neighborhood || ''
+              });
+            }
+          }}
+          label="CEP"
+          required={false}
+        />
+        
         <div className="grid grid-cols-3 gap-3">
           <div>
             <Label htmlFor="state">Estado</Label>
@@ -255,41 +279,22 @@ export const SupplierFormFields: React.FC<SupplierFormFieldsProps> = ({
             />
           </div>
 
-          <div>
-            <Label htmlFor="postal_code">CEP</Label>
-            <Input
-              id="postal_code"
-              value={formData.address?.postal_code || ''}
-              onChange={(e) => onChange('address', { ...formData.address, postal_code: e.target.value })}
-              placeholder="00000-000"
-              maxLength={9}
-            />
-          </div>
         </div>
       </div>
 
       {/* Especialidades */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium">Especialidades</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {SPECIALTIES.map(specialty => (
-            <label key={specialty} className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.specialties?.includes(specialty) || false}
-                onChange={(e) => {
-                  const current = formData.specialties || [];
-                  const updated = e.target.checked
-                    ? [...current, specialty]
-                    : current.filter((s: string) => s !== specialty);
-                  onChange('specialties', updated);
-                }}
-                className="rounded border-gray-300"
-              />
-              <span className="text-sm">{specialty}</span>
-            </label>
-          ))}
-        </div>
+        <SpecialtiesInput
+          value={formData.specialties || []}
+          onChange={(specialties) => onChange('specialties', specialties)}
+          maxSelections={10}
+          allowCustom={true}
+          showAsBadges={false}
+          label=""
+          description=""
+          showTip={false}
+        />
       </div>
 
       {/* Status */}
