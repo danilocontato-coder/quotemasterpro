@@ -1075,11 +1075,28 @@ export function useSupabaseAdminClients() {
   };
 
   const resetClientPassword = async (clientId: string, email: string, desiredPassword?: string) => {
-    console.log('resetClientPassword: resetando senha para cliente', clientId, email);
+    console.log('resetClientPassword: verificando usuário', clientId, email);
     setLoading(true);
     try {
+      // 🆕 PASSO 1: Verificar se usuário existe em profiles
+      const { data: existingProfile, error: profileCheckErr } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
       const password = desiredPassword || generateTemporaryPassword();
-      console.log('resetClientPassword: senha a ser usada:', desiredPassword ? 'fornecida' : 'nova gerada');
+
+      // 🆕 PASSO 2: Se usuário não existe, retornar a senha sem fazer reset
+      if (!existingProfile) {
+        console.warn('⚠️ Usuário não existe em profiles, retornando senha sem reset');
+        toast.warning('Credenciais preparadas', {
+          description: 'O usuário será criado quando o cliente fizer o primeiro login.'
+        });
+        return password;
+      }
+
+      console.log('✅ Usuário encontrado, prosseguindo com reset de senha');
       
       const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
         body: {
