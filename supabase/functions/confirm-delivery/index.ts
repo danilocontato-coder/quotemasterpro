@@ -107,7 +107,7 @@ serve(async (req) => {
       .from('deliveries')
       .update({
         status: 'delivered',
-        delivered_at: new Date().toISOString()
+        actual_delivery_date: new Date().toISOString()
       })
       .eq('id', confirmationData.delivery_id);
 
