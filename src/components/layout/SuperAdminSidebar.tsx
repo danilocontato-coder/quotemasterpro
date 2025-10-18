@@ -126,10 +126,26 @@ const navigation = [
       },
       {
         name: 'E-mail Marketing',
-        href: '/admin/email-marketing',
         icon: Mail,
         description: 'Campanhas de e-mail',
-        badge: 'IA'
+        badge: 'IA',
+        items: [
+          {
+            name: 'Dashboard',
+            href: '/admin/email-marketing',
+            icon: Mail
+          },
+          {
+            name: 'Campanhas',
+            href: '/admin/email-marketing/campaigns',
+            icon: Send
+          },
+          {
+            name: 'Contatos',
+            href: '/admin/email-marketing/contacts',
+            icon: Users
+          }
+        ]
       },
       {
         name: 'Templates & Mensagens',

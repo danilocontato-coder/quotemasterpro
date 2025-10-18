@@ -71,6 +71,7 @@ const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialMana
 const EmailMarketingDashboard = React.lazy(() => import('@/pages/admin/EmailMarketing/index'));
 const EmailMarketingEditor = React.lazy(() => import('@/pages/admin/EmailMarketing/Editor'));
 const EmailMarketingCampaigns = React.lazy(() => import('@/pages/admin/EmailMarketing/Campaigns'));
+const EmailMarketingContacts = React.lazy(() => import('@/pages/admin/EmailMarketing/Contacts'));
 const EmailMarketingAnalytics = React.lazy(() => import('@/pages/admin/EmailMarketing/Analytics'));
 const EmailMarketingTemplates = React.lazy(() => import('@/pages/admin/EmailMarketing/Templates'));
 
@@ -300,6 +301,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="email-marketing/campaigns" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <EmailMarketingCampaigns />
+          </Suspense>
+        } />
+        <Route path="email-marketing/contacts" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <EmailMarketingContacts />
           </Suspense>
         } />
         <Route path="email-marketing/analytics/:id" element={
