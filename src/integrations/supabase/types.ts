@@ -1693,6 +1693,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "cost_centers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cost_centers_parent_id_fkey"
             columns: ["parent_id"]
             isOneToOne: false
