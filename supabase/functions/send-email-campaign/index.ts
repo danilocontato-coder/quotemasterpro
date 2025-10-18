@@ -191,36 +191,27 @@ async function sendCampaign(supabaseClient: any, campaignId: string) {
 }
 
 async function getRecipients(supabaseClient: any, campaign: any) {
-  console.log('Fetching recipients for campaign segmentation');
-  
-  let query = supabaseClient
-    .from('email_contacts')
-    .select('id, client_id, email, name, phone, tags, custom_fields')
-    .eq('status', 'active');
+  const segment = campaign.target_segment || {};
+  const recipients = [];
 
-  // Se target_all_contacts é false, filtrar por tags específicas
-  if (campaign.target_all_contacts === false && campaign.contact_tags && campaign.contact_tags.length > 0) {
-    query = query.overlaps('tags', campaign.contact_tags);
+  // Exemplo de segmentação básica - expandir conforme necessário
+  if (!segment.criteria || segment.criteria.length === 0) {
+    // Sem filtros: buscar todos os clientes ativos
+    const { data } = await supabaseClient
+      .from('clients')
+      .select('id, name, email')
+      .eq('active', true);
+    
+    recipients.push(...(data || []).map((c: any) => ({
+      id: c.id,
+      email: c.email,
+      name: c.name,
+      type: 'client',
+      personalization_data: { name: c.name }
+    })));
   }
 
-  const { data: contacts, error } = await query;
-
-  if (error) {
-    console.error('Error fetching email contacts:', error);
-    throw error;
-  }
-
-  return (contacts || []).map((c: any) => ({
-    id: c.id,
-    email: c.email,
-    name: c.name,
-    type: 'contact',
-    personalization_data: { 
-      name: c.name || '',
-      phone: c.phone || '',
-      ...c.custom_fields
-    }
-  }));
+  return recipients;
 }
 
 async function sendEmail(supabaseClient: any, campaign: any, recipient: any) {

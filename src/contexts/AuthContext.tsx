@@ -379,16 +379,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       (event, newSession) => {
         logger.auth('Auth state change', { event, hasSession: !!newSession, userId: newSession?.user?.id });
         
-        // NOVO: Detectar token refresh com falha (sessão inválida)
-        if (event === 'TOKEN_REFRESHED' && !newSession) {
-          logger.error('auth', 'Token refresh falhou - sessão inválida, limpando estado');
-          setUser(null);
-          setSession(null);
-          setError('Sua sessão expirou. Por favor, faça login novamente.');
-          setIsLoading(false);
-          return;
-        }
-        
         // Ignorar eventos de token refresh se usuário não mudou
         if (event === 'TOKEN_REFRESHED' && newSession?.user?.id === user?.id) {
           logger.auth('Token refresh - mantendo estado');

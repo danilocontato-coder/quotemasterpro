@@ -9,14 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Lock, Bell, Palette, Settings as SettingsIcon, Calendar } from "lucide-react";
 import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
 import { PasswordChange } from "@/components/settings/PasswordChange";
 import { QuoteApprovalSettings } from "@/components/settings/QuoteApprovalSettings";
 import { QuoteReminderSettings } from "@/components/settings/QuoteReminderSettings";
 import { VisitSettings } from "@/components/settings/VisitSettings";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 
 export function Settings() {
   const { 
@@ -31,13 +29,13 @@ export function Settings() {
   } = useSupabaseSettings();
   
   const { updateUserEmail } = useSupabaseAuth();
-  const { client, isLoading: clientLoading } = useSupabaseCurrentClient();
 
-  // Local state for form data (apenas dados do usuário)
+  // Local state for form data
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
+    company: ''
   });
 
   // Sync with settings when loaded
@@ -46,7 +44,8 @@ export function Settings() {
       setProfileData({
         name: settings.display_name || currentUser.user_metadata?.name || '',
         email: currentUser.email || '',
-        phone: settings.phone || ''
+        phone: settings.phone || '',
+        company: settings.company_name || ''
       });
     }
   }, [settings, currentUser]);
@@ -54,7 +53,8 @@ export function Settings() {
   const handleSaveProfile = async () => {
     const success = await updateProfile({
       display_name: profileData.name,
-      phone: profileData.phone
+      phone: profileData.phone,
+      company_name: profileData.company
     });
 
     // Update email if changed
@@ -79,7 +79,7 @@ export function Settings() {
     await updateAvatar(avatarUrl);
   };
 
-  if (isLoading || clientLoading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div>
@@ -129,125 +129,74 @@ export function Settings() {
         </TabsList>
 
         <TabsContent value="profile">
-          <div className="space-y-6">
-            {/* Dados Pessoais */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados Pessoais</CardTitle>
-                <CardDescription>
-                  Suas informações pessoais e de contato
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <AvatarUpload
-                  currentAvatarUrl={settings?.avatar_url}
-                  userName={profileData.name}
-                  onAvatarChange={handleAvatarChange}
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações do Perfil</CardTitle>
+              <CardDescription>
+                Atualize suas informações pessoais e de contato
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <AvatarUpload
+                currentAvatarUrl={settings?.avatar_url}
+                userName={profileData.name}
+                onAvatarChange={handleAvatarChange}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome Completo</Label>
+                  <Input
+                    id="name"
+                    value={profileData.name}
+                    onChange={(e) => setProfileData({...profileData, name: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <Input
+                    id="phone"
+                    value={profileData.phone}
+                    onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Perfil</Label>
+                  <Input
+                    id="role"
+                    value={currentUser?.user_metadata?.role || 'Usuário'}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Entre em contato com o administrador para alterar seu perfil
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="company">Empresa/Condomínio</Label>
+                <Input
+                  id="company"
+                  value={profileData.company}
+                  onChange={(e) => setProfileData({...profileData, company: e.target.value})}
                 />
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Seu Nome</Label>
-                    <Input
-                      id="name"
-                      placeholder="Ex: Danilo Côrtes Sales"
-                      value={profileData.name}
-                      onChange={(e) => setProfileData({...profileData, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Seu E-mail</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="seu.email@exemplo.com"
-                      value={profileData.email}
-                      onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Seu Telefone</Label>
-                    <Input
-                      id="phone"
-                      placeholder="(00) 00000-0000"
-                      value={profileData.phone}
-                      onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Perfil de Acesso</Label>
-                    <Input
-                      id="role"
-                      value={currentUser?.user_metadata?.role || 'Usuário'}
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Entre em contato com o administrador para alterar seu perfil
-                    </p>
-                  </div>
-                </div>
-
-                <Button onClick={handleSaveProfile}>
-                  Salvar Alterações
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Dados da Empresa */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados da Empresa</CardTitle>
-                <CardDescription>
-                  Informações do cliente/condomínio vinculado
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="company-name">Nome da Empresa</Label>
-                    <Input
-                      id="company-name"
-                      value={client?.name || 'Não vinculado'}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-cnpj">CNPJ</Label>
-                    <Input
-                      id="company-cnpj"
-                      value={client?.cnpj || '-'}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-email">E-mail Corporativo</Label>
-                    <Input
-                      id="company-email"
-                      value={client?.email || '-'}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="company-plan">Plano Atual</Label>
-                    <Input
-                      id="company-plan"
-                      value={client?.subscription_plan_id || 'Não definido'}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                </div>
-
-                <Badge variant="outline" className="mt-4">
-                  Para alterar dados da empresa, entre em contato com o suporte ou administrador
-                </Badge>
-              </CardContent>
-            </Card>
-          </div>
+              <Button onClick={handleSaveProfile}>
+                Salvar Alterações
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="security">

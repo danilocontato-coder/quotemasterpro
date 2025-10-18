@@ -71,7 +71,6 @@ const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialMana
 const EmailMarketingDashboard = React.lazy(() => import('@/pages/admin/EmailMarketing/index'));
 const EmailMarketingEditor = React.lazy(() => import('@/pages/admin/EmailMarketing/Editor'));
 const EmailMarketingCampaigns = React.lazy(() => import('@/pages/admin/EmailMarketing/Campaigns'));
-const EmailMarketingContacts = React.lazy(() => import('@/pages/admin/EmailMarketing/Contacts'));
 const EmailMarketingAnalytics = React.lazy(() => import('@/pages/admin/EmailMarketing/Analytics'));
 const EmailMarketingTemplates = React.lazy(() => import('@/pages/admin/EmailMarketing/Templates'));
 
@@ -98,8 +97,6 @@ const CondominiosPage = React.lazy(() => import('@/pages/administradora/Condomin
 const ConfiguracoesPage = React.lazy(() => import('@/pages/administradora/ConfiguracoesPage'));
 const CotacoesPage = React.lazy(() => import('@/pages/administradora/CotacoesPage'));
 const FornecedoresPage = React.lazy(() => import('@/pages/administradora/FornecedoresPage'));
-const AprovacoesPage = React.lazy(() => import('@/pages/administradora/AprovacoesPage'));
-const PagamentosPage = React.lazy(() => import('@/pages/administradora/PagamentosPage'));
 const ShortLinkRedirect = React.lazy(() => import('@/pages/ShortLinkRedirect'));
 const QuickResponse = React.lazy(() => import('@/pages/QuickResponse'));
 const QuickResponseSuccess = React.lazy(() => import('@/pages/QuickResponseSuccess'));
@@ -303,11 +300,6 @@ export const AppWithProviders: React.FC = () => {
         <Route path="email-marketing/campaigns" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <EmailMarketingCampaigns />
-          </Suspense>
-        } />
-        <Route path="email-marketing/contacts" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <EmailMarketingContacts />
           </Suspense>
         } />
         <Route path="email-marketing/analytics/:id" element={
@@ -687,12 +679,12 @@ export const AppWithProviders: React.FC = () => {
         } />
         <Route path="aprovacoes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <AprovacoesPage />
+            <AdministradoraDashboard />
           </Suspense>
         } />
         <Route path="pagamentos" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <PagamentosPage />
+            <AdministradoraDashboard />
           </Suspense>
         } />
         <Route path="fornecedores" element={

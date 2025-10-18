@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreVertical, Eye, Send, Copy, Trash2, Search, ArrowLeft, BarChart } from 'lucide-react';
+import { MoreVertical, Eye, Send, Copy, Trash2, Search, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -106,51 +106,37 @@ export default function CampaignsList() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => navigate(`/admin/email-marketing/details/${campaign.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Detalhes</span>
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => navigate(`/admin/email-marketing/analytics/${campaign.id}`)}
-                    >
-                      <BarChart className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Analytics</span>
-                    </Button>
-                    {campaign.status === 'draft' && (
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        onClick={() => handleSend(campaign.id)}
-                      >
-                        <Send className="h-4 w-4 mr-1" />
-                        <span className="hidden sm:inline">Enviar</span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
-                    )}
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => navigate(`/admin/email-marketing/editor?duplicate=${campaign.id}`)}
-                    >
-                      <Copy className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Duplicar</span>
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setDeleteId(campaign.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Excluir</span>
-                    </Button>
-                  </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => navigate(`/admin/email-marketing/details/${campaign.id}`)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Detalhes
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/admin/email-marketing/analytics/${campaign.id}`)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Analytics
+                      </DropdownMenuItem>
+                      {campaign.status === 'draft' && (
+                        <DropdownMenuItem onClick={() => handleSend(campaign.id)}>
+                          <Send className="h-4 w-4 mr-2" />
+                          Enviar Agora
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => navigate(`/admin/email-marketing/editor?duplicate=${campaign.id}`)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplicar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setDeleteId(campaign.id)} className="text-destructive">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ))}
             </div>

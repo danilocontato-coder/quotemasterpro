@@ -59,7 +59,7 @@ serve(async (req) => {
           client_id,
           supplier_id,
           status,
-          quote_id
+          payments!inner(id, status, amount)
         )
       `)
       .eq('confirmation_code', confirmation_code)
@@ -107,7 +107,7 @@ serve(async (req) => {
       .from('deliveries')
       .update({
         status: 'delivered',
-        actual_delivery_date: new Date().toISOString()
+        delivered_at: new Date().toISOString()
       })
       .eq('id', confirmationData.delivery_id);
 

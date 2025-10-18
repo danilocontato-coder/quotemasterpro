@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { LoadingButton } from '@/components/ui/loading-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,12 +36,8 @@ interface ClientCredentialsModalProps {
   client: Client | null;
   onGenerateUsername: (companyName: string) => string;
   onGeneratePassword: () => string;
-  onResetPassword: (clientId: string, email: string, desiredPassword?: string) => Promise<string>;
-  onSendCredentials?: (
-    clientId: string,
-    credentials: { email: string; password: string },
-    options: { sendByEmail: boolean; sendByWhatsApp: boolean }
-  ) => Promise<void>;
+  onResetPassword: (clientId: string, email: string) => Promise<string>;
+  onSendCredentials?: (clientId: string, options: { sendByEmail: boolean; sendByWhatsApp: boolean }) => Promise<void>;
 }
 
 export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
@@ -61,30 +56,24 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [sendOptions, setSendOptions] = useState({
     sendByEmail: true,
     sendByWhatsApp: false
   });
   const { toast } = useToast();
-  const initializedRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (open && client) {
-      // Inicializar sem gerar/alterar senha automaticamente
-      if (initializedRef.current !== client.id) {
-        setCredentials({
-          username: client.email,
-          password: '',
-          temporaryPassword: false
-        });
-        initializedRef.current = client.id;
-      }
-    } else if (!open) {
-      // Limpar referência quando fechar o modal
-      initializedRef.current = null;
+    if (client && open) {
+      // Usar o email como username em vez do código gerado
+      const username = client.email;
+      const password = onGeneratePassword();
+      setCredentials({
+        username,
+        password,
+        temporaryPassword: true
+      });
     }
-  }, [open, client?.id]);
+  }, [client, open, onGeneratePassword]);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -96,14 +85,19 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
 
   const handleGenerateNewPassword = async () => {
     if (!client || isGenerating) return;
+    
+    console.log('Gerando nova senha para cliente:', client.id);
     setIsGenerating(true);
+    
     try {
-      const newPassword = onGeneratePassword();
-      setCredentials(prev => ({ ...prev, password: newPassword, temporaryPassword: true }));
-      toast({
-        title: "Senha gerada",
-        description: "A senha será aplicada ao enviar as credenciais."
-      });
+      // Usar a função real de reset de senha
+      const newPassword = await onResetPassword(client.id, client.email);
+      setCredentials(prev => ({ ...prev, password: newPassword }));
+      console.log('Nova senha gerada com sucesso');
+      // O toast já é mostrado pela função onResetPassword
+    } catch (error) {
+      // Erro já tratado pela função onResetPassword  
+      console.error('Erro ao resetar senha:', error);
     } finally {
       setIsGenerating(false);
     }
@@ -121,15 +115,6 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
       return;
     }
 
-    if (!credentials.password) {
-      toast({
-        title: "Gere uma senha",
-        description: "Clique em Gerar nova senha. O envio irá redefinir a senha para o valor exibido.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (sendOptions.sendByWhatsApp && !client.phone) {
       toast({
         title: "Telefone necessário",
@@ -139,20 +124,10 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
       return;
     }
     
-    setIsSending(true);
     try {
-      // 🔐 Sincronizar senha no Supabase ANTES de enviar (resetará para a senha exibida)
-      console.log('🔄 [SEND_CREDENTIALS] Sincronizando senha no Supabase...');
-      const syncedPassword = await onResetPassword(client.id, client.email, credentials.password);
-      setCredentials(prev => ({ ...prev, password: syncedPassword }));
-
-      // Enviar credenciais (com senha sincronizada)
-      await onSendCredentials(client.id, {
-        email: credentials.username,
-        password: syncedPassword
-      }, sendOptions);
+      await onSendCredentials(client.id, sendOptions);
       
-      const methods = [] as string[];
+      const methods = [];
       if (sendOptions.sendByEmail) methods.push("e-mail");
       if (sendOptions.sendByWhatsApp) methods.push("WhatsApp");
       
@@ -161,14 +136,11 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
         description: `As credenciais foram enviadas por ${methods.join(" e ")}`,
       });
     } catch (error) {
-      console.error('Erro ao enviar credenciais:', error);
       toast({
         title: "Erro",
         description: "Não foi possível enviar as credenciais.",
         variant: "destructive"
       });
-    } finally {
-      setIsSending(false);
     }
   };
 
@@ -176,7 +148,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
@@ -231,7 +203,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="flex items-center gap-2">
-                  Senha a enviar
+                  Senha Temporária
                   {credentials.temporaryPassword && (
                     <Badge variant="outline" className="text-xs">
                       <AlertTriangle className="h-3 w-3 mr-1" />
@@ -287,9 +259,9 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                   <div className="text-sm">
-                    <p className="font-medium text-yellow-800">Envio de credenciais</p>
+                    <p className="font-medium text-yellow-800">Senha Temporária</p>
                     <p className="text-yellow-700">
-                      Ao enviar, a senha do usuário será redefinida para o valor exibido acima.
+                      O usuário deve alterar esta senha no primeiro acesso ao sistema.
                     </p>
                   </div>
                 </div>
@@ -366,19 +338,17 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2 pt-4 pb-2 border-t sticky bottom-0 bg-background">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSending}>
-            Fechar
-          </Button>
-          <LoadingButton
+        <div className="flex justify-between">
+          <Button
             variant="default"
             onClick={handleSendCredentials}
             disabled={!onSendCredentials || (!sendOptions.sendByEmail && !sendOptions.sendByWhatsApp)}
-            isLoading={isSending}
-            loadingText="Enviando..."
           >
             Enviar Credenciais
-          </LoadingButton>
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

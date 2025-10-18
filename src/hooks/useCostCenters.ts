@@ -69,7 +69,6 @@ export function useCostCenters() {
       if (error) throw error;
 
       setCostCenters(data || []);
-      console.log('[useCostCenters] fetchCostCenters -> count:', data?.length || 0, data?.slice(0, 3));
     } catch (err) {
       console.error('Error fetching cost centers:', err);
       setError('Erro ao carregar centros de custo');
@@ -286,47 +285,23 @@ export function useCostCenters() {
         p_client_id: profile.client_id,
       });
 
-      if (error) {
-        if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
-          throw new Error('Erro de permissão. Verifique as políticas RLS da tabela cost_centers.');
-        }
-        throw error;
-      }
-
-      // Ativar centros criados como inativos (alguns scripts inserem active=false)
-      const { error: activateErr, count: _cnt } = await supabase
-        .from('cost_centers')
-        .update({ active: true })
-        .eq('client_id', profile.client_id)
-        .eq('active', false);
-      if (activateErr) {
-        console.warn('[useCostCenters] activate defaults failed:', activateErr);
-      }
+      if (error) throw error;
 
       toast({
         title: 'Sucesso',
         description: 'Centros de custo padrão criados com sucesso',
       });
 
-      // Debug: listar centros logo após
-      const { data: createdList, error: listErr } = await supabase
-        .from('cost_centers')
-        .select('id, name, active, client_id')
-        .eq('client_id', profile.client_id);
-      console.log('[useCostCenters] post-RPC cost_centers', { client: profile.client_id, count: createdList?.length, sample: createdList?.slice(0,5), listErr });
-
-      // Aguardar e forçar refresh
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Refresh data
       await Promise.all([
         fetchCostCenters(),
         fetchSpending(profile.client_id)
       ]);
     } catch (err) {
       console.error('Error creating default cost centers:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao criar centros de custo padrão';
       toast({
         title: 'Erro',
-        description: errorMessage,
+        description: 'Erro ao criar centros de custo padrão',
         variant: 'destructive',
       });
     } finally {

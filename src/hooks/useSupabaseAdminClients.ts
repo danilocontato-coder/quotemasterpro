@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePerformanceDebug } from "./usePerformanceDebug";
@@ -477,42 +477,16 @@ export function useSupabaseAdminClients() {
           const authPayload = authResp as any;
           if (authPayload?.success !== false && authPayload?.auth_user_id) {
             const createdAuthUserId = authPayload.auth_user_id;
-            console.log('✅ [CREATE_CLIENT] Auth user criado com ID', createdAuthUserId);
+            console.log('✅ DEBUG: Auth user criado com ID', createdAuthUserId);
 
-            // 🆕 VERIFICAÇÃO COM RETRY: Confirmar que profile existe antes de enviar credenciais
-            let profileConfirmed = false;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-              console.log(`🔍 [CREATE_CLIENT] Tentativa ${attempt}/3: verificando profile...`);
-              
-              const { data: profileCheck } = await supabase
-                .from('profiles')
-                .select('id, client_id, role')
-                .eq('id', createdAuthUserId)
-                .maybeSingle();
-              
-              if (profileCheck?.id) {
-                console.log('✅ [CREATE_CLIENT] Profile confirmado:', profileCheck);
-                profileConfirmed = true;
-                break;
-              }
-              
-              if (attempt < 3) {
-                console.warn(`⚠️ [CREATE_CLIENT] Profile não encontrado, aguardando ${attempt * 500}ms...`);
-                await new Promise(resolve => setTimeout(resolve, attempt * 500));
-              }
-            }
-
-            if (!profileConfirmed) {
-              console.error('❌ [CREATE_CLIENT] Profile não foi criado após 3 tentativas');
-              toast.warning('Cliente criado com sucesso', {
-                description: 'O sistema de acesso ainda está sincronizando. Reenvie as credenciais em alguns instantes.',
-                duration: 8000
-              });
-              
-              // NÃO enviar credenciais neste caso
-              setLoading(false);
-              return;
-            }
+            // Verificar se profile foi criado corretamente
+            const { data: profileCheck } = await supabase
+              .from('profiles')
+              .select('id, client_id, role')
+              .eq('id', createdAuthUserId)
+              .maybeSingle();
+            
+            console.log('👤 DEBUG: Profile criado:', profileCheck);
 
             // Verificar se user foi criado corretamente
             const { data: userCheck } = await supabase
@@ -521,7 +495,7 @@ export function useSupabaseAdminClients() {
               .eq('auth_user_id', createdAuthUserId)
               .maybeSingle();
             
-            console.log('👥 [CREATE_CLIENT] User criado:', userCheck);
+            console.log('👥 DEBUG: User criado:', userCheck);
             
             // Mostrar credenciais criadas com toast melhorado
             const copyToClipboard = async (text: string) => {
@@ -567,149 +541,33 @@ export function useSupabaseAdminClients() {
               
               if (phoneNumber) {
                 try {
-                  console.log('📱 [WHATSAPP_SEND] Enviando credenciais para', {
-                    phone: phoneNumber,
-                    client: clientData.companyName,
-                    email: clientData.email
-                  });
-                  
+                  console.log('📱 DEBUG: Enviando credenciais via WhatsApp para', phoneNumber);
                   const { data: notifyResp, error: notifyErr } = await supabase.functions.invoke("notify", {
                     body: {
                       type: "whatsapp_user_credentials",
                       to: phoneNumber,
-                      user_email: clientData.email,
-                      temp_password: password,
-                      user_name: clientData.companyName,
-                      app_url: "https://cotiz.com.br/auth/login"
+                      userData: {
+                        email: clientData.email,
+                        password: password,
+                        companyName: clientData.companyName,
+                        loginUrl: window.location.origin + "/auth/login"
+                      }
                     }
                   });
 
                   if (notifyErr) {
-                    console.error('❌ [WHATSAPP_ERROR]', notifyErr);
-                    toast.error(`Erro ao enviar WhatsApp: ${notifyErr.message || 'Verifique a configuração'}`);
+                    console.error('Erro ao enviar WhatsApp:', notifyErr);
+                    toast.error("Erro ao enviar credenciais via WhatsApp");
                   } else {
-                    console.log('✅ [WHATSAPP_SUCCESS]', notifyResp);
+                    console.log('✅ WhatsApp enviado com sucesso:', notifyResp);
                     toast.success(`📱 Credenciais enviadas via WhatsApp para ${phoneNumber}`);
                   }
-                } catch (whatsappError: any) {
-                  console.error('❌ [WHATSAPP_EXCEPTION]', whatsappError);
-                  toast.error(`Falha ao enviar WhatsApp: ${whatsappError.message || 'Erro desconhecido'}`);
+                } catch (whatsappError) {
+                  console.error('Erro no envio WhatsApp:', whatsappError);
+                  toast.error("Falha ao enviar WhatsApp - verifique a configuração");
                 }
               } else {
-                console.warn('⚠️ [WHATSAPP_SKIP] Número de telefone não informado');
-                toast.warning("Número de telefone não informado para envio via WhatsApp");
-              }
-            }
-
-            // Enviar credenciais via E-mail se solicitado
-            if (notificationOptions?.sendByEmail) {
-              try {
-                console.log('📧 [EMAIL_SEND] Enviando credenciais para', {
-                  email: clientData.email,
-                  client: clientData.companyName
-                });
-                
-                const { data: emailResp, error: emailErr } = await supabase.functions.invoke("send-email", {
-                  body: {
-                    to: clientData.email,
-                    subject: "🎉 Suas Credenciais de Acesso - Cotiz",
-                    html: `
-                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff;">
-                        <!-- Cabeçalho com gradiente -->
-                        <div style="background: linear-gradient(135deg, #003366 0%, #005599 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center;">
-                          <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🎉 Bem-vindo ao Cotiz!</h1>
-                          <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Plataforma de Gestão de Cotações</p>
-                        </div>
-                        
-                        <!-- Conteúdo -->
-                        <div style="background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px;">
-                          <p style="font-size: 16px; color: #333; margin: 0 0 10px 0;">
-                            Olá <strong>${clientData.companyName}</strong>,
-                          </p>
-                          
-                          <p style="font-size: 14px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">
-                            Seu acesso à plataforma foi criado com sucesso! Use as credenciais abaixo para fazer seu primeiro login:
-                          </p>
-                          
-                          <!-- Box de Credenciais -->
-                          <div style="background: white; border: 2px solid #003366; border-radius: 8px; padding: 20px; margin: 0 0 25px 0;">
-                            <table style="width: 100%; border-collapse: collapse;">
-                              <tr>
-                                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                                  <span style="color: #666; font-size: 13px;">📧 E-mail:</span>
-                                </td>
-                                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
-                                  <strong style="color: #003366; font-size: 14px;">${clientData.email}</strong>
-                                </td>
-                              </tr>
-                              <tr>
-                                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                                  <span style="color: #666; font-size: 13px;">🔑 ${clientData.loginCredentials.temporaryPassword ? 'Senha temporária' : 'Senha de acesso'}:</span>
-                                </td>
-                                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
-                                  <code style="background: #f3f4f6; padding: 6px 12px; border-radius: 4px; font-size: 15px; color: #dc2626; font-weight: bold; letter-spacing: 1px;">${password}</code>
-                                </td>
-                              </tr>
-                              <tr>
-                                <td style="padding: 12px 0;">
-                                  <span style="color: #666; font-size: 13px;">🏢 Empresa:</span>
-                                </td>
-                                <td style="padding: 12px 0; text-align: right;">
-                                  <strong style="color: #003366; font-size: 14px;">${clientData.companyName}</strong>
-                                </td>
-                              </tr>
-                            </table>
-                          </div>
-                          
-                          <!-- Botão de Ação -->
-                          <div style="text-align: center; margin: 30px 0;">
-                            <a href="https://cotiz.com.br/auth/login" 
-                               style="background: #003366; color: white; padding: 16px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(0,51,102,0.3); transition: all 0.3s;">
-                              🚀 Acessar o Sistema
-                            </a>
-                          </div>
-                          
-                          <!-- Aviso de Segurança -->
-                          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0 0 0; border-radius: 4px;">
-                            <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;">
-                              <strong>⚠️ Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.
-                            </p>
-                          </div>
-                          
-                          <!-- Ajuda -->
-                          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin: 20px 0 0 0;">
-                            <p style="margin: 0 0 10px 0; font-size: 13px; color: #666; font-weight: 600;">
-                              💬 Precisa de ajuda?
-                            </p>
-                            <p style="margin: 0; font-size: 12px; color: #999; line-height: 1.6;">
-                              Entre em contato com nosso suporte:<br>
-                              📧 <a href="mailto:suporte@cotiz.com.br" style="color: #003366; text-decoration: none;">suporte@cotiz.com.br</a><br>
-                              📱 WhatsApp: +55 (71) 99999-9999
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <!-- Rodapé -->
-                        <div style="text-align: center; padding: 20px; color: #999; font-size: 11px; line-height: 1.6;">
-                          <p style="margin: 0 0 5px 0;">© ${new Date().getFullYear()} <strong>Cotiz</strong> - Plataforma de Gestão de Cotações</p>
-                          <p style="margin: 0;">Você está recebendo este e-mail porque uma conta foi criada para sua empresa.</p>
-                        </div>
-                      </div>
-                    `,
-                    client_id: createdClientId
-                  }
-                });
-
-                if (emailErr) {
-                  console.error('❌ [EMAIL_ERROR]', emailErr);
-                  toast.error(`Erro ao enviar e-mail: ${emailErr.message || 'Verifique a configuração'}`);
-                } else {
-                  console.log('✅ [EMAIL_SUCCESS]', emailResp);
-                  toast.success(`📧 Credenciais enviadas para ${clientData.email}`);
-                }
-              } catch (emailError: any) {
-                console.error('❌ [EMAIL_EXCEPTION]', emailError);
-                toast.error(`Falha ao enviar e-mail: ${emailError.message || 'Erro desconhecido'}`);
+                toast.error("Número de telefone não informado para envio via WhatsApp");
               }
             }
           }
@@ -978,12 +836,12 @@ export function useSupabaseAdminClients() {
     setClients((prev) => prev.map((c) => (c.groupId === id ? { ...c, groupId: undefined, groupName: undefined } : c)));
   };
 
-  const generateTemporaryPassword = useCallback(() => {
+  const generateTemporaryPassword = () => {
     const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
     let password = "";
     for (let i = 0; i < 10; i++) password += chars.charAt(Math.floor(Math.random() * chars.length));
     return password;
-  }, []);
+  };
 
   // Aplicar características do plano ao cliente
   const applyPlanCharacteristicsToClient = async (clientId: string, planId: string) => {
@@ -1100,80 +958,19 @@ export function useSupabaseAdminClients() {
     );
   };
 
-  const resetClientPassword = async (clientId: string, email: string, desiredPassword?: string) => {
-    console.log('🔄 [RESET_PASSWORD] Iniciando sincronização de senha', { clientId, email });
+  const resetClientPassword = async (clientId: string, email: string) => {
+    console.log('resetClientPassword: resetando senha para cliente', clientId, email);
     setLoading(true);
     try {
-      // PASSO 1: Verificar se usuário existe em profiles
-      const { data: existingProfile, error: profileCheckErr } = await supabase
-        .from('profiles')
-        .select('id, email, name, role')
-        .eq('email', email.toLowerCase())
-        .maybeSingle();
-
-      const password = desiredPassword || generateTemporaryPassword();
-
-      // PASSO 2: Se usuário NÃO existe, criar primeiro
-      if (!existingProfile) {
-        console.warn('⚠️ [RESET_PASSWORD] Usuário não existe em profiles, criando...');
-        
-        // Buscar dados do cliente para criar usuário
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('company_name, name')
-          .eq('id', clientId)
-          .single();
-        
-        const clientName = clientData?.company_name || clientData?.name || 'Cliente';
-        
-        // Criar usuário Auth + Profile + Users
-        const { data: createResp, error: createErr } = await supabase.functions.invoke("create-auth-user", {
-          body: {
-            email,
-            password,
-            name: clientName,
-            role: "manager",
-            clientId,
-            temporaryPassword: true,
-            action: 'create',
-          },
-        });
-
-        if (createErr || !createResp?.success) {
-          console.error('❌ [RESET_PASSWORD] Falha ao criar usuário:', createErr);
-          throw new Error(createErr?.message || 'Não foi possível criar o usuário de acesso');
-        }
-
-        console.log('✅ [RESET_PASSWORD] Usuário criado com sucesso');
-        
-        // Aguardar propagação (profile pode demorar alguns ms)
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Verificar se profile foi criado
-        const { data: newProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', email.toLowerCase())
-          .maybeSingle();
-        
-        if (!newProfile) {
-          console.error('❌ [RESET_PASSWORD] Profile não foi criado após tentativa');
-          throw new Error('Usuário criado mas ainda não está disponível. Tente reenviar em alguns instantes.');
-        }
-        
-        console.log('✅ [RESET_PASSWORD] Profile confirmado, senha já definida na criação');
-        return password; // Senha já foi definida na criação
-      }
-
-      // PASSO 3: Usuário existe, fazer reset de senha
-      console.log('✅ [RESET_PASSWORD] Usuário encontrado, resetando senha');
+      const password = generateTemporaryPassword();
+      console.log('resetClientPassword: nova senha gerada');
       
       const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
         body: {
           email,
           password,
-          name: existingProfile.name || "Reset Password",
-          role: existingProfile.role || "manager",
+          name: "Reset Password", // não usado no reset
+          role: "manager", // não usado no reset
           clientId,
           temporaryPassword: true,
           action: 'reset_password',
@@ -1181,7 +978,7 @@ export function useSupabaseAdminClients() {
       });
 
       if (!fnErr && authResp?.success) {
-        console.log('✅ [RESET_PASSWORD] Senha resetada com sucesso');
+        console.log('resetClientPassword: senha resetada com sucesso');
         
         const copyToClipboard = async (text: string) => {
           try {

@@ -123,23 +123,13 @@ Deno.serve(async (req) => {
       const cfg = await resolveEvolutionConfig(supabase, clientId)
       const number = normalizePhone(to)
       const text =
-        `🎉 *Bem-vindo(a) ao Cotiz!* 🎉\n\n` +
-        `Olá *${user_name || 'Cliente'}*! 👋\n\n` +
-        `Seu acesso à plataforma *Cotiz* foi criado com sucesso! Use as credenciais abaixo para fazer seu primeiro login:\n\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `📧 *E-mail:* ${user_email}\n` +
-        `🔑 *Senha temporária:* ${temp_password}\n` +
-        `🏢 *Empresa:* ${user_name || 'Sua Empresa'}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-        `🚀 *Acesse agora:*\n` +
-        `${app_url || 'https://cotiz.com.br/auth/login'}\n\n` +
-        `⚠️ *IMPORTANTE:*\n` +
-        `Por segurança, você será solicitado a alterar sua senha no primeiro acesso.\n\n` +
-        `💬 *Precisa de ajuda?*\n` +
-        `📧 suporte@cotiz.com.br\n` +
-        `📱 +55 (71) 99999-9999\n\n` +
-        `*Cotiz* - Plataforma de Gestão de Cotações\n` +
-        `🌐 www.cotiz.com.br`
+        `👋 Olá${user_name ? ' ' + user_name : ''}!\n\n` +
+        `Seu acesso ao *QuoteMaster Pro* foi criado. Seguem suas credenciais:\n\n` +
+        `• E-mail: ${user_email}\n` +
+        `• Senha temporária: ${temp_password}\n\n` +
+        `${app_url ? `Acesse: ${app_url}\n\n` : ''}` +
+        `Por segurança, você deverá alterar a senha no primeiro login.\n\n` +
+        `Se não reconhece esta mensagem, ignore este aviso.`
 
       const sent = await sendEvolutionWhatsApp(cfg, number, text)
       result = sent.success

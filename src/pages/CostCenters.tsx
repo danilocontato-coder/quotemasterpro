@@ -23,11 +23,6 @@ export default function CostCenters() {
     }
   }, [costCenters.length, fetchSpending]);
 
-  // Debug: monitor tamanho da lista para investigar UI
-  useEffect(() => {
-    console.log('[CostCenters Page] costCenters length:', costCenters.length);
-  }, [costCenters.length]);
-
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja remover este centro de custo?')) {
       await deleteCostCenter(id);
