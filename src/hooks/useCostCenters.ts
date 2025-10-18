@@ -293,20 +293,30 @@ export function useCostCenters() {
         throw error;
       }
 
+      // Ativar centros criados como inativos (alguns scripts inserem active=false)
+      const { error: activateErr, count: _cnt } = await supabase
+        .from('cost_centers')
+        .update({ active: true })
+        .eq('client_id', profile.client_id)
+        .eq('active', false);
+      if (activateErr) {
+        console.warn('[useCostCenters] activate defaults failed:', activateErr);
+      }
+
       toast({
         title: 'Sucesso',
         description: 'Centros de custo padrão criados com sucesso',
       });
 
-      // Debug: listar centros logo após RPC (sem filtrar por active)
+      // Debug: listar centros logo após
       const { data: createdList, error: listErr } = await supabase
         .from('cost_centers')
         .select('id, name, active, client_id')
         .eq('client_id', profile.client_id);
       console.log('[useCostCenters] post-RPC cost_centers', { client: profile.client_id, count: createdList?.length, sample: createdList?.slice(0,5), listErr });
 
-      // Aguardar a transação consolidar e forçar refresh
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Aguardar e forçar refresh
+      await new Promise(resolve => setTimeout(resolve, 300));
       await Promise.all([
         fetchCostCenters(),
         fetchSpending(profile.client_id)
