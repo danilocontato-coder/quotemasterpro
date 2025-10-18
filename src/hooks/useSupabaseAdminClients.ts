@@ -452,22 +452,25 @@ export function useSupabaseAdminClients() {
 
       // 2) Tenta criar usuário de autenticação (opcional - não bloqueia se falhar)
       try {
-        const password = clientData.loginCredentials.password || generateTemporaryPassword();
+        // ===== FONTE ÚNICA DA VERDADE PARA SENHA =====
+        const intendedPassword = clientData.loginCredentials.password || generateTemporaryPassword();
+        const isTemporary = clientData.loginCredentials.temporaryPassword ?? true;
+        
         console.log('🔐 DEBUG: Tentando criar usuário de autenticação', {
           email: clientData.email,
           role: 'manager',
           clientId: createdClientId,
-          temporaryPassword: clientData.loginCredentials.temporaryPassword
+          temporaryPassword: isTemporary
         });
         
         const { data: authResp, error: fnErr } = await supabase.functions.invoke("create-auth-user", {
           body: {
-            email: clientData.email,
-            password,
+            email: clientData.email.trim(),
+            password: intendedPassword, // FONTE ÚNICA
             name: clientData.companyName,
             role: "manager",
             clientId: createdClientId,
-            temporaryPassword: clientData.loginCredentials.temporaryPassword,
+            temporaryPassword: isTemporary,
           },
         });
 
@@ -479,14 +482,56 @@ export function useSupabaseAdminClients() {
             const createdAuthUserId = authPayload.auth_user_id;
             console.log('✅ DEBUG: Auth user criado com ID', createdAuthUserId);
 
-            // Verificar se profile foi criado corretamente
-            const { data: profileCheck } = await supabase
-              .from('profiles')
-              .select('id, client_id, role')
-              .eq('id', createdAuthUserId)
-              .maybeSingle();
+            // ===== GATE DE SINCRONIZAÇÃO =====
+            console.log('⏳ Aguardando sincronização do profile...');
+            let profileConfirmed = false;
+            let retries = 0;
+            const maxRetries = 5;
+            const delays = [300, 600, 1200, 2400, 4800]; // backoff exponencial
             
-            console.log('👤 DEBUG: Profile criado:', profileCheck);
+            while (!profileConfirmed && retries < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, delays[retries]));
+              
+              const { data: profileCheck } = await supabase
+                .from('profiles')
+                .select('id, client_id, role')
+                .eq('id', createdAuthUserId)
+                .maybeSingle();
+              
+              if (profileCheck) {
+                profileConfirmed = true;
+                console.log('✅ Profile confirmado:', profileCheck);
+              } else {
+                retries++;
+                console.log(`⏳ Retry ${retries}/${maxRetries}...`);
+              }
+            }
+            
+            if (!profileConfirmed) {
+              console.error('❌ Profile não confirmado após', maxRetries, 'tentativas');
+              toast.error('Conta criada, mas sincronização pendente. Aguarde e tente reenviar credenciais.');
+              
+              // Registrar auditoria de falha
+              await supabase.from('audit_logs').insert({
+                user_id: createdAuthUserId,
+                action: 'CLIENT_AUTH_CREATED_NO_SYNC',
+                entity_type: 'clients',
+                entity_id: createdClientId,
+                panel_type: 'admin',
+                details: {
+                  email: clientData.email,
+                  temporary: isTemporary,
+                  delivery_attempted: false,
+                  reason: 'profile_sync_timeout'
+                }
+              });
+              
+              // Continua e atualiza state localmente
+              setLoading(false);
+              return;
+            }
+            
+            // ===== FIM DO GATE =====
 
             // Verificar se user foi criado corretamente
             const { data: userCheck } = await supabase
@@ -511,7 +556,7 @@ export function useSupabaseAdminClients() {
             const credentialsMessage = `🎉 Cliente criado com sucesso!
 
 📧 Email: ${clientData.email}
-🔑 Senha: ${password}
+🔑 Senha: ${intendedPassword}
 
 ⚠️ IMPORTANTE: Anote essas credenciais!
 • O cliente usa o EMAIL para fazer login
@@ -523,7 +568,7 @@ export function useSupabaseAdminClients() {
               action: {
                 label: "📋 Copiar",
                 onClick: async () => {
-                  const credentials = `Email: ${clientData.email}\nSenha: ${password}`;
+                  const credentials = `Email: ${clientData.email}\nSenha: ${intendedPassword}`;
                   const copied = await copyToClipboard(credentials);
                   if (copied) {
                     toast.success("✅ Credenciais copiadas para a área de transferência!");
@@ -534,7 +579,7 @@ export function useSupabaseAdminClients() {
               }
             });
 
-            // Enviar credenciais via WhatsApp se solicitado
+            // Enviar credenciais via WhatsApp se solicitado (APÓS CONFIRMAR PROFILE)
             if (notificationOptions?.sendByWhatsApp) {
               const primaryContact = clientData.contacts?.find(c => c.isPrimary);
               const phoneNumber = primaryContact?.phone || clientData.phone;
@@ -547,14 +592,19 @@ export function useSupabaseAdminClients() {
                     email: clientData.email
                   });
                   
+                  const passwordLabel = isTemporary ? 'Senha temporária' : 'Senha de acesso';
+                  const warningText = isTemporary 
+                    ? '⚠️ *Importante:* Esta é uma senha temporária. Você será solicitado a alterá-la no primeiro acesso.\n\n' 
+                    : '';
+                  
+                  const message = `🎉 *Bem-vindo ao Cotiz!*\n\nOlá ${clientData.companyName},\n\nSua conta foi criada com sucesso!\n\n*Credenciais de Acesso:*\n🌐 Plataforma: https://cotiz.com.br/auth/login\n📧 Email: ${clientData.email}\n🔑 ${passwordLabel}: ${intendedPassword}\n\n${warningText}Qualquer dúvida, estamos à disposição!`;
+                  
                   const { data: notifyResp, error: notifyErr } = await supabase.functions.invoke("notify", {
                     body: {
-                      type: "whatsapp_user_credentials",
                       to: phoneNumber,
-                      user_email: clientData.email,
-                      temp_password: password,
-                      user_name: clientData.companyName,
-                      app_url: "https://cotiz.com.br/auth/login"
+                      type: "whatsapp",
+                      templateId: "client_credentials",
+                      params: { message }
                     }
                   });
 
@@ -618,10 +668,10 @@ export function useSupabaseAdminClients() {
                               </tr>
                               <tr>
                                 <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                                  <span style="color: #666; font-size: 13px;">🔑 Senha temporária:</span>
+                                  <span style="color: #666; font-size: 13px;">🔑 ${isTemporary ? 'Senha temporária' : 'Senha de acesso'}:</span>
                                 </td>
                                 <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
-                                  <code style="background: #f3f4f6; padding: 6px 12px; border-radius: 4px; font-size: 15px; color: #dc2626; font-weight: bold; letter-spacing: 1px;">${password}</code>
+                                  <code style="background: #f3f4f6; padding: 6px 12px; border-radius: 4px; font-size: 15px; color: #dc2626; font-weight: bold; letter-spacing: 1px;">${intendedPassword}</code>
                                 </td>
                               </tr>
                               <tr>

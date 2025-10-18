@@ -169,14 +169,17 @@ export const useSupabaseAdminSuppliers = () => {
 
       // Create auth user linked to supplier
       console.log('🔐 Creating auth user for supplier...');
+      const intendedPassword = password; // Fonte única da verdade
+      const isTemporary = credentials.forcePasswordChange;
+      
       const { data: authResp, error: fnErr } = await supabase.functions.invoke('create-auth-user', {
         body: {
           email: supplierData.email.trim(),
-          password,
+          password: intendedPassword,
           name: supplierData.name,
           role: 'supplier',
           supplierId: (supplier as any).id,
-          temporaryPassword: credentials.forcePasswordChange,
+          temporaryPassword: isTemporary,
         },
       });
 
@@ -189,8 +192,81 @@ export const useSupabaseAdminSuppliers = () => {
         });
       } else {
         console.log('✅ Auth user created for supplier:', authResp);
+        const authUserId = authResp.auth_user_id;
         
-        // Fornecedor receberá convite para completar cadastro ao receber a primeira cotação
+        // ===== GATE DE SINCRONIZAÇÃO =====
+        console.log('⏳ Aguardando sincronização do profile (supplier)...');
+        let profileConfirmed = false;
+        let retries = 0;
+        const maxRetries = 5;
+        const delays = [300, 600, 1200, 2400, 4800];
+        
+        while (!profileConfirmed && retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, delays[retries]));
+          
+          const { data: profileCheck } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', authUserId)
+            .maybeSingle();
+          
+          if (profileCheck) {
+            profileConfirmed = true;
+            console.log('✅ Profile confirmado (supplier):', authUserId);
+          } else {
+            retries++;
+            console.log(`⏳ Retry ${retries}/${maxRetries}...`);
+          }
+        }
+        
+        if (!profileConfirmed) {
+          console.error('❌ Profile não confirmado após', maxRetries, 'tentativas');
+          toast({
+            title: 'Fornecedor criado, sincronizando acesso',
+            description: 'Aguarde alguns instantes. Credenciais não foram enviadas ainda.',
+            variant: 'default',
+          });
+          
+          // Auditoria
+          await supabase.from('audit_logs').insert({
+            user_id: authUserId,
+            action: 'SUPPLIER_AUTH_CREATED_NO_SYNC',
+            entity_type: 'suppliers',
+            entity_id: (supplier as any).id,
+            panel_type: 'admin',
+            details: {
+              email: supplierData.email,
+              temporary: isTemporary,
+              delivery_attempted: false,
+              reason: 'profile_sync_timeout'
+            }
+          });
+          
+          // Update local state anyway
+          setSuppliers(prev => [...prev, {
+            ...supplier,
+            type: (supplier as any).type as 'local' | 'certified'
+          } as Supplier]);
+          
+          return supplier;
+        }
+        
+        // ===== FIM DO GATE =====
+        
+        // Auditoria de sucesso
+        await supabase.from('audit_logs').insert({
+          user_id: authUserId,
+          action: 'SUPPLIER_AUTH_CREATED',
+          entity_type: 'suppliers',
+          entity_id: (supplier as any).id,
+          panel_type: 'admin',
+          details: {
+            email: supplierData.email,
+            temporary: isTemporary,
+            sent: true
+          }
+        });
+        
         toast({
           title: '✅ Fornecedor criado!',
           description: 'Ele receberá o convite para registro ao receber a primeira cotação.',
