@@ -69,6 +69,16 @@ export function NotificationContent({ notification, onNavigate }: NotificationCo
       case 'delivery_code_generated':
         return (
           <div className="space-y-1 mt-1">
+            {enrichedData.delivery_code && (
+              <p className="text-sm">
+                Código: <strong className="text-primary">#{enrichedData.delivery_code}</strong>
+              </p>
+            )}
+            {enrichedData.tracking_code && (
+              <p className="text-sm">
+                Rastreio: <strong>{enrichedData.tracking_code}</strong>
+              </p>
+            )}
             {enrichedData.quote_code && (
               <p className="text-sm">
                 Cotação: <strong className="text-primary">#{enrichedData.quote_code}</strong>
@@ -79,9 +89,9 @@ export function NotificationContent({ notification, onNavigate }: NotificationCo
                 Fornecedor: <strong>{enrichedData.supplier_name}</strong>
               </p>
             )}
-            {metadata?.scheduled_date && (
+            {(enrichedData.scheduled_date || metadata?.scheduled_date) && (
               <p className="text-sm">
-                Data: <strong>{formatDate(metadata.scheduled_date)}</strong>
+                Data: <strong>{formatDate(enrichedData.scheduled_date || metadata?.scheduled_date)}</strong>
               </p>
             )}
             {(enrichedData.confirmation_code || metadata?.confirmation_code) && (

@@ -9,6 +9,10 @@ interface EnrichedData {
   code_expires_at?: string;
   payment_amount?: number;
   client_name?: string;
+  delivery_code?: string;
+  delivery_status?: string;
+  scheduled_date?: string;
+  tracking_code?: string;
 }
 
 export function useNotificationEnrichment(metadata?: Record<string, any>) {
@@ -79,6 +83,21 @@ export function useNotificationEnrichment(metadata?: Record<string, any>) {
             .eq('id', metadata.client_id)
             .single();
           if (client) data.client_name = client.name;
+        }
+
+        // Buscar dados da entrega
+        if (metadata.delivery_id) {
+          const { data: delivery } = await supabase
+            .from('deliveries')
+            .select('local_code, status, scheduled_date, tracking_code')
+            .eq('id', metadata.delivery_id)
+            .single();
+          if (delivery) {
+            data.delivery_code = delivery.local_code;
+            data.delivery_status = delivery.status;
+            data.scheduled_date = delivery.scheduled_date;
+            data.tracking_code = delivery.tracking_code;
+          }
         }
 
         setEnrichedData(data);
