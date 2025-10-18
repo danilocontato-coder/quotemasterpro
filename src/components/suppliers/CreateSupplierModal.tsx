@@ -161,49 +161,65 @@ export function CreateSupplierModal({
     if (editingSupplier) {
       console.log('📝 Loading edit data for:', editingSupplier.name);
       
-      setSupplierData({
-        name: editingSupplier.name || '',
-        cnpj: editingSupplier.cnpj || '',
-        email: editingSupplier.email || '',
-        phone: editingSupplier.phone || '',
-        whatsapp: editingSupplier.whatsapp || '',
-        website: editingSupplier.website || '',
-        address: editingSupplier.address || {
-          street: '',
-          number: '',
-          complement: '',
-          neighborhood: '',
-          city: '',
-          state: '',
-          zipCode: ''
-        },
-        business_info: editingSupplier.business_info || {
-          description: '',
-          specialties: [],
-          workingHours: '',
-          servicesOffered: ''
-        },
-        type: editingSupplier.type || 'local',
-        region: editingSupplier.region || '',
-        state: editingSupplier.state || '',
-        city: editingSupplier.city || '',
-        visibility_scope: editingSupplier.visibility_scope || 'region',
-        status: editingSupplier.status || 'active',
-        subscription_plan_id: editingSupplier.subscription_plan_id || 'plan-basic',
-        client_id: editingSupplier.client_id || null,
-        is_certified: editingSupplier.is_certified || false,
-        certification_date: editingSupplier.certification_date || null,
-        certification_expires_at: editingSupplier.certification_expires_at || null
-      });
-      
-      // Set state for form
-      if (editingSupplier.state) {
-        const state = brazilStates.find(s => s.name === editingSupplier.state);
-        if (state) {
-          setSelectedState(state.code);
-          setAvailableCities(state.cities);
+      // Load state and cities asynchronously
+      const loadEditData = async () => {
+        // Determine state code from editing supplier
+        const stateCode = editingSupplier.state || 
+                         brazilStates.find(s => s.name === editingSupplier.address?.state)?.code;
+        
+        // Set initial data
+        setSupplierData({
+          name: editingSupplier.name || '',
+          cnpj: editingSupplier.cnpj || '',
+          email: editingSupplier.email || '',
+          phone: editingSupplier.phone || '',
+          whatsapp: editingSupplier.whatsapp || '',
+          website: editingSupplier.website || '',
+          address: editingSupplier.address || {
+            street: '',
+            number: '',
+            complement: '',
+            neighborhood: '',
+            city: '',
+            state: '',
+            zipCode: ''
+          },
+          business_info: editingSupplier.business_info || {
+            description: '',
+            specialties: [],
+            workingHours: '',
+            servicesOffered: ''
+          },
+          type: editingSupplier.type || 'local',
+          region: editingSupplier.region || '',
+          state: editingSupplier.state || '',
+          city: '', // Will be set after cities load
+          visibility_scope: editingSupplier.visibility_scope || 'region',
+          status: editingSupplier.status || 'active',
+          subscription_plan_id: editingSupplier.subscription_plan_id || 'plan-basic',
+          client_id: editingSupplier.client_id || null,
+          is_certified: editingSupplier.is_certified || false,
+          certification_date: editingSupplier.certification_date || null,
+          certification_expires_at: editingSupplier.certification_expires_at || null
+        });
+        
+        // Load cities for the state first
+        if (stateCode) {
+          const state = brazilStates.find(s => s.code === stateCode);
+          if (state) {
+            setSelectedState(stateCode);
+            setAvailableCities(state.cities);
+            
+            // After cities loaded, set the city
+            setSupplierData(prev => ({
+              ...prev,
+              city: editingSupplier.city || editingSupplier.address?.city || ''
+            }));
+          }
         }
-      }
+      };
+      
+      loadEditData();
     } else {
       resetForm();
       setHasUser(null);
@@ -218,13 +234,13 @@ export function CreateSupplierModal({
       setAvailableCities(state.cities);
       setSupplierData(prev => ({
         ...prev,
-        state: state.name,
+        state: stateCode,              // ROOT: use STATE CODE (BA, SP, etc)
         region: getRegionFromState(stateCode),
-        city: '',
+        city: '',                       // Clear city when state changes
         address: {
           ...prev.address,
-          state: state.name,
-          city: ''
+          state: state.name,            // ADDRESS: use FULL NAME (Bahia, São Paulo, etc)
+          city: ''                      // Clear city when state changes
         }
       }));
       return true;
@@ -234,36 +250,47 @@ export function CreateSupplierModal({
 
   // Handle address from CEP (awaits state change before updating city)
   const handleAddressFromCEP = async (addressData: {
-    state: string;
-    city: string;
+    state: string;      // "Bahia" (full name from ViaCEP)
+    city: string;       // "Feira de Santana"
     street?: string;
     neighborhood?: string;
   }) => {
     const stateObj = brazilStates.find(s => s.name === addressData.state);
     
-    if (stateObj) {
-      // 1. Update state and wait for cities to load
-      await handleStateChange(stateObj.code);
-      
-      // 2. After cities are loaded, update city and address
-      setSupplierData(prev => ({
-        ...prev,
-        state: stateObj.name,
-        city: addressData.city,
-        address: {
-          ...prev.address,
-          state: stateObj.name,
-          city: addressData.city,
-          street: addressData.street || prev.address.street,
-          neighborhood: addressData.neighborhood || prev.address.neighborhood
-        }
-      }));
-
+    if (!stateObj) {
       toast({
-        title: "CEP encontrado",
-        description: "Endereço preenchido automaticamente!"
+        title: "Estado não encontrado",
+        description: "Não foi possível identificar o estado pelo CEP.",
+        variant: "destructive"
       });
+      return;
     }
+
+    // 1. Update state and wait for cities to load
+    await handleStateChange(stateObj.code);
+    
+    // 2. After cities are loaded, update BOTH root and address fields
+    setSupplierData(prev => ({
+      ...prev,
+      // ROOT fields (for database queries)
+      state: stateObj.code,        // SIGLA: "BA"
+      city: addressData.city,       // "Feira de Santana"
+      region: getRegionFromState(stateObj.code),
+      
+      // ADDRESS JSONB (full data)
+      address: {
+        ...prev.address,
+        state: addressData.state,   // FULL NAME: "Bahia"
+        city: addressData.city,      // "Feira de Santana"
+        street: addressData.street || prev.address.street,
+        neighborhood: addressData.neighborhood || prev.address.neighborhood
+      }
+    }));
+
+    toast({
+      title: "CEP encontrado!",
+      description: `${addressData.city} - ${addressData.state}`
+    });
   };
 
   const getRegionFromState = (stateCode: string) => {
@@ -351,8 +378,20 @@ export function CreateSupplierModal({
         return;
       }
 
+      // GUARANTEE final synchronization before saving
+      const finalData = {
+        ...supplierData,
+        state: selectedState,  // Ensure state is the CODE (BA, SP, etc)
+        city: supplierData.city,
+        address: {
+          ...supplierData.address,
+          state: brazilStates.find(s => s.code === selectedState)?.name || supplierData.address.state,
+          city: supplierData.city
+        }
+      };
+
       console.log('📤 Calling onCreateSupplier...');
-      await onCreateSupplier(supplierData, credentials);
+      await onCreateSupplier(finalData, credentials);
       console.log('✅ onCreateSupplier completed');
       
       toast({
