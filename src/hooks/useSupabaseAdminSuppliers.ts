@@ -156,6 +156,26 @@ export const useSupabaseAdminSuppliers = () => {
 
       if (error) throw error;
 
+      // Ensure client association for local suppliers so clients can view them via RLS
+      try {
+        if (effectiveType === 'local' && insertData.client_id && supplier?.id) {
+          const { error: assocErr } = await supabase
+            .from('client_suppliers')
+            .upsert({
+              client_id: insertData.client_id,
+              supplier_id: (supplier as any).id,
+              status: 'active'
+            }, { onConflict: 'client_id,supplier_id' });
+          if (assocErr) {
+            console.warn('⚠️ Could not create client_suppliers association:', assocErr);
+          } else {
+            console.log('🔗 Association created in client_suppliers');
+          }
+        }
+      } catch (assocEx) {
+        console.warn('⚠️ Association step failed:', assocEx);
+      }
+
       console.log('✅ Supplier created successfully');
 
       // Generate password if needed
