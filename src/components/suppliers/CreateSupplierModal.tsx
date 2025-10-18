@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserPlus, Shield, MapPin, User, Lock, Eye, EyeOff, Globe, Key, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { brazilStates } from '@/data/brazilStates';
+import { CEPInput } from '@/components/common/CEPInput';
+import { SpecialtiesInput } from '@/components/common/SpecialtiesInput';
 
 interface CreateSupplierModalProps {
   open: boolean;
@@ -83,7 +85,6 @@ export function CreateSupplierModal({
 
   const [selectedState, setSelectedState] = useState('');
   const [availableCities, setAvailableCities] = useState<string[]>([]);
-  const [specialtiesInput, setSpecialtiesInput] = useState('');
 
   // Reset form
   const resetForm = () => {
@@ -131,7 +132,6 @@ export function CreateSupplierModal({
     
     setSelectedState('');
     setAvailableCities([]);
-    setSpecialtiesInput('');
   };
 
   // Check if supplier has user when editing
@@ -196,11 +196,6 @@ export function CreateSupplierModal({
         certification_expires_at: editingSupplier.certification_expires_at || null
       });
       
-      // Set specialties input
-      if (editingSupplier.business_info?.specialties) {
-        setSpecialtiesInput(editingSupplier.business_info.specialties.join(', '));
-      }
-      
       // Set state for form
       if (editingSupplier.state) {
         const state = brazilStates.find(s => s.name === editingSupplier.state);
@@ -245,18 +240,6 @@ export function CreateSupplierModal({
     return regions[stateCode] || '';
   };
 
-  // Handle specialties change
-  const handleSpecialtiesChange = (value: string) => {
-    setSpecialtiesInput(value);
-    const specialties = value.split(',').map(s => s.trim()).filter(s => s.length > 0);
-    setSupplierData(prev => ({
-      ...prev,
-      business_info: {
-        ...prev.business_info,
-        specialties
-      }
-    }));
-  };
 
   // Handle type change
   const handleTypeChange = (type: 'local' | 'certified') => {
@@ -576,14 +559,28 @@ export function CreateSupplierModal({
                 </div>
 
                 <div>
-                  <Label>CEP</Label>
-                  <Input
+                  <CEPInput
                     value={supplierData.address.zipCode}
-                    onChange={(e) => setSupplierData(prev => ({ 
-                      ...prev, 
-                      address: { ...prev.address, zipCode: e.target.value }
+                    onChange={(cep) => setSupplierData(prev => ({
+                      ...prev,
+                      address: { ...prev.address, zipCode: cep }
                     }))}
-                    placeholder="00000-000"
+                    onAddressFound={(addressData) => {
+                      const stateObj = brazilStates.find(s => s.name === addressData.state);
+                      if (stateObj) {
+                        handleStateChange(stateObj.code);
+                        setSupplierData(prev => ({
+                          ...prev,
+                          city: addressData.city,
+                          address: {
+                            ...prev.address,
+                            street: addressData.street || prev.address.street,
+                            neighborhood: addressData.neighborhood || prev.address.neighborhood
+                          }
+                        }));
+                      }
+                    }}
+                    label="CEP"
                   />
                 </div>
               </div>
@@ -596,14 +593,20 @@ export function CreateSupplierModal({
               <CardTitle>Informações do Negócio</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label>Especialidades (separadas por vírgula)</Label>
-                <Input
-                  value={specialtiesInput}
-                  onChange={(e) => handleSpecialtiesChange(e.target.value)}
-                  placeholder="Ex: Materiais de construção, Elétricos, Hidráulicos"
-                />
-              </div>
+              <SpecialtiesInput
+                value={supplierData.business_info.specialties}
+                onChange={(specialties) => setSupplierData(prev => ({
+                  ...prev,
+                  business_info: {
+                    ...prev.business_info,
+                    specialties
+                  }
+                }))}
+                maxSelections={10}
+                allowCustom={true}
+                showAsBadges={true}
+                showTip={true}
+              />
 
               <div>
                 <Label>Descrição da Empresa</Label>
