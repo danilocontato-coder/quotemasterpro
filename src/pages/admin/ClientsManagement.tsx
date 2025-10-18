@@ -153,7 +153,7 @@ export const ClientsManagement = () => {
         loginUrl: window.location.origin + "/auth/login"
       };
 
-      // Enviar via E-mail se solicitado
+      // Enviar via E-mail se solicitado (usando notify como estava antes)
       if (options.sendByEmail) {
         console.log('📧 Enviando credenciais por e-mail para:', client.email);
         
@@ -182,10 +182,10 @@ export const ClientsManagement = () => {
           throw new Error(`Falha no envio de e-mail: ${emailError.message}`);
         }
         
-        console.log('✅ E-mail enviado com sucesso');
+        console.log('✅ E-mail enviado com sucesso:', emailData);
       }
 
-      // Enviar via WhatsApp se solicitado
+      // Enviar via WhatsApp se solicitado (corrigindo payload)
       if (options.sendByWhatsApp && client.phone) {
         console.log('📱 Enviando credenciais por WhatsApp para:', client.phone);
         
@@ -193,7 +193,10 @@ export const ClientsManagement = () => {
           body: {
             type: "whatsapp_user_credentials",
             to: client.phone,
-            userData: credentials
+            user_email: credentials.email,
+            temp_password: credentials.password,
+            user_name: credentials.companyName,
+            app_url: credentials.loginUrl
           }
         });
 
@@ -202,7 +205,7 @@ export const ClientsManagement = () => {
           throw new Error(`Falha no envio de WhatsApp: ${whatsappError.message}`);
         }
         
-        console.log('✅ WhatsApp enviado com sucesso');
+        console.log('✅ WhatsApp enviado com sucesso:', whatsappData);
       }
 
     } catch (error) {
