@@ -71,14 +71,12 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
 
   React.useEffect(() => {
     if (open && client) {
-      // Só inicializar se ainda não foi inicializado para este cliente
+      // Inicializar sem gerar/alterar senha automaticamente
       if (initializedRef.current !== client.id) {
-        const username = client.email;
-        const password = onGeneratePassword();
         setCredentials({
-          username,
-          password,
-          temporaryPassword: true
+          username: client.email,
+          password: '',
+          temporaryPassword: false
         });
         initializedRef.current = client.id;
       }
@@ -86,7 +84,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
       // Limpar referência quando fechar o modal
       initializedRef.current = null;
     }
-  }, [open, client?.id, onGeneratePassword]);
+  }, [open, client?.id]);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -98,19 +96,14 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
 
   const handleGenerateNewPassword = async () => {
     if (!client || isGenerating) return;
-    
-    console.log('Gerando nova senha para cliente:', client.id);
     setIsGenerating(true);
-    
     try {
-      // Usar a função real de reset de senha
-      const newPassword = await onResetPassword(client.id, client.email);
-      setCredentials(prev => ({ ...prev, password: newPassword }));
-      console.log('Nova senha gerada com sucesso');
-      // O toast já é mostrado pela função onResetPassword
-    } catch (error) {
-      // Erro já tratado pela função onResetPassword  
-      console.error('Erro ao resetar senha:', error);
+      const newPassword = onGeneratePassword();
+      setCredentials(prev => ({ ...prev, password: newPassword, temporaryPassword: true }));
+      toast({
+        title: "Senha gerada",
+        description: "A senha será aplicada ao enviar as credenciais."
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -128,6 +121,15 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
       return;
     }
 
+    if (!credentials.password) {
+      toast({
+        title: "Gere uma senha",
+        description: "Clique em Gerar nova senha. O envio irá redefinir a senha para o valor exibido.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (sendOptions.sendByWhatsApp && !client.phone) {
       toast({
         title: "Telefone necessário",
@@ -139,35 +141,18 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     
     setIsSending(true);
     try {
-      // 🔐 CRÍTICO: Sincronizar senha no Supabase ANTES de enviar
+      // 🔐 Sincronizar senha no Supabase ANTES de enviar (resetará para a senha exibida)
       console.log('🔄 [SEND_CREDENTIALS] Sincronizando senha no Supabase...');
-      
-      let syncedPassword: string;
-      try {
-        syncedPassword = await onResetPassword(client.id, client.email, credentials.password);
-        console.log('✅ [SEND_CREDENTIALS] Senha sincronizada com sucesso');
-        
-        // Atualizar estado local
-        setCredentials(prev => ({ ...prev, password: syncedPassword }));
-      } catch (syncError: any) {
-        console.error('❌ [SEND_CREDENTIALS] Falha na sincronização:', syncError);
-        
-        // BLOQUEAR envio se sincronização falhar
-        toast({
-          title: "Erro ao preparar credenciais",
-          description: syncError?.message || "Não foi possível sincronizar o acesso do usuário. Tente novamente.",
-          variant: "destructive"
-        });
-        return; // NÃO enviar credenciais sem sincronização
-      }
-      
+      const syncedPassword = await onResetPassword(client.id, client.email, credentials.password);
+      setCredentials(prev => ({ ...prev, password: syncedPassword }));
+
       // Enviar credenciais (com senha sincronizada)
       await onSendCredentials(client.id, {
         email: credentials.username,
         password: syncedPassword
       }, sendOptions);
       
-      const methods = [];
+      const methods = [] as string[];
       if (sendOptions.sendByEmail) methods.push("e-mail");
       if (sendOptions.sendByWhatsApp) methods.push("WhatsApp");
       
@@ -246,7 +231,7 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="flex items-center gap-2">
-                  Senha Temporária
+                  Senha a enviar
                   {credentials.temporaryPassword && (
                     <Badge variant="outline" className="text-xs">
                       <AlertTriangle className="h-3 w-3 mr-1" />
@@ -302,9 +287,9 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                   <div className="text-sm">
-                    <p className="font-medium text-yellow-800">Senha Temporária</p>
+                    <p className="font-medium text-yellow-800">Envio de credenciais</p>
                     <p className="text-yellow-700">
-                      O usuário deve alterar esta senha no primeiro acesso ao sistema.
+                      Ao enviar, a senha do usuário será redefinida para o valor exibido acima.
                     </p>
                   </div>
                 </div>

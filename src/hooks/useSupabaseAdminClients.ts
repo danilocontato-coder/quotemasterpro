@@ -644,7 +644,7 @@ export function useSupabaseAdminClients() {
                               </tr>
                               <tr>
                                 <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                                  <span style="color: #666; font-size: 13px;">🔑 Senha temporária:</span>
+                                  <span style="color: #666; font-size: 13px;">🔑 ${clientData.loginCredentials.temporaryPassword ? 'Senha temporária' : 'Senha de acesso'}:</span>
                                 </td>
                                 <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
                                   <code style="background: #f3f4f6; padding: 6px 12px; border-radius: 4px; font-size: 15px; color: #dc2626; font-weight: bold; letter-spacing: 1px;">${password}</code>
