@@ -69,6 +69,7 @@ export function useCostCenters() {
       if (error) throw error;
 
       setCostCenters(data || []);
+      console.log('[useCostCenters] fetchCostCenters -> count:', data?.length || 0, data?.slice(0, 3));
     } catch (err) {
       console.error('Error fetching cost centers:', err);
       setError('Erro ao carregar centros de custo');
@@ -286,7 +287,6 @@ export function useCostCenters() {
       });
 
       if (error) {
-        // Check if RLS is the issue
         if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
           throw new Error('Erro de permissão. Verifique as políticas RLS da tabela cost_centers.');
         }
@@ -298,10 +298,15 @@ export function useCostCenters() {
         description: 'Centros de custo padrão criados com sucesso',
       });
 
-      // Wait for database operations to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Debug: listar centros logo após RPC (sem filtrar por active)
+      const { data: createdList, error: listErr } = await supabase
+        .from('cost_centers')
+        .select('id, name, active, client_id')
+        .eq('client_id', profile.client_id);
+      console.log('[useCostCenters] post-RPC cost_centers', { client: profile.client_id, count: createdList?.length, sample: createdList?.slice(0,5), listErr });
 
-      // Force refresh to ensure UI updates
+      // Aguardar a transação consolidar e forçar refresh
+      await new Promise(resolve => setTimeout(resolve, 500));
       await Promise.all([
         fetchCostCenters(),
         fetchSpending(profile.client_id)
