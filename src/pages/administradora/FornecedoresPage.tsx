@@ -2,7 +2,7 @@
  * FornecedoresPage - Módulo Completo de Gestão de Fornecedores da Administradora
  * @version 2.0.0 - CRUD completo, tabs, fornecedores locais e certificados
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,8 +27,9 @@ import {
 import { Plus, Search, Users, Building2, Award, Loader2 } from 'lucide-react';
 import { useAdministradoraSuppliersManagement } from '@/hooks/useAdministradoraSuppliersManagement';
 import { AdministradoraSupplierCard } from '@/components/administradora/suppliers/AdministradoraSupplierCard';
-import { CreateLocalSupplierModal } from '@/components/administradora/suppliers/CreateLocalSupplierModal';
+import { SmartSupplierModal } from '@/components/suppliers/SmartSupplierModal';
 import { EditLocalSupplierModal } from '@/components/administradora/suppliers/EditLocalSupplierModal';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function FornecedoresPage() {
   const {
@@ -44,10 +45,28 @@ export default function FornecedoresPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSmartModal, setShowSmartModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
   const [supplierToDelete, setSupplierToDelete] = useState<any>(null);
+  const [currentClientId, setCurrentClientId] = useState<string | null>(null);
+
+  // Obter client_id da administradora logada
+  useEffect(() => {
+    const fetchClientId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        setCurrentClientId(profile?.client_id || null);
+      }
+    };
+    fetchClientId();
+  }, []);
 
   // Separar fornecedores por origem
   const localSuppliers = useMemo(
@@ -238,7 +257,7 @@ export default function FornecedoresPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => setShowCreateModal(true)}>
+            <Button onClick={() => setShowSmartModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Novo Fornecedor
             </Button>
@@ -254,7 +273,7 @@ export default function FornecedoresPage() {
                     : 'Nenhum fornecedor cadastrado ainda'}
                 </p>
                 {!searchTerm && statusFilter === 'all' && (
-                  <Button className="mt-4" onClick={() => setShowCreateModal(true)}>
+                  <Button className="mt-4" onClick={() => setShowSmartModal(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Cadastrar Primeiro Fornecedor
                   </Button>
@@ -329,10 +348,15 @@ export default function FornecedoresPage() {
       </Tabs>
 
       {/* Modals */}
-      <CreateLocalSupplierModal
-        open={showCreateModal}
-        onOpenChange={setShowCreateModal}
-        onCreateSupplier={createLocalSupplier}
+      <SmartSupplierModal
+        isOpen={showSmartModal}
+        onOpenChange={setShowSmartModal}
+        onSuccess={() => {
+          setShowSmartModal(false);
+          // Recarregar lista de fornecedores após sucesso
+          window.location.reload();
+        }}
+        clientId={currentClientId || undefined}
       />
 
       <EditLocalSupplierModal

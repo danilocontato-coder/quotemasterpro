@@ -13,9 +13,10 @@ interface SmartSupplierModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  clientId?: string;
 }
 
-export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSupplierModalProps) {
+export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess, clientId }: SmartSupplierModalProps) {
   const { toast } = useToast();
   const { 
     findSupplierByCNPJ, 
@@ -87,7 +88,7 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
     if (!foundSupplier) return;
     
     try {
-      await associateSupplierToClient(foundSupplier.id);
+      await associateSupplierToClient(foundSupplier.id, clientId);
       onSuccess?.();
       onOpenChange(false);
       resetModal();
@@ -112,11 +113,11 @@ export function SmartSupplierModal({ isOpen, onOpenChange, onSuccess }: SmartSup
         name: supplierData.name,
         email: supplierData.email,
         phone: supplierData.phone
-      });
+      }, clientId);
       
       if (result.supplier_id) {
         // Associar o fornecedor ao cliente atual
-        await associateSupplierToClient(result.supplier_id);
+        await associateSupplierToClient(result.supplier_id, clientId);
         
         toast({
           title: result.is_new ? "Fornecedor criado e associado" : "Fornecedor associado",

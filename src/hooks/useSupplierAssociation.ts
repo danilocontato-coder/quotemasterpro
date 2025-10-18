@@ -72,7 +72,10 @@ export function useSupplierAssociation() {
     }
   };
 
-  const createNewSupplier = async (supplierData: { name: string; cnpj: string; email?: string; phone?: string }): Promise<FindSupplierResult> => {
+  const createNewSupplier = async (
+    supplierData: { name: string; cnpj: string; email?: string; phone?: string },
+    clientId?: string
+  ): Promise<FindSupplierResult> => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.rpc('find_or_create_supplier_by_cnpj', {
@@ -107,7 +110,7 @@ export function useSupplierAssociation() {
     }
   };
 
-  const associateSupplierToClient = async (supplierId: string): Promise<void> => {
+  const associateSupplierToClient = async (supplierId: string, clientId?: string): Promise<void> => {
     setIsLoading(true);
     try {
       // Validar status do fornecedor antes da associação
@@ -131,7 +134,8 @@ export function useSupplierAssociation() {
       }
 
       const { error } = await supabase.rpc('associate_supplier_to_client', {
-        p_supplier_id: supplierId
+        p_supplier_id: supplierId,
+        p_client_id: clientId || null
       });
 
       if (error) throw error;
