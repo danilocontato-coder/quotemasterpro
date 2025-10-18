@@ -59,7 +59,7 @@ serve(async (req) => {
           client_id,
           supplier_id,
           status,
-          payments!inner(id, status, amount)
+          quote_id
         )
       `)
       .eq('confirmation_code', confirmation_code)
