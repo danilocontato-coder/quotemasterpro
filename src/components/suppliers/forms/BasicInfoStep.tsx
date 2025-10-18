@@ -86,11 +86,12 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
     
     setIsSearching(true);
     try {
+      // Buscar por document_number OU cnpj para detectar fornecedores antigos e novos
       const { data, error } = await supabase
         .from('suppliers')
         .select('*')
         .eq('document_type', docType)
-        .eq('document_number', cleanDoc);
+        .or(`document_number.eq.${cleanDoc},cnpj.eq.${cleanDoc}`);
 
       if (error) {
         console.error('Error searching supplier:', error);

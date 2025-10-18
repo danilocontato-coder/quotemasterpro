@@ -132,14 +132,21 @@ export const useSupabaseAdminSuppliers = () => {
       const normalizedCnpj = (supplierData.cnpj || '').replace(/\D/g, '');
       const effectiveType = (supplierData.type as 'local' | 'certified') || 'local';
 
+      // VALIDAÇÃO: Fornecedores locais DEVEM ter client_id
+      const effectiveClientId = effectiveType === 'local' 
+        ? (supplierData.client_id || currentClientId || null) 
+        : null;
+
+      if (effectiveType === 'local' && !effectiveClientId) {
+        throw new Error('Fornecedores locais devem ter um cliente vinculado. Selecione um cliente antes de continuar.');
+      }
+
       const insertData: any = {
         ...supplierData,
         cnpj: normalizedCnpj,
+        document_number: normalizedCnpj, // ← SEMPRE preencher document_number
         type: effectiveType,
-        // For local suppliers, client_id MUST match current user's client for RLS
-        client_id: effectiveType === 'local' 
-          ? (supplierData.client_id || currentClientId || null) 
-          : null,
+        client_id: effectiveClientId,
         // Certified suppliers are global and flagged as certified
         visibility_scope: effectiveType === 'certified' ? 'global' : (supplierData.visibility_scope || 'region'),
         is_certified: effectiveType === 'certified' ? true : (supplierData as any).is_certified || false,

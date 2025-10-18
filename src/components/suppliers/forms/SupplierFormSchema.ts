@@ -29,6 +29,8 @@ export const supplierFormSchema = z.object({
     .trim()
     .min(1, 'Documento é obrigatório'),
   
+  type: z.enum(['local', 'certified']).default('local'),
+  
   client_id: z.string().trim().optional(),
   
   // Contato
@@ -81,7 +83,6 @@ export const supplierFormSchema = z.object({
     .max(10, 'Máximo de 10 especialidades permitidas'),
   
   // Campos opcionais
-  type: z.enum(['local', 'certified']).default('local'),
   status: z.enum(['active', 'inactive', 'pending']).default('active'),
 }).refine((data) => {
   // Validação condicional do documento baseado no tipo
@@ -97,6 +98,15 @@ export const supplierFormSchema = z.object({
 }, {
   message: 'Documento inválido para o tipo selecionado',
   path: ['document_number'],
+}).refine((data) => {
+  // Validação: Fornecedores locais DEVEM ter client_id
+  if (data.type === 'local' && !data.client_id) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Fornecedores locais devem ter um cliente vinculado',
+  path: ['client_id'],
 });
 
 export type SupplierFormData = z.infer<typeof supplierFormSchema>;
