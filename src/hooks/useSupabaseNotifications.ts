@@ -36,6 +36,7 @@ export function useSupabaseNotifications() {
 
       console.log('🔔 [NOTIFICATIONS] Fetching notifications for user:', user.id);
 
+      // Buscar notificações diretas do usuário
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
@@ -45,27 +46,54 @@ export function useSupabaseNotifications() {
 
       if (error) throw error;
 
-      console.log('🔔 [NOTIFICATIONS] Raw data received:', data?.length || 0, 'notifications');
+      if (!data || data.length === 0) {
+        console.log('🔔 [NOTIFICATIONS] No notifications found');
+        setNotifications([]);
+        setIsLoading(false);
+        return;
+      }
 
-      const formattedNotifications = (data || []).map(notification => ({
-        id: notification.id,
-        title: notification.title,
-        message: notification.message,
-        type: notification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
-        created_at: notification.created_at,
-        read: notification.read,
-        priority: notification.priority as 'low' | 'normal' | 'high',
-        action_url: notification.action_url,
-        metadata: notification.metadata,
-      }));
+      // Buscar estados de dismiss/read para estas notificações
+      const notificationIds = data.map(n => n.id);
+      const { data: statesData } = await supabase
+        .from('notification_user_states')
+        .select('*')
+        .in('notification_id', notificationIds)
+        .eq('user_id', user.id);
 
-      console.log('🔔 [NOTIFICATIONS] Formatted notifications:', {
-        total: formattedNotifications.length,
-        unread: formattedNotifications.filter(n => !n.read).length,
-        types: formattedNotifications.map(n => n.type)
+      // Criar mapa de estados
+      const statesMap = new Map(
+        (statesData || []).map(state => [state.notification_id, state])
+      );
+
+      // Filtrar dismissed e aplicar read status
+      const processedNotifications = data
+        .filter(notif => {
+          const state = statesMap.get(notif.id);
+          return !state?.dismissed; // Filtrar dismissed
+        })
+        .map(notification => {
+          const state = statesMap.get(notification.id);
+          return {
+            id: notification.id,
+            title: notification.title,
+            message: notification.message,
+            type: notification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
+            created_at: notification.created_at,
+            read: state?.read ?? notification.read, // Usar estado se existir
+            priority: notification.priority as 'low' | 'normal' | 'high',
+            action_url: notification.action_url,
+            metadata: notification.metadata,
+          };
+        });
+
+      console.log('🔔 [NOTIFICATIONS] Processed:', {
+        total: data.length,
+        visible: processedNotifications.length,
+        unread: processedNotifications.filter(n => !n.read).length,
       });
 
-      setNotifications(formattedNotifications);
+      setNotifications(processedNotifications);
     } catch (err) {
       console.error('❌ [NOTIFICATIONS] Error fetching notifications:', err);
       setError(err instanceof Error ? err.message : 'Erro ao buscar notificações');
@@ -165,13 +193,23 @@ export function useSupabaseNotifications() {
 
   const markAsRead = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', id)
-        .eq('user_id', user?.id);
+      const notification = notifications.find(n => n.id === id);
+      
+      if (notification) {
+        // Sempre usar estados para consistência
+        const { error } = await supabase
+          .from('notification_user_states')
+          .upsert({
+            notification_id: id,
+            user_id: user?.id,
+            read: true,
+            dismissed: false
+          }, { 
+            onConflict: 'notification_id,user_id' 
+          });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       setNotifications(prev =>
         prev.map(notification =>
@@ -191,10 +229,19 @@ export function useSupabaseNotifications() {
       
       if (unreadIds.length === 0) return;
 
+      // Usar estados para consistência
+      const states = unreadIds.map(id => ({
+        notification_id: id,
+        user_id: user?.id,
+        read: true,
+        dismissed: false
+      }));
+
       const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .in('id', unreadIds);
+        .from('notification_user_states')
+        .upsert(states, { 
+          onConflict: 'notification_id,user_id' 
+        });
 
       if (error) throw error;
 
@@ -212,17 +259,55 @@ export function useSupabaseNotifications() {
   };
 
   const clearAllNotifications = async () => {
+    if (!user?.id) return;
+
     try {
+      console.log('🔔 [NOTIFICATIONS] Starting clear for user:', user.id);
+      
+      // Marcar TODAS as notificações visíveis como dismissed
+      const visibleIds = notifications.map(n => n.id);
+      
+      if (visibleIds.length === 0) {
+        toast.info('Nenhuma notificação para limpar');
+        return;
+      }
+
+      const states = visibleIds.map(id => ({
+        notification_id: id,
+        user_id: user.id,
+        read: true,
+        dismissed: true
+      }));
+
       const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_id', user?.id);
+        .from('notification_user_states')
+        .upsert(states, { 
+          onConflict: 'notification_id,user_id',
+          ignoreDuplicates: false 
+        });
 
       if (error) throw error;
 
-      console.log('✅ [NOTIFICATIONS] Cleared all notifications');
+      // Registrar auditoria
+      await supabase.from('audit_logs').insert({
+        user_id: user.id,
+        action: 'NOTIFICATIONS_CLEAR_ALL',
+        entity_type: 'notifications',
+        entity_id: 'bulk',
+        panel_type: 'client',
+        details: {
+          cleared_count: visibleIds.length
+        }
+      });
+
+      console.log('✅ [NOTIFICATIONS] Cleared', visibleIds.length, 'notifications');
+      
+      // Limpar estado local imediatamente
       setNotifications([]);
       toast.success('Todas as notificações foram removidas');
+      
+      // Refetch para garantir consistência
+      await fetchNotifications();
     } catch (err) {
       console.error('❌ [NOTIFICATIONS] Error clearing notifications:', err);
       toast.error('Erro ao limpar notificações');
