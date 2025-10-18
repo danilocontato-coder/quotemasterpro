@@ -285,23 +285,33 @@ export function useCostCenters() {
         p_client_id: profile.client_id,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check if RLS is the issue
+        if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
+          throw new Error('Erro de permissão. Verifique as políticas RLS da tabela cost_centers.');
+        }
+        throw error;
+      }
 
       toast({
         title: 'Sucesso',
         description: 'Centros de custo padrão criados com sucesso',
       });
 
-      // Refresh data
+      // Wait for database operations to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Force refresh to ensure UI updates
       await Promise.all([
         fetchCostCenters(),
         fetchSpending(profile.client_id)
       ]);
     } catch (err) {
       console.error('Error creating default cost centers:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao criar centros de custo padrão';
       toast({
         title: 'Erro',
-        description: 'Erro ao criar centros de custo padrão',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
