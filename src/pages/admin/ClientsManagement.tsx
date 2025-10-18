@@ -146,33 +146,67 @@ export const ClientsManagement = () => {
       const client = clients.find(c => c.id === clientId);
       if (!client) throw new Error('Cliente não encontrado');
 
-      // Simular o envio de credenciais (aqui seria a lógica real)
       const credentials = {
         email: client.email,
-        password: generateTemporaryPassword(), // Gerar nova senha
+        password: generateTemporaryPassword(),
         companyName: client.companyName,
         loginUrl: window.location.origin + "/auth/login"
       };
 
+      // Enviar via E-mail se solicitado
+      if (options.sendByEmail) {
+        console.log('📧 Enviando credenciais por e-mail para:', client.email);
+        
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-email', {
+          body: {
+            to: client.email,
+            subject: 'Suas Credenciais de Acesso - Cotiz',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #003366;">Bem-vindo ao Cotiz, ${credentials.companyName}!</h2>
+                <p>Suas credenciais de acesso foram geradas:</p>
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <p><strong>E-mail:</strong> ${credentials.email}</p>
+                  <p><strong>Senha temporária:</strong> ${credentials.password}</p>
+                </div>
+                <p>Acesse a plataforma em: <a href="${credentials.loginUrl}">${credentials.loginUrl}</a></p>
+                <p style="color: #666; font-size: 14px;">⚠️ Por segurança, altere sua senha após o primeiro acesso.</p>
+              </div>
+            `,
+            text: `Bem-vindo ao Cotiz!\n\nE-mail: ${credentials.email}\nSenha temporária: ${credentials.password}\n\nAcesse: ${credentials.loginUrl}\n\nAltere sua senha após o primeiro acesso.`
+          }
+        });
+
+        if (emailError) {
+          console.error('❌ Erro ao enviar e-mail:', emailError);
+          throw new Error(`Falha no envio de e-mail: ${emailError.message}`);
+        }
+        
+        console.log('✅ E-mail enviado com sucesso');
+      }
+
       // Enviar via WhatsApp se solicitado
       if (options.sendByWhatsApp && client.phone) {
-        // Usar a mesma função notify que usamos no cadastro
-        await supabase.functions.invoke("notify", {
+        console.log('📱 Enviando credenciais por WhatsApp para:', client.phone);
+        
+        const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke("notify", {
           body: {
             type: "whatsapp_user_credentials",
             to: client.phone,
             userData: credentials
           }
         });
-      }
 
-      // Simular envio por email (implementar quando necessário)
-      if (options.sendByEmail) {
-        console.log('Enviaria por email para:', client.email);
+        if (whatsappError) {
+          console.error('❌ Erro ao enviar WhatsApp:', whatsappError);
+          throw new Error(`Falha no envio de WhatsApp: ${whatsappError.message}`);
+        }
+        
+        console.log('✅ WhatsApp enviado com sucesso');
       }
 
     } catch (error) {
-      console.error('Erro ao enviar credenciais:', error);
+      console.error('❌ Erro ao enviar credenciais:', error);
       throw error;
     }
   }, [clients, generateTemporaryPassword]);
