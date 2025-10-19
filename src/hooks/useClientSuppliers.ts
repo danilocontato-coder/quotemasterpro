@@ -18,6 +18,7 @@ export interface ClientSupplier {
   completed_orders: number;
   association_status: string;
   associated_at: string;
+  certification_date: string | null;
 }
 
 export function useClientSuppliers() {
