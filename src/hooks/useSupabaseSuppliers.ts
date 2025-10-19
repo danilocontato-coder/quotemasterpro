@@ -91,6 +91,7 @@ export const useSupabaseSuppliers = () => {
         }
 
         console.log('Suppliers fetched (RPC):', data?.length, 'records');
+        // Cast explícito pois os tipos do Supabase ainda não foram regenerados
         setSuppliers((data as any as Supplier[]) || []);
       }
     } catch (error) {
