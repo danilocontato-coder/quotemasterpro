@@ -50,7 +50,7 @@ export const useSupabaseSuppliers = () => {
         return;
       }
 
-      // Get user profile to check client_id
+      // Get user profile to check role
       const { data: profile } = await supabase
         .from('profiles')
         .select('client_id, role')
@@ -59,60 +59,40 @@ export const useSupabaseSuppliers = () => {
 
       console.log('Fetching suppliers for user profile:', profile);
 
-      let supplierIds: string[] = [];
+      if (profile?.role === 'admin') {
+        // Admin users see all suppliers (including inactive for prospecting)
+        console.log('Admin user: showing all suppliers including inactive');
+        const { data, error } = await supabase
+          .from('suppliers')
+          .select('*')
+          .order('name', { ascending: true });
 
-      // Apply filters based on user role and context
-      if (profile?.role !== 'admin') {
-        // Non-admin users should only see suppliers associated with their client
-        if (profile?.client_id) {
-          console.log('Filtering suppliers by client association');
-          
-          // Get suppliers associated with this client
-          const { data: associations } = await supabase
-            .from('client_suppliers')
-            .select('supplier_id')
-            .eq('client_id', profile.client_id)
-            .eq('status', 'active');
-
-          supplierIds = associations?.map(a => a.supplier_id) || [];
-          console.log('Associated supplier IDs:', supplierIds);
-        } else {
-          // If user has no client_id context, show no suppliers
-          console.log('No client context, showing no suppliers');
-          supplierIds = [];
+        if (error) {
+          console.error('Suppliers fetch error:', error);
+          throw error;
         }
-      }
-
-      // Build query for suppliers
-      let query = supabase
-        .from('suppliers')
-        .select('*')
-        .order('name', { ascending: true });
-
-      // Apply filters based on user role
-      if (profile?.role !== 'admin') {
-        // Non-admin users: only see active suppliers they're associated with
-        if (supplierIds.length > 0) {
-          query = query.in('id', supplierIds).eq('status', 'active');
-        } else {
-          // No associated suppliers, return empty
+        
+        console.log('Suppliers fetched (admin):', data?.length, 'records');
+        setSuppliers((data as Supplier[]) || []);
+      } else {
+        // Non-admin users: use RPC to get suppliers with association_status
+        if (!profile?.client_id) {
+          console.log('No client context, showing no suppliers');
           setSuppliers([]);
           return;
         }
-      } else {
-        // Admin users see all suppliers (including inactive for prospecting)
-        console.log('Admin user: showing all suppliers including inactive');
-      }
 
-      const { data, error } = await query;
+        console.log('Using get_client_suppliers() RPC for non-admin user');
+        const { data, error } = await supabase.rpc('get_client_suppliers');
 
-      if (error) {
-        console.error('Suppliers fetch error:', error);
-        throw error;
+        if (error) {
+          console.error('Suppliers RPC error:', error);
+          throw error;
+        }
+
+        console.log('Suppliers fetched (RPC):', data?.length, 'records');
+        setSuppliers((data as Supplier[]) || []);
       }
-      
-      console.log('Suppliers fetched:', data?.length, 'records');
-      setSuppliers((data as Supplier[]) || []);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       toast({
