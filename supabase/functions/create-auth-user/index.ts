@@ -215,6 +215,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
             success: true, 
             auth_user_id: profile.id,
             email: email,
+            temporary_password: password, // ← NOVO: Retorna senha em reset
             password_reset: true
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -393,7 +394,8 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       JSON.stringify({ 
         success: true, 
         auth_user_id: authData.user?.id,
-        email: authData.user?.email
+        email: authData.user?.email,
+        temporary_password: password // ← NOVO: Retorna senha em criação
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

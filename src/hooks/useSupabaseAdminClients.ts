@@ -318,6 +318,7 @@ export function useSupabaseAdminClients() {
     }
     setLoading(true);
     let createdClientId: string | null = null;
+    let generatedCredentials: { email: string; password: string; temporary: boolean } | null = null;
 
     try {
       // 1) Cria o registro do cliente PRIMEIRO (sempre funciona)
@@ -455,6 +456,13 @@ export function useSupabaseAdminClients() {
         // ===== FONTE ÚNICA DA VERDADE PARA SENHA =====
         const intendedPassword = clientData.loginCredentials.password || generateTemporaryPassword();
         const isTemporary = clientData.loginCredentials.temporaryPassword ?? true;
+        
+        // Armazenar credenciais para retornar depois
+        generatedCredentials = {
+          email: clientData.email,
+          password: intendedPassword,
+          temporary: isTemporary
+        };
         
         console.log('🔐 DEBUG: Tentando criar usuário de autenticação', {
           email: clientData.email,
@@ -830,7 +838,10 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
         },
       ]);
 
-      return { id: createdClientId };
+      return { 
+        id: createdClientId, 
+        credentials: generatedCredentials 
+      };
     } catch (e: any) {
       console.error("useSupabaseAdminClients: Erro ao criar cliente:", e);
       toast.error("Erro ao criar cliente: " + (e?.message || "Erro desconhecido"));

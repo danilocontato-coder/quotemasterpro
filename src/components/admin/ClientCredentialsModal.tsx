@@ -89,6 +89,24 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     });
   };
 
+  const handleCopyAllCredentials = () => {
+    const fullText = `🔐 CREDENCIAIS DE ACESSO - ${client?.companyName}
+
+📧 Email: ${credentials.username}
+🔑 Senha: ${credentials.password}
+
+⚠️ Esta é uma senha temporária.
+   Altere no primeiro acesso em: ${window.location.origin}
+
+🔒 Mantenha estas informações seguras!`;
+    
+    navigator.clipboard.writeText(fullText);
+    toast({
+      title: "Credenciais Completas Copiadas",
+      description: "Email e senha copiados em formato de mensagem.",
+    });
+  };
+
   const handleGenerateNewPassword = async () => {
     if (!client || isGenerating) return;
     
@@ -299,6 +317,23 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <span>Alteração obrigatória no primeiro acesso</span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Botão de Copiar Tudo */}
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-6">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleCopyAllCredentials}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar Todas as Credenciais
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Copia email e senha em formato de mensagem para envio
+              </p>
             </CardContent>
           </Card>
         </div>
