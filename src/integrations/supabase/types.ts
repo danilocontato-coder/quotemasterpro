@@ -5968,6 +5968,7 @@ export type Database = {
         Returns: {
           address: Json
           certification_status: string
+          city: string
           cnpj: string
           email: string
           id: string
@@ -5975,6 +5976,7 @@ export type Database = {
           name: string
           phone: string
           specialties: string[]
+          state: string
           status: string
           website: string
           whatsapp: string
