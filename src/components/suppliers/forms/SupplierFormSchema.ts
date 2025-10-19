@@ -43,13 +43,17 @@ export const supplierFormSchema = z.object({
   whatsapp: z
     .string()
     .trim()
-    .refine(val => phoneRegex.test(val), 'WhatsApp deve estar no formato (XX) XXXXX-XXXX'),
+    .transform(val => val.replace(/\D/g, '')) // Remove formatação
+    .refine(val => val.length === 10 || val.length === 11, 'WhatsApp deve ter 10 ou 11 dígitos')
+    .refine(val => /^[1-9]{2}9?[0-9]{8}$/.test(val), 'WhatsApp inválido'),
   
   phone: z
     .string()
     .trim()
     .optional()
-    .refine(val => !val || phoneRegex.test(val), 'Telefone deve estar no formato (XX) XXXXX-XXXX'),
+    .transform(val => val ? val.replace(/\D/g, '') : undefined)
+    .refine(val => !val || val.length === 10 || val.length === 11, 'Telefone deve ter 10 ou 11 dígitos')
+    .refine(val => !val || /^[1-9]{2}9?[0-9]{8}$/.test(val), 'Telefone inválido'),
   
   website: z
     .string()
@@ -100,8 +104,13 @@ export const supplierFormSchema = z.object({
   path: ['document_number'],
 }).refine((data) => {
   // Validação: Fornecedores locais DEVEM ter client_id
+  // EXCETO quando estamos apenas buscando duplicatas (antes de preencher o formulário)
   if (data.type === 'local' && !data.client_id) {
-    return false;
+    // Se estamos no contexto de busca (name vazio), não validar ainda
+    if (!data.name || data.name.trim() === '') {
+      return true; // ✅ Permitir durante busca
+    }
+    return false; // ❌ Falhar se já temos dados mas sem client_id
   }
   return true;
 }, {

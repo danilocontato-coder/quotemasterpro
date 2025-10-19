@@ -12,6 +12,20 @@ import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeDocument } from '@/utils/documentValidation';
 
+// Função auxiliar para formatar telefones
+const formatPhone = (phone: string): string => {
+  if (!phone) return '';
+  const cleaned = phone.replace(/\D/g, '');
+  
+  if (cleaned.length === 11) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+  } else if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+  }
+  
+  return phone;
+};
+
 export interface UseSupplierFormProps {
   editingSupplier?: any;
   onSuccess?: () => void;
@@ -24,22 +38,52 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [existingSupplierId, setExistingSupplierId] = useState<string | null>(null); // Para rastrear fornecedor existente
-  const [formData, setFormData] = useState<Partial<SupplierFormData>>({
-    name: editingSupplier?.name || '',
-    document_type: (editingSupplier?.document_type as 'cpf' | 'cnpj') || 'cnpj',
-    document_number: editingSupplier?.document_number || '',
-    email: editingSupplier?.email || '',
-    whatsapp: editingSupplier?.whatsapp || '',
-    phone: editingSupplier?.phone || '',
-    website: editingSupplier?.website || '',
-    state: editingSupplier?.state || '',
-    city: editingSupplier?.city || '',
-    address: editingSupplier?.address || '',
-    specialties: editingSupplier?.specialties || [],
-    type: editingSupplier?.type || 'local',
-    status: editingSupplier?.status || 'active',
-    client_id: editingSupplier?.client_id || '',
+  const [existingSupplierId, setExistingSupplierId] = useState<string | null>(null);
+  
+  // Buscar profile do usuário para client_id
+  const [profile, setProfile] = useState<any>(null);
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('client_id, role')
+          .eq('id', user.id)
+          .single();
+        setProfile(data);
+      }
+    };
+    fetchProfile();
+  }, []);
+  
+  const [formData, setFormData] = useState<Partial<SupplierFormData>>(() => {
+    if (editingSupplier) {
+      return {
+        name: editingSupplier.name || '',
+        document_type: (editingSupplier.document_type as 'cpf' | 'cnpj') || 'cnpj',
+        document_number: editingSupplier.document_number || '',
+        email: editingSupplier.email || '',
+        whatsapp: editingSupplier.whatsapp || '',
+        phone: editingSupplier.phone || '',
+        website: editingSupplier.website || '',
+        state: editingSupplier.state || '',
+        city: editingSupplier.city || '',
+        address: editingSupplier.address || '',
+        specialties: editingSupplier.specialties || [],
+        type: editingSupplier.type || 'local',
+        status: editingSupplier.status || 'active',
+        client_id: editingSupplier.client_id || '',
+      };
+    }
+    return {
+      type: 'local',
+      document_type: 'cnpj',
+      status: 'active',
+      specialties: [],
+      client_id: '',
+    };
   });
   const [errors, setErrors] = useState<Partial<Record<keyof SupplierFormData, string>>>({});
 
@@ -60,11 +104,12 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
         specialties: editingSupplier.specialties || [],
         type: editingSupplier.type || 'local',
         status: editingSupplier.status || 'active',
+        client_id: editingSupplier.client_id || profile?.client_id || '',
       });
       setErrors({});
       setCurrentStep(1);
     }
-  }, [editingSupplier]);
+  }, [editingSupplier, profile]);
 
   const steps = [
     { id: 1, title: 'Dados Básicos', description: 'Nome e identificação' },
@@ -96,37 +141,35 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     const inferredDocType = supplier.document_type || inferredType;
     const inferredDocNumber = supplier.document_number || normalized;
     
-    // Preencher formulário com dados do fornecedor existente (apenas para visualização)
+    // Preencher client_id: formData.client_id (admin já selecionou) > supplier.client_id > profile.client_id
+    const targetClientId = formData.client_id || supplier.client_id || profile?.client_id || '';
+    
+    // Preencher formulário com dados do fornecedor
     setFormData({
       name: supplier.name || '',
       document_type: inferredDocType as 'cpf' | 'cnpj',
       document_number: inferredDocNumber,
       email: supplier.email || '',
-      whatsapp: supplier.whatsapp || '',
-      phone: supplier.phone || '',
+      whatsapp: formatPhone(supplier.whatsapp || ''),
+      phone: formatPhone(supplier.phone || ''),
       website: supplier.website || '',
       state: supplier.state || '',
       city: supplier.city || '',
-      address: supplier.address?.street || '',
+      address: supplier.address?.street || supplier.address?.logradouro || '',
       specialties: supplier.specialties || [],
       type: supplier.type || 'local',
       status: 'active',
-      client_id: supplier.client_id || '',
+      client_id: targetClientId,
     });
     setErrors({});
     
-    console.log('[useSupplierForm] Formulário preenchido com dados:', {
-      id: supplier.id,
-      name: supplier.name,
-      document_type: inferredDocType,
-      document_number: inferredDocNumber
-    });
+    console.log('[useSupplierForm] Formulário preenchido. client_id:', targetClientId);
     
     toast({
-      title: 'Fornecedor selecionado',
-      description: 'Dados preenchidos automaticamente. Você pode ajustá-los se necessário.'
+      title: 'Fornecedor encontrado',
+      description: 'Dados carregados. Revise e confirme para associar ao cliente.'
     });
-  }, [toast]);
+  }, [formData.client_id, profile, toast]);
 
   const validateStep = useCallback((step: number) => {
     const newErrors: Partial<Record<keyof SupplierFormData, string>> = {};
