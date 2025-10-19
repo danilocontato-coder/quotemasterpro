@@ -5745,6 +5745,7 @@ export type Database = {
           state: string
           status: string
           type: string
+          updated_at: string
           website: string
           whatsapp: string
         }[]

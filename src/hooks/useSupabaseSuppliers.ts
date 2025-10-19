@@ -91,7 +91,7 @@ export const useSupabaseSuppliers = () => {
         }
 
         console.log('Suppliers fetched (RPC):', data?.length, 'records');
-        setSuppliers((data as Supplier[]) || []);
+        setSuppliers((data as any as Supplier[]) || []);
       }
     } catch (error) {
       console.error('Error fetching suppliers:', error);
