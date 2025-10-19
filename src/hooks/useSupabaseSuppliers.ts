@@ -25,6 +25,7 @@ export interface Supplier {
   status: 'pending' | 'active' | 'inactive' | 'suspended';
   subscription_plan_id?: string;
   is_certified?: boolean;
+  certification_date?: string;
   created_at: string;
   updated_at: string;
   association_status?: 'active' | 'available';

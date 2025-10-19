@@ -41,20 +41,30 @@ export default function Suppliers() {
   // Helper function para verificar permissões de edição/exclusão
   const canEditSupplier = (supplier: any) => {
     const isAdmin = user?.role === 'admin';
-    const isAssociated = supplier.association_status === 'active';
     const isLocal = supplier.type === 'local';
+    const isAssociated = supplier.association_status === 'active';
+    const isCertified = supplier.type === 'certified';
     
-    // Admin pode tudo; cliente só edita locais associados
-    return isAdmin || (isLocal && isAssociated);
+    // Admin pode editar tudo
+    // Cliente só edita locais ativamente associados
+    // Certificados não podem ser editados por clientes
+    if (isAdmin) return true;
+    if (isCertified) return false;
+    return isLocal && isAssociated;
   };
 
   const canDeleteSupplier = (supplier: any) => {
     const isAdmin = user?.role === 'admin';
-    const isAssociated = supplier.association_status === 'active';
     const isLocal = supplier.type === 'local';
+    const isAssociated = supplier.association_status === 'active';
+    const isCertified = supplier.type === 'certified';
     
-    // Cliente pode "remover" (desassociar) locais; admin pode desativar globalmente
-    return isAdmin || (isLocal && isAssociated);
+    // Admin pode remover tudo
+    // Cliente só remove locais associados
+    // Certificados não podem ser removidos por clientes
+    if (isAdmin) return true;
+    if (isCertified) return false;
+    return isLocal && isAssociated;
   };
 
   // Função para filtrar fornecedores baseado no cliente atual
@@ -363,17 +373,35 @@ export default function Suppliers() {
                   <div className="pt-2 border-t border-border">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">
-                        {supplier.type === 'certified' ? 'Disponível desde:' : 'Associado em:'}
+                        {supplier.type === 'certified' ? 'Certificado desde:' : 'Associado em:'}
                       </span>
                       <span className="text-sm">
-                        {new Date(supplier.associated_at || supplier.created_at).toLocaleDateString('pt-BR')}
+                        {new Date(
+                          supplier.type === 'certified' 
+                            ? (supplier.certification_date || supplier.created_at)
+                            : (supplier.associated_at || supplier.created_at)
+                        ).toLocaleDateString('pt-BR')}
                       </span>
                     </div>
                   </div>
 
                    {/* Actions */}
                    <div className="flex gap-2 pt-2">
-                     {supplier.association_status === 'active' ? (
+                     {supplier.type === 'certified' ? (
+                       // Certificados: apenas visualização (sem botões de ação para clientes)
+                       user?.role === 'admin' && (
+                         <Button 
+                           variant="outline" 
+                           size="sm" 
+                           className="flex-1"
+                           onClick={() => handleEditSupplier(supplier)}
+                         >
+                           <Edit className="h-4 w-4 mr-2" />
+                           Editar (Admin)
+                         </Button>
+                       )
+                     ) : (
+                       // Locais: pode editar/excluir se associado
                        <>
                          <Button 
                            variant="outline" 
@@ -396,38 +424,6 @@ export default function Suppliers() {
                            <Trash2 className="h-4 w-4" />
                          </Button>
                        </>
-                     ) : (
-                       <Button 
-                         variant="default" 
-                         size="sm" 
-                         className="flex-1 bg-purple-600 hover:bg-purple-700"
-                         onClick={async () => {
-                           try {
-                             const { error } = await supabase.rpc('associate_supplier_to_client', {
-                               p_supplier_id: supplier.id,
-                               p_client_id: null
-                             });
-                             
-                             if (error) throw error;
-                             
-                             toast({
-                               title: 'Fornecedor adicionado',
-                               description: 'O fornecedor certificado foi adicionado à sua lista.'
-                             });
-                             
-                             refetch();
-                           } catch (error) {
-                             console.error(error);
-                             toast({
-                               title: 'Erro ao adicionar fornecedor',
-                               variant: 'destructive'
-                             });
-                           }
-                         }}
-                       >
-                         <UserPlus className="h-4 w-4 mr-2" />
-                         Adicionar à Minha Lista
-                       </Button>
                      )}
                    </div>
                 </CardContent>
