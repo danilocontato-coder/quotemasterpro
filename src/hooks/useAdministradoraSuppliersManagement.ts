@@ -271,26 +271,128 @@ export const useAdministradoraSuppliersManagement = () => {
         return { success: false };
       }
 
-      // Verificar CNPJ duplicado
-      const { data: existing } = await supabase
-        .from('suppliers')
-        .select('id')
-        .eq('cnpj', data.cnpj.replace(/\D/g, ''))
-        .single();
+      // Verificar CNPJ duplicado via RPC (bypassa RLS)
+      console.log('🔍 [CREATE-LOCAL-SUPPLIER] Buscando fornecedor via RPC:', {
+        cnpj: data.cnpj,
+        name: data.name
+      });
 
-      if (existing) {
-        toast.error('CNPJ já cadastrado');
-        return { success: false };
+      const { data: searchResult, error: searchError } = await supabase.rpc(
+        'find_or_create_supplier_by_cnpj',
+        {
+          p_cnpj: data.cnpj.replace(/\D/g, ''),
+          p_name: data.name,
+          p_email: data.email,
+          p_phone: data.phone || ''
+        }
+      );
+
+      if (searchError) {
+        console.error('❌ Erro ao buscar/criar fornecedor via RPC:', searchError);
+        throw searchError;
       }
 
-      // Criar fornecedor
-      const { data: supplier, error: supplierError } = await supabase
+      console.log('✅ [RPC-RESULT]:', searchResult);
+
+      // Se fornecedor já existe (is_new = false)
+      if (searchResult && searchResult.length > 0 && !searchResult[0].is_new) {
+        const existingSupplier = searchResult[0];
+        
+        console.log('⚠️ [DUPLICATE-FOUND] Fornecedor já existe:', existingSupplier);
+        
+        // Verificar se já está associado ao cliente atual
+        const { data: existingAssoc } = await supabase
+          .from('client_suppliers')
+          .select('id, status')
+          .eq('supplier_id', existingSupplier.supplier_id)
+          .eq('client_id', targetClientId)
+          .maybeSingle();
+        
+        console.log('🔗 [ASSOCIATION-CHECK]:', {
+          supplierId: existingSupplier.supplier_id,
+          clientId: targetClientId,
+          existingAssoc
+        });
+        
+        if (existingAssoc && existingAssoc.status === 'active') {
+          toast.error(`CNPJ já cadastrado. Fornecedor: ${existingSupplier.existing_name}`);
+          return { 
+            success: false, 
+            reason: 'duplicate_active', 
+            existingSupplier 
+          };
+        }
+        
+        // Fornecedor existe mas não está associado: associar automaticamente
+        toast.info(`Fornecedor "${existingSupplier.existing_name}" encontrado. Associando ao seu cliente...`);
+        
+        console.log('🔗 [ASSOCIATING] Associando fornecedor existente ao cliente...');
+        
+        await supabase.rpc('associate_supplier_to_client', {
+          p_supplier_id: existingSupplier.supplier_id,
+          p_client_id: targetClientId
+        });
+        
+        // Atualizar dados do fornecedor com informações completas
+        const { error: updateError } = await supabase
+          .from('suppliers')
+          .update({
+            whatsapp: data.whatsapp,
+            website: data.website,
+            address: data.address,
+            specialties: data.specialties,
+            region: data.region,
+            state: data.state,
+            city: data.city,
+          })
+          .eq('id', existingSupplier.supplier_id);
+
+        if (updateError) {
+          console.warn('⚠️ Erro ao atualizar dados do fornecedor:', updateError);
+        }
+        
+        // Criar usuário de autenticação (se não existir)
+        const { data: authResult, error: authError } = await supabase.functions.invoke('create-supplier-user', {
+          body: {
+            email: data.email,
+            password: password,
+            supplier_id: existingSupplier.supplier_id,
+            name: data.name,
+          },
+        });
+        
+        if (authError || !authResult?.success) {
+          console.warn('❌ Erro ao criar usuário de autenticação:', authError || authResult?.error);
+        } else {
+          console.log('✅ Usuário de autenticação criado/atualizado com sucesso');
+        }
+        
+        toast.success(`Fornecedor "${existingSupplier.existing_name}" associado com sucesso!`);
+        await fetchSuppliers();
+        
+        return { 
+          success: true, 
+          supplierId: existingSupplier.supplier_id,
+          existingSupplier,
+          credentials: authResult?.success 
+            ? { email: data.email, password, user_id: authResult.user_id }
+            : { email: data.email, password }
+        };
+      }
+
+      // Se fornecedor NÃO existe, foi criado pela RPC (is_new = true)
+      const newSupplier = searchResult[0];
+      const supplierId = newSupplier.supplier_id;
+      
+      console.log('✨ [NEW-SUPPLIER] Fornecedor criado via RPC:', {
+        supplierId,
+        name: newSupplier.existing_name
+      });
+
+      // Atualizar fornecedor recém-criado com dados completos
+      const { error: updateError } = await supabase
         .from('suppliers')
-        .insert({
-          name: data.name,
-          cnpj: data.cnpj.replace(/\D/g, ''),
-          email: data.email,
-          phone: data.phone,
+        .update({
           whatsapp: data.whatsapp,
           website: data.website,
           address: data.address,
@@ -300,19 +402,25 @@ export const useAdministradoraSuppliersManagement = () => {
           city: data.city,
           status: data.status || 'active',
           type: 'local',
-          client_id: targetClientId, // Usar targetClientId ao invés de profile.client_id
+          client_id: targetClientId,
         })
-        .select()
-        .single();
+        .eq('id', supplierId);
 
-      if (supplierError) throw supplierError;
+      if (updateError) throw updateError;
+
+      // Associar ao cliente via RPC
+      console.log('🔗 [ASSOCIATING] Associando fornecedor novo ao cliente...');
+      await supabase.rpc('associate_supplier_to_client', {
+        p_supplier_id: supplierId,
+        p_client_id: targetClientId
+      });
 
       // Criar usuário de autenticação via Edge Function
       const { data: authResult, error: authError } = await supabase.functions.invoke('create-supplier-user', {
         body: {
           email: data.email,
           password: password,
-          supplier_id: supplier.id,
+          supplier_id: supplierId,
           name: data.name,
         },
       });
@@ -330,8 +438,7 @@ export const useAdministradoraSuppliersManagement = () => {
       // Sempre retornar credenciais para exibição, mesmo se Edge Function falhar
       return { 
         success: true, 
-        supplierId: supplier.id,
-        supplier, 
+        supplierId: supplierId,
         credentials: (authResult?.success) 
           ? { email: data.email, password, user_id: authResult.user_id } 
           : { email: data.email, password } // Credenciais sem user_id se falhou
