@@ -1279,7 +1279,9 @@ export type Database = {
           notes: string | null
           parent_client_id: string | null
           phone: string | null
+          region: string | null
           settings: Json | null
+          state: string | null
           status: string | null
           subscription_plan_id: string | null
           updated_at: string | null
@@ -1304,7 +1306,9 @@ export type Database = {
           notes?: string | null
           parent_client_id?: string | null
           phone?: string | null
+          region?: string | null
           settings?: Json | null
+          state?: string | null
           status?: string | null
           subscription_plan_id?: string | null
           updated_at?: string | null
@@ -1329,7 +1333,9 @@ export type Database = {
           notes?: string | null
           parent_client_id?: string | null
           phone?: string | null
+          region?: string | null
           settings?: Json | null
+          state?: string | null
           status?: string | null
           subscription_plan_id?: string | null
           updated_at?: string | null
@@ -5722,6 +5728,7 @@ export type Database = {
           address: Json
           associated_at: string
           association_status: string
+          certification_date: string
           certification_status: string
           city: string
           cnpj: string
