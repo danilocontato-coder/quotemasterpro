@@ -10,6 +10,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeDocument } from '@/utils/documentValidation';
 
 export interface UseSupplierFormProps {
   editingSupplier?: any;
@@ -83,14 +84,23 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
   }, [errors]);
 
   const selectExistingSupplier = useCallback((supplier: any) => {
+    console.log('[useSupplierForm] Selecionando fornecedor existente:', supplier);
+    
     // Guardar ID do fornecedor existente para associação
     setExistingSupplierId(supplier.id);
+    
+    // Inferir document_type e document_number se não estiverem presentes
+    const doc = supplier.document_number || supplier.cnpj || '';
+    const normalized = normalizeDocument(doc);
+    const inferredType = normalized.length === 11 ? 'cpf' : 'cnpj';
+    const inferredDocType = supplier.document_type || inferredType;
+    const inferredDocNumber = supplier.document_number || normalized;
     
     // Preencher formulário com dados do fornecedor existente (apenas para visualização)
     setFormData({
       name: supplier.name || '',
-      document_type: supplier.document_type || 'cnpj',
-      document_number: supplier.document_number || '', 
+      document_type: inferredDocType as 'cpf' | 'cnpj',
+      document_number: inferredDocNumber,
       email: supplier.email || '',
       whatsapp: supplier.whatsapp || '',
       phone: supplier.phone || '',
@@ -101,16 +111,27 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       specialties: supplier.specialties || [],
       type: supplier.type || 'local',
       status: 'active',
+      client_id: supplier.client_id || '',
     });
     setErrors({});
     
-    console.log('📋 [SUPPLIER-FORM] Fornecedor existente selecionado:', supplier.name);
-    console.log('🔗 [SUPPLIER-FORM] Será criada apenas a associação com o cliente atual');
-    console.log('🆔 [SUPPLIER-FORM] Supplier ID:', supplier.id);
-  }, []);
+    console.log('[useSupplierForm] Formulário preenchido com dados:', {
+      id: supplier.id,
+      name: supplier.name,
+      document_type: inferredDocType,
+      document_number: inferredDocNumber
+    });
+    
+    toast({
+      title: 'Fornecedor selecionado',
+      description: 'Dados preenchidos automaticamente. Você pode ajustá-los se necessário.'
+    });
+  }, [toast]);
 
   const validateStep = useCallback((step: number) => {
     const newErrors: Partial<Record<keyof SupplierFormData, string>> = {};
+    
+    console.log('[useSupplierForm] Validando step:', step, 'formData:', formData);
     
     try {
       switch (step) {
@@ -131,12 +152,14 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
           supplierFormSchema.parse(formData);
           break;
       }
+      console.log('[useSupplierForm] Validação OK para step:', step);
     } catch (error: any) {
       if (error.errors) {
         error.errors.forEach((err: any) => {
           newErrors[err.path[0] as keyof SupplierFormData] = err.message;
         });
       }
+      console.log('[useSupplierForm] Erros de validação:', newErrors);
     }
     
     setErrors(newErrors);
@@ -175,42 +198,53 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
 
       let result;
       
-      // Se estamos reutilizando um fornecedor existente, apenas criar associação
+      // Cenário 1: Associar fornecedor existente ao cliente
       if (existingSupplierId && !editingSupplier) {
-        console.log('🔗 [SUPPLIER-FORM] Associando fornecedor existente ao cliente atual');
+        console.log('[useSupplierForm] Associando fornecedor existente ao cliente:', existingSupplierId);
+        
+        // Determinar o cliente alvo: formData.client_id (admin) ou profile.client_id (manager)
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase
           .from('profiles')
           .select('client_id')
           .eq('id', user?.id)
           .single();
-
-        if (!profile?.client_id) {
-          throw new Error('Cliente não identificado');
+        
+        const targetClientId = formData.client_id || profile?.client_id;
+        
+        if (!targetClientId) {
+          throw new Error('Cliente não identificado. Não foi possível associar o fornecedor.');
         }
-
-        const { data: association, error: assocError } = await supabase
-          .from('client_suppliers')
-          .upsert({
-            client_id: profile.client_id,
-            supplier_id: existingSupplierId,
-            status: 'active'
-          }, {
-            onConflict: 'client_id,supplier_id'
-          })
-          .select()
-          .single();
-
-        if (assocError) throw assocError;
-
-        toast({
-          title: "Fornecedor associado!",
-          description: `${validatedData.name} foi associado ao seu cliente com sucesso.`,
+        
+        console.log('[useSupplierForm] Cliente alvo:', targetClientId);
+        
+        // Usar RPC para associação (valida status, audita, ignora RLS)
+        const { error: associationError } = await supabase.rpc('associate_supplier_to_client', {
+          p_supplier_id: existingSupplierId,
+          p_client_id: targetClientId
         });
         
-        result = association;
-      } else if (editingSupplier) {
-        console.log('🔄 [SUPPLIER-FORM] Modo edição - atualizando fornecedor:', editingSupplier.id);
+        if (associationError) {
+          console.error('[useSupplierForm] Erro ao associar:', associationError);
+          throw associationError;
+        }
+        
+        console.log('[useSupplierForm] Fornecedor associado com sucesso');
+        
+        toast({
+          title: 'Fornecedor associado com sucesso!',
+          description: `${validatedData.name} foi associado ao cliente.`
+        });
+        
+        resetForm();
+        setExistingSupplierId(null);
+        onSuccess?.();
+        return;
+      }
+      
+      // Cenário 3: Atualizar fornecedor existente
+      if (editingSupplier) {
+        console.log('[useSupplierForm] Modo edição - atualizando fornecedor:', editingSupplier.id);
         result = await updateSupplier(editingSupplier.id, validatedData);
         if (result) {
           toast({
@@ -218,24 +252,74 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
             description: `${validatedData.name} foi atualizado com sucesso.`,
           });
         }
-      } else {
-        console.log('🆕 [SUPPLIER-FORM] Modo criação - criando novo fornecedor');
-        result = await createSupplier(validatedData);
-        if (result) {
-          toast({
-            title: "Fornecedor cadastrado!",
-            description: `${validatedData.name} foi cadastrado e receberá cotações.`,
-          });
-        }
-      }
-
-      if (result) {
-        console.log('🎉 [SUPPLIER-FORM] Operação concluída com sucesso');
+        
         resetForm();
         setExistingSupplierId(null);
         onSuccess?.();
-      } else {
-        console.log('❌ [SUPPLIER-FORM] Operação falhou - resultado nulo');
+        return;
+      }
+      
+      // Cenário 2: Criar novo fornecedor
+      console.log('[useSupplierForm] Criando novo fornecedor');
+      
+      // Se formData.client_id existe (admin selecionou cliente), usar RPCs
+      if (formData.client_id) {
+        console.log('[useSupplierForm] Admin criando fornecedor para cliente:', formData.client_id);
+        
+        const cleanDoc = normalizeDocument(validatedData.document_number);
+        
+        // 1) Criar ou buscar fornecedor via RPC
+        const { data: supplierData, error: createError } = await supabase.rpc('find_or_create_supplier_by_cnpj', {
+          p_cnpj: cleanDoc,
+          p_name: validatedData.name,
+          p_email: validatedData.email,
+          p_phone: validatedData.phone || null
+        });
+        
+        if (createError || !supplierData || !Array.isArray(supplierData) || supplierData.length === 0) {
+          console.error('[useSupplierForm] Erro ao criar fornecedor:', createError);
+          throw createError || new Error('Falha ao criar fornecedor');
+        }
+        
+        const newSupplierId = supplierData[0].supplier_id;
+        console.log('[useSupplierForm] Fornecedor criado/encontrado:', newSupplierId);
+        
+        // 2) Associar ao cliente via RPC
+        const { error: assocError } = await supabase.rpc('associate_supplier_to_client', {
+          p_supplier_id: newSupplierId,
+          p_client_id: formData.client_id
+        });
+        
+        if (assocError) {
+          console.error('[useSupplierForm] Erro ao associar:', assocError);
+          throw assocError;
+        }
+        
+        console.log('[useSupplierForm] Fornecedor associado ao cliente com sucesso');
+        
+        toast({
+          title: 'Fornecedor criado e associado!',
+          description: `${validatedData.name} foi criado e associado ao cliente.`
+        });
+        
+        resetForm();
+        setExistingSupplierId(null);
+        onSuccess?.();
+        return;
+      }
+      
+      // Manager: usar fluxo existente com createSupplier
+      console.log('[useSupplierForm] Manager criando fornecedor local');
+      result = await createSupplier(validatedData);
+      if (result) {
+        toast({
+          title: "Fornecedor cadastrado!",
+          description: `${validatedData.name} foi cadastrado e receberá cotações.`,
+        });
+        
+        resetForm();
+        setExistingSupplierId(null);
+        onSuccess?.();
       }
     } catch (error: any) {
       console.error('💥 [SUPPLIER-FORM] Erro na validação/submissão:', error);

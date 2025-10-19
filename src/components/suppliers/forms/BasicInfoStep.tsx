@@ -85,28 +85,44 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
     if (!cleanDoc || cleanDoc.length < expectedLength) return;
     
     setIsSearching(true);
+    console.log('[BasicInfoStep] Buscando fornecedor via RPC:', { cleanDoc, docType });
+    
     try {
-      // Buscar por document_number OU cnpj para detectar fornecedores antigos e novos
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('document_type', docType)
-        .or(`document_number.eq.${cleanDoc},cnpj.eq.${cleanDoc}`);
+      const { data, error } = await supabase.rpc('search_supplier_by_cnpj', {
+        search_cnpj: cleanDoc
+      });
 
       if (error) {
-        console.error('Error searching supplier:', error);
+        console.error('[BasicInfoStep] Erro ao buscar fornecedores:', error);
         return;
       }
 
+      console.log('[BasicInfoStep] Resultado da busca:', data);
+
       if (data && data.length > 0) {
-        setExistingSuppliers(data);
+        // Inferir document_type e document_number se não estiverem presentes
+        const enrichedData = data.map((supplier: any) => {
+          const doc = supplier.document_number || supplier.cnpj || '';
+          const normalized = normalizeDocument(doc);
+          const inferredType = normalized.length === 11 ? 'cpf' : 'cnpj';
+          
+          return {
+            ...supplier,
+            document_type: supplier.document_type || inferredType,
+            document_number: supplier.document_number || normalized
+          };
+        });
+        
+        setExistingSuppliers(enrichedData);
         setShowExistingOptions(true);
+        console.log('[BasicInfoStep] Fornecedores encontrados:', enrichedData.length);
       } else {
         setExistingSuppliers([]);
         setShowExistingOptions(false);
+        console.log('[BasicInfoStep] Nenhum fornecedor encontrado');
       }
     } catch (error) {
-      console.error('Error searching supplier:', error);
+      console.error('[BasicInfoStep] Erro ao buscar fornecedores:', error);
     } finally {
       setIsSearching(false);
     }

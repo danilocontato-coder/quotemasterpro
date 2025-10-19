@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Stepper } from '@/components/ui/stepper';
 import { ArrowLeft, ArrowRight, Save, X, CheckCircle } from 'lucide-react';
@@ -100,9 +100,16 @@ export function SupplierFormModal({ open, onClose, editingSupplier }: SupplierFo
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-4 border-b">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold">
-              {isEditMode ? 'Editar Fornecedor' : 'Novo Fornecedor'}
-            </DialogTitle>
+            <div className="flex-1">
+              <DialogTitle className="text-xl font-semibold">
+                {isEditMode ? 'Editar Fornecedor' : 'Novo Fornecedor'}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground mt-1">
+                {isEditMode 
+                  ? 'Atualize as informações do fornecedor nos campos abaixo.' 
+                  : 'Preencha as informações do fornecedor em cada etapa do formulário.'}
+              </DialogDescription>
+            </div>
             <Button
               variant="ghost"
               size="icon"
