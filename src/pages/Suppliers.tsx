@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { SmartSupplierModal } from "@/components/suppliers/SmartSupplierModal";
+import { SupplierFormModal } from "@/components/suppliers/SupplierFormModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,6 +21,7 @@ export default function Suppliers() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
@@ -83,11 +84,19 @@ export default function Suppliers() {
 
   
   const handleEditSupplier = (supplier: any) => {
-    toast({
-      title: 'Funcionalidade em desenvolvimento',
-      description: 'A edição de fornecedores estará disponível em breve.',
-      variant: 'default'
-    });
+    if (!canEditSupplier(supplier)) {
+      toast({
+        title: 'Ação não permitida',
+        description: supplier.type === 'certified' 
+          ? 'Fornecedores certificados só podem ser editados pelo SuperAdmin.'
+          : 'Você só pode editar fornecedores locais do seu cliente.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    console.log('Editando fornecedor:', supplier.name, supplier.type);
+    setEditingSupplier(supplier);
+    setShowNewSupplierModal(true);
   };
   
   const handleDeleteSupplier = async (supplier: any) => {
@@ -109,9 +118,9 @@ export default function Suppliers() {
     await deleteSupplier(supplier.id, supplier.name);
   };
   
-  const handleSupplierSuccess = () => {
+  const handleCloseModal = () => {
     setShowNewSupplierModal(false);
-    refetch();
+    setEditingSupplier(null);
   };
   
   // Cálculos de paginação
@@ -454,11 +463,13 @@ export default function Suppliers() {
       )}
 
       {/* Modals */}
-      <SmartSupplierModal
-        isOpen={showNewSupplierModal}
-        onOpenChange={setShowNewSupplierModal}
-        onSuccess={handleSupplierSuccess}
-        clientId={user?.role === 'admin' ? undefined : user?.clientId}
+      <SupplierFormModal
+        open={showNewSupplierModal}
+        onClose={() => {
+          handleCloseModal();
+          refetch();
+        }}
+        editingSupplier={editingSupplier}
       />
 
       <NewGroupModal
