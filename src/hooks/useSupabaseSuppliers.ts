@@ -27,6 +27,8 @@ export interface Supplier {
   is_certified?: boolean;
   created_at: string;
   updated_at: string;
+  association_status?: 'active' | 'available';
+  associated_at?: string;
 }
 
 export const useSupabaseSuppliers = () => {

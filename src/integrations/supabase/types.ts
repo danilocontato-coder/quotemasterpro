@@ -5723,15 +5723,21 @@ export type Database = {
           associated_at: string
           association_status: string
           certification_status: string
+          city: string
           cnpj: string
           completed_orders: number
+          created_at: string
+          document_number: string
+          document_type: string
           email: string
           id: string
           name: string
           phone: string
           rating: number
           specialties: string[]
+          state: string
           status: string
+          type: string
           website: string
           whatsapp: string
         }[]

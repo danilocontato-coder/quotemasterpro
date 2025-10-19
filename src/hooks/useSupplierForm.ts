@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeDocument } from '@/utils/documentValidation';
+import { brazilStates } from '@/data/brazilStates';
 
 // Função auxiliar para formatar telefones
 const formatPhone = (phone: string): string => {
@@ -24,6 +25,45 @@ const formatPhone = (phone: string): string => {
   }
   
   return phone;
+};
+
+// Função para normalizar UF (aceita nome ou código)
+const normalizeUF = (value?: string): string => {
+  if (!value) return '';
+  const v = String(value).trim();
+  
+  // Tentar encontrar por código (SP, RJ, etc.)
+  const byCode = brazilStates.find(s => s.code.toLowerCase() === v.toLowerCase());
+  if (byCode) return byCode.code;
+  
+  // Tentar encontrar por nome (São Paulo, Rio de Janeiro, etc.)
+  const byName = brazilStates.find(s => s.name.toLowerCase() === v.toLowerCase());
+  if (byName) return byName.code;
+  
+  // Fallback: retornar primeiras 2 letras maiúsculas
+  return v.toUpperCase().slice(0, 2);
+};
+
+// Função para construir string de endereço a partir de objeto/string
+const buildAddressString = (addr: any): string => {
+  if (!addr) return '';
+  if (typeof addr === 'string') return addr;
+  
+  const street = addr.street || addr.logradouro || '';
+  const number = addr.number || addr.numero || '';
+  const neighborhood = addr.neighborhood || addr.bairro || '';
+  const city = addr.city || '';
+  const state = addr.state || '';
+  const zip = addr.zipCode || addr.postal_code || addr.cep || '';
+  
+  const parts = [
+    [street, number].filter(Boolean).join(', '),
+    neighborhood,
+    [city, state].filter(Boolean).join(' / '),
+    zip
+  ].filter(Boolean);
+  
+  return parts.join(' - ');
 };
 
 export interface UseSupplierFormProps {
@@ -144,6 +184,19 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     // Preencher client_id: formData.client_id (admin já selecionou) > supplier.client_id > profile.client_id
     const targetClientId = formData.client_id || supplier.client_id || profile?.client_id || '';
     
+    // ✅ Normalizar UF e construir endereço completo
+    const uf = normalizeUF(supplier.state || supplier.address?.state);
+    const city = supplier.city || supplier.address?.city || '';
+    const addressLine = buildAddressString(supplier.address);
+    
+    console.log('[useSupplierForm] 🗺️ Endereço extraído:', {
+      raw_state: supplier.state,
+      raw_address: supplier.address,
+      normalized_uf: uf,
+      city: city,
+      address_string: addressLine
+    });
+    
     // Preencher formulário com dados do fornecedor
     setFormData({
       name: supplier.name || '',
@@ -153,9 +206,9 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       whatsapp: formatPhone(supplier.whatsapp || ''),
       phone: formatPhone(supplier.phone || ''),
       website: supplier.website || '',
-      state: supplier.state || '',
-      city: supplier.city || '',
-      address: supplier.address?.street || supplier.address?.logradouro || '',
+      state: uf,
+      city: city,
+      address: addressLine,
       specialties: supplier.specialties || [],
       type: supplier.type || 'local',
       status: 'active',
