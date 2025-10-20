@@ -314,7 +314,7 @@ export type Database = {
           {
             foreignKeyName: "ai_negotiations_quote_id_fkey"
             columns: ["quote_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "quotes"
             referencedColumns: ["id"]
           },

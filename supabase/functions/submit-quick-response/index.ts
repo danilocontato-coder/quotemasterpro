@@ -167,8 +167,8 @@ serve(async (req) => {
       console.log('✅ Novo fornecedor criado:', supplierId);
     }
 
-    // Criar resposta da cotação
-    console.log('💾 [Quick Response] Criando resposta da cotação...');
+    // Criar ou atualizar resposta da cotação (UPSERT)
+    console.log('💾 [Quick Response] Salvando resposta da cotação (UPSERT)...');
     console.log('📊 [Quick Response] Dados da proposta:', {
       quote_id: tokenData.quote_id,
       supplier_id: supplierId,
@@ -180,9 +180,11 @@ serve(async (req) => {
       has_notes: !!notes
     });
     
+    console.log('🔄 [Quick Response] Usando UPSERT - irá atualizar se já existir proposta');
+    
     const { data: response, error: responseError } = await supabase
       .from('quote_responses')
-      .insert({
+      .upsert({
         quote_id: tokenData.quote_id,
         supplier_id: supplierId,
         supplier_name: supplier_name,
@@ -192,6 +194,9 @@ serve(async (req) => {
         items: items || [],
         notes: notes,
         status: 'submitted'
+      }, {
+        onConflict: 'quote_id,supplier_id',
+        ignoreDuplicates: false
       })
       .select()
       .single();
@@ -204,7 +209,14 @@ serve(async (req) => {
       );
     }
 
-    console.log('✅ Resposta criada com sucesso:', response.id);
+    // Verificar se foi UPDATE ou INSERT
+    const wasUpdate = response.created_at !== response.updated_at;
+    if (wasUpdate) {
+      console.log('🔄 [Quick Response] Proposta ATUALIZADA (já existia)');
+    } else {
+      console.log('✨ [Quick Response] Nova proposta CRIADA');
+    }
+    console.log('✅ Resposta salva com sucesso:', response.id);
     
     // NOTA: O trigger trg_sync_supplier_on_response irá automaticamente:
     // 1. Adicionar supplier_id ao selected_supplier_ids da cotação
@@ -235,12 +247,19 @@ serve(async (req) => {
       }
     }
 
-    // Notificar cliente sobre nova proposta
+    // Notificar cliente (mensagem diferente para UPDATE vs INSERT)
     console.log('📧 [Quick Response] Enviando notificação ao cliente...');
     try {
       const amountNum = typeof total_amount === 'number' ? total_amount : parseFloat(String(total_amount).replace(',', '.'));
       
-      let message = `${supplier_name} enviou uma proposta de R$ ${isNaN(amountNum) ? total_amount : amountNum.toFixed(2)} para a cotação #${tokenData.quotes?.local_code || tokenData.quote_id}`;
+      // Mensagem diferente para atualização vs nova proposta
+      const notificationTitle = wasUpdate 
+        ? (visit_date ? 'Proposta Atualizada com Visita' : 'Proposta Atualizada')
+        : (visit_date ? 'Nova Proposta com Visita Agendada' : 'Nova Proposta Recebida');
+      
+      let message = wasUpdate
+        ? `${supplier_name} ATUALIZOU sua proposta para R$ ${isNaN(amountNum) ? total_amount : amountNum.toFixed(2)} na cotação #${tokenData.quotes?.local_code || tokenData.quote_id}`
+        : `${supplier_name} enviou uma proposta de R$ ${isNaN(amountNum) ? total_amount : amountNum.toFixed(2)} para a cotação #${tokenData.quotes?.local_code || tokenData.quote_id}`;
       
       // Adicionar info de visita se agendada
       if (visit_date) {
@@ -251,7 +270,7 @@ serve(async (req) => {
       await supabase.functions.invoke('create-notification', {
         body: {
           client_id: tokenData.client_id,
-          title: visit_date ? 'Nova Proposta com Visita Agendada' : 'Nova Proposta Recebida',
+          title: notificationTitle,
           message: message,
           type: 'proposal',
           priority: 'normal',
@@ -259,7 +278,8 @@ serve(async (req) => {
             quote_id: tokenData.quote_id,
             supplier_name: supplier_name,
             amount: total_amount,
-            visit_date: visit_date || null
+            visit_date: visit_date || null,
+            is_update: wasUpdate
           }
         }
       });
