@@ -165,3 +165,6 @@ verify_jwt = true
 
 [functions.debug-auth-user]
 verify_jwt = true
+
+[functions.ai-predictive-insights]
+verify_jwt = true

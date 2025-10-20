@@ -47,6 +47,7 @@ interface NavItem {
 // Módulos CORE - sempre disponíveis
 const navigationItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "Insights IA", url: "/predictive", icon: Brain },
   { title: "Cotações", url: "/quotes", icon: FileText, requiredModule: 'quotes' },
   { title: "Contratos", url: "/contracts", icon: FileSignature, requiredModule: 'contracts' },
   { title: "Fornecedores", url: "/suppliers", icon: Users, requiredModule: 'suppliers' },
