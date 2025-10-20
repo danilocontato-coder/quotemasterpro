@@ -28,22 +28,15 @@ export const useAdministradoraQuoteDetail = (quoteId?: string) => {
 
       if (quoteError) throw quoteError;
 
-      // Fetch client name separately
-      let clientName = 'Cliente';
+      // Use client_name from quotes table (already populated)
+      const clientName = quoteData.client_name || 'Cliente';
+      
+      // For on_behalf_of_client, we need to fetch separately if there's an ID
       let onBehalfOfClientName: string | undefined;
-      
-      if (quoteData.client_id) {
-        const { data: clientData } = await supabase
-          .from('clients_condos')
-          .select('name')
-          .eq('id', quoteData.client_id)
-          .single();
-        if (clientData) clientName = clientData.name;
-      }
-      
       if (quoteData.on_behalf_of_client_id) {
+        // Try to fetch from clients table (might be named clients, not clients_condos)
         const { data: onBehalfData } = await supabase
-          .from('clients_condos')
+          .from('clients')
           .select('name')
           .eq('id', quoteData.on_behalf_of_client_id)
           .single();

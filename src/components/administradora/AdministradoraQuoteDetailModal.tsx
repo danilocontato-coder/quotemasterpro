@@ -545,7 +545,10 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
 
             {quote.requires_visit && (
               <TabsContent value="visits" className="space-y-6">
-                <VisitsTab quoteId={quote.id} />
+                <VisitsTab 
+                  quoteId={quote.id} 
+                  totalSuppliers={quote.responses_count || proposals.length || 0}
+                />
               </TabsContent>
             )}
 
@@ -597,9 +600,40 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
           open={showItemAnalysis}
           onClose={() => setShowItemAnalysis(false)}
           items={bestCombination.items.map(item => ({
-            ...item,
-            productName: item.productName,
-            category: 'product'
+            id: item.itemId,
+            productId: item.itemId,
+            productName: item.itemName, // SmartCombinationItem usa 'itemName'
+            quantity: item.quantity,
+            category: 'product',
+            bestProposal: {
+              supplierId: item.bestSupplierId,
+              supplierName: item.bestSupplierName,
+              item: {
+                unitPrice: item.bestPrice,
+                brand: undefined
+              },
+              reputation: 0,
+              deliveryTime: 0
+            },
+            allProposals: [
+              {
+                supplierId: item.bestSupplierId,
+                supplierName: item.bestSupplierName,
+                item: {
+                  unitPrice: item.bestPrice
+                },
+                reputation: 0
+              },
+              ...item.otherOptions.map(opt => ({
+                supplierId: opt.supplierId,
+                supplierName: opt.supplierName,
+                item: {
+                  unitPrice: opt.unitPrice
+                },
+                reputation: 0
+              }))
+            ],
+            savings: item.savings / item.quantity
           }))}
           title="🧩 Análise Inteligente - Melhores Preços por Item"
         />
