@@ -26,21 +26,62 @@ export const useSupabaseProducts = () => {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      console.log('🔍 Buscando produtos no banco...');
+      
+      console.log('[useSupabaseProducts] 🔍 Iniciando busca de produtos:', {
+        userId: user?.id,
+        userRole: user?.role,
+        clientId: user?.clientId,
+        supplierId: user?.supplierId
+      });
+      
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('name', { ascending: true });
 
       if (error) {
-        console.error('Products fetch error:', error);
+        console.error('[useSupabaseProducts] ❌ Erro na busca:', error);
         throw error;
       }
       
-      console.log(`📦 Produtos carregados: ${data?.length || 0}`);
-      setProducts((data as Product[]) || []);
+      console.log('[useSupabaseProducts] 📦 Produtos retornados do banco (antes do filtro):', {
+        total: data?.length || 0,
+        produtos: data?.map(p => ({
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          client_id: p.client_id,
+          supplier_id: p.supplier_id
+        }))
+      });
+      
+      // Filtro adicional no frontend para garantir isolamento
+      let filteredData = data || [];
+      
+      if (user?.role === 'manager' || user?.role === 'collaborator' || user?.role === 'client') {
+        // Para clientes/administradoras: mostrar apenas produtos do próprio cliente
+        filteredData = data?.filter(p => p.client_id === user.clientId) || [];
+        
+        console.log('[useSupabaseProducts] 🔒 Aplicado filtro de cliente:', {
+          clientId: user.clientId,
+          antesDoFiltro: data?.length || 0,
+          depoisDoFiltro: filteredData.length
+        });
+      } else if (user?.role === 'supplier') {
+        // Para fornecedores: mostrar apenas produtos do próprio fornecedor
+        filteredData = data?.filter(p => p.supplier_id === user.supplierId) || [];
+        
+        console.log('[useSupabaseProducts] 🔒 Aplicado filtro de fornecedor:', {
+          supplierId: user.supplierId,
+          antesDoFiltro: data?.length || 0,
+          depoisDoFiltro: filteredData.length
+        });
+      }
+      
+      console.log('[useSupabaseProducts] ✅ Produtos finais (após filtros):', filteredData.length);
+      setProducts((filteredData as Product[]) || []);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('[useSupabaseProducts] 💥 Exceção ao buscar produtos:', error);
       // Don't show toast for network errors to avoid spam
       if (!(error as any)?.message?.includes('Failed to fetch')) {
         toast({
@@ -68,12 +109,27 @@ export const useSupabaseProducts = () => {
           table: 'products'
         },
         (payload) => {
-          console.log('Real-time INSERT:', payload.new);
-          setProducts(prev => {
-            const exists = prev.find(p => p.id === payload.new.id);
-            if (exists) return prev; // Evita duplicação do real-time
-            return [...prev, payload.new as Product].sort((a, b) => a.name.localeCompare(b.name));
-          });
+          console.log('[useSupabaseProducts] 🔄 Real-time INSERT:', payload.new);
+          
+          // Aplicar filtro de isolamento antes de adicionar
+          const newProduct = payload.new as Product;
+          let shouldAdd = false;
+          
+          if (user?.role === 'manager' || user?.role === 'collaborator' || user?.role === 'client') {
+            shouldAdd = newProduct.client_id === user.clientId;
+          } else if (user?.role === 'supplier') {
+            shouldAdd = newProduct.supplier_id === user.supplierId;
+          } else if (user?.role === 'admin') {
+            shouldAdd = true;
+          }
+          
+          if (shouldAdd) {
+            setProducts(prev => {
+              const exists = prev.find(p => p.id === newProduct.id);
+              if (exists) return prev; // Evita duplicação do real-time
+              return [...prev, newProduct].sort((a, b) => a.name.localeCompare(b.name));
+            });
+          }
         }
       )
       .on(
@@ -84,7 +140,7 @@ export const useSupabaseProducts = () => {
           table: 'products'
         },
         (payload) => {
-          console.log('Real-time UPDATE:', payload.new);
+          console.log('[useSupabaseProducts] 🔄 Real-time UPDATE:', payload.new);
           setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
         }
       )
@@ -96,18 +152,18 @@ export const useSupabaseProducts = () => {
           table: 'products'
         },
         (payload) => {
-          console.log('Real-time DELETE:', payload.old);
+          console.log('[useSupabaseProducts] 🔄 Real-time DELETE:', payload.old);
           setProducts(prev => prev.filter(p => p.id !== payload.old.id));
         }
       )
       .subscribe((status) => {
-        console.log('Real-time subscription status:', status);
+        console.log('[useSupabaseProducts] 📡 Real-time subscription status:', status);
       });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []); // No dependencies to prevent loops
+  }, [user?.clientId, user?.supplierId, user?.role]); // Adicionar dependências do usuário
 
   // Geração de código agora é automática via trigger no banco de dados
 
