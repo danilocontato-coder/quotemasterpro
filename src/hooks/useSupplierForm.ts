@@ -127,6 +127,17 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
   });
   const [errors, setErrors] = useState<Partial<Record<keyof SupplierFormData, string>>>({});
 
+  // Auto-popular client_id quando profile for carregado
+  useEffect(() => {
+    if (profile?.client_id && !formData.client_id && !editingSupplier) {
+      console.log('[useSupplierForm] Auto-populando client_id do profile:', profile.client_id);
+      setFormData(prev => ({
+        ...prev,
+        client_id: profile.client_id
+      }));
+    }
+  }, [profile, editingSupplier, formData.client_id]);
+
   // Atualizar formData quando editingSupplier mudar
   useEffect(() => {
     if (editingSupplier) {
@@ -245,6 +256,12 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
           break;
         case 5:
           // Validation for confirmation step (full form)
+          console.log('[useSupplierForm] 🔍 Validando formulário completo', {
+            formData,
+            client_id: formData.client_id,
+            profile_client_id: profile?.client_id,
+            type: formData.type
+          });
           supplierFormSchema.parse(formData);
           break;
       }
