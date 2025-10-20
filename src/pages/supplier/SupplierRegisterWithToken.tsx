@@ -13,23 +13,7 @@ import { Building2, Mail, Phone, MapPin, FileText, Loader2, ChevronRight, Chevro
 import { supplierRegistrationSchema, type SupplierRegistrationData } from '@/lib/validations/supplierRegistration';
 import { formatDocument, normalizeDocument } from '@/utils/documentValidation';
 import { formatPhoneNumber } from '@/utils/phoneUtils';
-
-// Categorias disponíveis para especialidades
-const SPECIALTY_OPTIONS = [
-  'Construção Civil',
-  'Elétrica',
-  'Hidráulica',
-  'Pintura',
-  'Jardinagem',
-  'Limpeza',
-  'Segurança',
-  'TI e Telecom',
-  'Climatização',
-  'Elevadores',
-  'Materiais de Escritório',
-  'Alimentação',
-  'Outros Serviços'
-];
+import { SpecialtiesInput } from '@/components/common/SpecialtiesInput';
 
 export default function SupplierRegisterWithToken() {
   const { token } = useParams<{ token: string }>();
@@ -292,14 +276,6 @@ export default function SupplierRegisterWithToken() {
     }
   };
 
-  const toggleSpecialty = (specialty: string) => {
-    setFormData(prev => ({
-      ...prev,
-      specialties: prev.specialties.includes(specialty)
-        ? prev.specialties.filter(s => s !== specialty)
-        : [...prev.specialties, specialty]
-    }));
-  };
 
   if (validating) {
     return (
@@ -469,29 +445,20 @@ export default function SupplierRegisterWithToken() {
 
   const renderStep3 = () => (
     <div className="space-y-4">
-      <div>
-        <Label>Especialidades * (selecione ao menos uma)</Label>
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          {SPECIALTY_OPTIONS.map((specialty) => (
-            <div key={specialty} className="flex items-center space-x-2">
-              <Checkbox
-                id={specialty}
-                checked={formData.specialties.includes(specialty)}
-                onCheckedChange={() => toggleSpecialty(specialty)}
-              />
-              <label
-                htmlFor={specialty}
-                className="text-sm cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {specialty}
-              </label>
-            </div>
-          ))}
-        </div>
-        {errors.specialties && (
-          <p className="text-sm text-destructive mt-2">{errors.specialties}</p>
-        )}
-      </div>
+      <SpecialtiesInput
+        value={formData.specialties}
+        onChange={(specialties) => {
+          setFormData(prev => ({ ...prev, specialties }));
+          if (errors.specialties) setErrors({ ...errors, specialties: undefined });
+        }}
+        error={errors.specialties}
+        maxSelections={10}
+        allowCustom={true}
+        showAsBadges={true}
+        showTip={true}
+        label="Especialidades *"
+        description="Selecione ao menos uma especialidade"
+      />
 
       <div>
         <Label htmlFor="website">Website (opcional)</Label>
