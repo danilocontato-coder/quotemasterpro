@@ -118,6 +118,7 @@ export function AdministradoraSupplierFormModal({
               </DialogDescription>
             </div>
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={handleClose}
@@ -159,6 +160,7 @@ export function AdministradoraSupplierFormModal({
 
           <div className="flex items-center gap-3">
             <Button
+              type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isLoading}
@@ -168,6 +170,7 @@ export function AdministradoraSupplierFormModal({
 
             {canGoPrev && (
               <Button
+                type="button"
                 variant="outline"
                 onClick={prevStep}
                 disabled={isLoading}
@@ -180,6 +183,7 @@ export function AdministradoraSupplierFormModal({
 
             {canGoNext ? (
               <Button
+                type="button"
                 onClick={nextStep}
                 disabled={isLoading}
                 className="flex items-center gap-2"
@@ -189,6 +193,7 @@ export function AdministradoraSupplierFormModal({
               </Button>
             ) : (
               <Button
+                type="button"
                 onClick={handleSubmit}
                 disabled={isLoading}
                 className="flex items-center gap-2 bg-success hover:bg-success/90 text-white"
