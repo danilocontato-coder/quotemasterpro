@@ -44,8 +44,11 @@ export const useSupabaseProducts = () => {
         throw error;
       }
       
-      console.log('[useSupabaseProducts] 📦 Produtos retornados do banco (antes do filtro):', {
+      console.log('[useSupabaseProducts] 📦 Produtos retornados do banco (RLS aplicado):', {
         total: data?.length || 0,
+        role: user?.role,
+        effectiveClientId: user?.clientId,
+        effectiveSupplierId: user?.supplierId,
         produtos: data?.map(p => ({
           id: p.id,
           name: p.name,
@@ -55,31 +58,13 @@ export const useSupabaseProducts = () => {
         }))
       });
       
-      // Filtro adicional no frontend para garantir isolamento
-      let filteredData = data || [];
-      
-      if (user?.role === 'manager' || user?.role === 'collaborator' || user?.role === 'client') {
-        // Para clientes/administradoras: mostrar apenas produtos do próprio cliente
-        filteredData = data?.filter(p => p.client_id === user.clientId) || [];
-        
-        console.log('[useSupabaseProducts] 🔒 Aplicado filtro de cliente:', {
-          clientId: user.clientId,
-          antesDoFiltro: data?.length || 0,
-          depoisDoFiltro: filteredData.length
-        });
-      } else if (user?.role === 'supplier') {
-        // Para fornecedores: mostrar apenas produtos do próprio fornecedor
-        filteredData = data?.filter(p => p.supplier_id === user.supplierId) || [];
-        
-        console.log('[useSupabaseProducts] 🔒 Aplicado filtro de fornecedor:', {
-          supplierId: user.supplierId,
-          antesDoFiltro: data?.length || 0,
-          depoisDoFiltro: filteredData.length
-        });
-      }
-      
-      console.log('[useSupabaseProducts] ✅ Produtos finais (após filtros):', filteredData.length);
-      setProducts((filteredData as Product[]) || []);
+      // 🔒 SEGURANÇA: Confiar totalmente no RLS
+      // As policies do banco agora garantem isolamento:
+      // - products_client_view: Clientes veem apenas seus produtos
+      // - products_supplier_view: Fornecedores veem apenas seus produtos
+      // - products_admin_view: Admin vê tudo
+      console.log('[useSupabaseProducts] ✅ Produtos isolados por RLS');
+      setProducts((data as Product[]) || []);
     } catch (error) {
       console.error('[useSupabaseProducts] 💥 Exceção ao buscar produtos:', error);
       // Don't show toast for network errors to avoid spam
@@ -111,25 +96,13 @@ export const useSupabaseProducts = () => {
         (payload) => {
           console.log('[useSupabaseProducts] 🔄 Real-time INSERT:', payload.new);
           
-          // Aplicar filtro de isolamento antes de adicionar
+          // 🔒 RLS já filtra no nível do banco, apenas adicionar localmente
           const newProduct = payload.new as Product;
-          let shouldAdd = false;
-          
-          if (user?.role === 'manager' || user?.role === 'collaborator' || user?.role === 'client') {
-            shouldAdd = newProduct.client_id === user.clientId;
-          } else if (user?.role === 'supplier') {
-            shouldAdd = newProduct.supplier_id === user.supplierId;
-          } else if (user?.role === 'admin') {
-            shouldAdd = true;
-          }
-          
-          if (shouldAdd) {
-            setProducts(prev => {
-              const exists = prev.find(p => p.id === newProduct.id);
-              if (exists) return prev; // Evita duplicação do real-time
-              return [...prev, newProduct].sort((a, b) => a.name.localeCompare(b.name));
-            });
-          }
+          setProducts(prev => {
+            const exists = prev.find(p => p.id === newProduct.id);
+            if (exists) return prev; // Evita duplicação do real-time
+            return [...prev, newProduct].sort((a, b) => a.name.localeCompare(b.name));
+          });
         }
       )
       .on(

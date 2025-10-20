@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -23,6 +24,7 @@ export default function Suppliers() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [specialtyFilter, setSpecialtyFilter] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'my' | 'certified'>('my');
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
@@ -30,7 +32,7 @@ export default function Suppliers() {
   const itemsPerPage = 9;
 
   const { user } = useAuth();
-  const { suppliers, isLoading, refetch, createSupplier, updateSupplier, deleteSupplier } = useSupabaseSuppliers();
+  const { suppliers, mySuppliers, certifiedNetwork, isLoading, refetch, createSupplier, updateSupplier, deleteSupplier } = useSupabaseSuppliers();
   const { toast } = useToast();
   
   // Load suppliers on component mount
@@ -70,15 +72,8 @@ export default function Suppliers() {
     return isLocal && isAssociated;
   };
 
-  // Função para filtrar fornecedores baseado no cliente atual
-  const getAvailableSuppliers = () => {
-    return suppliers.filter(supplier => {
-      // Por enquanto retornar todos, pois os tipos do Supabase são diferentes
-      return true;
-    });
-  };
-
-  const availableSuppliers = getAvailableSuppliers();
+  // Escolher lista baseado na aba ativa
+  const availableSuppliers = activeTab === 'my' ? mySuppliers : certifiedNetwork;
 
   // Calcular distribuição de especialidades para o contador
   const specialtyDistribution = useMemo(() => {
@@ -311,6 +306,21 @@ export default function Suppliers() {
           />
         </div>
       </div>
+
+      {/* Tabs: Meus Fornecedores vs Rede Certificada */}
+      <Tabs value={activeTab} onValueChange={(v) => {
+        setActiveTab(v as 'my' | 'certified');
+        setCurrentPage(1);
+      }} className="animate-fade-in" style={{ animationDelay: '0.35s' }}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="my">
+            Meus Fornecedores ({mySuppliers.length})
+          </TabsTrigger>
+          <TabsTrigger value="certified">
+            Rede Certificada ({certifiedNetwork.length})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filters and Search */}
       <Card className="card-corporate animate-fade-in" style={{ animationDelay: '0.4s' }}>

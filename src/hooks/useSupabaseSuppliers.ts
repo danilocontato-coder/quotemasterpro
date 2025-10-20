@@ -35,6 +35,8 @@ export interface Supplier {
 
 export const useSupabaseSuppliers = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [mySuppliers, setMySuppliers] = useState<Supplier[]>([]);
+  const [certifiedNetwork, setCertifiedNetwork] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -100,7 +102,20 @@ export const useSupabaseSuppliers = () => {
         console.log('Suppliers fetched (RPC):', data?.length, 'records');
         // Cast explícito pois os tipos do Supabase ainda não foram regenerados
         const suppliersData = (data as any as Supplier[]) || [];
+        
+        // 🔍 SEPARAR: "Meus Fornecedores" vs "Rede Certificada"
+        const mySupps = suppliersData.filter(s => s.association_status === 'active');
+        const certifiedSupps = suppliersData.filter(s => s.association_status === 'available' && s.is_certified);
+        
+        console.log('📊 [SUPPLIERS-SPLIT]', {
+          total: suppliersData.length,
+          meusFornecedores: mySupps.length,
+          redeCertificada: certifiedSupps.length
+        });
+        
         setSuppliers(suppliersData);
+        setMySuppliers(mySupps);
+        setCertifiedNetwork(certifiedSupps);
         
         // Log distribuição de especialidades
         const specialtyDistribution: Record<string, number> = {};
@@ -118,6 +133,8 @@ export const useSupabaseSuppliers = () => {
         logger.tenant('FETCH_SUPPLIERS_SUCCESS', {
           clientId: profile?.client_id,
           count: suppliersData.length,
+          mySuppliers: mySupps.length,
+          certifiedNetwork: certifiedSupps.length,
           suppliersWithSpecialties: suppliersData.filter(s => s.specialties?.length).length,
           uniqueSpecialties: Object.keys(specialtyDistribution).length,
           topSpecialties
@@ -441,6 +458,8 @@ export const useSupabaseSuppliers = () => {
 
   return {
     suppliers,
+    mySuppliers,
+    certifiedNetwork,
     isLoading,
     refetch,
     createSupplier,

@@ -51,10 +51,19 @@ export const useSupabaseQuotes = () => {
       return;
     }
 
+    console.log('🔍 [QUOTES-FETCH] Iniciando busca de cotações:', {
+      userId: user.id,
+      role: user.role,
+      clientId: user.clientId,
+      supplierId: user.supplierId,
+      effectiveClientId: user.clientId
+    });
+
     // Verificar cache primeiro
     const cacheKey = `quotes_${user.role}_${user.clientId || user.supplierId || user.id}`;
     const cached = getCache(cacheKey);
     if (cached) {
+      console.log('📦 [QUOTES-CACHE] Usando dados em cache:', cached.length, 'cotações');
       setQuotes(cached);
       setIsLoading(false);
       return;
@@ -112,7 +121,15 @@ export const useSupabaseQuotes = () => {
         return;
       }
 
-      console.log(`✅ Successfully fetched ${data?.length || 0} quotes`);
+      console.log(`✅ [QUOTES-FETCH] ${data?.length || 0} cotações retornadas (RLS aplicado)`);
+      console.log('📊 [QUOTES-FETCH] Resumo:', {
+        total: data?.length || 0,
+        porStatus: data?.reduce((acc: any, q: any) => {
+          acc[q.status] = (acc[q.status] || 0) + 1;
+          return acc;
+        }, {}),
+        clientIds: [...new Set(data?.map((q: any) => q.client_id))]
+      });
 
       // Transform data to match our interface
       const transformedQuotes: Quote[] = (data || []).map(quote => ({
@@ -517,6 +534,15 @@ export const useSupabaseQuotes = () => {
 
   // Initial fetch - usando dependência estável
   useEffect(() => {
+    // 🔥 CACHE BUST: Limpar cache de cotações ao montar
+    console.log('🔥 [QUOTES-CACHE-BUST] Limpando cache de sessão...');
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('quotes_')) {
+        sessionStorage.removeItem(key);
+        console.log(`   Removido: ${key}`);
+      }
+    });
+    
     // Initial fetch - usando dependência estável
     if (stableUser.id) {
       fetchQuotes();
