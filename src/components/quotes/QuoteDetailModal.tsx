@@ -933,7 +933,22 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 />
               )}
 
-              {/* Comparação Rápida removida - agora está na tab "Combinação Inteligente" */}
+              {/* Tabela de Comparação de Propostas */}
+              {proposals.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      {proposals.length === 1 ? 'Detalhes da Proposta' : 'Comparação de Propostas'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProposalComparisonTable 
+                      proposals={proposals} 
+                      quoteItems={quoteItems}
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Status de fornecedores que não responderam */}
               {supplierNames.length > proposals.length && (
