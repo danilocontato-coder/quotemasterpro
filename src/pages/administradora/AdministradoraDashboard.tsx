@@ -1,19 +1,89 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building2, FileText, DollarSign, Users, TrendingUp, AlertCircle } from 'lucide-react';
 import { useAdministradora } from '@/contexts/AdministradoraContext';
 import { Badge } from '@/components/ui/badge';
+import { useAdministradoraQuoteMetrics } from '@/hooks/useAdministradoraQuoteMetrics';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export const AdministradoraDashboard = () => {
   const { currentClientId, condominios } = useAdministradora();
+  const { user } = useAuth();
+  const { metrics, isLoading: metricsLoading } = useAdministradoraQuoteMetrics(
+    currentClientId === 'all' ? undefined : currentClientId
+  );
 
-  // Mock data - será substituído por dados reais
-  const mockMetrics = {
-    totalQuotes: 47,
-    totalSpent: 156780.50,
-    activeSuppliers: 23,
-    pendingApprovals: 8
-  };
+  const [activeSuppliers, setActiveSuppliers] = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [isLoadingExtra, setIsLoadingExtra] = useState(true);
+
+  useEffect(() => {
+    const fetchExtraMetrics = async () => {
+      if (!user?.clientId) return;
+
+      try {
+        setIsLoadingExtra(true);
+
+        // Buscar cotações para calcular fornecedores únicos e gastos
+        let quotesQuery = supabase.from('quotes').select('*');
+        
+        if (currentClientId && currentClientId !== 'all') {
+          quotesQuery = quotesQuery.or(`client_id.eq.${currentClientId},on_behalf_of_client_id.eq.${currentClientId}`);
+        } else {
+          quotesQuery = quotesQuery.eq('client_id', user.clientId);
+        }
+
+        const { data: quotes } = await quotesQuery;
+
+        // Calcular fornecedores únicos
+        const uniqueSuppliers = new Set(
+          quotes?.filter(q => q.supplier_id).map(q => q.supplier_id)
+        );
+        setActiveSuppliers(uniqueSuppliers.size);
+
+        // Calcular gastos totais (cotações aprovadas/pagas)
+        const spent = quotes
+          ?.filter(q => ['approved', 'paid'].includes(q.status))
+          .reduce((sum, q) => sum + (Number(q.total) || 0), 0) || 0;
+        setTotalSpent(spent);
+
+        // Buscar aprovações pendentes
+        let approvalsQuery = supabase
+          .from('approvals')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending');
+
+        if (currentClientId && currentClientId !== 'all') {
+          // Filtrar por cotações do cliente específico
+          const { data: clientQuotes } = await supabase
+            .from('quotes')
+            .select('id')
+            .or(`client_id.eq.${currentClientId},on_behalf_of_client_id.eq.${currentClientId}`);
+          
+          const quoteIds = clientQuotes?.map(q => q.id) || [];
+          if (quoteIds.length > 0) {
+            approvalsQuery = approvalsQuery.in('quote_id', quoteIds);
+          }
+        }
+
+        const { count: approvalsCount } = await approvalsQuery;
+        setPendingApprovals(approvalsCount || 0);
+
+      } catch (error) {
+        console.error('Error fetching extra metrics:', error);
+      } finally {
+        setIsLoadingExtra(false);
+      }
+    };
+
+    fetchExtraMetrics();
+  }, [user?.clientId, currentClientId]);
+
+  const totalQuotes = metrics.activeQuotes + metrics.draftQuotes + metrics.sentQuotes + metrics.approvedQuotes;
+  const isLoading = metricsLoading || isLoadingExtra;
 
   return (
     <div className="space-y-6">
@@ -31,61 +101,78 @@ export const AdministradoraDashboard = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Cotações</CardTitle>
-            <FileText className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">{mockMetrics.totalQuotes}</div>
-            <p className="text-xs text-muted-foreground">
-              +12% em relação ao mês anterior
-            </p>
-          </CardContent>
-        </Card>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-green-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-24 mb-2" />
+                <Skeleton className="h-3 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-green-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Cotações</CardTitle>
+              <FileText className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-900">{totalQuotes}</div>
+              <p className="text-xs text-muted-foreground">
+                {metrics.activeQuotes} ativas
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card className="border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gastos Totais</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">
-              R$ {mockMetrics.totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              -8% economia via consolidação
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="border-green-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Gastos Totais</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-900">
+                R$ {totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cotações aprovadas/pagas
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card className="border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fornecedores Ativos</CardTitle>
-            <Users className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-900">{mockMetrics.activeSuppliers}</div>
-            <p className="text-xs text-muted-foreground">
-              Em {condominios.length} condomínios
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="border-green-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Fornecedores Ativos</CardTitle>
+              <Users className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-900">{activeSuppliers}</div>
+              <p className="text-xs text-muted-foreground">
+                Em {condominios.length} condomínios
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card className="border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aprovações Pendentes</CardTitle>
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{mockMetrics.pendingApprovals}</div>
-            <p className="text-xs text-muted-foreground">
-              Requer atenção imediata
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="border-green-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Aprovações Pendentes</CardTitle>
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{pendingApprovals}</div>
+              <p className="text-xs text-muted-foreground">
+                Requer atenção imediata
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Cards por Condomínio (quando visão geral) */}
       {currentClientId === 'all' && (

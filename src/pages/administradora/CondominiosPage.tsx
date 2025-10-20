@@ -7,10 +7,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CondominioQuickCreate } from '@/components/admin/CondominioQuickCreate';
+import { CondominioDetailModal } from '@/components/administradora/CondominioDetailModal';
 
 export default function CondominiosPage() {
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedCondominioId, setSelectedCondominioId] = useState<string | null>(null);
   
   const { condominios, isLoading, refetch } = useCondominiosVinculados();
 
@@ -110,7 +112,12 @@ export default function CondominiosPage() {
                 </div>
 
                 <div className="pt-3 border-t">
-                  <Button variant="outline" className="w-full" size="sm">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    size="sm"
+                    onClick={() => setSelectedCondominioId(condo.id)}
+                  >
                     Ver Detalhes
                   </Button>
                 </div>
@@ -129,6 +136,14 @@ export default function CondominiosPage() {
           onSuccess={handleCondominioCreated}
         />
       )}
+
+      {/* Modal de Detalhes */}
+      <CondominioDetailModal
+        open={!!selectedCondominioId}
+        onOpenChange={(open) => !open && setSelectedCondominioId(null)}
+        condominioId={selectedCondominioId}
+        onUpdate={refetch}
+      />
     </div>
   );
 }

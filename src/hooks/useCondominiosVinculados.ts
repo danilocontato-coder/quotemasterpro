@@ -89,11 +89,11 @@ export function useCondominiosVinculados(administradoraId?: string): UseCondomin
       // Para cada condomínio, buscar métricas
       const condominiosWithMetrics = await Promise.all(
         condominiosData.map(async (cond) => {
-          // Contar cotações
+          // Contar cotações (incluindo on_behalf_of_client_id)
           const { count: cotacoesCount } = await supabase
             .from('quotes')
             .select('*', { count: 'exact', head: true })
-            .eq('client_id', cond.id);
+            .or(`client_id.eq.${cond.id},on_behalf_of_client_id.eq.${cond.id}`);
 
           // Contar usuários ativos
           const { count: usuariosCount } = await supabase
