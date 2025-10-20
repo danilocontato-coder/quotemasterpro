@@ -3,7 +3,7 @@
  * Gerencia todos os logs do sistema de forma organizada
  */
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'navigation' | 'auth' | 'data';
+type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'navigation' | 'auth' | 'data' | 'tenant';
 
 interface LogEntry {
   timestamp: string;
@@ -11,6 +11,15 @@ interface LogEntry {
   category: string;
   message: string;
   data?: any;
+}
+
+interface TenantContext {
+  userId?: string;
+  clientId?: string;
+  supplierId?: string;
+  role?: string;
+  isAdminSimulated?: boolean;
+  [key: string]: any;
 }
 
 class SystemLogger {
@@ -71,7 +80,8 @@ class SystemLogger {
       debug: '🔍',
       navigation: '🧭',
       auth: '🔐',
-      data: '💾'
+      data: '💾',
+      tenant: '🏢'
     };
     return icons[level] || 'ℹ️';
   }
@@ -84,7 +94,8 @@ class SystemLogger {
       debug: '#8b5cf6',
       navigation: '#10b981',
       auth: '#ec4899',
-      data: '#06b6d4'
+      data: '#06b6d4',
+      tenant: '#f97316'
     };
     return colors[level] || '#3b82f6';
   }
@@ -116,6 +127,17 @@ class SystemLogger {
 
   debug(category: string, message: string, data?: any) {
     this.addLog('debug', category, message, data);
+  }
+
+  // Método especializado para logs multi-tenant
+  tenant(message: string, context?: TenantContext) {
+    const enrichedData = {
+      ...context,
+      timestamp: new Date().toISOString(),
+      environment: import.meta.env.MODE
+    };
+    
+    this.addLog('tenant', 'tenant', message, enrichedData);
   }
 
   // Controle de categorias

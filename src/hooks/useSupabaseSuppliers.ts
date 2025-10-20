@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkSupplierDuplicate, normalizeDocument } from '@/lib/supplierDeduplication';
+import { logger } from '@/utils/systemLogger';
 
 export interface Supplier {
   id: string;
@@ -41,6 +42,12 @@ export const useSupabaseSuppliers = () => {
   const fetchSuppliers = async () => {
     try {
       setIsLoading(true);
+      
+      logger.tenant('FETCH_SUPPLIERS_START', {
+        userId: user?.id,
+        role: user?.role,
+        clientId: user?.clientId
+      });
       
       // Get current user to determine filtering - use context user first
       const authUser = user?.id ? { id: user.id } : (await supabase.auth.getUser()).data.user;
@@ -93,9 +100,17 @@ export const useSupabaseSuppliers = () => {
         console.log('Suppliers fetched (RPC):', data?.length, 'records');
         // Cast explícito pois os tipos do Supabase ainda não foram regenerados
         setSuppliers((data as any as Supplier[]) || []);
+        
+        logger.tenant('FETCH_SUPPLIERS_SUCCESS', {
+          clientId: profile?.client_id,
+          count: data?.length || 0
+        });
       }
     } catch (error) {
       console.error('Error fetching suppliers:', error);
+      logger.tenant('FETCH_SUPPLIERS_ERROR', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       toast({
         title: "Erro ao carregar fornecedores",
         description: "Não foi possível carregar a lista de fornecedores.",
