@@ -1,6 +1,8 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { QuoteProposal } from './QuoteDetailModal';
+import { Package, Clock, Shield, FileText } from 'lucide-react';
 
 interface QuoteItem {
   id: string;
@@ -24,6 +26,134 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
     );
   }
 
+  const isSingleProposal = proposals.length === 1;
+  const proposal = proposals[0];
+
+  // Layout para proposta única
+  if (isSingleProposal) {
+    return (
+      <div className="space-y-6">
+        {/* Cabeçalho do Fornecedor */}
+        <Card className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-xl font-bold text-foreground">{proposal.supplierName}</h3>
+              <div className="flex items-center gap-2 mt-2">
+                {proposal.reputation > 0 && (
+                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                    ⭐ Reputação: {proposal.reputation.toFixed(1)}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <Badge className="text-base px-4 py-2">
+              R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </Badge>
+          </div>
+
+          {/* Informações Rápidas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Prazo:</span>
+              <span className="font-semibold text-foreground">{proposal.deliveryTime} dias</span>
+            </div>
+            {proposal.warrantyMonths && (
+              <div className="flex items-center gap-2 text-sm">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Garantia:</span>
+                <span className="font-semibold text-foreground">{proposal.warrantyMonths} meses</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-sm">
+              <Package className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Itens:</span>
+              <span className="font-semibold text-foreground">{proposal.items.length}</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Tabela de Itens Detalhada */}
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b-2 border-border bg-muted/50">
+                  <th className="text-left p-3 font-semibold">Produto</th>
+                  <th className="text-center p-3 font-semibold">Quantidade</th>
+                  <th className="text-right p-3 font-semibold">Preço Unitário</th>
+                  <th className="text-right p-3 font-semibold">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quoteItems.map((item, idx) => {
+                  const proposalItem = proposal.items.find(pi => pi.productId === item.id);
+                  const unitPrice = proposalItem?.unitPrice || 0;
+                  const subtotal = unitPrice * item.quantity;
+                  
+                  return (
+                    <tr key={item.id} className={`border-b border-border ${idx % 2 === 0 ? 'bg-muted/20' : ''}`}>
+                      <td className="p-3">
+                        <p className="font-medium text-foreground">{item.product_name}</p>
+                      </td>
+                      <td className="text-center p-3 text-muted-foreground">
+                        {item.quantity}
+                      </td>
+                      <td className="text-right p-3 font-medium text-foreground">
+                        {unitPrice > 0 ? (
+                          `R$ ${unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="text-right p-3 font-semibold text-foreground">
+                        {unitPrice > 0 ? (
+                          `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                
+                {/* Linha de Frete */}
+                <tr className="border-b border-border bg-blue-50/30">
+                  <td colSpan={3} className="p-3 font-medium text-foreground">Frete</td>
+                  <td className="text-right p-3 font-semibold text-foreground">
+                    R$ {proposal.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+                
+                {/* Linha de Total */}
+                <tr className="font-bold bg-muted border-t-2 border-border">
+                  <td colSpan={3} className="p-3 text-base text-foreground">VALOR TOTAL</td>
+                  <td className="text-right p-3 text-lg text-primary">
+                    R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Observações do Fornecedor */}
+        {proposal.observations && (
+          <Card className="p-6">
+            <div className="flex items-start gap-3">
+              <FileText className="h-5 w-5 text-primary mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-foreground mb-2">Observações do Fornecedor</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{proposal.observations}</p>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // Layout para múltiplas propostas (comparação)
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse">
