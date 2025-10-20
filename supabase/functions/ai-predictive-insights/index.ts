@@ -1,186 +1,235 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface QuoteAnalysis {
+interface HistoricalData {
   totalQuotes: number;
-  avgValue: number;
-  topCategories: string[];
-  avgApprovalTime: number;
-  supplierPerformance: {
-    supplierId: string;
-    avgPrice: number;
-    onTimeDelivery: number;
-  }[];
+  avgQuoteValue: number;
+  statusDistribution: Record<string, number>;
+  productAnalysis: Record<string, { count: number; totalValue: number }>;
+  supplierPerformance: Record<string, { ratings: number[]; avgRating: number }>;
+  timeAnalysis: {
+    avgResponseTime: number;
+  };
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { clientId, historicalData } = await req.json();
-    console.log('🤖 [AI-INSIGHTS] Gerando insights para:', clientId);
+    const { clientId, historicalData } = await req.json() as {
+      clientId: string;
+      historicalData: HistoricalData;
+    };
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY não configurada');
+    if (!clientId || !historicalData) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'clientId e historicalData são obrigatórios' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
-    // Preparar prompt contextual com dados históricos
-    const prompt = `
-Você é um analista financeiro especializado em gestão de compras e cotações.
-
-Analise os seguintes dados históricos de cotações:
-
-${JSON.stringify(historicalData, null, 2)}
-
-Forneça 5 insights acionáveis no seguinte formato JSON:
-{
-  "insights": [
-    {
-      "type": "cost_saving" | "efficiency" | "risk_alert" | "trend" | "recommendation",
-      "title": "Título curto e impactante",
-      "message": "Descrição clara do insight",
-      "impact": "high" | "medium" | "low",
-      "action": "Ação específica recomendada",
-      "value": número com valor monetário estimado (se aplicável),
-      "confidence": número entre 0 e 1
-    }
-  ],
-  "predictions": [
-    {
-      "category": "Categoria do produto/serviço",
-      "predictedDemand": "texto descrevendo demanda futura",
-      "suggestedAction": "ação recomendada",
-      "timeframe": "prazo em dias"
-    }
-  ],
-  "summary": {
-    "totalSavingsOpportunity": número,
-    "riskScore": número entre 0 e 100,
-    "efficiencyScore": número entre 0 e 100
-  }
-}
-
-Foque em insights práticos que gerem economia real, reduzam riscos ou melhorem eficiência.
-`;
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um especialista em análise de dados de compras e cotações, focado em gerar insights acionáveis que economizem dinheiro e reduzam riscos.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "generate_insights",
-            description: "Gera insights preditivos sobre dados de cotações",
-            parameters: {
-              type: "object",
-              properties: {
-                insights: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      type: { type: "string", enum: ["cost_saving", "efficiency", "risk_alert", "trend", "recommendation"] },
-                      title: { type: "string" },
-                      message: { type: "string" },
-                      impact: { type: "string", enum: ["high", "medium", "low"] },
-                      action: { type: "string" },
-                      value: { type: "number" },
-                      confidence: { type: "number" }
-                    },
-                    required: ["type", "title", "message", "impact", "action", "confidence"]
-                  }
-                },
-                predictions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      category: { type: "string" },
-                      predictedDemand: { type: "string" },
-                      suggestedAction: { type: "string" },
-                      timeframe: { type: "string" }
-                    },
-                    required: ["category", "predictedDemand", "suggestedAction", "timeframe"]
-                  }
-                },
-                summary: {
-                  type: "object",
-                  properties: {
-                    totalSavingsOpportunity: { type: "number" },
-                    riskScore: { type: "number" },
-                    efficiencyScore: { type: "number" }
-                  },
-                  required: ["totalSavingsOpportunity", "riskScore", "efficiencyScore"]
-                }
-              },
-              required: ["insights", "predictions", "summary"]
-            }
-          }
-        }],
-        tool_choice: { type: "function", function: { name: "generate_insights" } }
-      }),
+    console.log('🤖 [AI-INSIGHTS] Gerando insights para cliente:', clientId);
+    console.log('📊 [AI-INSIGHTS] Dados históricos:', {
+      totalQuotes: historicalData.totalQuotes,
+      avgQuoteValue: historicalData.avgQuoteValue
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ [AI-INSIGHTS] Erro na API:', response.status, errorText);
-      throw new Error(`API Error: ${response.status}`);
+    // Análise baseada em dados históricos
+    const insights: any[] = [];
+    const predictions: any[] = [];
+    let totalSavingsOpportunity = 0;
+
+    // Insight 1: Análise de volume de cotações
+    if (historicalData.totalQuotes > 0) {
+      const approvedCount = historicalData.statusDistribution?.approved || 0;
+      const rejectedCount = historicalData.statusDistribution?.rejected || 0;
+      const approvalRate = (approvedCount / historicalData.totalQuotes) * 100;
+
+      if (approvalRate < 50) {
+        insights.push({
+          type: 'risk_alert',
+          title: 'Taxa de Aprovação Baixa',
+          message: `Apenas ${approvalRate.toFixed(1)}% das cotações foram aprovadas. Revise critérios de aprovação.`,
+          impact: 'high',
+          action: 'Analisar motivos de rejeição',
+          confidence: 0.85
+        });
+      } else if (approvalRate > 80) {
+        insights.push({
+          type: 'efficiency',
+          title: 'Excelente Taxa de Aprovação',
+          message: `${approvalRate.toFixed(1)}% das cotações foram aprovadas. Continue com os critérios atuais.`,
+          impact: 'medium',
+          action: 'Manter processos atuais',
+          confidence: 0.9
+        });
+      }
     }
 
-    const data = await response.json();
-    console.log('🔍 [AI-INSIGHTS] Resposta da API:', JSON.stringify(data, null, 2));
-    
-    const toolCall = data.choices[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      throw new Error('Nenhum tool call retornado pela IA');
+    // Insight 2: Análise de produtos mais cotados
+    if (historicalData.productAnalysis && Object.keys(historicalData.productAnalysis).length > 0) {
+      const productEntries = Object.entries(historicalData.productAnalysis)
+        .sort((a, b) => b[1].totalValue - a[1].totalValue);
+
+      if (productEntries.length > 0) {
+        const topProduct = productEntries[0];
+        const savingsOpportunity = topProduct[1].totalValue * 0.12; // 12% de economia estimada
+        totalSavingsOpportunity += savingsOpportunity;
+
+        insights.push({
+          type: 'cost_saving',
+          title: 'Oportunidade de Economia em Produto',
+          message: `"${topProduct[0]}" representa R$ ${topProduct[1].totalValue.toLocaleString('pt-BR')} em cotações. Negocie contratos de longo prazo.`,
+          impact: 'high',
+          action: 'Negociar contrato anual',
+          value: savingsOpportunity,
+          confidence: 0.78
+        });
+
+        // Predição de demanda para top 3 produtos
+        productEntries.slice(0, 3).forEach(([productName, data]) => {
+          const avgMonthly = data.count / 6; // 6 meses de histórico
+          const predicted = Math.ceil(avgMonthly * 1.15); // 15% de crescimento estimado
+
+          predictions.push({
+            category: productName,
+            predictedDemand: `${predicted} unidades/mês`,
+            suggestedAction: `Manter estoque de ${Math.ceil(predicted * 1.5)} unidades`,
+            timeframe: 'Próximos 30 dias'
+          });
+        });
+      }
     }
-    
-    const aiResponse = JSON.parse(toolCall.function.arguments);
+
+    // Insight 3: Análise de performance de fornecedores
+    if (historicalData.supplierPerformance && Object.keys(historicalData.supplierPerformance).length > 0) {
+      const performanceEntries = Object.entries(historicalData.supplierPerformance);
+      
+      performanceEntries.forEach(([supplierId, data]) => {
+        const avgRating = data.ratings.reduce((a, b) => a + b, 0) / data.ratings.length;
+        
+        if (avgRating < 3) {
+          insights.push({
+            type: 'risk_alert',
+            title: 'Fornecedor com Baixa Avaliação',
+            message: `Fornecedor tem avaliação média de ${avgRating.toFixed(1)}/5. Considere alternativas.`,
+            impact: 'high',
+            action: 'Buscar novos fornecedores',
+            confidence: 0.92
+          });
+        }
+      });
+    }
+
+    // Insight 4: Análise de tempo de resposta
+    if (historicalData.timeAnalysis?.avgResponseTime) {
+      const avgDays = historicalData.timeAnalysis.avgResponseTime / (1000 * 60 * 60 * 24);
+      
+      if (avgDays > 5) {
+        insights.push({
+          type: 'efficiency',
+          title: 'Tempo de Resposta Alto',
+          message: `Tempo médio de resposta é ${avgDays.toFixed(1)} dias. Defina prazos mais curtos.`,
+          impact: 'medium',
+          action: 'Reduzir prazo de resposta para 3 dias',
+          confidence: 0.88
+        });
+      } else if (avgDays < 2) {
+        insights.push({
+          type: 'efficiency',
+          title: 'Excelente Tempo de Resposta',
+          message: `Tempo médio de resposta é ${avgDays.toFixed(1)} dias. Fornecedores estão respondendo rapidamente.`,
+          impact: 'low',
+          action: 'Manter prazos atuais',
+          confidence: 0.95
+        });
+      }
+    }
+
+    // Insight 5: Tendência de gastos
+    if (historicalData.avgQuoteValue > 0) {
+      const estimatedMonthlySpend = (historicalData.totalQuotes / 6) * historicalData.avgQuoteValue;
+      
+      insights.push({
+        type: 'trend',
+        title: 'Projeção de Gastos',
+        message: `Com base no histórico, gastos mensais estimados: R$ ${estimatedMonthlySpend.toLocaleString('pt-BR')}`,
+        impact: 'medium',
+        action: 'Monitorar orçamento',
+        value: estimatedMonthlySpend,
+        confidence: 0.82
+      });
+    }
+
+    // Insight 6: Recomendação geral
+    if (historicalData.totalQuotes < 10) {
+      insights.push({
+        type: 'recommendation',
+        title: 'Dados Limitados',
+        message: 'Com mais cotações, poderemos fornecer insights mais precisos e personalizados.',
+        impact: 'low',
+        action: 'Continue usando o sistema',
+        confidence: 1.0
+      });
+    }
+
+    // Calcular scores
+    const riskScore = Math.max(0, Math.min(100, 
+      80 - (insights.filter(i => i.type === 'risk_alert').length * 15)
+    ));
+
+    const efficiencyScore = Math.min(100,
+      60 + (insights.filter(i => i.type === 'efficiency' && i.impact === 'low').length * 10)
+    );
+
+    const responseData = {
+      success: true,
+      data: {
+        insights: insights.slice(0, 6), // Máximo 6 insights
+        predictions: predictions.slice(0, 5), // Máximo 5 predições
+        summary: {
+          totalSavingsOpportunity,
+          riskScore,
+          efficiencyScore
+        },
+        generatedAt: new Date().toISOString()
+      }
+    };
+
     console.log('✅ [AI-INSIGHTS] Insights gerados com sucesso');
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: aiResponse,
-        generatedAt: new Date().toISOString()
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      JSON.stringify(responseData),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
+
   } catch (error) {
-    console.error('💥 [AI-INSIGHTS] Erro:', error);
+    console.error('❌ [AI-INSIGHTS] Erro:', error);
+    
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message
+      JSON.stringify({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Erro desconhecido' 
       }),
-      {
+      { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   }
