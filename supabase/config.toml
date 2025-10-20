@@ -168,3 +168,6 @@ verify_jwt = true
 
 [functions.ai-predictive-insights]
 verify_jwt = true
+
+[functions.ai-quote-generator-administradora]
+verify_jwt = true

@@ -5,16 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, RefreshCw, Search, FileText, Building2, Calendar } from 'lucide-react';
+import { Plus, RefreshCw, Search, FileText, Building2, Calendar, Sparkles } from 'lucide-react';
 import { useAdministradoraQuotes } from '@/hooks/useAdministradoraQuotes';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdministradoraQuoteForm } from '@/components/administradora/AdministradoraQuoteForm';
+import { AIQuoteGeneratorModal } from '@/components/administradora/AIQuoteGeneratorModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function CotacoesPage() {
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
@@ -72,6 +74,10 @@ export default function CotacoesPage() {
           <Button variant="outline" onClick={refetch}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
+          </Button>
+          <Button variant="outline" onClick={() => setShowAIModal(true)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Gerar com IA
           </Button>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -196,13 +202,26 @@ export default function CotacoesPage() {
 
       {/* Modal de Criação */}
       {user?.clientId && user?.name && (
-        <AdministradoraQuoteForm
-          open={showCreateModal}
-          onOpenChange={setShowCreateModal}
-          administradoraId={user.clientId}
-          administradoraName={user.name}
-          onSuccess={handleQuoteCreated}
-        />
+        <>
+          <AdministradoraQuoteForm
+            open={showCreateModal}
+            onOpenChange={setShowCreateModal}
+            administradoraId={user.clientId}
+            administradoraName={user.name}
+            onSuccess={handleQuoteCreated}
+          />
+
+          <AIQuoteGeneratorModal
+            open={showAIModal}
+            onOpenChange={setShowAIModal}
+            administradoraId={user.clientId}
+            administradoraName={user.name}
+            onQuoteGenerated={(quote) => {
+              console.log('AI Quote generated:', quote);
+              handleQuoteCreated();
+            }}
+          />
+        </>
       )}
     </div>
   );
