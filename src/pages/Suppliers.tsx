@@ -118,7 +118,7 @@ export default function Suppliers() {
   const prioritySuppliers = availableSuppliers.filter(s => s.rating > 4).length;
 
   
-  const handleEditSupplier = (supplier: any) => {
+  const handleEditSupplier = async (supplier: any) => {
     if (!canEditSupplier(supplier)) {
       toast({
         title: 'Ação não permitida',
@@ -129,8 +129,29 @@ export default function Suppliers() {
       });
       return;
     }
-    console.log('Editando fornecedor:', supplier.name, supplier.type);
-    setEditingSupplier(supplier);
+    
+    console.log('[Suppliers] 📥 Buscando dados completos do fornecedor:', supplier.id);
+    
+    try {
+      // Buscar dados completos do fornecedor antes de abrir o modal
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .eq('id', supplier.id)
+        .single();
+      
+      if (error) {
+        console.warn('[Suppliers] ⚠️ Erro ao buscar detalhes, usando dados atuais:', error);
+        setEditingSupplier(supplier);
+      } else {
+        console.log('[Suppliers] ✅ Dados completos carregados:', data);
+        setEditingSupplier(data);
+      }
+    } catch (e) {
+      console.warn('[Suppliers] ⚠️ Exceção ao buscar detalhes, usando dados atuais:', e);
+      setEditingSupplier(supplier);
+    }
+    
     setShowNewSupplierModal(true);
   };
   

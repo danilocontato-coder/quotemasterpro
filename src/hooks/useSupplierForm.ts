@@ -112,6 +112,12 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
         }
       }
       
+      // Normalizar UF e city com fallbacks
+      const uf = normalizeUF(editingSupplier.state || editingSupplier.address?.state);
+      const city = editingSupplier.city || editingSupplier.address?.city || '';
+      
+      console.log('[useSupplierForm] ✅ Dados normalizados:', { uf, city, addressString });
+      
       return {
         name: editingSupplier.name || '',
         document_type: (editingSupplier.document_type as 'cpf' | 'cnpj') || 'cnpj',
@@ -120,8 +126,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
         whatsapp: editingSupplier.whatsapp || undefined,
         phone: editingSupplier.phone || undefined,
         website: editingSupplier.website || undefined,
-        state: editingSupplier.state || '',
-        city: editingSupplier.city || '',
+        state: uf,
+        city,
         address: addressString,
         specialties: editingSupplier.specialties || [],
         type: editingSupplier.type || 'local',
@@ -166,6 +172,10 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
         }
       }
       
+      // Normalizar UF e city com fallbacks
+      const uf = normalizeUF(editingSupplier.state || editingSupplier.address?.state);
+      const city = editingSupplier.city || editingSupplier.address?.city || '';
+      
       setFormData({
         name: editingSupplier.name || '',
         document_type: (editingSupplier.document_type as 'cpf' | 'cnpj') || 'cnpj',
@@ -174,8 +184,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
         whatsapp: editingSupplier.whatsapp || undefined,
         phone: editingSupplier.phone || undefined,
         website: editingSupplier.website || undefined,
-        state: editingSupplier.state || '',
-        city: editingSupplier.city || '',
+        state: uf,
+        city,
         address: addressString,
         specialties: editingSupplier.specialties || [],
         type: editingSupplier.type || 'local',
@@ -186,8 +196,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       console.log('[useSupplierForm] ✅ FormData atualizado:', {
         address: addressString,
         whatsapp: editingSupplier.whatsapp || undefined,
-        state: editingSupplier.state,
-        city: editingSupplier.city
+        state: uf,
+        city
       });
       
       setErrors({});
