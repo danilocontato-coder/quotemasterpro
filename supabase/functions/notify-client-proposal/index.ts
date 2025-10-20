@@ -156,7 +156,7 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
       const notifications = clientUsers.map(user => ({
         user_id: user.id,
         title: 'Nova Proposta Recebida',
-        message: `${supplierName} enviou uma proposta para a cotação ${quote.title}`,
+        message: `${supplierName} enviou uma proposta para a cotação #${quote.local_code || quoteId} - ${quote.title}`,
         type: 'proposal',
         priority: 'normal',
         action_url: `/quotes?highlight=${quoteId}`,

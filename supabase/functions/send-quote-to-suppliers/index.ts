@@ -612,7 +612,7 @@ const handler = async (req: Request): Promise<Response> => {
             console.log('Creating notifications for suppliers...');
             const supplierNotifications = suppliers.map((supplier: any) => ({
               title: 'Nova Cotação Recebida',
-              message: `Você recebeu uma nova cotação: ${quote.title} (${quote.id})`,
+              message: `Você recebeu uma nova cotação: ${quote.title} (#${quote.local_code || quote.id})`,
               type: 'quote',
               priority: 'normal',
               action_url: `/supplier/quotes`,
@@ -1091,7 +1091,7 @@ const handler = async (req: Request): Promise<Response> => {
           console.log('Creating notifications for suppliers (direct method)...');
           const supplierNotifications = suppliers.map((supplier: any) => ({
             title: 'Nova Cotação Recebida',
-            message: `Você recebeu uma nova cotação: ${templateVariables.quote_title} (${quoteId})`,
+            message: `Você recebeu uma nova cotação: ${templateVariables.quote_title} (#${templateVariables.quote_id})`,
             type: 'quote',
             priority: 'normal',
             action_url: `/supplier/quotes`,
