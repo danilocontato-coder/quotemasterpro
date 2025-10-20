@@ -14,6 +14,8 @@ interface EmailPayload {
   text?: string;
   template_id?: string;
   template_data?: Record<string, any>;
+  template_type?: string;
+  client_id?: string;
 }
 
 interface EmailConfig {
@@ -92,22 +94,30 @@ serve(async (req) => {
       footer_text: brandingData?.footer_text || '© 2025 Sistema de Cotações'
     };
 
-    // If template_type provided, load template
+    // If template_type provided, load template or use hardcoded templates
     if (payload.template_type) {
       console.log('📧 Loading template:', payload.template_type);
       
-      const { data: template } = await supabase
-        .from('whatsapp_templates')
-        .select('*')
-        .eq('template_type', payload.template_type)
-        .eq('active', true)
-        .or(`client_id.eq.${payload.client_id || 'null'},is_global.eq.true`)
-        .order('client_id', { nullsFirst: false })
-        .limit(1)
-        .maybeSingle();
+      // Check for hardcoded templates first
+      if (payload.template_type === 'condominio_welcome') {
+        const { getCondominioWelcomeEmail } = await import('./_templates/condominio_welcome.ts');
+        payload.html = getCondominioWelcomeEmail(payload.template_data || {});
+        payload.subject = `Bem-vindo ao ${branding.company_name}`;
+        console.log('✅ Using hardcoded condominio_welcome template');
+      } else {
+        // Load from database
+        const { data: template } = await supabase
+          .from('whatsapp_templates')
+          .select('*')
+          .eq('template_type', payload.template_type)
+          .eq('active', true)
+          .or(`client_id.eq.${payload.client_id || 'null'},is_global.eq.true`)
+          .order('client_id', { nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (template) {
-        console.log('✅ Template loaded:', template.name);
+        if (template) {
+          console.log('✅ Template loaded:', template.name);
         
         // Replace branding variables
         let htmlContent = template.message_content;
@@ -153,12 +163,13 @@ serve(async (req) => {
         // Remove any remaining unreplaced variables from subject
         processedSubject = processedSubject.replace(/{{[^}]+}}/g, '');
 
-        payload.subject = processedSubject;
-        payload.html = htmlContent;
-        
-        console.log('📝 Subject:', payload.subject);
-      } else {
-        console.warn('⚠️ Template not found:', payload.template_type);
+          payload.subject = processedSubject;
+          payload.html = htmlContent;
+          
+          console.log('📝 Subject:', payload.subject);
+        } else {
+          console.warn('⚠️ Template not found:', payload.template_type);
+        }
       }
     }
 

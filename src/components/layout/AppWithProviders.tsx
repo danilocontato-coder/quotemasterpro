@@ -98,6 +98,9 @@ const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/Suppli
 const AdministradoraDashboard = React.lazy(() => import('@/pages/admin/AdministradoraDashboard'));
 const CondominiosPage = React.lazy(() => import('@/pages/administradora/CondominiosPage'));
 const ConfiguracoesPage = React.lazy(() => import('@/pages/administradora/ConfiguracoesPage'));
+
+// Condomínio pages
+const CondominioAprovacoesPage = React.lazy(() => import('@/pages/condominio/AprovacoesPage'));
 const CotacoesPage = React.lazy(() => import('@/pages/administradora/CotacoesPage'));
 const FornecedoresPage = React.lazy(() => import('@/pages/administradora/FornecedoresPage'));
 const AprovacoesPage = React.lazy(() => import('@/pages/administradora/AprovacoesPage'));
@@ -737,6 +740,19 @@ export const AppWithProviders: React.FC = () => {
         <Route path="configuracoes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <ConfiguracoesPage />
+          </Suspense>
+        } />
+      </Route>
+
+      {/* Rotas de Condomínio - Módulo de Aprovações */}
+      <Route path="/condominio/*" element={
+        <ProtectedRoute allowedRoles={['manager', 'admin_cliente']}>
+          <MainLayout />
+        </ProtectedRoute>
+      }>
+        <Route path="aprovacoes" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioAprovacoesPage />
           </Suspense>
         } />
       </Route>

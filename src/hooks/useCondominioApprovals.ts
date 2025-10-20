@@ -31,7 +31,7 @@ export function useCondominioApprovals() {
   const { toast } = useToast();
 
   const fetchApprovals = async () => {
-    if (!user?.clientId) {
+    if (!user?.clientId || !user?.id) {
       setIsLoading(false);
       return;
     }
@@ -59,6 +59,7 @@ export function useCondominioApprovals() {
             status,
             created_at,
             client_name,
+            client_id,
             on_behalf_of_client_id
           )
         `)
@@ -70,15 +71,15 @@ export function useCondominioApprovals() {
         throw error;
       }
 
-      // Filtrar apenas aprovações de cotações deste condomínio
+      // Filtrar apenas aprovações de cotações deste condomínio onde o usuário é o aprovador
       const filteredApprovals = (data || [])
         .filter(approval => {
           const quote = approval.quotes as any;
-          // Verificar se a cotação foi criada PARA este condomínio
-          return quote && (
-            quote.client_id === user.clientId || 
-            quote.on_behalf_of_client_id
-          );
+          // Verificar se a cotação pertence a este condomínio E se o usuário é o aprovador
+          const belongsToCondominio = quote && quote.client_id === user.clientId;
+          const isAssignedApprover = approval.approver_id === user.id;
+          
+          return belongsToCondominio && isAssignedApprover;
         })
         .map(approval => ({
           ...approval,
@@ -100,9 +101,36 @@ export function useCondominioApprovals() {
   };
 
   const approveQuote = async (approvalId: string, comments?: string) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
+      // Validar se o usuário é o aprovador designado
+      const approval = approvals.find(a => a.id === approvalId);
+      if (!approval) {
+        toast({
+          title: "Aprovação não encontrada",
+          description: "A aprovação solicitada não foi encontrada",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (approval.approver_id !== user.id) {
+        toast({
+          title: "Sem permissão",
+          description: "Você não tem permissão para aprovar esta cotação",
+          variant: "destructive"
+        });
+        return;
+      }
+
       console.log('✅ [useCondominioApprovals] Aprovando cotação:', approvalId);
       
       await ApprovalService.approveQuote(approvalId, user.id, comments);
@@ -126,7 +154,14 @@ export function useCondominioApprovals() {
   };
 
   const rejectQuote = async (approvalId: string, reason: string) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      toast({
+        title: "Erro de autenticação",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      return;
+    }
 
     if (!reason || reason.trim().length === 0) {
       toast({
@@ -138,6 +173,26 @@ export function useCondominioApprovals() {
     }
 
     try {
+      // Validar se o usuário é o aprovador designado
+      const approval = approvals.find(a => a.id === approvalId);
+      if (!approval) {
+        toast({
+          title: "Aprovação não encontrada",
+          description: "A aprovação solicitada não foi encontrada",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (approval.approver_id !== user.id) {
+        toast({
+          title: "Sem permissão",
+          description: "Você não tem permissão para rejeitar esta cotação",
+          variant: "destructive"
+        });
+        return;
+      }
+
       console.log('❌ [useCondominioApprovals] Rejeitando cotação:', approvalId);
       
       await ApprovalService.rejectQuote(approvalId, user.id, reason);
