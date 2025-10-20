@@ -34,6 +34,7 @@ export default function FornecedoresPage() {
   const {
     suppliers,
     isLoading,
+    refetch,
     createLocalSupplier,
     updateLocalSupplier,
     deleteLocalSupplier,
@@ -353,7 +354,11 @@ export default function FornecedoresPage() {
             open={showCreateModal}
             onClose={() => {
               setShowCreateModal(false);
-              window.location.reload();
+              // Atualiza lista sem recarregar a página
+              if (typeof (refetch) === 'function') {
+                // @ts-ignore - refetch vem do hook de management
+                refetch();
+              }
             }}
             administradoraId={currentClientId}
           />
@@ -363,7 +368,11 @@ export default function FornecedoresPage() {
             onClose={() => {
               setShowEditModal(false);
               setSelectedSupplier(null);
-              window.location.reload();
+              // Atualiza lista sem recarregar a página
+              if (typeof (refetch) === 'function') {
+                // @ts-ignore
+                refetch();
+              }
             }}
             administradoraId={currentClientId}
             editingSupplier={selectedSupplier}
