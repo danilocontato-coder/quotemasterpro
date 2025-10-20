@@ -174,3 +174,6 @@ verify_jwt = true
 
 [functions.ai-quote-generator-administradora]
 verify_jwt = true
+
+[functions.create-condominio-user]
+verify_jwt = true

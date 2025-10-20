@@ -4,9 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { CondominioApprovalService } from '@/services/condominioApprovalService';
+import { CredentialsModal } from '@/components/admin/CredentialsModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CondominioQuickCreateProps {
   open: boolean;
@@ -32,8 +36,16 @@ export function CondominioQuickCreate({
     phone: '',
     address: ''
   });
+  const [copyApprovalLevels, setCopyApprovalLevels] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [userCredentials, setUserCredentials] = useState<{
+    email: string;
+    temporaryPassword: string;
+    condominioName: string;
+  } | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,10 +93,61 @@ export function CondominioQuickCreate({
         console.log('🎨 CondominioQuickCreate: Branding herdado:', administradoraBrandingId);
       }
 
+      // Buscar nome da administradora para o email
+      const { data: adminClient } = await supabase
+        .from('clients')
+        .select('name')
+        .eq('id', administradoraId)
+        .single();
+
+      const administradoraName = adminClient?.name || 'Administradora';
+
+      // Criar usuário e credenciais
+      console.log('👤 CondominioQuickCreate: Criando usuário para o condomínio...');
+      const { data: userResult, error: userError } = await supabase.functions.invoke(
+        'create-condominio-user',
+        {
+          body: {
+            condominioId: data.id,
+            condominioName: formData.name,
+            condominioEmail: formData.email,
+            administradoraName
+          }
+        }
+      );
+
+      if (userError || !userResult?.success) {
+        console.error('❌ CondominioQuickCreate: Erro ao criar usuário:', userError);
+        throw new Error(userError?.message || 'Erro ao criar usuário');
+      }
+
+      console.log('✅ CondominioQuickCreate: Usuário criado:', userResult.userId);
+
+      // Criar níveis de aprovação
+      console.log('🎯 CondominioQuickCreate: Criando níveis de aprovação...');
+      if (copyApprovalLevels) {
+        await CondominioApprovalService.copyApprovalLevelsFromAdministradora(
+          data.id,
+          administradoraId
+        );
+        console.log('📋 CondominioQuickCreate: Níveis copiados da administradora');
+      } else {
+        await CondominioApprovalService.createDefaultApprovalLevels(data.id);
+        console.log('🎯 CondominioQuickCreate: Níveis padrão criados');
+      }
+
       toast({
-        title: "Condomínio criado!",
-        description: `${formData.name} foi vinculado com sucesso.`
+        title: "Condomínio criado com sucesso!",
+        description: `${formData.name} foi vinculado e o usuário foi criado.`
       });
+
+      // Exibir modal com credenciais
+      setUserCredentials({
+        email: userResult.email,
+        temporaryPassword: userResult.temporaryPassword,
+        condominioName: formData.name
+      });
+      setShowCredentialsModal(true);
 
       // Resetar formulário
       setFormData({
@@ -94,6 +157,7 @@ export function CondominioQuickCreate({
         phone: '',
         address: ''
       });
+      setCopyApprovalLevels(true);
 
       onOpenChange(false);
       onSuccess?.();
@@ -182,13 +246,36 @@ export function CondominioQuickCreate({
             />
           </div>
 
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="copy-approval-levels"
+                checked={copyApprovalLevels}
+                onCheckedChange={(checked) => setCopyApprovalLevels(checked as boolean)}
+              />
+              <div className="space-y-1">
+                <Label 
+                  htmlFor="copy-approval-levels" 
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  Usar mesmos níveis de aprovação da administradora
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  O condomínio herdará os valores de threshold da administradora
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
             <p className="font-medium text-blue-900 mb-1">Configurações Automáticas:</p>
             <ul className="text-blue-700 space-y-1 text-xs">
+              <li>✓ Usuário e senha criados automaticamente</li>
               <li>✓ Vinculado a esta administradora</li>
               <li>✓ Herda branding personalizado</li>
               <li>✓ Mesmo plano de assinatura</li>
               <li>✓ Aprovação de cotações habilitada</li>
+              <li>✓ E-mail de boas-vindas enviado</li>
             </ul>
           </div>
 
@@ -208,6 +295,17 @@ export function CondominioQuickCreate({
           </div>
         </form>
       </DialogContent>
+
+      {/* Modal de Credenciais */}
+      {userCredentials && (
+        <CredentialsModal
+          open={showCredentialsModal}
+          onOpenChange={setShowCredentialsModal}
+          condominioName={userCredentials.condominioName}
+          email={userCredentials.email}
+          temporaryPassword={userCredentials.temporaryPassword}
+        />
+      )}
     </Dialog>
   );
 }

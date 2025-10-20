@@ -218,6 +218,140 @@ export class ApprovalService {
     }
   }
 
+  // Notificar condomínio sobre nova cotação pendente de aprovação
+  static async notifyCondominioAboutPendingQuote(
+    quoteId: string,
+    condominioId: string,
+    amount: number
+  ): Promise<void> {
+    try {
+      console.log('[ApprovalService] Notificando condomínio sobre cotação pendente:', {
+        quoteId,
+        condominioId,
+        amount
+      });
+
+      // Buscar usuários do condomínio que são aprovadores
+      const { data: approvers } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .eq('client_id', condominioId)
+        .eq('active', true);
+
+      if (!approvers || approvers.length === 0) {
+        console.warn('[ApprovalService] Nenhum aprovador encontrado para o condomínio');
+        return;
+      }
+
+      // Buscar dados da cotação
+      const { data: quote } = await supabase
+        .from('quotes')
+        .select('title, client_name')
+        .eq('id', quoteId)
+        .single();
+
+      // Criar notificações para todos os aprovadores
+      const notifications = approvers.map(approver => ({
+        user_id: approver.id,
+        title: 'Nova Cotação para Aprovação',
+        message: `Nova cotação "${quote?.title || quoteId}" no valor de R$ ${amount.toFixed(2)} aguarda sua aprovação`,
+        type: 'approval_request',
+        priority: 'high',
+        action_url: '/condominio/aprovacoes',
+        metadata: {
+          quote_id: quoteId,
+          amount,
+          created_by: quote?.client_name
+        }
+      }));
+
+      const { error } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (error) throw error;
+
+      console.log('[ApprovalService] Notificações enviadas para', approvers.length, 'aprovadores');
+    } catch (error) {
+      console.error('[ApprovalService] Erro ao notificar condomínio:', error);
+      // Não lançar erro para não interromper o fluxo principal
+    }
+  }
+
+  // Notificar administradora sobre decisão de aprovação/rejeição
+  static async notifyAdministradoraAboutApprovalDecision(
+    quoteId: string,
+    decision: 'approved' | 'rejected',
+    comments: string
+  ): Promise<void> {
+    try {
+      console.log('[ApprovalService] Notificando administradora sobre decisão:', {
+        quoteId,
+        decision
+      });
+
+      // Buscar dados da cotação e da administradora
+      const { data: quote } = await supabase
+        .from('quotes')
+        .select('title, client_id, on_behalf_of_client_id, created_by')
+        .eq('id', quoteId)
+        .single();
+
+      if (!quote) return;
+
+      // A administradora é quem criou a cotação (on_behalf_of_client_id)
+      const administradoraId = quote.on_behalf_of_client_id;
+      if (!administradoraId) return;
+
+      // Buscar usuários da administradora (managers e admins)
+      const { data: adminUsers } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .eq('client_id', administradoraId)
+        .in('role', ['manager', 'admin'])
+        .eq('active', true);
+
+      if (!adminUsers || adminUsers.length === 0) {
+        console.warn('[ApprovalService] Nenhum usuário da administradora encontrado');
+        return;
+      }
+
+      const title = decision === 'approved' 
+        ? 'Cotação Aprovada pelo Condomínio'
+        : 'Cotação Rejeitada pelo Condomínio';
+
+      const message = decision === 'approved'
+        ? `A cotação "${quote.title}" foi aprovada pelo condomínio`
+        : `A cotação "${quote.title}" foi rejeitada pelo condomínio. Motivo: ${comments}`;
+
+      // Criar notificações para todos os usuários da administradora
+      const notifications = adminUsers.map(user => ({
+        user_id: user.id,
+        title,
+        message,
+        type: decision === 'approved' ? 'approval_approved' : 'approval_rejected',
+        priority: 'high',
+        action_url: `/administradora/cotacoes?id=${quoteId}`,
+        metadata: {
+          quote_id: quoteId,
+          decision,
+          comments
+        }
+      }));
+
+      const { error } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (error) throw error;
+
+      console.log('[ApprovalService] Notificações enviadas para', adminUsers.length, 'usuários da administradora');
+    } catch (error) {
+      console.error('[ApprovalService] Erro ao notificar administradora:', error);
+      // Não lançar erro para não interromper o fluxo principal
+    }
+  }
+
   // Verificar se uma cotação precisa de aprovação (usa valor negociado se existir)
   static async checkIfApprovalRequired(quoteId: string, amount: number, clientId: string) {
     try {
