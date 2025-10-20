@@ -5957,6 +5957,10 @@ export type Database = {
         Args: { cnpj_in: string }
         Returns: string
       }
+      normalize_specialties: {
+        Args: { specs: string[] }
+        Returns: string[]
+      }
       notify_client_users: {
         Args: {
           p_action_url?: string
