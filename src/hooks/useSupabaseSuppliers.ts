@@ -99,11 +99,28 @@ export const useSupabaseSuppliers = () => {
 
         console.log('Suppliers fetched (RPC):', data?.length, 'records');
         // Cast explícito pois os tipos do Supabase ainda não foram regenerados
-        setSuppliers((data as any as Supplier[]) || []);
+        const suppliersData = (data as any as Supplier[]) || [];
+        setSuppliers(suppliersData);
+        
+        // Log distribuição de especialidades
+        const specialtyDistribution: Record<string, number> = {};
+        suppliersData.forEach(s => {
+          s.specialties?.forEach(sp => {
+            specialtyDistribution[sp] = (specialtyDistribution[sp] || 0) + 1;
+          });
+        });
+        
+        const topSpecialties = Object.entries(specialtyDistribution)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5)
+          .map(([sp, count]) => ({ specialty: sp, count }));
         
         logger.tenant('FETCH_SUPPLIERS_SUCCESS', {
           clientId: profile?.client_id,
-          count: data?.length || 0
+          count: suppliersData.length,
+          suppliersWithSpecialties: suppliersData.filter(s => s.specialties?.length).length,
+          uniqueSpecialties: Object.keys(specialtyDistribution).length,
+          topSpecialties
         });
       }
     } catch (error) {

@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { AdminSupplier } from "@/hooks/useAdminSuppliers";
-import { supplierSpecialties } from "@/data/mockData";
+import { STANDARD_SPECIALTIES } from "@/components/common/SpecialtiesInput";
 import { toast } from "sonner";
 
 // Accept both admin groups and mock groups
@@ -743,7 +743,7 @@ export function ComprehensiveSupplierModal({
                     <div>
                       <label className="text-sm font-medium mb-3 block">Especialidades</label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-border rounded-lg p-3">
-                        {supplierSpecialties.map((specialty) => (
+                        {STANDARD_SPECIALTIES.map((specialty) => (
                           <div key={specialty} className="flex items-center space-x-2">
                             <Checkbox
                               id={`specialty-${specialty}`}

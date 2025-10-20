@@ -1,5 +1,5 @@
 // Página de Fornecedores - Sistema funcionando ✅
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,17 @@ export default function Suppliers() {
   };
 
   const availableSuppliers = getAvailableSuppliers();
+
+  // Calcular distribuição de especialidades para o contador
+  const specialtyDistribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    availableSuppliers.forEach(s => {
+      s.specialties?.forEach(sp => {
+        counts[sp] = (counts[sp] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [availableSuppliers]);
 
   const filteredSuppliers = availableSuppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -319,22 +330,27 @@ export default function Suppliers() {
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[280px] max-h-[400px] overflow-y-auto">
-                  {STANDARD_SPECIALTIES.map(specialty => (
-                    <DropdownMenuCheckboxItem
-                      key={specialty}
-                      checked={specialtyFilter.includes(specialty)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSpecialtyFilter([...specialtyFilter, specialty]);
-                        } else {
-                          setSpecialtyFilter(specialtyFilter.filter(s => s !== specialty));
-                        }
-                      }}
-                    >
-                      {specialty}
-                    </DropdownMenuCheckboxItem>
-                  ))}
+          <DropdownMenuContent className="w-[280px] max-h-[400px] overflow-y-auto">
+            {STANDARD_SPECIALTIES.map(specialty => (
+              <DropdownMenuCheckboxItem
+                key={specialty}
+                checked={specialtyFilter.includes(specialty)}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setSpecialtyFilter([...specialtyFilter, specialty]);
+                  } else {
+                    setSpecialtyFilter(specialtyFilter.filter(s => s !== specialty));
+                  }
+                }}
+              >
+                <span className="flex-1">{specialty}</span>
+                {specialtyDistribution[specialty] && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {specialtyDistribution[specialty]}
+                  </Badge>
+                )}
+              </DropdownMenuCheckboxItem>
+            ))}
                   {specialtyFilter.length > 0 && (
                     <>
                       <DropdownMenuSeparator />

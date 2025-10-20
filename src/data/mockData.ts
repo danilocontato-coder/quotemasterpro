@@ -188,20 +188,9 @@ export const mockQuotes: Quote[] = [
 ];
 
 // Available specialties for suppliers
-export const supplierSpecialties = [
-  'Materiais de Construção',
-  'Produtos de Limpeza',
-  'Elétrica e Iluminação',
-  'Jardinagem',
-  'Hidráulica',
-  'Pintura',
-  'Acabamento',
-  'Ferramentas',
-  'Equipamentos',
-  'Serviços Gerais',
-  'Manutenção Predial',
-  'Segurança',
-];
+// @deprecated Use STANDARD_SPECIALTIES from @/components/common/SpecialtiesInput
+// Esta lista está sincronizada com a fonte única de verdade e será removida em versão futura
+export { STANDARD_SPECIALTIES as supplierSpecialties } from '@/components/common/SpecialtiesInput';
 
 // Mock supplier groups - REMOVED
 export const mockSupplierGroups: SupplierGroup[] = [];
