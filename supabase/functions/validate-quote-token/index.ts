@@ -94,11 +94,11 @@ serve(async (req) => {
       )
     }
 
-    // Fetch quote details with visit information
+    // Fetch quote details with visit information (incluindo local_code)
     console.log('🔍 [validate-quote-token] Fetching quote:', resolvedQuoteId)
     const { data: quoteData, error: quoteError } = await supabaseClient
       .from('quotes')
-      .select('id, title, description, status, deadline, client_name, supplier_id, client_id, requires_visit, visit_deadline')
+      .select('id, local_code, title, description, status, deadline, client_name, supplier_id, client_id, requires_visit, visit_deadline')
       .eq('id', resolvedQuoteId)
       .maybeSingle()
 

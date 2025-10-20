@@ -27,12 +27,20 @@ serve(async (req) => {
       )
     }
 
-    // Get quote to extract client_id and deadline
-    const { data: quoteData, error: quoteError } = await supabaseClient
+    // Get quote to extract client_id and deadline (buscar por local_code ou id)
+    let quoteQuery = supabaseClient
       .from('quotes')
-      .select('client_id, deadline')
-      .eq('id', quote_id)
-      .single()
+      .select('id, local_code, client_id, deadline')
+    
+    // Tentar buscar por local_code primeiro (formato RFQ01, RFQ02, etc)
+    // Se não encontrar, buscar por id (UUID)
+    if (quote_id.startsWith('RFQ')) {
+      quoteQuery = quoteQuery.eq('local_code', quote_id)
+    } else {
+      quoteQuery = quoteQuery.eq('id', quote_id)
+    }
+    
+    const { data: quoteData, error: quoteError } = await quoteQuery.maybeSingle()
 
     if (quoteError || !quoteData) {
       console.error('Quote not found:', quoteError)
@@ -42,11 +50,14 @@ serve(async (req) => {
       )
     }
 
+    // Use o id interno da quote (UUID) para buscar tokens
+    const internalQuoteId = quoteData.id
+    
     // Verificar se já existe um token válido para esta cotação + fornecedor
     let query = supabaseClient
       .from('quote_tokens')
       .select('*')
-      .eq('quote_id', quote_id)
+      .eq('quote_id', internalQuoteId)
       .gt('expires_at', new Date().toISOString())
 
     // Se supplier_id foi fornecido, buscar token específico desse fornecedor
@@ -163,11 +174,11 @@ serve(async (req) => {
       usedDeadline: !!quoteData.deadline
     })
 
-    // Insert token into database with client_id and supplier_id
+    // Insert token into database with client_id and supplier_id (usando id interno UUID)
     const { data: tokenData, error: insertError } = await supabaseClient
       .from('quote_tokens')
       .insert({
-        quote_id,
+        quote_id: internalQuoteId,
         client_id: quoteData.client_id,
         supplier_id: supplier_id || null,
         short_code: shortCode,

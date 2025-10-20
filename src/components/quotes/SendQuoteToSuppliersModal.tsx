@@ -261,7 +261,7 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
         selectedSuppliers.map(async (supplierId) => {
           console.log(`🔗 [SEND-QUOTE] Generating link for supplier: ${supplierId}`);
           
-          const linkResult = await generateQuoteShortLink(quote.id, supplierId);
+          const linkResult = await generateQuoteShortLink(quote.local_code || quote.id, supplierId);
           
           if (!linkResult.success) {
             console.error(`❌ [SEND-QUOTE] Failed to generate link for supplier ${supplierId}:`, linkResult.error);
