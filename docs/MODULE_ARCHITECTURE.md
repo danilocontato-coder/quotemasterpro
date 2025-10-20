@@ -30,12 +30,14 @@ Estes módulos são **OBRIGATÓRIOS** e não podem ser desabilitados, pois forma
 | **Aprovações** | `approvals` | `/approvals`, `/approval-levels` | `quotes` | Fluxo de aprovação de cotações |
 | **Pagamentos** | `payments` | `/payments` | `quotes`, `suppliers` | Gestão de pagamentos e faturamento |
 | **Gestão de Entregas** | `delivery_management` | Integrado em `/payments` | `payments`, `quotes` | Controle de entregas com códigos de confirmação |
+| **Prestação de Contas** | `accountability` | `/accountability` | `payments` | Registro de gastos com documentos fiscais e comprovantes |
 | **Centros de Custo** | `cost_centers` | `/cost-centers` | `quotes` | Organização financeira por centro de custo |
 | **Relatórios Avançados** | `advanced_reports` | `/reports` | `quotes`, `payments` | Dashboards e análises detalhadas |
 | **Usuários e Permissões** | `user_management` | `/users`, `/permissions` | Nenhuma | Controle de acesso e perfis de usuários |
 
 **Regras de Dependência**:
 - `delivery_management` → depende de `payments`
+- `accountability` → depende de `payments`
 - `cost_centers` → depende de `quotes`
 - `advanced_reports` → depende de `quotes` + `payments`
 
@@ -128,6 +130,7 @@ graph TD
 [
   "approvals",
   "payments",
+  "accountability",
   "cost_centers",
   "user_management",
   "advanced_reports"
@@ -141,6 +144,7 @@ graph TD
   "ai_negotiation",
   "ai_quote_analysis",
   "delivery_management",
+  "accountability",
   "custom_branding",
   "whatsapp_integration",
   "priority_support",
