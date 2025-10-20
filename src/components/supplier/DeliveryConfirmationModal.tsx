@@ -23,7 +23,14 @@ export const DeliveryConfirmationModal = ({
   const { toast } = useToast();
 
   const handleConfirmDelivery = async () => {
+    console.log('🎯 [MODAL] Usuário clicou em Confirmar Entrega', {
+      confirmation_code: confirmationCode.trim(),
+      code_length: confirmationCode.trim().length,
+      timestamp: new Date().toISOString()
+    });
+
     if (!confirmationCode.trim()) {
+      console.warn('⚠️ [MODAL] Código vazio, exibindo alerta');
       toast({
         title: "Código obrigatório",
         description: "Por favor, insira o código de confirmação.",
@@ -33,6 +40,7 @@ export const DeliveryConfirmationModal = ({
     }
 
     setIsLoading(true);
+    console.log('⏳ [MODAL] Enviando requisição para API...');
 
     try {
       const { data, error } = await supabase.functions.invoke('confirm-delivery', {
@@ -41,9 +49,24 @@ export const DeliveryConfirmationModal = ({
         }
       });
 
+      console.log('📡 [MODAL] Resposta recebida', {
+        success: !error,
+        has_data: !!data,
+        error: error?.message,
+        timestamp: new Date().toISOString()
+      });
+
       if (error) {
+        console.error('❌ [MODAL] Erro na requisição', {
+          error_message: error.message,
+          error_details: error
+        });
         throw error;
       }
+
+      console.log('✅ [MODAL] Confirmação concluída com sucesso', {
+        delivery_id: data?.delivery_id
+      });
 
       toast({
         title: "Entrega Confirmada!",
@@ -55,7 +78,13 @@ export const DeliveryConfirmationModal = ({
       onConfirmed?.();
 
     } catch (error: any) {
-      console.error('Erro ao confirmar entrega:', error);
+      console.error('❌ [MODAL] Erro ao confirmar entrega', {
+        error: error.message,
+        stack: error.stack,
+        confirmation_code: confirmationCode,
+        timestamp: new Date().toISOString()
+      });
+      
       toast({
         title: "Erro na confirmação",
         description: error.message || "Não foi possível confirmar a entrega. Verifique o código e tente novamente.",
@@ -63,6 +92,7 @@ export const DeliveryConfirmationModal = ({
       });
     } finally {
       setIsLoading(false);
+      console.log('🏁 [MODAL] Processo finalizado');
     }
   };
 

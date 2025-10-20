@@ -115,22 +115,54 @@ export function useClientDeliveries() {
   };
 
   const confirmDelivery = async (confirmationCode: string): Promise<boolean> => {
+    console.log('🚀 [CLIENT-DELIVERIES] Iniciando confirmação de entrega', {
+      confirmation_code: confirmationCode.trim(),
+      code_length: confirmationCode.trim().length,
+      timestamp: new Date().toISOString()
+    });
+
     try {
+      console.log('📡 [CLIENT-DELIVERIES] Invocando edge function confirm-delivery');
+      
       const { data, error } = await supabase.functions.invoke('confirm-delivery', {
         body: { confirmation_code: confirmationCode.trim() }
       });
 
-      if (error) throw error;
+      console.log('📡 [CLIENT-DELIVERIES] Resposta da Edge Function', {
+        success: !error,
+        has_data: !!data,
+        error: error?.message,
+        timestamp: new Date().toISOString()
+      });
+
+      if (error) {
+        console.error('❌ [CLIENT-DELIVERIES] Erro retornado pela Edge Function', {
+          error: error.message,
+          details: error
+        });
+        throw error;
+      }
+
+      console.log('✅ [CLIENT-DELIVERIES] Confirmação bem-sucedida', {
+        delivery_id: data?.delivery_id,
+        payment_amount: data?.payment_amount
+      });
 
       toast({
         title: "✅ Entrega Confirmada!",
         description: `Pagamento de R$ ${data.payment_amount?.toFixed(2)} liberado para o fornecedor.`,
       });
 
+      console.log('🔄 [CLIENT-DELIVERIES] Recarregando lista de entregas');
       await fetchDeliveries();
       return true;
     } catch (error: any) {
-      console.error('Erro ao confirmar entrega:', error);
+      console.error('❌ [CLIENT-DELIVERIES] Falha na confirmação', {
+        error: error.message,
+        confirmation_code: confirmationCode,
+        timestamp: new Date().toISOString()
+      });
+      
       toast({
         title: "Erro na confirmação",
         description: error.message || "Código inválido ou expirado.",
