@@ -89,7 +89,7 @@ interface QuoteDetailModalProps {
 }
 
 // Interface para os itens da cotação
-interface QuoteItem {
+export interface QuoteItem {
   id: string;
   product_name: string;
   quantity: number;
@@ -885,6 +885,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               {shouldShowMatrix && (
                 <DecisionMatrixWidget
                   proposals={proposals}
+                  quoteItems={quoteItems}
                   quoteId={quote.id}
                   quoteName={quote.title}
                   defaultOpen={true}

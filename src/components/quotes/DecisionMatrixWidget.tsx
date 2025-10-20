@@ -7,6 +7,7 @@ import { WeightConfig, ProposalMetrics, calculateWeightedScore, DEFAULT_WEIGHT_T
 import { WeightEditorModal } from './WeightEditorModal';
 import { NegotiationConfirmModal } from './NegotiationConfirmModal';
 import { NegotiationResultModal } from './NegotiationResultModal';
+import { ProposalCard } from './ProposalCard';
 import { DollarSign, Clock, Package, Shield, Star, Zap, Save, CheckCircle, Settings, Brain } from 'lucide-react';
 import { QuoteProposal } from './QuoteDetailModal';
 import { useSavedDecisionMatrices } from '@/hooks/useSavedDecisionMatrices';
@@ -15,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface DecisionMatrixWidgetProps {
   proposals: QuoteProposal[];
+  quoteItems: QuoteItem[];
   quoteId: string;
   quoteName: string;
   defaultOpen?: boolean;
@@ -22,8 +24,17 @@ interface DecisionMatrixWidgetProps {
   quoteStatus: string;
 }
 
+interface QuoteItem {
+  id: string;
+  product_name: string;
+  quantity: number;
+  unit_price?: number;
+  total?: number;
+}
+
 export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   proposals,
+  quoteItems,
   quoteId,
   quoteName,
   defaultOpen = false,
@@ -277,88 +288,23 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
                   const attempts = negotiationAttempts[item.id] || 0;
 
                   return (
-                    <Card key={item.id} className={index === 0 ? 'border-2 border-green-500 shadow-lg' : ''}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="text-2xl">{getMedalEmoji(index)}</div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold text-base">{item.name}</span>
-                                {index === 0 && (
-                                  <Badge className="bg-green-100 text-green-800 border-green-300">
-                                    Melhor Escolha
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <DollarSign className="h-3 w-3" />
-                                  R$ {item.metrics.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {item.metrics.deliveryTime}d
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Shield className="h-3 w-3" />
-                                  {item.metrics.warranty}m
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Star className="h-3 w-3" />
-                                  {item.metrics.reputation}/5
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-primary">
-                                {item.score.toFixed(1)}
-                              </div>
-                              <div className="text-xs text-muted-foreground">pontos</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex flex-wrap gap-2 mt-4">
-                          {buttons.showApprove && (
-                            <Button
-                              size="sm"
-                              onClick={() => onApprove?.(item.proposal)}
-                              disabled={isQuoteLocked}
-                              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                              {isQuoteLocked ? 'Proposta Já Selecionada' : buttons.approveLabel}
-                            </Button>
-                          )}
-                          
-                          {buttons.showNegotiate && attempts < 2 && (
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedProposal(item.proposal);
-                                setShowNegotiationModal(true);
-                              }}
-                              variant="outline"
-                              disabled={isNegotiating}
-                              className="flex items-center gap-2 text-blue-600 border-blue-300"
-                            >
-                              <Brain className="h-4 w-4" />
-                              {buttons.negotiateLabel}
-                            </Button>
-                          )}
-                          
-                          {attempts >= 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              Limite de negociações atingido
-                            </Badge>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <ProposalCard
+                      key={item.id}
+                      proposal={item.proposal}
+                      rank={index}
+                      score={item.score}
+                      isWinner={index === 0}
+                      quoteItems={quoteItems}
+                      isQuoteLocked={isQuoteLocked}
+                      onApprove={() => onApprove?.(item.proposal)}
+                      onNegotiate={() => {
+                        setSelectedProposal(item.proposal);
+                        setShowNegotiationModal(true);
+                      }}
+                      canNegotiate={buttons.showNegotiate && attempts < 2}
+                      negotiationAttempts={attempts}
+                      allProposals={rankedProposals.map(r => r.proposal)}
+                    />
                   );
                 })}
               </div>
