@@ -14,6 +14,156 @@ export type Database = {
   }
   public: {
     Tables: {
+      accountability_attachments: {
+        Row: {
+          accountability_record_id: string | null
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          nfe_data: Json | null
+          nfe_key: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          accountability_record_id?: string | null
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          nfe_data?: Json | null
+          nfe_key?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          accountability_record_id?: string | null
+          document_type?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          nfe_data?: Json | null
+          nfe_key?: string | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accountability_attachments_accountability_record_id_fkey"
+            columns: ["accountability_record_id"]
+            isOneToOne: false
+            referencedRelation: "accountability_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accountability_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      accountability_records: {
+        Row: {
+          accountability_date: string
+          amount_spent: number
+          approval_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string
+          cost_center_id: string | null
+          created_at: string | null
+          destination: string
+          id: string
+          metadata: Json | null
+          payment_id: string | null
+          record_type: string
+          status: string | null
+          submitted_by: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accountability_date: string
+          amount_spent: number
+          approval_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id: string
+          cost_center_id?: string | null
+          created_at?: string | null
+          destination: string
+          id?: string
+          metadata?: Json | null
+          payment_id?: string | null
+          record_type: string
+          status?: string | null
+          submitted_by?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accountability_date?: string
+          amount_spent?: number
+          approval_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string
+          cost_center_id?: string | null
+          created_at?: string | null
+          destination?: string
+          id?: string
+          metadata?: Json | null
+          payment_id?: string | null
+          record_type?: string
+          status?: string | null
+          submitted_by?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accountability_records_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accountability_records_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accountability_records_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accountability_records_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accountability_records_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_credit_transactions: {
         Row: {
           amount: number
