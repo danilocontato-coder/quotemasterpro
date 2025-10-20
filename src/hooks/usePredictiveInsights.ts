@@ -65,8 +65,9 @@ export const usePredictiveInsights = () => {
         ),
         quote_responses (
           id,
+          quote_id,
           supplier_id,
-          total_value,
+          total_amount,
           delivery_days,
           created_at
         )
