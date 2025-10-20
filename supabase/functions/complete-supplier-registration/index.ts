@@ -128,6 +128,29 @@ serve(async (req) => {
             if (authUser) {
               existingUser = { id: authUser.id, email: authUser.email };
               console.log(`📧 Found via auth.users: ${existingUser.id}`);
+              
+              // CRIAR PROFILE para usuário que existe no Auth mas não no profiles
+              console.log('🔧 Creating missing profile for auth user...');
+              const { error: createProfileError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: authUser.id,
+                  email: authUser.email!.toLowerCase(),
+                  name: supplier.name || authUser.email!.split('@')[0],
+                  role: 'supplier',
+                  tenant_type: 'supplier',
+                  supplier_id: supplier.id,
+                  onboarding_completed: false,
+                  active: true,
+                  created_at: new Date().toISOString()
+                });
+              
+              if (createProfileError) {
+                console.error('❌ Failed to create profile:', createProfileError);
+                throw new Error(`Failed to create profile: ${createProfileError.message}`);
+              }
+              
+              console.log('✅ Profile created for existing auth user');
             }
           }
 
