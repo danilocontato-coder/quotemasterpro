@@ -68,7 +68,7 @@ export const usePredictiveInsights = () => {
           quote_id,
           supplier_id,
           total_amount,
-          delivery_days,
+          delivery_time,
           created_at
         )
       `)
