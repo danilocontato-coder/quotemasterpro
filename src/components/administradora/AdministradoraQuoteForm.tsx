@@ -500,8 +500,10 @@ export function AdministradoraQuoteForm({
       case 3:
         const filteredSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
           if (formData.supplierScope === 'local') {
-            return !supplier.is_certified;
+            // Quando "Apenas Locais" está marcado, mostrar apenas fornecedores type='local'
+            return supplier.type === 'local';
           } else {
+            // Quando "Locais + Certificados" está marcado, mostrar ambos
             return true;
           }
         });
@@ -583,13 +585,15 @@ export function AdministradoraQuoteForm({
                       }}
                     />
                     <label htmlFor={supplier.id} className="flex-1 cursor-pointer">
-                      <p className="font-medium">{supplier.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{supplier.email}</span>
-                        {supplier.is_certified && (
-                          <Badge variant="secondary" className="text-xs">Certificado</Badge>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{supplier.name}</p>
+                        {supplier.type === 'certified' && (
+                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 border-green-200">
+                            ✓ Certificado
+                          </Badge>
                         )}
                       </div>
+                      <p className="text-xs text-muted-foreground">{supplier.email}</p>
                     </label>
                   </div>
                 ))}
