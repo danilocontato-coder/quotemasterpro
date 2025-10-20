@@ -103,6 +103,18 @@ const parseAddress = (text?: string): AdminClient["address"] => {
   };
 };
 
+// Helper para determinar região a partir do estado
+const determineRegion = (state: string): string | null => {
+  const regionMap: Record<string, string> = {
+    'AC': 'Norte', 'AM': 'Norte', 'AP': 'Norte', 'PA': 'Norte', 'RO': 'Norte', 'RR': 'Norte', 'TO': 'Norte',
+    'AL': 'Nordeste', 'BA': 'Nordeste', 'CE': 'Nordeste', 'MA': 'Nordeste', 'PB': 'Nordeste', 'PE': 'Nordeste', 'PI': 'Nordeste', 'RN': 'Nordeste', 'SE': 'Nordeste',
+    'DF': 'Centro-Oeste', 'GO': 'Centro-Oeste', 'MT': 'Centro-Oeste', 'MS': 'Centro-Oeste',
+    'ES': 'Sudeste', 'MG': 'Sudeste', 'RJ': 'Sudeste', 'SP': 'Sudeste',
+    'PR': 'Sul', 'RS': 'Sul', 'SC': 'Sul'
+  };
+  return regionMap[state.toUpperCase()] || null;
+};
+
 export function useSupabaseAdminClients() {
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([]);
@@ -323,6 +335,22 @@ export function useSupabaseAdminClients() {
     try {
       // 1) Cria o registro do cliente PRIMEIRO (sempre funciona)
       console.log('🔧 [AdminClients] Preparando payload...');
+      
+      // Extrair estado e determinar região
+      const addressState = typeof clientData.address !== 'string' && clientData.address.state 
+        ? clientData.address.state 
+        : null;
+      const addressCity = typeof clientData.address !== 'string' && clientData.address.city 
+        ? clientData.address.city 
+        : null;
+      const calculatedRegion = addressState ? determineRegion(addressState) : null;
+      
+      console.log('🗺️ [AdminClients] Endereço processado:', {
+        state: addressState,
+        city: addressCity,
+        region: calculatedRegion
+      });
+      
       const insertPayload = {
         name: clientData.companyName,
         company_name: clientData.companyName,
@@ -330,6 +358,9 @@ export function useSupabaseAdminClients() {
         email: clientData.email,
         phone: clientData.phone,
         address: typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address),
+        state: addressState,
+        city: addressCity,
+        region: calculatedRegion,
         status: clientData.status,
         subscription_plan_id: clientData.plan,
         username: clientData.loginCredentials.username,
@@ -515,7 +546,13 @@ export function useSupabaseAdminClients() {
           },
         });
 
-        console.log('🔐 DEBUG: Resposta da edge function:', { authResp, fnErr });
+        console.log('🔐 [AUTH_RESPONSE]', { 
+          fnErr, 
+          authResp, 
+          hasAuthUserId: !!(authResp as any)?.auth_user_id,
+          authSuccess: !!(authResp as any)?.success,
+          authAction 
+        });
 
         if (!fnErr && authResp) {
           const authPayload = authResp as any;
@@ -625,6 +662,14 @@ export function useSupabaseAdminClients() {
               }
             });
 
+            // ===== ENVIO DE NOTIFICAÇÕES (após profile confirmado) =====
+            console.log('📢 [NOTIFICATIONS] Iniciando envio de notificações:', {
+              sendByEmail: notificationOptions?.sendByEmail,
+              sendByWhatsApp: notificationOptions?.sendByWhatsApp,
+              email: clientData.email,
+              hasPhone: !!(clientData.contacts?.find(c => c.isPrimary)?.phone || clientData.phone)
+            });
+
             // Enviar credenciais via WhatsApp se solicitado (APÓS CONFIRMAR PROFILE)
             if (notificationOptions?.sendByWhatsApp) {
               const primaryContact = clientData.contacts?.find(c => c.isPrimary);
@@ -635,7 +680,8 @@ export function useSupabaseAdminClients() {
                   console.log('📱 [WHATSAPP_SEND] Enviando credenciais para', {
                     phone: phoneNumber,
                     client: clientData.companyName,
-                    email: clientData.email
+                    email: clientData.email,
+                    isTemporary
                   });
                   
                   const passwordLabel = isTemporary ? 'Senha temporária' : 'Senha de acesso';
@@ -655,20 +701,31 @@ export function useSupabaseAdminClients() {
                   });
 
                   if (notifyErr) {
-                    console.error('❌ [WHATSAPP_ERROR]', notifyErr);
+                    console.error('❌ [WHATSAPP_ERROR]', {
+                      error: notifyErr,
+                      message: notifyErr.message,
+                      code: (notifyErr as any).code,
+                      details: (notifyErr as any).details
+                    });
                     toast.error(`Erro ao enviar WhatsApp: ${notifyErr.message || 'Verifique a configuração'}`);
                   } else {
                     console.log('✅ [WHATSAPP_SUCCESS]', notifyResp);
                     toast.success(`📱 Credenciais enviadas via WhatsApp para ${phoneNumber}`);
                   }
                 } catch (whatsappError: any) {
-                  console.error('❌ [WHATSAPP_EXCEPTION]', whatsappError);
+                  console.error('❌ [WHATSAPP_EXCEPTION]', {
+                    error: whatsappError,
+                    message: whatsappError.message,
+                    stack: whatsappError.stack
+                  });
                   toast.error(`Falha ao enviar WhatsApp: ${whatsappError.message || 'Erro desconhecido'}`);
                 }
               } else {
                 console.warn('⚠️ [WHATSAPP_SKIP] Número de telefone não informado');
                 toast.warning("Número de telefone não informado para envio via WhatsApp");
               }
+            } else {
+              console.log('⏭️ [WHATSAPP_SKIP] Envio via WhatsApp não solicitado');
             }
 
             // Enviar credenciais via E-mail se solicitado (APÓS CONFIRMAR PROFILE)
@@ -676,7 +733,8 @@ export function useSupabaseAdminClients() {
               try {
                 console.log('📧 [EMAIL_SEND] Enviando credenciais para', {
                   email: clientData.email,
-                  client: clientData.companyName
+                  client: clientData.companyName,
+                  isTemporary
                 });
                 
                 const passwordLabel = isTemporary ? 'Senha temporária' : 'Senha de acesso';
@@ -765,17 +823,30 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
                 });
 
                 if (emailErr) {
-                  console.error('❌ [EMAIL_ERROR]', emailErr);
+                  console.error('❌ [EMAIL_ERROR]', {
+                    error: emailErr,
+                    message: emailErr.message,
+                    code: (emailErr as any).code,
+                    details: (emailErr as any).details
+                  });
                   toast.error(`Erro ao enviar e-mail: ${emailErr.message || 'Verifique a configuração'}`);
                 } else {
                   console.log('✅ [EMAIL_SUCCESS]', emailResp);
                   toast.success(`📧 Credenciais enviadas via e-mail para ${clientData.email}`);
                 }
               } catch (emailError: any) {
-                console.error('❌ [EMAIL_EXCEPTION]', emailError);
+                console.error('❌ [EMAIL_EXCEPTION]', {
+                  error: emailError,
+                  message: emailError.message,
+                  stack: emailError.stack
+                });
                 toast.error(`Falha ao enviar e-mail: ${emailError.message || 'Erro desconhecido'}`);
               }
+            } else {
+              console.log('⏭️ [EMAIL_SKIP] Envio via e-mail não solicitado');
             }
+            
+            console.log('✅ [NOTIFICATIONS] Processamento de notificações concluído');
             
             // Registrar auditoria de sucesso completo
             await supabase.from('audit_logs').insert({

@@ -389,6 +389,30 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       console.log('⚠️ DEBUG: Não vinculando (ids ausentes)');
     }
 
+    // Registrar auditoria de criação de usuário
+    try {
+      await supabaseAdmin.from('audit_logs').insert({
+        user_id: user.id, // Quem criou
+        action: 'USER_CREATED',
+        entity_type: 'users',
+        entity_id: authData.user?.id,
+        panel_type: 'admin',
+        details: {
+          email: email,
+          name: name,
+          role: effectiveRole,
+          client_id: effectiveClientId,
+          supplier_id: effectiveSupplierId,
+          created_by: user.id,
+          created_by_role: userRole,
+          temporary_password: temporaryPassword ?? true
+        }
+      });
+      console.log('✅ Audit log registrado com sucesso');
+    } catch (auditErr) {
+      console.error('⚠️ Erro ao registrar audit log (não bloqueante):', auditErr);
+    }
+
     // Return the created user data
     return new Response(
       JSON.stringify({ 
