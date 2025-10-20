@@ -81,6 +81,7 @@ const DebugAuth = React.lazy(() => import('@/pages/admin/DebugAuth'));
 const SupplierDashboard = React.lazy(() => import('@/pages/supplier/SupplierDashboard'));
 const SupplierReports = React.lazy(() => import('@/pages/supplier/SupplierReports'));
 const SupplierQuotes = React.lazy(() => import('@/pages/supplier/SupplierQuotes'));
+const SupplierQuoteDetail = React.lazy(() => import('@/pages/supplier/SupplierQuoteDetail'));
 const SupplierProducts = React.lazy(() => import('@/pages/supplier/SupplierProducts'));
 const SupplierReceivables = React.lazy(() => import('@/pages/supplier/SupplierReceivables'));
 const SupplierHistory = React.lazy(() => import('@/pages/supplier/SupplierHistory'));
@@ -640,6 +641,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="quotes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <SupplierQuotes />
+          </Suspense>
+        } />
+        <Route path="quotes/:id" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <SupplierQuoteDetail />
           </Suspense>
         } />
         <Route path="products" element={

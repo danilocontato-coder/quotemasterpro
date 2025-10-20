@@ -251,6 +251,9 @@ export default function SupplierRegisterWithToken() {
 
       setLoading(false);
       
+      // Guardar destino no sessionStorage ANTES de setSession para que RoleBasedRedirect use
+      sessionStorage.setItem('redirectAfterLogin', `/supplier/quotes/${data.quote_id}`);
+      
       toast({
         title: "Cadastro Concluído!",
         description: "Redirecionando para a cotação...",
