@@ -41,6 +41,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { formatQuoteCode } from '@/utils/formatQuoteCode';
 
 interface CondominioDetailModalProps {
   open: boolean;
@@ -345,7 +346,7 @@ export function CondominioDetailModal({
                               {getQuoteStatusBadge(quote.status)}
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              {quote.id} • {format(new Date(quote.created_at!), 'dd/MM/yyyy HH:mm')}
+                              {formatQuoteCode(quote)} • {format(new Date(quote.created_at!), 'dd/MM/yyyy HH:mm')}
                             </p>
                           </div>
                           <div className="text-right">

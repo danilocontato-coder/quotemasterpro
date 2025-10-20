@@ -3,13 +3,26 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
 type Client = Database['public']['Tables']['clients']['Row'];
-type Quote = Database['public']['Tables']['quotes']['Row'];
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type AuditLog = Database['public']['Tables']['audit_logs']['Row'];
 
+// Partial Quote para exibição no modal (campos essenciais)
+interface QuoteListItem {
+  id: string;
+  local_code: string | null;
+  title: string;
+  description: string | null;
+  status: string;
+  total: number;
+  items_count: number;
+  created_at: string;
+  client_id: string;
+  on_behalf_of_client_id: string | null;
+}
+
 export interface CondominioDetail {
   condominio: Client | null;
-  quotes: Quote[];
+  quotes: QuoteListItem[];
   users: Profile[];
   auditLogs: AuditLog[];
   metrics: {
@@ -47,7 +60,7 @@ export function useCondominioDetail(condominioId: string | null) {
       // Buscar cotações (incluindo on_behalf_of_client_id)
       const { data: quotes, error: quotesError } = await supabase
         .from('quotes')
-        .select('*')
+        .select('id, local_code, title, description, status, total, items_count, created_at, client_id, on_behalf_of_client_id')
         .or(`client_id.eq.${condominioId},on_behalf_of_client_id.eq.${condominioId}`)
         .order('created_at', { ascending: false })
         .limit(50);
