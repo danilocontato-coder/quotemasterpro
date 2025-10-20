@@ -134,8 +134,16 @@ export const usePredictiveInsights = () => {
   };
 
   const generateInsights = async () => {
-    if (!user.clientId) {
-      setError('Client ID não encontrado');
+    if (!user?.clientId) {
+      const errorMsg = 'Você precisa estar vinculado a um condomínio para visualizar insights';
+      console.error('❌ [PREDICTIVE-INSIGHTS] Client ID não encontrado:', { user });
+      setError(errorMsg);
+      toast({
+        title: "Acesso Restrito",
+        description: errorMsg,
+        variant: "destructive"
+      });
+      setIsLoading(false);
       return;
     }
 
@@ -160,7 +168,12 @@ export const usePredictiveInsights = () => {
 
       if (functionError) {
         console.error('❌ [PREDICTIVE-INSIGHTS] Erro na edge function:', functionError);
-        throw functionError;
+        throw new Error(functionError.message || 'Erro ao processar insights');
+      }
+
+      if (!insightsData?.success) {
+        console.error('❌ [PREDICTIVE-INSIGHTS] Resposta inválida:', insightsData);
+        throw new Error(insightsData?.error || 'Resposta inválida da IA');
       }
 
       console.log('✅ [PREDICTIVE-INSIGHTS] Insights recebidos:', insightsData);
@@ -172,10 +185,11 @@ export const usePredictiveInsights = () => {
       });
     } catch (err: any) {
       console.error('💥 [PREDICTIVE-INSIGHTS] Erro ao gerar insights:', err);
-      setError(err.message);
+      const errorMessage = err.message || 'Erro desconhecido ao gerar insights';
+      setError(errorMessage);
       toast({
         title: "Erro ao gerar insights",
-        description: err.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -184,10 +198,13 @@ export const usePredictiveInsights = () => {
   };
 
   useEffect(() => {
-    if (user.clientId) {
+    if (user?.clientId) {
       generateInsights();
+    } else {
+      console.log('⏸️ [PREDICTIVE-INSIGHTS] Aguardando clientId do usuário');
+      setIsLoading(false);
     }
-  }, [user.clientId]);
+  }, [user?.clientId]);
 
   return {
     data,

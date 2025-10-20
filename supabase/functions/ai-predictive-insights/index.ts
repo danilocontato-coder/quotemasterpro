@@ -89,8 +89,58 @@ Foque em insights práticos que gerem economia real, reduzam riscos ou melhorem 
             content: prompt
           }
         ],
-        temperature: 0.7,
-        response_format: { type: "json_object" }
+        tools: [{
+          type: "function",
+          function: {
+            name: "generate_insights",
+            description: "Gera insights preditivos sobre dados de cotações",
+            parameters: {
+              type: "object",
+              properties: {
+                insights: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      type: { type: "string", enum: ["cost_saving", "efficiency", "risk_alert", "trend", "recommendation"] },
+                      title: { type: "string" },
+                      message: { type: "string" },
+                      impact: { type: "string", enum: ["high", "medium", "low"] },
+                      action: { type: "string" },
+                      value: { type: "number" },
+                      confidence: { type: "number" }
+                    },
+                    required: ["type", "title", "message", "impact", "action", "confidence"]
+                  }
+                },
+                predictions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      category: { type: "string" },
+                      predictedDemand: { type: "string" },
+                      suggestedAction: { type: "string" },
+                      timeframe: { type: "string" }
+                    },
+                    required: ["category", "predictedDemand", "suggestedAction", "timeframe"]
+                  }
+                },
+                summary: {
+                  type: "object",
+                  properties: {
+                    totalSavingsOpportunity: { type: "number" },
+                    riskScore: { type: "number" },
+                    efficiencyScore: { type: "number" }
+                  },
+                  required: ["totalSavingsOpportunity", "riskScore", "efficiencyScore"]
+                }
+              },
+              required: ["insights", "predictions", "summary"]
+            }
+          }
+        }],
+        tool_choice: { type: "function", function: { name: "generate_insights" } }
       }),
     });
 
@@ -101,14 +151,20 @@ Foque em insights práticos que gerem economia real, reduzam riscos ou melhorem 
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    console.log('🔍 [AI-INSIGHTS] Resposta da API:', JSON.stringify(data, null, 2));
     
+    const toolCall = data.choices[0]?.message?.tool_calls?.[0];
+    if (!toolCall) {
+      throw new Error('Nenhum tool call retornado pela IA');
+    }
+    
+    const aiResponse = JSON.parse(toolCall.function.arguments);
     console.log('✅ [AI-INSIGHTS] Insights gerados com sucesso');
 
     return new Response(
       JSON.stringify({
         success: true,
-        data: JSON.parse(aiResponse),
+        data: aiResponse,
         generatedAt: new Date().toISOString()
       }),
       {
