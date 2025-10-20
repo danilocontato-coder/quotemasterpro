@@ -100,17 +100,29 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
   
   const [formData, setFormData] = useState<Partial<SupplierFormData>>(() => {
     if (editingSupplier) {
+      console.log('[useSupplierForm] 📥 Inicializando com editingSupplier:', editingSupplier);
+      
+      // Extrair address corretamente (JSONB ou string)
+      let addressString = '';
+      if (editingSupplier.address) {
+        if (typeof editingSupplier.address === 'string') {
+          addressString = editingSupplier.address;
+        } else {
+          addressString = buildAddressString(editingSupplier.address);
+        }
+      }
+      
       return {
         name: editingSupplier.name || '',
         document_type: (editingSupplier.document_type as 'cpf' | 'cnpj') || 'cnpj',
         document_number: editingSupplier.document_number || '',
         email: editingSupplier.email || '',
-        whatsapp: editingSupplier.whatsapp || '',
-        phone: editingSupplier.phone || '',
-        website: editingSupplier.website || '',
+        whatsapp: editingSupplier.whatsapp || undefined,
+        phone: editingSupplier.phone || undefined,
+        website: editingSupplier.website || undefined,
         state: editingSupplier.state || '',
         city: editingSupplier.city || '',
-        address: editingSupplier.address || '',
+        address: addressString,
         specialties: editingSupplier.specialties || [],
         type: editingSupplier.type || 'local',
         status: editingSupplier.status || 'active',
@@ -141,22 +153,43 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
   // Atualizar formData quando editingSupplier mudar
   useEffect(() => {
     if (editingSupplier) {
+      console.log('[useSupplierForm] 📥 Carregando dados de edição:', editingSupplier);
+      
+      // Extrair address corretamente (JSONB ou string)
+      let addressString = '';
+      if (editingSupplier.address) {
+        if (typeof editingSupplier.address === 'string') {
+          addressString = editingSupplier.address;
+        } else {
+          // Se for JSONB, usar buildAddressString()
+          addressString = buildAddressString(editingSupplier.address);
+        }
+      }
+      
       setFormData({
         name: editingSupplier.name || '',
         document_type: (editingSupplier.document_type as 'cpf' | 'cnpj') || 'cnpj',
         document_number: editingSupplier.document_number || '',
         email: editingSupplier.email || '',
-        whatsapp: editingSupplier.whatsapp || '',
-        phone: editingSupplier.phone || '',
-        website: editingSupplier.website || '',
+        whatsapp: editingSupplier.whatsapp || undefined,
+        phone: editingSupplier.phone || undefined,
+        website: editingSupplier.website || undefined,
         state: editingSupplier.state || '',
         city: editingSupplier.city || '',
-        address: editingSupplier.address || '',
+        address: addressString,
         specialties: editingSupplier.specialties || [],
         type: editingSupplier.type || 'local',
         status: editingSupplier.status || 'active',
         client_id: editingSupplier.client_id || profile?.client_id || '',
       });
+      
+      console.log('[useSupplierForm] ✅ FormData atualizado:', {
+        address: addressString,
+        whatsapp: editingSupplier.whatsapp || undefined,
+        state: editingSupplier.state,
+        city: editingSupplier.city
+      });
+      
       setErrors({});
       setCurrentStep(1);
     }
@@ -246,9 +279,20 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
           basicInfoSchema.parse(formData);
           break;
         case 2:
+          console.log('[useSupplierForm] Validando contato', {
+            email: formData.email,
+            whatsapp: formData.whatsapp,
+            phone: formData.phone,
+            website: formData.website
+          });
           contactSchema.parse(formData);
           break;
         case 3:
+          console.log('[useSupplierForm] Validando localização', {
+            state: formData.state,
+            city: formData.city,
+            address: formData.address
+          });
           locationSchema.parse(formData);
           break;
         case 4:
