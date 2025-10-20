@@ -27,8 +27,7 @@ import {
 import { Plus, Search, Users, Building2, Award, Loader2 } from 'lucide-react';
 import { useAdministradoraSuppliersManagement } from '@/hooks/useAdministradoraSuppliersManagement';
 import { AdministradoraSupplierCard } from '@/components/administradora/suppliers/AdministradoraSupplierCard';
-import { SmartSupplierModal } from '@/components/suppliers/SmartSupplierModal';
-import { EditLocalSupplierModal } from '@/components/administradora/suppliers/EditLocalSupplierModal';
+import { AdministradoraSupplierFormModal } from '@/components/administradora/suppliers/AdministradoraSupplierFormModal';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function FornecedoresPage() {
@@ -45,7 +44,7 @@ export default function FornecedoresPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [showSmartModal, setShowSmartModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
   const [supplierToDelete, setSupplierToDelete] = useState<any>(null);
@@ -257,7 +256,7 @@ export default function FornecedoresPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => setShowSmartModal(true)}>
+            <Button onClick={() => setShowCreateModal(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Novo Fornecedor
             </Button>
@@ -273,7 +272,7 @@ export default function FornecedoresPage() {
                     : 'Nenhum fornecedor cadastrado ainda'}
                 </p>
                 {!searchTerm && statusFilter === 'all' && (
-                  <Button className="mt-4" onClick={() => setShowSmartModal(true)}>
+                  <Button className="mt-4" onClick={() => setShowCreateModal(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Cadastrar Primeiro Fornecedor
                   </Button>
@@ -348,23 +347,29 @@ export default function FornecedoresPage() {
       </Tabs>
 
       {/* Modals */}
-      <SmartSupplierModal
-        isOpen={showSmartModal}
-        onOpenChange={setShowSmartModal}
-        onSuccess={() => {
-          setShowSmartModal(false);
-          // Recarregar lista de fornecedores após sucesso
-          window.location.reload();
-        }}
-        clientId={currentClientId || undefined}
-      />
+      {currentClientId && (
+        <>
+          <AdministradoraSupplierFormModal
+            open={showCreateModal}
+            onClose={() => {
+              setShowCreateModal(false);
+              window.location.reload();
+            }}
+            administradoraId={currentClientId}
+          />
 
-      <EditLocalSupplierModal
-        open={showEditModal}
-        onOpenChange={setShowEditModal}
-        supplier={selectedSupplier}
-        onUpdateSupplier={updateLocalSupplier}
-      />
+          <AdministradoraSupplierFormModal
+            open={showEditModal}
+            onClose={() => {
+              setShowEditModal(false);
+              setSelectedSupplier(null);
+              window.location.reload();
+            }}
+            administradoraId={currentClientId}
+            editingSupplier={selectedSupplier}
+          />
+        </>
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!supplierToDelete} onOpenChange={() => setSupplierToDelete(null)}>
