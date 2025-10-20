@@ -19,10 +19,23 @@ import { getCachedBaseUrl } from "@/utils/systemConfig";
 interface SendQuoteToSuppliersModalProps {
   quote: any;
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
-export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSuppliersModalProps) {
-  const [open, setOpen] = useState(false);
+export function SendQuoteToSuppliersModal({ 
+  quote, 
+  trigger, 
+  open: externalOpen, 
+  onOpenChange: externalOnOpenChange,
+  onSuccess 
+}: SendQuoteToSuppliersModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Use external control if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
@@ -352,6 +365,11 @@ export function SendQuoteToSuppliersModal({ quote, trigger }: SendQuoteToSupplie
             console.log(`  Link completo: ${linkData.full_link}`);
           }
         });
+        
+        // Call success callback if provided
+        if (onSuccess) {
+          onSuccess();
+        }
         
         // Don't close modal immediately - show generated links
         // setOpen(false);

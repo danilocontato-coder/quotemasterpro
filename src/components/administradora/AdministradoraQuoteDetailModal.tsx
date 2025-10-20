@@ -25,6 +25,7 @@ import { SupplierStatusCard } from '../quotes/SupplierStatusCard';
 import { ProposalComparisonTable } from '../quotes/ProposalComparisonTable';
 import { ProposalDashboardMetrics } from '../quotes/ProposalDashboardMetrics';
 import { DecisionMatrixWidget } from '../quotes/DecisionMatrixWidget';
+import { SendQuoteToSuppliersModal } from '../quotes/SendQuoteToSuppliersModal';
 import { getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { supabase } from '@/integrations/supabase/client';
@@ -88,6 +89,7 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
   const [isLoading, setIsLoading] = useState(false);
   const [showConsultantAnalysis, setShowConsultantAnalysis] = useState(false);
   const [showItemAnalysis, setShowItemAnalysis] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [manualOverride, setManualOverride] = useState(false);
   
@@ -171,13 +173,7 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
   };
 
   const handleSendToSuppliers = () => {
-    if (!quote) return;
-    
-    handleStatusChange('sent');
-    toast({
-      title: "Cotação enviada!",
-      description: "A cotação foi enviada para os fornecedores selecionados.",
-    });
+    setShowSendModal(true);
   };
 
   const handleApproveOptimal = () => {
@@ -638,6 +634,21 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
           title="🧩 Análise Inteligente - Melhores Preços por Item"
         />
       )}
+
+      {/* Modal de Envio para Fornecedores */}
+      <SendQuoteToSuppliersModal 
+        quote={quote}
+        open={showSendModal}
+        onOpenChange={setShowSendModal}
+        onSuccess={() => {
+          setShowSendModal(false);
+          handleStatusChange('sent');
+          toast({
+            title: "Cotação enviada!",
+            description: "A cotação foi enviada com sucesso para os fornecedores.",
+          });
+        }}
+      />
     </>
   );
 };
