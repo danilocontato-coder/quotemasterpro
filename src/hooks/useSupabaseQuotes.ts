@@ -96,25 +96,13 @@ export const useSupabaseQuotes = () => {
         `)
         .order('created_at', { ascending: false });
 
-      // Apply filters based on user role
-      if (user.role === 'admin') {
-        console.log('👑 Admin user - fetching all quotes');
-        // Admin can see all quotes
-      } else if (user.role === 'supplier') {
-        console.log('🏭 Supplier user - filtering quotes for supplier:', user.supplierId);
-        // Only show quotes that are relevant to this supplier
-        query = query.or(`supplier_id.eq.${user.supplierId},supplier_scope.eq.all,supplier_scope.eq.global,status.eq.sent,status.eq.receiving`);
-      } else {
-        console.log('🏢 Client user - filtering quotes for client:', user.clientId);
-        // Client users only see their own quotes
-        if (user.clientId) {
-          query = query.eq('client_id', user.clientId);
-        } else {
-          console.warn('⚠️ Client user without clientId');
-          setQuotes([]);
-          return;
-        }
-      }
+      // 🔒 SEGURANÇA: Confiar totalmente no RLS (Row Level Security)
+      // As policies do banco agora garantem isolamento multi-tenant correto:
+      // - quotes_client_view: Clientes veem APENAS suas cotações
+      // - quotes_supplier_view: Fornecedores veem APENAS cotações atribuídas
+      // - quotes_administradora_view: Administradoras veem suas cotações + filhos
+      // - quotes_admin_view: Admin global vê tudo
+      console.log(`🔒 Fetching quotes com RLS (role: ${user.role})`);
 
       const { data, error: fetchError } = await query;
 
