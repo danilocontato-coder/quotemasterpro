@@ -100,10 +100,20 @@ serve(async (req) => {
       
       // Check for hardcoded templates first
       if (payload.template_type === 'condominio_welcome') {
-        const { getCondominioWelcomeEmail } = await import('./_templates/condominio_welcome.ts');
-        payload.html = getCondominioWelcomeEmail(payload.template_data || {});
+        const d = payload.template_data || {};
         payload.subject = `Bem-vindo ao ${branding.company_name}`;
-        console.log('✅ Using hardcoded condominio_welcome template');
+        payload.html = `
+          <html><body style="font-family: Arial, sans-serif; color:#0F172A;">
+            <h1 style="color:${branding.primary_color}">Bem-vindo ao ${branding.company_name}</h1>
+            <p>Olá <strong>${d.condominio_name || ''}</strong>, sua conta foi criada por <strong>${d.administradora_name || 'sua administradora'}</strong>.</p>
+            <p><strong>E-mail:</strong> ${d.email || ''}</p>
+            <p><strong>Senha temporária:</strong> ${d.temporary_password || ''}</p>
+            <p><a href="${d.login_url || baseUrl}" style="background:${branding.primary_color}; color:#fff; padding:10px 16px; border-radius:6px; text-decoration:none;">Acessar o sistema</a></p>
+            <hr/>
+            <small>Suporte: ${d.support_email || 'suporte@cotiz.com'}</small>
+          </body></html>
+        `;
+        console.log('✅ Using built-in condominio_welcome template');
       } else {
         // Load from database
         const { data: template } = await supabase
