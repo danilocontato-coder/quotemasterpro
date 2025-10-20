@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
  * Generate a short link for a quote
  * This calls the edge function to create a token and return the short URL
  * Automatically reuses existing valid tokens for the same quote
+ * @param quoteId - Quote UUID (NOT local_code like RFQ01)
  * @param supplierId - Optional supplier ID to generate a personalized link
  */
 export async function generateQuoteShortLink(
@@ -26,6 +27,16 @@ export async function generateQuoteShortLink(
   error?: string;
 }> {
   try {
+    // Validate that quoteId is a UUID (security: prevent local_code ambiguity)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(quoteId)) {
+      console.error('❌ [QUOTE-TOKENS] Invalid quote ID format (expected UUID):', quoteId);
+      return {
+        success: false,
+        error: 'Quote ID must be a valid UUID. Use quote.id instead of quote.local_code'
+      };
+    }
+
     const { data, error } = await supabase.functions.invoke('generate-quote-token', {
       body: { 
         quote_id: quoteId,

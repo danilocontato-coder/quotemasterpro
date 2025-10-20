@@ -19,16 +19,39 @@ const SupplierQuoteLink: React.FC<SupplierQuoteLinkProps> = ({ quoteId, quoteTit
 
   useEffect(() => {
     const generateLink = async () => {
+      // Validate UUID format before attempting to generate link
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(quoteId)) {
+        console.error('❌ [SUPPLIER-QUOTE-LINK] Invalid quoteId format (expected UUID):', quoteId);
+        toast({
+          title: "Erro de Configuração",
+          description: "ID da cotação inválido. Use quote.id (UUID) em vez de quote.local_code",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const result = await generateQuoteShortLink(quoteId);
         if (result.success && (result.shortUrl || result.fullUrl)) {
           setSupplierLink(result.shortUrl || result.fullUrl || '');
         } else {
           console.error('Falha ao gerar short link:', result.error);
+          toast({
+            title: "Erro ao gerar link",
+            description: result.error || "Não foi possível gerar o link de acesso",
+            variant: "destructive"
+          });
           setSupplierLink('');
         }
       } catch (error) {
         console.error('Erro ao gerar link:', error);
+        toast({
+          title: "Erro",
+          description: "Erro inesperado ao gerar link",
+          variant: "destructive"
+        });
         setSupplierLink('');
       } finally {
         setIsLoading(false);
@@ -36,7 +59,7 @@ const SupplierQuoteLink: React.FC<SupplierQuoteLinkProps> = ({ quoteId, quoteTit
     };
 
     generateLink();
-  }, [quoteId]);
+  }, [quoteId, toast]);
 
   const copyToClipboard = async () => {
     if (!supplierLink) return;

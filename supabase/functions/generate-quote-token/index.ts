@@ -27,20 +27,33 @@ serve(async (req) => {
       )
     }
 
-    // Get quote to extract client_id and deadline (buscar por local_code ou id)
-    let quoteQuery = supabaseClient
+    // Validate that quote_id is a valid UUID (Opção A: UUID obrigatório)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(quote_id)) {
+      console.error('❌ [GENERATE-QUOTE-TOKEN] Invalid quote_id format (must be UUID):', quote_id)
+      return new Response(
+        JSON.stringify({ 
+          error: 'quote_id must be a valid UUID',
+          received: quote_id,
+          hint: 'Use quote.id (UUID) instead of quote.local_code'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Get quote by UUID only (no ambiguity with multi-tenant local_codes)
+    const { data: quoteData, error: quoteError } = await supabaseClient
       .from('quotes')
       .select('id, local_code, client_id, deadline')
-    
-    // Tentar buscar por local_code primeiro (formato RFQ01, RFQ02, etc)
-    // Se não encontrar, buscar por id (UUID)
-    if (quote_id.startsWith('RFQ')) {
-      quoteQuery = quoteQuery.eq('local_code', quote_id)
-    } else {
-      quoteQuery = quoteQuery.eq('id', quote_id)
-    }
-    
-    const { data: quoteData, error: quoteError } = await quoteQuery.maybeSingle()
+      .eq('id', quote_id)
+      .maybeSingle()
+
+    console.log('📋 [GENERATE-QUOTE-TOKEN] Quote lookup:', {
+      quote_id,
+      found: !!quoteData,
+      client_id: quoteData?.client_id,
+      local_code: quoteData?.local_code
+    })
 
     if (quoteError || !quoteData) {
       console.error('Quote not found:', quoteError)
