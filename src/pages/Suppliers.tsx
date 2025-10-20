@@ -1,6 +1,6 @@
 // Página de Fornecedores - Sistema funcionando ✅
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,18 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterMetricCard } from "@/components/ui/filter-metric-card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SupplierFormModal } from "@/components/suppliers/SupplierFormModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageLoader } from "@/components/ui/page-loader";
 import { useToast } from "@/hooks/use-toast";
+import { STANDARD_SPECIALTIES } from "@/components/common/SpecialtiesInput";
 
 export default function Suppliers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [specialtyFilter, setSpecialtyFilter] = useState<string[]>([]);
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
@@ -89,7 +92,11 @@ export default function Suppliers() {
       matchesFilter = supplier.status !== "active";
     }
     
-    return matchesSearch && matchesFilter;
+    // Filtro por especialidades
+    const matchesSpecialty = specialtyFilter.length === 0 || 
+      (supplier.specialties && specialtyFilter.some(sf => supplier.specialties?.includes(sf)));
+    
+    return matchesSearch && matchesFilter && matchesSpecialty;
   });
 
   // Calculate metrics
@@ -154,7 +161,7 @@ export default function Suppliers() {
   // Resetar página quando filtros mudam
   useEffect(() => {
     resetPage();
-  }, [searchTerm, activeFilter]);
+  }, [searchTerm, activeFilter, specialtyFilter]);
 
   const handleGroupCreate = () => {
     console.log('Group created');
@@ -298,6 +305,52 @@ export default function Suppliers() {
                   </option>
                 ))}
               </select>
+              
+              {/* Filtro de Especialidades */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Wrench className="h-4 w-4" />
+                    <span className="hidden sm:inline">Especialidades</span>
+                    {specialtyFilter.length > 0 && (
+                      <Badge variant="secondary" className="ml-1">
+                        {specialtyFilter.length}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[280px] max-h-[400px] overflow-y-auto">
+                  {STANDARD_SPECIALTIES.map(specialty => (
+                    <DropdownMenuCheckboxItem
+                      key={specialty}
+                      checked={specialtyFilter.includes(specialty)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSpecialtyFilter([...specialtyFilter, specialty]);
+                        } else {
+                          setSpecialtyFilter(specialtyFilter.filter(s => s !== specialty));
+                        }
+                      }}
+                    >
+                      {specialty}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  {specialtyFilter.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => setSpecialtyFilter([])}
+                      >
+                        Limpar filtros
+                      </Button>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
               <Button variant="outline" size="icon">
                 <Filter className="h-4 w-4" />
               </Button>
@@ -368,6 +421,31 @@ export default function Suppliers() {
                        </div>
                      )}
                    </div>
+
+                  {/* Specialties Tags */}
+                  {supplier.specialties && supplier.specialties.length > 0 && (
+                    <div className="pt-2 border-t border-border">
+                      <div className="flex items-start gap-2">
+                        <Wrench className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div className="flex flex-wrap gap-1">
+                          {supplier.specialties.slice(0, 3).map((specialty) => (
+                            <Badge 
+                              key={specialty} 
+                              variant="outline" 
+                              className="text-xs bg-primary/5 text-primary border-primary/20"
+                            >
+                              {specialty}
+                            </Badge>
+                          ))}
+                          {supplier.specialties.length > 3 && (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              +{supplier.specialties.length - 3} mais
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Date Added */}
                   <div className="pt-2 border-t border-border">
