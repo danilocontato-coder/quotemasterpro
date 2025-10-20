@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { AdministradoraQuoteDetail } from '@/types/administradoraQuotes';
+import { AdministradoraQuoteDetail, QuoteItem, QuoteProposal } from '@/types/administradoraQuotes';
 
 export const useAdministradoraQuoteDetail = (quoteId?: string) => {
   const [quote, setQuote] = useState<AdministradoraQuoteDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchQuoteDetail = async () => {
+  const fetchQuoteDetail = useCallback(async () => {
     if (!quoteId) {
       setIsLoading(false);
       return;
@@ -17,7 +17,9 @@ export const useAdministradoraQuoteDetail = (quoteId?: string) => {
       setIsLoading(true);
       setError(null);
 
-      // Fetch quote with items
+      console.log('🔍 Fetching administradora quote detail for:', quoteId);
+
+      // Fetch quote with complete data
       const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
         .select('*')
@@ -26,78 +28,210 @@ export const useAdministradoraQuoteDetail = (quoteId?: string) => {
 
       if (quoteError) throw quoteError;
 
+      // Fetch client name separately
+      let clientName = 'Cliente';
+      let onBehalfOfClientName: string | undefined;
+      
+      if (quoteData.client_id) {
+        const { data: clientData } = await supabase
+          .from('clients_condos')
+          .select('name')
+          .eq('id', quoteData.client_id)
+          .single();
+        if (clientData) clientName = clientData.name;
+      }
+      
+      if (quoteData.on_behalf_of_client_id) {
+        const { data: onBehalfData } = await supabase
+          .from('clients_condos')
+          .select('name')
+          .eq('id', quoteData.on_behalf_of_client_id)
+          .single();
+        if (onBehalfData) onBehalfOfClientName = onBehalfData.name;
+      }
+
       // Fetch items
       const { data: itemsData, error: itemsError } = await supabase
         .from('quote_items')
         .select('*')
-        .eq('quote_id', quoteId);
+        .eq('quote_id', quoteId)
+        .order('product_name');
 
       if (itemsError) throw itemsError;
 
-      // Fetch proposals
+      // Fetch proposals with supplier details
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('quote_responses')
         .select(`
           *,
           suppliers (
+            id,
             name,
             rating,
-            is_certified
+            is_certified,
+            whatsapp,
+            phone,
+            status
           )
         `)
-        .eq('quote_id', quoteId);
+        .eq('quote_id', quoteId)
+        .order('created_at', { ascending: false });
 
       if (proposalsError) throw proposalsError;
 
-      // Fetch AI analyses
+      // Fetch AI analyses for this quote
       const { data: analysesData } = await supabase
         .from('ai_proposal_analyses')
         .select('*')
-        .in(
-          'proposal_id',
-          proposalsData?.map((p) => p.id) || []
-        );
+        .eq('quote_id', quoteId)
+        .order('created_at', { ascending: false });
 
-      // Fetch visits
-      const { data: visitsData } = await supabase
-        .from('quote_visits')
-        .select('*')
-        .eq('quote_id', quoteId);
+      // Fetch visits if quote requires visit
+      let visitsData = null;
+      if (quoteData.requires_visit) {
+        const { data } = await supabase
+          .from('quote_visits')
+          .select('*')
+          .eq('quote_id', quoteId)
+          .order('scheduled_date', { ascending: true });
+        visitsData = data;
+      }
 
+      // Fetch audit logs
+      const { data: auditLogsData } = await supabase
+        .from('audit_logs')
+        .select(`
+          id,
+          action,
+          entity_type,
+          entity_id,
+          created_at,
+          details,
+          user_id,
+          profiles:user_id (
+            name,
+            email
+          )
+        `)
+        .eq('entity_id', quoteId)
+        .eq('entity_type', 'quotes')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Transform items
+      const items: QuoteItem[] = (itemsData || []).map(item => ({
+        id: item.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price || 0,
+        total: item.total || (item.quantity * (item.unit_price || 0))
+      }));
+
+      // Transform proposals
+      const proposals: QuoteProposal[] = (proposalsData || []).map(p => ({
+        id: p.id,
+        supplier_id: p.supplier_id,
+        supplier_name: p.supplier_name || p.suppliers?.name || 'Fornecedor',
+        supplier_rating: p.suppliers?.rating,
+        supplier_certified: p.suppliers?.is_certified || false,
+        total_amount: p.total_amount || 0,
+        delivery_time: p.delivery_time || 7,
+        shipping_cost: p.shipping_cost || 0,
+        warranty_months: p.warranty_months || 12,
+        notes: p.notes,
+        status: p.status || 'pending',
+        created_at: p.created_at
+      }));
+
+      // Build complete detail object
       const detail: AdministradoraQuoteDetail = {
-        ...quoteData,
-        items: itemsData || [],
-        proposals:
-          proposalsData?.map((p) => ({
-            id: p.id,
-            supplier_id: p.supplier_id,
-            supplier_name: p.suppliers?.name || 'Unknown',
-            supplier_rating: p.suppliers?.rating,
-            supplier_certified: p.suppliers?.is_certified,
-            total_amount: p.total_amount || 0,
-            delivery_time: p.delivery_time || 0,
-            shipping_cost: p.shipping_cost,
-            warranty_months: p.warranty_months,
-            notes: p.notes,
-            status: p.status || 'pending',
-            created_at: p.created_at,
-          })) || [],
-        analyses: analysesData || [],
+        id: quoteData.id,
+        title: quoteData.title,
+        description: quoteData.description,
+        status: quoteData.status,
+        client_id: quoteData.client_id,
+        client_name: clientName,
+        on_behalf_of_client_id: quoteData.on_behalf_of_client_id,
+        on_behalf_of_client_name: onBehalfOfClientName,
+        supplier_id: quoteData.supplier_id,
+        supplier_name: quoteData.supplier_name,
+        total: quoteData.total || 0,
+        items_count: items.length,
+        responses_count: proposals.length,
+        deadline: quoteData.deadline,
+        created_at: quoteData.created_at,
+        updated_at: quoteData.updated_at,
+        requires_visit: quoteData.requires_visit || false,
+        visit_deadline: quoteData.visit_deadline,
+        advance_payment_required: quoteData.advance_payment_required || false,
+        advance_payment_percentage: quoteData.advance_payment_percentage,
+        local_code: quoteData.local_code,
+        items,
+        proposals,
         visits: visitsData || [],
+        analyses: analysesData || []
       };
+
+      console.log('✅ Quote detail loaded:', {
+        id: detail.id,
+        title: detail.title,
+        items: items.length,
+        proposals: proposals.length,
+        analyses: (analysesData || []).length,
+        visits: (visitsData || []).length
+      });
 
       setQuote(detail);
     } catch (err: any) {
-      console.error('Error fetching quote detail:', err);
+      console.error('❌ Error fetching quote detail:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [quoteId]);
 
   useEffect(() => {
     fetchQuoteDetail();
-  }, [quoteId]);
+
+    // Setup realtime subscription for updates
+    if (!quoteId) return;
+
+    const channel = supabase
+      .channel(`administradora-quote-${quoteId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'quotes',
+        filter: `id=eq.${quoteId}`
+      }, () => {
+        console.log('📡 Quote updated, refetching...');
+        fetchQuoteDetail();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'quote_responses',
+        filter: `quote_id=eq.${quoteId}`
+      }, () => {
+        console.log('📡 New proposal received, refetching...');
+        fetchQuoteDetail();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'ai_proposal_analyses',
+        filter: `quote_id=eq.${quoteId}`
+      }, () => {
+        console.log('📡 New AI analysis, refetching...');
+        fetchQuoteDetail();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [quoteId, fetchQuoteDetail]);
 
   return {
     quote,
