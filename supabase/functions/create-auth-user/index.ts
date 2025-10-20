@@ -135,6 +135,14 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       action
     });
 
+    // 🔐 FASE 1.1: Debug detalhado de senha
+    console.log('🔐 [PASSWORD_DEBUG]', {
+      passwordLength: password?.length || 0,
+      hasPassword: !!password,
+      emailToCreate: email,
+      willAutoConfirm: true
+    });
+
     console.log('Action type:', action, 'for email:', email);
 
     // Validate input
@@ -250,7 +258,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       if (isEmailExists) {
         console.log('⚠️ Email já existe, tentando obter auth_user_id...');
         
-        // Try to fetch existing auth user by email
+        // 🔧 FASE 1.2: Melhorar tratamento de usuário existente com atualização de senha
         let existingUserId: string | null = null;
 
         // 1) Try profiles by email first (faster)
@@ -278,16 +286,56 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
         }
 
         if (existingUserId) {
-          // Return the existing user ID instead of error
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              auth_user_id: existingUserId,
-              already_existed: true,
-              message: 'Auth user já existia'
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-          );
+          // 🔐 FASE 1.2: Forçar atualização de senha para usuário existente
+          console.log('🔄 [USER_EXISTS] Atualizando senha do usuário existente...');
+          
+          try {
+            const { data: updated, error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
+              existingUserId,
+              { 
+                password, 
+                email_confirm: true,
+                user_metadata: {
+                  name,
+                  role: effectiveRole,
+                  password_updated_at: new Date().toISOString()
+                }
+              }
+            );
+            
+            if (updateErr) {
+              console.error('❌ Erro ao atualizar senha:', updateErr);
+              throw updateErr;
+            }
+            
+            console.log('✅ Senha atualizada com sucesso para usuário existente');
+            
+            // Return the existing user ID with password updated flag
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                auth_user_id: existingUserId,
+                already_existed: true,
+                password_updated: true,
+                temporary_password: password,
+                message: 'Auth user já existia, senha atualizada'
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+            );
+          } catch (updateError) {
+            console.error('❌ Falha ao atualizar senha do usuário existente:', updateError);
+            // Continue para retornar o usuário existente mesmo se a atualização falhar
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                auth_user_id: existingUserId,
+                already_existed: true,
+                password_updated: false,
+                message: 'Auth user já existia (senha não atualizada)'
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+            );
+          }
         }
 
         return new Response(
@@ -311,6 +359,15 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
     }
 
     console.log('Auth user created successfully:', authData.user?.id);
+    
+    // ✅ FASE 1.1: Log detalhado após criação
+    console.log('✅ [AUTH_USER_CREATED]', {
+      userId: authData.user?.id,
+      email: authData.user?.email,
+      emailConfirmed: authData.user?.email_confirmed_at,
+      lastSignIn: authData.user?.last_sign_in_at,
+      createdAt: authData.user?.created_at
+    });
 
     // Link profile and users to client when provided
     const newUserId = authData.user?.id as string | undefined;
@@ -411,6 +468,52 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       console.log('✅ Audit log registrado com sucesso');
     } catch (auditErr) {
       console.error('⚠️ Erro ao registrar audit log (não bloqueante):', auditErr);
+    }
+
+    // 🧪 FASE 1.3: Validação imediata de senha
+    console.log('🧪 [PASSWORD_TEST] Testando login com credenciais recém-criadas...');
+    try {
+      const { data: testSession, error: testError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (testError) {
+        console.error('🚨 [CRITICAL] Senha criada mas login falhou!', {
+          error: testError.message,
+          errorCode: testError.status,
+          email: email
+        });
+        
+        // Registrar falha crítica em audit_logs
+        try {
+          await supabaseAdmin.from('audit_logs').insert({
+            user_id: user.id,
+            action: 'PASSWORD_TEST_FAILED',
+            entity_type: 'users',
+            entity_id: authData.user?.id,
+            panel_type: 'admin',
+            details: {
+              email: email,
+              error: testError.message,
+              test_timestamp: new Date().toISOString()
+            }
+          });
+        } catch (auditErr) {
+          console.error('Erro ao registrar falha de teste de senha:', auditErr);
+        }
+      } else {
+        console.log('✅ [PASSWORD_TEST] Login bem-sucedido!', {
+          canLogin: true,
+          sessionId: testSession?.session?.access_token?.substring(0, 20) + '...'
+        });
+        
+        // Fazer logout imediatamente após teste
+        await supabase.auth.signOut();
+        console.log('🔓 [PASSWORD_TEST] Logout realizado após teste');
+      }
+    } catch (testErr) {
+      console.error('❌ [PASSWORD_TEST] Erro inesperado ao testar senha:', testErr);
     }
 
     // Return the created user data
