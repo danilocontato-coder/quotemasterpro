@@ -291,12 +291,16 @@ export const useSupabaseSuppliers = () => {
 
   const updateSupplier = async (id: string, updates: Partial<Supplier>) => {
     try {
+      console.log('🔄 [UPDATE-SUPPLIER] Iniciando atualização:', { id, updates });
+      
       // Buscar fornecedor atual para comparar documento
       const { data: currentSupplier } = await supabase
         .from('suppliers')
-        .select('document_number, document_type')
+        .select('document_number, document_type, whatsapp, phone, website')
         .eq('id', id)
         .single();
+
+      console.log('📦 [UPDATE-SUPPLIER] Fornecedor atual:', currentSupplier);
 
       // Normalizar ambos os documentos para comparação
       const currentDocNormalized = normalizeDocument(currentSupplier?.document_number || '');
@@ -306,11 +310,18 @@ export const useSupabaseSuppliers = () => {
       const updateData = { ...updates };
       if (newDocNormalized && currentDocNormalized === newDocNormalized) {
         delete updateData.document_number;
-        console.log('🔄 [UPDATE-SUPPLIER] Documento não mudou, removido do update para evitar conflito');
+        console.log('🔄 [UPDATE-SUPPLIER] Documento não mudou, removido do update');
       } else if (updateData.document_number) {
         // Normalizar novo documento antes de salvar
         updateData.document_number = normalizeDocument(updateData.document_number);
       }
+
+      console.log('📝 [UPDATE-SUPPLIER] Dados que serão enviados:', updateData);
+      console.log('📱 [UPDATE-SUPPLIER] Campos de contato:', {
+        whatsapp: updateData.whatsapp,
+        phone: updateData.phone,
+        website: updateData.website
+      });
 
       const { data, error } = await supabase
         .from('suppliers')
@@ -319,7 +330,17 @@ export const useSupabaseSuppliers = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [UPDATE-SUPPLIER] Erro no UPDATE:', error);
+        throw error;
+      }
+
+      console.log('✅ [UPDATE-SUPPLIER] Fornecedor atualizado com sucesso:', data);
+      console.log('📱 [UPDATE-SUPPLIER] Contatos salvos:', {
+        whatsapp: data.whatsapp,
+        phone: data.phone,
+        website: data.website
+      });
 
       setSuppliers(prev => 
         prev.map(supplier => supplier.id === id ? { ...supplier, ...data as Supplier } : supplier)
@@ -331,7 +352,7 @@ export const useSupabaseSuppliers = () => {
       });
       return true;
     } catch (error) {
-      console.error('Error updating supplier:', error);
+      console.error('💥 [UPDATE-SUPPLIER] Erro inesperado:', error);
       toast({
         title: "Erro ao atualizar fornecedor",
         description: "Não foi possível atualizar o fornecedor.",

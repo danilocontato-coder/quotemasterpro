@@ -412,12 +412,23 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       // Cenário 3: Atualizar fornecedor existente
       if (editingSupplier) {
         console.log('[useSupplierForm] Modo edição - atualizando fornecedor:', editingSupplier.id);
+        console.log('[useSupplierForm] 📝 Dados validados que serão enviados:', validatedData);
+        console.log('[useSupplierForm] 📱 Campos de contato:', {
+          whatsapp: validatedData.whatsapp,
+          phone: validatedData.phone,
+          website: validatedData.website
+        });
+        
         result = await updateSupplier(editingSupplier.id, validatedData);
+        
         if (result) {
+          console.log('[useSupplierForm] ✅ Update bem-sucedido');
           toast({
             title: "Fornecedor atualizado!",
             description: `${validatedData.name} foi atualizado com sucesso.`,
           });
+        } else {
+          console.error('[useSupplierForm] ❌ Update falhou');
         }
         
         resetForm();
