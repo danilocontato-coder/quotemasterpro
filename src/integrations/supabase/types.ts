@@ -5984,20 +5984,15 @@ export type Database = {
       search_supplier_by_cnpj: {
         Args: { search_cnpj: string }
         Returns: {
-          address: Json
           certification_status: string
-          city: string
           cnpj: string
+          document_number: string
+          document_type: string
           email: string
           id: string
-          is_associated: boolean
           name: string
           phone: string
-          specialties: string[]
-          state: string
           status: string
-          website: string
-          whatsapp: string
         }[]
       }
       send_automatic_reminders: {

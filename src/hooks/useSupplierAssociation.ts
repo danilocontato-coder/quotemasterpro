@@ -8,13 +8,15 @@ export interface SupplierSearchResult {
   cnpj: string;
   email: string;
   phone: string;
-  whatsapp: string;
-  website: string;
-  address: any;
-  specialties: string[];
+  whatsapp?: string;
+  website?: string;
+  address?: any;
+  specialties?: string[];
   certification_status: string;
   status: string;
-  association_status: string;
+  document_number: string;
+  document_type: string;
+  association_status?: string;
 }
 
 export interface FindSupplierResult {
@@ -46,13 +48,8 @@ export function useSupplierAssociation() {
 
       if (error) throw error;
       
-      // Transformar is_associated em association_status
-      const transformedData = (data || []).map(supplier => ({
-        ...supplier,
-        association_status: supplier.is_associated ? 'associated' : 'not_associated'
-      }));
-      
-      return transformedData;
+      // Retornar dados direto sem transformação (association_status não é mais necessário)
+      return data || [];
     } catch (error) {
       console.error('Erro ao buscar fornecedor por CNPJ:', error);
       throw error;

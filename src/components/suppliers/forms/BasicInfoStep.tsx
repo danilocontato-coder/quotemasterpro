@@ -82,22 +82,63 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
   const searchSupplierByDocument = async (searchDoc: string, docType: 'cpf' | 'cnpj') => {
     const cleanDoc = normalizeDocument(searchDoc);
     const expectedLength = docType === 'cpf' ? 11 : 14;
-    if (!cleanDoc || cleanDoc.length < expectedLength) return;
+    
+    // Log detalhado do documento
+    console.log('[BasicInfoStep] 🔍 Iniciando busca de fornecedor:', {
+      original: searchDoc,
+      normalized: cleanDoc,
+      cleanLength: cleanDoc.length,
+      expectedLength,
+      docType,
+      userId: user?.id,
+      userRole: user?.role,
+      isAdmin
+    });
+    
+    if (!cleanDoc || cleanDoc.length < expectedLength) {
+      console.warn('[BasicInfoStep] ⚠️ Documento incompleto:', {
+        cleanDoc,
+        length: cleanDoc.length,
+        required: expectedLength
+      });
+      return;
+    }
     
     setIsSearching(true);
-    console.log('[BasicInfoStep] Buscando fornecedor via RPC:', { cleanDoc, docType });
     
     try {
+      console.log('[BasicInfoStep] 📡 Chamando RPC search_supplier_by_cnpj:', {
+        search_cnpj: cleanDoc,
+        userContext: {
+          userId: user?.id,
+          role: user?.role
+        }
+      });
+      
       const { data, error } = await supabase.rpc('search_supplier_by_cnpj', {
         search_cnpj: cleanDoc
       });
 
       if (error) {
-        console.error('[BasicInfoStep] Erro ao buscar fornecedores:', error);
+        console.error('[BasicInfoStep] ❌ Erro ao buscar fornecedores:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details
+        });
+        
+        toast({
+          title: "Erro na busca",
+          description: `Não foi possível buscar fornecedores: ${error.message}`,
+          variant: "destructive"
+        });
         return;
       }
 
-      console.log('[BasicInfoStep] Resultado da busca:', data);
+      console.log('[BasicInfoStep] ✅ Resultado da busca RPC:', {
+        found: data?.length || 0,
+        suppliers: data
+      });
 
       if (data && data.length > 0) {
         // Inferir document_type e document_number se não estiverem presentes
@@ -115,14 +156,53 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
         
         setExistingSuppliers(enrichedData);
         setShowExistingOptions(true);
-        console.log('[BasicInfoStep] Fornecedores encontrados:', enrichedData.length);
+        
+        console.log('[BasicInfoStep] ✅ Fornecedores processados:', {
+          count: enrichedData.length,
+          suppliers: enrichedData.map(s => ({
+            id: s.id,
+            name: s.name,
+            document: s.document_number,
+            status: s.status,
+            certification: s.certification_status
+          }))
+        });
+        
+        toast({
+          title: `${enrichedData.length} fornecedor(es) encontrado(s)`,
+          description: "Você pode associá-lo ao seu cliente sem criar duplicatas.",
+        });
       } else {
         setExistingSuppliers([]);
         setShowExistingOptions(false);
-        console.log('[BasicInfoStep] Nenhum fornecedor encontrado');
+        
+        console.warn('[BasicInfoStep] ⚠️ Nenhum fornecedor encontrado:', {
+          searchDoc: cleanDoc,
+          docType,
+          userRole: user?.role,
+          suggestion: 'Verifique se o documento está correto ou se o fornecedor existe no banco de dados'
+        });
+        
+        // Toast informativo (não destrutivo)
+        toast({
+          title: "Nenhum fornecedor encontrado",
+          description: `Não encontramos fornecedores com este ${docType === 'cpf' ? 'CPF' : 'CNPJ'}. Você pode cadastrar um novo.`,
+          variant: "default"
+        });
       }
     } catch (error) {
-      console.error('[BasicInfoStep] Erro ao buscar fornecedores:', error);
+      console.error('[BasicInfoStep] 🔥 Exceção ao buscar fornecedores:', {
+        error,
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao buscar fornecedores. Tente novamente.",
+        variant: "destructive"
+      });
     } finally {
       setIsSearching(false);
     }
@@ -135,6 +215,17 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
     // Buscar fornecedores existentes quando documento estiver completo
     const cleanDoc = normalizeDocument(formatted);
     const expectedLength = documentType === 'cpf' ? 11 : 14;
+    
+    console.log('[BasicInfoStep] 📝 Documento alterado:', {
+      original: e.target.value,
+      formatted,
+      cleaned: cleanDoc,
+      length: cleanDoc.length,
+      expectedLength,
+      documentType,
+      willSearch: cleanDoc.length === expectedLength
+    });
+    
     if (cleanDoc.length === expectedLength) {
       searchSupplierByDocument(cleanDoc, documentType);
     } else {
@@ -284,6 +375,20 @@ export function BasicInfoStep({ data, errors, onChange, onSelectExistingSupplier
               : 'Será usado para identificação única da empresa'
             }
           </p>
+          
+          {/* Botão de busca manual */}
+          {!showExistingOptions && data.document_number && normalizeDocument(data.document_number).length >= 11 && !isSearching && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => searchSupplierByDocument(data.document_number || '', documentType)}
+              className="mt-2 w-full sm:w-auto"
+            >
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Buscar fornecedor manualmente
+            </Button>
+          )}
         </div>
 
         {/* Mostrar fornecedores existentes com mesmo documento */}

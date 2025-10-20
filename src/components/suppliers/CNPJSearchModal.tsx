@@ -12,12 +12,14 @@ interface ExistingSupplier {
   cnpj: string;
   email: string;
   phone: string;
-  whatsapp: string;
-  website: string;
-  address: any;
-  specialties: string[];
+  whatsapp?: string;
+  website?: string;
+  address?: any;
+  specialties?: string[];
   certification_status: string;
-  is_associated: boolean;
+  status: string;
+  document_number: string;
+  document_type: string;
 }
 
 interface CNPJSearchModalProps {
@@ -129,9 +131,9 @@ export function CNPJSearchModal({ cnpj, onCNPJChange, onReuseData }: CNPJSearchM
                            Certificado
                          </span>
                        )}
-                       {supplier.is_associated && (
+                       {supplier.status === 'active' && (
                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                           Já Associado
+                           Ativo
                          </span>
                        )}
                      </div>
@@ -141,9 +143,8 @@ export function CNPJSearchModal({ cnpj, onCNPJChange, onReuseData }: CNPJSearchM
                     variant="outline"
                     onClick={() => reuseSupplierData(supplier)}
                     className="ml-3"
-                    disabled={supplier.is_associated}
                   >
-                    {supplier.is_associated ? 'Já associado' : 'Associar fornecedor'}
+                    Associar fornecedor
                   </Button>
                 </div>
               ))}
