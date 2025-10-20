@@ -58,11 +58,10 @@ export const usePredictiveInsights = () => {
         deadline,
         quote_items (
           id,
-          description,
+          product_name,
           quantity,
           unit_price,
-          total,
-          category
+          total
         ),
         quote_responses (
           id,
@@ -102,13 +101,13 @@ export const usePredictiveInsights = () => {
         acc[q.status] = (acc[q.status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-      categoryAnalysis: quotes?.flatMap(q => q.quote_items || []).reduce((acc, item: any) => {
-        const cat = item.category || 'Outros';
-        if (!acc[cat]) {
-          acc[cat] = { count: 0, totalValue: 0 };
+      productAnalysis: quotes?.flatMap(q => q.quote_items || []).reduce((acc, item: any) => {
+        const productName = item.product_name || 'Outros';
+        if (!acc[productName]) {
+          acc[productName] = { count: 0, totalValue: 0 };
         }
-        acc[cat].count += 1;
-        acc[cat].totalValue += Number(item.total) || 0;
+        acc[productName].count += 1;
+        acc[productName].totalValue += Number(item.total) || 0;
         return acc;
       }, {} as Record<string, { count: number; totalValue: number }>),
       supplierPerformance: ratings?.reduce((acc, r) => {
