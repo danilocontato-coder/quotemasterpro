@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAINegotiation } from '@/hooks/useAINegotiation';
+import { useSmartCombination, SmartCombinationResult } from '@/hooks/useSmartCombination';
 import { AINegotiationCard } from './AINegotiationCard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -131,6 +132,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const { getNegotiationByQuoteId, startAnalysis, startNegotiation, approveNegotiation, rejectNegotiation } = useAINegotiation();
+  const { calculateBestCombination } = useSmartCombination();
 
   // Reset activeTab when modal opens or defaultTab changes
   React.useEffect(() => {
@@ -421,60 +423,60 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     return false;
   }, [proposals.length, supplierNames.length, totalInvited, isDeadlineExpired, manualOverride]);
 
-  // Calculate best combination (multi-supplier optimization)
+  // Calculate best combination (multi-supplier optimization) - PURELY LOCAL, NO AI TOKENS
   const bestCombination = useMemo(() => {
-    if (proposals.length === 0 || quoteItems.length === 0) return null;
+    if (proposals.length === 0) return null;
+    
+    const result = calculateBestCombination(proposals);
+    if (!result) return null;
 
-    const itemAnalysis = quoteItems.map(quoteItem => {
-      const itemProposals = proposals.map(proposal => {
-        const proposalItem = proposal.items.find(item => item.productId === quoteItem.id);
-        return {
-          supplierId: proposal.supplierId,
-          supplierName: proposal.supplierName,
-          item: proposalItem,
-          reputation: proposal.reputation,
-          deliveryTime: proposal.deliveryTime,
-          shippingCost: proposal.shippingCost
-        };
-      }).filter(p => p.item);
-
-      // Find best price for this item
-      const bestProposal = itemProposals.reduce((best, current) => {
-        if (!current.item || !best.item) return current.item ? current : best;
-        
-        // Score considering price, reputation, and delivery
-        const currentScore = (current.item.unitPrice * -1) + (current.reputation * 2) + (current.deliveryTime * -0.5);
-        const bestScore = (best.item.unitPrice * -1) + (best.reputation * 2) + (best.deliveryTime * -0.5);
-        
-        return currentScore > bestScore ? current : best;
-      }, itemProposals[0]);
-
-      return {
-        id: quoteItem.id,
-        productId: quoteItem.id,
-        productName: quoteItem.product_name,
-        quantity: quoteItem.quantity,
-        bestProposal,
-        allProposals: itemProposals,
-        savings: itemProposals.length > 0 ? 
-          Math.max(...itemProposals.map(p => p.item?.unitPrice || 0)) - (bestProposal?.item?.unitPrice || 0) : 0
-      };
-    });
-
-    const totalSavings = itemAnalysis.reduce((sum, item) => sum + (item.savings * item.quantity), 0);
-    const totalCost = itemAnalysis.reduce((sum, item) => sum + ((item.bestProposal?.item?.unitPrice || 0) * item.quantity), 0);
-    const originalCost = totalCost + totalSavings;
+    // Transform to match existing interface for backward compatibility
+    const itemAnalysis = result.items.map(item => ({
+      id: item.itemId,
+      productId: item.itemId,
+      productName: item.itemName,
+      quantity: item.quantity,
+      bestProposal: {
+        supplierId: item.bestSupplierId,
+        supplierName: item.bestSupplierName,
+        item: {
+          unitPrice: item.bestPrice,
+          brand: undefined
+        },
+        reputation: 0,
+        deliveryTime: 0
+      },
+      allProposals: [
+        {
+          supplierId: item.bestSupplierId,
+          supplierName: item.bestSupplierName,
+          item: {
+            unitPrice: item.bestPrice
+          },
+          reputation: 0
+        },
+        ...item.otherOptions.map(opt => ({
+          supplierId: opt.supplierId,
+          supplierName: opt.supplierName,
+          item: {
+            unitPrice: opt.unitPrice
+          },
+          reputation: 0
+        }))
+      ],
+      savings: item.savings / item.quantity // Per unit savings
+    }));
 
     return {
       items: itemAnalysis,
-      totalSavings,
-      totalCost,
-      originalCost,
-      savingsPercentage: originalCost > 0 ? (totalSavings / originalCost) * 100 : 0,
-      uniqueSuppliers: [...new Set(itemAnalysis.map(item => item.bestProposal?.supplierId).filter(Boolean))],
-      isMultiSupplier: [...new Set(itemAnalysis.map(item => item.bestProposal?.supplierId).filter(Boolean))].length > 1
+      totalSavings: result.totalSavings,
+      totalCost: result.totalCost,
+      originalCost: result.totalCost + result.totalSavings,
+      savingsPercentage: result.savingsPercentage,
+      uniqueSuppliers: result.uniqueSuppliers,
+      isMultiSupplier: result.isMultiSupplier
     };
-  }, [proposals, quoteItems]);
+  }, [proposals, calculateBestCombination]);
 
   const handleStatusChange = (newStatus: Quote['status']) => {
     if (!quote) return;
@@ -988,12 +990,27 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Nenhuma análise foi iniciada ainda. Clique abaixo para iniciar a otimização que encontra o melhor preço por item.
+                      Encontre automaticamente o melhor preço de cada item entre todos os fornecedores. 
+                      <strong className="text-primary"> Análise 100% local, sem consumo de tokens de IA.</strong>
                     </p>
-                    <Button onClick={() => startAnalysis(quote.id)} className="flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      Executar Combinação Inteligente
-                    </Button>
+                    {!bestCombination ? (
+                      <div className="text-center py-4 text-muted-foreground">
+                        Aguardando propostas de fornecedores...
+                      </div>
+                    ) : (
+                      <Button 
+                        onClick={() => {
+                          toast({
+                            title: '✅ Combinação Calculada',
+                            description: `Economia de R$ ${bestCombination.totalSavings.toFixed(2)} (${bestCombination.savingsPercentage.toFixed(1)}%) identificada!`,
+                          });
+                        }} 
+                        className="flex items-center gap-2"
+                      >
+                        <Package className="h-4 w-4" />
+                        Atualizar Combinação Inteligente
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
