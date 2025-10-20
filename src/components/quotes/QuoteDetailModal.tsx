@@ -380,40 +380,8 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     });
   }, [auditLogs, quote?.id]);
 
-  // Auto-marcar como recebida quando visualizar propostas
-  const autoMarkAsReceived = useCallback(async () => {
-    if (!quote?.id || quote.status !== 'receiving' || proposals.length === 0) return;
-    
-    try {
-      const { error } = await supabase
-        .from('quotes')
-        .update({ status: 'received' })
-        .eq('id', quote.id);
-
-      if (error) {
-        console.error('❌ Erro ao marcar como recebida:', error);
-        return;
-      }
-
-      // Atualização silenciosa - sem toast
-      if (onStatusChange) {
-        onStatusChange(quote.id, 'received');
-      }
-    } catch (error) {
-      console.error('❌ Erro ao marcar como recebida:', error);
-    }
-  }, [quote?.id, quote?.status, proposals.length, onStatusChange]);
-
-  // Trigger auto-marcação quando abrir modal com propostas
-  useEffect(() => {
-    if (open && proposals.length > 0 && quote?.status === 'receiving') {
-      const timer = setTimeout(() => {
-        autoMarkAsReceived();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [open, proposals.length, quote?.status, autoMarkAsReceived]);
+  // Auto-marcação removida para evitar gasto desnecessário de tokens AI
+  // Status 'received' agora deve ser definido manualmente pelo usuário
 
   const negotiation = quote ? getNegotiationByQuoteId(quote.id) : null;
 
