@@ -32,7 +32,7 @@ export default function AccountabilityPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<string | null>(null);
 
-  const pagination = usePagination(records, { pageSize: 10 });
+  const pagination = usePagination(records, { initialPageSize: 10 });
 
   if (moduleLoading) {
     return (

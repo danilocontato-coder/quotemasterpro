@@ -7,6 +7,7 @@ export type ModuleKey =
   | 'suppliers'
   | 'payments'
   | 'approvals'
+  | 'accountability'
   | 'cost_centers'
   | 'advanced_reports'
   | 'ai_quote_analysis'
