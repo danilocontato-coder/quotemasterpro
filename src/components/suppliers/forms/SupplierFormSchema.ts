@@ -44,8 +44,9 @@ export const supplierFormSchema = z.object({
     .string()
     .trim()
     .transform(val => val.replace(/\D/g, '')) // Remove formatação
-    .refine(val => val.length === 10 || val.length === 11, 'WhatsApp deve ter 10 ou 11 dígitos')
-    .refine(val => /^[1-9]{2}9?[0-9]{8}$/.test(val), 'WhatsApp inválido'),
+    .refine(val => !val || (val.length >= 10 && val.length <= 11), 'WhatsApp deve ter 10 ou 11 dígitos')
+    .optional()
+    .or(z.literal('')),
   
   phone: z
     .string()

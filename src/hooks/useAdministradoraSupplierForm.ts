@@ -459,6 +459,7 @@ export const useAdministradoraSupplierForm = ({
           name: validatedData.name,
           document_type: validatedData.document_type,
           document_number: cleanDoc,
+          cnpj: validatedData.document_type === 'cnpj' ? cleanDoc : '',
           email: validatedData.email,
           whatsapp: validatedData.whatsapp,
           phone: validatedData.phone,
@@ -469,7 +470,6 @@ export const useAdministradoraSupplierForm = ({
           type: 'local',
           status: 'active',
           client_id: administradoraId,
-          cnpj: cleanDoc
         })
         .select()
         .single();
@@ -496,20 +496,48 @@ export const useAdministradoraSupplierForm = ({
       }
 
       console.log('[useAdministradoraSupplierForm] Fornecedor criado e associado com sucesso');
+      
+      // Enviar notificações (email + WhatsApp)
+      const { sendSupplierWelcomeNotifications } = await import('@/services/supplierNotificationService');
+      const notificationResult = await sendSupplierWelcomeNotifications({
+        supplierId: newSupplier.id,
+        supplierName: validatedData.name,
+        supplierEmail: validatedData.email,
+        supplierWhatsApp: validatedData.whatsapp,
+        administradoraName: 'Administradora', // TODO: Pegar do contexto
+      });
+
+      const notificationStatus = notificationResult.results;
+      const statusMsg = [
+        notificationStatus.email ? '✅ Email' : '❌ Email',
+        notificationStatus.whatsapp ? '✅ WhatsApp' : '❌ WhatsApp',
+      ].join(' | ');
 
       toast({
         title: 'Fornecedor criado!',
-        description: `${validatedData.name} foi criado e associado à administradora.`
+        description: `${validatedData.name} foi criado e notificado. ${statusMsg}`
       });
 
       resetForm();
       onSuccess?.();
 
     } catch (error: any) {
-      console.error('[useAdministradoraSupplierForm] Erro:', error);
+      console.error('[useAdministradoraSupplierForm] Erro completo:', error);
+      
+      // Mensagens de erro específicas
+      let errorMessage = 'Não foi possível salvar o fornecedor.';
+      
+      if (error.code === '23505') {
+        errorMessage = 'Já existe um fornecedor com este documento.';
+      } else if (error.code === '23503') {
+        errorMessage = 'Erro de referência no banco de dados. Verifique os dados.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
-        title: 'Erro',
-        description: error.message || 'Não foi possível salvar o fornecedor.',
+        title: 'Erro ao cadastrar fornecedor',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
