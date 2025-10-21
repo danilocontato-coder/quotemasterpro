@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { 
   Search, 
   Plus, 
@@ -81,37 +83,15 @@ export const PlansManagement = () => {
   const togglePlanStatus = async (planId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     
-    // Se está desativando, verificar se há clientes usando o plano
+    // Se está desativando, alertar o admin
     if (newStatus === 'inactive') {
-      try {
-        const { count: clientsCount } = await supabase
-          .from('clients')
-          .select('id', { count: 'exact', head: true })
-          .eq('subscription_plan_id', planId)
-          .eq('active', true);
-
-        const { count: suppliersCount } = await supabase
-          .from('suppliers')
-          .select('id', { count: 'exact', head: true })
-          .eq('subscription_plan_id', planId)
-          .eq('status', 'active');
-
-        const totalUsers = (clientsCount || 0) + (suppliersCount || 0);
-
-        if (totalUsers > 0) {
-          const message = `⚠️ ATENÇÃO: ${totalUsers} usuário(s) ativo(s) está(ão) usando este plano.\n\n` +
-            `${clientsCount || 0} cliente(s) e ${suppliersCount || 0} fornecedor(es).\n\n` +
-            `Ao desativar, esses usuários não poderão realizar ações até que sejam migrados para outro plano.\n\n` +
-            `Deseja continuar mesmo assim?`;
-          
-          if (!window.confirm(message)) {
-            return; // Usuário cancelou
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao verificar usuários do plano:', error);
-        toast.error('Erro ao verificar usuários do plano');
-        return;
+      const message = `⚠️ ATENÇÃO: Você está prestes a desativar este plano.\n\n` +
+        `Clientes e fornecedores que estão usando este plano não poderão realizar ações até que sejam migrados para outro plano.\n\n` +
+        `Certifique-se de verificar se há usuários ativos usando este plano antes de desativar.\n\n` +
+        `Deseja continuar?`;
+      
+      if (!window.confirm(message)) {
+        return; // Usuário cancelou
       }
     }
     
