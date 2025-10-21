@@ -340,14 +340,10 @@ export function useSupabaseAdminClients() {
       const addressState = typeof clientData.address !== 'string' && clientData.address.state 
         ? clientData.address.state 
         : null;
-      const addressCity = typeof clientData.address !== 'string' && clientData.address.city 
-        ? clientData.address.city 
-        : null;
       const calculatedRegion = addressState ? determineRegion(addressState) : null;
       
       console.log('🗺️ [AdminClients] Endereço processado:', {
         state: addressState,
-        city: addressCity,
         region: calculatedRegion
       });
       
@@ -359,7 +355,6 @@ export function useSupabaseAdminClients() {
         phone: clientData.phone,
         address: typeof clientData.address === 'string' ? clientData.address : formatAddressToText(clientData.address),
         state: addressState,
-        city: addressCity,
         region: calculatedRegion,
         status: clientData.status,
         subscription_plan_id: clientData.plan,
