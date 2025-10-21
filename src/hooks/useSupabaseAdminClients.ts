@@ -1019,41 +1019,39 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
   const deleteClient = async (id: string) => {
     console.log('🗑️ [AdminClients] Iniciando exclusão do cliente', id);
     setLoading(true);
+    
     try {
-      // Buscar dados do cliente antes de excluir para log de auditoria
       const clientToDelete = clients.find(c => c.id === id);
       
-      // Primeiro, deletar do Asaas se existir asaas_customer_id
-      try {
-        console.log('🔧 [AdminClients] Deletando cliente do Asaas');
-        const { data: deleteAsaasData, error: deleteAsaasError } = await supabase.functions.invoke(
-          'delete-asaas-customer',
-          {
-            body: { clientId: id }
+      // 1. OPTIMISTIC UPDATE - remover da UI imediatamente
+      console.log('⚡ [AdminClients] Optimistic update: removendo da UI');
+      setClients((prev) => prev.filter((c) => c.id !== id));
+      toast.success("Cliente excluído");
+      
+      // 2. Operações assíncronas em background (não bloqueantes)
+      console.log('🔄 [AdminClients] Iniciando operações em background');
+      Promise.all([
+        // Deletar do Asaas (não aguardar, não bloquear)
+        supabase.functions.invoke('delete-asaas-customer', {
+          body: { clientId: id }
+        }).then(({ error }) => {
+          if (error) {
+            console.error('⚠️ Erro ao deletar do Asaas:', error);
+          } else {
+            console.log('✅ Cliente deletado do Asaas');
           }
-        );
-
-        if (deleteAsaasError) {
-          console.error('⚠️ [AdminClients] Erro ao deletar do Asaas (não bloqueante):', deleteAsaasError);
-          toast.warning('Cliente será excluído localmente, mas houve erro ao excluir do Asaas');
-        } else {
-          console.log('✅ [AdminClients] Cliente deletado do Asaas:', deleteAsaasData);
-        }
-      } catch (asaasError) {
-        console.error('⚠️ [AdminClients] Erro ao chamar função de exclusão Asaas:', asaasError);
-        // Continuar mesmo se falhar no Asaas
-      }
-      
-      console.log('🗑️ [AdminClients] Excluindo do Supabase (CASCADE ativado)');
-      const { error } = await supabase.from("clients").delete().eq("id", id);
-      if (error) {
-        console.error('❌ [AdminClients] Erro ao excluir:', error);
-        throw error;
-      }
-      
-      // Registrar auditoria da exclusão
-      try {
-        await supabase.from('audit_logs').insert({
+        }).catch(err => {
+          console.error('⚠️ Erro ao deletar do Asaas:', err);
+        }),
+        
+        // Deletar do Supabase
+        supabase.from("clients").delete().eq("id", id).then(({ error }) => {
+          if (error) throw error;
+          console.log('✅ Cliente deletado do Supabase');
+        }),
+        
+        // Auditoria
+        supabase.from('audit_logs').insert({
           action: 'CLIENT_DELETED',
           entity_type: 'clients',
           entity_id: id,
@@ -1065,27 +1063,28 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
             quotes_count: clientToDelete?.quotesCount || 0,
             deleted_at: new Date().toISOString()
           }
-        });
-        console.log('📝 [AdminClients] Log de auditoria criado');
-      } catch (auditError) {
-        console.error('⚠️ [AdminClients] Erro ao criar log de auditoria (não bloqueante):', auditError);
-      }
-      
-      console.log('✅ [AdminClients] Exclusão bem-sucedida, atualizando estado local');
-      setClients((prev) => {
-        const newClients = prev.filter((c) => c.id !== id);
-        console.log('📊 [AdminClients] Novo total de clientes:', newClients.length);
-        return newClients;
+        }).then(({ error }) => {
+          if (error) {
+            console.error('⚠️ Erro ao criar log de auditoria:', error);
+          } else {
+            console.log('✅ Log de auditoria criado');
+          }
+        })
+      ]).catch(error => {
+        console.error('❌ Erro nas operações de exclusão:', error);
+        // ROLLBACK: restaurar o cliente
+        if (clientToDelete) {
+          console.log('🔄 Rollback: restaurando cliente na UI');
+          setClients((prev) => [...prev, clientToDelete]);
+          toast.error("Erro ao excluir cliente - operação revertida");
+        }
       });
       
-      console.log('deleteClient: mostrando toast de sucesso');
-      toast.success("Cliente excluído");
-      console.log('deleteClient: operação concluída com sucesso');
+      console.log('✅ [AdminClients] Exclusão iniciada com sucesso');
     } catch (e: any) {
       console.error('deleteClient: erro:', e);
       toast.error("Falha ao excluir cliente");
     } finally {
-      console.log('deleteClient: finalizando loading');
       setLoading(false);
     }
   };

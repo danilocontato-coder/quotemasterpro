@@ -2,7 +2,7 @@
  * ClientsManagement - Módulo de Gerenciamento de Clientes
  * @version 2.0.1 - Corrigido problema de carregamento
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, startTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,8 @@ import {
   Shield,
   CreditCard,
   Network,
-  Home
+  Home,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -61,6 +62,7 @@ import { ClientDocumentsModal } from '@/components/admin/ClientDocumentsModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
 import { HierarchyViewModal } from '@/components/admin/HierarchyViewModal';
 import { useAdminViewClient } from '@/hooks/useAdminViewClient';
+import { useAsyncAction } from '@/hooks/useAsyncAction';
 
 export const ClientsManagement = () => {
   const { trackAsyncOperation } = usePerformanceDebug('ClientsManagement');
@@ -103,6 +105,31 @@ export const ClientsManagement = () => {
   const [showHierarchyView, setShowHierarchyView] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [filterClientType, setFilterClientType] = useState<string>("all");
+  const [menuActionPending, setMenuActionPending] = useState<Set<string>>(new Set());
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Debounce para ações do menu - previne múltiplos cliques
+  const withMenuDebounce = useCallback((clientId: string, action: () => void) => {
+    if (menuActionPending.has(clientId)) {
+      console.log('Ação já em andamento para cliente:', clientId);
+      return;
+    }
+
+    setMenuActionPending(prev => new Set([...prev, clientId]));
+    setOpenMenuId(null); // Fecha menu imediatamente
+    
+    startTransition(() => {
+      action();
+      // Limpar debounce após 500ms
+      setTimeout(() => {
+        setMenuActionPending(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(clientId);
+          return newSet;
+        });
+      }, 500);
+    });
+  }, [menuActionPending]);
 
   // Memoized callbacks to prevent unnecessary re-renders
   const handleUpdateClient = useCallback(async (id: string, data: any) => {
@@ -130,9 +157,20 @@ export const ClientsManagement = () => {
     await deleteGroup(id);
   }, [deleteGroup]);
 
+  // Usar useAsyncAction para operações assíncronas
+  const { execute: executeDelete, isLoading: isDeleting } = useAsyncAction(
+    async (id: string) => {
+      await deleteClient(id);
+    },
+    {
+      successMessage: 'Cliente excluído com sucesso',
+      errorMessage: 'Erro ao excluir cliente'
+    }
+  );
+
   const handleDeleteFromModal = useCallback(async (id: string) => {
-    await deleteClient(id);
-  }, [deleteClient]);
+    await executeDelete(id);
+  }, [executeDelete]);
 
   const handleResetPassword = useCallback(async (clientId: string, email: string) => {
     return await resetClientPassword(clientId, email);
@@ -313,29 +351,37 @@ export const ClientsManagement = () => {
     }).format(value);
   };
 
-  // Ações do menu com prevenção de travamentos
+  // Ações do menu com prevenção de travamentos usando startTransition
   const handleViewClient = useCallback((client: any) => {
     console.log('Abrindo visualização do cliente:', client.id);
-    setSelectedClient(client);
-    setShowViewModal(true);
+    startTransition(() => {
+      setSelectedClient(client);
+      setShowViewModal(true);
+    });
   }, []);
 
   const handleEditClient = useCallback((client: any) => {
     console.log('Abrindo edição do cliente:', client.id);
-    setSelectedClient(client);
-    setShowEditModal(true);
+    startTransition(() => {
+      setSelectedClient(client);
+      setShowEditModal(true);
+    });
   }, []);
 
   const handleClientDocuments = useCallback((client: any) => {
     console.log('Abrindo documentos do cliente:', client.id);
-    setSelectedClient(client);
-    setShowDocumentsModal(true);
+    startTransition(() => {
+      setSelectedClient(client);
+      setShowDocumentsModal(true);
+    });
   }, []);
 
   const handleClientCredentials = useCallback((client: any) => {
     console.log('Abrindo credenciais do cliente:', client.id);
-    setSelectedClient(client);
-    setShowCredentialsModal(true);
+    startTransition(() => {
+      setSelectedClient(client);
+      setShowCredentialsModal(true);
+    });
   }, []);
 
   const [statusUpdating, setStatusUpdating] = useState<Set<string>>(new Set());
@@ -365,8 +411,10 @@ export const ClientsManagement = () => {
 
   const handleDeleteModalClient = useCallback((client: any) => {
     console.log('Abrindo exclusão do cliente:', client.id);
-    setSelectedClient(client);
-    setShowDeleteModal(true);
+    startTransition(() => {
+      setSelectedClient(client);
+      setShowDeleteModal(true);
+    });
   }, []);
 
   const handleAccessAsClient = useCallback((client: any) => {
@@ -669,103 +717,120 @@ export const ClientsManagement = () => {
                       </span>
                     </TableCell>
                     
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                         <DropdownMenuContent align="end" className="bg-background border z-50">
-                           <DropdownMenuItem 
-                             onClick={(e) => {
-                               e.preventDefault();
-                               e.stopPropagation();
-                               handleViewClient(client);
-                             }}
+                     <TableCell className="text-right">
+                       <DropdownMenu 
+                         open={openMenuId === client.id}
+                         onOpenChange={(open) => setOpenMenuId(open ? client.id : null)}
+                       >
+                         <DropdownMenuTrigger asChild>
+                           <Button 
+                             variant="ghost" 
+                             size="sm"
+                             disabled={menuActionPending.has(client.id)}
                            >
-                             <Eye className="h-4 w-4 mr-2" />
-                             Visualizar
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             onClick={(e) => {
-                               e.preventDefault();
-                               e.stopPropagation();
-                               handleEditClient(client);
-                             }}
-                           >
-                             <Edit className="h-4 w-4 mr-2" />
-                             Editar
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             onClick={(e) => {
-                               e.preventDefault();
-                               e.stopPropagation();
-                               handleClientDocuments(client);
-                             }}
-                           >
-                             <FileText className="h-4 w-4 mr-2" />
-                             Documentos
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             onClick={(e) => {
-                               e.preventDefault();
-                               e.stopPropagation();
-                               handleClientCredentials(client);
-                             }}
-                            >
-                              <Shield className="h-4 w-4 mr-2" />
-                              Credenciais
-                            </DropdownMenuItem>
+                             {menuActionPending.has(client.id) ? (
+                               <Loader2 className="h-4 w-4 animate-spin" />
+                             ) : (
+                               <MoreHorizontal className="h-4 w-4" />
+                             )}
+                           </Button>
+                         </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-background border z-50">
                             <DropdownMenuItem 
+                              disabled={menuActionPending.has(client.id)}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                handleAccessAsClient(client);
+                                withMenuDebounce(client.id, () => handleViewClient(client));
                               }}
                             >
                               <Eye className="h-4 w-4 mr-2" />
-                              Visualizar como Cliente
+                              Visualizar
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              disabled={statusUpdating.has(client.id)}
+                              disabled={menuActionPending.has(client.id)}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                handleToggleClientStatus(client);
+                                withMenuDebounce(client.id, () => handleEditClient(client));
                               }}
-                           >
-                             {statusUpdating.has(client.id) ? (
-                               <>
-                                 <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"></div>
-                                 Atualizando...
-                               </>
-                             ) : client.status === 'active' ? (
-                               <>
-                                 <UserX className="h-4 w-4 mr-2" />
-                                 Desativar
-                               </>
-                             ) : (
-                               <>
-                                 <UserCheck className="h-4 w-4 mr-2" />
-                                 Ativar
-                               </>
-                             )}
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             className="text-red-600"
-                             onClick={(e) => {
-                               e.preventDefault();
-                               e.stopPropagation();
-                                handleDeleteModalClient(client);
-                             }}
-                           >
-                             <Trash2 className="h-4 w-4 mr-2" />
-                             Excluir
-                           </DropdownMenuItem>
-                         </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              disabled={menuActionPending.has(client.id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                withMenuDebounce(client.id, () => handleClientDocuments(client));
+                              }}
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              Documentos
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              disabled={menuActionPending.has(client.id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                withMenuDebounce(client.id, () => handleClientCredentials(client));
+                              }}
+                             >
+                               <Shield className="h-4 w-4 mr-2" />
+                               Credenciais
+                             </DropdownMenuItem>
+                             <DropdownMenuItem 
+                               disabled={menuActionPending.has(client.id)}
+                               onClick={(e) => {
+                                 e.preventDefault();
+                                 e.stopPropagation();
+                                 withMenuDebounce(client.id, () => handleAccessAsClient(client));
+                               }}
+                             >
+                               <Eye className="h-4 w-4 mr-2" />
+                               Visualizar como Cliente
+                             </DropdownMenuItem>
+                             <DropdownMenuItem 
+                               disabled={statusUpdating.has(client.id) || menuActionPending.has(client.id)}
+                               onClick={(e) => {
+                                 e.preventDefault();
+                                 e.stopPropagation();
+                                 handleToggleClientStatus(client);
+                               }}
+                            >
+                              {statusUpdating.has(client.id) ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Atualizando...
+                                </>
+                              ) : client.status === 'active' ? (
+                                <>
+                                  <UserX className="h-4 w-4 mr-2" />
+                                  Desativar
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="h-4 w-4 mr-2" />
+                                  Ativar
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              disabled={menuActionPending.has(client.id)}
+                              className="text-red-600"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                withMenuDebounce(client.id, () => handleDeleteModalClient(client));
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                       </DropdownMenu>
+                     </TableCell>
                      </TableRow>
                    ))}
                  </TableBody>
