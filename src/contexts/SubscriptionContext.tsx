@@ -260,6 +260,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       try {
         const { data, error } = await supabase.rpc('get_current_user_plan');
         if (error) throw error;
+        
+        console.log('🔍 [SubscriptionContext] RPC get_current_user_plan resultado:', {
+          data,
+          hasStatus: 'status' in (data || {}),
+          status: data?.status
+        });
+        
         setDbUserPlan(data || null);
       } catch (err) {
         console.error('Erro ao buscar plano atual via RPC:', err);
@@ -270,7 +277,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const getPlanById = useCallback((planId: string) => {
     if (!planId) return undefined as any;
     const norm = String(planId).toLowerCase();
-    return (
+    
+    const found = (
       subscriptionPlans.find(p => p.id === planId) ||
       subscriptionPlans.find(p => (p.id || '').toLowerCase() === norm) ||
       subscriptionPlans.find(p => (p.name || '').toLowerCase() === norm) ||
@@ -278,25 +286,65 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       subscriptionPlans.find(p => (p.name || '').toLowerCase() === norm.replace(/^plan-/, '')) ||
       subscriptionPlans.find(p => (p.id || '').toLowerCase() === `plan-${norm}`)
     );
+    
+    console.log('🔍 [getPlanById]:', {
+      searchPlanId: planId,
+      foundPlan: found?.id,
+      foundStatus: found?.status,
+      totalPlans: subscriptionPlans.length
+    });
+    
+    return found;
   }, [subscriptionPlans]);
 
   const checkLimit = useCallback((action: string, additionalCount: number = 1): LimitCheckResult => {
-    if (!user || !currentClient || !clientUsage) {
-      return { allowed: true, currentUsage: 0, limit: -1 }; // Permissivo durante carregamento
+    // ⚠️ Durante carregamento inicial, ser permissivo
+    if (!user || !currentClient || !clientUsage || plansLoading) {
+      return { allowed: true, currentUsage: 0, limit: -1 };
     }
 
     const planId = currentClient.subscription_plan_id || 'basic';
     const plan = getPlanById(planId) || dbUserPlan;
     
+    console.log('🔍 [checkLimit] Debug:', {
+      action,
+      planId,
+      planFound: !!plan,
+      planStatus: plan?.status,
+      planHasStatus: plan && 'status' in plan,
+      subscriptionPlansCount: subscriptionPlans.length,
+      dbUserPlanId: dbUserPlan?.id,
+      dbUserPlanStatus: dbUserPlan?.status,
+      plansLoading
+    });
+    
+    // Se não encontrou plano mas planos ainda não carregaram, ser permissivo
+    if (!plan && plansLoading) {
+      console.warn('⚠️ [checkLimit] Planos ainda carregando, permitindo ação temporariamente');
+      return { allowed: true, currentUsage: 0, limit: -1 };
+    }
+    
     if (!plan) {
+      console.error('❌ [checkLimit] Plano não encontrado após carregamento:', {
+        planId,
+        availablePlans: subscriptionPlans.map(p => p.id)
+      });
       return { allowed: true, currentUsage: 0, limit: -1 };
     }
 
     // ⚠️ CRÍTICO: Bloquear ações se o plano está inativo
-    if (plan.status !== 'active') {
+    // Verificar explicitamente o status
+    const isActive = plan.status === 'active';
+    
+    if (!isActive) {
+      console.error('❌ [checkLimit] Plano inativo:', {
+        planId: plan.id,
+        planStatus: plan.status,
+        planName: plan.name || plan.display_name
+      });
       return {
         allowed: false,
-        reason: 'Seu plano está inativo. Entre em contato com o suporte.',
+        reason: `Plano "${plan.display_name || plan.name}" está inativo. Entre em contato com o suporte.`,
         currentUsage: 0,
         limit: 0,
         upgradeRequired: true
@@ -336,7 +384,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           limit: -1
         };
     }
-  }, [user, currentClient, clientUsage, getPlanById]);
+  }, [user, currentClient, clientUsage, getPlanById, plansLoading, subscriptionPlans, dbUserPlan]);
 
   const enforceLimit = useCallback((action: string, additionalCount: number = 1): boolean => {
     const result = checkLimit(action, additionalCount);
