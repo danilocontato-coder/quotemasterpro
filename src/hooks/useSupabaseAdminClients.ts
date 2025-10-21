@@ -1316,7 +1316,10 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
           }
         });
         
-        return password;
+        return { 
+          password, 
+          temporaryCredentialId: authResp.temporary_credential_id 
+        };
       } else {
         const errorMsg = authResp?.error || 'Erro desconhecido';
         console.error('resetClientPassword: erro:', errorMsg);

@@ -40,7 +40,7 @@ interface ClientCredentialsModalProps {
   client: Client | null;
   onGenerateUsername: (companyName: string) => string;
   onGeneratePassword: () => string;
-  onResetPassword: (clientId: string, email: string) => Promise<string>;
+  onResetPassword: (clientId: string, email: string) => Promise<string | { password: string; temporaryCredentialId?: string }>;
   onSendCredentials?: (
     clientId: string,
     credentials: { email: string; password: string },
@@ -73,18 +73,22 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   });
   const { toast } = useToast();
 
+  const [tempCredId, setTempCredId] = useState<string | null>(null);
+
   React.useEffect(() => {
     if (client && open) {
-      // Usar o email como username em vez do código gerado
+      // Usar o email como username
       const username = client.email;
-      const password = onGeneratePassword();
+      // Não gerar senha localmente mais - será resetada quando necessário
       setCredentials({
         username,
-        password,
+        password: '',
         temporaryPassword: true
       });
+      // Resetar senha automaticamente ao abrir
+      handleGenerateNewPassword();
     }
-  }, [client, open, onGeneratePassword]);
+  }, [client, open]);
 
   const handleCopyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -120,8 +124,17 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     
     try {
       // Usar a função real de reset de senha
-      const newPassword = await onResetPassword(client.id, client.email);
-      setCredentials(prev => ({ ...prev, password: newPassword }));
+      const result = await onResetPassword(client.id, client.email);
+      
+      // Verificar se o resultado é um objeto com password e temporaryCredentialId
+      if (result && typeof result === 'object' && 'password' in result) {
+        setCredentials(prev => ({ ...prev, password: result.password }));
+        setTempCredId(result.temporaryCredentialId || null);
+      } else if (result && typeof result === 'string') {
+        // Fallback para versão antiga que retorna apenas a senha
+        setCredentials(prev => ({ ...prev, password: result }));
+      }
+      
       console.log('Nova senha gerada com sucesso');
       // O toast já é mostrado pela função onResetPassword
     } catch (error) {
@@ -137,11 +150,11 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     setIsLoadingLast(true);
     
     try {
-      // Buscar última credencial gerada
+      // Buscar última credencial gerada por email
       const { data: tempCred, error } = await supabase
         .from('temporary_credentials')
         .select('*')
-        .eq('user_id', client.id)
+        .eq('email', client.email.toLowerCase())
         .order('generated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -218,16 +231,8 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
       }, sendOptions);
       
       // Atualizar registro de credencial temporária
-      const { data: latestCred } = await supabase
-        .from('temporary_credentials')
-        .select('id')
-        .eq('user_id', client.id)
-        .eq('status', 'pending')
-        .order('generated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (latestCred) {
+      // Preferir usar o ID salvo em estado, caso contrário buscar por email
+      if (tempCredId) {
         await supabase
           .from('temporary_credentials')
           .update({
@@ -236,7 +241,29 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
             sent_by_whatsapp: sendOptions.sendByWhatsApp,
             status: 'sent'
           })
-          .eq('id', latestCred.id);
+          .eq('id', tempCredId);
+      } else {
+        // Fallback: buscar por email
+        const { data: latestCred } = await supabase
+          .from('temporary_credentials')
+          .select('id')
+          .eq('email', client.email.toLowerCase())
+          .eq('status', 'pending')
+          .order('generated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (latestCred) {
+          await supabase
+            .from('temporary_credentials')
+            .update({
+              sent_at: new Date().toISOString(),
+              sent_by_email: sendOptions.sendByEmail,
+              sent_by_whatsapp: sendOptions.sendByWhatsApp,
+              status: 'sent'
+            })
+            .eq('id', latestCred.id);
+        }
       }
       
       const methods = [];

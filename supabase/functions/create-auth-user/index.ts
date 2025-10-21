@@ -306,25 +306,36 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
         }
 
         // 6️⃣ Registrar credencial temporária no banco
+        let temporaryCredentialId: string | null = null;
         try {
           const { encryptPassword } = await import('../_shared/crypto-helper.ts');
           const encryptedPassword = await encryptPassword(password);
 
-          const { error: tempCredErr } = await supabaseAdmin
+          // Buscar o user_id da tabela users
+          const { data: appUser } = await supabaseAdmin
+            .from('users')
+            .select('id')
+            .or(`auth_user_id.eq.${authUserId},email.eq.${email.toLowerCase()}`)
+            .maybeSingle();
+
+          const { data: insertedCred, error: tempCredErr } = await supabaseAdmin
             .from('temporary_credentials')
             .insert({
-              user_id: profileData?.id,
+              user_id: appUser?.id || null,
               auth_user_id: authUserId,
               email: email.toLowerCase(),
               temporary_password_encrypted: encryptedPassword,
               status: 'pending',
               generated_at: new Date().toISOString()
-            });
+            })
+            .select('id')
+            .single();
 
           if (tempCredErr) {
             console.error('⚠️ Erro ao registrar credencial temporária:', tempCredErr);
           } else {
-            console.log('✅ Credencial temporária registrada com sucesso');
+            temporaryCredentialId = insertedCred?.id || null;
+            console.log('✅ Credencial temporária registrada com sucesso:', temporaryCredentialId);
           }
         } catch (credError) {
           console.error('❌ Exception ao salvar credencial temporária:', credError);
@@ -338,6 +349,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
             auth_user_id: authUserId,
             email: email,
             temporary_password: password,
+            temporary_credential_id: temporaryCredentialId,
             password_reset: true,
             password_test: passwordTestResult
           }),
