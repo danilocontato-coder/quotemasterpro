@@ -305,6 +305,31 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
           };
         }
 
+        // 6️⃣ Registrar credencial temporária no banco
+        try {
+          const { encryptPassword } = await import('../_shared/crypto-helper.ts');
+          const encryptedPassword = await encryptPassword(password);
+
+          const { error: tempCredErr } = await supabaseAdmin
+            .from('temporary_credentials')
+            .insert({
+              user_id: profileData?.id,
+              auth_user_id: authUserId,
+              email: email.toLowerCase(),
+              temporary_password_encrypted: encryptedPassword,
+              status: 'pending',
+              generated_at: new Date().toISOString()
+            });
+
+          if (tempCredErr) {
+            console.error('⚠️ Erro ao registrar credencial temporária:', tempCredErr);
+          } else {
+            console.log('✅ Credencial temporária registrada com sucesso');
+          }
+        } catch (credError) {
+          console.error('❌ Exception ao salvar credencial temporária:', credError);
+        }
+
         console.log('Password reset completed for user:', authUserId, 'Test result:', passwordTestResult.ok);
         
         return new Response(

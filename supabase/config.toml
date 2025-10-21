@@ -177,3 +177,6 @@ verify_jwt = true
 
 [functions.create-condominio-user]
 verify_jwt = true
+
+[functions.decrypt-temp-password]
+verify_jwt = true

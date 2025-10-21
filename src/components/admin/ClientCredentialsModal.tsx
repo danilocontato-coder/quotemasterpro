@@ -17,10 +17,13 @@ import {
   AlertTriangle,
   CheckCircle,
   Mail,
-  MessageSquare
+  MessageSquare,
+  History,
+  Info
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Client {
   id: string;
@@ -62,6 +65,8 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isLoadingLast, setIsLoadingLast] = useState(false);
+  const [lastPasswordInfo, setLastPasswordInfo] = useState<{ generated_at: string; sent_at?: string } | null>(null);
   const [sendOptions, setSendOptions] = useState({
     sendByEmail: true,
     sendByWhatsApp: false
@@ -127,6 +132,63 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
     }
   };
 
+  const handleViewLastPassword = async () => {
+    if (!client) return;
+    setIsLoadingLast(true);
+    
+    try {
+      // Buscar última credencial gerada
+      const { data: tempCred, error } = await supabase
+        .from('temporary_credentials')
+        .select('*')
+        .eq('user_id', client.id)
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      if (!tempCred) {
+        toast({
+          title: "Nenhuma senha encontrada",
+          description: "Não há registro de senhas temporárias para este cliente.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Descriptografar via Edge Function
+      const { data: decrypted, error: decryptError } = await supabase.functions.invoke('decrypt-temp-password', {
+        body: { credential_id: tempCred.id }
+      });
+      
+      if (decryptError) throw decryptError;
+      
+      setCredentials(prev => ({ ...prev, password: decrypted.password }));
+      setLastPasswordInfo({
+        generated_at: tempCred.generated_at,
+        sent_at: tempCred.sent_at
+      });
+      
+      const generatedDate = new Date(tempCred.generated_at).toLocaleString('pt-BR');
+      const sentDate = tempCred.sent_at ? new Date(tempCred.sent_at).toLocaleString('pt-BR') : 'Não enviada';
+      
+      toast({
+        title: "Última senha recuperada",
+        description: `Gerada em ${generatedDate}\nÚltimo envio: ${sentDate}`,
+      });
+    } catch (error) {
+      console.error('Erro ao recuperar senha:', error);
+      toast({
+        title: "Erro ao recuperar senha",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingLast(false);
+    }
+  };
+
   const handleSendCredentials = async () => {
     if (!client || !onSendCredentials) return;
     
@@ -154,6 +216,28 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
         email: credentials.username,
         password: credentials.password
       }, sendOptions);
+      
+      // Atualizar registro de credencial temporária
+      const { data: latestCred } = await supabase
+        .from('temporary_credentials')
+        .select('id')
+        .eq('user_id', client.id)
+        .eq('status', 'pending')
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (latestCred) {
+        await supabase
+          .from('temporary_credentials')
+          .update({
+            sent_at: new Date().toISOString(),
+            sent_by_email: sendOptions.sendByEmail,
+            sent_by_whatsapp: sendOptions.sendByWhatsApp,
+            status: 'sent'
+          })
+          .eq('id', latestCred.id);
+      }
       
       const methods = [];
       if (sendOptions.sendByEmail) methods.push("e-mail");
@@ -201,6 +285,38 @@ export const ClientCredentialsModal: React.FC<ClientCredentialsModalProps> = ({
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <User className="h-4 w-4" />
                 <span>{client.email}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Histórico de Senhas */}
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="pt-4">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium text-blue-900 mb-1">Histórico de Senhas Registrado</p>
+                  <p className="text-sm text-blue-700 mb-3">
+                    Todas as senhas geradas são criptografadas e armazenadas por 7 dias. 
+                    Você pode recuperar a última senha caso o cliente não tenha recebido.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleViewLastPassword}
+                    disabled={isLoadingLast}
+                    className="bg-white hover:bg-blue-50"
+                  >
+                    <History className="h-4 w-4 mr-2" />
+                    {isLoadingLast ? 'Carregando...' : 'Ver Última Senha Enviada'}
+                  </Button>
+                  {lastPasswordInfo && (
+                    <p className="text-xs text-blue-600 mt-2">
+                      Última gerada: {new Date(lastPasswordInfo.generated_at).toLocaleString('pt-BR')}
+                      {lastPasswordInfo.sent_at && ` • Enviada: ${new Date(lastPasswordInfo.sent_at).toLocaleString('pt-BR')}`}
+                    </p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

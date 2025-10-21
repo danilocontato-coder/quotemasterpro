@@ -5202,6 +5202,75 @@ export type Database = {
         }
         Relationships: []
       }
+      temporary_credentials: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          generated_at: string
+          id: string
+          sent_at: string | null
+          sent_by_email: boolean | null
+          sent_by_user_id: string | null
+          sent_by_whatsapp: boolean | null
+          status: string | null
+          temporary_password_encrypted: string
+          updated_at: string | null
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string | null
+          generated_at?: string
+          id?: string
+          sent_at?: string | null
+          sent_by_email?: boolean | null
+          sent_by_user_id?: string | null
+          sent_by_whatsapp?: boolean | null
+          status?: string | null
+          temporary_password_encrypted: string
+          updated_at?: string | null
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string | null
+          generated_at?: string
+          id?: string
+          sent_at?: string | null
+          sent_by_email?: boolean | null
+          sent_by_user_id?: string | null
+          sent_by_whatsapp?: boolean | null
+          status?: string | null
+          temporary_password_encrypted?: string
+          updated_at?: string | null
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "temporary_credentials_sent_by_user_id_fkey"
+            columns: ["sent_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "temporary_credentials_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_messages: {
         Row: {
           attachments: string[]
@@ -5840,6 +5909,10 @@ export type Database = {
       }
       debit_ai_credits: {
         Args: { p_amount: number; p_client_id: string }
+        Returns: undefined
+      }
+      expire_old_credentials: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       find_or_create_supplier_by_cnpj: {
