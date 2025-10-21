@@ -95,23 +95,60 @@ serve(async (req) => {
       .single();
 
     if (confirmationError || !confirmationData) {
-      const errorDetail = confirmationError 
-        ? `Database error: ${confirmationError.message}`
-        : 'Código não encontrado ou expirado';
+      // Verificar se o código existe mas já foi usado ou expirou
+      const { data: usedCode } = await supabase
+        .from('delivery_confirmations')
+        .select('*, deliveries(*)')
+        .eq('confirmation_code', confirmation_code)
+        .maybeSingle();
+
+      if (usedCode) {
+        if (usedCode.is_used) {
+          console.error('❌ [CONFIRM-DELIVERY] Código já utilizado', {
+            confirmation_code,
+            confirmed_at: usedCode.confirmed_at,
+            confirmed_by: usedCode.confirmed_by
+          });
+          
+          return new Response(
+            JSON.stringify({ 
+              error: 'Este código já foi utilizado anteriormente',
+              code: 'CODE_ALREADY_USED',
+              confirmed_at: usedCode.confirmed_at
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (new Date(usedCode.expires_at) < new Date()) {
+          console.error('❌ [CONFIRM-DELIVERY] Código expirado', {
+            confirmation_code,
+            expires_at: usedCode.expires_at
+          });
+          
+          return new Response(
+            JSON.stringify({ 
+              error: 'Este código expirou',
+              code: 'CODE_EXPIRED',
+              expired_at: usedCode.expires_at
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
       
-      console.error('❌ [CONFIRM-DELIVERY] Código inválido', {
+      // Código não encontrado
+      console.error('❌ [CONFIRM-DELIVERY] Código não encontrado', {
         confirmation_code,
-        error: errorDetail,
         timestamp: new Date().toISOString()
       });
       
       return new Response(
         JSON.stringify({ 
-          error: 'Código inválido, expirado ou já utilizado',
-          details: errorDetail,
-          code: 'INVALID_CODE'
+          error: 'Código de confirmação não encontrado',
+          code: 'CODE_NOT_FOUND'
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -225,23 +262,24 @@ serve(async (req) => {
       console.log('✅ [CONFIRM-DELIVERY] Pagamento liberado');
     }
 
-    // Atualizar status da cotação para delivered
-    console.log('📋 [CONFIRM-DELIVERY] Atualizando status da cotação', {
-      quote_id: confirmationData.deliveries.quote_id,
-      new_status: 'delivered'
-    });
-    
-    const { error: updateQuoteError } = await supabase
-      .from('quotes')
-      .update({
-        status: 'delivered'
-      })
-      .eq('id', confirmationData.deliveries.quote_id);
-
-    if (updateQuoteError) {
-      console.error('❌ [CONFIRM-DELIVERY] Erro ao atualizar cotação:', updateQuoteError);
-    } else {
-      console.log('✅ [CONFIRM-DELIVERY] Cotação atualizada');
+    // Verificar se todas as atualizações foram bem-sucedidas
+    if (updateDeliveryError || updatePaymentError) {
+      console.error('⚠️ [CONFIRM-DELIVERY] Falha parcial detectada - revertendo código', {
+        delivery_error: updateDeliveryError?.message,
+        payment_error: updatePaymentError?.message
+      });
+      
+      // Reverter marcação do código
+      await supabase
+        .from('delivery_confirmations')
+        .update({
+          is_used: false,
+          confirmed_at: null,
+          confirmed_by: null
+        })
+        .eq('id', confirmationData.id);
+      
+      throw new Error('Falha ao atualizar entrega ou pagamento');
     }
 
     // Notificar fornecedor sobre entrega confirmada

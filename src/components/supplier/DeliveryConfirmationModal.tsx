@@ -64,8 +64,19 @@ export const DeliveryConfirmationModal = ({
         throw error;
       }
 
+      // Verificar se a resposta tem código de erro
+      if (data?.error || data?.code) {
+        console.error('❌ [MODAL] API retornou erro', {
+          error_code: data?.code,
+          error_message: data?.error,
+          data
+        });
+        throw new Error(data?.error || 'Erro desconhecido');
+      }
+
       console.log('✅ [MODAL] Confirmação concluída com sucesso', {
-        delivery_id: data?.delivery_id
+        delivery_id: data?.delivery_id,
+        response: data
       });
 
       toast({
@@ -85,9 +96,20 @@ export const DeliveryConfirmationModal = ({
         timestamp: new Date().toISOString()
       });
       
+      // Mensagens de erro específicas
+      let errorMessage = error.message || "Não foi possível confirmar a entrega. Verifique o código e tente novamente.";
+      
+      if (error.message?.includes('já foi utilizado')) {
+        errorMessage = "Este código já foi utilizado anteriormente. Se você já confirmou a entrega, não é necessário fazer novamente.";
+      } else if (error.message?.includes('expirou')) {
+        errorMessage = "Este código expirou. Entre em contato com o fornecedor para obter um novo código.";
+      } else if (error.message?.includes('não encontrado')) {
+        errorMessage = "Código inválido. Verifique se você digitou corretamente.";
+      }
+      
       toast({
         title: "Erro na confirmação",
-        description: error.message || "Não foi possível confirmar a entrega. Verifique o código e tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
