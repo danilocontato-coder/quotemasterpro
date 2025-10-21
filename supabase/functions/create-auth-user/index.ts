@@ -533,9 +533,8 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
 
         console.log('👥 DEBUG: Usuário existente encontrado:', existingUserRow);
 
-        // SEMPRE criar usuário, independente de clientId/supplierId
+        // SEMPRE criar usuário na tabela users (base system), independente de clientId/supplierId
         const userPayload: any = { 
-          auth_user_id: newUserId,
           name, 
           email, 
           role: effectiveRole, 
@@ -546,18 +545,21 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
         };
 
         if (existingUserRow?.id) {
-          console.log('🔄 DEBUG: Atualizando usuário existente');
+          console.log('🔄 DEBUG: Atualizando usuário existente na tabela users');
           await supabaseAdmin
             .from('users')
             .update(userPayload)
             .eq('id', existingUserRow.id);
-          console.log('✅ DEBUG: Usuário atualizado');
+          console.log('✅ DEBUG: Usuário atualizado na tabela users');
         } else {
-          console.log('➕ DEBUG: Criando novo usuário');
+          console.log('➕ DEBUG: Criando novo usuário na tabela users');
           await supabaseAdmin
             .from('users')
-            .insert(userPayload);
-          console.log('✅ DEBUG: Novo usuário criado');
+            .insert({ 
+              ...userPayload,
+              auth_user_id: newUserId 
+            });
+          console.log('✅ DEBUG: Novo usuário criado na tabela users');
         }
 
         if (clientId) {
@@ -600,6 +602,26 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       console.log('✅ Audit log registrado com sucesso');
     } catch (auditErr) {
       console.error('⚠️ Erro ao registrar audit log (não bloqueante):', auditErr);
+    }
+
+    // Garantir que user_roles tenha a role correta
+    try {
+      const { data: existingRole } = await supabaseAdmin
+        .from('user_roles')
+        .select('id, role')
+        .eq('user_id', newUserId)
+        .maybeSingle();
+
+      if (existingRole && existingRole.role !== effectiveRole) {
+        console.log(`⚠️ Role incorreta detectada em user_roles: ${existingRole.role}, corrigindo para: ${effectiveRole}`);
+        await supabaseAdmin
+          .from('user_roles')
+          .update({ role: effectiveRole })
+          .eq('user_id', newUserId);
+        console.log('✅ Role corrigida em user_roles');
+      }
+    } catch (roleErr) {
+      console.error('⚠️ Erro ao validar user_roles:', roleErr);
     }
 
     // Validar e corrigir role em user_roles
