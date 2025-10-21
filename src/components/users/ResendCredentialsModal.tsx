@@ -65,12 +65,19 @@ export function ResendCredentialsModal({ open, onClose, user }: ResendCredential
           password: newPassword,
           name: user.name,
           role: user.role,
+          temporaryPassword: true, // ← Força flag temporaryPassword
           action: 'reset_password'
         }
       });
 
       if (resetError || !resetResult?.success) {
         throw new Error(resetResult?.error || resetError?.message || 'Erro ao redefinir senha');
+      }
+
+      // Verificar resultado do teste de senha
+      if (resetResult?.password_test && !resetResult.password_test.ok) {
+        console.warn('⚠️ Teste de senha falhou:', resetResult.password_test.error);
+        toast.warning('Senha resetada, mas o teste de login falhou. Considere enviar link de recuperação.');
       }
 
       // Send credentials via WhatsApp

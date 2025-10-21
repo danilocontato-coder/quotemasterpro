@@ -170,68 +170,163 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       try {
         console.log('🔄 Iniciando reset de senha para:', email);
         
-        // Find user auth_id from profiles table (avoid listUsers which may fail)
+        let authUserId: string | null = null;
+        
+        // 1️⃣ Tentar encontrar via profiles (mais rápido)
         const { data: profile, error: profileErr } = await supabaseAdmin
           .from('profiles')
           .select('id')
           .eq('email', email.toLowerCase())
-          .single();
+          .maybeSingle();
         
-        if (profileErr || !profile) {
-          console.error('Usuário não encontrado no profiles:', email, profileErr);
+        if (profile?.id) {
+          authUserId = profile.id;
+          console.log('✅ Auth user encontrado via profiles:', authUserId);
+        }
+        
+        // 2️⃣ Fallback: buscar em auth.users via listUsers
+        if (!authUserId) {
+          console.log('⚠️ Profile não encontrado, buscando via listUsers...');
+          const { data: usersList, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          
+          if (!listErr && (usersList as any)?.users?.length) {
+            const match = (usersList as any).users.find((u: any) => 
+              (u.email || '').toLowerCase() === email.toLowerCase()
+            );
+            
+            if (match?.id) {
+              authUserId = match.id;
+              console.log('✅ Auth user encontrado via listUsers:', authUserId);
+            }
+          }
+        }
+        
+        if (!authUserId) {
+          console.error('❌ Usuário não encontrado:', email);
           return new Response(
-            JSON.stringify({ success: false, error: 'Usuário não encontrado', error_code: 'user_not_found' }),
+            JSON.stringify({ 
+              success: false, 
+              error: 'Usuário não encontrado no sistema de autenticação', 
+              error_code: 'user_not_found' 
+            }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         }
 
-        console.log('✅ Usuário encontrado:', profile.id);
-
-        // Update user password using profile.id (which is the auth user id)
+        // 3️⃣ Atualizar senha com confirmação de email
         const { data: updateData, error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
-          profile.id,
-          { password }
+          authUserId,
+          { 
+            password,
+            email_confirm: true // ← Confirma email automaticamente
+          }
         );
 
         if (updateErr) {
-          console.error('Error updating password:', updateErr);
+          console.error('❌ Error updating password:', updateErr);
           return new Response(
-            JSON.stringify({ success: false, error: 'Erro ao redefinir senha', error_code: 'password_reset_failed' }),
+            JSON.stringify({ 
+              success: false, 
+              error: 'Erro ao redefinir senha', 
+              error_code: 'password_reset_failed',
+              details: updateErr.message 
+            }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         }
 
         console.log('✅ Senha atualizada com sucesso');
 
-        // Update force_password_change in users table
-        if (clientId || effectiveSupplierId) {
-          const { error: usersUpdateErr } = await supabaseAdmin
-            .from('users')
-            .update({ force_password_change: temporaryPassword ?? true })
-            .eq('auth_user_id', profile.id);
-          
-          if (usersUpdateErr) {
-            console.error('Erro ao atualizar force_password_change:', usersUpdateErr);
-          } else {
-            console.log('✅ force_password_change atualizado');
-          }
+        // 4️⃣ Atualizar force_password_change na tabela users (sempre, independente de clientId/supplierId)
+        const { error: usersUpdateErr } = await supabaseAdmin
+          .from('users')
+          .update({ force_password_change: temporaryPassword ?? true })
+          .eq('auth_user_id', authUserId);
+        
+        if (usersUpdateErr) {
+          console.error('⚠️ Erro ao atualizar force_password_change:', usersUpdateErr);
+        } else {
+          console.log('✅ force_password_change atualizado');
         }
 
-        console.log('Password reset successful for user:', profile.id);
+        // 5️⃣ Testar login imediatamente
+        console.log('🧪 Testando login após reset...');
+        let passwordTestResult = { ok: false, error: '' };
+        
+        try {
+          const { data: testSession, error: testError } = await supabase.auth.signInWithPassword({
+            email: email.toLowerCase(),
+            password
+          });
+
+          if (testError) {
+            console.error('❌ Password test failed:', testError.message);
+            passwordTestResult = { ok: false, error: testError.message };
+            
+            // Auditar falha no teste
+            await supabaseAdmin.from('audit_logs').insert({
+              user_id: authUserId,
+              action: 'PASSWORD_TEST_FAILED',
+              entity_type: 'auth_users',
+              entity_id: authUserId,
+              panel_type: 'system',
+              details: {
+                email,
+                error: testError.message,
+                timestamp: new Date().toISOString()
+              }
+            });
+          } else {
+            console.log('✅ Password test successful');
+            passwordTestResult = { ok: true, error: '' };
+            
+            // Fazer logout imediato do teste
+            await supabase.auth.signOut();
+            
+            // Auditar sucesso
+            await supabaseAdmin.from('audit_logs').insert({
+              user_id: authUserId,
+              action: 'PASSWORD_RESET_SUCCESS',
+              entity_type: 'auth_users',
+              entity_id: authUserId,
+              panel_type: 'system',
+              details: {
+                email,
+                password_test_passed: true,
+                timestamp: new Date().toISOString()
+              }
+            });
+          }
+        } catch (testException) {
+          console.error('❌ Exception during password test:', testException);
+          passwordTestResult = { 
+            ok: false, 
+            error: testException instanceof Error ? testException.message : 'Unknown error' 
+          };
+        }
+
+        console.log('Password reset completed for user:', authUserId, 'Test result:', passwordTestResult.ok);
+        
         return new Response(
           JSON.stringify({ 
             success: true, 
-            auth_user_id: profile.id,
+            auth_user_id: authUserId,
             email: email,
-            temporary_password: password, // ← NOVO: Retorna senha em reset
-            password_reset: true
+            temporary_password: password,
+            password_reset: true,
+            password_test: passwordTestResult
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
       } catch (error) {
         console.error('Error resetting password:', error);
         return new Response(
-          JSON.stringify({ success: false, error: 'Erro interno ao redefinir senha', error_code: 'internal_error' }),
+          JSON.stringify({ 
+            success: false, 
+            error: 'Erro interno ao redefinir senha', 
+            error_code: 'internal_error',
+            details: error instanceof Error ? error.message : 'Unknown error'
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
       }

@@ -132,10 +132,12 @@ export function DebugAuthPanel() {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('create-auth-user', {
+      const { data: resetResult, error } = await supabase.functions.invoke('create-auth-user', {
         body: {
           email: email.trim().toLowerCase(),
           password: generatedPassword,
+          name: report.entity?.name || 'User',
+          role: report.profile?.role || 'client',
           temporaryPassword: !newPassword, // Se gerada automaticamente, é temporária
           action: 'reset_password'
         }
@@ -146,11 +148,45 @@ export function DebugAuthPanel() {
       // Copiar senha para clipboard
       await navigator.clipboard.writeText(generatedPassword);
 
-      toast({ 
-        title: 'Senha resetada e copiada!', 
-        description: `Nova senha: ${generatedPassword.substring(0, 4)}...`,
-        duration: 6000
-      });
+      // Verificar resultado do teste de senha
+      if (resetResult?.password_test) {
+        if (resetResult.password_test.ok) {
+          toast({ 
+            title: '✅ Senha resetada e testada com sucesso!', 
+            description: `Senha copiada: ${generatedPassword.substring(0, 4)}...`,
+            duration: 6000
+          });
+        } else {
+          toast({ 
+            title: '⚠️ Senha resetada, mas teste de login falhou', 
+            description: `Erro: ${resetResult.password_test.error}. Considere enviar e-mail de recuperação.`,
+            variant: 'destructive',
+            duration: 10000
+          });
+          
+          // Sugerir envio de e-mail de recuperação
+          const sendEmail = confirm('Deseja enviar um e-mail de recuperação de senha para o usuário?');
+          if (sendEmail) {
+            try {
+              await supabase.functions.invoke('send-password-reset', {
+                body: { email: email.trim().toLowerCase() }
+              });
+              toast({ title: 'E-mail de recuperação enviado!' });
+            } catch (emailError) {
+              console.error('Erro ao enviar e-mail:', emailError);
+            }
+          }
+        }
+      } else {
+        toast({ 
+          title: 'Senha resetada e copiada!', 
+          description: `Nova senha: ${generatedPassword.substring(0, 4)}...`,
+          duration: 6000
+        });
+      }
+
+      // Recarregar diagnóstico
+      await runDiagnostic();
     } catch (error: any) {
       console.error('Erro ao resetar senha:', error);
       toast({ title: 'Erro ao resetar senha', description: error.message, variant: 'destructive' });

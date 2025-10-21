@@ -137,12 +137,25 @@ const Login: React.FC = () => {
       });
 
       if (signInError) {
+        console.error('Login error:', signInError);
+        
+        // Mapear mensagens de erro comuns
         if (signInError.message.includes('Invalid login credentials')) {
           setError('Email ou senha incorretos.');
+        } else if (signInError.message.includes('Email not confirmed')) {
+          setError('E-mail não confirmado. Verifique sua caixa de entrada ou solicite um novo link de recuperação.');
+          // Sugerir redirecionamento após 3 segundos
+          setTimeout(() => {
+            if (confirm('Deseja solicitar um novo link de recuperação de senha?')) {
+              navigate('/auth/forgot-password', { state: { email } });
+            }
+          }, 3000);
         } else if (signInError.message.includes('too_many_requests')) {
           setError('Muitas tentativas. Tente novamente em alguns minutos.');
+        } else if (signInError.message.includes('User not found')) {
+          setError('Usuário não encontrado. Verifique seu e-mail ou entre em contato com o suporte.');
         } else {
-          setError(signInError.message);
+          setError(`Erro ao fazer login: ${signInError.message}`);
         }
         return;
       }
