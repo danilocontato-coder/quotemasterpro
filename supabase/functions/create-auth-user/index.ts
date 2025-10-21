@@ -505,7 +505,8 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
     const newUserId = authData.user?.id as string | undefined;
     console.log('🔗 DEBUG: Iniciando vinculação ao cliente', { newUserId, clientId });
     
-    if ((clientId || effectiveSupplierId) && newUserId) {
+    // SEMPRE criar registro na tabela users, independente de clientId/supplierId
+    if (newUserId) {
       try {
         console.log('👤 DEBUG: Criando/atualizando profile');
         await supabaseAdmin
@@ -532,7 +533,9 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
 
         console.log('👥 DEBUG: Usuário existente encontrado:', existingUserRow);
 
+        // SEMPRE criar usuário, independente de clientId/supplierId
         const userPayload: any = { 
+          auth_user_id: newUserId,
           name, 
           email, 
           role: effectiveRole, 
@@ -553,10 +556,7 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
           console.log('➕ DEBUG: Criando novo usuário');
           await supabaseAdmin
             .from('users')
-            .insert({ 
-              ...userPayload,
-              auth_user_id: newUserId, 
-            });
+            .insert(userPayload);
           console.log('✅ DEBUG: Novo usuário criado');
         }
 
@@ -600,6 +600,25 @@ const { email, password, name, role, clientId, supplierId, temporaryPassword, ac
       console.log('✅ Audit log registrado com sucesso');
     } catch (auditErr) {
       console.error('⚠️ Erro ao registrar audit log (não bloqueante):', auditErr);
+    }
+
+    // Validar e corrigir role em user_roles
+    try {
+      const { data: existingRole } = await supabaseAdmin
+        .from('user_roles')
+        .select('id, role')
+        .eq('user_id', newUserId)
+        .maybeSingle();
+
+      if (existingRole && existingRole.role !== effectiveRole) {
+        console.log(`⚠️ Role incorreta detectada: ${existingRole.role}, corrigindo para: ${effectiveRole}`);
+        await supabaseAdmin
+          .from('user_roles')
+          .update({ role: effectiveRole })
+          .eq('user_id', newUserId);
+      }
+    } catch (roleErr) {
+      console.error('⚠️ Erro ao validar user_roles:', roleErr);
     }
 
     // 🧪 FASE 1.3: Validação imediata de senha
