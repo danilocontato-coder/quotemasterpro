@@ -16,7 +16,8 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Usuário autenticado
     // 2. tour_completed = false
     // 3. onboarding_completed = true (já passou pelo cadastro)
-    if (user && !user.tourCompleted && user.onboardingCompleted) {
+    // 4. force_password_change = false (não está em troca obrigatória de senha)
+    if (user && !user.tourCompleted && user.onboardingCompleted && !user.forcePasswordChange) {
       // Pequeno delay para garantir que a página carregou
       const timer = setTimeout(() => {
         setRun(true);
@@ -24,6 +25,20 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return () => clearTimeout(timer);
     }
+  }, [user]);
+
+  // Listener para iniciar o tour após a troca de senha obrigatória
+  useEffect(() => {
+    const handlePasswordChanged = () => {
+      if (user && !user.tourCompleted && user.onboardingCompleted) {
+        setTimeout(() => {
+          setRun(true);
+        }, 1500);
+      }
+    };
+    
+    window.addEventListener('password-changed', handlePasswordChanged);
+    return () => window.removeEventListener('password-changed', handlePasswordChanged);
   }, [user]);
 
   const handleJoyrideCallback = async (data: CallBackProps) => {

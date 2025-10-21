@@ -19,6 +19,7 @@ export interface User {
   onboardingCompleted?: boolean;
   tourCompleted?: boolean;
   tenantType?: string;
+  forcePasswordChange?: boolean;
 }
 
 export const getRoleBasedRoute = (
@@ -198,6 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           onboardingCompleted: profile.onboarding_completed,
           tourCompleted: profile.tour_completed,
           tenantType: profile.tenant_type,
+          forcePasswordChange: userRecord?.force_password_change ?? false,
         };
         setUser(userProfile);
         setError(null);
@@ -421,6 +423,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
 
   const handlePasswordChanged = useCallback(() => {
     setForcePasswordChange(false);
+    // Disparar evento para permitir o tour iniciar após a troca de senha
+    window.dispatchEvent(new CustomEvent('password-changed'));
   }, []);
 
   // Listen for profile updates from settings

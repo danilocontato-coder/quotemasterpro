@@ -5,20 +5,16 @@
   filter: none !important;
 }
 
-/* Overlay escuro com contraste forte */
+/* Overlay escuro com contraste controlado */
 .react-joyride__overlay {
-  background-color: rgba(0, 0, 0, 0.75) !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
 }
 
-/* Spotlight (destaque do elemento) - Brilhante e elevado */
+/* Spotlight (destaque do elemento) - Transparente com borda animada */
 .react-joyride__spotlight {
   border-radius: 8px !important;
-  box-shadow: 
-    0 0 0 9999px rgba(0, 0, 0, 0.75),
-    0 0 60px rgba(255, 255, 255, 0.3),
-    inset 0 0 20px rgba(255, 255, 255, 0.1) !important;
   transform: scale(1.02) !important;
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: transparent !important;
   transition: all 0.3s ease-out !important;
 }
 
