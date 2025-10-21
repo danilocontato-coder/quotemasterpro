@@ -13,12 +13,14 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAchievements } from '@/hooks/useAchievements';
 import { AchievementCard } from '@/components/achievements/AchievementCard';
+import { formatQuoteCode } from '@/utils/formatQuoteCode';
 
 interface PendingRating {
   id: string;
   supplier_id: string;
   supplier_name: string;
   quote_id: string;
+  quote_local_code?: string;
   delivery_id: string;
   delivered_at: string;
   days_since_delivery: number;
@@ -28,6 +30,8 @@ interface CompletedRating {
   id: string;
   supplier_id: string;
   supplier_name: string;
+  quote_id?: string;
+  quote_local_code?: string;
   rating: number;
   quality_rating: number;
   delivery_rating: number;
@@ -80,7 +84,7 @@ export default function ClientRatings() {
           supplier_id,
           quote_id,
           actual_delivery_date,
-          quotes!inner(supplier_name)
+          quotes!inner(supplier_name, local_code)
         `)
         .eq('client_id', profile.client_id)
         .eq('status', 'delivered')
@@ -97,17 +101,18 @@ export default function ClientRatings() {
 
         const ratedDeliveryIds = new Set(existingRatings?.map(r => r.delivery_id) || []);
         
-        const pendingList: PendingRating[] = pending
-          .filter(d => !ratedDeliveryIds.has(d.id))
-          .map(d => ({
-            id: d.id,
-            supplier_id: d.supplier_id,
-            supplier_name: (d.quotes as any)?.supplier_name || 'Fornecedor',
-            quote_id: d.quote_id,
-            delivery_id: d.id,
-            delivered_at: d.actual_delivery_date,
-            days_since_delivery: Math.floor((Date.now() - new Date(d.actual_delivery_date).getTime()) / (1000 * 60 * 60 * 24))
-          }));
+      const pendingList: PendingRating[] = pending
+        .filter(d => !ratedDeliveryIds.has(d.id))
+        .map(d => ({
+          id: d.id,
+          supplier_id: d.supplier_id,
+          supplier_name: (d.quotes as any)?.supplier_name || 'Fornecedor',
+          quote_id: d.quote_id,
+          quote_local_code: (d.quotes as any)?.local_code,
+          delivery_id: d.id,
+          delivered_at: d.actual_delivery_date,
+          days_since_delivery: Math.floor((Date.now() - new Date(d.actual_delivery_date).getTime()) / (1000 * 60 * 60 * 24))
+        }));
 
         setPendingRatings(pendingList);
       }
@@ -118,6 +123,7 @@ export default function ClientRatings() {
         .select(`
           id,
           supplier_id,
+          quote_id,
           rating,
           quality_rating,
           delivery_rating,
@@ -128,26 +134,29 @@ export default function ClientRatings() {
           created_at,
           delivery_id,
           suppliers(name),
-          deliveries(local_code)
+          deliveries(local_code),
+          quotes(local_code)
         `)
         .eq('client_id', profile.client_id)
         .order('created_at', { ascending: false });
 
       if (completed) {
-        const completedList: CompletedRating[] = completed.map(r => ({
-          id: r.id,
-          supplier_id: r.supplier_id,
-          supplier_name: (r.suppliers as any)?.name || 'Fornecedor',
-          rating: r.rating,
-          quality_rating: r.quality_rating,
-          delivery_rating: r.delivery_rating,
-          communication_rating: r.communication_rating,
-          price_rating: r.price_rating,
-          would_recommend: r.would_recommend,
-          comments: r.comments || '',
-          created_at: r.created_at,
-          delivery_local_code: (r.deliveries as any)?.local_code
-        }));
+      const completedList: CompletedRating[] = completed.map(r => ({
+        id: r.id,
+        supplier_id: r.supplier_id,
+        supplier_name: (r.suppliers as any)?.name || 'Fornecedor',
+        quote_id: r.quote_id,
+        quote_local_code: (r.quotes as any)?.local_code,
+        rating: r.rating,
+        quality_rating: r.quality_rating,
+        delivery_rating: r.delivery_rating,
+        communication_rating: r.communication_rating,
+        price_rating: r.price_rating,
+        would_recommend: r.would_recommend,
+        comments: r.comments || '',
+        created_at: r.created_at,
+        delivery_local_code: (r.deliveries as any)?.local_code
+      }));
 
         setCompletedRatings(completedList);
 
@@ -344,9 +353,9 @@ export default function ClientRatings() {
                         <Clock className="h-4 w-4" />
                         Entregue há {pending.days_since_delivery} dia(s)
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Cotação: {pending.quote_id}
-                      </p>
+                          <p className="text-sm text-muted-foreground">
+                            Cotação: {formatQuoteCode({ id: pending.quote_id, local_code: pending.quote_local_code })}
+                          </p>
                     </div>
                     <Button onClick={() => handleRateClick(pending)}>
                       <Star className="h-4 w-4 mr-2" />
@@ -386,6 +395,7 @@ export default function ClientRatings() {
                       <CardTitle className="text-lg">{rating.supplier_name}</CardTitle>
                       <CardDescription>
                         {format(new Date(rating.created_at), "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                        {rating.quote_local_code && ` • Cotação ${formatQuoteCode({ id: rating.quote_id || '', local_code: rating.quote_local_code })}`}
                         {rating.delivery_local_code && ` • Entrega ${rating.delivery_local_code}`}
                       </CardDescription>
                     </div>
