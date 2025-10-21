@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, 
   Plus, 
@@ -145,8 +146,6 @@ export const PlansManagement = () => {
     }
   }, [showCreateModal, showEditModal, showViewModal]);
 
-  const clientPlans = plans.filter(p => p.target_audience === 'clients' || p.target_audience === 'both');
-
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card px-6 py-4">
@@ -199,6 +198,27 @@ export const PlansManagement = () => {
           </CardContent>
         </Card>
 
+        {/* Tabs de Audiência */}
+        <div className="flex justify-center">
+          <Tabs 
+            value={filterAudience} 
+            onValueChange={(v) => setFilterAudience(v as typeof filterAudience)}
+            className="w-full max-w-md"
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="all">Todos</TabsTrigger>
+              <TabsTrigger value="clients">
+                <Building2 className="h-4 w-4 mr-2" />
+                Clientes
+              </TabsTrigger>
+              <TabsTrigger value="suppliers">
+                <Truck className="h-4 w-4 mr-2" />
+                Fornecedores
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
         {/* Planos Grid baseado no modelo da imagem */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
@@ -208,18 +228,23 @@ export const PlansManagement = () => {
                 <p className="text-sm text-muted-foreground">Carregando planos...</p>
               </div>
             </div>
-          ) : clientPlans.length === 0 ? (
+          ) : plans.length === 0 ? (
             <div className="col-span-full text-center py-8">
               <Crown className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 Nenhum plano encontrado
               </h3>
               <p className="text-sm text-muted-foreground">
-                Crie seu primeiro plano para clientes
+                {filterAudience === 'all' 
+                  ? 'Crie seu primeiro plano' 
+                  : filterAudience === 'clients'
+                    ? 'Nenhum plano para clientes encontrado'
+                    : 'Nenhum plano para fornecedores encontrado'
+                }
               </p>
             </div>
           ) : (
-            clientPlans.map((plan) => (
+            plans.map((plan) => (
               <Card key={plan.id} className={`relative transition-all hover:shadow-lg ${
                 plan.is_popular ? 'ring-2 ring-primary border-primary/50' : ''
               }`}>
@@ -280,7 +305,26 @@ export const PlansManagement = () => {
                     </DropdownMenu>
                   </div>
 
-                  <CardTitle className="text-xl mb-2">{plan.display_name}</CardTitle>
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <CardTitle className="text-xl">{plan.display_name}</CardTitle>
+                    {plan.target_audience === 'clients' && (
+                      <Badge variant="outline" className="border-blue-500 text-blue-700">
+                        <Building2 className="h-3 w-3 mr-1" />
+                        Clientes
+                      </Badge>
+                    )}
+                    {plan.target_audience === 'suppliers' && (
+                      <Badge variant="outline" className="border-green-500 text-green-700">
+                        <Truck className="h-3 w-3 mr-1" />
+                        Fornecedores
+                      </Badge>
+                    )}
+                    {plan.target_audience === 'both' && (
+                      <Badge variant="outline" className="border-purple-500 text-purple-700">
+                        Ambos
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription className="text-sm">
                     {plan.description}
                   </CardDescription>

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Zap, Star, CreditCard, RefreshCw, Crown, Users, FileText, Building2, Database, Package, TrendingUp, Infinity, AlertTriangle } from 'lucide-react';
+import { Check, Zap, Star, Crown, Package, FileText, TrendingUp, Infinity, AlertTriangle, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useSupabaseSubscriptionPlans } from '@/hooks/useSupabaseSubscriptionPlans';
-import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGuard';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,9 +18,9 @@ interface SubscriptionStatus {
   current_plan_id?: string;
 }
 
-export const PlansPage = () => {
+export const SupplierPlansPage = () => {
   const { plans, isLoading } = useSupabaseSubscriptionPlans({ 
-    defaultFilterAudience: 'clients' 
+    defaultFilterAudience: 'suppliers' 
   });
   const { user } = useAuth();
   const { toast } = useToast();
@@ -29,25 +29,13 @@ export const PlansPage = () => {
     getUsagePercentage, 
     userPlan,
     isLoading: usageLoading
-  } = useSupabaseSubscriptionGuard();
+  } = useSubscription();
   
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
     subscribed: false
   });
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [creatingCheckout, setCreatingCheckout] = useState<string | null>(null);
-
-  // Debug logs
-  useEffect(() => {
-    console.log('🎯 PlansPage - Estado atual:', {
-      user: user?.email,
-      clientId: user?.clientId,
-      userPlan,
-      usageLoading,
-      currentUsage,
-      plansCount: plans.length
-    });
-  }, [user, userPlan, usageLoading, currentUsage, plans.length]);
 
   useEffect(() => {
     if (user) {
@@ -95,7 +83,6 @@ export const PlansPage = () => {
         throw error;
       }
       
-      // Abrir checkout do Stripe em nova aba
       if (data?.url) {
         window.open(data.url, '_blank');
       }
@@ -110,7 +97,6 @@ export const PlansPage = () => {
     }
   };
 
-
   const formatPrice = (price: number) => {
     return price.toLocaleString('pt-BR', {
       style: 'currency',
@@ -118,18 +104,11 @@ export const PlansPage = () => {
     });
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
   const activePlans = plans.filter(plan => 
     plan.status === 'active' && 
-    (plan.target_audience === 'clients' || plan.target_audience === 'both')
+    (plan.target_audience === 'suppliers' || plan.target_audience === 'both')
   );
+  
   const currentPlan = activePlans.find(plan => 
     plan.name === subscriptionStatus.subscription_tier?.toLowerCase()
   );
@@ -144,54 +123,32 @@ export const PlansPage = () => {
     );
   }
 
-  // Limites para exibir
   const limits = [
     {
-      key: 'CREATE_QUOTE',
+      key: 'RESPOND_TO_QUOTE',
       icon: FileText,
-      label: 'Cotações/Mês',
-      current: currentUsage.quotesThisMonth,
+      label: 'Respostas/Mês',
+      current: currentUsage.quotesThisMonth || 0,
       limit: userPlan?.max_quotes_per_month || userPlan?.max_quotes || 0,
       color: 'text-blue-600'
+    },
+    {
+      key: 'ADD_PRODUCT',
+      icon: Package,
+      label: 'Produtos no Catálogo',
+      current: currentUsage.productsInCatalog || 0,
+      limit: userPlan?.max_products_in_catalog || 0,
+      color: 'text-cyan-600'
     },
     {
       key: 'ADD_USER',
       icon: Users,
       label: 'Usuários',
-      current: currentUsage.usersCount,
+      current: currentUsage.usersCount || 0,
       limit: userPlan?.max_users_per_client || userPlan?.max_users || 0,
       color: 'text-green-600'
-    },
-    {
-      key: 'ADD_SUPPLIER_TO_QUOTE',
-      icon: Building2,
-      label: 'Fornecedores/Cotação',
-      current: currentUsage.suppliersPerQuote,
-      limit: userPlan?.max_suppliers_per_quote || 0,
-      color: 'text-purple-600'
-    },
-    {
-      key: 'UPLOAD_FILE',
-      icon: Database,
-      label: 'Armazenamento (GB)',
-      current: currentUsage.storageUsedGB,
-      limit: userPlan?.max_storage_gb || 0,
-      color: 'text-orange-600'
     }
   ];
-
-  if (user?.role === 'supplier') {
-    limits.push(
-      {
-        key: 'ADD_PRODUCT',
-        icon: Package,
-        label: 'Produtos',
-        current: currentUsage.productsInCatalog,
-        limit: userPlan?.max_products_in_catalog || 0,
-        color: 'text-cyan-600'
-      }
-    );
-  }
 
   const formatLimit = (limit: number) => {
     return limit === -1 ? 'Ilimitado' : limit.toString();
@@ -208,18 +165,13 @@ export const PlansPage = () => {
     return limit.current >= limit.limit;
   }).length;
 
-  // Debug logs
-  console.log('PlansPage - userPlan:', userPlan);
-  console.log('PlansPage - usageLoading:', usageLoading);
-  console.log('PlansPage - currentUsage:', currentUsage);
-
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold">Escolha seu Plano</h1>
+        <h1 className="text-4xl font-bold">Planos para Fornecedores</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Escolha o plano ideal para suas necessidades e potencialize sua gestão de cotações
+          Escolha o plano ideal para expandir suas vendas e gerenciar suas cotações
         </p>
       </div>
 
@@ -270,7 +222,7 @@ export const PlansPage = () => {
               </Alert>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {limits.map((item) => {
                 const percentage = getUsagePercentage(item.key);
                 const Icon = item.icon;
@@ -323,7 +275,6 @@ export const PlansPage = () => {
               })}
             </div>
 
-            {/* Funcionalidades do Plano Atual */}
             {userPlan.features && userPlan.features.length > 0 && (
               <div className="pt-4 border-t">
                 <h4 className="font-medium text-sm mb-3">Funcionalidades Incluídas</h4>
@@ -349,7 +300,6 @@ export const PlansPage = () => {
           </CardContent>
         )}
       </Card>
-
 
       {/* Grid de Planos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
@@ -412,21 +362,21 @@ export const PlansPage = () => {
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between">
-                      <span>Cotações por mês</span>
+                      <span>Respostas por mês</span>
                       <span className="font-medium">
                         {plan.max_quotes_per_month === -1 ? 'Ilimitado' : plan.max_quotes_per_month}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Usuários por cliente</span>
-                      <span className="font-medium">
-                        {plan.max_users_per_client === -1 ? 'Ilimitado' : plan.max_users_per_client}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Produtos no catálogo</span>
                       <span className="font-medium">
                         {plan.max_products_in_catalog === -1 ? 'Ilimitado' : plan.max_products_in_catalog}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Usuários</span>
+                      <span className="font-medium">
+                        {plan.max_users_per_client === -1 ? 'Ilimitado' : plan.max_users_per_client}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -454,11 +404,11 @@ export const PlansPage = () => {
                 )}
 
                 {/* Estatísticas */}
-                {plan.clients_subscribed > 0 && (
+                {plan.suppliers_subscribed > 0 && (
                   <div className="pt-4 border-t">
                     <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                       <Users className="h-4 w-4" />
-                      {plan.clients_subscribed} {plan.clients_subscribed === 1 ? 'cliente ativo' : 'clientes ativos'}
+                      {plan.suppliers_subscribed} {plan.suppliers_subscribed === 1 ? 'fornecedor ativo' : 'fornecedores ativos'}
                     </div>
                   </div>
                 )}
@@ -475,18 +425,12 @@ export const PlansPage = () => {
                     {isCurrentPlan ? (
                       <>
                         <Crown className="h-4 w-4 mr-2" />
-                        Seu Plano Atual
+                        Plano Atual
                       </>
                     ) : creatingCheckout === plan.id ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Processando...
-                      </>
+                      'Carregando...'
                     ) : (
-                      <>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        {subscriptionStatus.subscribed ? 'Alterar Plano' : 'Assinar Agora'}
-                      </>
+                      'Assinar Plano'
                     )}
                   </Button>
                 </div>
@@ -495,20 +439,8 @@ export const PlansPage = () => {
           );
         })}
       </div>
-
-      {/* Informações Adicionais */}
-      <div className="text-center space-y-4 pt-8">
-        <p className="text-sm text-muted-foreground">
-          Todas as assinaturas incluem suporte técnico e atualizações automáticas
-        </p>
-        <div className="flex justify-center gap-4 text-sm text-muted-foreground">
-          <span>✓ Sem taxa de setup</span>
-          <span>✓ Cancele a qualquer momento</span>
-          <span>✓ Upgrade/downgrade instantâneo</span>
-        </div>
-      </div>
     </div>
   );
 };
 
-export default PlansPage;
+export default SupplierPlansPage;

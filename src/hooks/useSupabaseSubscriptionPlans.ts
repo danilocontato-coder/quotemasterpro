@@ -63,11 +63,15 @@ export interface PlanFormData {
   max_categories_per_supplier?: number;
 }
 
-export function useSupabaseSubscriptionPlans() {
+export function useSupabaseSubscriptionPlans(options?: { 
+  defaultFilterAudience?: 'all' | 'clients' | 'suppliers' | 'both' 
+}) {
   const [plans, setPlans] = useState<SupabaseSubscriptionPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterAudience, setFilterAudience] = useState<'all' | 'clients' | 'suppliers' | 'both'>('all');
+  const [filterAudience, setFilterAudience] = useState<'all' | 'clients' | 'suppliers' | 'both'>(
+    options?.defaultFilterAudience || 'all'
+  );
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
   // Carregar planos do Supabase - VERSÃO ESTÁVEL

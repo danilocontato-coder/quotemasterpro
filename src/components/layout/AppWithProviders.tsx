@@ -94,6 +94,7 @@ const SupplierRegisterWithToken = React.lazy(() => import('@/pages/supplier/Supp
 const SupplierQuoteResponse = React.lazy(() => import('@/pages/supplier/SupplierQuoteResponse'));
 const SupplierQuickResponse = React.lazy(() => import('@/pages/supplier/SupplierQuickResponse'));
 const SupplierResponseSuccess = React.lazy(() => import('@/pages/supplier/SupplierResponseSuccess'));
+const SupplierPlansPage = React.lazy(() => import('@/pages/supplier/SupplierPlansPage'));
 
 // Administradora pages - ISOLADAS
 const AdministradoraDashboard = React.lazy(() => import('@/pages/admin/AdministradoraDashboard'));
@@ -676,6 +677,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="users" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <SupplierUsers />
+          </Suspense>
+        } />
+        <Route path="plans" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <SupplierPlansPage />
           </Suspense>
         } />
       </Route>

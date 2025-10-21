@@ -9,7 +9,8 @@ import {
   DollarSign,
   History,
   Users,
-  HelpCircle
+  HelpCircle,
+  Crown
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -39,6 +40,7 @@ const navigationItems = [
 
 const systemItems = [
   { title: "Usuários", url: "/supplier/users", icon: Users },
+  { title: "Planos", url: "/supplier/plans", icon: Crown },
   { title: "Histórico", url: "/supplier/history", icon: History },
   { title: "Ajuda", url: "/help", icon: HelpCircle },
   { title: "Configurações", url: "/supplier/settings", icon: Settings },
