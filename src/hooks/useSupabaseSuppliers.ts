@@ -104,8 +104,12 @@ export const useSupabaseSuppliers = () => {
         const suppliersData = (data as any as Supplier[]) || [];
         
         // 🔍 SEPARAR: "Meus Fornecedores" vs "Rede Certificada"
-        const mySupps = suppliersData.filter(s => s.association_status === 'active');
-        const certifiedSupps = suppliersData.filter(s => s.association_status === 'available' && s.is_certified);
+        const mySupps = suppliersData.filter(s => 
+          s.association_status === 'active' && s.type === 'local'
+        );
+        const certifiedSupps = suppliersData.filter(s => 
+          s.type === 'certified' && s.is_certified === true
+        );
         
         console.log('📊 [SUPPLIERS-SPLIT]', {
           total: suppliersData.length,
