@@ -80,10 +80,47 @@ export const PlansManagement = () => {
 
   const togglePlanStatus = async (planId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    
+    // Se está desativando, verificar se há clientes usando o plano
+    if (newStatus === 'inactive') {
+      try {
+        const { count: clientsCount } = await supabase
+          .from('clients')
+          .select('id', { count: 'exact', head: true })
+          .eq('subscription_plan_id', planId)
+          .eq('active', true);
+
+        const { count: suppliersCount } = await supabase
+          .from('suppliers')
+          .select('id', { count: 'exact', head: true })
+          .eq('subscription_plan_id', planId)
+          .eq('status', 'active');
+
+        const totalUsers = (clientsCount || 0) + (suppliersCount || 0);
+
+        if (totalUsers > 0) {
+          const message = `⚠️ ATENÇÃO: ${totalUsers} usuário(s) ativo(s) está(ão) usando este plano.\n\n` +
+            `${clientsCount || 0} cliente(s) e ${suppliersCount || 0} fornecedor(es).\n\n` +
+            `Ao desativar, esses usuários não poderão realizar ações até que sejam migrados para outro plano.\n\n` +
+            `Deseja continuar mesmo assim?`;
+          
+          if (!window.confirm(message)) {
+            return; // Usuário cancelou
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar usuários do plano:', error);
+        toast.error('Erro ao verificar usuários do plano');
+        return;
+      }
+    }
+    
     try {
       await updatePlan(planId, { status: newStatus });
+      toast.success(`Plano ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso`);
     } catch (error) {
       console.error('Erro ao alterar status do plano:', error);
+      toast.error('Erro ao alterar status do plano');
     }
   };
 

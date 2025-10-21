@@ -62,7 +62,7 @@ serve(async (req) => {
       // Buscar invoice pelo asaas_charge_id
       const { data: invoice, error: invError } = await supabaseClient
         .from('invoices')
-        .select('*, subscriptions!subscription_id(id, client_id, supplier_id)')
+        .select('*, subscriptions!subscription_id(id, client_id, supplier_id, subscription_plan_id)')
         .eq('asaas_charge_id', payment.id)
         .single();
 
@@ -93,24 +93,40 @@ serve(async (req) => {
           })
           .eq('id', invoice.subscription_id);
 
-        // Reativar cliente se estava suspenso
+        // Reativar cliente se estava suspenso e atualizar plano
         if (invoice.subscriptions.client_id) {
+          const updateData: any = {
+            active: true,
+            updated_at: new Date().toISOString()
+          };
+          
+          // Se a subscription tem um plano, atualizar o plano do cliente
+          if (invoice.subscriptions.subscription_plan_id) {
+            updateData.subscription_plan_id = invoice.subscriptions.subscription_plan_id;
+            console.log(`Updating client ${invoice.subscriptions.client_id} plan to: ${invoice.subscriptions.subscription_plan_id}`);
+          }
+          
           await supabaseClient
             .from('clients')
-            .update({
-              active: true,
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', invoice.subscriptions.client_id);
         }
 
         if (invoice.subscriptions.supplier_id) {
+          const updateData: any = {
+            status: 'active',
+            updated_at: new Date().toISOString()
+          };
+          
+          // Se a subscription tem um plano, atualizar o plano do fornecedor
+          if (invoice.subscriptions.subscription_plan_id) {
+            updateData.subscription_plan_id = invoice.subscriptions.subscription_plan_id;
+            console.log(`Updating supplier ${invoice.subscriptions.supplier_id} plan to: ${invoice.subscriptions.subscription_plan_id}`);
+          }
+          
           await supabaseClient
             .from('suppliers')
-            .update({
-              status: 'active',
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', invoice.subscriptions.supplier_id);
         }
       }

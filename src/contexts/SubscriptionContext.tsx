@@ -292,6 +292,17 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       return { allowed: true, currentUsage: 0, limit: -1 };
     }
 
+    // ⚠️ CRÍTICO: Bloquear ações se o plano está inativo
+    if (plan.status !== 'active') {
+      return {
+        allowed: false,
+        reason: 'Seu plano está inativo. Entre em contato com o suporte.',
+        currentUsage: 0,
+        limit: 0,
+        upgradeRequired: true
+      };
+    }
+
     switch (action) {
       case 'CREATE_QUOTE':
         const maxQuotes = plan?.max_quotes_per_month || plan?.max_quotes || 0;
