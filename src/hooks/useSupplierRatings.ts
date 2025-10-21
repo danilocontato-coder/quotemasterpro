@@ -29,6 +29,7 @@ export interface RatingPrompt {
   supplier_id: string;
   supplier_name: string;
   quote_id?: string;
+  quote_local_code?: string;
   payment_id?: string;
   created_at: string;
   dismissed?: boolean;
@@ -93,6 +94,7 @@ export const useSupplierRatings = () => {
           supplier_id: metadata.supplier_id || '',
           supplier_name: metadata.supplier_name || 'Fornecedor',
           quote_id: metadata.quote_id,
+          quote_local_code: metadata.quote_local_code,
           payment_id: metadata.payment_id,
           created_at: notification.created_at,
           dismissed: false

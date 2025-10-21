@@ -3,17 +3,25 @@ import { useSupplierRatings } from "@/hooks/useSupplierRatings";
 import { RatingPromptCard } from "./RatingPromptCard";
 import { default as SupplierRatingModal } from "./SupplierRatingModal";
 
-export function RatingPrompts() {
-  const { ratingPrompts, createRating, dismissPrompt } = useSupplierRatings();
+interface RatingPromptsProps {
+  onRated?: () => void;
+}
+
+export function RatingPrompts({ onRated }: RatingPromptsProps = {}) {
+  const { ratingPrompts, dismissPrompt, refreshPrompts } = useSupplierRatings();
   const [selectedPrompt, setSelectedPrompt] = useState<any>(null);
 
   const handleRate = (prompt: any) => {
     setSelectedPrompt(prompt);
   };
 
-  const handleSubmitRating = (ratingData: any) => {
-    createRating(ratingData);
+  const handleRatingSubmitted = async () => {
+    if (selectedPrompt) {
+      await dismissPrompt(selectedPrompt.id);
+    }
     setSelectedPrompt(null);
+    await refreshPrompts();
+    onRated?.();
   };
 
   if (ratingPrompts.length === 0) return null;
@@ -38,7 +46,9 @@ export function RatingPrompts() {
           supplierId={selectedPrompt.supplier_id}
           supplierName={selectedPrompt.supplier_name}
           quoteId={selectedPrompt.quote_id}
-          onRatingSubmitted={() => setSelectedPrompt(null)}
+          paymentId={selectedPrompt.payment_id}
+          notificationId={selectedPrompt.id}
+          onRatingSubmitted={handleRatingSubmitted}
         />
       )}
     </>

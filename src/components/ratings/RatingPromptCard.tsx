@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, X, User } from "lucide-react";
 import { RatingPrompt } from "@/hooks/useSupplierRatings";
+import { formatQuoteCode } from "@/utils/formatQuoteCode";
 
 interface RatingPromptCardProps {
   prompt: RatingPrompt;
@@ -48,13 +49,13 @@ export function RatingPromptCard({ prompt, onRate, onDismiss }: RatingPromptCard
 
         {prompt.quote_id && (
           <p className="text-xs text-muted-foreground">
-            Cotação: {prompt.quote_id}
+            Cotação: {formatQuoteCode({ id: prompt.quote_id, local_code: prompt.quote_local_code })}
           </p>
         )}
 
         {prompt.payment_id && (
           <p className="text-xs text-muted-foreground">
-            Pagamento: {prompt.payment_id}
+            Pagamento: #{prompt.payment_id.substring(0, 8)}
           </p>
         )}
 

@@ -92,17 +92,17 @@ export default function ClientRatings() {
         .order('actual_delivery_date', { ascending: false });
 
       if (pending) {
-        // Filter out already rated deliveries
+        // Filter out already rated deliveries and quotes
         const { data: existingRatings } = await supabase
           .from('supplier_ratings')
-          .select('delivery_id')
-          .eq('client_id', profile.client_id)
-          .not('delivery_id', 'is', null);
+          .select('delivery_id, quote_id')
+          .eq('client_id', profile.client_id);
 
-        const ratedDeliveryIds = new Set(existingRatings?.map(r => r.delivery_id) || []);
+        const ratedDeliveryIds = new Set(existingRatings?.map(r => r.delivery_id).filter(Boolean) || []);
+        const ratedQuoteIds = new Set(existingRatings?.map(r => r.quote_id).filter(Boolean) || []);
         
       const pendingList: PendingRating[] = pending
-        .filter(d => !ratedDeliveryIds.has(d.id))
+        .filter(d => !ratedDeliveryIds.has(d.id) && !ratedQuoteIds.has(d.quote_id))
         .map(d => ({
           id: d.id,
           supplier_id: d.supplier_id,
@@ -220,7 +220,7 @@ export default function ClientRatings() {
       </div>
 
       {/* Rating Prompts at the top */}
-      <RatingPrompts />
+      <RatingPrompts onRated={fetchData} />
 
       {/* Stats Cards */}
       {!isLoading && stats.total > 0 && (

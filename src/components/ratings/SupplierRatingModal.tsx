@@ -14,6 +14,8 @@ interface SupplierRatingModalProps {
   supplierId: string;
   supplierName: string;
   deliveryId?: string;
+  paymentId?: string;
+  notificationId?: string;
   onRatingSubmitted?: () => void;
 }
 
@@ -32,6 +34,8 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
   supplierId,
   supplierName,
   deliveryId,
+  paymentId,
+  notificationId,
   onRatingSubmitted
 }) => {
   const [ratings, setRatings] = useState<RatingCriteria>({
@@ -118,6 +122,7 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
           client_id: profile.client_id,
           rater_id: (await supabase.auth.getUser()).data.user?.id,
           delivery_id: deliveryId || null,
+          payment_id: paymentId || null,
           rating: ratings.overall,
           quality_rating: ratings.quality || null,
           delivery_rating: ratings.delivery || null,
@@ -129,39 +134,84 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
 
       if (error) throw error;
 
-      // Verificar se desbloqueou nova conquista
+      // Marcar notificação como lida se vier de um prompt
+      if (notificationId) {
+        try {
+          await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('id', notificationId);
+        } catch (notifError) {
+          console.error('Erro ao marcar notificação como lida:', notifError);
+        }
+      }
+
+      // Fallback de gamificação: conceder "Primeira Avaliação" se for a primeira
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: latestAchievements } = await supabase
-          .from('user_achievements')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('earned_at', new Date(Date.now() - 5000).toISOString()) // Últimos 5 segundos
-          .order('earned_at', { ascending: false })
-          .limit(1);
+        try {
+          // Contar avaliações do usuário
+          const { count } = await supabase
+            .from('supplier_ratings')
+            .select('*', { count: 'exact', head: true })
+            .eq('rater_id', user.id);
 
-        if (latestAchievements && latestAchievements.length > 0) {
-          const achievement = latestAchievements[0];
-          
-          // Toast especial de conquista
-          toast({
-            title: "🎉 Nova Conquista Desbloqueada!",
-            description: (
-              <div className="flex items-center gap-3 mt-2">
-                <div className="text-3xl">{achievement.achievement_icon}</div>
-                <div>
-                  <p className="font-semibold text-foreground">{achievement.achievement_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {achievement.achievement_description}
-                  </p>
-                </div>
-              </div>
-            ),
-            duration: 6000,
-            className: "border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50",
-          });
-        } else {
-          // Toast normal de sucesso
+          // Se for a primeira avaliação, conceder a conquista
+          if (count === 1) {
+            const { data: existingAchievement } = await supabase
+              .from('user_achievements')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('achievement_type', 'primeira_avaliacao')
+              .maybeSingle();
+
+            if (!existingAchievement) {
+              await supabase
+                .from('user_achievements')
+                .insert({
+                  user_id: user.id,
+                  client_id: profile.client_id,
+                  achievement_type: 'primeira_avaliacao',
+                  achievement_name: 'Primeira Avaliação',
+                  achievement_icon: '🌟',
+                  achievement_description: 'Você fez sua primeira avaliação de fornecedor!',
+                  earned_at: new Date().toISOString()
+                });
+
+              // Toast especial de conquista
+              toast({
+                title: "🎉 Nova Conquista Desbloqueada!",
+                description: (
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="text-3xl">🌟</div>
+                    <div>
+                      <p className="font-semibold text-foreground">Primeira Avaliação</p>
+                      <p className="text-xs text-muted-foreground">
+                        Você fez sua primeira avaliação de fornecedor!
+                      </p>
+                    </div>
+                  </div>
+                ),
+                duration: 6000,
+                className: "border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50",
+              });
+            } else {
+              // Toast normal de sucesso
+              toast({
+                title: "Sucesso!",
+                description: "Avaliação enviada com sucesso."
+              });
+            }
+          } else {
+            // Toast normal de sucesso
+            toast({
+              title: "Sucesso!",
+              description: "Avaliação enviada com sucesso."
+            });
+          }
+        } catch (achievementError) {
+          console.error('Erro ao processar conquista:', achievementError);
+          // Mesmo com erro na conquista, mostrar sucesso da avaliação
           toast({
             title: "Sucesso!",
             description: "Avaliação enviada com sucesso."
