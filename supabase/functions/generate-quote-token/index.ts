@@ -176,15 +176,17 @@ serve(async (req) => {
       )
     }
 
-    // Calcular expiração baseado no deadline da cotação ou 30 dias se não houver
-    const expiresAt = quoteData.deadline 
-      ? new Date(quoteData.deadline).toISOString()
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    // CORREÇÃO CRÍTICA: Sempre usar 7 dias a partir de AGORA (não usar deadline diretamente)
+    // Motivo: deadline pode ser apenas uma data (sem hora), resultando em meia-noite daquele dia
+    // Isso causava tokens que expiravam imediatamente após criação
+    const DEFAULT_TOKEN_VALIDITY_DAYS = 7;
+    const expiresAt = new Date(Date.now() + DEFAULT_TOKEN_VALIDITY_DAYS * 24 * 60 * 60 * 1000).toISOString();
     
-    console.log('🔗 [GENERATE-QUOTE-TOKEN] Expiration:', {
-      deadline: quoteData.deadline,
-      expiresAt,
-      usedDeadline: !!quoteData.deadline
+    console.log('🔗 [GENERATE-QUOTE-TOKEN] Token expiration:', {
+      created_at: new Date().toISOString(),
+      expires_at: expiresAt,
+      validity_days: DEFAULT_TOKEN_VALIDITY_DAYS,
+      quote_deadline: quoteData.deadline || 'none'
     })
 
     // Insert token into database with client_id and supplier_id (usando id interno UUID)

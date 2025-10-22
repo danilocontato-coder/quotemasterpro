@@ -35,6 +35,7 @@ import { TopClientsChart } from '@/components/admin/charts/TopClientsChart';
 import { ActivityHeatmap } from '@/components/admin/charts/ActivityHeatmap';
 import { ConversionFunnelChart } from '@/components/admin/charts/ConversionFunnelChart';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TokenMonitoringCard } from '@/components/admin/TokenMonitoringCard';
 
 export const SuperAdminDashboard = () => {
   console.log('SuperAdminDashboard component rendering');
