@@ -52,12 +52,33 @@ const SupplierAuth = () => {
         });
         
         if (error || !data?.valid) {
+          // Melhor tratamento de erros para tokens expirados
+          const isExpired = data?.expired || data?.error?.includes('expired');
+          const errorTitle = isExpired ? 'Link Expirado' : 'Link Inválido';
+          const errorMessage = isExpired 
+            ? 'Este link de acesso à cotação já expirou. Por favor, solicite um novo link ao cliente que enviou a cotação.'
+            : data?.error || 'Token expirado ou inválido. Verifique se você está usando o link mais recente enviado pelo cliente.';
+          
           toast({ 
-            title: 'Link inválido', 
-            description: data?.error || 'Token expirado ou inválido.', 
-            variant: 'destructive' 
+            title: errorTitle, 
+            description: errorMessage, 
+            variant: 'destructive',
+            duration: 10000 // 10 segundos para dar tempo de ler
           });
-          navigate('/');
+          
+          // Salvar informação de erro no localStorage para exibir página customizada
+          localStorage.setItem('token_validation_error', JSON.stringify({
+            isExpired,
+            message: errorMessage,
+            quoteId,
+            timestamp: new Date().toISOString()
+          }));
+          
+          // Redirecionar para página de erro customizada após 2 segundos
+          setTimeout(() => {
+            navigate('/supplier/link-expired');
+          }, 2000);
+          
           return;
         }
         

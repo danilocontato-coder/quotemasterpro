@@ -240,6 +240,11 @@ export const SuperAdminDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Card de Monitoramento de Tokens */}
+        <div className="animate-fade-in" style={{ animationDelay: '0.37s' }}>
+          <TokenMonitoringCard />
+        </div>
+
         {/* Tabs com Informações Detalhadas */}
         <Tabs defaultValue="overview" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
           <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">

@@ -47,6 +47,7 @@ const CostCenters = React.lazy(() => import('@/pages/CostCenters'));
 const DebugCostCenters = React.lazy(() => import('@/pages/DebugCostCenters'));
 const Help = React.lazy(() => import('@/pages/Help'));
 const PredictiveDashboard = React.lazy(() => import('@/pages/PredictiveDashboard'));
+const LinkExpiredPage = React.lazy(() => import('@/pages/supplier/LinkExpiredPage'));
 // BrandingSettings removido - só acessível por admins via /admin/brand
 
 // Admin pages
@@ -609,6 +610,11 @@ export const AppWithProviders: React.FC = () => {
 
       {/* Rotas diretas do fornecedor - DEVEM VIR ANTES DAS PROTEGIDAS */}
       <Route path="/supplier/auth/:quoteId/:token" element={<SupplierAuth />} />
+      <Route path="/supplier/link-expired" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <LinkExpiredPage />
+        </Suspense>
+      } />
       <Route path="/supplier/register" element={
         <Suspense fallback={<LoadingFallback />}>
           <SupplierRegister />
