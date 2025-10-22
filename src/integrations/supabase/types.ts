@@ -5810,10 +5810,7 @@ export type Database = {
         Args: { p_amount: number; p_reason: string; p_user_id: string }
         Returns: undefined
       }
-      admin_reset_gamification: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      admin_reset_gamification: { Args: never; Returns: undefined }
       approve_offline_payment: {
         Args: { p_approved: boolean; p_notes?: string; p_payment_id: string }
         Returns: Json
@@ -5842,20 +5839,14 @@ export type Database = {
           id: string
         }[]
       }
-      check_overdue_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      check_quote_deadlines_for_suppliers: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      check_overdue_accounts: { Args: never; Returns: undefined }
+      check_quote_deadlines_for_suppliers: { Args: never; Returns: undefined }
       check_user_email_exists: {
         Args: { user_email: string }
         Returns: boolean
       }
       clean_invalid_approvers: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           level_id: string
           level_name: string
@@ -5899,10 +5890,7 @@ export type Database = {
         }
         Returns: string
       }
-      current_user_account_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      current_user_account_id: { Args: never; Returns: string }
       current_user_can_see_quote: {
         Args: { quote_id_param: string }
         Returns: boolean
@@ -5911,10 +5899,7 @@ export type Database = {
         Args: { p_amount: number; p_client_id: string }
         Returns: undefined
       }
-      expire_old_credentials: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      expire_old_credentials: { Args: never; Returns: undefined }
       find_or_create_supplier_by_cnpj: {
         Args: {
           p_cnpj: string
@@ -5929,24 +5914,15 @@ export type Database = {
           supplier_id: string
         }[]
       }
-      generate_contract_alerts: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      generate_delivery_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_friendly_payment_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_contract_alerts: { Args: never; Returns: undefined }
+      generate_delivery_code: { Args: never; Returns: string }
+      generate_friendly_payment_id: { Args: never; Returns: string }
       get_accessible_client_ids: {
         Args: { p_user_id: string }
         Returns: string[]
       }
       get_client_suppliers: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           address: Json
           associated_at: string
@@ -6001,12 +5977,9 @@ export type Database = {
           total_spent: number
         }[]
       }
-      get_current_user_client_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_current_user_client_id: { Args: never; Returns: string }
       get_current_user_plan: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active_clients: number | null
           allow_branding: boolean | null
@@ -6040,15 +6013,15 @@ export type Database = {
           updated_at: string | null
           yearly_price: number
         }
+        SetofOptions: {
+          from: "*"
+          to: "subscription_plans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      get_current_user_supplier_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_default_supplier_plan_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_current_user_supplier_id: { Args: never; Returns: string }
+      get_default_supplier_plan_id: { Args: never; Returns: string }
       get_or_create_client_usage: {
         Args: { client_uuid: string }
         Returns: {
@@ -6063,6 +6036,12 @@ export type Database = {
           storage_used_gb: number
           updated_at: string
           users_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_usage"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       get_or_create_user_settings: {
@@ -6082,6 +6061,12 @@ export type Database = {
           updated_at: string | null
           user_id: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "user_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_supplier_average_rating: {
         Args: { supplier_uuid: string }
@@ -6095,18 +6080,9 @@ export type Database = {
           total_ratings: number
         }[]
       }
-      get_user_created_at: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_enabled_modules: {
-        Args: Record<PropertyKey, never>
-        Returns: string[]
-      }
-      get_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_user_created_at: { Args: never; Returns: string }
+      get_user_enabled_modules: { Args: never; Returns: string[] }
+      get_user_role: { Args: never; Returns: string }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -6155,10 +6131,7 @@ export type Database = {
         Args: { p_client_id: string; prefix?: string }
         Returns: string
       }
-      next_product_code: {
-        Args: { prefix?: string }
-        Returns: string
-      }
+      next_product_code: { Args: { prefix?: string }; Returns: string }
       next_product_id_by_client: {
         Args: { p_client_id: string; prefix?: string }
         Returns: string
@@ -6167,18 +6140,9 @@ export type Database = {
         Args: { p_client_id: string; prefix?: string }
         Returns: string
       }
-      next_ticket_id: {
-        Args: { prefix?: string }
-        Returns: string
-      }
-      normalize_cnpj: {
-        Args: { cnpj_in: string }
-        Returns: string
-      }
-      normalize_specialties: {
-        Args: { specs: string[] }
-        Returns: string[]
-      }
+      next_ticket_id: { Args: { prefix?: string }; Returns: string }
+      normalize_cnpj: { Args: { cnpj_in: string }; Returns: string }
+      normalize_specialties: { Args: { specs: string[] }; Returns: string[] }
       notify_client_users: {
         Args: {
           p_action_url?: string
@@ -6191,14 +6155,8 @@ export type Database = {
         }
         Returns: undefined
       }
-      reset_monthly_usage: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      run_automatic_billing: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      reset_monthly_usage: { Args: never; Returns: undefined }
+      run_automatic_billing: { Args: never; Returns: undefined }
       search_supplier_by_cnpj: {
         Args: { search_cnpj: string }
         Returns: {
@@ -6213,10 +6171,7 @@ export type Database = {
           status: string
         }[]
       }
-      send_automatic_reminders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      send_automatic_reminders: { Args: never; Returns: undefined }
       suggest_suppliers_for_quote: {
         Args: {
           _categories: string[]
@@ -6238,14 +6193,8 @@ export type Database = {
           visibility_scope: string
         }[]
       }
-      trigger_scheduled_email_campaigns: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      trigger_send_overdue_reminders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      trigger_scheduled_email_campaigns: { Args: never; Returns: undefined }
+      trigger_send_overdue_reminders: { Args: never; Returns: undefined }
       user_has_all_modules_access: {
         Args: { _module_keys: string[] }
         Returns: boolean
