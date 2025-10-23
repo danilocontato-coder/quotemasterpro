@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' &&
     componentTagger(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // ✅ Avisa usuário sobre atualizações
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'Cotiz - Sistema de Cotações',
@@ -72,8 +72,26 @@ export default defineConfig(({ mode }) => ({
                 statuses: [0, 200]
               }
             }
+          },
+          {
+            // ✅ Assets críticos da aplicação - NetworkFirst
+            urlPattern: /\.(?:js|css|html)$/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'app-assets',
+              networkTimeoutSeconds: 3,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 // 24 horas
+              }
+            }
           }
-        ]
+        ],
+        // ✅ Limpar cache antigo automaticamente
+        cleanupOutdatedCaches: true,
+        // ✅ Recarregar clientes antigos
+        clientsClaim: true,
+        skipWaiting: true
       }
     })
   ].filter(Boolean),

@@ -21,7 +21,8 @@ import {
   FileText,
   CreditCard,
   Globe,
-  Bot
+  Bot,
+  Trash2
 } from 'lucide-react';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { useSuperAdminDashboard } from '@/hooks/useSuperAdminDashboard';
@@ -36,6 +37,7 @@ import { ActivityHeatmap } from '@/components/admin/charts/ActivityHeatmap';
 import { ConversionFunnelChart } from '@/components/admin/charts/ConversionFunnelChart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TokenMonitoringCard } from '@/components/admin/TokenMonitoringCard';
+import { toast } from 'sonner';
 
 export const SuperAdminDashboard = () => {
   console.log('SuperAdminDashboard component rendering');
@@ -71,6 +73,39 @@ export const SuperAdminDashboard = () => {
       case 'quote': return Database;
       case 'payment': return DollarSign;
       default: return Activity;
+    }
+  };
+
+  const handleClearCache = async () => {
+    try {
+      // Limpar sessionStorage e localStorage
+      sessionStorage.clear();
+      localStorage.clear();
+      
+      // Desregistrar Service Workers
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+        }
+      }
+      
+      // Limpar cache do navegador
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+      
+      toast.success('Cache limpo com sucesso!', {
+        description: 'A página será recarregada em 2 segundos...'
+      });
+      
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err) {
+      console.error('Erro ao limpar cache:', err);
+      toast.error('Erro ao limpar cache', {
+        description: 'Tente recarregar a página manualmente'
+      });
     }
   };
 
@@ -244,6 +279,45 @@ export const SuperAdminDashboard = () => {
         <div className="animate-fade-in" style={{ animationDelay: '0.37s' }}>
           <TokenMonitoringCard />
         </div>
+
+        {/* Card de Gerenciamento de Cache */}
+        <Card className="animate-fade-in border-orange-200 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20" style={{ animationDelay: '0.39s' }}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+              <Trash2 className="h-6 w-6" />
+              Gerenciamento de Cache
+            </CardTitle>
+            <CardDescription>
+              Limpar cache e forçar atualização completa do sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-orange-200">
+                <p className="text-sm font-semibold mb-2">⚠️ Ação Destrutiva</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Esta ação irá limpar todo o cache do navegador, sessionStorage, localStorage, 
+                  e desregistrar Service Workers. Use apenas se houver problemas de cache persistentes.
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 mb-4">
+                  <li>• Limpa sessionStorage e localStorage</li>
+                  <li>• Remove todos os Service Workers</li>
+                  <li>• Deleta cache do navegador</li>
+                  <li>• Recarrega a aplicação automaticamente</li>
+                </ul>
+              </div>
+              <Button 
+                variant="destructive" 
+                size="lg" 
+                className="w-full bg-orange-600 hover:bg-orange-700"
+                onClick={handleClearCache}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                🧹 Limpar Todo o Cache e Recarregar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Tabs com Informações Detalhadas */}
         <Tabs defaultValue="overview" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>

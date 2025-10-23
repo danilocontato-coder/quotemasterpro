@@ -11,6 +11,7 @@ import { BrandingProvider } from '@/contexts/BrandingContext';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
 import { AppWithProviders } from '@/components/layout/AppWithProviders';
 import { TourProvider } from '@/components/tour/TourProvider';
+import { useVersionChecker } from '@/hooks/useVersionChecker';
 import '@/styles/tour-custom.css';
 
 if (import.meta.env.DEV) {
@@ -22,11 +23,11 @@ if (import.meta.env.DEV) {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10 * 60 * 1000,
-      gcTime: 20 * 60 * 1000,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      retry: 0,
+      staleTime: 2 * 60 * 1000,     // ✅ Reduzir para 2 minutos
+      gcTime: 5 * 60 * 1000,        // ✅ Reduzir para 5 minutos
+      refetchOnWindowFocus: true,   // ✅ Revalidar ao focar janela
+      refetchOnMount: 'always',     // ✅ Sempre buscar ao montar
+      retry: 1,
       networkMode: 'online',
     },
     mutations: {
@@ -37,6 +38,9 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // ✅ Checar atualizações automaticamente
+  useVersionChecker();
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

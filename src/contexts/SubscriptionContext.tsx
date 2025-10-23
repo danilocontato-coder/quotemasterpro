@@ -49,15 +49,18 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [dbUserPlan, setDbUserPlan] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Cache planos - executa apenas uma vez por sessão
+  // Cache planos - executa apenas uma vez por sessão com validação de versão
   const fetchSubscriptionPlans = useCallback(async () => {
     setPlansLoading(true);
+    const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
     const cached = sessionStorage.getItem('subscription_plans');
     const cacheTime = sessionStorage.getItem('subscription_plans_time');
+    const cacheVersion = sessionStorage.getItem('subscription_plans_version');
     
-    if (cached && cacheTime) {
+    // ✅ Invalida cache se versão mudou
+    if (cached && cacheTime && cacheVersion === APP_VERSION) {
       const age = Date.now() - parseInt(cacheTime);
-      if (age < 10 * 60 * 1000) { // 10 minutos
+      if (age < 5 * 60 * 1000) { // ✅ Reduzir para 5 minutos
         setSubscriptionPlans(JSON.parse(cached));
         setPlansLoading(false);
         return;
@@ -75,6 +78,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setSubscriptionPlans(data || []);
       sessionStorage.setItem('subscription_plans', JSON.stringify(data || []));
       sessionStorage.setItem('subscription_plans_time', Date.now().toString());
+      sessionStorage.setItem('subscription_plans_version', APP_VERSION); // ✅ Salvar versão
     } catch (error) {
       console.error('Erro ao buscar planos:', error);
     } finally {
@@ -82,18 +86,21 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
-  // Cache usage
+  // Cache usage com validação de versão
   const fetchClientUsage = useCallback(async () => {
     if (!currentClient?.id) {
       setIsLoading(false);
       return;
     }
 
+    const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
     const cacheKey = `client_usage_${currentClient.id}`;
     const cached = sessionStorage.getItem(cacheKey);
     const cacheTime = sessionStorage.getItem(`${cacheKey}_time`);
+    const cacheVersion = sessionStorage.getItem(`${cacheKey}_version`);
     
-    if (cached && cacheTime) {
+    // ✅ Invalida cache se versão mudou
+    if (cached && cacheTime && cacheVersion === APP_VERSION) {
       const age = Date.now() - parseInt(cacheTime);
       if (age < 30 * 1000) { // 30 segundos para atualização mais rápida
         setClientUsage(JSON.parse(cached));
@@ -162,6 +169,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         console.log('📊 [SubscriptionContext] Uso calculado:', calculatedUsage);
         setClientUsage(calculatedUsage);
         sessionStorage.setItem(cacheKey, JSON.stringify(calculatedUsage));
+        sessionStorage.setItem(`${cacheKey}_version`, APP_VERSION);
       } else {
         // Fallback: verificar se last_reset_date está desatualizado
         const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
@@ -189,6 +197,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         console.log('📊 [SubscriptionContext] Uso do banco (atualizado):', updatedUsage);
         setClientUsage(updatedUsage);
         sessionStorage.setItem(cacheKey, JSON.stringify(updatedUsage));
+        sessionStorage.setItem(`${cacheKey}_version`, APP_VERSION);
       }
       sessionStorage.setItem(`${cacheKey}_time`, Date.now().toString());
     } catch (error) {
