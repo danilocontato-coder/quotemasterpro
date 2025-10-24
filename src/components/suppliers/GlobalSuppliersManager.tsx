@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 
 interface GlobalSuppliersManagerProps {
   suppliers: any[];
+  title?: string;
+  showTypeFilter?: boolean;
 }
 
 const regions = [
@@ -31,18 +33,26 @@ const regions = [
   'Nacional'
 ];
 
-export function GlobalSuppliersManager({ suppliers }: GlobalSuppliersManagerProps) {
+export function GlobalSuppliersManager({ 
+  suppliers, 
+  title = "Fornecedores Globais",
+  showTypeFilter = true 
+}: GlobalSuppliersManagerProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState<'all' | 'local' | 'certified'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
   const { toast } = useToast();
 
-  // Filtrar apenas fornecedores certificados (globais)
-  const globalSuppliers = suppliers.filter(s => s.type === 'certified');
+  // Filtrar por tipo (all, local ou certified)
+  const filteredByType = suppliers.filter(s => {
+    if (typeFilter === 'all') return true;
+    return s.type === typeFilter;
+  });
 
-  const filteredSuppliers = globalSuppliers.filter(supplier => {
+  const filteredSuppliers = filteredByType.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          supplier.cnpj.includes(searchTerm) ||
                          supplier.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -147,10 +157,10 @@ export function GlobalSuppliersManager({ suppliers }: GlobalSuppliersManagerProp
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Globe className="h-6 w-6 text-purple-600" />
-            Fornecedores Globais
+            {title}
           </h2>
           <p className="text-muted-foreground">
-            Gerenciar fornecedores disponíveis para todos os clientes
+            Gerenciar fornecedores {typeFilter === 'certified' ? 'certificados' : typeFilter === 'local' ? 'locais' : ''}
           </p>
         </div>
         <Button onClick={() => setShowCreateModal(true)}>
@@ -172,6 +182,18 @@ export function GlobalSuppliersManager({ suppliers }: GlobalSuppliersManagerProp
                 className="pl-10"
               />
             </div>
+            {showTypeFilter && (
+              <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="local">Locais</SelectItem>
+                  <SelectItem value="certified">Certificados</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
             <Select value={regionFilter} onValueChange={setRegionFilter}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Filtrar por região" />

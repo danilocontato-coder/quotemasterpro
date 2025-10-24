@@ -440,44 +440,39 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       // Cenário 2: Criar novo fornecedor
       console.log('[useSupplierForm] Criando novo fornecedor');
       
-      // Se formData.client_id existe (admin selecionou cliente), usar RPCs
+      // Se formData.client_id existe (admin selecionou cliente), usar serviço completo
       if (formData.client_id) {
-        console.log('[useSupplierForm] Admin criando fornecedor para cliente:', formData.client_id);
+        console.log('[useSupplierForm] Admin criando fornecedor com auth e notificações para cliente:', formData.client_id);
         
-        const cleanDoc = normalizeDocument(validatedData.document_number);
+        // Importar serviço de criação completa
+        const { createSupplierWithAuth } = await import('@/services/supplierCreationService');
         
-        // 1) Criar ou buscar fornecedor via RPC
-        const { data: supplierData, error: createError } = await supabase.rpc('find_or_create_supplier_by_cnpj', {
-          p_cnpj: cleanDoc,
-          p_name: validatedData.name,
-          p_email: validatedData.email,
-          p_phone: validatedData.phone || null
+        const result = await createSupplierWithAuth({
+          name: validatedData.name,
+          email: validatedData.email,
+          document_number: validatedData.document_number,
+          phone: validatedData.phone,
+          whatsapp: validatedData.whatsapp,
+          website: validatedData.website,
+          state: validatedData.state,
+          city: validatedData.city,
+          address: validatedData.address,
+          specialties: validatedData.specialties,
+          clientId: formData.client_id,
+          type: validatedData.type || 'local',
         });
         
-        if (createError || !supplierData || !Array.isArray(supplierData) || supplierData.length === 0) {
-          console.error('[useSupplierForm] Erro ao criar fornecedor:', createError);
-          throw createError || new Error('Falha ao criar fornecedor');
-        }
+        console.log('[useSupplierForm] ✅ Criação completa finalizada:', result);
         
-        const newSupplierId = supplierData[0].supplier_id;
-        console.log('[useSupplierForm] Fornecedor criado/encontrado:', newSupplierId);
-        
-        // 2) Associar ao cliente via RPC
-        const { error: assocError } = await supabase.rpc('associate_supplier_to_client', {
-          p_supplier_id: newSupplierId,
-          p_client_id: formData.client_id
-        });
-        
-        if (assocError) {
-          console.error('[useSupplierForm] Erro ao associar:', assocError);
-          throw assocError;
-        }
-        
-        console.log('[useSupplierForm] Fornecedor associado ao cliente com sucesso');
+        // Feedback detalhado ao usuário
+        const notifMessages = [];
+        if (result.notifications.email) notifMessages.push('✅ Email');
+        if (result.notifications.whatsapp) notifMessages.push('✅ WhatsApp');
+        if (result.notifications.inApp) notifMessages.push('✅ In-app');
         
         toast({
-          title: 'Fornecedor criado e associado!',
-          description: `${validatedData.name} foi criado e associado ao cliente.`
+          title: 'Fornecedor criado com sucesso! 🎉',
+          description: `${validatedData.name} foi criado, autenticado e notificado.\n${notifMessages.join(' | ')}`
         });
         
         resetForm();

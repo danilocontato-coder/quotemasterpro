@@ -21,7 +21,9 @@ export default function AdminSuppliers() {
       localSuppliers,
       activeSuppliers,
       totalSuppliers: allSuppliers.length,
-      activationRate: allSuppliers.length > 0 ? Math.round((activeSuppliers.length / allSuppliers.length) * 100) : 0
+      activationRate: allSuppliers.length > 0 ? Math.round((activeSuppliers.length / allSuppliers.length) * 100) : 0,
+      certifiedCount: certifiedSuppliers.length,
+      localCount: localSuppliers.length,
     };
   }, [suppliers]);
 
@@ -103,13 +105,18 @@ export default function AdminSuppliers() {
       {/* Tabs */}
       <Tabs defaultValue="global" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="global">Fornecedores Globais</TabsTrigger>
+          <TabsTrigger value="global">Fornecedores Globais ({stats.certifiedCount})</TabsTrigger>
+          <TabsTrigger value="local">Fornecedores Locais ({stats.localCount})</TabsTrigger>
           <TabsTrigger value="analytics">Análises & Relatórios</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
 
         <TabsContent value="global" className="space-y-4">
-          <GlobalSuppliersManager suppliers={suppliers} />
+          <GlobalSuppliersManager suppliers={stats.certifiedSuppliers} title="Fornecedores Globais (Certificados)" showTypeFilter={false} />
+        </TabsContent>
+
+        <TabsContent value="local" className="space-y-4">
+          <GlobalSuppliersManager suppliers={stats.localSuppliers} title="Fornecedores Locais" showTypeFilter={false} />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
