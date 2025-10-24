@@ -387,6 +387,9 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
   const negotiation = quote ? getNegotiationByQuoteId(quote.id) : null;
 
+  // Verifica se a cotação está bloqueada para aprovação
+  const isQuoteLocked = quote?.status === 'pending_approval' || quote?.status === 'approved';
+
   // Verifica se o prazo da cotação expirou
   const isDeadlineExpired = useMemo(() => {
     if (!quote?.deadline) return false;
@@ -938,15 +941,57 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               {proposals.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>
-                      {proposals.length === 1 ? 'Detalhes da Proposta' : 'Comparação de Propostas'}
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>
+                        {proposals.length === 1 ? 'Detalhes da Proposta' : 'Comparação de Propostas'}
+                      </CardTitle>
+                      {!isQuoteLocked && proposals.length === 1 && (
+                        <Button
+                          onClick={() => onApprove?.(proposals[0])}
+                          className="flex items-center gap-2"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Aprovar Proposta
+                        </Button>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ProposalComparisonTable 
                       proposals={proposals} 
                       quoteItems={quoteItems}
                     />
+                    
+                    {/* Botões de aprovação para múltiplas propostas */}
+                    {!isQuoteLocked && proposals.length > 1 && !shouldShowMatrix && (
+                      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-blue-900 mb-2">
+                              Selecione uma proposta para aprovar
+                            </h4>
+                            <p className="text-sm text-blue-700 mb-4">
+                              Você pode aprovar qualquer proposta diretamente, ou aguardar para usar a Matriz de Decisão quando todos os fornecedores responderem.
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {proposals.map((proposal) => (
+                                <Button
+                                  key={proposal.id}
+                                  onClick={() => onApprove?.(proposal)}
+                                  variant="default"
+                                  size="sm"
+                                  className="flex items-center gap-2"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                  Aprovar {proposal.supplierName}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
