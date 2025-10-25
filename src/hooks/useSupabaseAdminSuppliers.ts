@@ -68,9 +68,32 @@ export const useSupabaseAdminSuppliers = () => {
     }
   };
 
-  // Load inicial simples - SEM real-time
+  // Load inicial com real-time subscription
   useEffect(() => {
     fetchSuppliers();
+
+    // Real-time subscription para mudanças em suppliers
+    console.log('📡 Configurando real-time subscription para suppliers');
+    const channel = supabase
+      .channel('admin-suppliers-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'suppliers'
+        },
+        (payload) => {
+          console.log('🔄 Supplier changed (real-time):', payload.eventType);
+          fetchSuppliers(); // Refetch quando houver mudanças
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('📡 Removendo subscription de suppliers');
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const updateSupplier = async (id: string, updates: Partial<Supplier>) => {

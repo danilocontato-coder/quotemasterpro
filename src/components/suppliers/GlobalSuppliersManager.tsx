@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Globe, MapPin, Star, Plus, Search, Filter, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Globe, MapPin, Star, Plus, Search, Filter, Edit, Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Supplier, SupplierGroup } from '@/data/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { createCertifiedSupplier } from '@/services/certifiedSupplierCreationService';
+import { supabase } from '@/integrations/supabase/client';
+import { normalizeDocument, validateCNPJ, validateCPF } from '@/utils/documentValidation';
 
 interface GlobalSuppliersManagerProps {
   suppliers: any[];
   title?: string;
   showTypeFilter?: boolean;
+  onRefresh?: () => void;
 }
 
 const regions = [
@@ -36,7 +41,8 @@ const regions = [
 export function GlobalSuppliersManager({ 
   suppliers, 
   title = "Fornecedores Globais",
-  showTypeFilter = true 
+  showTypeFilter = true,
+  onRefresh 
 }: GlobalSuppliersManagerProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
@@ -44,6 +50,7 @@ export function GlobalSuppliersManager({
   const [typeFilter, setTypeFilter] = useState<'all' | 'local' | 'certified'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   // Filtrar por tipo (all, local ou certified)
@@ -69,6 +76,7 @@ export function GlobalSuppliersManager({
     email: '',
     phone: '',
     whatsapp: '',
+    website: '',
     address: '',
     region: '',
     groupId: '',
@@ -76,36 +84,196 @@ export function GlobalSuppliersManager({
     subscriptionPlan: 'basic' as 'basic' | 'premium' | 'enterprise'
   });
 
-  const handleCreateSupplier = () => {
-    toast({
-      title: "Funcionalidade não implementada",
-      description: "Criação de fornecedores globais será implementada em breve.",
-      variant: "default"
-    });
+  const handleCreateSupplier = async () => {
+    setIsSaving(true);
     
-    resetForm();
-    setShowCreateModal(false);
-  };
+    try {
+      // Validar campos obrigatórios
+      if (!formData.name || !formData.cnpj || !formData.email || !formData.phone || !formData.region) {
+        toast({
+          title: "Campos obrigatórios",
+          description: "Preencha nome, CNPJ/CPF, email, telefone e região",
+          variant: "destructive"
+        });
+        return;
+      }
 
-  const handleUpdateSupplier = () => {
-    if (!editingSupplier) return;
+      // Validar CNPJ/CPF
+      const cleanDoc = normalizeDocument(formData.cnpj);
+      const isValid = cleanDoc.length === 11 
+        ? validateCPF(cleanDoc) 
+        : validateCNPJ(cleanDoc);
 
-    toast({
-      title: "Funcionalidade não implementada",
-      description: "Edição de fornecedores globais será implementada em breve.",
-      variant: "default"
-    });
+      if (!isValid) {
+        toast({
+          title: "CNPJ/CPF inválido",
+          description: "Verifique o número digitado",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    resetForm();
-    setEditingSupplier(null);
-  };
+      // Criar fornecedor certificado
+      const result = await createCertifiedSupplier({
+        name: formData.name,
+        email: formData.email,
+        document_number: cleanDoc,
+        phone: formData.phone,
+        whatsapp: formData.whatsapp || undefined,
+        website: formData.website || undefined,
+        region: formData.region,
+        address: formData.address || undefined,
+        specialties: formData.specialties,
+        subscription_plan_id: formData.subscriptionPlan
+      });
 
-  const handleDeleteSupplier = (supplier: any) => {
-    if (window.confirm(`Tem certeza que deseja remover ${supplier.name} dos fornecedores globais?`)) {
+      // Toast detalhado com status de notificações
+      const notifStatus = [];
+      if (result.notifications.email) notifStatus.push('✅ Email enviado');
+      if (result.notifications.whatsapp) notifStatus.push('✅ WhatsApp enviado');
+      if (result.notifications.inApp) notifStatus.push('✅ Notificação in-app criada');
+
       toast({
-        title: "Funcionalidade não implementada",
-        description: "Remoção de fornecedores globais será implementada em breve.",
-        variant: "default"
+        title: "✅ Fornecedor criado com sucesso!",
+        description: (
+          <div className="space-y-1">
+            <p>{formData.name} foi adicionado à rede global</p>
+            {notifStatus.length > 0 && (
+              <p className="text-xs mt-1">{notifStatus.join(' • ')}</p>
+            )}
+          </div>
+        )
+      });
+
+      resetForm();
+      setShowCreateModal(false);
+      
+      // Refetch via prop ou callback
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+    } catch (error: any) {
+      console.error('Erro ao criar fornecedor:', error);
+      toast({
+        title: "Erro ao criar fornecedor",
+        description: error.message || "Tente novamente",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateSupplier = async () => {
+    if (!editingSupplier) return;
+    
+    setIsSaving(true);
+
+    try {
+      // Validar CNPJ/CPF se foi alterado
+      if (formData.cnpj) {
+        const cleanDoc = normalizeDocument(formData.cnpj);
+        const isValid = cleanDoc.length === 11 
+          ? validateCPF(cleanDoc) 
+          : validateCNPJ(cleanDoc);
+
+        if (!isValid) {
+          toast({
+            title: "CNPJ/CPF inválido",
+            description: "Verifique o número digitado",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
+      const { error } = await supabase
+        .from('suppliers')
+        .update({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          whatsapp: formData.whatsapp,
+          website: formData.website,
+          region: formData.region,
+          address: formData.address ? { full: formData.address } : null,
+          specialties: formData.specialties,
+          subscription_plan_id: formData.subscriptionPlan
+        })
+        .eq('id', editingSupplier.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Fornecedor atualizado!",
+        description: `${formData.name} foi atualizado com sucesso`
+      });
+
+      resetForm();
+      setEditingSupplier(null);
+      setShowCreateModal(false);
+      
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+    } catch (error: any) {
+      console.error('Erro ao atualizar:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteSupplier = async (supplier: any) => {
+    if (!window.confirm(`Tem certeza que deseja remover ${supplier.name}?`)) return;
+
+    try {
+      // Verificar se tem cotações ativas
+      const { data: quotesCheck } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('supplier_id', supplier.id)
+        .in('status', ['draft', 'sent', 'under_review'])
+        .limit(1);
+
+      if (quotesCheck && quotesCheck.length > 0) {
+        toast({
+          title: "⚠️ Não é possível excluir",
+          description: "Este fornecedor possui cotações ativas. Desative-o ao invés de excluir.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Mudar status para 'inactive' ao invés de deletar (soft delete)
+      const { error } = await supabase
+        .from('suppliers')
+        .update({ status: 'inactive' })
+        .eq('id', supplier.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Fornecedor desativado",
+        description: `${supplier.name} foi removido da rede ativa`
+      });
+
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+    } catch (error: any) {
+      console.error('Erro ao desativar:', error);
+      toast({
+        title: "Erro ao desativar",
+        description: error.message,
+        variant: "destructive"
       });
     }
   };
@@ -113,11 +281,12 @@ export function GlobalSuppliersManager({
   const handleEditSupplier = (supplier: any) => {
     setFormData({
       name: supplier.name,
-      cnpj: supplier.cnpj,
+      cnpj: supplier.cnpj || supplier.document_number || '',
       email: supplier.email,
       phone: supplier.phone,
       whatsapp: supplier.whatsapp || '',
-      address: supplier.address,
+      website: supplier.website || '',
+      address: typeof supplier.address === 'string' ? supplier.address : supplier.address?.full || '',
       region: supplier.region || '',
       groupId: supplier.groupId || '',
       specialties: supplier.specialties || [],
@@ -134,6 +303,7 @@ export function GlobalSuppliersManager({
       email: '',
       phone: '',
       whatsapp: '',
+      website: '',
       address: '',
       region: '',
       groupId: '',
@@ -142,12 +312,34 @@ export function GlobalSuppliersManager({
     });
   };
 
-  const toggleSupplierStatus = (supplier: any) => {
-    toast({
-      title: "Funcionalidade não implementada",
-      description: "Alteração de status de fornecedores globais será implementada em breve.",
-      variant: "default"
-    });
+  const toggleSupplierStatus = async (supplier: any) => {
+    const newStatus = supplier.status === 'active' ? 'inactive' : 'active';
+    
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .update({ status: newStatus })
+        .eq('id', supplier.id);
+
+      if (error) throw error;
+
+      toast({
+        title: newStatus === 'active' ? "✅ Fornecedor ativado" : "⏸️ Fornecedor desativado",
+        description: `${supplier.name} agora está ${newStatus === 'active' ? 'ativo' : 'inativo'}`
+      });
+
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+    } catch (error: any) {
+      console.error('Erro ao alterar status:', error);
+      toast({
+        title: "Erro ao alterar status",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -384,18 +576,27 @@ export function GlobalSuppliersManager({
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Região de Atuação *</label>
-                <Select value={formData.region} onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar região" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {regions.map(region => (
-                      <SelectItem key={region} value={region}>{region}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium">Website</label>
+                <Input
+                  value={formData.website}
+                  onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                  placeholder="https://exemplo.com.br"
+                />
               </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Região de Atuação *</label>
+              <Select value={formData.region} onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar região" />
+                </SelectTrigger>
+                <SelectContent>
+                  {regions.map(region => (
+                    <SelectItem key={region} value={region}>{region}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -437,15 +638,22 @@ export function GlobalSuppliersManager({
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCreateModal(false)} 
+              className="flex-1"
+              disabled={isSaving}
+            >
               Cancelar
             </Button>
-            <Button 
+            <LoadingButton 
               onClick={editingSupplier ? handleUpdateSupplier : handleCreateSupplier}
               className="flex-1"
+              isLoading={isSaving}
+              loadingText={editingSupplier ? 'Atualizando...' : 'Criando...'}
             >
               {editingSupplier ? 'Atualizar' : 'Criar'} Fornecedor
-            </Button>
+            </LoadingButton>
           </div>
         </DialogContent>
       </Dialog>

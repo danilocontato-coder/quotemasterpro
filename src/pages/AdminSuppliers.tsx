@@ -7,7 +7,7 @@ import { Shield, Globe, Users, Award } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminSuppliers() {
-  const { suppliers, isLoading } = useSupabaseAdminSuppliers();
+  const { suppliers, isLoading, refetch } = useSupabaseAdminSuppliers();
 
   // Estatísticas otimizadas com useMemo
   const stats = useMemo(() => {
@@ -112,11 +112,21 @@ export default function AdminSuppliers() {
         </TabsList>
 
         <TabsContent value="global" className="space-y-4">
-          <GlobalSuppliersManager suppliers={stats.certifiedSuppliers} title="Fornecedores Globais (Certificados)" showTypeFilter={false} />
+          <GlobalSuppliersManager 
+            suppliers={stats.certifiedSuppliers} 
+            title="Fornecedores Globais (Certificados)" 
+            showTypeFilter={false}
+            onRefresh={refetch}
+          />
         </TabsContent>
 
         <TabsContent value="local" className="space-y-4">
-          <GlobalSuppliersManager suppliers={stats.localSuppliers} title="Fornecedores Locais" showTypeFilter={false} />
+          <GlobalSuppliersManager 
+            suppliers={stats.localSuppliers} 
+            title="Fornecedores Locais" 
+            showTypeFilter={false}
+            onRefresh={refetch}
+          />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
