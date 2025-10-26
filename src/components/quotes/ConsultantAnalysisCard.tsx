@@ -21,6 +21,12 @@ export function ConsultantAnalysisCard({
   onViewDetails,
   isApproving
 }: ConsultantAnalysisCardProps) {
+  // Validação defensiva: verificar se negotiationStrategy existe
+  if (!analysis?.negotiationStrategy?.primaryChoice) {
+    console.warn('ConsultantAnalysisCard: Análise incompleta ou inválida', analysis);
+    return null;
+  }
+
   const recommendedProposal = proposals.find(p => p.supplierName === analysis.negotiationStrategy.primaryChoice);
 
   if (!recommendedProposal) return null;
