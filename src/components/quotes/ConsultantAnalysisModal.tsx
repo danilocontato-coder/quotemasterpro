@@ -89,7 +89,7 @@ export function ConsultantAnalysisModal({
                   <CardContent className="space-y-3">
                     {proposals.map((proposal, idx) => {
                       const analysis = individualAnalyses.get(proposal.id);
-                      const isRecommended = comparativeAnalysis?.negotiationStrategy.primaryChoice === proposal.supplierName;
+                      const isRecommended = comparativeAnalysis?.negotiationStrategy?.primaryChoice === proposal.supplierName;
                       
                       return (
                         <div key={proposal.id} className={`flex items-center gap-3 p-3 rounded-lg ${isRecommended ? 'bg-primary/10 border-2 border-primary' : 'bg-muted'}`}>
@@ -391,21 +391,21 @@ export function ConsultantAnalysisModal({
                       <div>
                         <div className="text-sm font-medium mb-1">Escolha Principal:</div>
                         <div className="text-lg font-semibold text-primary">
-                          {comparativeAnalysis.negotiationStrategy.primaryChoice}
+                          {comparativeAnalysis?.negotiationStrategy?.primaryChoice || 'N/A'}
                         </div>
                       </div>
                       
                       <div>
                         <div className="text-sm font-medium mb-1">Escolha de Backup:</div>
                         <div className="text-base">
-                          {comparativeAnalysis.negotiationStrategy.backupChoice}
+                          {comparativeAnalysis?.negotiationStrategy?.backupChoice || 'N/A'}
                         </div>
                       </div>
 
                       <div>
                         <div className="text-sm font-medium mb-2">Pontos de Negociação:</div>
                         <ul className="space-y-2">
-                          {comparativeAnalysis.negotiationStrategy.negotiationPoints.map((point, idx) => (
+                          {comparativeAnalysis?.negotiationStrategy?.negotiationPoints?.map((point, idx) => (
                             <li key={idx} className="flex items-start gap-2 text-sm">
                               <Badge variant="outline">{idx + 1}</Badge>
                               <span>{point}</span>
@@ -416,7 +416,7 @@ export function ConsultantAnalysisModal({
 
                       <div className="bg-muted p-4 rounded-lg">
                         <div className="text-sm font-medium mb-1">Desconto Esperado:</div>
-                        <div className="text-base">{comparativeAnalysis.negotiationStrategy.expectedDiscount}</div>
+                        <div className="text-base">{comparativeAnalysis?.negotiationStrategy?.expectedDiscount || 'Não especificado'}</div>
                       </div>
                     </CardContent>
                   </Card>
