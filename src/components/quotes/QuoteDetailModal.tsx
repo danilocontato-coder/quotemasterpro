@@ -185,31 +185,48 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       }
 
       // Transform data to match QuoteProposal interface
-      const transformedProposals: QuoteProposal[] = (data || []).map(response => ({
-        id: response.id,
-        quoteId: response.quote_id,
-        supplierId: response.supplier_id,
-        supplierName: response.supplier_name || response.suppliers?.name || 'Fornecedor',
-        items: quoteItems.map(quoteItem => ({
-          productId: quoteItem.id,
-          productName: quoteItem.product_name,
-          quantity: quoteItem.quantity,
-          unitPrice: (quoteItem.unit_price || response.total_amount / (quoteItems.reduce((sum, item) => sum + item.quantity, 0) || 1)),
-          total: (quoteItem.total || quoteItem.quantity * (quoteItem.unit_price || 0)),
-          brand: 'N/A',
-          specifications: ''
-        })),
-        totalPrice: response.total_amount,
-        price: response.total_amount, // Para compatibilidade
-        deliveryTime: response.delivery_time || 7,
-        shippingCost: response.shipping_cost || 0,
-        deliveryScore: 50, // TODO: calcular do histórico com calculateDeliveryScore
-        warrantyMonths: response.warranty_months || 12,
-        reputation: 3.0,
-        observations: response.notes || '',
-        submittedAt: response.created_at,
-        status: 'pending'
-      }));
+      const transformedProposals: QuoteProposal[] = (data || []).map(response => {
+        // Se não há itens da cotação ainda, criar um item genérico
+        const itemsToMap = quoteItems.length > 0 ? quoteItems : [{
+          id: 'generic',
+          product_name: 'Itens da proposta',
+          quantity: 1,
+          unit_price: response.total_amount,
+          total: response.total_amount
+        }];
+
+        return {
+          id: response.id,
+          quoteId: response.quote_id,
+          supplierId: response.supplier_id,
+          supplierName: response.supplier_name || response.suppliers?.name || 'Fornecedor',
+          items: itemsToMap.map(quoteItem => {
+            // Calcular preço unitário baseado no total da resposta dividido pelos itens
+            const totalQty = itemsToMap.reduce((sum, item) => sum + item.quantity, 0) || 1;
+            const calculatedUnitPrice = response.total_amount / totalQty;
+            
+            return {
+              productId: quoteItem.id,
+              productName: quoteItem.product_name,
+              quantity: quoteItem.quantity,
+              unitPrice: quoteItem.unit_price || calculatedUnitPrice,
+              total: quoteItem.total || (quoteItem.quantity * (quoteItem.unit_price || calculatedUnitPrice)),
+              brand: 'N/A',
+              specifications: ''
+            };
+          }),
+          totalPrice: response.total_amount,
+          price: response.total_amount, // Para compatibilidade
+          deliveryTime: response.delivery_time || 7,
+          shippingCost: response.shipping_cost || 0,
+          deliveryScore: 50, // TODO: calcular do histórico com calculateDeliveryScore
+          warrantyMonths: response.warranty_months || 12,
+          reputation: 3.0,
+          observations: response.notes || '',
+          submittedAt: response.created_at,
+          status: 'pending'
+        };
+      });
 
       setProposals(transformedProposals);
     } catch (error) {
@@ -368,10 +385,11 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   }, [open, quote?.id, proposals.length, fetchQuoteItems, fetchAuditLogs, fetchSupplierNames, loadSavedAnalyses]);
 
   useEffect(() => {
-    if (quoteItems.length > 0) {
+    // Buscar propostas sempre que houver um quote ID, mesmo se não houver itens ainda
+    if (quote?.id) {
       fetchProposals();
     }
-  }, [quoteItems, fetchProposals]);
+  }, [quote?.id, quoteItems, fetchProposals]);
 
   // Log audit logs for debugging
   useEffect(() => {
