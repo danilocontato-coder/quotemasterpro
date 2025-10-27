@@ -141,8 +141,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           setForcePasswordChange(false);
         }
 
-        // Check if terms need to be accepted
-        if (profile.terms_accepted === false) {
+        // Check if terms need to be accepted (com bypass para admins)
+        const shouldAcceptTerms = profile.terms_accepted === false && profile.bypass_terms !== true;
+        if (shouldAcceptTerms) {
           setNeedsTermsAcceptance(true);
         } else {
           setNeedsTermsAcceptance(false);

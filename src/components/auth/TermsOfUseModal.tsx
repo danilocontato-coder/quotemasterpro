@@ -95,10 +95,16 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="space-y-3">
           <DialogTitle className="text-2xl">
             {isLoading ? "Carregando termos..." : (terms?.title || "Termos de Uso")}
           </DialogTitle>
+          {!isLoading && (
+            <div className="text-sm text-muted-foreground border-l-2 border-primary pl-3 py-1">
+              <p className="font-medium">Você está logado como:</p>
+              <p className="text-foreground">{userId}</p>
+            </div>
+          )}
         </DialogHeader>
 
         <ScrollArea className="flex-1 pr-4 max-h-[50vh]">
