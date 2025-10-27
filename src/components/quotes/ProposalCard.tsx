@@ -44,10 +44,17 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
     }
   };
 
-  // Calcular totais e subtotais
-  const itemsSubtotal = quoteItems.reduce((sum, item) => sum + (item.total || 0), 0);
+  // Calcular totais usando os preços da proposta (proposal.items) ao invés de quoteItems
+  // porque quoteItems pode ter unit_price/total nulos
+  const itemsWithPrices = quoteItems.map(item => {
+    const proposalItem = proposal.items.find(pi => pi.productId === item.id);
+    const unitPrice = proposalItem?.unitPrice ?? 0;
+    const subtotal = unitPrice * item.quantity;
+    return { ...item, unitPrice, subtotal };
+  });
+  
+  const itemsSubtotal = itemsWithPrices.reduce((sum, item) => sum + item.subtotal, 0);
   const shippingCost = proposal.shippingCost || 0;
-  const totalAmount = itemsSubtotal + shippingCost;
 
   return (
     <Card className={`transition-all duration-300 ease-in-out ${isWinner ? 'border-2 border-green-500 shadow-lg' : ''}`}>
@@ -158,15 +165,23 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {quoteItems.map((item) => (
+                    {itemsWithPrices.map((item) => (
                       <tr key={item.id} className="border-t">
                         <td className="p-3 text-sm">{item.product_name}</td>
                         <td className="p-3 text-sm text-center">{item.quantity}</td>
                         <td className="p-3 text-sm text-right">
-                          R$ {(item.unit_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          {item.unitPrice > 0 ? (
+                            `R$ ${item.unitPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="p-3 text-sm text-right font-medium">
-                          R$ {(item.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          {item.subtotal > 0 ? (
+                            `R$ ${item.subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -198,7 +213,7 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
                     <tr className="border-t bg-primary/5">
                       <td colSpan={3} className="p-3 text-base font-bold text-right">VALOR TOTAL:</td>
                       <td className="p-3 text-base text-right font-bold text-primary">
-                        R$ {totalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   </tbody>

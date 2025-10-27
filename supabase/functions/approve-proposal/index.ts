@@ -268,18 +268,51 @@ serve(async (req) => {
       );
     }
 
-    // 5. Update quote status to approved and set selected supplier
+    // 5. Update quote status to approved and set selected supplier + total amount
     const { error: quoteUpdateError } = await supabase
       .from('quotes')
       .update({ 
         status: 'approved',
         supplier_id: response.supplier_id,
-        supplier_name: response.supplier_name
+        supplier_name: response.supplier_name,
+        total: response.total_amount
       })
       .eq('id', quoteId);
 
     if (quoteUpdateError) {
       console.error('❌ Error updating quote:', quoteUpdateError);
+    }
+
+    // 5.1. Create payment record if it doesn't exist
+    const { data: existingPayment, error: paymentCheckError } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('quote_id', quoteId)
+      .maybeSingle();
+
+    if (paymentCheckError) {
+      console.error('❌ Error checking existing payment:', paymentCheckError);
+    }
+
+    if (!existingPayment) {
+      const { error: paymentCreateError } = await supabase
+        .from('payments')
+        .insert({
+          quote_id: quoteId,
+          client_id: quote.client_id,
+          supplier_id: response.supplier_id,
+          amount: response.total_amount,
+          status: 'pending',
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 dias
+        });
+
+      if (paymentCreateError) {
+        console.error('❌ Error creating payment:', paymentCreateError);
+      } else {
+        console.log('✅ Payment record created with amount:', response.total_amount);
+      }
+    } else {
+      console.log('ℹ️ Payment record already exists for this quote');
     }
 
     // 6. Reject all other proposals for this quote automatically
