@@ -238,6 +238,18 @@ const navigation = [
         description: 'Status dos serviços'
       },
       {
+        name: 'Debug de Auth',
+        href: '/admin/debug-auth',
+        icon: UserCog,
+        description: 'Diagnóstico de autenticação'
+      },
+      {
+        name: 'Teste de Senha Forçada',
+        href: '/admin/force-password-test',
+        icon: Shield,
+        description: 'Testar troca obrigatória'
+      },
+      {
         name: 'Ajuda',
         href: '/help',
         icon: HelpCircle,

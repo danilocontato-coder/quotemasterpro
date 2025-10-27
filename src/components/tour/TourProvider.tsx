@@ -12,6 +12,16 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
+    console.log('[TOUR] 🎯 Verificando condições para iniciar tour', {
+      hasUser: !!user,
+      userId: user?.id,
+      termsAccepted: user?.termsAccepted,
+      tourCompleted: user?.tourCompleted,
+      onboardingCompleted: user?.onboardingCompleted,
+      forcePasswordChange: user?.forcePasswordChange,
+      timestamp: new Date().toISOString()
+    });
+
     // Só inicia o tour se:
     // 1. Usuário autenticado
     // 2. tour_completed = false
@@ -19,28 +29,56 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 4. force_password_change = false (não está em troca obrigatória de senha)
     // 5. terms_accepted = true (já aceitou os termos)
     if (user && user.termsAccepted && !user.tourCompleted && user.onboardingCompleted && !user.forcePasswordChange) {
+      console.log('[TOUR] ✅ Todas as condições atendidas - iniciando tour em 1.5s');
       // Pequeno delay para garantir que a página carregou
       const timer = setTimeout(() => {
+        console.log('[TOUR] 🚀 Disparando tour agora!');
         setRun(true);
       }, 1500);
       
       return () => clearTimeout(timer);
+    } else {
+      console.log('[TOUR] ❌ Condições não atendidas - tour não será iniciado', {
+        reason: !user ? 'Sem usuário' :
+                !user.termsAccepted ? 'Termos não aceitos' :
+                user.tourCompleted ? 'Tour já completo' :
+                !user.onboardingCompleted ? 'Onboarding não completo' :
+                user.forcePasswordChange ? 'Senha precisa ser trocada' : 'Indefinido'
+      });
     }
   }, [user]);
 
   // Listener para iniciar o tour após a troca de senha obrigatória ou aceitação de termos
   useEffect(() => {
     const handlePasswordChanged = () => {
+      console.log('[TOUR] 🔑 Evento password-changed recebido', {
+        hasUser: !!user,
+        termsAccepted: user?.termsAccepted,
+        tourCompleted: user?.tourCompleted,
+        onboardingCompleted: user?.onboardingCompleted
+      });
+      
       if (user && user.termsAccepted && !user.tourCompleted && user.onboardingCompleted) {
+        console.log('[TOUR] ✅ Após troca de senha - iniciando tour em 1.5s');
         setTimeout(() => {
+          console.log('[TOUR] 🚀 Disparando tour pós-senha');
           setRun(true);
         }, 1500);
       }
     };
 
     const handleTermsAccepted = () => {
+      console.log('[TOUR] 📄 Evento terms-accepted recebido', {
+        hasUser: !!user,
+        tourCompleted: user?.tourCompleted,
+        onboardingCompleted: user?.onboardingCompleted,
+        forcePasswordChange: user?.forcePasswordChange
+      });
+      
       if (user && !user.tourCompleted && user.onboardingCompleted && !user.forcePasswordChange) {
+        console.log('[TOUR] ✅ Após aceitar termos - iniciando tour em 1.5s');
         setTimeout(() => {
+          console.log('[TOUR] 🚀 Disparando tour pós-termos');
           setRun(true);
         }, 1500);
       }
@@ -48,9 +86,13 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     window.addEventListener('password-changed', handlePasswordChanged);
     window.addEventListener('terms-accepted', handleTermsAccepted);
+    
+    console.log('[TOUR] 👂 Event listeners registrados para password-changed e terms-accepted');
+    
     return () => {
       window.removeEventListener('password-changed', handlePasswordChanged);
       window.removeEventListener('terms-accepted', handleTermsAccepted);
+      console.log('[TOUR] 🔇 Event listeners removidos');
     };
   }, [user]);
 

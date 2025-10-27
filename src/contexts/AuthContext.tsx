@@ -129,16 +129,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       
       const enforceTerms = (featureFlagData?.setting_value as any)?.enforce_terms || false;
       
+      logger.info('auth', '[TERMS-CHECK] Iniciando verificação de termos', {
+        userId: profile?.id,
+        email: profile?.email,
+        terms_accepted: profile?.terms_accepted,
+        bypass_terms: (profile as any)?.bypass_terms,
+        enforce_flag: enforceTerms,
+        has_profile: !!profile
+      });
+      
+      // CRÍTICO: Verificar termos ANTES de setIsLoading(false)
       if (enforceTerms && profile && profile.terms_accepted === false && (profile as any).bypass_terms !== true) {
-        logger.info('auth', '[TERMS-CHECK] Usuário precisa aceitar termos', {
+        logger.warn('auth', '[TERMS-CHECK] ⚠️ Usuário PRECISA aceitar termos - BLOQUEANDO', {
           userId: profile.id,
           email: profile.email,
           terms_accepted: profile.terms_accepted,
-          bypass_terms: (profile as any).bypass_terms,
-          enforce_flag: enforceTerms
+          bypass_terms: (profile as any).bypass_terms
         });
         setNeedsTermsAcceptance(true);
       } else {
+        logger.info('auth', '[TERMS-CHECK] ✅ Termos OK ou não obrigatório', {
+          reason: !enforceTerms ? 'enforce_terms desabilitado' : 
+                  !profile ? 'sem profile' :
+                  profile.terms_accepted ? 'já aceitou' : 
+                  (profile as any).bypass_terms ? 'bypass ativo' : 'indefinido'
+        });
         setNeedsTermsAcceptance(false);
       }
 
@@ -569,23 +584,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       {/* Prioridade 1: Modal de Termos de Uso (se não aceito) */}
       {/* FASE 1: Suspense boundary para evitar tela branca */}
       {needsTermsAcceptance && user && (
-        <React.Suspense fallback={
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Carregando termos de uso...</p>
+        <>
+          {console.log('[TERMS-MODAL] 🔵 Renderizando modal de termos', { 
+            userId: user.id, 
+            email: user.email,
+            needsTermsAcceptance,
+            timestamp: new Date().toISOString() 
+          })}
+          <React.Suspense fallback={
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Carregando termos de uso...</p>
+                <p className="text-xs text-muted-foreground">Usuário: {user.email}</p>
+              </div>
             </div>
-          </div>
-        }>
-          {React.createElement(
-            React.lazy(() => import('@/components/auth/TermsOfUseModal').then(m => ({ default: m.TermsOfUseModal }))),
-            {
-              open: needsTermsAcceptance,
-              userId: user.id,
-              onTermsAccepted: handleTermsAccepted
-            }
-          )}
-        </React.Suspense>
+          }>
+            {React.createElement(
+              React.lazy(() => import('@/components/auth/TermsOfUseModal').then(m => ({ default: m.TermsOfUseModal }))),
+              {
+                open: needsTermsAcceptance,
+                userId: user.id,
+                onTermsAccepted: handleTermsAccepted
+              }
+            )}
+          </React.Suspense>
+        </>
       )}
       
       {/* Prioridade 2: Modal de Troca de Senha (após aceitar termos) */}

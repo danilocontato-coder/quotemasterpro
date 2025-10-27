@@ -343,6 +343,11 @@ export const AppWithProviders: React.FC = () => {
             <DebugAuth />
           </Suspense>
         } />
+        <Route path="force-password-test" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            {React.createElement(React.lazy(() => import('@/pages/admin/ForcePasswordTest')))}
+          </Suspense>
+        } />
         <Route path="terms" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             {React.createElement(React.lazy(() => import('@/pages/admin/TermsManagement')))}
