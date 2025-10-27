@@ -17,7 +17,8 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 2. tour_completed = false
     // 3. onboarding_completed = true (já passou pelo cadastro)
     // 4. force_password_change = false (não está em troca obrigatória de senha)
-    if (user && !user.tourCompleted && user.onboardingCompleted && !user.forcePasswordChange) {
+    // 5. terms_accepted = true (já aceitou os termos)
+    if (user && user.termsAccepted && !user.tourCompleted && user.onboardingCompleted && !user.forcePasswordChange) {
       // Pequeno delay para garantir que a página carregou
       const timer = setTimeout(() => {
         setRun(true);
@@ -27,10 +28,18 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  // Listener para iniciar o tour após a troca de senha obrigatória
+  // Listener para iniciar o tour após a troca de senha obrigatória ou aceitação de termos
   useEffect(() => {
     const handlePasswordChanged = () => {
-      if (user && !user.tourCompleted && user.onboardingCompleted) {
+      if (user && user.termsAccepted && !user.tourCompleted && user.onboardingCompleted) {
+        setTimeout(() => {
+          setRun(true);
+        }, 1500);
+      }
+    };
+
+    const handleTermsAccepted = () => {
+      if (user && !user.tourCompleted && user.onboardingCompleted && !user.forcePasswordChange) {
         setTimeout(() => {
           setRun(true);
         }, 1500);
@@ -38,7 +47,11 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     
     window.addEventListener('password-changed', handlePasswordChanged);
-    return () => window.removeEventListener('password-changed', handlePasswordChanged);
+    window.addEventListener('terms-accepted', handleTermsAccepted);
+    return () => {
+      window.removeEventListener('password-changed', handlePasswordChanged);
+      window.removeEventListener('terms-accepted', handleTermsAccepted);
+    };
   }, [user]);
 
   const handleJoyrideCallback = async (data: CallBackProps) => {

@@ -3733,6 +3733,8 @@ export type Database = {
           role: string
           supplier_id: string | null
           tenant_type: string | null
+          terms_accepted: boolean | null
+          terms_accepted_at: string | null
           tour_completed: boolean | null
           updated_at: string | null
         }
@@ -3750,6 +3752,8 @@ export type Database = {
           role?: string
           supplier_id?: string | null
           tenant_type?: string | null
+          terms_accepted?: boolean | null
+          terms_accepted_at?: string | null
           tour_completed?: boolean | null
           updated_at?: string | null
         }
@@ -3767,6 +3771,8 @@ export type Database = {
           role?: string
           supplier_id?: string | null
           tenant_type?: string | null
+          terms_accepted?: boolean | null
+          terms_accepted_at?: string | null
           tour_completed?: boolean | null
           updated_at?: string | null
         }

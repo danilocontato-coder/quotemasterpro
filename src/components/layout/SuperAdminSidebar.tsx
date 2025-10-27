@@ -179,6 +179,12 @@ const navigation = [
         description: 'Logo e identidade visual'
       },
       {
+        name: 'Termos de Uso',
+        href: '/admin/terms',
+        icon: FileText,
+        description: 'Editar termos da plataforma'
+      },
+      {
         name: 'Domínio',
         href: '/admin/domain',
         icon: Globe,

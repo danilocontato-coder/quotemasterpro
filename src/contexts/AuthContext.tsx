@@ -20,6 +20,7 @@ export interface User {
   tourCompleted?: boolean;
   tenantType?: string;
   forcePasswordChange?: boolean;
+  termsAccepted?: boolean;
 }
 
 export const getRoleBasedRoute = (
@@ -80,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
+  const [needsTermsAcceptance, setNeedsTermsAcceptance] = useState(false);
 
   // Memoizar função de check admin mode
   const checkAdminMode = useCallback((): boolean => {
@@ -114,6 +116,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         setForcePasswordChange(true);
       } else {
         setForcePasswordChange(false);
+      }
+
+      // Check if terms need to be accepted
+      if (profile && profile.terms_accepted === false) {
+        setNeedsTermsAcceptance(true);
+      } else {
+        setNeedsTermsAcceptance(false);
       }
 
       if (profileError) {
@@ -200,6 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           tourCompleted: profile.tour_completed,
           tenantType: profile.tenant_type,
           forcePasswordChange: userRecord?.force_password_change ?? false,
+          termsAccepted: profile.terms_accepted ?? false,
         };
         setUser(userProfile);
         setError(null);
@@ -413,6 +423,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           setUser(null);
           setError(null);
           setForcePasswordChange(false);
+          setNeedsTermsAcceptance(false);
           setIsLoading(false);
         }
       }
@@ -426,6 +437,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     // Disparar evento para permitir o tour iniciar após a troca de senha
     window.dispatchEvent(new CustomEvent('password-changed'));
   }, []);
+
+  const handleTermsAccepted = useCallback(() => {
+    setNeedsTermsAcceptance(false);
+    // Recarregar perfil do usuário para atualizar termsAccepted
+    if (session?.user) {
+      fetchUserProfile(session.user);
+    }
+  }, [session, fetchUserProfile]);
 
   // Listen for profile updates from settings
   useEffect(() => {
@@ -527,14 +546,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {/* Prioridade 1: Modal de Termos de Uso (se não aceito) */}
+      {needsTermsAcceptance && user && (
+        <>
+          {/* Lazy import do TermsOfUseModal */}
+          {React.createElement(
+            React.lazy(() => import('@/components/auth/TermsOfUseModal').then(m => ({ default: m.TermsOfUseModal }))),
+            {
+              open: needsTermsAcceptance,
+              userId: user.id,
+              onTermsAccepted: handleTermsAccepted
+            }
+          )}
+        </>
+      )}
       
-      {/* Modal obrigatório de troca de senha */}
-      <ForcePasswordChangeModal
-        open={forcePasswordChange && !!user}
-        userEmail={user?.email || ''}
-        onPasswordChanged={handlePasswordChanged}
-      />
+      {/* Prioridade 2: Modal de Troca de Senha (após aceitar termos) */}
+      {!needsTermsAcceptance && forcePasswordChange && user && (
+        <ForcePasswordChangeModal
+          open={forcePasswordChange}
+          userEmail={user.email}
+          onPasswordChanged={handlePasswordChanged}
+        />
+      )}
+      
+      {/* Renderizar children apenas se não houver bloqueios */}
+      {(!needsTermsAcceptance && !forcePasswordChange) && children}
     </AuthContext.Provider>
   );
 });

@@ -343,6 +343,11 @@ export const AppWithProviders: React.FC = () => {
             <DebugAuth />
           </Suspense>
         } />
+        <Route path="terms" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            {React.createElement(React.lazy(() => import('@/pages/admin/TermsManagement')))}
+          </Suspense>
+        } />
       </Route>
 
       {/* Rotas do Cliente/Manager - /app/* e também /* para compatibilidade */}
