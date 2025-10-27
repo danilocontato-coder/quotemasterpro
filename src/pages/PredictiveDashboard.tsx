@@ -11,6 +11,32 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 const PredictiveDashboard = () => {
   const { data, isLoading, error, refetch } = usePredictiveInsights();
 
+  // Estado vazio elegante (sem clientId ou role sem acesso)
+  if (!data && !isLoading && !error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-3 bg-primary rounded-lg">
+            <Brain className="h-8 w-8 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard Preditivo</h1>
+            <p className="text-muted-foreground">
+              Insights gerados por IA baseados em dados históricos
+            </p>
+          </div>
+        </div>
+        <Alert>
+          <Brain className="h-4 w-4" />
+          <AlertDescription>
+            Os insights preditivos estão disponíveis apenas para usuários vinculados a clientes.
+            Entre em contato com o administrador para vincular sua conta.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="container mx-auto p-6 space-y-6">

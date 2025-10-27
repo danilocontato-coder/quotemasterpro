@@ -208,6 +208,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         
         const endTime = performance.now();
         logger.info('performance', `fetchUserProfile total: ${(endTime - startTime).toFixed(2)}ms`);
+        logger.info('auth', 'User atualizado:', {
+          id: userProfile.id,
+          role: userProfile.role,
+          clientId: userProfile.clientId,
+          termsAccepted: userProfile.termsAccepted,
+          timestamp: new Date().toISOString()
+        });
       } else {
         logger.warn('auth', 'Profile não encontrado - criando usuário básico');
         const basicUser = {
@@ -431,11 +438,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     window.dispatchEvent(new CustomEvent('password-changed'));
   }, []);
 
-  const handleTermsAccepted = useCallback(() => {
+  const handleTermsAccepted = useCallback(async () => {
+    console.log('✅ [AUTH] Termos aceitos - recarregando perfil');
     setNeedsTermsAcceptance(false);
+    
     // Recarregar perfil do usuário para atualizar termsAccepted
     if (session?.user) {
-      fetchUserProfile(session.user);
+      await fetchUserProfile(session.user);
+      
+      // Garantir que user está atualizado antes de continuar
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }, [session, fetchUserProfile]);
 
