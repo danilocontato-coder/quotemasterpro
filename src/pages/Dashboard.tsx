@@ -16,14 +16,24 @@ import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { useSupabasePlanDetails } from '@/hooks/useSupabaseSubscriptionPlans';
 import { AnimatedPage, AnimatedSection, AnimatedHeader, AnimatedGrid } from '@/components/ui/animated-page';
 import { useBranding } from '@/contexts/BrandingContext';
+import { useAuth } from '@/contexts/AuthContext';
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { clientName, subscriptionPlan, clientType, isLoading: clientLoading } = useSupabaseCurrentClient();
   const { displayName: planDisplayName } = useSupabasePlanDetails(subscriptionPlan);
   const { metrics, activities, isLoading, error, refetch } = useSupabaseDashboard();
   const { settings } = useBranding();
+
+  // ✅ CRÍTICO: Redirecionar admin para painel correto
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      console.log('🔒 [SECURITY] Admin detectado no /dashboard, redirecionando para /admin/superadmin');
+      navigate('/admin/superadmin', { replace: true });
+    }
+  }, [user?.role, navigate]);
 
   // Redirecionar administradoras para dashboard específico
   useEffect(() => {

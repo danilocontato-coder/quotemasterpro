@@ -134,6 +134,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         const clientData = Array.isArray(profile.client) ? profile.client[0] : profile.client;
         const supplierData = Array.isArray(profile.supplier) ? profile.supplier[0] : profile.supplier;
 
+        // CRÍTICO: Buscar roles da tabela user_roles para determinar papel efetivo
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', supabaseUser.id);
+
+        const roles = userRoles?.map(r => r.role) || [];
+        
+        // Calcular effectiveRole baseado em user_roles (prioridade sobre profile.role)
+        let effectiveRole: UserRole = profile.role as UserRole;
+        if (roles.includes('super_admin') || roles.includes('admin')) {
+          effectiveRole = 'admin';
+          logger.auth('Role efetivo: admin (de user_roles)', { roles });
+        } else if (roles.includes('support')) {
+          effectiveRole = 'support';
+          logger.auth('Role efetivo: support (de user_roles)', { roles });
+        } else {
+          effectiveRole = profile.role as UserRole;
+          logger.auth('Role efetivo: profile.role (fallback)', { profileRole: profile.role });
+        }
+
         // Check if password change is required
         if (userRecord?.force_password_change === true) {
           setForcePasswordChange(true);
@@ -153,7 +174,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           id: profile.id,
           email: profile.email,
           client_id: profile.client_id,
-          role: profile.role
+          role: profile.role,
+          effectiveRole,
+          userRoles: roles
         });
 
         // Verificar se cliente está ativo
@@ -192,7 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           id: profile.id,
           email: profile.email,
           name: profile.name,
-          role: profile.role as UserRole,
+          role: effectiveRole, // ✅ Usar effectiveRole ao invés de profile.role
           avatar: profile.avatar_url,
           companyName: profile.company_name,
           active: profile.active,
