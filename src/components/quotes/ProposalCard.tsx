@@ -47,7 +47,9 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
   // Calcular totais usando os preços da proposta (proposal.items) ao invés de quoteItems
   // porque quoteItems pode ter unit_price/total nulos
   const itemsWithPrices = quoteItems.map(item => {
-    const proposalItem = proposal.items.find(pi => pi.productId === item.id);
+    const proposalItem = proposal.items.find(pi => 
+      pi.productId === item.product_name || pi.productName === item.product_name
+    );
     const unitPrice = proposalItem?.unitPrice ?? 0;
     const subtotal = unitPrice * item.quantity;
     return { ...item, unitPrice, subtotal };
