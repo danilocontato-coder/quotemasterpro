@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         .from('profiles')
         .select(`
           *,
-          user:users!inner(force_password_change),
+          user:users!left(force_password_change),
           client:clients(status),
           supplier:suppliers(status)
         `)
