@@ -109,31 +109,36 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
   useEffect(() => {
     if (!quote) return;
 
-    const transformedProposals: QuoteProposal[] = (quote.proposals || []).map(p => ({
-      id: p.id,
-      quoteId: quote.id,
-      supplierId: p.supplier_id,
-      supplierName: p.supplier_name,
-      items: (quote.items || []).map(item => ({
-        productId: item.id,
-        productName: item.product_name,
-        quantity: item.quantity,
-        unitPrice: item.unit_price || (p.total_amount / (quote.items?.reduce((sum, i) => sum + i.quantity, 0) || 1)),
-        total: item.total || (item.quantity * (item.unit_price || 0)),
-        brand: 'N/A',
-        specifications: ''
-      })),
-      totalPrice: p.total_amount,
-      price: p.total_amount,
-      deliveryTime: p.delivery_time,
-      shippingCost: p.shipping_cost || 0,
-      deliveryScore: 50,
-      warrantyMonths: p.warranty_months || 12,
-      reputation: 3.0,
-      observations: p.notes || '',
-      submittedAt: p.created_at,
-      status: 'pending'
-    }));
+    const transformedProposals: QuoteProposal[] = (quote.proposals || []).map(p => {
+      // ✅ USAR ITENS DA PROPOSTA (p.items), não da cotação (quote.items)
+      const proposalItems = Array.isArray(p.items) ? p.items : [];
+      
+      return {
+        id: p.id,
+        quoteId: quote.id,
+        supplierId: p.supplier_id,
+        supplierName: p.supplier_name,
+        items: proposalItems.map((responseItem: any) => ({
+          productId: responseItem.product_name, // Use product_name as ID if no specific ID
+          productName: responseItem.product_name,
+          quantity: responseItem.quantity,
+          unitPrice: responseItem.unit_price || 0, // ✅ Preço da PROPOSTA
+          total: responseItem.total || (responseItem.quantity * (responseItem.unit_price || 0)),
+          brand: responseItem.brand || 'N/A',
+          specifications: responseItem.specifications || ''
+        })),
+        totalPrice: p.total_amount,
+        price: p.total_amount,
+        deliveryTime: p.delivery_time,
+        shippingCost: p.shipping_cost || 0,
+        deliveryScore: 50,
+        warrantyMonths: p.warranty_months || 12,
+        reputation: 3.0,
+        observations: p.notes || '',
+        submittedAt: p.created_at,
+        status: 'pending'
+      };
+    });
 
     setProposals(transformedProposals);
   }, [quote]);

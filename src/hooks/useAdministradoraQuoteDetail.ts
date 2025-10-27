@@ -122,20 +122,35 @@ export const useAdministradoraQuoteDetail = (quoteId?: string) => {
       }));
 
       // Transform proposals
-      const proposals: QuoteProposal[] = (proposalsData || []).map(p => ({
-        id: p.id,
-        supplier_id: p.supplier_id,
-        supplier_name: p.supplier_name || p.suppliers?.name || 'Fornecedor',
-        supplier_rating: p.suppliers?.rating,
-        supplier_certified: p.suppliers?.is_certified || false,
-        total_amount: p.total_amount || 0,
-        delivery_time: p.delivery_time || 7,
-        shipping_cost: p.shipping_cost || 0,
-        warranty_months: p.warranty_months || 12,
-        notes: p.notes,
-        status: p.status || 'pending',
-        created_at: p.created_at
-      }));
+      const proposals: QuoteProposal[] = (proposalsData || []).map(p => {
+        // Parse items from JSONB (convert from Json type to proper structure)
+        const parsedItems = Array.isArray(p.items) 
+          ? (p.items as any[]).map((item: any) => ({
+              product_name: item.product_name || '',
+              quantity: item.quantity || 0,
+              unit_price: item.unit_price || 0,
+              total: item.total || 0,
+              brand: item.brand,
+              specifications: item.specifications
+            }))
+          : [];
+
+        return {
+          id: p.id,
+          supplier_id: p.supplier_id,
+          supplier_name: p.supplier_name || p.suppliers?.name || 'Fornecedor',
+          supplier_rating: p.suppliers?.rating,
+          supplier_certified: p.suppliers?.is_certified || false,
+          total_amount: p.total_amount || 0,
+          delivery_time: p.delivery_time || 7,
+          shipping_cost: p.shipping_cost || 0,
+          warranty_months: p.warranty_months || 12,
+          notes: p.notes,
+          status: p.status || 'pending',
+          created_at: p.created_at,
+          items: parsedItems // ✅ Itens parseados da proposta
+        };
+      });
 
       // Build complete detail object
       const detail: AdministradoraQuoteDetail = {

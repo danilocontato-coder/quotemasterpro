@@ -186,35 +186,30 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
       // Transform data to match QuoteProposal interface
       const transformedProposals: QuoteProposal[] = (data || []).map(response => {
-        // Se não há itens da cotação ainda, criar um item genérico
-        const itemsToMap = quoteItems.length > 0 ? quoteItems : [{
-          id: 'generic',
-          product_name: 'Itens da proposta',
-          quantity: 1,
-          unit_price: response.total_amount,
-          total: response.total_amount
-        }];
+        // ✅ USAR ITENS DA PROPOSTA (response.items), não da cotação (quoteItems)
+        const proposalItems = Array.isArray(response.items) && response.items.length > 0 
+          ? response.items 
+          : [{
+              product_name: 'Itens da proposta',
+              quantity: 1,
+              unit_price: response.total_amount,
+              total: response.total_amount
+            }];
 
         return {
           id: response.id,
           quoteId: response.quote_id,
           supplierId: response.supplier_id,
           supplierName: response.supplier_name || response.suppliers?.name || 'Fornecedor',
-          items: itemsToMap.map(quoteItem => {
-            // Calcular preço unitário baseado no total da resposta dividido pelos itens
-            const totalQty = itemsToMap.reduce((sum, item) => sum + item.quantity, 0) || 1;
-            const calculatedUnitPrice = response.total_amount / totalQty;
-            
-            return {
-              productId: quoteItem.id,
-              productName: quoteItem.product_name,
-              quantity: quoteItem.quantity,
-              unitPrice: quoteItem.unit_price || calculatedUnitPrice,
-              total: quoteItem.total || (quoteItem.quantity * (quoteItem.unit_price || calculatedUnitPrice)),
-              brand: 'N/A',
-              specifications: ''
-            };
-          }),
+          items: proposalItems.map((responseItem: any) => ({
+            productId: responseItem.product_name, // Use product_name as ID
+            productName: responseItem.product_name,
+            quantity: responseItem.quantity,
+            unitPrice: responseItem.unit_price || 0, // ✅ Preço da PROPOSTA
+            total: responseItem.total || (responseItem.quantity * (responseItem.unit_price || 0)),
+            brand: responseItem.brand || 'N/A',
+            specifications: responseItem.specifications || ''
+          })),
           totalPrice: response.total_amount,
           price: response.total_amount, // Para compatibilidade
           deliveryTime: response.delivery_time || 7,

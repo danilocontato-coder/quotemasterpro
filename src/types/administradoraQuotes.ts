@@ -51,6 +51,14 @@ export interface QuoteProposal {
   notes?: string;
   status: string;
   created_at: string;
+  items?: Array<{
+    product_name: string;
+    quantity: number;
+    unit_price: number;
+    total: number;
+    brand?: string;
+    specifications?: string;
+  }>;
 }
 
 export interface QuoteVisit {
