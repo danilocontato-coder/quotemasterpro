@@ -33,11 +33,8 @@ interface PredictiveInsightsData {
   generatedAt: string;
 }
 
-// Roles que têm acesso a insights
-const ROLES_WITH_INSIGHTS = ['manager', 'admin_cliente', 'client', 'collaborator'];
-
 export const usePredictiveInsights = () => {
-  const { user, isLoading: authIsLoading } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [data, setData] = useState<PredictiveInsightsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -138,11 +135,15 @@ export const usePredictiveInsights = () => {
 
   const generateInsights = async () => {
     if (!user?.clientId) {
-      // Não mostrar erro - apenas warning silencioso
-      console.warn('⚠️ [PREDICTIVE-INSIGHTS] ClientId não disponível - insights desabilitados');
+      const errorMsg = 'Você precisa estar vinculado a um condomínio para visualizar insights';
+      console.error('❌ [PREDICTIVE-INSIGHTS] Client ID não encontrado:', { user });
+      setError(errorMsg);
+      toast({
+        title: "Acesso Restrito",
+        description: errorMsg,
+        variant: "destructive"
+      });
       setIsLoading(false);
-      setData(null);
-      setError(null);
       return;
     }
 
@@ -197,38 +198,13 @@ export const usePredictiveInsights = () => {
   };
 
   useEffect(() => {
-    // Guard 1: Aguardar auth carregar
-    if (authIsLoading) {
-      console.log('⏸️ [PREDICTIVE-INSIGHTS] Aguardando auth carregar');
-      return;
-    }
-
-    // Guard 2: Verificar se usuário existe
-    if (!user) {
-      console.log('⏸️ [PREDICTIVE-INSIGHTS] Sem usuário logado');
-      setIsLoading(false);
-      return;
-    }
-
-    // Guard 3: Verificar se role tem acesso
-    if (!ROLES_WITH_INSIGHTS.includes(user.role)) {
-      console.log('ℹ️ [PREDICTIVE-INSIGHTS] Role sem acesso a insights:', user.role);
-      setIsLoading(false);
-      setData(null);
-      setError(null);
-      return;
-    }
-
-    // Guard 4: Verificar se tem clientId
-    if (user.clientId) {
+    if (user?.clientId) {
       generateInsights();
     } else {
-      console.log('ℹ️ [PREDICTIVE-INSIGHTS] ClientId não disponível para role:', user.role);
+      console.log('⏸️ [PREDICTIVE-INSIGHTS] Aguardando clientId do usuário');
       setIsLoading(false);
-      setData(null);
-      setError(null);
     }
-  }, [user?.clientId, user?.role, authIsLoading]);
+  }, [user?.clientId]);
 
   return {
     data,

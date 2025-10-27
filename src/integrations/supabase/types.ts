@@ -3722,7 +3722,6 @@ export type Database = {
         Row: {
           active: boolean | null
           avatar_url: string | null
-          bypass_terms: boolean | null
           client_id: string | null
           company_name: string | null
           created_at: string | null
@@ -3742,7 +3741,6 @@ export type Database = {
         Insert: {
           active?: boolean | null
           avatar_url?: string | null
-          bypass_terms?: boolean | null
           client_id?: string | null
           company_name?: string | null
           created_at?: string | null
@@ -3762,7 +3760,6 @@ export type Database = {
         Update: {
           active?: boolean | null
           avatar_url?: string | null
-          bypass_terms?: boolean | null
           client_id?: string | null
           company_name?: string | null
           created_at?: string | null

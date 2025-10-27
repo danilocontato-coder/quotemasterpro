@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/systemLogger';
 
@@ -9,49 +9,49 @@ interface TermsOfUse {
   last_updated: string;
 }
 
-const fetchTermsFromDB = async (): Promise<TermsOfUse> => {
-  logger.info('terms', 'Buscando termos de uso');
-  
-  const { data, error } = await supabase
-    .from('system_settings')
-    .select('setting_value')
-    .eq('setting_key', 'terms_of_use')
-    .maybeSingle();
+export const useTermsOfUse = () => {
+  const [terms, setTerms] = useState<TermsOfUse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (error) {
-    logger.error('terms', 'Erro ao buscar termos de uso', error);
-    throw error;
-  }
+  useEffect(() => {
+    const fetchTerms = async () => {
+      try {
+        setIsLoading(true);
+        logger.info('terms', 'Buscando termos de uso');
 
-  if (!data?.setting_value) {
-    throw new Error('Termos de uso não encontrados');
-  }
+        const { data, error: fetchError } = await supabase
+          .from('system_settings')
+          .select('setting_value')
+          .eq('setting_key', 'terms_of_use')
+          .single();
 
-  const termsData = data.setting_value as any;
-  const terms: TermsOfUse = {
-    title: termsData.title || 'Termos de Uso',
-    content: termsData.content || '',
-    version: termsData.version || '1.0',
-    last_updated: termsData.last_updated || new Date().toISOString()
-  };
-  
-  logger.info('terms', 'Termos de uso carregados', { version: terms.version });
-  return terms;
-};
+        if (fetchError) {
+          throw fetchError;
+        }
 
-export const useTermsOfUse = (enabled: boolean = true) => {
-  const { data: terms, isLoading, error } = useQuery({
-    queryKey: ['terms-of-use'],
-    queryFn: fetchTermsFromDB,
-    enabled,
-    staleTime: 1000 * 60 * 60, // Cache por 1 hora
-    gcTime: 1000 * 60 * 60 * 24, // Manter no cache por 24h
-    retry: 2,
-  });
+        if (data?.setting_value) {
+          const termsData = data.setting_value as any;
+          setTerms({
+            title: termsData.title || 'Termos de Uso',
+            content: termsData.content || '',
+            version: termsData.version || '1.0',
+            last_updated: termsData.last_updated || new Date().toISOString()
+          });
+          logger.info('terms', 'Termos de uso carregados', { version: termsData.version });
+        } else {
+          throw new Error('Termos de uso não encontrados');
+        }
+      } catch (err: any) {
+        logger.error('terms', 'Erro ao buscar termos de uso', err);
+        setError(err.message || 'Erro ao carregar termos de uso');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  return { 
-    terms: terms || null, 
-    isLoading, 
-    error: error?.message || null 
-  };
+    fetchTerms();
+  }, []);
+
+  return { terms, isLoading, error };
 };

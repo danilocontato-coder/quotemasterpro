@@ -186,11 +186,8 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
       // Transform data to match QuoteProposal interface
       const transformedProposals: QuoteProposal[] = (data || []).map(response => {
-        // ✅ Usar os itens que o fornecedor realmente preencheu
-        const responseItems = Array.isArray(response.items) ? response.items : [];
-        
-        // Se não há itens na resposta, criar um item genérico
-        const itemsToMap = responseItems.length > 0 ? responseItems : [{
+        // Se não há itens da cotação ainda, criar um item genérico
+        const itemsToMap = quoteItems.length > 0 ? quoteItems : [{
           id: 'generic',
           product_name: 'Itens da proposta',
           quantity: 1,
@@ -203,25 +200,19 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           quoteId: response.quote_id,
           supplierId: response.supplier_id,
           supplierName: response.supplier_name || response.suppliers?.name || 'Fornecedor',
-          items: itemsToMap.map((item: any, idx: number) => {
-            // ✅ Pegar valores direto da resposta do fornecedor
-            const unitPrice = item.unit_price || 0;
-            const quantity = item.quantity || 1;
-            const total = item.total || (unitPrice * quantity);
-            
-            // ✅ Tentar fazer match com o item original da cotação para obter o ID correto
-            const matchingQuoteItem = quoteItems.find(qi => 
-              qi.product_name?.toLowerCase().trim() === item.product_name?.toLowerCase().trim()
-            );
+          items: itemsToMap.map(quoteItem => {
+            // Calcular preço unitário baseado no total da resposta dividido pelos itens
+            const totalQty = itemsToMap.reduce((sum, item) => sum + item.quantity, 0) || 1;
+            const calculatedUnitPrice = response.total_amount / totalQty;
             
             return {
-              productId: matchingQuoteItem?.id || `response-item-${idx}`,
-              productName: item.product_name || `Item ${idx + 1}`,
-              quantity: quantity,
-              unitPrice: unitPrice,
-              total: total,
-              brand: item.brand || 'N/A',
-              specifications: item.notes || item.specifications || ''
+              productId: quoteItem.id,
+              productName: quoteItem.product_name,
+              quantity: quoteItem.quantity,
+              unitPrice: quoteItem.unit_price || calculatedUnitPrice,
+              total: quoteItem.total || (quoteItem.quantity * (quoteItem.unit_price || calculatedUnitPrice)),
+              brand: 'N/A',
+              specifications: ''
             };
           }),
           totalPrice: response.total_amount,

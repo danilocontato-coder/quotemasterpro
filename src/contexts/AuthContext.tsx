@@ -4,11 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChangeModal } from '@/components/auth/ForcePasswordChangeModal';
 import { logger } from '@/utils/systemLogger';
 
-// Lazy load do TermsOfUseModal
-const TermsOfUseModalLazy = React.lazy(() => 
-  import('@/components/auth/TermsOfUseModal').then(m => ({ default: m.TermsOfUseModal }))
-);
-
 export type UserRole = 'admin' | 'admin_cliente' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
 
 export interface User {
@@ -95,28 +90,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
 
   // Definir fetchUserProfile como useCallback estável
   const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser) => {
-    const startTime = performance.now();
     logger.auth('Carregando perfil do usuário', { userId: supabaseUser.id });
     setIsLoading(true);
     
     try {
-      // OTIMIZAÇÃO: Query única com joins para reduzir roundtrips
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          user:users!left(force_password_change),
-          client:clients(status),
-          supplier:suppliers(status)
-        `)
-        .eq('id', supabaseUser.id)
-        .maybeSingle();
+      // Fetch both profile and user record to check force_password_change
+      const [profileResult, userResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', supabaseUser.id)
+          .maybeSingle(),
+        supabase
+          .from('users')
+          .select('force_password_change')
+          .eq('auth_user_id', supabaseUser.id)
+          .maybeSingle()
+      ]);
 
-      const queryTime = performance.now();
-      logger.info('performance', `Query unificada: ${(queryTime - startTime).toFixed(2)}ms`);
+      const { data: profile, error: profileError } = profileResult;
+      const { data: userRecord } = userResult;
+
+      // Check if password change is required
+      if (userRecord?.force_password_change === true) {
+        setForcePasswordChange(true);
+      } else {
+        setForcePasswordChange(false);
+      }
+
+      // Check if terms need to be accepted
+      if (profile && profile.terms_accepted === false) {
+        setNeedsTermsAcceptance(true);
+      } else {
+        setNeedsTermsAcceptance(false);
+      }
 
       if (profileError) {
         logger.error('auth', 'Erro ao buscar perfil', profileError);
+        // Create a basic user even if profile fetch fails
         const fallbackUser = {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
@@ -129,59 +140,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       }
 
       if (profile) {
-        // Extrair dados dos joins
-        const userRecord = Array.isArray(profile.user) ? profile.user[0] : profile.user;
-        const clientData = Array.isArray(profile.client) ? profile.client[0] : profile.client;
-        const supplierData = Array.isArray(profile.supplier) ? profile.supplier[0] : profile.supplier;
-
-        // CRÍTICO: Buscar roles da tabela user_roles para determinar papel efetivo
-        const { data: userRoles } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', supabaseUser.id);
-
-        const roles = userRoles?.map(r => r.role) || [];
-        
-        // Calcular effectiveRole baseado em user_roles (prioridade sobre profile.role)
-        let effectiveRole: UserRole = profile.role as UserRole;
-        if (roles.includes('super_admin') || roles.includes('admin')) {
-          effectiveRole = 'admin';
-          logger.auth('Role efetivo: admin (de user_roles)', { roles });
-        } else if (roles.includes('support')) {
-          effectiveRole = 'support';
-          logger.auth('Role efetivo: support (de user_roles)', { roles });
-        } else {
-          effectiveRole = profile.role as UserRole;
-          logger.auth('Role efetivo: profile.role (fallback)', { profileRole: profile.role });
-        }
-
-        // Check if password change is required
-        if (userRecord?.force_password_change === true) {
-          setForcePasswordChange(true);
-        } else {
-          setForcePasswordChange(false);
-        }
-
-        // Check if terms need to be accepted (com bypass para admins)
-        const shouldAcceptTerms = profile.terms_accepted === false && profile.bypass_terms !== true;
-        if (shouldAcceptTerms) {
-          setNeedsTermsAcceptance(true);
-        } else {
-          setNeedsTermsAcceptance(false);
-        }
-
         logger.auth('Profile encontrado', {
           id: profile.id,
           email: profile.email,
           client_id: profile.client_id,
-          role: profile.role,
-          effectiveRole,
-          userRoles: roles
+          role: profile.role
         });
 
-        // Verificar se cliente está ativo
-        if (profile.client_id && clientData) {
-          if (clientData.status !== 'active') {
+        // Verificar se é usuário de cliente e se o cliente está ativo
+        if (profile.client_id) {
+          const { data: clientData, error: clientError } = await supabase
+            .from('clients')
+            .select('status')
+            .eq('id', profile.client_id)
+            .maybeSingle();
+
+          if (clientError) {
+            logger.error('auth', 'Erro ao verificar status do cliente', clientError);
+          } else if (clientData && clientData.status !== 'active') {
             logger.warn('auth', 'Cliente inativo - fazendo logout');
             setError('Sua conta foi desativada. Entre em contato com o administrador.');
             setUser(null);
@@ -191,10 +167,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           }
         }
 
-        // Verificar se fornecedor está ativo
-        if (profile.supplier_id && supplierData) {
-          if (supplierData.status !== 'active') {
-            logger.warn('auth', 'Fornecedor inativo - fazando logout');
+        // Verificar se é usuário de fornecedor e se o fornecedor está ativo
+        if (profile.supplier_id) {
+          const { data: supplierData, error: supplierError } = await supabase
+            .from('suppliers')
+            .select('status')
+            .eq('id', profile.supplier_id)
+            .maybeSingle();
+
+          if (supplierError) {
+            logger.error('auth', 'Erro ao verificar status do fornecedor', supplierError);
+          } else if (supplierData && supplierData.status !== 'active') {
+            logger.warn('auth', 'Fornecedor inativo - fazendo logout');
             setError('Sua conta de fornecedor foi desativada. Entre em contato com o administrador.');
             setUser(null);
             setIsLoading(false);
@@ -215,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           id: profile.id,
           email: profile.email,
           name: profile.name,
-          role: effectiveRole, // ✅ Usar effectiveRole ao invés de profile.role
+          role: profile.role as UserRole,
           avatar: profile.avatar_url,
           companyName: profile.company_name,
           active: profile.active,
@@ -229,18 +213,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         };
         setUser(userProfile);
         setError(null);
-        
-        const endTime = performance.now();
-        logger.info('performance', `fetchUserProfile total: ${(endTime - startTime).toFixed(2)}ms`);
-        logger.info('auth', 'User atualizado:', {
-          id: userProfile.id,
-          role: userProfile.role,
-          clientId: userProfile.clientId,
-          termsAccepted: userProfile.termsAccepted,
-          timestamp: new Date().toISOString()
-        });
       } else {
         logger.warn('auth', 'Profile não encontrado - criando usuário básico');
+        // Profile doesn't exist, create a basic user
         const basicUser = {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
@@ -253,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       }
     } catch (error) {
       logger.error('auth', 'Erro em fetchUserProfile', error);
+      // Fallback user creation
       const errorFallbackUser = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
@@ -462,16 +438,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     window.dispatchEvent(new CustomEvent('password-changed'));
   }, []);
 
-  const handleTermsAccepted = useCallback(async () => {
-    console.log('✅ [AUTH] Termos aceitos - recarregando perfil');
+  const handleTermsAccepted = useCallback(() => {
     setNeedsTermsAcceptance(false);
-    
     // Recarregar perfil do usuário para atualizar termsAccepted
     if (session?.user) {
-      await fetchUserProfile(session.user);
-      
-      // Garantir que user está atualizado antes de continuar
-      await new Promise(resolve => setTimeout(resolve, 100));
+      fetchUserProfile(session.user);
     }
   }, [session, fetchUserProfile]);
 
@@ -577,18 +548,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     <AuthContext.Provider value={value}>
       {/* Prioridade 1: Modal de Termos de Uso (se não aceito) */}
       {needsTermsAcceptance && user && (
-        <React.Suspense fallback={<div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-sm text-muted-foreground">Carregando termos...</p>
-          </div>
-        </div>}>
-          <TermsOfUseModalLazy 
-            open={needsTermsAcceptance}
-            userId={user.id}
-            onTermsAccepted={handleTermsAccepted}
-          />
-        </React.Suspense>
+        <>
+          {/* Lazy import do TermsOfUseModal */}
+          {React.createElement(
+            React.lazy(() => import('@/components/auth/TermsOfUseModal').then(m => ({ default: m.TermsOfUseModal }))),
+            {
+              open: needsTermsAcceptance,
+              userId: user.id,
+              onTermsAccepted: handleTermsAccepted
+            }
+          )}
+        </>
       )}
       
       {/* Prioridade 2: Modal de Troca de Senha (após aceitar termos) */}

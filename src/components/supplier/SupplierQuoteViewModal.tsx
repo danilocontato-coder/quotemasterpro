@@ -134,7 +134,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
             description: item.product_name || '',
             quantity: item.quantity || 0,
             unitPrice: item.unit_price || 0,
-            total: (item.unit_price || 0) * (item.quantity || 0),
+            total: item.total || 0,
             brand: '',
             specifications: item.notes || '',
           }));
@@ -164,7 +164,7 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
               description: item.product_name || '',
               quantity: item.quantity || 1,
               unitPrice: item.unit_price || 0,
-              total: (item.unit_price || 0) * (item.quantity || 1),
+              total: item.total || 0,
               brand: '',
               specifications: item.notes || '',
             }));
