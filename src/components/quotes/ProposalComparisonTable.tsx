@@ -87,7 +87,9 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
               </thead>
               <tbody>
                 {quoteItems.map((item, idx) => {
-                  const proposalItem = proposal.items.find(pi => pi.productId === item.id);
+                  const proposalItem = proposal.items.find(pi => 
+                    pi.productId === item.product_name || pi.productName === item.product_name
+                  );
                   const unitPrice = proposalItem?.unitPrice || 0;
                   const subtotal = unitPrice * item.quantity;
                   
@@ -121,7 +123,11 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
                 <tr className="border-b border-border bg-blue-50/30">
                   <td colSpan={3} className="p-3 font-medium text-foreground">Frete</td>
                   <td className="text-right p-3 font-semibold text-foreground">
-                    R$ {proposal.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {proposal.shippingCost === 0 ? (
+                      <span className="text-green-600">Grátis</span>
+                    ) : (
+                      `R$ ${proposal.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                    )}
                   </td>
                 </tr>
                 
@@ -170,7 +176,9 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
         <tbody>
           {quoteItems.map((item, idx) => {
             const prices = proposals.map(p => {
-              const proposalItem = p.items.find(pi => pi.productId === item.id);
+              const proposalItem = p.items.find(pi => 
+                pi.productId === item.product_name || pi.productName === item.product_name
+              );
               return proposalItem?.unitPrice || 0;
             });
             const minPrice = Math.min(...prices.filter(p => p > 0));
@@ -182,7 +190,9 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
                   <p className="text-xs text-muted-foreground mt-1">Quantidade: {item.quantity}</p>
                 </td>
                 {proposals.map((p) => {
-                  const proposalItem = p.items.find(pi => pi.productId === item.id);
+                  const proposalItem = p.items.find(pi => 
+                    pi.productId === item.product_name || pi.productName === item.product_name
+                  );
                   const price = proposalItem?.unitPrice || 0;
                   const isBest = price === minPrice && price > 0 && minPrice < Infinity;
                   
@@ -217,7 +227,11 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
             <td className="p-3 font-medium">Frete</td>
             {proposals.map(p => (
               <td key={p.id} className="text-center p-3 font-medium">
-                R$ {p.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                {p.shippingCost === 0 ? (
+                  <span className="text-green-600">Grátis</span>
+                ) : (
+                  `R$ ${p.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                )}
               </td>
             ))}
           </tr>
