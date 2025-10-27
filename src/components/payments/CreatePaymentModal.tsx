@@ -121,7 +121,7 @@ export function CreatePaymentModal({ onPaymentCreate, trigger }: CreatePaymentMo
             <div className="p-3 bg-muted/30 rounded-md">
               <h4 className="font-medium text-sm mb-2">Detalhes da Cotação</h4>
               <div className="text-sm space-y-1 text-muted-foreground">
-                <p><span className="font-medium">ID:</span> {selectedQuote.id}</p>
+                <p><span className="font-medium">Cotação:</span> #{selectedQuote.local_code || selectedQuote.id}</p>
                 <p><span className="font-medium">Título:</span> {selectedQuote.title}</p>
                 <p><span className="font-medium">Cliente:</span> {selectedQuote.client_name}</p>
                 <p><span className="font-medium">Fornecedor:</span> {selectedQuote.supplier_name || 'Não especificado'}</p>

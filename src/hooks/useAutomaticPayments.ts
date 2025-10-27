@@ -38,7 +38,7 @@ export const useAutomaticPayments = () => {
                   });
                   toast({
                     title: 'Erro ao Criar Pagamento',
-                    description: `Cotação "${updatedQuote.title || updatedQuote.id}" não tem fornecedor vinculado. Selecione uma proposta antes de aprovar.`,
+                    description: `Cotação "#${updatedQuote.local_code || updatedQuote.id}" não tem fornecedor vinculado. Selecione uma proposta antes de aprovar.`,
                     variant: 'destructive'
                   });
                   return;
@@ -100,7 +100,7 @@ export const useAutomaticPayments = () => {
                   });
                   toast({
                     title: 'Erro ao Criar Pagamento',
-                    description: `Cotação "${updatedQuote.title || updatedQuote.id}" não tem valor. Adicione itens ou aprove uma proposta com valor.`,
+                    description: `Cotação "#${updatedQuote.local_code || updatedQuote.id}" não tem valor. Adicione itens ou aprove uma proposta com valor.`,
                     variant: 'destructive'
                   });
                   return;
@@ -135,7 +135,7 @@ export const useAutomaticPayments = () => {
                   console.log('✅ Pagamento criado com sucesso!');
                   toast({
                     title: 'Pagamento Criado',
-                    description: `Pagamento automático criado para cotação ${updatedQuote.id}`,
+                    description: `Pagamento automático criado para cotação #${updatedQuote.local_code || updatedQuote.id}`,
                   });
                 }
               }

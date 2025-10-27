@@ -813,7 +813,7 @@ export function CreateQuoteModal({ open, onOpenChange, onQuoteCreate, editingQuo
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
-              {editingQuote ? `Editar Cotação ${editingQuote.id}` : 'Nova Cotação'}
+              {editingQuote ? `Editar Cotação #${editingQuote.local_code || editingQuote.id}` : 'Nova Cotação'}
             </DialogTitle>
           </DialogHeader>
           

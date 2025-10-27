@@ -500,7 +500,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     onStatusChange?.(quote.id, newStatus);
     toast({
       title: "Status atualizado!",
-      description: `Cotação ${quote.id} alterada para ${getStatusText(newStatus)}.`,
+      description: `Cotação #${quote.local_code || quote.id} alterada para ${getStatusText(newStatus)}.`,
     });
   };
 

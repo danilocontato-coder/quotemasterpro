@@ -59,7 +59,7 @@ export function TestAutomaticPayments() {
               results[results.length - 1].result = 'ERROR: ' + error.message;
             } else {
               results[results.length - 1].result = 'SUCCESS: Payment created';
-              toast.success(`Pagamento criado para cotação ${quote.id}`);
+              toast.success(`Pagamento criado para cotação #${quote.local_code || quote.id}`);
             }
           } catch (err: any) {
             results[results.length - 1].result = 'ERROR: ' + err.message;

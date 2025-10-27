@@ -465,7 +465,7 @@ export default function QuickResponse() {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Cotação:</span>
-                    <span className="font-bold text-primary">#{quoteData.id}</span>
+                    <span className="font-bold text-primary">#{quoteData.local_code || quoteData.id}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Cliente:</span>

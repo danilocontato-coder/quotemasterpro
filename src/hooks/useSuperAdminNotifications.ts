@@ -82,7 +82,7 @@ export const useSuperAdminNotifications = () => {
         generatedNotifications.push({
           id: `quote-activity-${quote.id}`,
           title: 'Alta Atividade na Cotação',
-          message: `Cotação #${quote.id} recebeu ${quote.responses_count} propostas`,
+          message: `Cotação #${quote.local_code || quote.id} recebeu ${quote.responses_count} propostas`,
           type: 'success',
           priority: 'normal',
           timestamp: new Date(quote.updated_at),

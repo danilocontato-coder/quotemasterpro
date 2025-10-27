@@ -17,6 +17,7 @@
 // Mock data for the system
 export interface Quote {
   id: string;
+  local_code?: string;
   title: string;
   description: string;
   total: number;
