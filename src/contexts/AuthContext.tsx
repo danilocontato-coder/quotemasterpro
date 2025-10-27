@@ -118,8 +118,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         setForcePasswordChange(false);
       }
 
-      // Check if terms need to be accepted
-      if (profile && profile.terms_accepted === false) {
+      // Check if terms need to be accepted (superadmins with bypass_terms skip this)
+      if (profile && profile.terms_accepted === false && (profile as any).bypass_terms !== true) {
         setNeedsTermsAcceptance(true);
       } else {
         setNeedsTermsAcceptance(false);
@@ -144,7 +144,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           id: profile.id,
           email: profile.email,
           client_id: profile.client_id,
-          role: profile.role
+          role: profile.role,
+          bypass_terms: (profile as any).bypass_terms,
+          terms_accepted: profile.terms_accepted,
+          onboarding_completed: profile.onboarding_completed
         });
 
         // Verificar se é usuário de cliente e se o cliente está ativo
