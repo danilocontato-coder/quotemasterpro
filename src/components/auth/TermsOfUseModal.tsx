@@ -63,7 +63,11 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
         }
       });
 
-      logger.info('auth', 'Termos aceitos com sucesso');
+      logger.info('auth', 'Termos aceitos com sucesso', {
+        userId,
+        terms_version: terms?.version || '1.0',
+        timestamp: new Date().toISOString()
+      });
       
       toast({
         title: "Termos aceitos",
@@ -71,6 +75,7 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
       });
 
       // Disparar evento para o AuthContext
+      console.log('[TERMS-MODAL] 🎉 Disparando evento terms-accepted', { userId });
       window.dispatchEvent(new CustomEvent('terms-accepted'));
       
       onTermsAccepted();

@@ -119,43 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         setForcePasswordChange(false);
       }
 
-      // Check if terms need to be accepted (superadmins with bypass_terms skip this)
-      // FASE 1: Feature flag check (permite ativar/desativar bloqueio)
-      const { data: featureFlagData } = await supabase
-        .from('system_settings')
-        .select('setting_value')
-        .eq('setting_key', 'terms_feature_flags')
-        .single();
-      
-      const enforceTerms = (featureFlagData?.setting_value as any)?.enforce_terms || false;
-      
-      logger.info('auth', '[TERMS-CHECK] Iniciando verificação de termos', {
-        userId: profile?.id,
-        email: profile?.email,
-        terms_accepted: profile?.terms_accepted,
-        bypass_terms: (profile as any)?.bypass_terms,
-        enforce_flag: enforceTerms,
-        has_profile: !!profile
-      });
-      
-      // CRÍTICO: Verificar termos ANTES de setIsLoading(false)
-      if (enforceTerms && profile && profile.terms_accepted === false && (profile as any).bypass_terms !== true) {
-        logger.warn('auth', '[TERMS-CHECK] ⚠️ Usuário PRECISA aceitar termos - BLOQUEANDO', {
-          userId: profile.id,
-          email: profile.email,
-          terms_accepted: profile.terms_accepted,
-          bypass_terms: (profile as any).bypass_terms
-        });
-        setNeedsTermsAcceptance(true);
-      } else {
-        logger.info('auth', '[TERMS-CHECK] ✅ Termos OK ou não obrigatório', {
-          reason: !enforceTerms ? 'enforce_terms desabilitado' : 
-                  !profile ? 'sem profile' :
-                  profile.terms_accepted ? 'já aceitou' : 
-                  (profile as any).bypass_terms ? 'bypass ativo' : 'indefinido'
-        });
-        setNeedsTermsAcceptance(false);
-      }
+      // Feature flag check para verificação de termos (será usado após setUser)
 
       if (profileError) {
         logger.error('auth', 'Erro ao buscar perfil', profileError);
@@ -246,7 +210,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           forcePasswordChange: userRecord?.force_password_change ?? false,
           termsAccepted: profile.terms_accepted ?? false,
         };
-        setUser(userProfile);
+        setUser(userProfile); // 1º: Setar user primeiro
+
+        // CRÍTICO: Verificar termos APÓS setar user (garante que modal pode renderizar)
+        const { data: featureFlagData } = await supabase
+          .from('system_settings')
+          .select('setting_value')
+          .eq('setting_key', 'terms_feature_flags')
+          .single();
+        
+        const enforceTerms = (featureFlagData?.setting_value as any)?.enforce_terms || false;
+        
+        logger.info('auth', '[TERMS-CHECK] Verificação de termos após setUser', {
+          userId: profile.id,
+          email: profile.email,
+          terms_accepted: profile.terms_accepted,
+          bypass_terms: (profile as any).bypass_terms,
+          enforce_flag: enforceTerms
+        });
+
+        if (enforceTerms && profile.terms_accepted === false && (profile as any).bypass_terms !== true) {
+          logger.warn('auth', '[TERMS-CHECK] ⚠️ Usuário PRECISA aceitar termos - BLOQUEANDO', {
+            userId: profile.id,
+            email: profile.email
+          });
+          setNeedsTermsAcceptance(true); // 2º: Setar flag APÓS user existir
+        } else {
+          logger.info('auth', '[TERMS-CHECK] ✅ Termos OK ou não obrigatório', {
+            reason: !enforceTerms ? 'enforce_terms desabilitado' : 
+                    profile.terms_accepted ? 'já aceitou' : 
+                    (profile as any).bypass_terms ? 'bypass ativo' : 'indefinido'
+          });
+          setNeedsTermsAcceptance(false);
+        }
+
         setError(null);
       } else {
         logger.warn('auth', 'Profile não encontrado - criando usuário básico');
@@ -277,6 +274,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       setIsLoading(false);
     }
   }, []);
+
+  // useEffect para re-verificar termos quando user mudar
+  useEffect(() => {
+    if (!user || isLoading) return;
+
+    const recheckTerms = async () => {
+      const { data: featureFlagData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'terms_feature_flags')
+        .single();
+      
+      const enforceTerms = (featureFlagData?.setting_value as any)?.enforce_terms || false;
+
+      if (enforceTerms && user.termsAccepted === false) {
+        logger.info('auth', '[TERMS-RECHECK] Modal de termos deve aparecer', {
+          userId: user.id,
+          email: user.email,
+          termsAccepted: user.termsAccepted
+        });
+        setNeedsTermsAcceptance(true);
+      } else {
+        setNeedsTermsAcceptance(false);
+      }
+    };
+
+    recheckTerms();
+  }, [user?.id, user?.termsAccepted, isLoading]);
 
   // Função para simular login como cliente
   const simulateClientLogin = useCallback(async (adminData: any) => {
@@ -473,13 +498,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     window.dispatchEvent(new CustomEvent('password-changed'));
   }, []);
 
-  const handleTermsAccepted = useCallback(() => {
-    setNeedsTermsAcceptance(false);
-    // Recarregar perfil do usuário para atualizar termsAccepted
-    if (session?.user) {
-      fetchUserProfile(session.user);
+  const handleTermsAccepted = useCallback(async () => {
+    logger.info('auth', '[TERMS] Callback de termos aceitos disparado');
+    
+    // Atualizar estado local do user imediatamente
+    if (user) {
+      const updatedUser = {
+        ...user,
+        termsAccepted: true,
+      };
+      setUser(updatedUser);
+      logger.info('auth', '[TERMS] User atualizado localmente com termsAccepted=true', {
+        userId: user.id,
+        email: user.email
+      });
     }
-  }, [session, fetchUserProfile]);
+    
+    setNeedsTermsAcceptance(false);
+    logger.info('auth', '[TERMS] Modal de termos fechado');
+    
+    // Recarregar perfil completo do banco após pequeno delay
+    setTimeout(() => {
+      logger.info('auth', '[TERMS] Recarregando perfil após aceitar termos');
+      if (session?.user) {
+        fetchUserProfile(session.user);
+      }
+    }, 500);
+  }, [user, session, fetchUserProfile]);
 
   // Listen for profile updates from settings
   useEffect(() => {

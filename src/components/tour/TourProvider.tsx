@@ -12,13 +12,17 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
+    const willStartTour = !!(user && user.termsAccepted && !user.tourCompleted && user.onboardingCompleted && !user.forcePasswordChange);
+    
     console.log('[TOUR] 🎯 Verificando condições para iniciar tour', {
       hasUser: !!user,
       userId: user?.id,
+      email: user?.email,
       termsAccepted: user?.termsAccepted,
       tourCompleted: user?.tourCompleted,
       onboardingCompleted: user?.onboardingCompleted,
       forcePasswordChange: user?.forcePasswordChange,
+      willStartTour,
       timestamp: new Date().toISOString()
     });
 
@@ -28,7 +32,7 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 3. onboarding_completed = true (já passou pelo cadastro)
     // 4. force_password_change = false (não está em troca obrigatória de senha)
     // 5. terms_accepted = true (já aceitou os termos)
-    if (user && user.termsAccepted && !user.tourCompleted && user.onboardingCompleted && !user.forcePasswordChange) {
+    if (willStartTour) {
       console.log('[TOUR] ✅ Todas as condições atendidas - iniciando tour em 1.5s');
       // Pequeno delay para garantir que a página carregou
       const timer = setTimeout(() => {
