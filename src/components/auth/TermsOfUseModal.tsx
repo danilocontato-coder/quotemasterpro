@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/utils/systemLogger';
 import { Loader2 } from 'lucide-react';
 import { useTermsOfUse } from '@/hooks/useTermsOfUse';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TermsOfUseModalProps {
   open: boolean;
@@ -23,7 +24,7 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
   const [accepted, setAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { terms, isLoading } = useTermsOfUse();
+  const { terms, isLoading } = useTermsOfUse(open); // Só carregar quando modal aberto
 
   const handleAccept = async () => {
     if (!accepted) {
@@ -102,8 +103,19 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
 
         <ScrollArea className="flex-1 pr-4 max-h-[50vh]">
           {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="space-y-3 p-4">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+              <div className="pt-4">
+                <Skeleton className="h-6 w-2/3" />
+                <Skeleton className="h-4 w-full mt-2" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-4/5" />
+              </div>
             </div>
           ) : (
             <div className="prose prose-sm max-w-none">
