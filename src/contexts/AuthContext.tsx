@@ -3,6 +3,7 @@ import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChangeModal } from '@/components/auth/ForcePasswordChangeModal';
 import { logger } from '@/utils/systemLogger';
+import { Loader2 } from 'lucide-react';
 
 export type UserRole = 'admin' | 'admin_cliente' | 'client' | 'manager' | 'collaborator' | 'supplier' | 'support';
 
@@ -119,7 +120,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       }
 
       // Check if terms need to be accepted (superadmins with bypass_terms skip this)
-      if (profile && profile.terms_accepted === false && (profile as any).bypass_terms !== true) {
+      // FASE 1: Feature flag check (permite ativar/desativar bloqueio)
+      const { data: featureFlagData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'terms_feature_flags')
+        .single();
+      
+      const enforceTerms = (featureFlagData?.setting_value as any)?.enforce_terms || false;
+      
+      if (enforceTerms && profile && profile.terms_accepted === false && (profile as any).bypass_terms !== true) {
+        logger.info('auth', '[TERMS-CHECK] Usuário precisa aceitar termos', {
+          userId: profile.id,
+          email: profile.email,
+          terms_accepted: profile.terms_accepted,
+          bypass_terms: (profile as any).bypass_terms,
+          enforce_flag: enforceTerms
+        });
         setNeedsTermsAcceptance(true);
       } else {
         setNeedsTermsAcceptance(false);
@@ -550,9 +567,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
   return (
     <AuthContext.Provider value={value}>
       {/* Prioridade 1: Modal de Termos de Uso (se não aceito) */}
+      {/* FASE 1: Suspense boundary para evitar tela branca */}
       {needsTermsAcceptance && user && (
-        <>
-          {/* Lazy import do TermsOfUseModal */}
+        <React.Suspense fallback={
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Carregando termos de uso...</p>
+            </div>
+          </div>
+        }>
           {React.createElement(
             React.lazy(() => import('@/components/auth/TermsOfUseModal').then(m => ({ default: m.TermsOfUseModal }))),
             {
@@ -561,7 +585,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
               onTermsAccepted: handleTermsAccepted
             }
           )}
-        </>
+        </React.Suspense>
       )}
       
       {/* Prioridade 2: Modal de Troca de Senha (após aceitar termos) */}

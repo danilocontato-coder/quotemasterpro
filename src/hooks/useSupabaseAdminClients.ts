@@ -631,6 +631,7 @@ export function useSupabaseAdminClients() {
               }
             };
 
+            // FASE 4: Atualizar mensagem de credenciais com aviso sobre termos
             const credentialsMessage = `🎉 Cliente criado com sucesso!
 
 📧 Email: ${clientData.email}
@@ -638,6 +639,7 @@ export function useSupabaseAdminClients() {
 
 ⚠️ IMPORTANTE: Anote essas credenciais!
 • O cliente usa o EMAIL para fazer login
+• No primeiro acesso, verá os Termos de Uso
 • Esta senha não será exibida novamente
 • Clique aqui para copiar as credenciais`;
 
@@ -732,10 +734,12 @@ export function useSupabaseAdminClients() {
                   isTemporary
                 });
                 
+                // FASE 4: Adicionar aviso sobre termos no e-mail
                 const passwordLabel = isTemporary ? 'Senha temporária' : 'Senha de acesso';
                 const securityNote = isTemporary 
                   ? '<p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;"><strong>⚠️ Importante:</strong> Por segurança, você será solicitado a alterar sua senha no primeiro acesso.</p>'
                   : '';
+                const termsNote = '<p style="margin: 10px 0 0 0; font-size: 13px; color: #0369a1; line-height: 1.5;"><strong>📋 Termos de Uso:</strong> No seu primeiro acesso, você será solicitado a aceitar nossos Termos de Uso da Plataforma.</p>';
                 
                 const { data: emailResp, error: emailErr } = await supabase.functions.invoke("send-email", {
                   body: {
@@ -795,6 +799,7 @@ export function useSupabaseAdminClients() {
                           
                           <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0 0 0; border-radius: 4px;">
                             ${securityNote}
+                            ${termsNote}
                           </div>
                         </div>
                       </div>
@@ -811,6 +816,8 @@ Sua conta foi criada com sucesso! Use as credenciais abaixo para fazer seu prime
 🏢 Empresa: ${clientData.companyName}
 
 ${isTemporary ? '⚠️ Importante: Esta é uma senha temporária. Você será solicitado a alterá-la no primeiro acesso.' : ''}
+
+📋 Termos de Uso: No seu primeiro acesso, você será solicitado a aceitar nossos Termos de Uso da Plataforma.
 
 Acesse a plataforma em: https://cotiz.com.br/auth/login
                     `

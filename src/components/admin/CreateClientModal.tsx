@@ -416,6 +416,14 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
           </TabsList>
 
           <div className="overflow-y-auto max-h-[60vh] mt-4">
+            {/* FASE 4: Aviso sobre termos de uso */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+              <FileText className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-900">
+                <strong>Termos de Uso:</strong> O cliente verá um modal de aceitação dos Termos de Uso no primeiro login.
+              </div>
+            </div>
+            
             <TabsContent value="basic" className="space-y-6">
               <Card>
                 <CardHeader>
