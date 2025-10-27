@@ -49,6 +49,8 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
   const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
   const [deliveryTime, setDeliveryTime] = useState(7);
   const [paymentTerms, setPaymentTerms] = useState('30 dias');
+  const [shippingCost, setShippingCost] = useState(0);
+  const [warrantyMonths, setWarrantyMonths] = useState(12);
   const [observations, setObservations] = useState('');
   const [isSendingProposal, setIsSendingProposal] = useState(false);
   const [existingResponse, setExistingResponse] = useState<any | null>(null);
@@ -121,6 +123,8 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
         setExistingResponse(sentResponse);
         setDeliveryTime(sentResponse.delivery_time || 7);
         setPaymentTerms(sentResponse.payment_terms || '30 dias');
+        setShippingCost(sentResponse.shipping_cost || 0);
+        setWarrantyMonths(sentResponse.warranty_months || 12);
         setObservations(sentResponse.notes || '');
         
         if (Array.isArray(sentResponse.items)) {
@@ -149,6 +153,8 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
         if (existingDraft) {
           setDeliveryTime(existingDraft.delivery_time || 7);
           setPaymentTerms(existingDraft.payment_terms || '30 dias');
+          setShippingCost(existingDraft.shipping_cost || 0);
+          setWarrantyMonths(existingDraft.warranty_months || 12);
           setObservations(existingDraft.notes || '');
           
           if (Array.isArray(existingDraft.items)) {
@@ -320,6 +326,8 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
         })),
         total_amount: totalValue,
         delivery_time: deliveryTime,
+        shipping_cost: shippingCost,
+        warranty_months: warrantyMonths,
         payment_terms: paymentTerms,
         notes: observations || undefined
       });
@@ -632,6 +640,32 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                           value={paymentTerms}
                           onChange={(e) => setPaymentTerms(e.target.value)}
                           placeholder="Ex: 30 dias"
+                          disabled={!!existingResponse || isQuoteLocked}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Custo de Frete (R$)</Label>
+                        <Input
+                          type="number"
+                          value={shippingCost}
+                          onChange={(e) => setShippingCost(Number(e.target.value))}
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          disabled={!!existingResponse || isQuoteLocked}
+                        />
+                      </div>
+                      <div>
+                        <Label>Garantia (meses)</Label>
+                        <Input
+                          type="number"
+                          value={warrantyMonths}
+                          onChange={(e) => setWarrantyMonths(Number(e.target.value))}
+                          min="0"
+                          placeholder="12"
                           disabled={!!existingResponse || isQuoteLocked}
                         />
                       </div>

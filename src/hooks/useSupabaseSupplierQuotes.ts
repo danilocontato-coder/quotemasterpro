@@ -49,6 +49,8 @@ export interface QuoteProposal {
   items: ProposalItem[];
   totalValue: number;
   deliveryTime: number;
+  shippingCost?: number;
+  warrantyMonths?: number;
   paymentTerms: string;
   observations?: string;
   attachments: QuoteAttachment[];
@@ -356,6 +358,8 @@ export const useSupabaseSupplierQuotes = () => {
     }>;
     total_amount: number;
     delivery_time: number;
+    shipping_cost?: number;
+    warranty_months?: number;
     payment_terms: string;
     notes?: string;
   }) => {
@@ -375,6 +379,8 @@ export const useSupabaseSupplierQuotes = () => {
           items: responseData.items,
           total_amount: responseData.total_amount,
           delivery_time: responseData.delivery_time,
+          shipping_cost: responseData.shipping_cost || 0,
+          warranty_months: responseData.warranty_months || 12,
           payment_terms: responseData.payment_terms,
           notes: responseData.notes,
           status: 'sent'

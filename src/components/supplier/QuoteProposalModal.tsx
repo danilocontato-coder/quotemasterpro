@@ -32,6 +32,8 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
   const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
   const [deliveryTime, setDeliveryTime] = useState(quote?.proposal?.deliveryTime || 7);
   const [paymentTerms, setPaymentTerms] = useState(quote?.proposal?.paymentTerms || '30 dias');
+  const [shippingCost, setShippingCost] = useState(quote?.proposal?.shippingCost || 0);
+  const [warrantyMonths, setWarrantyMonths] = useState(quote?.proposal?.warrantyMonths || 12);
   const [observations, setObservations] = useState(quote?.proposal?.observations || '');
   const [isUploading, setIsUploading] = useState(false);
 
@@ -113,6 +115,8 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
         const draft: any = existingDraft as any;
         setDeliveryTime((draft?.delivery_time as number) || 7);
         setPaymentTerms((draft?.payment_terms as string) || '30 dias');
+        setShippingCost((draft?.shipping_cost as number) || 0);
+        setWarrantyMonths((draft?.warranty_months as number) || 12);
         setObservations((draft?.notes as string) || '');
         
         // Carregar itens do rascunho (quando existirem)
@@ -222,6 +226,8 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
         })),
         total_amount: totalValue,
         delivery_time: deliveryTime,
+        shipping_cost: shippingCost,
+        warranty_months: warrantyMonths,
         payment_terms: paymentTerms,
         notes: observations || undefined,
         status: 'draft'
@@ -320,6 +326,8 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
         })),
         total_amount: totalValue,
         delivery_time: deliveryTime,
+        shipping_cost: shippingCost,
+        warranty_months: warrantyMonths,
         payment_terms: paymentTerms,
         notes: observations || undefined
       });
@@ -660,6 +668,37 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                       disabled
                       className="font-bold text-lg"
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div>
+                    <Label>Custo de Frete (R$)</Label>
+                    <Input
+                      type="number"
+                      value={shippingCost}
+                      onChange={(e) => setShippingCost(Number(e.target.value))}
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  <div>
+                    <Label>Garantia (meses)</Label>
+                    <Input
+                      type="number"
+                      value={warrantyMonths}
+                      onChange={(e) => setWarrantyMonths(Number(e.target.value))}
+                      min="0"
+                      placeholder="12"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <div className="text-sm text-muted-foreground">
+                      <p>Total com frete: <span className="font-semibold text-foreground">R$ {(totalValue + shippingCost).toFixed(2)}</span></p>
+                    </div>
                   </div>
                 </div>
 
