@@ -14,6 +14,12 @@ interface DashboardMetrics {
   pendingPayments: number;
   totalNotifications: number;
   unreadNotifications: number;
+  // Variações temporais calculadas dinamicamente
+  quotesChange: number | null;
+  suppliersChange: number;
+  spendingChange: number | null;
+  completedChange: string;
+  responseTimeChange: number | null;
 }
 
 interface ActivityItem {
@@ -40,6 +46,11 @@ export function useSupabaseDashboard() {
     pendingPayments: 0,
     totalNotifications: 0,
     unreadNotifications: 0,
+    quotesChange: null,
+    suppliersChange: 0,
+    spendingChange: null,
+    completedChange: 'Sem meta definida',
+    responseTimeChange: null,
   });
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -168,8 +179,13 @@ export function useSupabaseDashboard() {
 
       // Calcular métricas
       console.log('📈 Dashboard: Calculating metrics...');
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      // Calcular dados do mês anterior para comparação
+      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
       const totalQuotes = quotes?.length || 0;
       console.log('📊 Dashboard: Total quotes calculated:', totalQuotes);
@@ -220,6 +236,86 @@ export function useSupabaseDashboard() {
       const totalNotifications = notifications?.length || 0;
       const unreadNotifications = notifications?.filter(n => !n.read).length || 0;
 
+      // Calcular variações temporais
+      const previousMonthQuotes = quotes?.filter(q => {
+        const quoteDate = new Date(q.created_at);
+        return quoteDate.getMonth() === previousMonth && quoteDate.getFullYear() === previousYear;
+      }) || [];
+      
+      const previousMonthPayments = payments?.filter(p => {
+        const paymentDate = new Date(p.created_at);
+        return paymentDate.getMonth() === previousMonth && 
+               paymentDate.getFullYear() === previousYear &&
+               p.status === 'completed';
+      }) || [];
+      
+      const previousMonthSpending = previousMonthPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      
+      const previousMonthCompleted = quotes?.filter(q => {
+        const quoteDate = new Date(q.created_at);
+        return q.status === 'approved' && 
+               quoteDate.getMonth() === previousMonth && 
+               quoteDate.getFullYear() === previousYear;
+      }).length || 0;
+
+      // Fornecedores cadastrados este mês
+      const suppliersThisMonth = suppliers?.filter(s => {
+        const supplierDate = new Date(s.created_at);
+        return supplierDate.getMonth() === currentMonth && supplierDate.getFullYear() === currentYear;
+      }).length || 0;
+
+      // Calcular tempo médio do mês anterior para comparação
+      const previousMonthCompletedQuotes = quotes?.filter(q => {
+        const quoteDate = new Date(q.created_at);
+        return q.status === 'approved' && 
+               quoteDate.getMonth() === previousMonth && 
+               quoteDate.getFullYear() === previousYear;
+      }) || [];
+      
+      let previousAvgDays = 0;
+      if (previousMonthCompletedQuotes.length > 0) {
+        const totalDays = previousMonthCompletedQuotes.reduce((sum, q) => {
+          const created = new Date(q.created_at);
+          const updated = new Date(q.updated_at);
+          const diffDays = Math.ceil((updated.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+          return sum + diffDays;
+        }, 0);
+        previousAvgDays = Math.round(totalDays / previousMonthCompletedQuotes.length * 10) / 10;
+      }
+
+      // Calcular % de mudança
+      const calculatePercentageChange = (current: number, previous: number): number | null => {
+        if (previous === 0) return null;
+        return Math.round(((current - previous) / previous) * 100);
+      };
+
+      const quotesChange = calculatePercentageChange(totalQuotes, previousMonthQuotes.length);
+      const spendingChange = calculatePercentageChange(monthlySpending, previousMonthSpending);
+      const responseTimeChange = calculatePercentageChange(previousAvgDays, avgDays); // Invertido: menor é melhor
+      
+      // Meta de concluídas baseada na média dos últimos 3 meses
+      const last3MonthsCompleted: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const targetMonth = currentMonth - i - 1;
+        const targetYear = targetMonth < 0 ? currentYear - 1 : currentYear;
+        const normalizedMonth = targetMonth < 0 ? 12 + targetMonth : targetMonth;
+        
+        const monthCompleted = quotes?.filter(q => {
+          const quoteDate = new Date(q.created_at);
+          return q.status === 'approved' && 
+                 quoteDate.getMonth() === normalizedMonth && 
+                 quoteDate.getFullYear() === targetYear;
+        }).length || 0;
+        
+        last3MonthsCompleted.push(monthCompleted);
+      }
+      
+      const avgLast3Months = last3MonthsCompleted.length > 0 
+        ? Math.round(last3MonthsCompleted.reduce((sum, val) => sum + val, 0) / last3MonthsCompleted.length)
+        : 0;
+      
+      const completedChange = avgLast3Months > 0 ? `Meta: ${avgLast3Months}` : 'Sem meta definida';
+
       setMetrics({
         totalQuotes,
         pendingApprovals,
@@ -232,6 +328,11 @@ export function useSupabaseDashboard() {
         pendingPayments,
         totalNotifications,
         unreadNotifications,
+        quotesChange,
+        suppliersChange: suppliersThisMonth,
+        spendingChange,
+        completedChange,
+        responseTimeChange,
       });
 
       // Criar atividades baseadas nos dados reais

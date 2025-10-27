@@ -1,3 +1,19 @@
+/**
+ * ⚠️ DEPRECATED - Mock Data File
+ * 
+ * Este arquivo contém dados de exemplo para compatibilidade com código legado.
+ * 
+ * ✅ TODO: Este arquivo será removido após migração completa para Supabase.
+ * 
+ * 📌 Uso APENAS permitido para:
+ * - Testes unitários
+ * - Desenvolvimento offline
+ * - Tipos/interfaces (exportar apenas tipos, não dados)
+ * 
+ * ❌ NÃO USE este arquivo em produção ou em componentes reais.
+ * Use os hooks do Supabase: useSupabaseDashboard, useSupabaseQuotes, etc.
+ */
+
 // Mock data for the system
 export interface Quote {
   id: string;

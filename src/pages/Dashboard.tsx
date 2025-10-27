@@ -142,8 +142,18 @@ export default function Dashboard() {
           <MetricCard
               title="Total de Cotações"
               value={metrics.totalQuotes}
-              change={metrics.totalQuotes > 0 ? "+12% vs mês anterior" : "Nenhuma cotação ainda"}
-              changeType={metrics.totalQuotes > 0 ? "positive" : "neutral"}
+              change={
+                metrics.quotesChange !== null 
+                  ? `${metrics.quotesChange > 0 ? '+' : ''}${metrics.quotesChange}% vs mês anterior`
+                  : metrics.totalQuotes > 0 
+                    ? "Primeira vez" 
+                    : "Nenhuma cotação ainda"
+              }
+              changeType={
+                metrics.quotesChange !== null 
+                  ? metrics.quotesChange > 0 ? "positive" : "negative"
+                  : "neutral"
+              }
               icon={FileText}
               description="Todas as cotações no sistema"
             />
@@ -160,8 +170,14 @@ export default function Dashboard() {
             <MetricCard
               title="Fornecedores Ativos"
               value={metrics.activeSuppliers}
-              change={metrics.activeSuppliers > 0 ? "+3 este mês" : "Cadastre fornecedores"}
-              changeType={metrics.activeSuppliers > 0 ? "positive" : "neutral"}
+              change={
+                metrics.suppliersChange > 0 
+                  ? `+${metrics.suppliersChange} este mês` 
+                  : metrics.activeSuppliers > 0 
+                    ? "Nenhum novo este mês" 
+                    : "Cadastre fornecedores"
+              }
+              changeType={metrics.suppliersChange > 0 ? "positive" : "neutral"}
             icon={Users}
             description="Fornecedores cadastrados"
           />
@@ -174,8 +190,18 @@ export default function Dashboard() {
           <MetricCard
               title="Gasto Mensal"
               value={`R$ ${metrics.monthlySpending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-              change={metrics.monthlySpending > 0 ? "-8% vs mês anterior" : "Nenhum gasto ainda"}
-              changeType={metrics.monthlySpending > 0 ? "positive" : "neutral"}
+              change={
+                metrics.spendingChange !== null
+                  ? `${metrics.spendingChange > 0 ? '+' : ''}${metrics.spendingChange}% vs mês anterior`
+                  : metrics.monthlySpending > 0
+                    ? "Primeira vez"
+                    : "Nenhum gasto ainda"
+              }
+              changeType={
+                metrics.spendingChange !== null
+                  ? metrics.spendingChange < 0 ? "positive" : "negative"
+                  : "neutral"
+              }
               icon={DollarSign}
               description="Total gasto este mês"
             />
@@ -183,7 +209,7 @@ export default function Dashboard() {
             <MetricCard
               title="Concluídas"
               value={metrics.completedThisMonth}
-              change={metrics.completedThisMonth > 0 ? "Meta: 40" : "Nenhuma concluída"}
+              change={metrics.completedChange}
               changeType="neutral"
               icon={TrendingUp}
               description="Cotações finalizadas"
@@ -192,8 +218,18 @@ export default function Dashboard() {
             <MetricCard
               title="Tempo Médio"
               value={metrics.avgResponseTime}
-              change={metrics.totalQuotes > 0 ? "Melhorou 15%" : "Sem dados"}
-              changeType={metrics.totalQuotes > 0 ? "positive" : "neutral"}
+              change={
+                metrics.responseTimeChange !== null
+                  ? `${metrics.responseTimeChange > 0 ? 'Melhorou' : 'Piorou'} ${Math.abs(metrics.responseTimeChange)}%`
+                  : metrics.totalQuotes > 0
+                    ? "Primeira vez"
+                    : "Sem dados"
+              }
+              changeType={
+                metrics.responseTimeChange !== null
+                  ? metrics.responseTimeChange > 0 ? "positive" : "negative"
+                  : "neutral"
+              }
               icon={Clock}
               description="Resposta das cotações"
             />
