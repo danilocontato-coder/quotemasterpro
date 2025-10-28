@@ -13,13 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { UpgradeConfirmationModal } from '@/components/plans/UpgradeConfirmationModal';
 import { AsaasPaymentModal } from '@/components/plans/AsaasPaymentModal';
 
-interface SubscriptionStatus {
-  subscribed: boolean;
-  subscription_tier?: string;
-  subscription_end?: string;
-  current_plan_id?: string;
-}
-
 export const PlansPage = () => {
   const { plans, isLoading } = useSupabaseSubscriptionPlans({ 
     defaultFilterAudience: 'clients' 
@@ -33,10 +26,6 @@ export const PlansPage = () => {
     isLoading: usageLoading
   } = useSupabaseSubscriptionGuard();
   
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
-    subscribed: false
-  });
-  const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [creatingCheckout, setCreatingCheckout] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -68,32 +57,6 @@ export const PlansPage = () => {
       plansCount: plans.length
     });
   }, [user, userPlan, usageLoading, currentUsage, plans.length]);
-
-  useEffect(() => {
-    if (user) {
-      checkSubscriptionStatus();
-    }
-  }, [user]);
-
-  const checkSubscriptionStatus = async () => {
-    if (!user) return;
-    
-    setCheckingSubscription(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('check-subscription');
-      
-      if (error) {
-        console.error('Erro ao verificar assinatura:', error);
-        return;
-      }
-      
-      setSubscriptionStatus(data || { subscribed: false });
-    } catch (error) {
-      console.error('Erro ao verificar assinatura:', error);
-    } finally {
-      setCheckingSubscription(false);
-    }
-  };
 
   const handlePlanSelection = async (planId: string, planName: string, planPrice: number) => {
     if (!user) {
@@ -229,9 +192,10 @@ export const PlansPage = () => {
     plan.status === 'active' && 
     (plan.target_audience === 'clients' || plan.target_audience === 'both')
   );
-  const currentPlan = activePlans.find(plan => 
-    plan.name === subscriptionStatus.subscription_tier?.toLowerCase()
-  );
+
+  // Identificar plano atual do usuário usando userPlan
+  const currentUserPlanId = userPlan?.id;
+  const currentPlanPrice = userPlan?.monthly_price || 0;
 
   if (isLoading) {
     return (
@@ -453,7 +417,7 @@ export const PlansPage = () => {
       {/* Grid de Planos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {activePlans.map((plan) => {
-          const isCurrentPlan = currentPlan?.id === plan.id;
+          const isCurrentPlan = userPlan?.id === plan.id;
           const isPopular = plan.is_popular;
           
           return (
@@ -574,7 +538,7 @@ export const PlansPage = () => {
                     ) : (
                       <>
                         <CreditCard className="h-4 w-4 mr-2" />
-                        {subscriptionStatus.subscribed && plan.monthly_price > (currentPlan?.monthly_price || 0) 
+                        {userPlan && plan.monthly_price > currentPlanPrice 
                           ? 'Fazer Upgrade' 
                           : 'Assinar Agora'}
                       </>
