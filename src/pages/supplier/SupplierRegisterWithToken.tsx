@@ -251,8 +251,11 @@ export default function SupplierRegisterWithToken() {
 
       setLoading(false);
       
-      // Guardar destino no sessionStorage ANTES de setSession para que RoleBasedRedirect use
-      sessionStorage.setItem('redirectAfterLogin', `/supplier/quotes/${data.quote_id}`);
+      // Redirecionar para tela de resposta rápida
+      const redirectUrl = `/supplier/quick-response/${data.quote_id}/${token}`;
+      console.log('✅ Cadastro concluído, redirecionando para:', redirectUrl);
+      
+      sessionStorage.setItem('redirectAfterLogin', redirectUrl);
       
       toast({
         title: "Cadastro Concluído!",
@@ -260,7 +263,7 @@ export default function SupplierRegisterWithToken() {
       });
 
       setTimeout(() => {
-        navigate(`/supplier/quotes/${data.quote_id}`);
+        navigate(redirectUrl);
       }, 1500);
 
     } catch (error: any) {
