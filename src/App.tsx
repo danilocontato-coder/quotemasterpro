@@ -12,7 +12,14 @@ import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
 import { AppWithProviders } from '@/components/layout/AppWithProviders';
 import { TourProvider } from '@/components/tour/TourProvider';
 import { useVersionChecker } from '@/hooks/useVersionChecker';
+import { useThemeSync } from '@/hooks/useThemeSync';
 import '@/styles/tour-custom.css';
+
+// Componente interno para sincronizar tema (precisa estar dentro dos providers)
+function ThemeSyncWrapper() {
+  useThemeSync();
+  return null;
+}
 
 if (import.meta.env.DEV) {
   import('./utils/testHelpers').catch(err => {
@@ -47,6 +54,7 @@ function App() {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <BrandingProvider>
             <AuthProvider>
+              <ThemeSyncWrapper />
               <SubscriptionProvider>
                 <TourProvider>
                   <Router>

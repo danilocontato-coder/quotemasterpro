@@ -10,6 +10,7 @@ import { User, Lock, Bell, Palette, Settings as SettingsIcon, Calendar } from "l
 import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
+import { useTheme } from "next-themes";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
 import { PasswordChange } from "@/components/settings/PasswordChange";
 import { QuoteApprovalSettings } from "@/components/settings/QuoteApprovalSettings";
@@ -32,6 +33,7 @@ export function Settings() {
   
   const { updateUserEmail } = useSupabaseAuth();
   const { client, isLoading: clientLoading } = useSupabaseCurrentClient();
+  const { setTheme } = useTheme();
 
   // Local state for form data (apenas dados do usuário)
   const [profileData, setProfileData] = useState({
@@ -509,6 +511,10 @@ export function Settings() {
                   <Select 
                     value={settings?.preferences.theme || 'light'} 
                     onValueChange={(value) => {
+                      // 1. Aplicar tema imediatamente (feedback visual instantâneo)
+                      setTheme(value);
+                      
+                      // 2. Salvar no banco (persistir para próximos logins)
                       if (settings) {
                         updatePreferences({
                           ...settings.preferences,
