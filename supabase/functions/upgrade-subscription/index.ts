@@ -23,6 +23,12 @@ serve(async (req) => {
       }
     );
 
+    // Service client para acessar configurações do sistema (bypass RLS)
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
       throw new Error('Unauthorized');
@@ -99,7 +105,10 @@ serve(async (req) => {
       throw new Error('Upgrade não pode ser feito: plano novo é igual ou inferior ao atual.');
     }
 
-    const { apiKey, baseUrl, environment } = await getAsaasConfig(supabaseClient);
+    // Buscar config Asaas usando service role (bypass RLS)
+    console.log('🔧 Buscando configuração do Asaas com service role...');
+    const { apiKey, baseUrl, environment } = await getAsaasConfig(serviceClient);
+    console.log(`✅ Config Asaas carregada: Environment=${environment}, BaseURL=${baseUrl}`);
 
     // 6. Cancelar assinatura antiga no Asaas
     if (currentSubscription.asaas_subscription_id) {
@@ -269,9 +278,15 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('Error in upgrade-subscription:', error);
+    console.error('❌ Erro no upgrade:', error);
+    
+    // Mensagem amigável para erro de configuração
+    const errorMessage = error.message?.includes('ASAAS_API_KEY') || error.message?.includes('não configurada')
+      ? 'Integração de pagamento indisponível. Contate o administrador.'
+      : error.message || 'Erro ao processar upgrade';
+    
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errorMessage }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
