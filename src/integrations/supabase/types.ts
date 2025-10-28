@@ -6136,6 +6136,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      recalculate_client_quotes: {
+        Args: { p_client_id: string }
+        Returns: undefined
+      }
       reset_monthly_usage: { Args: never; Returns: undefined }
       run_automatic_billing: { Args: never; Returns: undefined }
       search_supplier_by_cnpj: {
