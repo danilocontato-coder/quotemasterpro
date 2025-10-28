@@ -89,6 +89,15 @@ export function useAchievements() {
 
       if (error) throw error;
 
+      // Buscar estatísticas do usuário para calcular progresso
+      const { data: stats } = await supabase
+        .from('supplier_ratings')
+        .select('id, comments')
+        .eq('rater_id', user.id);
+      
+      const totalRatings = stats?.length || 0;
+      const detailedRatings = stats?.filter(r => r.comments && r.comments.length > 100).length || 0;
+
       // Combinar conquistas desbloqueadas e bloqueadas
       const earnedTypes = new Set(earnedAchievements?.map(a => a.achievement_type) || []);
       
@@ -98,12 +107,29 @@ export function useAchievements() {
         if (earned) {
           return earned;
         } else {
-          // Conquista ainda bloqueada
+          // Conquista ainda bloqueada - calcular progresso real
+          let currentProgress = 0;
+          
+          switch (possible.achievement_type) {
+            case 'primeira_avaliacao':
+              currentProgress = totalRatings > 0 ? 1 : 0;
+              break;
+            case 'avaliador_ativo_5':
+              currentProgress = Math.min(totalRatings, 5);
+              break;
+            case 'expert_feedback_20':
+              currentProgress = Math.min(totalRatings, 20);
+              break;
+            case 'critico_detalhista_10':
+              currentProgress = Math.min(detailedRatings, 10);
+              break;
+          }
+          
           return {
             id: `locked-${possible.achievement_type}`,
             ...possible,
             earned_at: null,
-            progress: 0
+            progress: currentProgress
           };
         }
       });
