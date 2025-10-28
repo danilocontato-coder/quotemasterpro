@@ -118,7 +118,7 @@ export default function ClientRatings() {
       }
 
       // Fetch completed ratings
-      const { data: completed } = await supabase
+      const { data: completed, error: completedError } = await supabase
         .from('supplier_ratings')
         .select(`
           id,
@@ -133,12 +133,17 @@ export default function ClientRatings() {
           comments,
           created_at,
           delivery_id,
-          suppliers(name),
-          deliveries(local_code),
-          quotes(local_code)
+          suppliers!supplier_ratings_supplier_id_fkey(name),
+          deliveries!supplier_ratings_delivery_id_fkey(local_code),
+          quotes!supplier_ratings_quote_id_fkey(local_code)
         `)
         .eq('client_id', profile.client_id)
         .order('created_at', { ascending: false });
+
+      if (completedError) {
+        console.error('Erro ao buscar avaliações completadas:', completedError);
+        throw completedError;
+      }
 
       if (completed) {
       const completedList: CompletedRating[] = completed.map(r => ({
