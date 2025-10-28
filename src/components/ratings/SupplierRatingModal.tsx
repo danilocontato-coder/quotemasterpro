@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,6 +49,59 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
   const [wouldRecommend, setWouldRecommend] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  // Listener real-time para conquistas
+  useEffect(() => {
+    if (!open) return;
+
+    const setupListener = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const channel = supabase
+        .channel('achievements-listener')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'user_achievements',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload: any) => {
+            // Nova conquista desbloqueada - mostrar toast animado!
+            const achievement = payload.new;
+            toast({
+              title: "🎉 Nova Conquista Desbloqueada!",
+              description: (
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="text-3xl">{achievement.achievement_icon}</div>
+                  <div>
+                    <p className="font-semibold text-foreground">{achievement.achievement_name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {achievement.achievement_description}
+                    </p>
+                  </div>
+                </div>
+              ),
+              duration: 6000,
+              className: "border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50",
+            });
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    const cleanup = setupListener();
+    
+    return () => {
+      cleanup.then(cleanupFn => cleanupFn?.());
+    };
+  }, [open, toast]);
 
   const StarRating = ({ 
     value, 
@@ -146,78 +199,11 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
         }
       }
 
-      // Fallback de gamificação: conceder "Primeira Avaliação" se for a primeira
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        try {
-          // Contar avaliações do usuário
-          const { count } = await supabase
-            .from('supplier_ratings')
-            .select('*', { count: 'exact', head: true })
-            .eq('rater_id', user.id);
-
-          // Se for a primeira avaliação, conceder a conquista
-          if (count === 1) {
-            const { data: existingAchievement } = await supabase
-              .from('user_achievements')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('achievement_type', 'primeira_avaliacao')
-              .maybeSingle();
-
-            if (!existingAchievement) {
-              await supabase
-                .from('user_achievements')
-                .insert({
-                  user_id: user.id,
-                  client_id: profile.client_id,
-                  achievement_type: 'primeira_avaliacao',
-                  achievement_name: 'Primeira Avaliação',
-                  achievement_icon: '🌟',
-                  achievement_description: 'Você fez sua primeira avaliação de fornecedor!',
-                  earned_at: new Date().toISOString()
-                });
-
-              // Toast especial de conquista
-              toast({
-                title: "🎉 Nova Conquista Desbloqueada!",
-                description: (
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="text-3xl">🌟</div>
-                    <div>
-                      <p className="font-semibold text-foreground">Primeira Avaliação</p>
-                      <p className="text-xs text-muted-foreground">
-                        Você fez sua primeira avaliação de fornecedor!
-                      </p>
-                    </div>
-                  </div>
-                ),
-                duration: 6000,
-                className: "border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50",
-              });
-            } else {
-              // Toast normal de sucesso
-              toast({
-                title: "Sucesso!",
-                description: "Avaliação enviada com sucesso."
-              });
-            }
-          } else {
-            // Toast normal de sucesso
-            toast({
-              title: "Sucesso!",
-              description: "Avaliação enviada com sucesso."
-            });
-          }
-        } catch (achievementError) {
-          console.error('Erro ao processar conquista:', achievementError);
-          // Mesmo com erro na conquista, mostrar sucesso da avaliação
-          toast({
-            title: "Sucesso!",
-            description: "Avaliação enviada com sucesso."
-          });
-        }
-      }
+      // Toast de sucesso (conquistas serão notificadas pelo listener real-time)
+      toast({
+        title: "Sucesso!",
+        description: "Avaliação enviada com sucesso."
+      });
 
       onRatingSubmitted?.();
       onClose();
