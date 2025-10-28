@@ -185,7 +185,15 @@ export function useSupabaseCurrentClient() {
     refetch: fetchClientInfo,
     // Dados derivados para facilitar o uso
     clientName: client?.name || client?.company_name || user?.companyName || user?.name || '',
-    subscriptionPlan: client?.subscription_plan_id || 'basic',
+    subscriptionPlan: (() => {
+      const plan = client?.subscription_plan_id || 'basic';
+      console.log('🔍 [useSupabaseCurrentClient] Retornando subscriptionPlan:', {
+        fromClient: client?.subscription_plan_id,
+        fallback: 'basic',
+        final: plan
+      });
+      return plan;
+    })(),
     clientStatus: client?.status || 'active',
     clientEmail: client?.email || user?.email || '',
     clientType: client?.client_type || 'direct',

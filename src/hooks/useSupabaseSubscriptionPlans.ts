@@ -396,8 +396,14 @@ export function useSupabasePlanDetails(planId: string) {
 
   useEffect(() => {
     const loadPlan = async () => {
+      console.log('🔍 [useSupabasePlanDetails] Iniciando...', { 
+        planId, 
+        planIdType: typeof planId,
+        planIdLength: planId?.length 
+      });
+
       if (!planId) {
-        console.log('⚠️ Plan ID não fornecido');
+        console.warn('⚠️ [useSupabasePlanDetails] Plan ID não fornecido');
         setPlan(null);
         setIsLoading(false);
         return;
@@ -405,7 +411,7 @@ export function useSupabasePlanDetails(planId: string) {
 
       try {
         setIsLoading(true);
-        console.log('🔄 Carregando detalhes do plano:', planId);
+        console.log('🔄 [useSupabasePlanDetails] Carregando detalhes do plano:', planId);
         
         const { data, error } = await supabase
           .from('subscription_plans')
@@ -414,19 +420,30 @@ export function useSupabasePlanDetails(planId: string) {
           .single();
 
         if (error) {
-          console.error('❌ Erro ao carregar plano:', error);
+          console.error('❌ [useSupabasePlanDetails] Erro ao carregar plano:', {
+            planId,
+            error: error.message,
+            code: error.code,
+            details: error.details
+          });
           setPlan(null);
           return;
         }
 
-        console.log('✅ Plano carregado:', {
+        if (!data) {
+          console.error('❌ [useSupabasePlanDetails] Plano não encontrado no banco:', planId);
+          setPlan(null);
+          return;
+        }
+
+        console.log('✅ [useSupabasePlanDetails] Plano carregado com sucesso:', {
           id: data.id,
           name: data.name,
           display_name: data.display_name
         });
         setPlan(data as SupabaseSubscriptionPlan);
       } catch (error) {
-        console.error('❌ Erro ao carregar plano:', error);
+        console.error('❌ [useSupabasePlanDetails] Exceção ao carregar plano:', error);
         setPlan(null);
       } finally {
         setIsLoading(false);

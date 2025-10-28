@@ -21,7 +21,24 @@ import heroDashboard from "@/assets/hero-dashboard.jpg";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { clientName, subscriptionPlan, clientType, isLoading: clientLoading } = useSupabaseCurrentClient();
-  const { displayName: planDisplayName } = useSupabasePlanDetails(subscriptionPlan);
+  
+  console.log('🔍 [Dashboard] Dados do cliente:', {
+    clientName,
+    subscriptionPlan,
+    clientType,
+    clientLoading
+  });
+  
+  const { displayName: planDisplayName, plan, isLoading: planLoading } = useSupabasePlanDetails(subscriptionPlan);
+  
+  console.log('🔍 [Dashboard] Dados do plano:', {
+    planDisplayName,
+    planId: plan?.id,
+    planName: plan?.name,
+    planLoading,
+    subscriptionPlanPassed: subscriptionPlan
+  });
+  
   const { metrics, activities, isLoading, error, refetch } = useSupabaseDashboard();
   const { settings } = useBranding();
 
