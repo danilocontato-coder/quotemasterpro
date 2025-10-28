@@ -223,6 +223,23 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   }, [currentClient?.id, clientLoading, fetchClientUsage]);
 
+  // Listener para mudanças de plano
+  useEffect(() => {
+    if (!currentClient?.id) return;
+
+    const handleSubscriptionChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.clientId === currentClient.id) {
+        console.log('🔄 [SubscriptionContext] Plano alterado, invalidando cache e recarregando...');
+        refreshUsage();
+        fetchSubscriptionPlans();
+      }
+    };
+
+    window.addEventListener('subscription-changed', handleSubscriptionChange);
+    return () => window.removeEventListener('subscription-changed', handleSubscriptionChange);
+  }, [currentClient?.id, refreshUsage, fetchSubscriptionPlans]);
+
   // Realtime listeners para atualizar contadores automaticamente
   useEffect(() => {
     if (!currentClient?.id) return;

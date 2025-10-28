@@ -1015,6 +1015,13 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
             console.error('Erro ao atualizar subscription:', updateSubError);
             throw updateSubError;
           }
+
+          // Invalidar cache e disparar evento de mudança de plano
+          console.log('🔄 [AdminClients] Invalidando cache de planos...');
+          sessionStorage.removeItem('subscription_plans');
+          sessionStorage.removeItem('subscription_plans_time');
+          sessionStorage.removeItem('subscription_plans_version');
+          window.dispatchEvent(new CustomEvent('subscription-changed', { detail: { clientId: id } }));
         } else {
           // Criar nova subscription
           console.log('✨ [AdminClients] Criando nova subscription ativa');
@@ -1036,6 +1043,13 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
             console.error('Erro ao criar subscription:', insertSubError);
             throw insertSubError;
           }
+
+          // Invalidar cache e disparar evento de mudança de plano
+          console.log('🔄 [AdminClients] Invalidando cache de planos...');
+          sessionStorage.removeItem('subscription_plans');
+          sessionStorage.removeItem('subscription_plans_time');
+          sessionStorage.removeItem('subscription_plans_version');
+          window.dispatchEvent(new CustomEvent('subscription-changed', { detail: { clientId: id } }));
         }
 
         console.log('✅ [AdminClients] Subscription atualizada, trigger sincronizará clients.subscription_plan_id');
