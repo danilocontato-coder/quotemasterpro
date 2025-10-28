@@ -1026,7 +1026,11 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
           // Criar nova subscription
           console.log('✨ [AdminClients] Criando nova subscription ativa');
           const now = new Date();
-          const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 dias
+          
+          // Calcular period_end respeitando dia de aniversário (mesmo dia do mês seguinte)
+          const periodEnd = new Date(now);
+          periodEnd.setMonth(periodEnd.getMonth() + 1);
+          // Se o mês não tiver o dia (ex: 31 de jan -> 28/29 fev), ajusta automaticamente
 
           const { error: insertSubError } = await supabase
             .from('subscriptions')
