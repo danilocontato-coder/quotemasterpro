@@ -5859,7 +5859,8 @@ export type Database = {
           actual_count: number
           client_id: string
           client_name: string
-          difference: number
+          deleted_count: number
+          status: string
           stored_count: number
         }[]
       }
@@ -6092,6 +6093,10 @@ export type Database = {
         Args: { target_client_id: string; user_id: string }
         Returns: boolean
       }
+      log_security_fix: {
+        Args: { p_description: string; p_details?: Json; p_fix_type: string }
+        Returns: undefined
+      }
       mark_payment_as_manually_received: {
         Args: { p_notes?: string; p_payment_id: string }
         Returns: Json
@@ -6138,7 +6143,7 @@ export type Database = {
       }
       recalculate_client_quotes: {
         Args: { p_client_id: string }
-        Returns: undefined
+        Returns: Json
       }
       reset_monthly_usage: { Args: never; Returns: undefined }
       run_automatic_billing: { Args: never; Returns: undefined }
