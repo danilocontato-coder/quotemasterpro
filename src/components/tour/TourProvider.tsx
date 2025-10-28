@@ -101,34 +101,71 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const handleJoyrideCallback = async (data: CallBackProps) => {
-    const { status, type, index } = data;
+    const { status, type, index, step, action } = data;
+
+    console.log('[TOUR] 📍 Callback:', { status, type, index, action, target: step?.target });
+
+    // Tratamento especial para target não encontrado
+    if (type === EVENTS.TARGET_NOT_FOUND) {
+      console.warn('[TOUR] ⚠️ Target não encontrado:', {
+        stepIndex: index,
+        target: step?.target,
+        content: step?.content
+      });
+      
+      // Retry mechanism: tentar novamente após um delay
+      if (!step?.data?.retryCount || step.data.retryCount < 3) {
+        const retryCount = (step?.data?.retryCount || 0) + 1;
+        console.log(`[TOUR] 🔄 Tentativa ${retryCount}/3 para encontrar target:`, step?.target);
+        
+        setTimeout(() => {
+          // Forçar re-render do Joyride para tentar novamente
+          setStepIndex(index);
+        }, 500);
+        
+        // Atualizar contador de retry no step
+        if (step) {
+          step.data = { ...step.data, retryCount };
+        }
+        return;
+      } else {
+        console.error('[TOUR] ❌ Target não encontrado após 3 tentativas - pulando step:', step?.target);
+        toast.error('Elemento não encontrado. Avançando para o próximo passo...');
+        setStepIndex(index + 1);
+        return;
+      }
+    }
 
     // Atualizar índice do step atual
-    if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
-      setStepIndex(index + (type === EVENTS.STEP_AFTER ? 1 : 0));
+    if (type === EVENTS.STEP_AFTER) {
+      console.log('[TOUR] ➡️ Avançando para próximo step');
+      setStepIndex(index + 1);
     }
 
     // Tour finalizado ou pulado
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      console.log('[TOUR] 🏁 Tour finalizado/pulado:', status);
       setRun(false);
       
       if (user?.id) {
         try {
+          console.log('[TOUR] 💾 Chamando edge function complete-tour...');
           // Marcar tour como completo no banco
           const { error } = await supabase.functions.invoke('complete-tour', {
             body: { userId: user.id }
           });
 
           if (error) {
-            console.error('Erro ao marcar tour como completo:', error);
+            console.error('[TOUR] ❌ Erro ao marcar tour como completo:', error);
           } else {
+            console.log('[TOUR] ✅ Tour marcado como completo com sucesso');
             // Log de auditoria local
             if (status === STATUS.FINISHED) {
               toast.success('Tour concluído! Você já pode usar todas as funcionalidades.');
             }
           }
         } catch (error) {
-          console.error('Erro ao completar tour:', error);
+          console.error('[TOUR] ❌ Exceção ao completar tour:', error);
         }
       }
     }

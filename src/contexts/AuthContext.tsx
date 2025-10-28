@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { ForcePasswordChangeModal } from '@/components/auth/ForcePasswordChangeModal';
+import { TermsOfUseModal } from '@/components/auth/TermsOfUseModal';
 import { logger } from '@/utils/systemLogger';
 import { Loader2 } from 'lucide-react';
 
@@ -288,20 +289,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       
       const enforceTerms = (featureFlagData?.setting_value as any)?.enforce_terms || false;
 
+      console.log('[TERMS-DEBUG] 🔍 Recheck de termos', {
+        userId: user.id,
+        email: user.email,
+        termsAccepted: user.termsAccepted,
+        enforceTerms,
+        needsTermsAcceptance
+      });
+
       if (enforceTerms && user.termsAccepted === false) {
-        logger.info('auth', '[TERMS-RECHECK] Modal de termos deve aparecer', {
+        logger.info('auth', '[TERMS-RECHECK] ⚠️ Modal de termos DEVE aparecer', {
           userId: user.id,
           email: user.email,
           termsAccepted: user.termsAccepted
         });
         setNeedsTermsAcceptance(true);
       } else {
+        console.log('[TERMS-DEBUG] ✅ Termos OK, não precisa do modal', {
+          reason: !enforceTerms ? 'enforce desabilitado' : 'já aceitou'
+        });
         setNeedsTermsAcceptance(false);
       }
     };
 
     recheckTerms();
-  }, [user?.id, user?.termsAccepted, isLoading]);
+  }, [user?.id, user?.termsAccepted, isLoading, needsTermsAcceptance]);
 
   // Função para simular login como cliente
   const simulateClientLogin = useCallback(async (adminData: any) => {
@@ -499,6 +511,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
   }, []);
 
   const handleTermsAccepted = useCallback(async () => {
+    console.log('[TERMS-DEBUG] 🎉 handleTermsAccepted chamado', { 
+      userId: user?.id, 
+      email: user?.email,
+      currentTermsAccepted: user?.termsAccepted 
+    });
     logger.info('auth', '[TERMS] Callback de termos aceitos disparado');
     
     // Atualizar estado local do user imediatamente
@@ -508,6 +525,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         termsAccepted: true,
       };
       setUser(updatedUser);
+      console.log('[TERMS-DEBUG] ✅ User.termsAccepted atualizado para true localmente');
       logger.info('auth', '[TERMS] User atualizado localmente com termsAccepted=true', {
         userId: user.id,
         email: user.email
@@ -515,10 +533,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     }
     
     setNeedsTermsAcceptance(false);
+    console.log('[TERMS-DEBUG] 🚪 needsTermsAcceptance = false (modal deve fechar)');
     logger.info('auth', '[TERMS] Modal de termos fechado');
     
     // Recarregar perfil completo do banco após pequeno delay
     setTimeout(() => {
+      console.log('[TERMS-DEBUG] 🔄 Recarregando perfil do banco...');
       logger.info('auth', '[TERMS] Recarregando perfil após aceitar termos');
       if (session?.user) {
         fetchUserProfile(session.user);
@@ -627,33 +647,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
   return (
     <AuthContext.Provider value={value}>
       {/* Prioridade 1: Modal de Termos de Uso (se não aceito) */}
-      {/* FASE 1: Suspense boundary para evitar tela branca */}
       {needsTermsAcceptance && user && (
         <>
-          {console.log('[TERMS-MODAL] 🔵 Renderizando modal de termos', { 
+          {console.log('[TERMS-MODAL] 🔵 Renderizando modal de termos (importação direta)', { 
             userId: user.id, 
             email: user.email,
             needsTermsAcceptance,
             timestamp: new Date().toISOString() 
           })}
-          <React.Suspense fallback={
-            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Carregando termos de uso...</p>
-                <p className="text-xs text-muted-foreground">Usuário: {user.email}</p>
-              </div>
-            </div>
-          }>
-            {React.createElement(
-              React.lazy(() => import('@/components/auth/TermsOfUseModal').then(m => ({ default: m.TermsOfUseModal }))),
-              {
-                open: needsTermsAcceptance,
-                userId: user.id,
-                onTermsAccepted: handleTermsAccepted
-              }
-            )}
-          </React.Suspense>
+          <TermsOfUseModal
+            open={needsTermsAcceptance}
+            userId={user.id}
+            onTermsAccepted={handleTermsAccepted}
+          />
         </>
       )}
       
