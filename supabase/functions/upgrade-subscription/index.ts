@@ -135,6 +135,7 @@ serve(async (req) => {
 
     // 8. Criar pagamento único no Asaas para a diferença
     const asaasCustomerId = currentSubscription.asaas_customer_id;
+    console.log(`💰 Criando cobrança de upgrade no Asaas para cliente: ${asaasCustomerId}`);
 
     // Buscar configuração de tipo de cobrança
     const { data: settings } = await supabaseClient
@@ -143,6 +144,7 @@ serve(async (req) => {
       .single();
 
     const billingType = settings?.asaas_billing_type || 'BOLETO';
+    console.log(`   Tipo de cobrança: ${billingType}`);
 
     const paymentResponse = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
@@ -171,12 +173,13 @@ serve(async (req) => {
     console.log(`💳 Pagamento de upgrade criado: ${upgradePaymentId}`);
 
     // 9. Criar nova subscription (status: pending_upgrade)
+    console.log(`📝 Criando nova subscription para plano: ${newPlanId}`);
+    
     const { data: newSubscription, error: newSubError } = await supabaseClient
       .from('subscriptions')
       .insert({
         client_id: clientId,
         plan_id: newPlanId,
-        subscription_plan_id: newPlanId,
         status: 'pending_upgrade',
         billing_cycle: currentSubscription.billing_cycle,
         current_period_start: today.toISOString(),
@@ -188,10 +191,17 @@ serve(async (req) => {
       .select()
       .single();
 
-    if (newSubError) throw newSubError;
+    if (newSubError) {
+      console.error('❌ Erro ao criar nova subscription:', newSubError);
+      throw newSubError;
+    }
+    
+    console.log(`✅ Nova subscription criada: ${newSubscription.id}`);
 
     // 10. Criar invoice para rastreamento
-    await supabaseClient
+    console.log(`📄 Criando invoice para tracking do upgrade`);
+    
+    const { error: invoiceError } = await supabaseClient
       .from('invoices')
       .insert({
         id: `UPG-${Date.now()}`,
@@ -206,8 +216,16 @@ serve(async (req) => {
         created_at: new Date().toISOString()
       });
 
+    if (invoiceError) {
+      console.error('⚠️ Erro ao criar invoice (não crítico):', invoiceError);
+    } else {
+      console.log(`✅ Invoice criada com sucesso`);
+    }
+
     // 11. Audit log
-    await supabaseClient
+    console.log(`📝 Registrando no audit log`);
+    
+    const { error: auditError } = await supabaseClient
       .from('audit_logs')
       .insert({
         user_id: user.id,
@@ -225,6 +243,12 @@ serve(async (req) => {
           environment
         }
       });
+
+    if (auditError) {
+      console.error('⚠️ Erro ao criar audit log (não crítico):', auditError);
+    } else {
+      console.log(`✅ Audit log registrado`);
+    }
 
     // 12. Retornar resposta
     return new Response(
