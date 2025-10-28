@@ -1430,6 +1430,7 @@ export type Database = {
           parent_client_id: string | null
           phone: string | null
           region: string | null
+          requires_approval: boolean | null
           settings: Json | null
           state: string | null
           status: string | null
@@ -1457,6 +1458,7 @@ export type Database = {
           parent_client_id?: string | null
           phone?: string | null
           region?: string | null
+          requires_approval?: boolean | null
           settings?: Json | null
           state?: string | null
           status?: string | null
@@ -1484,6 +1486,7 @@ export type Database = {
           parent_client_id?: string | null
           phone?: string | null
           region?: string | null
+          requires_approval?: boolean | null
           settings?: Json | null
           state?: string | null
           status?: string | null
