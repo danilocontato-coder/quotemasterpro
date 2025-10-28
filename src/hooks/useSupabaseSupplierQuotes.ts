@@ -370,54 +370,116 @@ export const useSupabaseSupplierQuotes = () => {
     try {
       console.log('🔍 Submitting quote response:', { quoteId, responseData });
 
-      const { data: response, error } = await supabase
-        .from('quote_responses')
-        .insert({
-          quote_id: quoteId,
-          supplier_id: user.supplierId,
-          supplier_name: user.name || 'Fornecedor',
-          items: responseData.items,
-          total_amount: responseData.total_amount,
-          delivery_time: responseData.delivery_time,
-          shipping_cost: responseData.shipping_cost || 0,
-          warranty_months: responseData.warranty_months || 12,
-          payment_terms: responseData.payment_terms,
-          notes: responseData.notes,
-          status: 'sent'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error submitting quote response:', error);
-        throw error;
+      // 🔄 PHASE 3: Retry automático para INSERT com exponential backoff
+      const maxRetries = 3;
+      let lastError: any = null;
+      let response: any = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        console.log(`🔄 [PHASE 3] INSERT attempt ${attempt}/${maxRetries}`);
+        
+        const { data, error } = await supabase
+          .from('quote_responses')
+          .insert({
+            quote_id: quoteId,
+            supplier_id: user.supplierId,
+            supplier_name: user.name || 'Fornecedor',
+            items: responseData.items,
+            total_amount: responseData.total_amount,
+            delivery_time: responseData.delivery_time,
+            shipping_cost: responseData.shipping_cost || 0,
+            warranty_months: responseData.warranty_months || 12,
+            payment_terms: responseData.payment_terms,
+            notes: responseData.notes,
+            status: 'sent'
+          })
+          .select()
+          .single();
+        
+        if (!error && data) {
+          response = data;
+          console.log(`✅ [PHASE 3] INSERT succeeded on attempt ${attempt}`);
+          break;
+        }
+        
+        lastError = error;
+        console.error(`❌ [PHASE 3] INSERT failed on attempt ${attempt}:`, error);
+        
+        // Se não é a última tentativa, aguarda antes de tentar novamente
+        if (attempt < maxRetries) {
+          const backoffMs = Math.pow(2, attempt) * 500; // 1s, 2s, 4s
+          console.log(`⏳ [PHASE 3] Waiting ${backoffMs}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        }
       }
 
-      console.log('✅ Quote response submitted successfully');
+      if (lastError && !response) {
+        console.error('❌ [PHASE 1] Error submitting quote response after retries:', lastError);
+        throw lastError;
+      }
+
+      // 🔒 PHASE 1: Validação Crítica - Verificar se INSERT foi bem-sucedido
+      if (!response || !response.id) {
+        const criticalError = new Error('INSERT falhou silenciosamente - response.id não existe');
+        console.error('❌ [PHASE 1] CRITICAL:', criticalError, {
+          quoteId,
+          supplierId: user.supplierId,
+          responseData: {
+            ...responseData,
+            items: `${responseData.items?.length || 0} itens`
+          }
+        });
+        
+        toast({
+          title: "Erro Crítico",
+          description: "Falha ao salvar proposta. Por favor, tente novamente ou contate o suporte.",
+          variant: "destructive",
+        });
+        
+        throw criticalError;
+      }
+
+      console.log('✅ [PHASE 1] Quote response submitted successfully:', response.id);
       
-      // Enviar notificação WhatsApp para o cliente sobre nova proposta
+      // 📢 PHASE 2: Notificação WhatsApp com feedback diferenciado
+      let notificationSuccess = false;
       try {
-        await supabase.functions.invoke('notify-client-proposal', {
+        const notifyResult = await supabase.functions.invoke('notify-client-proposal', {
           body: {
             quoteId: quoteId,
             supplierId: user.supplierId,
             supplierName: user.name || 'Fornecedor',
-            totalValue: responseData.total_amount
+            totalValue: responseData.total_amount,
+            responseId: response.id // PHASE 3: Enviar responseId para validação
           }
         });
         
-        console.log('✅ WhatsApp notification sent to client');
+        if (notifyResult.error) {
+          throw notifyResult.error;
+        }
+        
+        notificationSuccess = notifyResult.data?.whatsappSent === true;
+        console.log('✅ [PHASE 2] Client notification sent:', { whatsappSent: notificationSuccess });
+        
       } catch (notificationError) {
-        console.error('⚠️ Error sending WhatsApp notification (non-critical):', notificationError);
+        console.error('⚠️ [PHASE 2] Error sending client notification (non-critical):', notificationError);
       }
       
       // Refresh quotes to update status
       await fetchSupplierQuotes();
       
-      toast({
-        title: "Proposta Enviada",
-        description: "Sua proposta foi enviada com sucesso!",
-      });
+      // 🎯 PHASE 2: Feedback diferenciado baseado no resultado da notificação
+      if (notificationSuccess) {
+        toast({
+          title: "✅ Proposta Enviada",
+          description: "Cliente notificado por WhatsApp com sucesso!",
+        });
+      } else {
+        toast({
+          title: "✅ Proposta Enviada",
+          description: "Proposta salva! O cliente verá no painel (notificação WhatsApp indisponível).",
+        });
+      }
 
       return response;
     } catch (error) {

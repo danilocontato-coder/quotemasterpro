@@ -13,13 +13,62 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // 🔍 PHASE 3: Generate unique request ID for tracking
+  const requestId = crypto.randomUUID().substring(0, 8);
+  console.log(`🔔 [${requestId}] === NEW NOTIFICATION REQUEST ===`);
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { quoteId, supplierId, supplierName, totalValue } = await req.json()
+    const { quoteId, supplierId, supplierName, totalValue, responseId } = await req.json()
+    console.log(`📥 [${requestId}] Request payload:`, { quoteId, supplierId, supplierName, totalValue, responseId });
+
+    // 🔒 PHASE 3: Verificar se a proposta existe antes de notificar
+    if (responseId) {
+      const { data: existingResponse, error: responseError } = await supabase
+        .from('quote_responses')
+        .select('id, status')
+        .eq('id', responseId)
+        .maybeSingle();
+
+      if (responseError) {
+        console.error(`❌ [${requestId}] Error checking quote_response:`, responseError);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Failed to verify proposal existence',
+            requestId 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+          }
+        );
+      }
+
+      if (!existingResponse) {
+        console.error(`❌ [${requestId}] CRITICAL: Proposal ${responseId} does NOT exist in database!`);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Proposal not found in database',
+            requestId,
+            responseId
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400
+          }
+        );
+      }
+
+      console.log(`✅ [${requestId}] Proposal verified in database:`, existingResponse);
+    } else {
+      console.warn(`⚠️ [${requestId}] No responseId provided - skipping verification`);
+    }
 
     // Get quote and client details
     const { data: quote, error: quoteError } = await supabase
@@ -40,16 +89,18 @@ serve(async (req) => {
       .single()
 
     if (quoteError || !quote) {
-      console.error('❌ Error fetching quote:', quoteError)
+      console.error(`❌ [${requestId}] Error fetching quote:`, quoteError)
       throw new Error('Quote not found')
     }
 
     const client = quote.clients
     
-    console.log('🔔 Notifying client about proposal:', {
+    console.log(`🔍 [${requestId}] Quote and client details:`, {
       quoteId,
       quoteLocalCode: quote.local_code,
       quoteTitle: quote.title,
+      clientId: client.id,
+      clientName: client.name,
       supplierId,
       supplierName,
       totalValue
@@ -140,19 +191,29 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
     if (evolutionConfig.apiUrl && evolutionConfig.token && client.phone) {
       const normalizedPhone = normalizePhone(client.phone)
       if (normalizedPhone) {
-        console.log('📱 Sending WhatsApp to:', normalizedPhone)
+        console.log(`📱 [${requestId}] Sending WhatsApp to:`, normalizedPhone)
         whatsappResult = await sendEvolutionWhatsApp(evolutionConfig, normalizedPhone, message)
         
         if (whatsappResult.success) {
-          console.log('✅ WhatsApp sent successfully:', whatsappResult.messageId)
+          console.log(`✅ [${requestId}] WhatsApp sent successfully:`, whatsappResult.messageId)
         } else {
-          console.error('❌ WhatsApp failed:', whatsappResult.error)
+          console.error(`❌ [${requestId}] WhatsApp failed:`, whatsappResult.error)
         }
+      } else {
+        console.warn(`⚠️ [${requestId}] Invalid phone number:`, client.phone)
       }
+    } else {
+      console.warn(`⚠️ [${requestId}] WhatsApp config incomplete:`, {
+        hasApiUrl: !!evolutionConfig.apiUrl,
+        hasToken: !!evolutionConfig.token,
+        hasPhone: !!client.phone
+      })
     }
 
     // Create notifications for all client users
     if (clientUsers && clientUsers.length > 0) {
+      console.log(`📩 [${requestId}] Creating in-app notifications for ${clientUsers.length} users`)
+      
       const notifications = clientUsers.map(user => ({
         user_id: user.id,
         title: 'Nova Proposta Recebida',
@@ -165,19 +226,29 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
           supplier_id: supplierId,
           supplier_name: supplierName,
           total_value: totalValue,
-          whatsapp_sent: whatsappResult?.success || false
+          whatsapp_sent: whatsappResult?.success || false,
+          request_id: requestId
         }
       }))
 
-      await supabase
+      const { error: notifError } = await supabase
         .from('notifications')
         .insert(notifications)
+
+      if (notifError) {
+        console.error(`❌ [${requestId}] Error creating notifications:`, notifError)
+      } else {
+        console.log(`✅ [${requestId}] In-app notifications created successfully`)
+      }
+    } else {
+      console.warn(`⚠️ [${requestId}] No client users found to notify`)
     }
 
-    // Log the notification attempt
-    console.log('📝 Notification logged:', {
+    // Log the notification summary
+    console.log(`📝 [${requestId}] === NOTIFICATION SUMMARY ===`, {
       whatsappSent: whatsappResult?.success || false,
-      phone: client.phone,
+      inAppNotifications: clientUsers?.length || 0,
+      clientPhone: client.phone,
       normalizedPhone: client.phone ? normalizePhone(client.phone) : null
     })
 
@@ -185,17 +256,19 @@ _QuoteMaster Pro - Gestão Inteligente de Cotações_`
       JSON.stringify({ 
         success: true, 
         message: 'Client notified successfully',
-        whatsapp_sent: whatsappResult?.success || false
+        whatsappSent: whatsappResult?.success || false,
+        requestId
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
-    console.error('❌ Error in notify-client-proposal:', error)
+    console.error(`❌ [${requestId || 'UNKNOWN'}] Error in notify-client-proposal:`, error)
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: (error as any)?.message || 'Unknown error' 
+        error: (error as any)?.message || 'Unknown error',
+        requestId: requestId || 'UNKNOWN'
       }),
       { 
         status: 400,
