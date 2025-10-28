@@ -5990,48 +5990,7 @@ export type Database = {
         }[]
       }
       get_current_user_client_id: { Args: never; Returns: string }
-      get_current_user_plan: {
-        Args: never
-        Returns: {
-          active_clients: number | null
-          allow_branding: boolean | null
-          allow_custom_domain: boolean | null
-          child_clients_limit: number | null
-          clients_subscribed: number | null
-          created_at: string | null
-          custom_color: string | null
-          description: string | null
-          display_name: string
-          enabled_modules: Json | null
-          features: Json | null
-          id: string
-          is_popular: boolean | null
-          max_categories_per_supplier: number | null
-          max_products_in_catalog: number | null
-          max_quote_responses_per_month: number | null
-          max_quotes: number
-          max_quotes_per_month: number | null
-          max_storage_gb: number
-          max_suppliers: number
-          max_suppliers_per_quote: number | null
-          max_users: number
-          max_users_per_client: number | null
-          monthly_price: number
-          name: string
-          status: string | null
-          suppliers_subscribed: number | null
-          target_audience: string | null
-          total_revenue: number | null
-          updated_at: string | null
-          yearly_price: number
-        }
-        SetofOptions: {
-          from: "*"
-          to: "subscription_plans"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      get_current_user_plan: { Args: never; Returns: Json }
       get_current_user_supplier_id: { Args: never; Returns: string }
       get_default_supplier_plan_id: { Args: never; Returns: string }
       get_or_create_client_usage: {
