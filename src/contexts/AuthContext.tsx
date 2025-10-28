@@ -654,6 +654,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
 
   return (
     <AuthContext.Provider value={value}>
+      {/* Modais sempre por cima dos children */}
+      
       {/* Prioridade 1: Modal de Termos de Uso (se não aceito) */}
       {needsTermsAcceptance && user && (
         <>
@@ -680,8 +682,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         />
       )}
       
-      {/* Renderizar children apenas se não houver bloqueios */}
-      {(!needsTermsAcceptance && !forcePasswordChange) && children}
+      {/* Children sempre renderizados para manter hooks montados */}
+      {children}
     </AuthContext.Provider>
   );
 });
