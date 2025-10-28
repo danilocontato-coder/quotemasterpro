@@ -390,72 +390,46 @@ export function useSupabaseSubscriptionPlans(options?: {
 }
 
 // Hook para buscar detalhes de um plano específico
+// Refatorado para usar dados já carregados em vez de query separada
 export function useSupabasePlanDetails(planId: string) {
+  const { getPlanById, isLoading: plansLoading } = useSupabaseSubscriptionPlans();
   const [plan, setPlan] = useState<SupabaseSubscriptionPlan | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadPlan = async () => {
-      console.log('🔍 [useSupabasePlanDetails] Iniciando...', { 
-        planId, 
-        planIdType: typeof planId,
-        planIdLength: planId?.length 
+    console.log('🔍 [useSupabasePlanDetails] Buscando plano nos dados carregados:', { 
+      planId,
+      plansLoading
+    });
+    
+    if (!planId) {
+      console.warn('⚠️ [useSupabasePlanDetails] Plan ID não fornecido');
+      setPlan(null);
+      return;
+    }
+
+    if (plansLoading) {
+      console.log('🔄 [useSupabasePlanDetails] Aguardando planos carregarem...');
+      return;
+    }
+
+    const foundPlan = getPlanById(planId);
+    
+    if (foundPlan) {
+      console.log('✅ [useSupabasePlanDetails] Plano encontrado nos dados carregados:', {
+        id: foundPlan.id,
+        name: foundPlan.name,
+        display_name: foundPlan.display_name
       });
-
-      if (!planId) {
-        console.warn('⚠️ [useSupabasePlanDetails] Plan ID não fornecido');
-        setPlan(null);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        console.log('🔄 [useSupabasePlanDetails] Carregando detalhes do plano:', planId);
-        
-        const { data, error } = await supabase
-          .from('subscription_plans')
-          .select('*')
-          .eq('id', planId)
-          .single();
-
-        if (error) {
-          console.error('❌ [useSupabasePlanDetails] Erro ao carregar plano:', {
-            planId,
-            error: error.message,
-            code: error.code,
-            details: error.details
-          });
-          setPlan(null);
-          return;
-        }
-
-        if (!data) {
-          console.error('❌ [useSupabasePlanDetails] Plano não encontrado no banco:', planId);
-          setPlan(null);
-          return;
-        }
-
-        console.log('✅ [useSupabasePlanDetails] Plano carregado com sucesso:', {
-          id: data.id,
-          name: data.name,
-          display_name: data.display_name
-        });
-        setPlan(data as SupabaseSubscriptionPlan);
-      } catch (error) {
-        console.error('❌ [useSupabasePlanDetails] Exceção ao carregar plano:', error);
-        setPlan(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadPlan();
-  }, [planId]);
+      setPlan(foundPlan);
+    } else {
+      console.error('❌ [useSupabasePlanDetails] Plano não encontrado nos dados carregados:', planId);
+      setPlan(null);
+    }
+  }, [planId, getPlanById, plansLoading]);
 
   return {
     plan,
-    isLoading,
+    isLoading: plansLoading,
     displayName: plan?.display_name || (planId ? 'Plano não encontrado' : 'Sem plano'),
     features: plan?.features || [],
     limits: plan ? {
