@@ -5942,20 +5942,39 @@ export type Database = {
         Returns: undefined
       }
       expire_old_credentials: { Args: never; Returns: undefined }
-      find_or_create_supplier_by_cnpj: {
-        Args: {
-          p_cnpj: string
-          p_email?: string
-          p_name?: string
-          p_phone?: string
-        }
-        Returns: {
-          certification_status: string
-          existing_name: string
-          is_new: boolean
-          supplier_id: string
-        }[]
-      }
+      find_or_create_supplier_by_cnpj:
+        | {
+            Args: {
+              p_cnpj: string
+              p_email?: string
+              p_name?: string
+              p_phone?: string
+            }
+            Returns: {
+              certification_status: string
+              existing_name: string
+              is_new: boolean
+              supplier_id: string
+            }[]
+          }
+        | {
+            Args: {
+              p_address?: Json
+              p_city?: string
+              p_cnpj: string
+              p_email?: string
+              p_name?: string
+              p_phone?: string
+              p_specialties?: string[]
+              p_state?: string
+              p_website?: string
+              p_whatsapp?: string
+            }
+            Returns: {
+              is_new: boolean
+              supplier_id: string
+            }[]
+          }
       generate_contract_alerts: { Args: never; Returns: undefined }
       generate_delivery_code: { Args: never; Returns: string }
       generate_friendly_payment_id: { Args: never; Returns: string }

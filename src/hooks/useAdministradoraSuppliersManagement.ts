@@ -300,6 +300,15 @@ export const useAdministradoraSuppliersManagement = () => {
         
         console.log('⚠️ [DUPLICATE-FOUND] Fornecedor já existe:', existingSupplier);
         
+        // Buscar nome do fornecedor
+        const { data: supplierData } = await supabase
+          .from('suppliers')
+          .select('name')
+          .eq('id', existingSupplier.supplier_id)
+          .single();
+        
+        const supplierName = supplierData?.name || 'Fornecedor';
+        
         // Verificar se já está associado ao cliente atual
         const { data: existingAssoc } = await supabase
           .from('client_suppliers')
@@ -315,7 +324,7 @@ export const useAdministradoraSuppliersManagement = () => {
         });
         
         if (existingAssoc && existingAssoc.status === 'active') {
-          toast.error(`CNPJ já cadastrado. Fornecedor: ${existingSupplier.existing_name}`);
+          toast.error(`CNPJ já cadastrado. Fornecedor: ${supplierName}`);
           return { 
             success: false, 
             reason: 'duplicate_active', 
@@ -324,7 +333,7 @@ export const useAdministradoraSuppliersManagement = () => {
         }
         
         // Fornecedor existe mas não está associado: associar automaticamente
-        toast.info(`Fornecedor "${existingSupplier.existing_name}" encontrado. Associando ao seu cliente...`);
+        toast.info(`Fornecedor "${supplierName}" encontrado. Associando ao seu cliente...`);
         
         console.log('🔗 [ASSOCIATING] Associando fornecedor existente ao cliente...');
         
@@ -367,7 +376,7 @@ export const useAdministradoraSuppliersManagement = () => {
           console.log('✅ Usuário de autenticação criado/atualizado com sucesso');
         }
         
-        toast.success(`Fornecedor "${existingSupplier.existing_name}" associado com sucesso!`);
+        toast.success(`Fornecedor "${supplierName}" associado com sucesso!`);
         await fetchSuppliers();
         
         return { 
@@ -384,9 +393,16 @@ export const useAdministradoraSuppliersManagement = () => {
       const newSupplier = searchResult[0];
       const supplierId = newSupplier.supplier_id;
       
+      // Buscar nome do fornecedor
+      const { data: supplierData } = await supabase
+        .from('suppliers')
+        .select('name')
+        .eq('id', supplierId)
+        .single();
+        
       console.log('✨ [NEW-SUPPLIER] Fornecedor criado via RPC:', {
         supplierId,
-        name: newSupplier.existing_name
+        name: supplierData?.name || data.name
       });
 
       // Atualizar fornecedor recém-criado com dados completos

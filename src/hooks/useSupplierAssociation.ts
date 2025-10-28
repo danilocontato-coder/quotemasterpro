@@ -22,8 +22,6 @@ export interface SupplierSearchResult {
 export interface FindSupplierResult {
   supplier_id: string;
   is_new: boolean;
-  certification_status: string;
-  existing_name: string;
 }
 
 export interface SupplierValidationResult {

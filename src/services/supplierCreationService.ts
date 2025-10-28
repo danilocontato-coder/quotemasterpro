@@ -55,7 +55,13 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
         p_cnpj: cleanDoc,
         p_name: supplierData.name,
         p_email: supplierData.email,
-        p_phone: supplierData.phone || null
+        p_phone: supplierData.phone || null,
+        p_whatsapp: supplierData.whatsapp ? normalizePhoneForDB(supplierData.whatsapp) : null,
+        p_website: supplierData.website || null,
+        p_city: supplierData.city || null,
+        p_state: supplierData.state || null,
+        p_address: supplierData.address ? { street: supplierData.address } : null,
+        p_specialties: supplierData.specialties || null
       }
     );
     
@@ -67,6 +73,30 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
     const supplierId = supplierResult[0].supplier_id;
     const isNewSupplier = supplierResult[0].is_new;
     console.log('[SupplierCreationService] ✅ Fornecedor:', supplierId, isNewSupplier ? '(NOVO)' : '(EXISTENTE)');
+    
+    // Se fornecedor já existia, atualizar campos extras
+    if (!isNewSupplier && (supplierData.whatsapp || supplierData.website || supplierData.address)) {
+      console.log('[SupplierCreationService] 📝 Fornecedor existente - atualizando campos extras');
+      
+      const updateData: any = {};
+      if (supplierData.whatsapp) updateData.whatsapp = normalizePhoneForDB(supplierData.whatsapp);
+      if (supplierData.website) updateData.website = supplierData.website;
+      if (supplierData.city) updateData.city = supplierData.city;
+      if (supplierData.state) updateData.state = supplierData.state;
+      if (supplierData.address) updateData.address = { street: supplierData.address };
+      if (supplierData.specialties?.length) updateData.specialties = supplierData.specialties;
+      
+      const { error: updateError } = await supabase
+        .from('suppliers')
+        .update(updateData)
+        .eq('id', supplierId);
+      
+      if (updateError) {
+        console.warn('[SupplierCreationService] ⚠️ Erro ao atualizar campos extras (não crítico):', updateError);
+      } else {
+        console.log('[SupplierCreationService] ✅ Campos extras atualizados');
+      }
+    }
     
     // 2. Associar ao cliente
     const { error: assocError } = await supabase.rpc('associate_supplier_to_client', {
