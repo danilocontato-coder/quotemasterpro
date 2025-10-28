@@ -60,6 +60,7 @@ import { EditClientModal } from '@/components/admin/EditClientModal';
 import { ClientCredentialsModal } from '@/components/admin/ClientCredentialsModal';
 import { ClientDocumentsModal } from '@/components/admin/ClientDocumentsModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
+import { ResetClientDataModal } from '@/components/admin/ResetClientDataModal';
 import { HierarchyViewModal } from '@/components/admin/HierarchyViewModal';
 import { useAdminViewClient } from '@/hooks/useAdminViewClient';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
@@ -82,6 +83,7 @@ export const ClientsManagement = () => {
     createClient,
     updateClient,
     deleteClient,
+    resetClientData,
     createGroup,
     updateGroup,
     deleteGroup,
@@ -102,6 +104,7 @@ export const ClientsManagement = () => {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [showDocumentsModal, setShowDocumentsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showResetDataModal, setShowResetDataModal] = useState(false);
   const [showHierarchyView, setShowHierarchyView] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [filterClientType, setFilterClientType] = useState<string>("all");
@@ -171,6 +174,10 @@ export const ClientsManagement = () => {
   const handleDeleteFromModal = useCallback(async (id: string) => {
     await executeDelete(id);
   }, [executeDelete]);
+
+  const handleResetDataFromModal = useCallback(async (id: string) => {
+    await resetClientData(id);
+  }, [resetClientData]);
 
   const handleResetPassword = useCallback(async (clientId: string, email: string) => {
     return await resetClientPassword(clientId, email);
@@ -414,6 +421,14 @@ export const ClientsManagement = () => {
     startTransition(() => {
       setSelectedClient(client);
       setShowDeleteModal(true);
+    });
+  }, []);
+
+  const handleResetDataModalClient = useCallback((client: any) => {
+    console.log('Abrindo limpeza de dados do cliente:', client.id);
+    startTransition(() => {
+      setSelectedClient(client);
+      setShowResetDataModal(true);
     });
   }, []);
 
@@ -818,6 +833,18 @@ export const ClientsManagement = () => {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               disabled={menuActionPending.has(client.id)}
+                              className="text-orange-600"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                withMenuDebounce(client.id, () => handleResetDataModalClient(client));
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Limpar Dados
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              disabled={menuActionPending.has(client.id)}
                               className="text-red-600"
                               onClick={(e) => {
                                 e.preventDefault();
@@ -919,7 +946,14 @@ export const ClientsManagement = () => {
         onDeleteClient={handleDeleteFromModal}
       />
 
-      <HierarchyViewModal 
+      <ResetClientDataModal
+        open={showResetDataModal}
+        onOpenChange={setShowResetDataModal}
+        client={selectedClient}
+        onResetClientData={handleResetDataFromModal}
+      />
+
+      <HierarchyViewModal
         open={showHierarchyView}
         onOpenChange={setShowHierarchyView}
         clients={clients}

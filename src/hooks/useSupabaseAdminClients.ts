@@ -1179,6 +1179,44 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
     }
   };
 
+  const resetClientData = async (clientId: string): Promise<void> => {
+    console.log('🧹 Iniciando reset de dados do cliente:', clientId);
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-client-data', {
+        body: { clientId }
+      });
+
+      if (error) {
+        console.error('Erro ao resetar dados do cliente:', error);
+        throw error;
+      }
+
+      console.log('✅ Dados do cliente resetados:', data);
+      
+      const deletedItems = data.deletedItems;
+      const summary = [
+        deletedItems.quotes > 0 ? `${deletedItems.quotes} cotações` : null,
+        deletedItems.products > 0 ? `${deletedItems.products} produtos` : null,
+        deletedItems.notifications > 0 ? `${deletedItems.notifications} notificações` : null,
+      ].filter(Boolean).join(', ');
+
+      toast.success(`Dados limpos com sucesso!`, {
+        description: summary || 'Cliente pronto para recomeçar'
+      });
+
+      // Forçar re-render atualizando o estado
+      setInitialized(false);
+    } catch (error: any) {
+      console.error('Erro ao resetar dados do cliente:', error);
+      toast.error(error.message || 'Erro ao limpar dados do cliente');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const createGroup = async (
     groupData: Omit<ClientGroup, "id" | "createdAt" | "clientCount">
   ) => {
@@ -1487,6 +1525,7 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
     createClient,
     updateClient,
     deleteClient,
+    resetClientData,
     createGroup,
     updateGroup,
     deleteGroup,
