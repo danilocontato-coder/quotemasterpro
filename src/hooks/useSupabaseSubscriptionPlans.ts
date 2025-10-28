@@ -164,6 +164,12 @@ export function useSupabaseSubscriptionPlans(options?: {
       }
 
       console.log('Plano criado com sucesso:', data);
+      
+      // Invalidar cache
+      sessionStorage.removeItem('subscription_plans');
+      sessionStorage.removeItem('subscription_plans_time');
+      sessionStorage.removeItem('subscription_plans_version');
+      
       toast.success('Plano criado com sucesso!');
       
       // Recarregar lista
@@ -193,6 +199,22 @@ export function useSupabaseSubscriptionPlans(options?: {
       }
 
       console.log('Plano atualizado com sucesso:', data);
+      
+      // Invalidar cache do SubscriptionContext
+      sessionStorage.removeItem('subscription_plans');
+      sessionStorage.removeItem('subscription_plans_time');
+      sessionStorage.removeItem('subscription_plans_version');
+      
+      // Invalidar também caches de usage (podem depender dos limites)
+      const usageKeys = Object.keys(sessionStorage).filter(key => key.startsWith('client_usage_'));
+      usageKeys.forEach(key => {
+        sessionStorage.removeItem(key);
+        sessionStorage.removeItem(`${key}_time`);
+        sessionStorage.removeItem(`${key}_version`);
+      });
+      
+      console.log('✅ Cache de planos invalidado - próxima leitura buscará do banco');
+      
       toast.success('Plano atualizado com sucesso!');
       
       // Recarregar lista
@@ -220,6 +242,12 @@ export function useSupabaseSubscriptionPlans(options?: {
       }
 
       console.log('Plano excluído com sucesso');
+      
+      // Invalidar cache
+      sessionStorage.removeItem('subscription_plans');
+      sessionStorage.removeItem('subscription_plans_time');
+      sessionStorage.removeItem('subscription_plans_version');
+      
       toast.success('Plano excluído com sucesso!');
       
       // Recarregar lista

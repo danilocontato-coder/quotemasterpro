@@ -61,10 +61,15 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (cached && cacheTime && cacheVersion === APP_VERSION) {
       const age = Date.now() - parseInt(cacheTime);
       if (age < 5 * 60 * 1000) { // ✅ Reduzir para 5 minutos
+        console.log(`📦 Usando cache de planos (idade: ${Math.round(age / 1000)}s)`);
         setSubscriptionPlans(JSON.parse(cached));
         setPlansLoading(false);
         return;
+      } else {
+        console.log(`🔄 Cache de planos expirado (idade: ${Math.round(age / 1000)}s), buscando do banco`);
       }
+    } else {
+      console.log('🆕 Nenhum cache válido encontrado, buscando planos do banco');
     }
 
     try {
@@ -75,12 +80,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
       if (error) throw error;
 
+      console.log(`✅ ${data?.length || 0} planos carregados do banco de dados`);
       setSubscriptionPlans(data || []);
       sessionStorage.setItem('subscription_plans', JSON.stringify(data || []));
       sessionStorage.setItem('subscription_plans_time', Date.now().toString());
       sessionStorage.setItem('subscription_plans_version', APP_VERSION); // ✅ Salvar versão
     } catch (error) {
-      console.error('Erro ao buscar planos:', error);
+      console.error('❌ Erro ao buscar planos:', error);
     } finally {
       setPlansLoading(false);
     }
