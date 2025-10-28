@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Zap, Star, CreditCard, RefreshCw, Crown, Users, FileText, Building2, Database, Package, TrendingUp, Infinity, AlertTriangle } from 'lucide-react';
+import { Check, Zap, Star, CreditCard, RefreshCw, Crown, Users, FileText, Building2, Database, Package, TrendingUp, Infinity, AlertTriangle, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,8 @@ import { useSupabaseSubscriptionGuard } from '@/hooks/useSupabaseSubscriptionGua
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { UpgradeConfirmationModal } from '@/components/plans/UpgradeConfirmationModal';
+import { AsaasPaymentModal } from '@/components/plans/AsaasPaymentModal';
 
 interface SubscriptionStatus {
   subscribed: boolean;
@@ -36,6 +38,24 @@ export const PlansPage = () => {
   });
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [creatingCheckout, setCreatingCheckout] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [upgradeData, setUpgradeData] = useState<{
+    currentPlan: string;
+    newPlan: string;
+    newPlanId: string;
+    amountDue: number;
+    daysRemaining: number;
+    originalDueDate: string;
+  } | null>(null);
+  const [paymentData, setPaymentData] = useState<{
+    payment_url?: string;
+    payment_barcode?: string;
+    qr_code?: string;
+    subscription_id: string;
+    planName?: string;
+    planPrice?: number;
+  } | null>(null);
 
   // Debug logs
   useEffect(() => {
@@ -75,7 +95,7 @@ export const PlansPage = () => {
     }
   };
 
-  const handlePlanSelection = async (planId: string) => {
+  const handlePlanSelection = async (planId: string, planName: string, planPrice: number) => {
     if (!user) {
       toast({
         title: "Erro",
@@ -85,26 +105,105 @@ export const PlansPage = () => {
       return;
     }
 
-    setCreatingCheckout(planId);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { planId }
-      });
+    // Verificar se usuário já tem plano ativo
+    const { data: currentSubscription } = await supabase
+      .from('subscriptions')
+      .select(`
+        *,
+        subscription_plans!plan_id(name, display_name, monthly_price)
+      `)
+      .eq('client_id', user.clientId)
+      .eq('status', 'active')
+      .single();
+
+    // Se já tem plano, é upgrade/downgrade
+    if (currentSubscription) {
+      const currentPlanPrice = currentSubscription.subscription_plans.monthly_price;
+      const selectedPlan = activePlans.find(p => p.id === planId);
       
-      if (error) {
-        throw error;
+      if (!selectedPlan) return;
+
+      // Se novo plano é mais caro → UPGRADE
+      if (selectedPlan.monthly_price > currentPlanPrice) {
+        // Calcular preview do valor
+        const periodEnd = new Date(currentSubscription.current_period_end);
+        const today = new Date();
+        const daysRemaining = Math.ceil((periodEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const priceDiff = selectedPlan.monthly_price - currentPlanPrice;
+        const amountDue = Math.round((priceDiff * daysRemaining / 30) * 100) / 100;
+
+        // Abrir modal de confirmação
+        setUpgradeData({
+          currentPlan: currentSubscription.subscription_plans.display_name || currentSubscription.subscription_plans.name,
+          newPlan: selectedPlan.display_name,
+          newPlanId: planId,
+          amountDue,
+          daysRemaining,
+          originalDueDate: currentSubscription.current_period_end
+        });
+        setShowUpgradeModal(true);
+        return;
       }
       
-      // Abrir checkout do Stripe em nova aba
-      if (data?.url) {
-        window.open(data.url, '_blank');
+      // Se novo plano é mais barato → DOWNGRADE
+      if (selectedPlan.monthly_price < currentPlanPrice) {
+        toast({
+          title: "Downgrade de Plano",
+          description: "Para trocar para um plano inferior, entre em contato com o suporte.",
+          variant: "default"
+        });
+        return;
       }
-    } catch (error: any) {
+
+      // Se preços são iguais
       toast({
-        title: "Erro",
-        description: error.message || "Não foi possível iniciar o checkout",
-        variant: "destructive",
+        title: "Plano Atual",
+        description: "Você já está neste plano.",
+        variant: "default"
       });
+      return;
+    }
+
+    // Se não tem plano, criar nova assinatura (usando Asaas)
+    toast({
+      title: "Em Desenvolvimento",
+      description: "A criação de nova assinatura será implementada em breve.",
+    });
+  };
+
+  const handleConfirmUpgrade = async () => {
+    if (!upgradeData) return;
+
+    setCreatingCheckout(upgradeData.newPlanId);
+    try {
+      const { data, error } = await supabase.functions.invoke('upgrade-subscription', {
+        body: { newPlanId: upgradeData.newPlanId }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      // Fechar modal de confirmação
+      setShowUpgradeModal(false);
+
+      // Abrir modal de pagamento
+      const selectedPlan = activePlans.find(p => p.id === upgradeData.newPlanId);
+      setPaymentData({
+        payment_url: data.payment_url,
+        payment_barcode: data.payment_barcode,
+        qr_code: data.qr_code,
+        subscription_id: data.subscription_id,
+        planName: selectedPlan?.display_name || upgradeData.newPlan,
+        planPrice: data.amount_due
+      });
+      setShowPaymentModal(true);
+
+      toast({
+        title: "Upgrade Iniciado",
+        description: `Complete o pagamento de R$ ${data.amount_due.toFixed(2)} para ativar seu novo plano.`,
+      });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
       setCreatingCheckout(null);
     }
@@ -453,21 +552,11 @@ export const PlansPage = () => {
                   </div>
                 )}
 
-                {/* Estatísticas */}
-                {plan.clients_subscribed > 0 && (
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      {plan.clients_subscribed} {plan.clients_subscribed === 1 ? 'cliente ativo' : 'clientes ativos'}
-                    </div>
-                  </div>
-                )}
-
                 {/* Botão de Ação */}
                 <div className="pt-4">
                   <Button 
                     className="w-full" 
-                    onClick={() => handlePlanSelection(plan.id)}
+                    onClick={() => handlePlanSelection(plan.id, plan.display_name, plan.monthly_price)}
                     disabled={creatingCheckout === plan.id || isCurrentPlan}
                     variant={isCurrentPlan ? "outline" : "default"}
                     style={!isCurrentPlan ? { backgroundColor: plan.custom_color } : undefined}
@@ -479,13 +568,15 @@ export const PlansPage = () => {
                       </>
                     ) : creatingCheckout === plan.id ? (
                       <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Processando...
                       </>
                     ) : (
                       <>
                         <CreditCard className="h-4 w-4 mr-2" />
-                        {subscriptionStatus.subscribed ? 'Alterar Plano' : 'Assinar Agora'}
+                        {subscriptionStatus.subscribed && plan.monthly_price > (currentPlan?.monthly_price || 0) 
+                          ? 'Fazer Upgrade' 
+                          : 'Assinar Agora'}
                       </>
                     )}
                   </Button>
@@ -507,6 +598,32 @@ export const PlansPage = () => {
           <span>✓ Upgrade/downgrade instantâneo</span>
         </div>
       </div>
+
+      {/* Modal de Confirmação de Upgrade */}
+      {showUpgradeModal && upgradeData && (
+        <UpgradeConfirmationModal
+          open={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          onConfirm={handleConfirmUpgrade}
+          currentPlan={upgradeData.currentPlan}
+          newPlan={upgradeData.newPlan}
+          amountDue={upgradeData.amountDue}
+          daysRemaining={upgradeData.daysRemaining}
+          originalDueDate={upgradeData.originalDueDate}
+          isLoading={creatingCheckout !== null}
+        />
+      )}
+
+      {/* Modal de Pagamento Asaas */}
+      {showPaymentModal && paymentData && (
+        <AsaasPaymentModal
+          open={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          planName={paymentData.planName || ''}
+          planPrice={paymentData.planPrice || 0}
+          paymentData={paymentData}
+        />
+      )}
     </div>
   );
 };

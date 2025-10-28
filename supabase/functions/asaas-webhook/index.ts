@@ -85,6 +85,9 @@ serve(async (req) => {
 
       // Atualizar subscription para active
       if (invoice.subscription_id) {
+        // Verificar se é upgrade (status pending_upgrade)
+        const isUpgrade = invoice.subscriptions.status === 'pending_upgrade';
+        
         await supabaseClient
           .from('subscriptions')
           .update({
@@ -92,6 +95,41 @@ serve(async (req) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', invoice.subscription_id);
+
+        // Se é upgrade, criar assinatura recorrente no Asaas
+        if (isUpgrade) {
+          console.log(`🔄 Ativando upgrade de plano para subscription ${invoice.subscription_id}`);
+          
+          try {
+            // Invocar create-asaas-subscription para criar a recorrência
+            const { data: createSubData, error: createSubError } = await supabaseClient.functions.invoke('create-asaas-subscription', {
+              body: { subscription_id: invoice.subscription_id }
+            });
+            
+            if (createSubError) {
+              console.error('⚠️ Erro ao criar assinatura recorrente no Asaas:', createSubError);
+            } else {
+              console.log('✅ Assinatura recorrente criada no Asaas:', createSubData?.asaas_subscription_id);
+            }
+
+            // Audit log do upgrade completo
+            await supabaseClient
+              .from('audit_logs')
+              .insert({
+                action: 'SUBSCRIPTION_UPGRADE_COMPLETED',
+                entity_type: 'subscriptions',
+                entity_id: invoice.subscription_id,
+                panel_type: 'system',
+                details: {
+                  new_plan_id: invoice.subscriptions.subscription_plan_id,
+                  payment_id: payment.id,
+                  asaas_subscription_id: createSubData?.asaas_subscription_id
+                }
+              });
+          } catch (error) {
+            console.error('⚠️ Erro ao processar upgrade:', error);
+          }
+        }
 
         // Reativar cliente se estava suspenso e atualizar plano
         if (invoice.subscriptions.client_id) {
