@@ -951,7 +951,8 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
           : formatAddressToText(clientData.address);
       }
       if (clientData.status !== undefined) updateData.status = clientData.status;
-      if (clientData.plan !== undefined) updateData.subscription_plan_id = clientData.plan;
+      // NOTE: subscription_plan_id is NOT updated directly here
+      // It will be synced automatically via the subscriptions table trigger
       if (clientData.loginCredentials?.username !== undefined) {
         updateData.username = clientData.loginCredentials.username || null;
       }
@@ -982,8 +983,64 @@ Acesse a plataforma em: https://cotiz.com.br/auth/login
 
       console.log('Cliente atualizado com sucesso no banco');
 
-      // Se o plano foi alterado, aplicar as características do plano ao cliente
+      // Se o plano foi alterado, atualizar via subscriptions (fonte única da verdade)
       if (clientData.plan !== undefined) {
+        console.log('📋 [AdminClients] Atualizando plano via subscriptions:', clientData.plan);
+        
+        // Verificar se existe subscription ativa para o cliente
+        const { data: existingSub, error: subError } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('client_id', id)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (subError) {
+          console.error('Erro ao verificar subscription existente:', subError);
+          throw subError;
+        }
+
+        if (existingSub) {
+          // Atualizar subscription existente
+          console.log('✏️ [AdminClients] Atualizando subscription existente:', existingSub.id);
+          const { error: updateSubError } = await supabase
+            .from('subscriptions')
+            .update({ 
+              plan_id: clientData.plan,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingSub.id);
+
+          if (updateSubError) {
+            console.error('Erro ao atualizar subscription:', updateSubError);
+            throw updateSubError;
+          }
+        } else {
+          // Criar nova subscription
+          console.log('✨ [AdminClients] Criando nova subscription ativa');
+          const now = new Date();
+          const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 dias
+
+          const { error: insertSubError } = await supabase
+            .from('subscriptions')
+            .insert({
+              client_id: id,
+              plan_id: clientData.plan,
+              status: 'active',
+              billing_cycle: 'monthly',
+              current_period_start: now.toISOString(),
+              current_period_end: periodEnd.toISOString()
+            });
+
+          if (insertSubError) {
+            console.error('Erro ao criar subscription:', insertSubError);
+            throw insertSubError;
+          }
+        }
+
+        console.log('✅ [AdminClients] Subscription atualizada, trigger sincronizará clients.subscription_plan_id');
+        
+        // Aplicar características do plano ao cliente
         await applyPlanCharacteristicsToClient(id, clientData.plan);
       }
 
