@@ -40,7 +40,15 @@ export const useTermsOfUse = () => {
           });
           logger.info('terms', 'Termos de uso carregados', { version: termsData.version });
         } else {
-          throw new Error('Termos de uso não encontrados');
+          // Fallback se não houver termos cadastrados
+          console.warn('[TERMS] ⚠️ Termos não encontrados, usando fallback');
+          setTerms({
+            title: 'Termos de Uso',
+            content: 'Termos de uso padrão não configurados. Por favor, configure os termos no sistema.',
+            version: '1.0',
+            last_updated: new Date().toISOString()
+          });
+          logger.warn('terms', 'Usando termos de uso fallback - nenhum termo configurado');
         }
       } catch (err: any) {
         logger.error('terms', 'Erro ao buscar termos de uso', err);

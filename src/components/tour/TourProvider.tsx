@@ -107,11 +107,21 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Tratamento especial para target não encontrado
     if (type === EVENTS.TARGET_NOT_FOUND) {
-      console.warn('[TOUR] ⚠️ Target não encontrado:', {
+      const target = step?.target;
+      
+      // Log de todos os data-tour disponíveis na página
+      const availableElements = Array.from(document.querySelectorAll('[data-tour]'))
+        .map(el => el.getAttribute('data-tour'));
+      
+      console.error('[TOUR] ❌ Target não encontrado:', {
+        target,
         stepIndex: index,
-        target: step?.target,
-        content: step?.content
+        stepTitle: step?.title || step?.content,
+        availableTargets: document.querySelectorAll('[data-tour]').length,
+        availableElements
       });
+      
+      console.log('[TOUR] 📍 Elementos data-tour disponíveis:', availableElements);
       
       // Retry mechanism: tentar novamente após um delay
       if (!step?.data?.retryCount || step.data.retryCount < 3) {
@@ -171,7 +181,24 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  if (!user || user.tourCompleted || !user.onboardingCompleted) {
+  if (!user || user.forcePasswordChange) {
+    return <>{children}</>;
+  }
+
+  // Aguardar aceitação de termos antes de iniciar tour
+  if (!user.termsAccepted) {
+    console.log('[TOUR] ⏸️ Aguardando aceitação de termos antes de iniciar tour');
+    return <>{children}</>;
+  }
+
+  // Aguardar conclusão de onboarding antes de iniciar tour
+  if (!user.onboardingCompleted) {
+    console.log('[TOUR] ⏸️ Aguardando conclusão de onboarding antes de iniciar tour');
+    return <>{children}</>;
+  }
+
+  // Tour já foi completado
+  if (user.tourCompleted) {
     return <>{children}</>;
   }
 

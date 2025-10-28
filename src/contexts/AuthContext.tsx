@@ -278,9 +278,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
 
   // useEffect para re-verificar termos quando user mudar
   useEffect(() => {
-    if (!user || isLoading) return;
+    if (!user) return;
 
     const recheckTerms = async () => {
+      // Se ainda está carregando, aguarda
+      if (isLoading) {
+        console.log('[TERMS-DEBUG] ⏳ Aguardando fim do carregamento...');
+        return;
+      }
+
       const { data: featureFlagData } = await supabase
         .from('system_settings')
         .select('setting_value')
@@ -294,6 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
         email: user.email,
         termsAccepted: user.termsAccepted,
         enforceTerms,
+        isLoading,
         needsTermsAcceptance
       });
 
@@ -303,6 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           email: user.email,
           termsAccepted: user.termsAccepted
         });
+        console.log('[TERMS-DEBUG] 🚨 ATIVANDO MODAL DE TERMOS');
         setNeedsTermsAcceptance(true);
       } else {
         console.log('[TERMS-DEBUG] ✅ Termos OK, não precisa do modal', {
