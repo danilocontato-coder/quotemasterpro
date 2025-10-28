@@ -5853,6 +5853,16 @@ export type Database = {
       }
       check_overdue_accounts: { Args: never; Returns: undefined }
       check_quote_deadlines_for_suppliers: { Args: never; Returns: undefined }
+      check_usage_integrity: {
+        Args: never
+        Returns: {
+          actual_count: number
+          client_id: string
+          client_name: string
+          difference: number
+          stored_count: number
+        }[]
+      }
       check_user_email_exists: {
         Args: { user_email: string }
         Returns: boolean

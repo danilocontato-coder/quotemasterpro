@@ -223,65 +223,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   }, [currentClient?.id, clientLoading, fetchClientUsage]);
 
-  // Listener para mudanças de plano
-  useEffect(() => {
-    if (!currentClient?.id) return;
-
-    const handleSubscriptionChange = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail?.clientId === currentClient.id) {
-        console.log('🔄 [SubscriptionContext] Plano alterado, invalidando cache e recarregando...');
-        refreshUsage();
-        fetchSubscriptionPlans();
-      }
-    };
-
-    window.addEventListener('subscription-changed', handleSubscriptionChange);
-    return () => window.removeEventListener('subscription-changed', handleSubscriptionChange);
-  }, [currentClient?.id, refreshUsage, fetchSubscriptionPlans]);
-
-  // Realtime listeners para atualizar contadores automaticamente
-  useEffect(() => {
-    if (!currentClient?.id) return;
-
-    console.log('[SubscriptionContext] Configurando listeners realtime...');
-    
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'quotes',
-          filter: `client_id=eq.${currentClient.id}`
-        },
-        (payload) => {
-          console.log('[SubscriptionContext] Realtime: nova cotação criada, atualizando uso...', payload);
-          fetchClientUsage();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'users',
-          filter: `client_id=eq.${currentClient.id}`
-        },
-        (payload) => {
-          console.log('[SubscriptionContext] Realtime: mudança em usuários, atualizando uso...', payload);
-          fetchClientUsage();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[SubscriptionContext] Removendo listeners realtime...');
-      supabase.removeChannel(channel);
-    };
-  }, [currentClient?.id, fetchClientUsage]);
-
   // Buscar plano atual do usuário via RPC (retorna mesmo se inativo)
   useEffect(() => {
     if (!user) {
@@ -456,6 +397,65 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     sessionStorage.removeItem('subscription_plans_time');
     
     await fetchClientUsage();
+  }, [currentClient?.id, fetchClientUsage]);
+
+  // Listener para mudanças de plano (deve vir APÓS refreshUsage)
+  useEffect(() => {
+    if (!currentClient?.id) return;
+
+    const handleSubscriptionChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.clientId === currentClient.id) {
+        console.log('🔄 [SubscriptionContext] Plano alterado, invalidando cache e recarregando...');
+        refreshUsage();
+        fetchSubscriptionPlans();
+      }
+    };
+
+    window.addEventListener('subscription-changed', handleSubscriptionChange);
+    return () => window.removeEventListener('subscription-changed', handleSubscriptionChange);
+  }, [currentClient?.id, refreshUsage, fetchSubscriptionPlans]);
+
+  // Realtime listeners para atualizar contadores automaticamente
+  useEffect(() => {
+    if (!currentClient?.id) return;
+
+    console.log('[SubscriptionContext] Configurando listeners realtime...');
+    
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'quotes',
+          filter: `client_id=eq.${currentClient.id}`
+        },
+        (payload) => {
+          console.log('[SubscriptionContext] Realtime: nova cotação criada, atualizando uso...', payload);
+          fetchClientUsage();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'users',
+          filter: `client_id=eq.${currentClient.id}`
+        },
+        (payload) => {
+          console.log('[SubscriptionContext] Realtime: mudança em usuários, atualizando uso...', payload);
+          fetchClientUsage();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[SubscriptionContext] Removendo listeners realtime...');
+      supabase.removeChannel(channel);
+    };
   }, [currentClient?.id, fetchClientUsage]);
 
   const getCurrentUsage = useCallback(() => {
