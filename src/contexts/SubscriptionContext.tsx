@@ -278,8 +278,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         
         console.log('🔍 [SubscriptionContext] RPC get_current_user_plan resultado:', {
           data,
-          hasStatus: 'status' in (data || {}),
-          status: data?.status
+          hasStatus: data && typeof data === 'object' && !Array.isArray(data) && 'status' in data,
+          status: data && typeof data === 'object' && !Array.isArray(data) ? (data as any).status : undefined
         });
         
         setDbUserPlan(data || null);
