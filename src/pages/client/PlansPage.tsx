@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UpgradeConfirmationModal } from '@/components/plans/UpgradeConfirmationModal';
 import { AsaasPaymentModal } from '@/components/plans/AsaasPaymentModal';
+import { BillingCycleCard } from '@/components/billing/BillingCycleCard';
 
 export const PlansPage = () => {
   const { plans, isLoading } = useSupabaseSubscriptionPlans({ 
@@ -412,6 +413,13 @@ export const PlansPage = () => {
           </CardContent>
         )}
       </Card>
+
+      {/* Ciclo de Cobrança */}
+      {userPlan && (
+        <div className="max-w-4xl mx-auto">
+          <BillingCycleCard />
+        </div>
+      )}
 
 
       {/* Grid de Planos */}

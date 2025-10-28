@@ -5857,9 +5857,14 @@ export type Database = {
         Args: never
         Returns: {
           actual_count: number
+          billing_anchor_day: number
+          billing_period_start: string
           client_id: string
           client_name: string
+          days_until_reset: number
           deleted_count: number
+          last_reset_date: string
+          next_reset_date: string
           status: string
           stored_count: number
         }[]

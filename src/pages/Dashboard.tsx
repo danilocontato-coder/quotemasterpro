@@ -16,6 +16,7 @@ import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { useSupabasePlanDetails } from '@/hooks/useSupabaseSubscriptionPlans';
 import { AnimatedPage, AnimatedSection, AnimatedHeader, AnimatedGrid } from '@/components/ui/animated-page';
 import { useBranding } from '@/contexts/BrandingContext';
+import { BillingCycleCard } from '@/components/billing/BillingCycleCard';
 import heroDashboard from "@/assets/hero-dashboard.jpg";
 
 export default function Dashboard() {
@@ -270,6 +271,7 @@ export default function Dashboard() {
         <div className="space-y-4">
           <QuoteLimitsMetric compact />
           <UsageLimitsCard compact />
+          <BillingCycleCard compact />
         </div>
       </div>
 

@@ -7,6 +7,8 @@ import { SuperAdminLayout } from './SuperAdminLayout';
 import { AdministradoraLayout } from './AdministradoraLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import SuspendedAccount from '@/pages/SuspendedAccount';
 
 export const AuthenticatedLayout: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -14,6 +16,7 @@ export const AuthenticatedLayout: React.FC = () => {
   const renderCountRef = useRef(0);
   const [clientType, setClientType] = useState<string | null>(null);
   const [clientTypeLoading, setClientTypeLoading] = useState(true);
+  const { status: subscriptionStatus, isLoading: statusLoading } = useSubscriptionStatus();
   
   const debug = (msg: string, data?: any) => {
     if (typeof window !== 'undefined' && (window as any).__DEBUG__) {
@@ -86,6 +89,11 @@ export const AuthenticatedLayout: React.FC = () => {
 
   if (!user) {
     return <Navigate to="/auth/login" replace />;
+  }
+
+  // Verificar se conta está suspensa
+  if (!statusLoading && subscriptionStatus?.isSuspended) {
+    return <SuspendedAccount />;
   }
 
   // Determine which layout to use based on user role

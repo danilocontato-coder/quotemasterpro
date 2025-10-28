@@ -48,6 +48,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [plansLoading, setPlansLoading] = useState(true);
   const [dbUserPlan, setDbUserPlan] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
 
   // Cache planos - executa apenas uma vez por sessão com validação de versão
   const fetchSubscriptionPlans = useCallback(async () => {
@@ -274,6 +275,17 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     // ⚠️ Durante carregamento inicial, ser permissivo
     if (!user || !currentClient || !clientUsage || plansLoading) {
       return { allowed: true, currentUsage: 0, limit: -1 };
+    }
+
+    // Bloquear se suspenso
+    if (subscriptionStatus === 'suspended') {
+      return {
+        allowed: false,
+        reason: 'Sua conta está suspensa. Regularize seus pagamentos para continuar.',
+        currentUsage: 0,
+        limit: 0,
+        upgradeRequired: false
+      };
     }
 
     const planId = currentClient.subscription_plan_id || 'basic';
