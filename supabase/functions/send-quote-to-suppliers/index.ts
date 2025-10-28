@@ -765,6 +765,7 @@ const handler = async (req: Request): Promise<Response> => {
       const templateContent = whatsappTemplate?.message_content || 'Nova cotação disponível: {{quote_title}}';
 
       // Preflight: check Evolution instance connection state ONLY if sending WhatsApp
+      // ⚠️ This is now a NON-BLOCKING check - we log warnings but continue sending
       if (send_whatsapp) {
         try {
           const base = evolutionApiUrl.replace(/\/+$/, '')
@@ -776,26 +777,50 @@ const handler = async (req: Request): Promise<Response> => {
           let preflightOk = false
           let lastTxt = ''
           let lastStatus = 0
+          let testedEndpoints: string[] = []
+          
           for (const b of bases) {
             for (const headers of headerVariants) {
-              const cs = await fetch(`${b}/instance/connectionState/${encodeURIComponent(evolutionInstance)}`, { headers })
-              lastStatus = cs.status
-              if (cs.ok) { preflightOk = true; break }
-              lastTxt = await cs.text().catch(() => '')
+              const endpoint = `${b}/instance/connectionState/${encodeURIComponent(evolutionInstance)}`
+              testedEndpoints.push(endpoint)
+              
+              try {
+                const cs = await fetch(endpoint, { headers })
+                lastStatus = cs.status
+                if (cs.ok) { 
+                  preflightOk = true
+                  console.log('✅ Evolution API preflight check passed:', { endpoint, status: cs.status })
+                  break 
+                }
+                lastTxt = await cs.text().catch(() => '')
+              } catch (fetchError: any) {
+                console.warn('⚠️ Preflight fetch error:', { endpoint, error: fetchError.message })
+              }
             }
             if (preflightOk) break
           }
+          
           if (!preflightOk) {
-            return new Response(
-              JSON.stringify({ success: false, error: 'Evolution API indisponível para a instância', details: { status: lastStatus, response: lastTxt }, resolved_evolution: resolvedEvo }),
-              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
+            console.warn('⚠️ Evolution API preflight check failed, but continuing anyway:', {
+              instance: evolutionInstance,
+              testedEndpoints,
+              lastStatus,
+              lastResponse: lastTxt.substring(0, 200),
+              evolutionConfig: {
+                apiUrl: evolutionApiUrl,
+                instance: evolutionInstance,
+                tokenPresent: !!evolutionToken
+              }
+            })
+            // NÃO BLOQUEAR - apenas avisar e continuar
           }
         } catch (e: any) {
-          return new Response(
-            JSON.stringify({ success: false, error: 'Falha ao conectar à Evolution API', details: e.message, resolved_evolution: resolvedEvo }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          console.warn('⚠️ Preflight check error, but continuing anyway:', {
+            error: e.message,
+            instance: evolutionInstance,
+            apiUrl: evolutionApiUrl
+          })
+          // NÃO BLOQUEAR - apenas avisar e continuar
         }
       }
 
