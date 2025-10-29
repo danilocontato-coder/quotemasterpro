@@ -306,10 +306,12 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       
       if (qsError) console.error('quote_suppliers SELECT error:', qsError);
       const idsFromQS = (qsRows || []).map((r: any) => r.supplier_id).filter(Boolean);
+      console.log('🔍 [SUPPLIERS] IDs de quote_suppliers:', idsFromQS);
 
       const idsFromSelected = Array.isArray((quote as any).selected_supplier_ids)
         ? (quote as any).selected_supplier_ids.filter(Boolean)
         : [];
+      console.log('🔍 [SUPPLIERS] IDs de selected_supplier_ids:', idsFromSelected);
 
       const { data: respRows, error: respError } = await supabase
         .from('quote_responses')
@@ -318,11 +320,14 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       
       if (respError) console.error('quote_responses SELECT error:', respError);
       const idsFromResponses = (respRows || []).map((r: any) => r.supplier_id).filter(Boolean);
+      console.log('🔍 [SUPPLIERS] IDs de quote_responses:', idsFromResponses);
 
       const allIds = Array.from(new Set<string>([...idsFromQS, ...idsFromSelected, ...idsFromResponses]));
 
       const invitedIds = idsFromQS.length > 0 ? idsFromQS : allIds;
-      setTotalInvited(idsFromQS.length > 0 ? idsFromQS.length : (quote?.suppliers_sent_count || invitedIds.length));
+      const calculatedTotal = invitedIds.length;
+      console.log('🔍 [SUPPLIERS] Setando totalInvited:', calculatedTotal, '(invitedIds.length)');
+      setTotalInvited(calculatedTotal);
 
       let suppliersData: any[] = [];
       if (invitedIds.length > 0) {
@@ -430,8 +435,8 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     });
 
     // Cotação única (1 fornecedor) -> NUNCA mostra matriz
-    if (totalInvited === 1 || supplierNames.length === 1) {
-      console.log('❌ [MATRIZ] Bloqueado: cotação única');
+    if (supplierNames.length === 1) {
+      console.log('❌ [MATRIZ] Bloqueado: cotação única (supplierNames.length === 1)');
       return false;
     }
 
@@ -467,7 +472,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
     console.log('❌ [MATRIZ] Bloqueado: nenhuma condição atendida');
     return false;
-  }, [proposals.length, supplierNames.length, totalInvited, isDeadlineExpired, manualOverride, quote?.deadline]);
+  }, [proposals.length, supplierNames.length, isDeadlineExpired, manualOverride, quote?.deadline]);
 
   // 🔍 DEBUG: Log completo do estado da matriz
   useEffect(() => {
