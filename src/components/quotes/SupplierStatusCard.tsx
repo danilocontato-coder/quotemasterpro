@@ -1,8 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock, Send, MessageSquare } from 'lucide-react';
+import { CheckCircle, Clock, Send } from 'lucide-react';
 import { formatRelativeTime } from '@/utils/dateUtils';
 import { QuoteProposal } from './QuoteDetailModal';
 
@@ -17,15 +17,15 @@ interface SupplierStatusCardProps {
   hasResponded: boolean;
   proposal?: QuoteProposal;
   onResendInvite: () => void;
-  onSendWhatsApp: () => void;
+  isResending?: boolean;
 }
 
 export function SupplierStatusCard({ 
   supplier, 
   hasResponded, 
   proposal, 
-  onResendInvite, 
-  onSendWhatsApp 
+  onResendInvite,
+  isResending = false
 }: SupplierStatusCardProps) {
   return (
     <Card className={hasResponded ? 'border-green-200 bg-green-50/30' : 'border-orange-200 bg-orange-50/30'}>
@@ -77,16 +77,16 @@ export function SupplierStatusCard({
             Este fornecedor ainda não enviou proposta.
           </p>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={onResendInvite}>
+            <LoadingButton 
+              size="sm" 
+              variant="outline" 
+              onClick={onResendInvite}
+              isLoading={isResending}
+              loadingText="Reenviando..."
+            >
               <Send className="h-3 w-3 mr-1" />
               Reenviar convite
-            </Button>
-            {supplier.whatsapp && (
-              <Button size="sm" variant="outline" onClick={onSendWhatsApp} className="text-green-600 hover:text-green-700">
-                <MessageSquare className="h-3 w-3 mr-1" />
-                WhatsApp
-              </Button>
-            )}
+            </LoadingButton>
           </div>
         </CardContent>
       )}

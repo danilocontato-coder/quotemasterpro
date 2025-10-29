@@ -109,6 +109,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const [proposals, setProposals] = useState<QuoteProposal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showConsultantAnalysis, setShowConsultantAnalysis] = useState(false);
+  const [resendingSuppliers, setResendingSuppliers] = useState<Set<string>>(new Set());
   const { 
     individualAnalyses, 
     comparativeAnalysis, 
@@ -641,7 +642,11 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   };
 
   const handleResendInvite = async (supplierId: string) => {
+    setResendingSuppliers(prev => new Set(prev).add(supplierId));
+    
     try {
+      console.log('🔄 [RESEND-INVITE] Iniciando reenvio para:', supplierId);
+      
       const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: { 
           quoteId: quote.id, 
@@ -649,38 +654,31 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [RESEND-INVITE] Erro na edge function:', error);
+        throw error;
+      }
+      
+      console.log('✅ [RESEND-INVITE] Convite reenviado com sucesso');
       
       toast({
         title: "Convite reenviado!",
-        description: "O fornecedor receberá um novo link por WhatsApp.",
+        description: "O fornecedor receberá um novo link por WhatsApp via Evolution API.",
       });
     } catch (error) {
-      console.error('Error resending invite:', error);
+      console.error('❌ [RESEND-INVITE] Erro ao reenviar convite:', error);
       toast({
         title: "Erro",
         description: "Não foi possível reenviar o convite.",
         variant: "destructive"
       });
-    }
-  };
-
-  const handleSendWhatsApp = (supplier: { name: string; whatsapp?: string }) => {
-    if (!supplier.whatsapp) {
-      toast({
-        title: "WhatsApp não disponível",
-        description: `${supplier.name} não possui WhatsApp cadastrado.`,
-        variant: "destructive"
+    } finally {
+      setResendingSuppliers(prev => {
+        const next = new Set(prev);
+        next.delete(supplierId);
+        return next;
       });
-      return;
     }
-    
-    const message = encodeURIComponent(
-      `Olá ${supplier.name}, gostaria de conversar sobre a cotação ${quote.local_code} - ${quote.title}. Podemos negociar?`
-    );
-    
-    const whatsappNumber = supplier.whatsapp.replace(/\D/g, '');
-    window.open(`https://wa.me/55${whatsappNumber}?text=${message}`, '_blank');
   };
 
   const refreshProposals = useCallback(() => {
@@ -1110,7 +1108,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                           hasResponded={false}
                           proposal={undefined}
                           onResendInvite={() => handleResendInvite(supplier.id)}
-                          onSendWhatsApp={() => handleSendWhatsApp(supplier)}
+                          isResending={resendingSuppliers.has(supplier.id)}
                         />
                       ))}
                   </div>
