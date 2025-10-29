@@ -200,12 +200,32 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               total: response.total_amount
             }];
 
+        // 💰 Calcular soma dos itens e total normalizado
+        const itemsSum = (proposalItems as any[]).reduce((s: number, it: any) => 
+          s + (Number(it.total) || (Number(it.quantity) * Number(it.unit_price || 0))), 0
+        );
+        const shipping = Number(response.shipping_cost ?? 0);
+        const dbTotal = Number(response.total_amount ?? 0);
+        const computedWithShipping = Number(itemsSum) + shipping;
+        const normalizedTotal = Math.abs(dbTotal - computedWithShipping) <= 0.01 ? dbTotal : computedWithShipping;
+
         // ✅ Calcular métricas reais do fornecedor
         const deliveryScore = await calculateDeliveryScore(response.supplier_id);
         const reputation = await calculateSupplierReputation(response.supplier_id);
         
+        console.log('💰 [TOTAL-NORMALIZE]', { 
+          supplier: response.supplier_name, 
+          itemsSum, 
+          shipping, 
+          dbTotal, 
+          computedWithShipping, 
+          used: normalizedTotal 
+        });
+        console.log('🛡️ [WARRANTY]', { 
+          supplier: response.supplier_name, 
+          value: response.warranty_months 
+        });
         console.log(`✅ [MÉTRICAS] ${response.supplier_name}: deliveryScore=${deliveryScore}, reputation=${reputation}`);
-        console.log(`🚚 [PROPOSAL] shipping_cost bruto:`, response.shipping_cost, '-> usado:', Number(response.shipping_cost ?? 0));
 
         transformedProposals.push({
           id: response.id,
@@ -221,12 +241,12 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             brand: responseItem.brand || 'N/A',
             specifications: responseItem.specifications || ''
           })),
-          totalPrice: response.total_amount,
-          price: response.total_amount, // Para compatibilidade
+          totalPrice: normalizedTotal,
+          price: normalizedTotal, // Para compatibilidade
           deliveryTime: response.delivery_time || 7,
-          shippingCost: Number(response.shipping_cost ?? 0),
+          shippingCost: shipping,
           deliveryScore: deliveryScore,
-          warrantyMonths: response.warranty_months || 12,
+          warrantyMonths: response.warranty_months ?? 12,
           reputation: reputation,
           observations: response.notes || '',
           submittedAt: response.created_at,

@@ -31,6 +31,20 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
 
   // Layout para proposta única
   if (isSingleProposal) {
+    // 💰 Calcular total normalizado a partir dos itens
+    const itemsSubtotal = proposal.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const computedTotal = itemsSubtotal + proposal.shippingCost;
+    const displayTotal = Math.abs(proposal.totalPrice - computedTotal) > 0.01 ? computedTotal : proposal.totalPrice;
+
+    console.log('💰 [COMPARISON-SINGLE]', {
+      supplier: proposal.supplierName,
+      itemsSubtotal,
+      shippingCost: proposal.shippingCost,
+      computedTotal,
+      proposalTotalPrice: proposal.totalPrice,
+      displayTotal
+    });
+
     return (
       <div className="space-y-6">
         {/* Cabeçalho do Fornecedor */}
@@ -47,7 +61,7 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
               </div>
             </div>
             <Badge className="text-base px-4 py-2">
-              R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </Badge>
           </div>
 
@@ -135,7 +149,7 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
                 <tr className="font-bold bg-muted border-t-2 border-border">
                   <td colSpan={3} className="p-3 text-base text-foreground">VALOR TOTAL</td>
                   <td className="text-right p-3 text-lg text-primary">
-                    R$ {proposal.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               </tbody>
@@ -240,14 +254,33 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
           <tr className="font-bold bg-muted border-t-2 border-border">
             <td className="p-3 text-base">VALOR TOTAL</td>
             {proposals.map(p => {
-              const allPrices = proposals.map(pr => pr.totalPrice);
-              const minTotal = Math.min(...allPrices);
-              const isBestTotal = p.totalPrice === minTotal;
+              // 💰 Calcular total normalizado
+              const itemsSubtotal = p.items.reduce((sum, item) => sum + (item.total || 0), 0);
+              const computedTotal = itemsSubtotal + p.shippingCost;
+              const displayTotal = Math.abs(p.totalPrice - computedTotal) > 0.01 ? computedTotal : p.totalPrice;
+              
+              const allDisplayTotals = proposals.map(pr => {
+                const iSum = pr.items.reduce((sum, item) => sum + (item.total || 0), 0);
+                const cTotal = iSum + pr.shippingCost;
+                return Math.abs(pr.totalPrice - cTotal) > 0.01 ? cTotal : pr.totalPrice;
+              });
+              const minTotal = Math.min(...allDisplayTotals);
+              const isBestTotal = displayTotal === minTotal;
+
+              console.log('💰 [COMPARISON-MULTI]', {
+                supplier: p.supplierName,
+                itemsSubtotal,
+                shippingCost: p.shippingCost,
+                computedTotal,
+                proposalTotalPrice: p.totalPrice,
+                displayTotal,
+                isBestTotal
+              });
               
               return (
                 <td key={p.id} className={`text-center p-3 text-base ${isBestTotal ? 'bg-green-100' : ''}`}>
                   <p className={isBestTotal ? 'text-green-600' : ''}>
-                    R$ {p.totalPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {displayTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                   {isBestTotal && (
                     <Badge variant="default" className="text-xs mt-1 bg-green-600">

@@ -113,6 +113,28 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
       // ✅ USAR ITENS DA PROPOSTA (p.items), não da cotação (quote.items)
       const proposalItems = Array.isArray(p.items) ? p.items : [];
       
+      // 💰 Calcular soma dos itens e total normalizado
+      const itemsSum = proposalItems.reduce((s: number, it: any) => 
+        s + (it.total ?? (it.quantity * (it.unit_price ?? 0))), 0
+      );
+      const shipping = Number(p.shipping_cost ?? 0);
+      const dbTotal = Number(p.total_amount ?? 0);
+      const computedWithShipping = itemsSum + shipping;
+      const normalizedTotal = Math.abs(dbTotal - computedWithShipping) <= 0.01 ? dbTotal : computedWithShipping;
+
+      console.log('💰 [TOTAL-NORMALIZE]', { 
+        supplier: p.supplier_name, 
+        itemsSum, 
+        shipping, 
+        dbTotal, 
+        computedWithShipping, 
+        used: normalizedTotal 
+      });
+      console.log('🛡️ [WARRANTY]', { 
+        supplier: p.supplier_name, 
+        value: p.warranty_months 
+      });
+      
       return {
         id: p.id,
         quoteId: quote.id,
@@ -127,12 +149,12 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
           brand: responseItem.brand || 'N/A',
           specifications: responseItem.specifications || ''
         })),
-        totalPrice: p.total_amount,
-        price: p.total_amount,
+        totalPrice: normalizedTotal,
+        price: normalizedTotal,
         deliveryTime: p.delivery_time,
-        shippingCost: p.shipping_cost || 0,
+        shippingCost: shipping,
         deliveryScore: 50,
-        warrantyMonths: p.warranty_months || 12,
+        warrantyMonths: p.warranty_months ?? 12,
         reputation: 3.0,
         observations: p.notes || '',
         submittedAt: p.created_at,
