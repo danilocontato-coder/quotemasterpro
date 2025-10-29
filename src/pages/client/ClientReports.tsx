@@ -55,7 +55,7 @@ export default function ClientReports() {
           status,
           created_at,
           deadline,
-          clients_condos!inner (
+          clients!inner (
             id,
             name
           )
@@ -105,7 +105,7 @@ export default function ClientReports() {
     exportQuoteTimelineToPDF(events, {
       code: formatQuoteCode(selectedQuote),
       title: selectedQuote.title,
-      clientName: selectedQuote.clients_condos?.name || 'N/A',
+      clientName: selectedQuote.clients?.name || 'N/A',
       total: selectedQuote.total_price || 0
     });
 
