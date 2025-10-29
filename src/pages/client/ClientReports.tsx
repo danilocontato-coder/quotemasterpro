@@ -55,7 +55,7 @@ export default function ClientReports() {
           status,
           created_at,
           deadline,
-          clients!inner (
+          clients!quotes_client_id_fkey (
             id,
             name
           )
