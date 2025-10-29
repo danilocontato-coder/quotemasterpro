@@ -78,13 +78,21 @@ export const useSupabaseSettings = () => {
       };
       
       setSettings(transformedSettings);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching user settings:', error);
-      toast({
-        title: "Erro ao carregar configurações",
-        description: "Não foi possível carregar suas configurações.",
-        variant: "destructive"
-      });
+      
+      // Não exibir toast se for erro de sessão ausente (esperado na tela de login)
+      const isAuthError = error?.name === 'AuthSessionMissingError' || 
+                          error?.message?.includes('Auth session missing') ||
+                          error?.message?.includes('session_not_found');
+      
+      if (!isAuthError) {
+        toast({
+          title: "Erro ao carregar configurações",
+          description: "Não foi possível carregar suas configurações.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
