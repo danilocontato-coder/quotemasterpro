@@ -103,26 +103,33 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       if (error) throw error;
 
       if (data.success && data.data) {
-        // A função extract-quote-from-pdf retorna { totalAmount, notes }
+        // A função extract-quote-from-pdf retorna { items, notes }
         // Transformar para o formato esperado pelo componente pai
         const quote = {
           supplierName: '',
           cnpj: '',
           contact: { email: '', phone: '' },
-          items: [], // Esta função não extrai itens individuais
+          items: (data.data.items || []).map((item: any) => ({
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            unit_price: 0, // Usuário preenche manualmente
+            total: 0 // Será calculado depois
+          })),
           deliveryTime: '',
           paymentTerms: '',
           validUntil: '',
           notes: data.data.notes || '',
-          totalProposal: data.data.totalAmount ? parseFloat(data.data.totalAmount) : 0
+          totalProposal: 0 // Será calculado após preenchimento dos preços
         };
 
         onQuoteGenerated(quote);
         onOpenChange(false);
         setUploadedFile(null);
+        
+        const itemCount = quote.items.length;
         toast({
           title: 'Documento Processado!',
-          description: `Valor total extraído: ${quote.totalProposal > 0 ? `R$ ${quote.totalProposal.toFixed(2)}` : 'Não informado'}`,
+          description: `${itemCount} ${itemCount === 1 ? 'item extraído' : 'itens extraídos'} com sucesso.`,
         });
       } else {
         throw new Error(data.error || 'Erro ao processar documento');

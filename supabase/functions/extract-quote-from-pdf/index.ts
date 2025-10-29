@@ -101,16 +101,23 @@ serve(async (req) => {
     const systemPrompt = `Você é um assistente especializado em extrair dados de propostas comerciais.
 
 Extraia APENAS:
-1. Valor total da proposta (totalAmount) - em formato numérico, sem símbolos de moeda
-2. Observações/notas relevantes (notes) - prazo de entrega, condições de pagamento, validade da proposta, etc.
+1. Lista de itens (items) - cada item deve conter:
+   - description: nome/descrição do produto/serviço
+   - quantity: quantidade (numérica)
+2. Observações relevantes (notes) - prazo de entrega, condições de pagamento, validade da proposta, etc.
 
 Retorne APENAS o JSON com esta estrutura EXATA (sem markdown, sem explicações):
 {
-  "totalAmount": "1234.56",
+  "items": [
+    {
+      "description": "Nome do produto/serviço",
+      "quantity": 2
+    }
+  ],
   "notes": "Prazo: 10 dias úteis. Pagamento: 30 dias. Validade: 15 dias."
 }
 
-Se não encontrar valor total, use null. Se não houver observações relevantes, use string vazia.
+Se não encontrar itens, retorne array vazio. Se não houver observações relevantes, use string vazia.
 IMPORTANTE: Retorne APENAS o objeto JSON, nada mais.`
 
     // Chamar Lovable AI para analisar o texto
@@ -193,7 +200,7 @@ IMPORTANTE: Retorne APENAS o objeto JSON, nada mais.`
       JSON.stringify({
         success: true,
         data: {
-          totalAmount: extractedData.totalAmount || null,
+          items: extractedData.items || [],
           notes: extractedData.notes || ''
         }
       }),
