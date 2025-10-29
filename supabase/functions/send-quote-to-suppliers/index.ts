@@ -632,6 +632,7 @@ const handler = async (req: Request): Promise<Response> => {
               action_url: `/supplier/quotes`,
               metadata: {
                 quote_id: quote.id,
+                quote_local_code: quote.local_code,
                 quote_title: quote.title,
                 client_name: client.name,
                 deadline: quote.deadline

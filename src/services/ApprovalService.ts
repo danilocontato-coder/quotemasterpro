@@ -54,16 +54,26 @@ export class ApprovalService {
 
       if (updateQuoteError) throw updateQuoteError;
 
+      // Buscar local_code da cotação para exibição amigável
+      const { data: quoteData } = await supabase
+        .from('quotes')
+        .select('local_code')
+        .eq('id', data.quoteId)
+        .single();
+      
+      const quoteCode = quoteData?.local_code || data.quoteId.substring(0, 8);
+
       // Criar notificação para os aprovadores
       for (const approverId of approvalLevel.approvers) {
         await supabase.from('notifications').insert({
           user_id: approverId,
           title: 'Nova Aprovação Pendente',
-          message: `Cotação #${data.quoteId} aguarda sua aprovação no valor de R$ ${data.amount.toFixed(2)}`,
+          message: `Cotação #${quoteCode} aguarda sua aprovação no valor de R$ ${data.amount.toFixed(2)}`,
           type: 'approval_request',
           action_url: `/approvals`,
           metadata: {
             quote_id: data.quoteId,
+            quote_local_code: quoteData?.local_code,
             approval_id: approval.id,
             amount: data.amount
           }
@@ -112,19 +122,22 @@ export class ApprovalService {
       // Criar notificação para o solicitante
       const { data: quote } = await supabase
         .from('quotes')
-        .select('created_by, title, client_name')
+        .select('created_by, title, client_name, local_code')
         .eq('id', approval.quote_id)
         .single();
 
       if (quote?.created_by) {
+        const quoteCode = quote.local_code || approval.quote_id.substring(0, 8);
+        
         await supabase.from('notifications').insert({
           user_id: quote.created_by,
           title: 'Cotação Aprovada',
-          message: `Sua cotação "${quote.title}" foi aprovada e pode prosseguir para pagamento`,
+          message: `Sua cotação "${quote.title}" (#${quoteCode}) foi aprovada e pode prosseguir para pagamento`,
           type: 'approval_approved',
           action_url: `/quotes?id=${approval.quote_id}`,
           metadata: {
             quote_id: approval.quote_id,
+            quote_local_code: quote.local_code,
             approved_by: approverId
           }
         });
@@ -179,19 +192,22 @@ export class ApprovalService {
       // Criar notificação para o solicitante
       const { data: quote } = await supabase
         .from('quotes')
-        .select('created_by, title, client_name')
+        .select('created_by, title, client_name, local_code')
         .eq('id', approval.quote_id)
         .single();
 
       if (quote?.created_by) {
+        const quoteCode = quote.local_code || approval.quote_id.substring(0, 8);
+        
         await supabase.from('notifications').insert({
           user_id: quote.created_by,
           title: 'Cotação Reprovada',
-          message: `Sua cotação "${quote.title}" foi reprovada. Motivo: ${comments}`,
+          message: `Sua cotação "${quote.title}" (#${quoteCode}) foi reprovada. Motivo: ${comments}`,
           type: 'approval_rejected',
           action_url: `/quotes?id=${approval.quote_id}`,
           metadata: {
             quote_id: approval.quote_id,
+            quote_local_code: quote.local_code,
             rejected_by: approverId,
             reason: comments
           }
@@ -246,20 +262,23 @@ export class ApprovalService {
       // Buscar dados da cotação
       const { data: quote } = await supabase
         .from('quotes')
-        .select('title, client_name')
+        .select('title, client_name, local_code')
         .eq('id', quoteId)
         .single();
+
+      const quoteCode = quote?.local_code || quoteId.substring(0, 8);
 
       // Criar notificações para todos os aprovadores
       const notifications = approvers.map(approver => ({
         user_id: approver.id,
         title: 'Nova Cotação para Aprovação',
-        message: `Nova cotação "${quote?.title || quoteId}" no valor de R$ ${amount.toFixed(2)} aguarda sua aprovação`,
+        message: `Nova cotação "${quote?.title || `#${quoteCode}`}" no valor de R$ ${amount.toFixed(2)} aguarda sua aprovação`,
         type: 'approval_request',
         priority: 'high',
         action_url: '/condominio/aprovacoes',
         metadata: {
           quote_id: quoteId,
+          quote_local_code: quote?.local_code,
           amount,
           created_by: quote?.client_name
         }

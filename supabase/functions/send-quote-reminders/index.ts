@@ -30,7 +30,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Buscar cotações que precisam de lembrete
     let quotesQuery = supabase
       .from('quotes')
-      .select('*')
+      .select('id, title, local_code, deadline, client_id, status, created_at')
       .eq('status', 'sent')
       .lt('created_at', new Date(Date.now() - hoursSinceSent * 60 * 60 * 1000).toISOString());
 
@@ -128,11 +128,12 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Preparar mensagem de lembrete
         const reminderCount = supplierStatus.status === 'pending' ? 'primeiro' : 'segundo';
+        const quoteCode = quote.local_code || quote.id.substring(0, 8);
         const message = `🔔 *Lembrete - Cotação Pendente*
 
 Olá ${supplier.name}!
 
-Este é o *${reminderCount} lembrete* sobre a cotação *${quote.title}* (${quote.id}).
+Este é o *${reminderCount} lembrete* sobre a cotação *${quote.title}* (#${quoteCode}).
 
 ${client ? `Cliente: ${client.name}` : ''}
 Prazo: ${quote.deadline ? new Date(quote.deadline).toLocaleDateString('pt-BR') : 'Não definido'}
@@ -172,6 +173,7 @@ Aguardamos seu retorno! 🙏`;
           
           results.push({
             quote_id: quote.id,
+            quote_code: quote.local_code || quote.id.substring(0, 8),
             supplier_id: supplier.id,
             supplier_name: supplier.name,
             success: true,
@@ -182,6 +184,7 @@ Aguardamos seu retorno! 🙏`;
         } else {
           results.push({
             quote_id: quote.id,
+            quote_code: quote.local_code || quote.id.substring(0, 8),
             supplier_id: supplier.id,
             supplier_name: supplier.name,
             success: false,
