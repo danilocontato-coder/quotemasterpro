@@ -41,6 +41,27 @@ export const calculateSupplierReputation = async (supplierId: string): Promise<n
       .eq('supplier_id', supplierId);
     
     if (error || !data || data.length === 0) {
+      console.log(`⚠️ [REPUTATION] supplier_ratings vazio/erro para ${supplierId}, tentando fallback em suppliers.rating`);
+      
+      // Fallback: buscar rating diretamente da tabela suppliers
+      const { data: supplierData, error: supplierError } = await supabase
+        .from('suppliers')
+        .select('rating')
+        .eq('id', supplierId)
+        .maybeSingle();
+      
+      if (supplierError) {
+        console.error('❌ [REPUTATION] Erro ao buscar suppliers.rating:', supplierError);
+        return 3.0;
+      }
+      
+      if (supplierData?.rating && supplierData.rating > 0) {
+        const fallbackRating = Math.round(Number(supplierData.rating) * 10) / 10;
+        console.log(`✅ [REPUTATION] Usando suppliers.rating como fallback: ${fallbackRating}`);
+        return fallbackRating;
+      }
+      
+      console.log(`ℹ️ [REPUTATION] Nenhum rating disponível, retornando neutro 3.0`);
       return 3.0; // Reputação neutra para fornecedores novos
     }
     
@@ -48,9 +69,11 @@ export const calculateSupplierReputation = async (supplierId: string): Promise<n
     const avgRating = data.reduce((sum, r) => sum + (r.rating || 3), 0) / data.length;
     
     // Arredondar para 1 casa decimal
-    return Math.round(avgRating * 10) / 10;
+    const finalRating = Math.round(avgRating * 10) / 10;
+    console.log(`✅ [REPUTATION] Calculado de supplier_ratings: ${finalRating}`);
+    return finalRating;
   } catch (error) {
-    console.error('Error calculating supplier reputation:', error);
+    console.error('❌ [REPUTATION] Error calculating supplier reputation:', error);
     return 3.0;
   }
 };

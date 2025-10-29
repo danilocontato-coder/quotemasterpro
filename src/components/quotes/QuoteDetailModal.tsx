@@ -205,6 +205,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         const reputation = await calculateSupplierReputation(response.supplier_id);
         
         console.log(`✅ [MÉTRICAS] ${response.supplier_name}: deliveryScore=${deliveryScore}, reputation=${reputation}`);
+        console.log(`🚚 [PROPOSAL] shipping_cost bruto:`, response.shipping_cost, '-> usado:', Number(response.shipping_cost ?? 0));
 
         transformedProposals.push({
           id: response.id,
@@ -223,7 +224,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           totalPrice: response.total_amount,
           price: response.total_amount, // Para compatibilidade
           deliveryTime: response.delivery_time || 7,
-          shippingCost: response.shipping_cost || 0,
+          shippingCost: Number(response.shipping_cost ?? 0),
           deliveryScore: deliveryScore,
           warrantyMonths: response.warranty_months || 12,
           reputation: reputation,

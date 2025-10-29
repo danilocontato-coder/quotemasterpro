@@ -167,6 +167,13 @@ serve(async (req) => {
       console.log('✅ Novo fornecedor criado:', supplierId);
     }
 
+    // Normalizar shipping_cost
+    const shippingCostNum = typeof shipping_cost === 'number'
+      ? shipping_cost
+      : parseFloat(String(shipping_cost ?? '0').replace(',', '.')) || 0;
+    
+    console.log('🚚 [Quick Response] shipping_cost recebido:', shipping_cost, '-> normalizado:', shippingCostNum);
+    
     // Criar ou atualizar resposta da cotação (UPSERT)
     console.log('💾 [Quick Response] Salvando resposta da cotação (UPSERT)...');
     console.log('📊 [Quick Response] Dados da proposta:', {
@@ -175,6 +182,7 @@ serve(async (req) => {
       supplier_name: supplier_name,
       total_amount: total_amount,
       delivery_time: delivery_days || 7,
+      shipping_cost: shippingCostNum,
       payment_terms: payment_terms || '30 dias',
       items_count: items?.length || 0,
       has_notes: !!notes
@@ -190,6 +198,7 @@ serve(async (req) => {
         supplier_name: supplier_name,
         total_amount: total_amount,
         delivery_time: delivery_days || 7,
+        shipping_cost: shippingCostNum,
         payment_terms: payment_terms || '30 dias',
         items: items || [],
         notes: notes,
@@ -295,6 +304,7 @@ serve(async (req) => {
       supplier_id: supplierId,
       supplier_name: supplier_name,
       total_amount: total_amount,
+      shipping_cost: shippingCostNum,
       has_visit: !!visit_date
     });
     
