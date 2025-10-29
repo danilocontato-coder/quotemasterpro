@@ -23,7 +23,7 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
   const [accepted, setAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const scrollViewportRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { terms, isLoading } = useTermsOfUse();
 
@@ -35,33 +35,45 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
     }
   }, [open]);
 
-  // Check if content is short enough (no scroll needed)
+  // Detectar scroll e verificar se conteúdo precisa de scroll
   useEffect(() => {
-    if (!isLoading && scrollViewportRef.current && open) {
-      const checkScrollNeeded = () => {
-        const element = scrollViewportRef.current;
-        if (element) {
-          const isScrollable = element.scrollHeight > element.clientHeight;
-          if (!isScrollable) {
-            setHasScrolledToBottom(true);
-          }
-        }
-      };
-      
-      // Small delay to ensure content is rendered
-      setTimeout(checkScrollNeeded, 100);
-    }
-  }, [isLoading, open, terms]);
+    if (!open || isLoading) return;
 
-  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const target = event.currentTarget;
-    const threshold = 10; // pixels de tolerância
-    const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= threshold;
+    // Buscar o viewport interno do ScrollArea
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
     
-    if (isAtBottom && !hasScrolledToBottom) {
-      setHasScrolledToBottom(true);
-    }
-  };
+    if (!viewport) return;
+
+    // Verificar se precisa de scroll
+    const checkIfScrollNeeded = () => {
+      const isScrollable = viewport.scrollHeight > viewport.clientHeight;
+      if (!isScrollable) {
+        setHasScrolledToBottom(true);
+      }
+    };
+
+    // Handler de scroll
+    const handleScroll = () => {
+      const threshold = 10;
+      const isAtBottom = 
+        viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= threshold;
+      
+      if (isAtBottom && !hasScrolledToBottom) {
+        setHasScrolledToBottom(true);
+      }
+    };
+
+    // Delay para garantir que conteúdo renderizou
+    const timer = setTimeout(checkIfScrollNeeded, 100);
+
+    // Adicionar listener de scroll
+    viewport.addEventListener('scroll', handleScroll);
+
+    return () => {
+      clearTimeout(timer);
+      viewport.removeEventListener('scroll', handleScroll);
+    };
+  }, [open, isLoading, terms, hasScrolledToBottom]);
 
   const handleAccept = async () => {
     if (!accepted) {
@@ -144,13 +156,13 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
         </DialogHeader>
 
         <div className="relative flex-1">
-          <ScrollArea className="flex-1 pr-4 max-h-[55vh]" onScroll={handleScroll}>
+          <ScrollArea ref={scrollAreaRef} className="flex-1 pr-4 max-h-[55vh]">
             {isLoading ? (
               <div className="flex items-center justify-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <div ref={scrollViewportRef} className="prose prose-sm max-w-none">
+              <div className="prose prose-sm max-w-none">
                 <div 
                   className="whitespace-pre-wrap text-sm leading-relaxed"
                   style={{ fontFamily: 'inherit' }}
