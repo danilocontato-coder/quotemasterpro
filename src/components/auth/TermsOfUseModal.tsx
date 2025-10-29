@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/utils/systemLogger';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronDown } from 'lucide-react';
 import { useTermsOfUse } from '@/hooks/useTermsOfUse';
 
 interface TermsOfUseModalProps {
@@ -22,8 +22,46 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
 }) => {
   const [accepted, setAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { terms, isLoading } = useTermsOfUse();
+
+  // Reset scroll state when modal opens/closes
+  useEffect(() => {
+    if (!open) {
+      setAccepted(false);
+      setHasScrolledToBottom(false);
+    }
+  }, [open]);
+
+  // Check if content is short enough (no scroll needed)
+  useEffect(() => {
+    if (!isLoading && scrollViewportRef.current && open) {
+      const checkScrollNeeded = () => {
+        const element = scrollViewportRef.current;
+        if (element) {
+          const isScrollable = element.scrollHeight > element.clientHeight;
+          if (!isScrollable) {
+            setHasScrolledToBottom(true);
+          }
+        }
+      };
+      
+      // Small delay to ensure content is rendered
+      setTimeout(checkScrollNeeded, 100);
+    }
+  }, [isLoading, open, terms]);
+
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget;
+    const threshold = 10; // pixels de tolerância
+    const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= threshold;
+    
+    if (isAtBottom && !hasScrolledToBottom) {
+      setHasScrolledToBottom(true);
+    }
+  };
 
   const handleAccept = async () => {
     if (!accepted) {
@@ -105,43 +143,52 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4 max-h-[50vh]">
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="prose prose-sm max-w-none">
-              <div 
-                className="whitespace-pre-wrap text-sm leading-relaxed"
-                style={{ fontFamily: 'inherit' }}
-              >
-                {terms?.content?.split('\n').map((line, i) => {
-                  // Parse markdown headings
-                  if (line.startsWith('### ')) {
-                    return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{line.replace('### ', '')}</h3>;
-                  }
-                  if (line.startsWith('## ')) {
-                    return <h2 key={i} className="text-xl font-bold mt-6 mb-3">{line.replace('## ', '')}</h2>;
-                  }
-                  if (line.startsWith('- ')) {
-                    return <li key={i} className="ml-4">{line.replace('- ', '')}</li>;
-                  }
-                  if (line.startsWith('---')) {
-                    return <hr key={i} className="my-4" />;
-                  }
-                  if (line.startsWith('**') && line.endsWith('**')) {
-                    return <p key={i} className="font-bold mt-2">{line.replace(/\*\*/g, '')}</p>;
-                  }
-                  if (line.trim() === '') {
-                    return <br key={i} />;
-                  }
-                  return <p key={i} className="mb-2">{line}</p>;
-                })}
+        <div className="relative flex-1">
+          <ScrollArea className="flex-1 pr-4 max-h-[55vh]" onScroll={handleScroll}>
+            {isLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : (
+              <div ref={scrollViewportRef} className="prose prose-sm max-w-none">
+                <div 
+                  className="whitespace-pre-wrap text-sm leading-relaxed"
+                  style={{ fontFamily: 'inherit' }}
+                >
+                  {terms?.content?.split('\n').map((line, i) => {
+                    // Parse markdown headings
+                    if (line.startsWith('### ')) {
+                      return <h3 key={i} className="text-lg font-semibold mt-4 mb-2">{line.replace('### ', '')}</h3>;
+                    }
+                    if (line.startsWith('## ')) {
+                      return <h2 key={i} className="text-xl font-bold mt-6 mb-3">{line.replace('## ', '')}</h2>;
+                    }
+                    if (line.startsWith('- ')) {
+                      return <li key={i} className="ml-4">{line.replace('- ', '')}</li>;
+                    }
+                    if (line.startsWith('---')) {
+                      return <hr key={i} className="my-4" />;
+                    }
+                    if (line.startsWith('**') && line.endsWith('**')) {
+                      return <p key={i} className="font-bold mt-2">{line.replace(/\*\*/g, '')}</p>;
+                    }
+                    if (line.trim() === '') {
+                      return <br key={i} />;
+                    }
+                    return <p key={i} className="mb-2">{line}</p>;
+                  })}
+                </div>
+              </div>
+            )}
+          </ScrollArea>
+          
+          {/* Indicador de mais conteúdo */}
+          {!hasScrolledToBottom && !isLoading && (
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none flex items-end justify-center pb-2">
+              <ChevronDown className="h-5 w-5 text-muted-foreground animate-bounce" />
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-col sm:flex-col gap-4 mt-4">
           <div className="flex items-start space-x-3">
@@ -149,13 +196,17 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
               id="terms-accept"
               checked={accepted}
               onCheckedChange={(checked) => setAccepted(checked as boolean)}
-              disabled={isLoading || isSubmitting}
+              disabled={!hasScrolledToBottom || isLoading || isSubmitting}
             />
             <label
               htmlFor="terms-accept"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              className={`text-sm font-medium leading-none cursor-pointer ${
+                !hasScrolledToBottom ? 'text-muted-foreground' : ''
+              }`}
             >
-              Li e aceito os Termos de Uso da Plataforma Cotiz
+              {!hasScrolledToBottom 
+                ? "⬇️ Role até o final para aceitar os termos" 
+                : "Li e aceito os Termos de Uso da Plataforma Cotiz"}
             </label>
           </div>
           
