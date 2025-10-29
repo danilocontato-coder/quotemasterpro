@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { mapCategoriesToSpecialties } from '@/utils/categoryMapping';
 
 interface SuggestedSupplier {
   supplier_id: string;
@@ -89,22 +90,44 @@ export function useSupplierSuggestions() {
     try {
       setIsLoading(true);
       
+      // Expandir categorias para incluir especialidades equivalentes
+      const expandedCategories = mapCategoriesToSpecialties(categories);
+      
+      console.log('🔍 Buscando fornecedores:', {
+        original_categories: categories,
+        expanded_categories: expandedCategories,
+        region: clientRegion,
+        state: clientState,
+        city: clientCity
+      });
+      
       const { data, error } = await supabase.rpc('suggest_suppliers_for_quote', {
         _client_region: clientRegion,
         _client_state: clientState,
         _client_city: clientCity,
-        _categories: categories,
+        _categories: expandedCategories,
         _max_suppliers: systemSettings.max_suppliers_per_quote
       });
 
       if (error) throw error;
 
       const typedData = data as SuggestedSupplier[];
+      
+      console.log('✅ Fornecedores sugeridos:', {
+        count: typedData?.length || 0,
+        suppliers: typedData?.map(s => ({
+          name: s.name,
+          specialties: s.specialties,
+          match_score: s.match_score,
+          is_certified: s.is_certified
+        }))
+      });
+      
       setSuggestions(typedData || []);
       
       return typedData || [];
     } catch (error) {
-      console.error('Erro ao buscar sugestões de fornecedores:', error);
+      console.error('❌ Erro ao buscar sugestões:', error);
       toast.error('Erro ao buscar sugestões de fornecedores');
       return [];
     } finally {

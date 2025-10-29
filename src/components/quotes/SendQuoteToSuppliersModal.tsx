@@ -121,13 +121,52 @@ export function SendQuoteToSuppliersModal({
         // Get quote items categories
         const { data: itemsData } = await supabase
           .from('quote_items')
-          .select('product_name')
+          .select('product_id, product_name')
           .eq('quote_id', quote.id);
         
-        const categories = itemsData?.map(i => i.product_name) || [];
+        // Extract categories from linked products
+        const categories = new Set<string>();
+        
+        if (itemsData && itemsData.length > 0) {
+          // Get product categories for items with product_id
+          const productIds = itemsData
+            .filter(item => item.product_id)
+            .map(item => item.product_id);
+          
+          if (productIds.length > 0) {
+            const { data: productsData } = await supabase
+              .from('products')
+              .select('id, category')
+              .in('id', productIds);
+            
+            productsData?.forEach(product => {
+              if (product.category) {
+                categories.add(product.category);
+              }
+            });
+          }
+          
+          // For items without product_id, try to categorize by name
+          const { categorizeProduct } = await import('@/lib/productMatcher');
+          itemsData
+            .filter(item => !item.product_id && item.product_name)
+            .forEach(item => {
+              const category = categorizeProduct(item.product_name);
+              if (category && category !== 'Geral') {
+                categories.add(category);
+              }
+            });
+        }
+        
+        const categoriesArray = Array.from(categories);
+        
+        console.log('📦 Categorias extraídas para sugestão:', {
+          items_count: itemsData?.length || 0,
+          categories: categoriesArray
+        });
         
         // Get AI suggestions with scores
-        const suggestions = await suggestSuppliers(region, state, city, categories);
+        const suggestions = await suggestSuppliers(region, state, city, categoriesArray);
         
         // Build score map
         const scores: Record<string, number> = {};

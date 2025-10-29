@@ -40,7 +40,16 @@ export const SupplierSuggestionsModal: React.FC<SupplierSuggestionsModalProps> =
 
   useEffect(() => {
     if (open && clientRegion && categories.length > 0) {
+      console.log('🎯 Modal de sugestões aberto:', {
+        clientRegion,
+        clientState,
+        clientCity,
+        categories,
+        hasCategories: categories.length > 0
+      });
       suggestSuppliers(clientRegion, clientState, clientCity, categories);
+    } else if (open && categories.length === 0) {
+      console.warn('⚠️ Modal aberto SEM categorias - fornecedores não serão filtrados adequadamente');
     }
   }, [open, clientRegion, clientState, clientCity, categories, suggestSuppliers]);
 

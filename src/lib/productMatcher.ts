@@ -92,7 +92,7 @@ export function normalizeProductName(name: string): string {
 }
 
 // Categorizar produto automaticamente
-function categorizeProduct(name: string): string {
+export function categorizeProduct(name: string): string {
   const categories = {
     'Material de Limpeza': ['detergente', 'desinfetante', 'sabão', 'sabao', 'alvejante', 'amaciante', 'limpa', 'vassoura', 'rodo', 'pano', 'esponja'],
     'Material de Escritório': ['papel', 'caneta', 'lapis', 'grampeador', 'pasta', 'arquivo', 'tinta', 'impressora'],
