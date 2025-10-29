@@ -39,7 +39,7 @@ serve(async (req) => {
         *,
         clients:client_id(id, name, cnpj, email, phone, address),
         suppliers:supplier_id(id, name, cnpj, email, phone),
-        subscription_plans!plan_id(id, name, monthly_price, quarterly_price, yearly_price)
+        subscription_plans!plan_id(id, name, monthly_price, yearly_price)
       `)
       .eq('id', subscription_id)
       .single();
