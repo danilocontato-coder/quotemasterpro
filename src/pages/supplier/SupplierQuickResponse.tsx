@@ -261,13 +261,15 @@ const SupplierQuickResponse = () => {
       }
 
       // Criar resposta da cotação
-      console.log('🚚 [SHIPPING] proposalData.shippingCost (raw):', proposalData.shippingCost, typeof proposalData.shippingCost);
+      console.log('🚚 [SHIPPING-QUICK] proposalData.shippingCost (raw):', proposalData.shippingCost, typeof proposalData.shippingCost);
       const shippingValue = proposalData.shippingCost && proposalData.shippingCost !== '' 
         ? parseFloat(proposalData.shippingCost) 
         : 0;
-      console.log('🚚 [SHIPPING] shippingValue após parseFloat:', shippingValue, typeof shippingValue);
-      console.log('🚚 [SHIPPING] isNaN(shippingValue):', isNaN(shippingValue));
-      console.log('🚚 [SHIPPING] Valor final a inserir:', isNaN(shippingValue) ? 0 : shippingValue);
+      console.log('🚚 [SHIPPING-QUICK] shippingValue após parseFloat:', shippingValue, typeof shippingValue);
+      
+      const itemsTotal = parseFloat(proposalData.totalAmount);
+      const finalTotalAmount = itemsTotal + (isNaN(shippingValue) ? 0 : shippingValue);
+      console.log('💰 [CALCULATE-TOTAL-QUICK] itemsTotal:', itemsTotal, 'shipping:', shippingValue, 'TOTAL:', finalTotalAmount);
       
       const { error: responseError } = await supabase
         .from('quote_responses')
@@ -275,7 +277,7 @@ const SupplierQuickResponse = () => {
           quote_id: quoteId,
           supplier_id: supplierId,
           supplier_name: supplierData.name,
-          total_amount: parseFloat(proposalData.totalAmount),
+          total_amount: finalTotalAmount,
           delivery_time: parseInt(proposalData.deliveryDays),
           warranty_months: parseInt(proposalData.warrantyMonths) || 12,
           shipping_cost: isNaN(shippingValue) ? 0 : shippingValue,
@@ -288,7 +290,7 @@ const SupplierQuickResponse = () => {
       console.log('✅ [PROPOSAL-QUICK] Proposta inserida via Quick Response:', {
         quote_id: quoteId,
         supplier_name: supplierData.name,
-        total_amount: parseFloat(proposalData.totalAmount),
+        total_amount: finalTotalAmount,
         shipping_cost: isNaN(shippingValue) ? 0 : shippingValue,
         warranty_months: parseInt(proposalData.warrantyMonths) || 12,
         delivery_time: parseInt(proposalData.deliveryDays)
@@ -542,7 +544,7 @@ const SupplierQuickResponse = () => {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="totalAmount">Valor Total (R$) *</Label>
+                    <Label htmlFor="totalAmount">Valor Total dos Itens (sem frete) *</Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
@@ -608,6 +610,37 @@ const SupplierQuickResponse = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* Prévia do Total Final */}
+                {proposalData.totalAmount && (
+                  <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Subtotal dos Itens:</span>
+                        <span className="font-medium">
+                          R$ {parseFloat(proposalData.totalAmount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      {proposalData.shippingCost && parseFloat(proposalData.shippingCost) > 0 && (
+                        <div className="flex justify-between">
+                          <span>Frete:</span>
+                          <span className="font-medium">
+                            R$ {parseFloat(proposalData.shippingCost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between pt-2 border-t text-base">
+                        <span className="font-bold">TOTAL FINAL:</span>
+                        <span className="font-bold text-primary">
+                          R$ {(
+                            parseFloat(proposalData.totalAmount || '0') + 
+                            parseFloat(proposalData.shippingCost || '0')
+                          ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="notes">Observações</Label>

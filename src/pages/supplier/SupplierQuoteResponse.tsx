@@ -275,7 +275,15 @@ const SupplierQuoteResponse = () => {
   };
 
   const calculateTotal = () => {
-    return proposalItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const itemsTotal = proposalItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const shippingValue = proposalData.shippingCost && proposalData.shippingCost !== '' 
+      ? parseFloat(proposalData.shippingCost) 
+      : 0;
+    const finalShipping = isNaN(shippingValue) ? 0 : shippingValue;
+    
+    console.log('💰 [CALCULATE-TOTAL] itemsTotal:', itemsTotal, 'shipping:', finalShipping, 'TOTAL:', itemsTotal + finalShipping);
+    
+    return itemsTotal + finalShipping;
   };
 
   const handleDeclineParticipation = async () => {
@@ -910,8 +918,22 @@ const SupplierQuoteResponse = () => {
                 {proposalItems.length > 0 && (
                   <>
                     <Separator className="my-6" />
-                    <div className="bg-primary/10 p-6 rounded-lg">
-                      <div className="flex justify-between items-center">
+                    <div className="bg-primary/10 p-6 rounded-lg space-y-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Subtotal dos Itens:</span>
+                        <span className="font-semibold">
+                          R$ {proposalItems.reduce((sum, item) => sum + item.totalPrice, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      {proposalData.shippingCost && parseFloat(proposalData.shippingCost) > 0 && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span>Frete:</span>
+                          <span className="font-semibold">
+                            R$ {parseFloat(proposalData.shippingCost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center pt-2 border-t">
                         <span className="text-xl font-semibold">Total da Proposta:</span>
                         <span className="text-3xl font-bold text-primary">
                           R$ {calculateTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

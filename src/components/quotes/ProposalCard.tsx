@@ -57,6 +57,16 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
   
   const itemsSubtotal = itemsWithPrices.reduce((sum, item) => sum + item.subtotal, 0);
   const shippingCost = proposal.shippingCost || 0;
+  const calculatedTotal = itemsSubtotal + shippingCost;
+
+  console.log('📊 [PROPOSAL-CARD] Debug totais:', {
+    supplierName: proposal.supplierName,
+    itemsSubtotal,
+    shippingCost,
+    calculatedTotal,
+    dbTotalPrice: proposal.totalPrice,
+    match: Math.abs(calculatedTotal - proposal.totalPrice) < 0.01
+  });
 
   return (
     <Card className={`transition-all duration-300 ease-in-out ${isWinner ? 'border-2 border-green-500 shadow-lg' : ''}`}>
