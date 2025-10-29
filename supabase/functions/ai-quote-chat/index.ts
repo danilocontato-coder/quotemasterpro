@@ -779,21 +779,25 @@ Formato da RFQ final:
           valid_count: validSelectedSuppliers.length
         });
         
-        // Calcular total aproximado (placeholder)
-        const estimatedTotal = quoteData.items.reduce((sum: number, item: any) => {
-          // Estimativa básica baseada na quantidade
-          return sum + (item.quantity * 100); // R$ 100 por unidade como estimativa
-        }, 0);
+        // Total inicia zerado - será calculado quando os fornecedores responderem
+        const estimatedTotal = 0;
 
         // Inserir cotação
         console.log('📝 Inserindo cotação no banco...');
+        console.log('🤖 [AI-QUOTE] Total calculado:', estimatedTotal);
+        console.log('🤖 [AI-QUOTE] Items:', quoteData.items.map((i: any) => ({ 
+          name: i.product_name, 
+          qty: i.quantity, 
+          unit: i.unit 
+        })));
+        
         const quotePayload = {
           title: quoteData.title,
           description: quoteData.description,
           client_id: profile.client_id,
           created_by: userId,
           status: 'draft', // Sempre criar como rascunho
-          total: estimatedTotal,
+          total: estimatedTotal, // ✅ Sempre 0.00 inicialmente
           deadline: quoteData.deadline_days ? 
             new Date(Date.now() + quoteData.deadline_days * 24 * 60 * 60 * 1000).toISOString() : 
             null,

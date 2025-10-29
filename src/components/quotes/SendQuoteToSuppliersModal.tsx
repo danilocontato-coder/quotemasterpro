@@ -51,16 +51,30 @@ export function SendQuoteToSuppliersModal({
   
   // Filter suppliers based on quote's supplier_scope preference
   const activeSuppliers = suppliers.filter(s => s.status === 'active').filter(supplier => {
-    // Se quote tem supplier_scope definido, usar essa configuração
+    // PRIORIDADE 1: Se a cotação tem fornecedores pré-selecionados (selected_supplier_ids), usar APENAS esses
+    if (quote?.selected_supplier_ids && quote.selected_supplier_ids.length > 0) {
+      const isSelected = quote.selected_supplier_ids.includes(supplier.id);
+      return isSelected;
+    }
+    
+    // PRIORIDADE 2: Caso contrário, aplicar filtro de escopo (supplier_scope)
     if (quote?.supplier_scope === 'local') {
-      return !supplier.is_certified; // Apenas fornecedores locais (não certificados)
+      // Local = fornecedores não certificados da mesma região
+      return !supplier.is_certified;
     } else if (quote?.supplier_scope === 'all') {
       return true; // Todos os fornecedores (locais + certificados)
     } else {
-      // Fallback para compatibilidade: se não tem supplier_scope, mostrar todos
+      // Fallback: se não tem supplier_scope, mostrar todos
       return true;
     }
   });
+  
+  // Logging detalhado para debug
+  console.log('🔍 [SUPPLIERS-FILTER] Quote supplier_scope:', quote?.supplier_scope);
+  console.log('🔍 [SUPPLIERS-FILTER] Quote selected_supplier_ids:', quote?.selected_supplier_ids);
+  console.log('🔍 [SUPPLIERS-FILTER] Total suppliers (before filter):', suppliers.filter(s => s.status === 'active').length);
+  console.log('🔍 [SUPPLIERS-FILTER] Active suppliers (after filter):', activeSuppliers.length);
+  console.log('🔍 [SUPPLIERS-FILTER] Suppliers:', activeSuppliers.map(s => ({ id: s.id, name: s.name, type: s.type, is_certified: s.is_certified })));
   
   // Debug desabilitado para melhorar performance
   // console.log('🔍 DEBUG: selectBestSupplier function:', selectBestSupplier);
