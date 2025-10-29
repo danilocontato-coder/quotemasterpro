@@ -184,15 +184,15 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 
     if (quoteError) throw quoteError;
 
-    const quoteItems = productsData.map((prod, index) => ({
+    const quoteItems = productsData.map((prod) => ({
       quote_id: newQuote.id,
       product_id: prod.product_id,
       product_name: prod.product_name,
-      product_code: prod.product_code,
+      product_code: prod.product_code || null,
       quantity: prod.quantity,
       unit_price: null,
-      total_price: null,
-      order_index: index
+      total: null,
+      client_id: profile.client_id
     }));
 
     const { error: itemsError } = await supabase

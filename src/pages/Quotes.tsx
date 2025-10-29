@@ -191,9 +191,15 @@ export default function Quotes() {
   const handleAIQuoteGenerated = async (aiQuote: any) => {
     if (aiQuote.quoteId && aiQuote.openForEdit) {
       await refetch();
-      const createdQuote = quotes.find(q => q.id === aiQuote.quoteId);
-      if (createdQuote) {
-        setEditingQuote(createdQuote);
+      
+      const { data: quote } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', aiQuote.quoteId)
+        .single();
+      
+      if (quote) {
+        setEditingQuote(quote);
         setIsCreateModalOpen(true);
       }
     } else {
