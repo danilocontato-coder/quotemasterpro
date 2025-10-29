@@ -71,6 +71,117 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     });
   };
 
+  const createProductsFromExtraction = async (items: any[]) => {
+    const createdProducts = [];
+    
+    for (const item of items) {
+      try {
+        // Verificar se produto já existe (por descrição similar)
+        const { data: existingProducts } = await supabase
+          .from('products')
+          .select('id, name, code')
+          .ilike('name', `%${item.description}%`)
+          .limit(1);
+        
+        if (existingProducts && existingProducts.length > 0) {
+          // Produto já existe, usar o existente
+          createdProducts.push({
+            product_id: existingProducts[0].id,
+            product_name: existingProducts[0].name,
+            product_code: existingProducts[0].code,
+            quantity: item.quantity
+          });
+        } else {
+          // Criar novo produto
+          const { data: newProduct, error } = await supabase
+            .from('products')
+            .insert({
+              name: item.description,
+              description: `Extraído do PDF: ${uploadedFile?.name || 'documento'}`,
+              status: 'active',
+              stock_quantity: 0,
+              unit_price: null
+            })
+            .select()
+            .single();
+          
+          if (error) throw error;
+          
+          createdProducts.push({
+            product_id: newProduct.id,
+            product_name: newProduct.name,
+            product_code: newProduct.code,
+            quantity: item.quantity
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao criar produto:', item.description, error);
+      }
+    }
+    
+    return createdProducts;
+  };
+
+  const createQuoteInDatabase = async (productsData: any[], notes: string) => {
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData?.user) throw new Error('Usuário não autenticado');
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('client_id')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (!profile?.client_id) throw new Error('Cliente não identificado');
+
+    const { data: clientData } = await supabase
+      .from('clients')
+      .select('name, company_name')
+      .eq('id', profile.client_id)
+      .single();
+
+    if (!clientData) throw new Error('Cliente não encontrado');
+
+    const quoteId = crypto.randomUUID();
+    const timestamp = Date.now();
+    const localCode = `RFQ-${timestamp.toString().slice(-8)}`;
+
+    const { data: newQuote, error: quoteError } = await supabase
+      .from('quotes')
+      .insert({
+        id: quoteId,
+        local_code: localCode,
+        title: `Cotação extraída de ${uploadedFile?.name || 'documento'}`,
+        description: notes || 'Cotação criada automaticamente a partir de PDF',
+        status: 'draft',
+        client_id: profile.client_id,
+        client_name: clientData.company_name || clientData.name
+      })
+      .select()
+      .single();
+
+    if (quoteError) throw quoteError;
+
+    const quoteItems = productsData.map((prod, index) => ({
+      quote_id: newQuote.id,
+      product_id: prod.product_id,
+      product_name: prod.product_name,
+      product_code: prod.product_code,
+      quantity: prod.quantity,
+      unit_price: null,
+      total_price: null,
+      order_index: index
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('quote_items')
+      .insert(quoteItems);
+
+    if (itemsError) throw itemsError;
+
+    return newQuote;
+  };
+
   const handleProcessDocument = async () => {
     if (!uploadedFile) {
       toast({
@@ -81,64 +192,50 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       return;
     }
 
-    // Verificar limite do plano antes de processar
     const canCreate = enforceLimit('CREATE_QUOTE');
-    if (!canCreate) {
-      return;
-    }
+    if (!canCreate) return;
 
     setIsProcessing(true);
     try {
-      // Converter arquivo para base64
       const base64Content = await convertFileToBase64(uploadedFile);
-      
-      // Chamar edge function para extrair dados do PDF
       const { data, error } = await supabase.functions.invoke('extract-quote-from-pdf', {
-        body: {
-          pdfBase64: base64Content,
-          fileName: uploadedFile.name
-        }
+        body: { pdfBase64: base64Content, fileName: uploadedFile.name }
       });
 
       if (error) throw error;
+      if (!data.success || !data.data) throw new Error('Erro ao processar documento');
 
-      if (data.success && data.data) {
-        // A função extract-quote-from-pdf retorna { items, notes }
-        // Transformar para o formato esperado pelo componente pai
-        const quote = {
-          supplierName: '',
-          cnpj: '',
-          contact: { email: '', phone: '' },
-          items: (data.data.items || []).map((item: any) => ({
-            description: item.description || '',
-            quantity: item.quantity || 1,
-            unit_price: 0, // Usuário preenche manualmente
-            total: 0 // Será calculado depois
-          })),
-          deliveryTime: '',
-          paymentTerms: '',
-          validUntil: '',
-          notes: data.data.notes || '',
-          totalProposal: 0 // Será calculado após preenchimento dos preços
-        };
+      const extractedItems = data.data.items || [];
+      const notes = data.data.notes || '';
 
-        onQuoteGenerated(quote);
-        onOpenChange(false);
-        setUploadedFile(null);
-        
-        const itemCount = quote.items.length;
-        toast({
-          title: 'Documento Processado!',
-          description: `${itemCount} ${itemCount === 1 ? 'item extraído' : 'itens extraídos'} com sucesso.`,
-        });
-      } else {
-        throw new Error(data.error || 'Erro ao processar documento');
+      if (extractedItems.length === 0) {
+        throw new Error('Nenhum item foi extraído do documento');
       }
+
+      toast({ title: 'Cadastrando itens...', description: `Processando ${extractedItems.length} itens` });
+      const productsData = await createProductsFromExtraction(extractedItems);
+
+      if (productsData.length === 0) {
+        throw new Error('Nenhum produto pôde ser cadastrado');
+      }
+
+      toast({ title: 'Criando cotação...', description: 'Salvando cotação no banco de dados' });
+      const newQuote = await createQuoteInDatabase(productsData, notes);
+
+      onOpenChange(false);
+      setUploadedFile(null);
+      
+      toast({
+        title: 'Cotação Criada com Sucesso!',
+        description: `${productsData.length} ${productsData.length === 1 ? 'item cadastrado' : 'itens cadastrados'} e cotação salva.`,
+      });
+
+      onQuoteGenerated({ quoteId: newQuote.id, openForEdit: true });
     } catch (error) {
       console.error('Error processing document:', error);
       toast({
         title: 'Erro ao Processar',
-        description: 'Não foi possível extrair dados do documento. Verifique se é um arquivo válido.',
+        description: error instanceof Error ? error.message : 'Não foi possível processar o documento.',
         variant: 'destructive'
       });
     } finally {

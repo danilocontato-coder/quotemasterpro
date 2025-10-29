@@ -188,16 +188,24 @@ export default function Quotes() {
     }
   };
 
-  const handleAIQuoteGenerated = (aiQuote: any) => {
-    // Pré-preencher modal de criação com dados da IA (apenas para casos onde RFQ não foi criada no banco)
-    setEditingQuote({
-      title: aiQuote.title,
-      description: aiQuote.description,
-      items: aiQuote.items || [],
-      ai_generated: true,
-      ai_considerations: aiQuote.considerations || []
-    });
-    setIsCreateModalOpen(true);
+  const handleAIQuoteGenerated = async (aiQuote: any) => {
+    if (aiQuote.quoteId && aiQuote.openForEdit) {
+      await refetch();
+      const createdQuote = quotes.find(q => q.id === aiQuote.quoteId);
+      if (createdQuote) {
+        setEditingQuote(createdQuote);
+        setIsCreateModalOpen(true);
+      }
+    } else {
+      setEditingQuote({
+        title: aiQuote.title,
+        description: aiQuote.description,
+        items: aiQuote.items || [],
+        ai_generated: true,
+        ai_considerations: aiQuote.considerations || []
+      });
+      setIsCreateModalOpen(true);
+    }
   };
 
   const filteredQuotes = quotes.filter(quote => {
