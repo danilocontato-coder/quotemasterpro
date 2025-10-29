@@ -412,41 +412,22 @@ export function useSupabaseAdminClients() {
         // Não bloqueia a criação do cliente se falhar
       }
 
-      // 3) Criar registro de assinatura no Supabase
+      // 3) Criar registro de assinatura no Supabase com ciclo completo de 1 mês
       try {
         console.log('📋 Criando assinatura no Supabase...');
         const currentDate = new Date();
         
-        // Buscar billing_day de financial_settings
-        const { data: financialSettings } = await supabase
-          .from('financial_settings')
-          .select('billing_day')
-          .single();
+        // Calcular current_period_end: 1 mês após a criação (mantendo o mesmo dia)
+        const periodEndDate = new Date(currentDate);
+        periodEndDate.setMonth(periodEndDate.getMonth() + 1);
         
-        // Usar billing_day configurado OU dia da criação do cliente
-        const billingDay = financialSettings?.billing_day || currentDate.getDate();
-        
-        console.log(`📅 Dia de cobrança definido: ${billingDay} (origem: ${financialSettings?.billing_day ? 'financial_settings' : 'data de criação'})`);
-
-        // Calcular primeira data de vencimento baseada no billing_day
-        let firstDueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), billingDay);
-        
-        // Se a data calculada já passou este mês, usar próximo mês
-        if (firstDueDate <= currentDate) {
-          firstDueDate.setMonth(firstDueDate.getMonth() + 1);
+        // Ajustar para meses com menos dias (ex: 31 jan → 28/29 fev)
+        if (periodEndDate.getDate() !== currentDate.getDate()) {
+          periodEndDate.setDate(0); // Último dia do mês anterior
         }
-
-        // Garantir D+2 mínimo (regra de segurança)
-        const minDueDate = new Date();
-        minDueDate.setDate(minDueDate.getDate() + 2);
-
-        if (firstDueDate < minDueDate) {
-          firstDueDate = minDueDate;
-          console.log(`⚠️ Data ajustada para D+2: ${firstDueDate.toISOString().split('T')[0]}`);
-        }
-
-        console.log(`✅ Primeira data de vencimento calculada: ${firstDueDate.toISOString().split('T')[0]}`);
-        console.log(`📍 Aniversário da assinatura será: dia ${billingDay} de cada mês`);
+        
+        console.log(`📅 Ciclo inicial: ${currentDate.toISOString().split('T')[0]} até ${periodEndDate.toISOString().split('T')[0]}`);
+        console.log(`📍 Aniversário da assinatura será: dia ${periodEndDate.getDate()} de cada mês`);
 
         const { data: subscriptionData, error: subError } = await supabase
           .from('subscriptions')
@@ -456,7 +437,7 @@ export function useSupabaseAdminClients() {
             billing_cycle: 'monthly',
             status: 'active',
             current_period_start: currentDate.toISOString(),
-            current_period_end: firstDueDate.toISOString()
+            current_period_end: periodEndDate.toISOString()
           })
           .select('id')
           .single();

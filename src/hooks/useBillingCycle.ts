@@ -23,14 +23,27 @@ export function useBillingCycle() {
 
     const fetchCycleInfo = async () => {
       try {
-        const { data: subscription } = await supabase
+        console.log('🔍 [useBillingCycle] Buscando assinatura para client_id:', client.id);
+        
+        const { data: subscription, error } = await supabase
           .from('subscriptions')
           .select('current_period_start, current_period_end, billing_cycle, status')
           .eq('client_id', client.id)
           .in('status', ['active', 'past_due'])
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
+
+        if (error) {
+          console.error('❌ [useBillingCycle] Erro na query:', error);
+          throw error;
+        }
+
+        console.log('✅ [useBillingCycle] Assinatura encontrada:', subscription ? {
+          status: subscription.status,
+          period_start: subscription.current_period_start,
+          period_end: subscription.current_period_end
+        } : 'Nenhuma assinatura encontrada');
 
         if (!subscription) {
           setCycleInfo(null);
@@ -54,7 +67,8 @@ export function useBillingCycle() {
           subscriptionStatus: subscription.status as 'active' | 'past_due' | 'suspended' | 'cancelled'
         });
       } catch (error) {
-        console.error('Erro ao buscar informações de ciclo:', error);
+        console.error('❌ [useBillingCycle] Erro ao buscar informações de ciclo:', error);
+        setCycleInfo(null);
       } finally {
         setIsLoading(false);
       }

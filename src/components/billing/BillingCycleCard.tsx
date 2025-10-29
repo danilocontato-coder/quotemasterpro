@@ -10,6 +10,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 export function BillingCycleCard({ compact = false }: { compact?: boolean }) {
   const { cycleInfo, isLoading } = useBillingCycle();
 
+  console.log('🎨 [BillingCycleCard] Renderizando:', { 
+    hasInfo: !!cycleInfo, 
+    isLoading,
+    anchorDay: cycleInfo?.billingAnchorDay 
+  });
+
   if (isLoading) {
     return (
       <Card>
