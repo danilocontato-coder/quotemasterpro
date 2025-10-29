@@ -48,7 +48,7 @@ export function useBillingCycle() {
           currentPeriodEnd: periodEnd,
           nextBillingDate: periodEnd,
           daysUntilRenewal: Math.max(0, daysUntilRenewal),
-          billingAnchorDay: periodStart.getDate(),
+          billingAnchorDay: periodEnd.getDate(),
           billingCycle: subscription.billing_cycle as 'monthly' | 'yearly',
           isNearRenewal: daysUntilRenewal <= 7 && daysUntilRenewal > 0,
           subscriptionStatus: subscription.status as 'active' | 'past_due' | 'suspended' | 'cancelled'
