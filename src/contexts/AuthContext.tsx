@@ -220,34 +220,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           .eq('setting_key', 'terms_feature_flags')
           .single();
         
-        const enforceTerms = (featureFlagData?.setting_value as any)?.enforce_terms || false;
-        
-        logger.info('auth', '[TERMS-CHECK] Verificação de termos após setUser', {
-          userId: profile.id,
-          email: profile.email,
-          terms_accepted: profile.terms_accepted,
-          bypass_terms: (profile as any).bypass_terms,
-          enforce_flag: enforceTerms
-        });
+        // Fail-safe: se não conseguir buscar settings, assume que termos são obrigatórios
+        const enforceTerms = featureFlagData?.setting_value 
+          ? (featureFlagData.setting_value as any)?.enforce_terms || false
+          : true;
 
         if (enforceTerms && profile.terms_accepted === false && (profile as any).bypass_terms !== true) {
-          logger.warn('auth', '[TERMS-CHECK] ⚠️ Usuário PRECISA aceitar termos - BLOQUEANDO', {
-            userId: profile.id,
-            email: profile.email
-          });
-          setNeedsTermsAcceptance(true); // 2º: Setar flag APÓS user existir
+          logger.info('auth', '[TERMS-CHECK] Usuário precisa aceitar termos');
+          setNeedsTermsAcceptance(true);
           
-          // Timeout de segurança: re-forçar estado após loading terminar
+          // Timeout de segurança: re-forçar estado
           setTimeout(() => {
-            logger.info('auth', '[TERMS-CHECK] 🔒 Re-forçando needsTermsAcceptance após timeout');
             setNeedsTermsAcceptance(true);
           }, 100);
         } else {
-          logger.info('auth', '[TERMS-CHECK] ✅ Termos OK ou não obrigatório', {
-            reason: !enforceTerms ? 'enforce_terms desabilitado' : 
-                    profile.terms_accepted ? 'já aceitou' : 
-                    (profile as any).bypass_terms ? 'bypass ativo' : 'indefinido'
-          });
           setNeedsTermsAcceptance(false);
         }
 
@@ -287,40 +273,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
     if (!user) return;
 
     const recheckTerms = async () => {
-      // CORREÇÃO: Remover bloqueio por isLoading - sempre verificar termos
       const { data: featureFlagData } = await supabase
         .from('system_settings')
         .select('setting_value')
         .eq('setting_key', 'terms_feature_flags')
         .single();
       
-      const enforceTerms = (featureFlagData?.setting_value as any)?.enforce_terms || false;
-
-      console.log('[TERMS-DEBUG] 🔍 Recheck de termos', {
-        userId: user.id,
-        email: user.email,
-        termsAccepted: user.termsAccepted,
-        enforceTerms
-      });
+      // Fail-safe: se não conseguir buscar settings, assume que termos são obrigatórios
+      const enforceTerms = featureFlagData?.setting_value 
+        ? (featureFlagData.setting_value as any)?.enforce_terms || false
+        : true;
 
       if (enforceTerms && user.termsAccepted === false) {
-        logger.info('auth', '[TERMS-RECHECK] ⚠️ Modal de termos DEVE aparecer', {
+        logger.info('auth', '[TERMS-RECHECK] Modal de termos necessário', {
           userId: user.id,
-          email: user.email,
-          termsAccepted: user.termsAccepted
+          email: user.email
         });
-        console.log('[TERMS-DEBUG] 🚨 ATIVANDO MODAL DE TERMOS');
         setNeedsTermsAcceptance(true);
       } else {
-        console.log('[TERMS-DEBUG] ✅ Termos OK, não precisa do modal', {
-          reason: !enforceTerms ? 'enforce desabilitado' : 'já aceitou'
-        });
         setNeedsTermsAcceptance(false);
       }
     };
 
     recheckTerms();
-  }, [user?.id, user?.termsAccepted]); // Simplificado: apenas deps necessárias
+  }, [user?.id, user?.termsAccepted]);
 
   // Função para simular login como cliente
   const simulateClientLogin = useCallback(async (adminData: any) => {
@@ -518,49 +494,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
   }, []);
 
   const handleTermsAccepted = useCallback(async () => {
-    console.log('[TERMS-DEBUG] 🎉 handleTermsAccepted chamado', { 
-      userId: user?.id, 
-      email: user?.email,
-      currentTermsAccepted: user?.termsAccepted 
-    });
     logger.info('auth', '[TERMS] Callback de termos aceitos disparado');
     
+    // Sincronização IMEDIATA do estado
     setNeedsTermsAcceptance(false);
-    console.log('[TERMS-DEBUG] 🚪 needsTermsAcceptance = false (modal deve fechar)');
-    logger.info('auth', '[TERMS] Modal de termos fechado');
+    setUser(prevUser => prevUser ? { ...prevUser, termsAccepted: true } : null);
     
-    // CORREÇÃO: Re-fetch imediato do profile para sincronizar estado
-    if (session?.user) {
-      console.log('[TERMS-DEBUG] 🔄 Re-fetching profile do banco IMEDIATAMENTE...');
-      logger.info('auth', '[TERMS] Re-fetching profile após aceitar termos');
-      
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (error) {
-          logger.error('auth', '[TERMS] Erro ao re-fetch do profile', error);
-        } else if (profile) {
-          logger.info('auth', '[TERMS] Profile re-fetched com sucesso', {
-            terms_accepted: profile.terms_accepted
-          });
-          
-          // Atualizar user com dados frescos do banco
-          const updatedUser: User = {
-            ...user!,
-            termsAccepted: profile.terms_accepted ?? false,
-          };
-          setUser(updatedUser);
-          console.log('[TERMS-DEBUG] ✅ User.termsAccepted sincronizado do banco:', profile.terms_accepted);
-        }
-      } catch (error) {
-        logger.error('auth', '[TERMS] Erro ao re-fetch do profile', error);
-      }
-    }
-  }, [user, session]);
+    logger.info('auth', '[TERMS] Modal fechado e estado sincronizado');
+  }, []);
 
   // Listen for profile updates from settings
   useEffect(() => {
@@ -589,14 +530,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
       }
     };
 
+    // NOVO: Listener para aceitação de termos
+    const handleTermsAcceptedEvent = async () => {
+      logger.info('auth', '[TERMS] Evento terms-accepted recebido - sincronizando imediatamente');
+      
+      // Sincronização IMEDIATA antes do re-fetch
+      setUser(prevUser => prevUser ? { ...prevUser, termsAccepted: true } : null);
+      setNeedsTermsAcceptance(false);
+      
+      // Re-fetch para confirmar com banco
+      if (user?.id && session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('terms_accepted')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setUser(prevUser => prevUser ? { 
+            ...prevUser, 
+            termsAccepted: profile.terms_accepted ?? false 
+          } : null);
+        }
+      }
+    };
+
     window.addEventListener('userProfileUpdated', handleProfileUpdate);
     window.addEventListener('userAvatarUpdated', handleAvatarUpdate);
     window.addEventListener('user-profile-updated', handleProfileReload);
+    window.addEventListener('terms-accepted', handleTermsAcceptedEvent);
 
     return () => {
       window.removeEventListener('userProfileUpdated', handleProfileUpdate);
       window.removeEventListener('userAvatarUpdated', handleAvatarUpdate);
       window.removeEventListener('user-profile-updated', handleProfileReload);
+      window.removeEventListener('terms-accepted', handleTermsAcceptedEvent);
     };
   }, [user?.id, session?.user, fetchUserProfile]);
 
@@ -662,43 +630,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
 
   return (
     <AuthContext.Provider value={value}>
-      {/* DEBUG: Banner vermelho se termos não aceitos mas modal não aparece */}
-      {user && user.termsAccepted === false && !needsTermsAcceptance && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 99999,
-          background: 'red',
-          color: 'white',
-          padding: '8px',
-          textAlign: 'center',
-          fontWeight: 'bold'
-        }}>
-          🚨 DEBUG: Termos não aceitos mas modal não aparece! needsTermsAcceptance={String(needsTermsAcceptance)}, termsAccepted={String(user.termsAccepted)}
-        </div>
-      )}
-      
-      {/* Modais sempre por cima dos children */}
-      
       {/* Prioridade 1: Modal de Termos de Uso (se não aceito) */}
       {needsTermsAcceptance && user && (
-        <>
-          {console.log('[TERMS-MODAL] 🔵 Renderizando modal de termos', { 
-            userId: user.id, 
-            email: user.email,
-            needsTermsAcceptance,
-            termsAccepted: user.termsAccepted,
-            isLoading,
-            timestamp: new Date().toISOString() 
-          })}
-          <TermsOfUseModal
-            open={needsTermsAcceptance}
-            userId={user.id}
-            onTermsAccepted={handleTermsAccepted}
-          />
-        </>
+        <TermsOfUseModal
+          open={needsTermsAcceptance}
+          userId={user.id}
+          onTermsAccepted={handleTermsAccepted}
+        />
       )}
       
       {/* Prioridade 2: Modal de Troca de Senha (após aceitar termos) */}
