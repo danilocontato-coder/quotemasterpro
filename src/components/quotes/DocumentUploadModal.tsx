@@ -93,51 +93,39 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       const base64Content = await convertFileToBase64(uploadedFile);
       
       // Chamar edge function para extrair dados do PDF
-      const { data, error } = await supabase.functions.invoke('extract-pdf-data', {
+      const { data, error } = await supabase.functions.invoke('extract-quote-from-pdf', {
         body: {
-          base64Content,
-          filename: uploadedFile.name,
-          clientInfo: {
-            name: clientName,
-            type: client?.company_name ? 'empresa' : 'condominio',
-            location: client?.address || 'Não informado'
-          }
+          pdfBase64: base64Content,
+          fileName: uploadedFile.name
         }
       });
 
       if (error) throw error;
 
-      if (data.success && data.quote) {
-        // Verificar se extraiu itens válidos
-        if (!data.quote.items || data.quote.items.length === 0) {
-          toast({
-            title: 'PDF sem conteúdo extraível',
-            description: 'Não foi possível extrair itens do PDF. Por favor, crie a cotação manualmente.',
-            variant: 'destructive'
-          });
-          onOpenChange(false);
-          setUploadedFile(null);
-          return;
-        }
+      if (data.success && data.data) {
+        // A função extract-quote-from-pdf retorna { totalAmount, notes }
+        // Transformar para o formato esperado pelo componente pai
+        const quote = {
+          supplierName: '',
+          cnpj: '',
+          contact: { email: '', phone: '' },
+          items: [], // Esta função não extrai itens individuais
+          deliveryTime: '',
+          paymentTerms: '',
+          validUntil: '',
+          notes: data.data.notes || '',
+          totalProposal: data.data.totalAmount ? parseFloat(data.data.totalAmount) : 0
+        };
 
-        onQuoteGenerated(data.quote);
+        onQuoteGenerated(quote);
         onOpenChange(false);
         setUploadedFile(null);
         toast({
           title: 'Documento Processado!',
-          description: `A IA extraiu ${data.quote.items.length} itens do documento e criou uma RFQ.`,
+          description: `Valor total extraído: ${quote.totalProposal > 0 ? `R$ ${quote.totalProposal.toFixed(2)}` : 'Não informado'}`,
         });
       } else {
-        // Tratar erros específicos
-        if (data.error === 'unsupported_media_type') {
-          throw new Error('Formato não suportado. Envie um PDF válido.');
-        } else if (data.error === 'rate_limit_exceeded') {
-          throw new Error('Muitas requisições. Por favor, tente novamente em alguns instantes.');
-        } else if (data.error === 'credits_exhausted') {
-          throw new Error('Créditos de IA esgotados. Entre em contato com o suporte.');
-        } else {
-          throw new Error(data.error || 'Erro ao processar documento');
-        }
+        throw new Error(data.error || 'Erro ao processar documento');
       }
     } catch (error) {
       console.error('Error processing document:', error);
