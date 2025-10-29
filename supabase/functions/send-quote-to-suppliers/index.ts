@@ -102,7 +102,11 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: suppliers, error: suppliersError } = await suppliersQuery;
 
     if (suppliersError || !suppliers || suppliers.length === 0) {
-      console.error('No suppliers found:', suppliersError);
+      console.error('No suppliers found:', { 
+        error: suppliersError, 
+        supplier_ids, 
+        client_id: quote.client_id 
+      });
       return new Response(
         JSON.stringify({ success: false, error: 'Nenhum fornecedor encontrado' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

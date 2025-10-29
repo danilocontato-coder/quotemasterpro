@@ -260,13 +260,28 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
       
       console.log('📤 [RESEND-INVITE] Payload:', JSON.stringify(payload, null, 2));
       
-      const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
+      const { data, error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: payload
       });
       
       if (error) {
         console.error('❌ [RESEND-INVITE] Erro na edge function:', error);
-        throw error;
+        toast({
+          title: "Erro",
+          description: "Não foi possível reenviar o convite.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!data?.success) {
+        console.error('❌ [RESEND-INVITE] Falha de negócio:', data?.error);
+        toast({
+          title: "Erro",
+          description: data?.error || "Não foi possível reenviar o convite.",
+          variant: "destructive"
+        });
+        return;
       }
       
       console.log('✅ [RESEND-INVITE] Convite reenviado com sucesso');
