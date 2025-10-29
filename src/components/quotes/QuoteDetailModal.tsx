@@ -48,6 +48,7 @@ import { getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateDeliveryScore, calculateSupplierReputation } from '@/utils/supplierMetrics';
 import { AuditLog } from '@/hooks/useAuditLogs';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -185,7 +186,10 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       }
 
       // Transform data to match QuoteProposal interface
-      const transformedProposals: QuoteProposal[] = (data || []).map(response => {
+      // Refatorado para usar for...of para permitir await de cálculos assíncronos
+      const transformedProposals: QuoteProposal[] = [];
+
+      for (const response of (data || [])) {
         // ✅ USAR ITENS DA PROPOSTA (response.items), não da cotação (quoteItems)
         const proposalItems = Array.isArray(response.items) && response.items.length > 0 
           ? response.items 
@@ -196,7 +200,13 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               total: response.total_amount
             }];
 
-        return {
+        // ✅ Calcular métricas reais do fornecedor
+        const deliveryScore = await calculateDeliveryScore(response.supplier_id);
+        const reputation = await calculateSupplierReputation(response.supplier_id);
+        
+        console.log(`✅ [MÉTRICAS] ${response.supplier_name}: deliveryScore=${deliveryScore}, reputation=${reputation}`);
+
+        transformedProposals.push({
           id: response.id,
           quoteId: response.quote_id,
           supplierId: response.supplier_id,
@@ -214,14 +224,14 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           price: response.total_amount, // Para compatibilidade
           deliveryTime: response.delivery_time || 7,
           shippingCost: response.shipping_cost || 0,
-          deliveryScore: 50, // TODO: calcular do histórico com calculateDeliveryScore
+          deliveryScore: deliveryScore,
           warrantyMonths: response.warranty_months || 12,
-          reputation: 3.0,
+          reputation: reputation,
           observations: response.notes || '',
           submittedAt: response.created_at,
           status: 'pending'
-        };
-      });
+        });
+      }
 
       setProposals(transformedProposals);
     } catch (error) {

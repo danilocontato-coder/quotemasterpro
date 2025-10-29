@@ -203,10 +203,12 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
                         Frete:
                       </td>
                       <td className="p-3 text-sm text-right">
-                        {shippingCost === 0 ? (
+                        {shippingCost === 0 || shippingCost === null || shippingCost === undefined ? (
                           <span className="text-green-600 font-medium">Grátis</span>
                         ) : (
-                          `R$ ${shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                          <span className="font-medium">
+                            R$ {shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
                         )}
                       </td>
                     </tr>

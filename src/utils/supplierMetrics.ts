@@ -27,3 +27,30 @@ export const calculateDeliveryScore = async (supplierId: string): Promise<number
     return 50; // Retornar score neutro em caso de erro
   }
 };
+
+/**
+ * Calcula reputação geral (1-5) baseada no histórico de avaliações
+ * @param supplierId - UUID do fornecedor
+ * @returns Reputação média (1-5), ou 3.0 se sem histórico
+ */
+export const calculateSupplierReputation = async (supplierId: string): Promise<number> => {
+  try {
+    const { data, error } = await supabase
+      .from('supplier_ratings')
+      .select('rating')
+      .eq('supplier_id', supplierId);
+    
+    if (error || !data || data.length === 0) {
+      return 3.0; // Reputação neutra para fornecedores novos
+    }
+    
+    // Calcular média das avaliações gerais (escala 1-5)
+    const avgRating = data.reduce((sum, r) => sum + (r.rating || 3), 0) / data.length;
+    
+    // Arredondar para 1 casa decimal
+    return Math.round(avgRating * 10) / 10;
+  } catch (error) {
+    console.error('Error calculating supplier reputation:', error);
+    return 3.0;
+  }
+};

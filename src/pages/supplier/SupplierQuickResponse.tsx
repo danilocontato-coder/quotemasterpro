@@ -261,6 +261,11 @@ const SupplierQuickResponse = () => {
       }
 
       // Criar resposta da cotação
+      console.log('🚚 [SHIPPING] proposalData.shippingCost (raw):', proposalData.shippingCost);
+      const shippingValue = proposalData.shippingCost ? parseFloat(proposalData.shippingCost) : 0;
+      console.log('🚚 [SHIPPING] shippingValue após parseFloat:', shippingValue);
+      console.log('🚚 [SHIPPING] isNaN(shippingValue):', isNaN(shippingValue));
+      
       const { error: responseError } = await supabase
         .from('quote_responses')
         .insert({
@@ -270,7 +275,7 @@ const SupplierQuickResponse = () => {
           total_amount: parseFloat(proposalData.totalAmount),
           delivery_time: parseInt(proposalData.deliveryDays),
           warranty_months: parseInt(proposalData.warrantyMonths) || 12,
-          shipping_cost: parseFloat(proposalData.shippingCost) || 0,
+          shipping_cost: isNaN(shippingValue) ? 0 : shippingValue,
           notes: proposalData.notes,
           status: 'pending'
         });
