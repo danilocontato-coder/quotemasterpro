@@ -121,6 +121,22 @@ Deno.serve(async (req) => {
       } catch (e) { console.warn('[WHATSAPP CREDENTIALS] Falha ao obter client_id:', e) }
 
       const cfg = await resolveEvolutionConfig(supabase, clientId)
+      
+      console.log(`[WHATSAPP CREDENTIALS] Config Evolution resolvida:`, {
+        hasApiUrl: !!cfg.apiUrl,
+        hasToken: !!cfg.token,
+        apiUrl: cfg.apiUrl,
+        instance: cfg.instance,
+        scope: cfg.scope,
+        clientId
+      })
+
+      if (!cfg.apiUrl || !cfg.token) {
+        const errorMsg = `❌ Evolution API não configurada. Escopo=${cfg.scope}. Configure no SuperAdmin > Integrações.`
+        console.error(errorMsg, { cfg, clientId })
+        throw new Error(errorMsg)
+      }
+
       const number = normalizePhone(to)
       const text =
         `🎉 *Bem-vindo(a) ao Cotiz!* 🎉\n\n` +
