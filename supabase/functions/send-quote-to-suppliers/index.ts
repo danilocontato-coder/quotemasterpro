@@ -59,6 +59,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { quote_id, supplier_ids, send_whatsapp, send_email, custom_message, send_via, supplier_links, short_links }: SendQuoteRequest = await req.json();
 
+    console.log('📥 [DEBUG] Body recebido:', JSON.stringify({ quote_id, supplier_ids, send_whatsapp, send_email, send_via }, null, 2));
     console.log('Processing quote:', quote_id);
 
     // Get quote details with items

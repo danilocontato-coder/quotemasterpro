@@ -236,25 +236,47 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
   };
 
   const handleResendInvite = async (supplierId: string) => {
+    if (!supplierId) {
+      console.error('❌ [RESEND-INVITE] supplierId vazio');
+      toast({
+        title: "Erro",
+        description: "ID do fornecedor inválido.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
+      console.log('🔄 [RESEND-INVITE] Iniciando reenvio para:', supplierId);
+      console.log('🔍 [RESEND-INVITE] Quote ID:', quote?.id);
+      
+      const payload = {
+        quote_id: quote?.id, 
+        supplier_ids: [supplierId],
+        send_whatsapp: true,
+        send_email: false,
+        send_via: 'direct'
+      };
+      
+      console.log('📤 [RESEND-INVITE] Payload:', JSON.stringify(payload, null, 2));
+      
       const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
-        body: { 
-          quote_id: quote?.id, 
-          supplier_ids: [supplierId],
-          send_whatsapp: true,
-          send_email: false,
-          send_via: 'direct'
-        }
+        body: payload
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [RESEND-INVITE] Erro na edge function:', error);
+        throw error;
+      }
+      
+      console.log('✅ [RESEND-INVITE] Convite reenviado com sucesso');
       
       toast({
         title: "Convite reenviado!",
-        description: "O fornecedor receberá um novo link por WhatsApp.",
+        description: "O fornecedor receberá o link da cotação por WhatsApp.",
       });
     } catch (error) {
-      console.error('Error resending invite:', error);
+      console.error('❌ [RESEND-INVITE] Erro ao reenviar convite:', error);
       toast({
         title: "Erro",
         description: "Não foi possível reenviar o convite.",

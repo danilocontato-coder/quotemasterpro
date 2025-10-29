@@ -642,20 +642,35 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   };
 
   const handleResendInvite = async (supplierId: string) => {
+    if (!supplierId) {
+      console.error('❌ [RESEND-INVITE] supplierId vazio');
+      toast({
+        title: "Erro",
+        description: "ID do fornecedor inválido.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setResendingSuppliers(prev => new Set(prev).add(supplierId));
     
     try {
       console.log('🔄 [RESEND-INVITE] Iniciando reenvio para:', supplierId);
+      console.log('🔍 [RESEND-INVITE] Quote ID:', quote.id);
       
-    const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
-      body: { 
+      const payload = {
         quote_id: quote.id, 
         supplier_ids: [supplierId],
         send_whatsapp: true,
         send_email: false,
         send_via: 'direct'
-      }
-    });
+      };
+      
+      console.log('📤 [RESEND-INVITE] Payload:', JSON.stringify(payload, null, 2));
+      
+      const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
+        body: payload
+      });
       
       if (error) {
         console.error('❌ [RESEND-INVITE] Erro na edge function:', error);
@@ -666,7 +681,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       
       toast({
         title: "Convite reenviado!",
-        description: "O fornecedor receberá um novo link por WhatsApp via Evolution API.",
+        description: "O fornecedor receberá o link da cotação por WhatsApp.",
       });
     } catch (error) {
       console.error('❌ [RESEND-INVITE] Erro ao reenviar convite:', error);
