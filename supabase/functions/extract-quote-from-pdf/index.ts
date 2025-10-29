@@ -1,13 +1,13 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import * as pdfjsLib from 'npm:pdfjs-dist@4.0.379';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
-// Desativar worker do PDF.js (execução no ambiente Edge/Deno)
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+// Desativar worker do pdf.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.worker.mjs';
 
 // Helper para extrair texto do PDF
 async function extractTextFromPDF(base64PDF: string): Promise<string> {
@@ -24,7 +24,7 @@ async function extractTextFromPDF(base64PDF: string): Promise<string> {
     for (let i = 0; i < binary.length; i++) pdfData[i] = binary.charCodeAt(i)
     
     // Carregar PDF
-    const loadingTask = pdfjsLib.getDocument({ data: pdfData, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true, disableRange: true, disableStream: true })
+    const loadingTask = pdfjsLib.getDocument({ data: pdfData, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true })
     const pdf = await loadingTask.promise
     
     let fullText = ''
