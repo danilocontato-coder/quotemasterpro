@@ -12,23 +12,33 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 // Helper para extrair texto do PDF
 async function extractTextFromPDF(base64PDF: string): Promise<string> {
   try {
-    // Decodificar base64
-    const pdfData = Uint8Array.from(atob(base64PDF), c => c.charCodeAt(0))
+    // Normalizar Base64 (remover prefixo e corrigir padding)
+    let base64 = base64PDF.includes(',') ? base64PDF.split(',')[1] : base64PDF
+    base64 = base64.replace(/-/g, '+').replace(/_/g, '/').replace(/\s+/g, '')
+    const pad = base64.length % 4
+    if (pad) base64 += '='.repeat(4 - pad)
+
+    // Decodificar base64 com segurança
+    const binary = atob(base64)
+    const pdfData = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) pdfData[i] = binary.charCodeAt(i)
     
     // Carregar PDF
-    const loadingTask = pdfjsLib.getDocument({ data: pdfData, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true })
+    const loadingTask = pdfjsLib.getDocument({ data: pdfData, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true, disableRange: true, disableStream: true })
     const pdf = await loadingTask.promise
     
     let fullText = ''
     
     // Extrair texto de cada página
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const maxPages = Math.min(pdf.numPages, 10)
+    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
       const page = await pdf.getPage(pageNum)
       const textContent = await page.getTextContent()
       const pageText = textContent.items
         .map((item: any) => item.str)
         .join(' ')
       fullText += pageText + '\n\n'
+      if (fullText.length > 100000) break
     }
     
     return fullText.trim()
