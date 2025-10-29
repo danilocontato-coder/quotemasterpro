@@ -43,6 +43,7 @@ const SuperAdminAIUsage = React.lazy(() => import('@/pages/admin/SuperAdminAIUsa
 const PlansPage = React.lazy(() => import('@/pages/client/PlansPage'));
 const ClientDeliveries = React.lazy(() => import('@/pages/client/ClientDeliveries'));
 const ClientRatings = React.lazy(() => import('@/pages/client/ClientRatings'));
+const ClientReports = React.lazy(() => import('@/pages/client/ClientReports'));
 const CostCenters = React.lazy(() => import('@/pages/CostCenters'));
 const DebugCostCenters = React.lazy(() => import('@/pages/DebugCostCenters'));
 const Help = React.lazy(() => import('@/pages/Help'));
@@ -99,6 +100,7 @@ const SupplierPlansPage = React.lazy(() => import('@/pages/supplier/SupplierPlan
 
 // Administradora pages - ISOLADAS
 const AdministradoraDashboard = React.lazy(() => import('@/pages/admin/AdministradoraDashboard'));
+const AdministradoraRelatorios = React.lazy(() => import('@/pages/administradora/AdministradoraRelatorios'));
 const CondominiosPage = React.lazy(() => import('@/pages/administradora/CondominiosPage'));
 const ConfiguracoesPage = React.lazy(() => import('@/pages/administradora/ConfiguracoesPage'));
 
@@ -416,6 +418,11 @@ export const AppWithProviders: React.FC = () => {
             <Reports />
           </Suspense>
         } />
+        <Route path="reports" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <ClientReports />
+          </Suspense>
+        } />
         <Route path="users" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <Users />
@@ -552,7 +559,7 @@ export const AppWithProviders: React.FC = () => {
         } />
         <Route path="reports" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <Reports />
+            <ClientReports />
           </Suspense>
         } />
         <Route path="users" element={
@@ -755,7 +762,7 @@ export const AppWithProviders: React.FC = () => {
         } />
         <Route path="relatorios" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <AdministradoraDashboard />
+            <AdministradoraRelatorios />
           </Suspense>
         } />
         <Route path="analise-mercado" element={
