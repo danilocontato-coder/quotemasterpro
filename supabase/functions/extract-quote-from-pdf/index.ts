@@ -1,8 +1,38 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { getDocument } from "npm:pdfjs-dist@4.0.379"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// Helper para extrair texto do PDF
+async function extractTextFromPDF(base64PDF: string): Promise<string> {
+  try {
+    // Decodificar base64
+    const pdfData = Uint8Array.from(atob(base64PDF), c => c.charCodeAt(0))
+    
+    // Carregar PDF
+    const loadingTask = getDocument({ data: pdfData })
+    const pdf = await loadingTask.promise
+    
+    let fullText = ''
+    
+    // Extrair texto de cada página
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum)
+      const textContent = await page.getTextContent()
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ')
+      fullText += pageText + '\n\n'
+    }
+    
+    return fullText.trim()
+  } catch (error) {
+    console.error('Erro ao extrair texto do PDF:', error)
+    throw new Error('Não foi possível extrair texto do PDF')
+  }
 }
 
 serve(async (req) => {
@@ -32,8 +62,21 @@ serve(async (req) => {
 
     console.log('🤖 [EXTRACT-PDF] Processing PDF:', fileName)
 
-    // Preparar prompt para processar o PDF
-    const systemPrompt = `Você é um assistente especializado em extrair dados de propostas comerciais em PDF.
+    // Extrair texto do PDF
+    console.log('🤖 [EXTRACT-PDF] Extracting text from PDF...')
+    const pdfText = await extractTextFromPDF(pdfBase64)
+    
+    if (!pdfText || pdfText.length < 10) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'PDF não contém texto legível' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('🤖 [EXTRACT-PDF] Extracted text length:', pdfText.length, 'chars')
+
+    // Preparar prompt para processar o texto extraído
+    const systemPrompt = `Você é um assistente especializado em extrair dados de propostas comerciais.
 
 Extraia APENAS:
 1. Valor total da proposta (totalAmount) - em formato numérico, sem símbolos de moeda
@@ -48,7 +91,7 @@ Retorne APENAS o JSON com esta estrutura EXATA (sem markdown, sem explicações)
 Se não encontrar valor total, use null. Se não houver observações relevantes, use string vazia.
 IMPORTANTE: Retorne APENAS o objeto JSON, nada mais.`
 
-    // Chamar Lovable AI para extrair dados do PDF
+    // Chamar Lovable AI para analisar o texto
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -59,27 +102,14 @@ IMPORTANTE: Retorne APENAS o objeto JSON, nada mais.`
         model: 'google/gemini-2.5-flash',
         messages: [
           {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
             role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: systemPrompt
-              },
-              {
-                type: 'text',
-                text: '\n\nAnalise esta proposta comercial em PDF e extraia os dados solicitados:'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:application/pdf;base64,${pdfBase64}`,
-                  detail: 'high'
-                }
-              }
-            ]
+            content: `Analise esta proposta comercial e extraia os dados solicitados:\n\n${pdfText.slice(0, 8000)}`
           }
         ],
-        temperature: 0.1,
         max_tokens: 1000
       })
     })
