@@ -355,6 +355,11 @@ export const AppWithProviders: React.FC = () => {
             {React.createElement(React.lazy(() => import('@/pages/admin/TermsManagement')))}
           </Suspense>
         } />
+        <Route path="terms-acceptance" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            {React.createElement(React.lazy(() => import('@/pages/admin/TermsAcceptance')))}
+          </Suspense>
+        } />
       </Route>
 
       {/* Rotas do Cliente/Manager - /app/* e também /* para compatibilidade */}

@@ -185,6 +185,12 @@ const navigation = [
         description: 'Editar termos da plataforma'
       },
       {
+        name: 'Aceites de Termos',
+        href: '/admin/terms-acceptance',
+        icon: UserCog,
+        description: 'Controle de aceites de termos'
+      },
+      {
         name: 'Domínio',
         href: '/admin/domain',
         icon: Globe,
