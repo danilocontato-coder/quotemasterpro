@@ -74,13 +74,28 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const createProductsFromExtraction = async (items: any[]) => {
     const createdProducts = [];
     
+    // Buscar client_id UMA VEZ antes do loop
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData?.user) throw new Error('Usuário não autenticado');
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('client_id')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (!profile?.client_id) throw new Error('Cliente não identificado');
+
+    const clientId = profile.client_id;
+    
     for (const item of items) {
       try {
-        // Verificar se produto já existe (por descrição similar)
+        // Verificar se produto já existe (por descrição similar do mesmo cliente)
         const { data: existingProducts } = await supabase
           .from('products')
           .select('id, name, code')
           .ilike('name', `%${item.description}%`)
+          .eq('client_id', clientId)
           .limit(1);
         
         if (existingProducts && existingProducts.length > 0) {
@@ -100,12 +115,17 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
               description: `Extraído do PDF: ${uploadedFile?.name || 'documento'}`,
               status: 'active',
               stock_quantity: 0,
-              unit_price: null
+              unit_price: null,
+              client_id: clientId,
+              supplier_id: null
             })
             .select()
             .single();
           
-          if (error) throw error;
+          if (error) {
+            console.error('❌ Erro ao criar produto:', item.description, error);
+            throw error;
+          }
           
           createdProducts.push({
             product_id: newProduct.id,
@@ -115,7 +135,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           });
         }
       } catch (error) {
-        console.error('Erro ao criar produto:', item.description, error);
+        console.error('❌ Erro ao processar produto:', item.description, error);
+        // Continuar com os próximos itens mesmo se um falhar
       }
     }
     
