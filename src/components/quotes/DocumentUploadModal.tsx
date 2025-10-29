@@ -163,27 +163,23 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
 
     if (!clientData) throw new Error('Cliente não encontrado');
 
-    const quoteId = crypto.randomUUID();
-    const timestamp = Date.now();
-    const localCode = `RFQ-${timestamp.toString().slice(-8)}`;
-
+    // Deixar o trigger do banco gerar id e local_code automaticamente
     const { data: newQuote, error: quoteError } = await supabase
       .from('quotes')
-      .insert({
-        id: quoteId,
-        local_code: localCode,
+      .insert([{
         title: `Cotação extraída de ${uploadedFile?.name || 'documento'}`,
         description: notes || 'Cotação criada automaticamente a partir de PDF',
-        status: 'draft',
+        status: 'draft' as const,
         client_id: profile.client_id,
         client_name: clientData.company_name || clientData.name,
         created_by: authData.user.id
-      })
+      } as any])
       .select()
       .single();
 
     if (quoteError) throw quoteError;
 
+    // Preparar itens para inserção
     const quoteItems = productsData.map((prod) => ({
       quote_id: newQuote.id,
       product_id: prod.product_id,
@@ -195,11 +191,38 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       client_id: profile.client_id
     }));
 
-    const { error: itemsError } = await supabase
-      .from('quote_items')
-      .insert(quoteItems);
+    // Log de debug antes da inserção
+    console.log('📦 Inserindo itens na cotação:', {
+      quote_id: newQuote.id,
+      local_code: newQuote.local_code,
+      items_count: quoteItems.length,
+      client_id: profile.client_id,
+      items: quoteItems
+    });
 
-    if (itemsError) throw itemsError;
+    // Inserir itens e retornar dados inseridos
+    const { data: insertedItems, error: itemsError } = await supabase
+      .from('quote_items')
+      .insert(quoteItems)
+      .select();
+
+    // Log detalhado do erro
+    if (itemsError) {
+      console.error('❌ Erro ao inserir itens:', {
+        error: itemsError,
+        message: itemsError.message,
+        details: itemsError.details,
+        hint: itemsError.hint,
+        code: itemsError.code
+      });
+      throw new Error(`Falha ao salvar itens: ${itemsError.message}`);
+    }
+
+    // Confirmar inserção
+    console.log('✅ Itens inseridos com sucesso:', {
+      inserted_count: insertedItems?.length || 0,
+      items: insertedItems
+    });
 
     return newQuote;
   };
