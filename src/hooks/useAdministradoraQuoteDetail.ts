@@ -52,7 +52,7 @@ export const useAdministradoraQuoteDetail = (quoteId?: string) => {
 
       if (itemsError) throw itemsError;
 
-      // Fetch proposals with supplier details
+      // Fetch proposals with supplier details (only submitted proposals)
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('quote_responses')
         .select(`
@@ -68,6 +68,7 @@ export const useAdministradoraQuoteDetail = (quoteId?: string) => {
           )
         `)
         .eq('quote_id', quoteId)
+        .eq('status', 'submitted')
         .order('created_at', { ascending: false });
 
       if (proposalsError) throw proposalsError;
