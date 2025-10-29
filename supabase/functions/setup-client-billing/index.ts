@@ -71,6 +71,18 @@ serve(async (req) => {
 
     console.log(`✅ Primeira cobrança encontrada: ${firstPayment.id}`);
 
+    // Mapear billingType do Asaas para payment_method do banco
+    const mapPaymentMethod = (billingType: string): string => {
+      const mapping: Record<string, string> = {
+        'BOLETO': 'boleto',
+        'PIX': 'pix',
+        'CREDIT_CARD': 'stripe',
+        'DEBIT_CARD': 'stripe',
+        'UNDEFINED': 'manual'
+      };
+      return mapping[billingType] || 'manual';
+    };
+
     // 4. Buscar dados da subscription
     const { data: subscription } = await supabaseClient
       .from('subscriptions')
@@ -95,7 +107,7 @@ serve(async (req) => {
         asaas_charge_id: firstPayment.id,
         boleto_url: firstPayment.bankSlipUrl,
         boleto_barcode: firstPayment.identificationField,
-        payment_method: firstPayment.billingType,
+        payment_method: mapPaymentMethod(firstPayment.billingType),
         nfse_status: issueNfse ? 'pending' : 'not_issued'
       });
 
