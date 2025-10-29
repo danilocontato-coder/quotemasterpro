@@ -320,36 +320,36 @@ export function CreateQuoteModalSupabase({
     // DEBUG: Log do estado atual
     console.log('🔍 DEBUG canProceed - Current step:', currentStep);
     console.log('🔍 DEBUG canProceed - Form data:', {
-      title: formData.title,
-      titleLength: formData.title.length,
+      title: formData.title || '',
+      titleLength: formData.title?.length || 0,
       itemsCount: formData.items?.length || 0,
-      suppliersCount: formData.supplier_ids.length,
-      emailMethod: formData.communicationMethods.email,
-      whatsappMethod: formData.communicationMethods.whatsapp
+      suppliersCount: formData.supplier_ids?.length || 0,
+      emailMethod: formData.communicationMethods?.email || false,
+      whatsappMethod: formData.communicationMethods?.whatsapp || false
     });
 
     // Sempre permitir se estivermos na última etapa (Revisão)
     if (currentStep === steps.length) {
-      const canProceedFinal = formData.title.trim() !== "" && (formData.items?.length || 0) > 0;
+      const canProceedFinal = (formData.title?.trim() || '') !== "" && (formData.items?.length || 0) > 0;
       console.log('🔍 DEBUG canProceed - Final step result:', canProceedFinal);
       return canProceedFinal;
     }
     let result = false;
     switch (currentStep) {
       case 1:
-        result = formData.title.trim() !== "";
+        result = (formData.title?.trim() || '') !== "";
         break;
       case 2:
-        result = formData.items.length > 0;
+        result = (formData.items?.length || 0) > 0;
         break;
       case 3:
-        result = formData.supplier_ids.length > 0;
+        result = (formData.supplier_ids?.length || 0) > 0;
         break;
       case 4:
         result = true;
         break;
       case 5:
-        result = formData.communicationMethods.email || formData.communicationMethods.whatsapp;
+        result = formData.communicationMethods?.email || formData.communicationMethods?.whatsapp || false;
         break;
       default:
         result = false;
