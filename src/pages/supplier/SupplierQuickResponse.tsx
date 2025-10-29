@@ -63,7 +63,7 @@ const SupplierQuickResponse = () => {
     totalAmount: '',
     deliveryDays: '',
     warrantyMonths: '12',
-    shippingCost: '0',
+    shippingCost: '',
     notes: ''
   });
 
@@ -261,10 +261,13 @@ const SupplierQuickResponse = () => {
       }
 
       // Criar resposta da cotação
-      console.log('🚚 [SHIPPING] proposalData.shippingCost (raw):', proposalData.shippingCost);
-      const shippingValue = proposalData.shippingCost ? parseFloat(proposalData.shippingCost) : 0;
-      console.log('🚚 [SHIPPING] shippingValue após parseFloat:', shippingValue);
+      console.log('🚚 [SHIPPING] proposalData.shippingCost (raw):', proposalData.shippingCost, typeof proposalData.shippingCost);
+      const shippingValue = proposalData.shippingCost && proposalData.shippingCost !== '' 
+        ? parseFloat(proposalData.shippingCost) 
+        : 0;
+      console.log('🚚 [SHIPPING] shippingValue após parseFloat:', shippingValue, typeof shippingValue);
       console.log('🚚 [SHIPPING] isNaN(shippingValue):', isNaN(shippingValue));
+      console.log('🚚 [SHIPPING] Valor final a inserir:', isNaN(shippingValue) ? 0 : shippingValue);
       
       const { error: responseError } = await supabase
         .from('quote_responses')
@@ -587,7 +590,7 @@ const SupplierQuickResponse = () => {
                         step="0.01"
                         value={proposalData.shippingCost}
                         onChange={(e) => setProposalData({ ...proposalData, shippingCost: e.target.value })}
-                        placeholder="Ex: 150.00"
+                        placeholder="0.00 (digite 0 se grátis)"
                         className="pl-10"
                       />
                     </div>
