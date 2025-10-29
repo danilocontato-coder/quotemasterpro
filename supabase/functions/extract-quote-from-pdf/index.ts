@@ -1,50 +1,59 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as pdfjsLib from 'npm:pdfjs-dist@4.0.379';
+import { getDocument } from "https://esm.sh/pdfjs-serverless";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Desativar worker do pdf.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.worker.mjs';
-
-// Helper para extrair texto do PDF
+// Helper para extrair texto do PDF usando pdfjs-serverless
 async function extractTextFromPDF(base64PDF: string): Promise<string> {
   try {
     // Normalizar Base64 (remover prefixo e corrigir padding)
-    let base64 = base64PDF.includes(',') ? base64PDF.split(',')[1] : base64PDF
-    base64 = base64.replace(/-/g, '+').replace(/_/g, '/').replace(/\s+/g, '')
-    const pad = base64.length % 4
-    if (pad) base64 += '='.repeat(4 - pad)
+    let base64 = base64PDF.includes(',') ? base64PDF.split(',')[1] : base64PDF;
+    base64 = base64.replace(/-/g, '+').replace(/_/g, '/').replace(/\s+/g, '');
+    const pad = base64.length % 4;
+    if (pad) base64 += '='.repeat(4 - pad);
 
     // Decodificar base64 com segurança
-    const binary = atob(base64)
-    const pdfData = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) pdfData[i] = binary.charCodeAt(i)
+    const binary = atob(base64);
+    const pdfData = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) pdfData[i] = binary.charCodeAt(i);
     
-    // Carregar PDF
-    const loadingTask = pdfjsLib.getDocument({ data: pdfData, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: true })
-    const pdf = await loadingTask.promise
+    // Carregar PDF com pdfjs-serverless
+    console.log('🤖 [EXTRACT-PDF] Loading PDF with pdfjs-serverless...');
+    const pdf = await getDocument(pdfData).promise;
     
-    let fullText = ''
+    let fullText = '';
     
-    // Extrair texto de cada página
-    const maxPages = Math.min(pdf.numPages, 10)
+    // Extrair texto de cada página (máximo 10 páginas)
+    const maxPages = Math.min(pdf.numPages, 10);
+    console.log(`🤖 [EXTRACT-PDF] Processing ${maxPages} pages...`);
+    
     for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
-      const page = await pdf.getPage(pageNum)
-      const textContent = await page.getTextContent()
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
       const pageText = textContent.items
         .map((item: any) => item.str)
-        .join(' ')
-      fullText += pageText + '\n\n'
-      if (fullText.length > 100000) break
+        .join(' ');
+      fullText += pageText + '\n\n';
+      
+      // Limitar tamanho total do texto
+      if (fullText.length > 100000) break;
     }
     
-    return fullText.trim()
+    const trimmedText = fullText.trim();
+    
+    if (!trimmedText || trimmedText.length < 10) {
+      console.error('🤖 [EXTRACT-PDF] PDF não contém texto legível');
+      throw new Error('PDF não contém texto legível');
+    }
+    
+    console.log(`🤖 [EXTRACT-PDF] Successfully extracted ${trimmedText.length} characters`);
+    return trimmedText;
   } catch (error) {
-    console.error('Erro ao extrair texto do PDF:', error)
-    throw new Error('Não foi possível extrair texto do PDF')
+    console.error('🤖 [EXTRACT-PDF] Error extracting text from PDF:', error);
+    throw new Error('Não foi possível extrair texto do PDF');
   }
 }
 
