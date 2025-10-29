@@ -91,27 +91,36 @@ const handler = async (req: Request): Promise<Response> => {
     let suppliersQuery = supabase
       .from('suppliers')
       .select('*')
-      .eq('status', 'active')
-      .or(`client_id.eq.${quote.client_id},client_id.is.null`)
-      .order('type', { ascending: false }); // Certified suppliers first
+      .eq('status', 'active');
 
     if (supplier_ids && supplier_ids.length > 0) {
+      // Se temos IDs específicos, filtramos APENAS por esses IDs (sem restrição de client_id)
       suppliersQuery = suppliersQuery.in('id', supplier_ids);
+      console.log('🔍 [FILTER] Filtrando por supplier_ids específicos:', supplier_ids);
+    } else {
+      // Se NÃO temos IDs, aplicamos o filtro de client_id/global
+      suppliersQuery = suppliersQuery.or(`client_id.eq.${quote.client_id},client_id.is.null`);
+      console.log('🔍 [FILTER] Filtrando por client_id/global para client:', quote.client_id);
     }
+
+    suppliersQuery = suppliersQuery.order('type', { ascending: false }); // Certified suppliers first
 
     const { data: suppliers, error: suppliersError } = await suppliersQuery;
 
     if (suppliersError || !suppliers || suppliers.length === 0) {
-      console.error('No suppliers found:', { 
+      console.error('❌ [SUPPLIERS] Nenhum fornecedor encontrado:', { 
         error: suppliersError, 
         supplier_ids, 
-        client_id: quote.client_id 
+        client_id: quote.client_id,
+        suppliers_found: suppliers?.length || 0
       });
       return new Response(
         JSON.stringify({ success: false, error: 'Nenhum fornecedor encontrado' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log(`✅ [SUPPLIERS] ${suppliers.length} fornecedor(es) encontrado(s):`, suppliers.map((s: any) => s.name));
 
     // Persist supplier assignments for this quote
     try {
