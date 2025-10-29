@@ -60,9 +60,11 @@ const SupplierQuoteResponse = () => {
   
   const [proposalData, setProposalData] = useState({
     deliveryTime: '',
-    paymentTerms: '',
+    paymentTerms: '30 dias',
     validUntil: '',
-    notes: ''
+    notes: '',
+    shippingCost: '',
+    warrantyMonths: '12'
   });
   
   const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
@@ -201,7 +203,9 @@ const SupplierQuoteResponse = () => {
               deliveryTime: extracted.deliveryTime || '',
               paymentTerms: extracted.paymentTerms || '',
               validUntil: extracted.validUntil || '',
-              notes: extracted.notes || ''
+              notes: extracted.notes || '',
+              shippingCost: extracted.shippingCost || '',
+              warrantyMonths: extracted.warrantyMonths || '12'
             });
             
             // Preencher itens
@@ -392,6 +396,15 @@ const SupplierQuoteResponse = () => {
         supplierId = newSupplier.id;
       }
 
+      // Normalizar shipping_cost
+      console.log('🚚 [SHIPPING-FULL] proposalData.shippingCost (raw):', proposalData.shippingCost, typeof proposalData.shippingCost);
+      const shippingValue = proposalData.shippingCost && proposalData.shippingCost !== '' 
+        ? parseFloat(proposalData.shippingCost) 
+        : 0;
+      console.log('🚚 [SHIPPING-FULL] shippingValue após parseFloat:', shippingValue, typeof shippingValue);
+      console.log('🚚 [SHIPPING-FULL] isNaN(shippingValue):', isNaN(shippingValue));
+      console.log('🚚 [SHIPPING-FULL] Valor final a inserir:', isNaN(shippingValue) ? 0 : shippingValue);
+
       // Criar resposta da cotação
       const { error: responseError } = await supabase
         .from('quote_responses')
@@ -401,11 +414,24 @@ const SupplierQuoteResponse = () => {
           supplier_name: supplierData.name,
           total_amount: calculateTotal(),
           delivery_time: parseInt(proposalData.deliveryTime) || null,
+          shipping_cost: isNaN(shippingValue) ? 0 : shippingValue,
+          warranty_months: parseInt(proposalData.warrantyMonths) || 12,
+          payment_terms: proposalData.paymentTerms || '30 dias',
           notes: proposalData.notes,
           status: 'pending'
         });
 
       if (responseError) throw responseError;
+
+      console.log('✅ [PROPOSAL-FULL] Proposta inserida via SupplierQuoteResponse:', {
+        quote_id: quoteId,
+        supplier_name: supplierData.name,
+        total_amount: calculateTotal(),
+        shipping_cost: isNaN(shippingValue) ? 0 : shippingValue,
+        warranty_months: parseInt(proposalData.warrantyMonths) || 12,
+        payment_terms: proposalData.paymentTerms || '30 dias',
+        delivery_time: parseInt(proposalData.deliveryTime) || null
+      });
 
       toast({
         title: "Sucesso",
@@ -920,6 +946,33 @@ const SupplierQuoteResponse = () => {
                       value={proposalData.deliveryTime}
                       onChange={(e) => setProposalData({...proposalData, deliveryTime: e.target.value})}
                       placeholder="Ex: 15"
+                      className="text-base"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shippingCost" className="text-sm font-medium">
+                      Frete (R$)
+                    </Label>
+                    <Input
+                      id="shippingCost"
+                      type="number"
+                      step="0.01"
+                      value={proposalData.shippingCost}
+                      onChange={(e) => setProposalData({...proposalData, shippingCost: e.target.value})}
+                      placeholder="0.00"
+                      className="text-base"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="warrantyMonths" className="text-sm font-medium">
+                      Garantia (meses)
+                    </Label>
+                    <Input
+                      id="warrantyMonths"
+                      type="number"
+                      value={proposalData.warrantyMonths}
+                      onChange={(e) => setProposalData({...proposalData, warrantyMonths: e.target.value})}
+                      placeholder="12"
                       className="text-base"
                     />
                   </div>

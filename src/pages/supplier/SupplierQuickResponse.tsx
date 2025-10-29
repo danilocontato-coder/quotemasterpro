@@ -285,6 +285,15 @@ const SupplierQuickResponse = () => {
 
       if (responseError) throw responseError;
 
+      console.log('✅ [PROPOSAL-QUICK] Proposta inserida via Quick Response:', {
+        quote_id: quoteId,
+        supplier_name: supplierData.name,
+        total_amount: parseFloat(proposalData.totalAmount),
+        shipping_cost: isNaN(shippingValue) ? 0 : shippingValue,
+        warranty_months: parseInt(proposalData.warrantyMonths) || 12,
+        delivery_time: parseInt(proposalData.deliveryDays)
+      });
+
       // Notificar cliente sobre nova proposta
       try {
         await supabase.functions.invoke('notify-client-proposal', {
