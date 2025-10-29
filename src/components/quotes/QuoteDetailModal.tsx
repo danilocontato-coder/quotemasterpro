@@ -361,30 +361,39 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   useEffect(() => {
     console.log('🔄 QuoteDetailModal useEffect - open:', open, 'quote?.id:', quote?.id);
     if (open && quote?.id) {
-      console.log('✅ Calling fetchQuoteItems, fetchAuditLogs, fetchSupplierNames, and loadSavedAnalyses');
-      fetchQuoteItems();
-      fetchAuditLogs();
-      fetchSupplierNames();
-      loadSavedAnalyses(quote.id);
+      console.log('✅ Iniciando carregamento completo de dados');
       
-      // Verificar se há análises salvas
-      supabase
-        .from('ai_proposal_analyses')
-        .select('id', { count: 'exact' })
-        .eq('quote_id', quote.id)
-        .then(({ count }) => {
-          setAnalysesCount(count || 0);
-          setHasAnalysesHistory((count || 0) > 0);
-        });
+      const loadAllData = async () => {
+        await fetchQuoteItems();
+        await fetchAuditLogs();
+        await fetchSupplierNames(); // ✅ Executar antes de fetchProposals
+        await fetchProposals();      // ✅ Garantir que supplierNames já está populado
+        await loadSavedAnalyses(quote.id);
+        
+        // Verificar análises salvas
+        const { count } = await supabase
+          .from('ai_proposal_analyses')
+          .select('id', { count: 'exact' })
+          .eq('quote_id', quote.id);
+        
+        setAnalysesCount(count || 0);
+        setHasAnalysesHistory((count || 0) > 0);
+        
+        console.log('✅ Todos os dados carregados');
+      };
+      
+      loadAllData();
     }
-  }, [open, quote?.id, proposals.length, fetchQuoteItems, fetchAuditLogs, fetchSupplierNames, loadSavedAnalyses]);
+  }, [open, quote?.id]);
 
+  // Forçar atualização ao mudar para aba de propostas
   useEffect(() => {
-    // Buscar propostas sempre que houver um quote ID, mesmo se não houver itens ainda
-    if (quote?.id) {
+    if (activeTab === 'proposals' && quote?.id) {
+      console.log('🔄 Mudou para aba Propostas - atualizando dados');
       fetchProposals();
+      fetchSupplierNames();
     }
-  }, [quote?.id, quoteItems, fetchProposals]);
+  }, [activeTab, quote?.id, fetchProposals, fetchSupplierNames]);
 
   // Log audit logs for debugging
   useEffect(() => {
@@ -411,33 +420,73 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
   // Lógica híbrida para exibir a Matriz de Decisão
   const shouldShowMatrix = useMemo(() => {
+    console.log('🔍 [MATRIZ] Calculando shouldShowMatrix...', {
+      totalInvited,
+      supplierNames_length: supplierNames.length,
+      proposals_length: proposals.length,
+      isDeadlineExpired,
+      manualOverride,
+      hasDeadline: !!quote?.deadline
+    });
+
     // Cotação única (1 fornecedor) -> NUNCA mostra matriz
     if (totalInvited === 1 || supplierNames.length === 1) {
+      console.log('❌ [MATRIZ] Bloqueado: cotação única');
       return false;
     }
 
     // Precisa de pelo menos 2 propostas
     if (proposals.length < 2) {
+      console.log('❌ [MATRIZ] Bloqueado: menos de 2 propostas');
       return false;
     }
 
-    // CENÁRIO 1: Todos os fornecedores responderam
+    // ✅ CENÁRIO 1: Todos os fornecedores responderam
     if (supplierNames.length > 0 && proposals.length === supplierNames.length) {
+      console.log('✅ [MATRIZ] ATIVADA: todos responderam');
       return true;
     }
 
-    // CENÁRIO 2: Prazo expirou
+    // ✅ CENÁRIO 2: Prazo expirou
     if (isDeadlineExpired) {
+      console.log('✅ [MATRIZ] ATIVADA: prazo expirado');
       return true;
     }
 
-    // CENÁRIO 3: Cliente forçou manualmente
+    // ✅ CENÁRIO 3: Cliente forçou manualmente
     if (manualOverride) {
+      console.log('✅ [MATRIZ] ATIVADA: override manual');
       return true;
     }
 
+    // ✅ NOVO CENÁRIO 4: Cotação sem deadline com 2+ propostas
+    if (!quote?.deadline && proposals.length >= 2) {
+      console.log('✅ [MATRIZ] ATIVADA: sem deadline + múltiplas propostas');
+      return true;
+    }
+
+    console.log('❌ [MATRIZ] Bloqueado: nenhuma condição atendida');
     return false;
-  }, [proposals.length, supplierNames.length, totalInvited, isDeadlineExpired, manualOverride]);
+  }, [proposals.length, supplierNames.length, totalInvited, isDeadlineExpired, manualOverride, quote?.deadline]);
+
+  // 🔍 DEBUG: Log completo do estado da matriz
+  useEffect(() => {
+    console.log('🔍 [MATRIZ DEBUG] Estado atual:', {
+      proposals_length: proposals.length,
+      supplierNames_length: supplierNames.length,
+      totalInvited,
+      isDeadlineExpired,
+      manualOverride,
+      shouldShowMatrix,
+      // Condições individuais
+      condition_1_single_supplier: totalInvited === 1 || supplierNames.length === 1,
+      condition_2_min_proposals: proposals.length >= 2,
+      condition_3_all_responded: supplierNames.length > 0 && proposals.length === supplierNames.length,
+      condition_4_deadline_expired: isDeadlineExpired,
+      condition_5_manual_override: manualOverride,
+      condition_6_no_deadline: !quote?.deadline && proposals.length >= 2,
+    });
+  }, [proposals.length, supplierNames.length, totalInvited, isDeadlineExpired, manualOverride, shouldShowMatrix, quote?.deadline]);
 
   // Calculate best combination (multi-supplier optimization) - PURELY LOCAL, NO AI TOKENS
   const bestCombination = useMemo(() => {
