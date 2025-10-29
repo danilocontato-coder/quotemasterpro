@@ -6088,6 +6088,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_quote_timeline: {
+        Args: { p_quote_id: string }
+        Returns: {
+          event_date: string
+          event_description: string
+          event_id: string
+          event_metadata: Json
+          event_title: string
+          event_type: string
+          user_name: string
+          user_role: string
+        }[]
+      }
       get_supplier_average_rating: {
         Args: { supplier_uuid: string }
         Returns: {
