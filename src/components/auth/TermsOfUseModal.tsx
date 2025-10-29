@@ -143,8 +143,8 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent 
-        className="max-w-3xl max-h-[90vh] flex flex-col"
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] flex flex-col min-h-0"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
@@ -155,8 +155,8 @@ export const TermsOfUseModal: React.FC<TermsOfUseModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="relative flex-1">
-          <ScrollArea ref={scrollAreaRef} className="flex-1 pr-4 max-h-[55vh]">
+        <div className="relative flex-1 min-h-0">
+          <ScrollArea ref={scrollAreaRef} className="h-[55vh] pr-4">
             {isLoading ? (
               <div className="flex items-center justify-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
