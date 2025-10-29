@@ -176,7 +176,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         description: notes || 'Cotação criada automaticamente a partir de PDF',
         status: 'draft',
         client_id: profile.client_id,
-        client_name: clientData.company_name || clientData.name
+        client_name: clientData.company_name || clientData.name,
+        created_by: authData.user.id
       })
       .select()
       .single();
