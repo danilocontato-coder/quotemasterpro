@@ -647,12 +647,15 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     try {
       console.log('🔄 [RESEND-INVITE] Iniciando reenvio para:', supplierId);
       
-      const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
-        body: { 
-          quoteId: quote.id, 
-          supplierIds: [supplierId]
-        }
-      });
+    const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
+      body: { 
+        quote_id: quote.id, 
+        supplier_ids: [supplierId],
+        send_whatsapp: true,
+        send_email: false,
+        send_via: 'direct'
+      }
+    });
       
       if (error) {
         console.error('❌ [RESEND-INVITE] Erro na edge function:', error);

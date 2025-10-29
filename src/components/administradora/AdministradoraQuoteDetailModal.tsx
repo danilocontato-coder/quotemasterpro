@@ -239,8 +239,11 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
     try {
       const { error } = await supabase.functions.invoke('send-quote-to-suppliers', {
         body: { 
-          quoteId: quote?.id, 
-          supplierIds: [supplierId]
+          quote_id: quote?.id, 
+          supplier_ids: [supplierId],
+          send_whatsapp: true,
+          send_email: false,
+          send_via: 'direct'
         }
       });
       
