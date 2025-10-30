@@ -557,6 +557,11 @@ export const AppWithProviders: React.FC = () => {
             <ClientRatings />
           </Suspense>
         } />
+        <Route path="reports" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <ClientReports />
+          </Suspense>
+        } />
         <Route path="users" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <Users />

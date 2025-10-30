@@ -34,6 +34,15 @@ export default function ClientReports() {
   const navigate = useNavigate();
   const { logThrottled } = useOptimizedLogs();
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+
+  // Log de diagnóstico
+  useEffect(() => {
+    console.log('🎯 [ClientReports] Componente montado', {
+      user: user?.id,
+      clientId: user?.clientId,
+      path: window.location.pathname
+    });
+  }, [user?.id, user?.clientId]);
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [dateFilter, setDateFilter] = useState<string>('30');
