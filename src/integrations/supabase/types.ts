@@ -5982,6 +5982,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string[]
       }
+      get_billing_period_start: {
+        Args: { p_client_id: string; p_reference_date?: string }
+        Returns: string
+      }
       get_client_suppliers: {
         Args: never
         Returns: {
