@@ -25,11 +25,14 @@ import { formatQuoteCode } from '@/utils/formatQuoteCode';
 import { useToast } from '@/hooks/use-toast';
 import { ModuleGuard } from '@/components/common/ModuleGuard';
 import { useNavigate } from 'react-router-dom';
+import { useOptimizedLogs } from '@/hooks/useOptimizedLogs';
+import { measure } from '@/utils/systemLogger';
 
 export default function ClientReports() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { logThrottled } = useOptimizedLogs();
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
@@ -43,6 +46,15 @@ export default function ClientReports() {
   const loadQuotes = async () => {
     if (!user?.clientId) return;
     
+    const operationStart = performance.now();
+    
+    logThrottled('REPORTS-LOAD-START', {
+      clientId: user.clientId,
+      dateFilter,
+      statusFilter,
+      timestamp: new Date().toISOString()
+    });
+    
     setLoadingQuotes(true);
     try {
       const dateLimit = new Date();
@@ -54,7 +66,7 @@ export default function ClientReports() {
           id,
           local_code,
           title,
-          total_price,
+          total,
           status,
           created_at,
           deadline,
@@ -75,9 +87,48 @@ export default function ClientReports() {
 
       if (error) throw error;
 
-      setQuotes(data || []);
-    } catch (error) {
+      // Normalizar dados (defensivo para payloads legados)
+      const normalizedData = (data || []).map(q => ({
+        ...q,
+        total: typeof q.total === 'number' ? q.total : 0
+      }));
+
+      setQuotes(normalizedData);
+      
+      const operationDuration = performance.now() - operationStart;
+      
+      const statusDistribution = normalizedData.reduce((acc, q) => {
+        acc[q.status] = (acc[q.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      logThrottled('REPORTS-LOAD-SUCCESS', {
+        clientId: user.clientId,
+        count: normalizedData.length,
+        duration: `${operationDuration.toFixed(0)}ms`,
+        statusDistribution,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (operationDuration > 2000) {
+        console.warn(`⚠️ [PERFORMANCE] loadQuotes took ${operationDuration.toFixed(0)}ms`);
+      }
+    } catch (error: any) {
+      const operationDuration = performance.now() - operationStart;
+      
       console.error('Error loading quotes:', error);
+      logThrottled('REPORTS-LOAD-ERROR', {
+        clientId: user.clientId,
+        error: {
+          message: error?.message,
+          code: error?.code,
+          hint: error?.hint,
+          details: error?.details
+        },
+        duration: `${operationDuration.toFixed(0)}ms`,
+        timestamp: new Date().toISOString()
+      });
+      
       toast({
         title: 'Erro ao carregar cotações',
         description: 'Não foi possível carregar a lista de cotações.',
@@ -109,7 +160,7 @@ export default function ClientReports() {
       code: formatQuoteCode(selectedQuote),
       title: selectedQuote.title,
       clientName: selectedQuote.clients?.name || 'N/A',
-      total: selectedQuote.total_price || 0
+      total: selectedQuote.total || 0
     });
 
     toast({
@@ -128,7 +179,7 @@ export default function ClientReports() {
   });
 
   // Calcular estatísticas
-  const totalSpent = quotes.reduce((sum, q) => sum + (q.total_price || 0), 0);
+  const totalSpent = quotes.reduce((sum, q) => sum + (q.total || 0), 0);
   const approvedQuotes = quotes.filter(q => q.status === 'approved').length;
   const rejectedQuotes = quotes.filter(q => q.status === 'rejected').length;
   const pendingQuotes = quotes.filter(q => ['sent', 'under_review'].includes(q.status)).length;
@@ -338,7 +389,7 @@ export default function ClientReports() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium">
-                              R$ {(quote.total_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              R$ {(quote.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </p>
                           </div>
                         </div>
