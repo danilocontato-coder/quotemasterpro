@@ -420,11 +420,6 @@ export const AppWithProviders: React.FC = () => {
         } />
         <Route path="reports" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <Reports />
-          </Suspense>
-        } />
-        <Route path="reports" element={
-          <Suspense fallback={<LoadingFallback className="p-6" />}>
             <ClientReports />
           </Suspense>
         } />
