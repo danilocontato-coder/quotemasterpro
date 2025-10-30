@@ -6116,6 +6116,10 @@ export type Database = {
       get_user_created_at: { Args: never; Returns: string }
       get_user_enabled_modules: { Args: never; Returns: string[] }
       get_user_role: { Args: never; Returns: string }
+      has_any_role: {
+        Args: { _roles: string[]; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
