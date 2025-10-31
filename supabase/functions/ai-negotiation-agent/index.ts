@@ -644,11 +644,11 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       }
     ];
 
-    // Atualizar negociação para status 'awaiting_approval'
+    // ✅ CORREÇÃO 2: Atualizar negociação para status 'negotiating' (permite webhook capturar resposta)
     const { data: updatedNegotiation, error: updateError } = await sb
       .from('ai_negotiations')
       .update({
-        status: 'awaiting_approval',
+        status: 'negotiating',
         conversation_log: conversationLog,
         updated_at: new Date().toISOString()
       })
@@ -669,7 +669,15 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
       })
       .eq('id', updatedNegotiation.quote_id);
 
-    console.log(`Negociação ${negotiationId} iniciada via WhatsApp. Aguardando resposta do fornecedor.`);
+    // ✅ CORREÇÃO 5: Log detalhado para debug
+    console.log(`✅ Negociação ${negotiationId} iniciada via WhatsApp`, {
+      supplier_name: supplier.name,
+      phone: normalizedPhone,
+      messageId: result.messageId,
+      status: 'negotiating',
+      conversation_log_entries: conversationLog.length,
+      quote_id: updatedNegotiation.quote_id
+    });
 
     return new Response(
       JSON.stringify({ 

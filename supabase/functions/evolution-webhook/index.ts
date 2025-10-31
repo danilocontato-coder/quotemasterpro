@@ -225,18 +225,29 @@ Responda APENAS com JSON válido:
     let negotiatedAmount = activeNegotiation.negotiated_amount;
     let discountPercentage = activeNegotiation.discount_percentage;
 
+    // ✅ CORREÇÃO 6: Validação robusta com interpretação inteligente
     if (parsedResponse) {
+      console.log('🤖 [WEBHOOK] Resposta interpretada:', parsedResponse);
+      
       if (parsedResponse.intent === 'accepted' && parsedResponse.confidence > 70) {
         newStatus = 'pending_approval';
-        negotiatedAmount = activeNegotiation.original_amount; // Aceitou nossa proposta
-        discountPercentage = 0;
+        // Usa o valor negociado pela IA, não o original
+        negotiatedAmount = activeNegotiation.negotiated_amount || activeNegotiation.original_amount;
+        discountPercentage = activeNegotiation.discount_percentage || 0;
       } else if (parsedResponse.intent === 'counter_offer' && parsedResponse.extracted_amount) {
         newStatus = 'pending_approval';
         negotiatedAmount = parsedResponse.extracted_amount;
-        const discount = ((activeNegotiation.original_amount - parsedResponse.extracted_amount) / activeNegotiation.original_amount) * 100;
-        discountPercentage = Math.max(0, discount);
+        const originalAmount = activeNegotiation.original_amount;
+        discountPercentage = ((originalAmount - parsedResponse.extracted_amount) / originalAmount) * 100;
       } else if (parsedResponse.intent === 'rejected' && parsedResponse.confidence > 70) {
         newStatus = 'failed';
+      } else if (parsedResponse.intent === 'question') {
+        // Mantém status 'negotiating' para permitir mais mensagens
+        newStatus = 'negotiating';
+        console.log('📝 [WEBHOOK] Fornecedor fez pergunta, mantendo negociação ativa');
+      } else {
+        // Resposta ambígua, mantém negociando
+        console.log('⚠️ [WEBHOOK] Resposta não clara, mantendo status atual');
       }
     }
 
