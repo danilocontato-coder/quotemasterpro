@@ -70,12 +70,15 @@ export function buildEndpoints(cfg: EvolutionConfig): string[] {
 export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string, text: string) {
   const endpoints = buildEndpoints(cfg)
   
-  // Try different header combinations
+  // ✅ CORREÇÃO 6: Adicionar mais variantes de header
   const headersVariants: Record<string, string>[] = [
     { 'Content-Type': 'application/json', 'apikey': cfg.token },
     { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.token}` },
     { 'Content-Type': 'application/json', 'api-key': cfg.token },
     { 'Content-Type': 'application/json', 'x-api-key': cfg.token },
+    { 'Content-Type': 'application/json', 'x-evolution-token': cfg.token },
+    { 'Content-Type': 'application/json', 'token': cfg.token },
+    { 'Content-Type': 'application/json', 'x-webhook-token': cfg.token },
   ]
   
   // Try different payload formats

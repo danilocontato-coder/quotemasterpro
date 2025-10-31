@@ -39,7 +39,38 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ✅ CORREÇÃO 5: Endpoint GET de teste
+  if (req.method === 'GET') {
+    return new Response(
+      JSON.stringify({
+        status: 'online',
+        timestamp: new Date().toISOString(),
+        config: {
+          hasOpenAI: !!Deno.env.get('OPENAI_API_KEY'),
+          hasEvolutionToken: !!Deno.env.get('EVOLUTION_API_TOKEN'),
+          hasWebhookSecret: !!Deno.env.get('EVOLUTION_WEBHOOK_SECRET'),
+          environment: 'production'
+        }
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
   try {
+    // ✅ CORREÇÃO 1: Log detalhado de headers recebidos
+    console.log('📥 [WEBHOOK] Headers recebidos:', {
+      authorization: req.headers.get('authorization'),
+      apikey: req.headers.get('apikey'),
+      'x-webhook-token': req.headers.get('x-webhook-token'),
+      'x-api-key': req.headers.get('x-api-key'),
+      'content-type': req.headers.get('content-type'),
+      method: req.method,
+      url: req.url
+    });
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const webhookSecret = Deno.env.get('EVOLUTION_WEBHOOK_SECRET');
@@ -47,16 +78,23 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Validar webhook secret se configurado
+    // ✅ CORREÇÃO 2: Validação de webhook secret (opcional, melhorada)
     if (webhookSecret) {
-      const authHeader = req.headers.get('authorization') || req.headers.get('x-webhook-token');
-      if (!authHeader || !authHeader.includes(webhookSecret)) {
-        console.log('⚠️ Unauthorized webhook attempt');
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+      const receivedToken = req.headers.get('x-webhook-token') || 
+                           req.headers.get('authorization')?.replace('Bearer ', '') ||
+                           req.headers.get('apikey');
+      
+      if (receivedToken !== webhookSecret) {
+        console.error('❌ [WEBHOOK] Token inválido recebido');
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Invalid webhook token' }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
+      console.log('✅ [WEBHOOK] Token validado com sucesso');
     }
 
     const payload: WebhookMessage = await req.json();
@@ -333,13 +371,19 @@ Responda APENAS com JSON válido:
 
     console.log('✅ Mensagem processada com sucesso');
 
+    // ✅ CORREÇÃO 3: Adicionar header de autorização na resposta
+    const evolutionToken = Deno.env.get('EVOLUTION_API_TOKEN');
     return new Response(JSON.stringify({ 
       status: 'success',
       negotiation_id: activeNegotiation.id,
       new_status: newStatus,
       parsed: parsedResponse
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        ...(evolutionToken && { 'Authorization': `Bearer ${evolutionToken}` })
+      }
     });
 
   } catch (error) {
