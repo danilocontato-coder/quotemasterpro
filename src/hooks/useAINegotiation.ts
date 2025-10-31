@@ -173,6 +173,12 @@ export function useAINegotiation() {
 
   const startNegotiation = async (negotiationId: string) => {
     try {
+      console.log('🤖 [AI-NEGOTIATION] Iniciando negociação com ID:', negotiationId);
+      
+      if (!negotiationId) {
+        throw new Error('negotiationId é obrigatório para iniciar negociação');
+      }
+      
       const { data, error } = await supabase.functions.invoke('ai-negotiation-agent', {
         body: { action: 'negotiate', negotiationId }
       });

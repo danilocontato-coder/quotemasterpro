@@ -38,8 +38,11 @@ export function AINegotiationCard({
   const IconComponent = config.icon;
 
   const handleStartNegotiation = async () => {
-    if (onStartNegotiation) {
+    if (onStartNegotiation && negotiation.id) {
+      console.log('🔵 [AINegotiationCard] Iniciando negociação com ID:', negotiation.id);
       await onStartNegotiation(negotiation.id);
+    } else if (!negotiation.id) {
+      console.error('❌ [AINegotiationCard] negotiation.id está undefined:', negotiation);
     }
   };
 

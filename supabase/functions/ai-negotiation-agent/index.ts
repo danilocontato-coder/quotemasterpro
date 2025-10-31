@@ -28,8 +28,10 @@ serve(async (req) => {
   }
 
   try {
-    const { action, quoteId, negotiationId } = await req.json();
+    const body = await req.json();
+    const { action, quoteId, negotiationId } = body;
     const sb = createSupabaseClient();
+    console.log('AI Negotiation Agent - Request body:', JSON.stringify(body));
     console.log(`AI Negotiation Agent - Action: ${action}, Quote: ${quoteId}, Negotiation: ${negotiationId}`);
 
     switch (action) {
