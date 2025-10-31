@@ -6092,19 +6092,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      get_quote_timeline:
-        | {
-            Args: { p_quote_id: string }
-            Returns: {
-              error: true
-            } & "Could not choose the best candidate function between: public.get_quote_timeline(p_quote_id => text), public.get_quote_timeline(p_quote_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
-          }
-        | {
-            Args: { p_quote_id: string }
-            Returns: {
-              error: true
-            } & "Could not choose the best candidate function between: public.get_quote_timeline(p_quote_id => text), public.get_quote_timeline(p_quote_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
-          }
+      get_quote_timeline: {
+        Args: { p_quote_id: string }
+        Returns: {
+          event_date: string
+          event_description: string
+          event_id: string
+          event_metadata: Json
+          event_title: string
+          event_type: string
+          user_name: string
+          user_role: string
+        }[]
+      }
       get_supplier_average_rating: {
         Args: { supplier_uuid: string }
         Returns: {
