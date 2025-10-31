@@ -127,7 +127,7 @@ export interface DatabaseTables {
     product_name: string; // For ad-hoc items
     quantity: number;
     unit_price: number;
-    total_price: number;
+    total: number;
     supplier_id: string | null; // References suppliers
     notes: string | null;
     created_at: string;

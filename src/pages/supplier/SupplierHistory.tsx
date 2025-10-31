@@ -67,7 +67,7 @@ export default function SupplierHistory() {
             id,
             local_code,
             title,
-            total_price,
+            total,
             status,
             created_at,
             clients_condos (
@@ -128,7 +128,7 @@ export default function SupplierHistory() {
       code: formatQuoteCode(selectedQuote),
       title: selectedQuote.title,
       clientName: selectedQuote.clients_condos?.name || 'N/A',
-      total: selectedQuote.total_price || 0
+      total: selectedQuote.total || 0
     });
 
     toast({
@@ -391,7 +391,7 @@ export default function SupplierHistory() {
                         </div>
                         <div className="text-right">
                           <p className="font-medium">
-                            R$ {(quote.total_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            R$ {(quote.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         </div>
                       </div>

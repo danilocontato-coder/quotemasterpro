@@ -50,7 +50,7 @@ export default function AdministradoraRelatorios() {
           id,
           local_code,
           title,
-          total_price,
+          total,
           status,
           created_at,
           clients_condos!inner (
@@ -104,7 +104,7 @@ export default function AdministradoraRelatorios() {
       code: formatQuoteCode(selectedQuote),
       title: selectedQuote.title,
       clientName: selectedQuote.clients_condos?.name || 'N/A',
-      total: selectedQuote.total_price || 0
+      total: selectedQuote.total || 0
     });
 
     toast({
@@ -162,7 +162,7 @@ export default function AdministradoraRelatorios() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  R$ {quotes.reduce((sum, q) => sum + (q.total_price || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {quotes.reduce((sum, q) => sum + (q.total || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">em cotações ativas</p>
               </CardContent>
@@ -304,7 +304,7 @@ export default function AdministradoraRelatorios() {
                         </div>
                         <div className="text-right">
                           <p className="font-medium">
-                            R$ {(quote.total_price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            R$ {(quote.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         </div>
                       </div>

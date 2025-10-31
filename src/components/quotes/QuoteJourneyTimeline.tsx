@@ -147,9 +147,9 @@ export function QuoteJourneyTimeline({ events }: QuoteJourneyTimelineProps) {
                     {/* Metadata adicional */}
                     {event.event_metadata && Object.keys(event.event_metadata).length > 1 && (
                       <div className="mt-3 p-3 bg-muted/50 rounded-md text-xs space-y-1">
-                        {event.event_metadata.total_price && (
+                        {event.event_metadata.total && (
                           <div>
-                            <span className="font-medium">Valor:</span> R$ {Number(event.event_metadata.total_price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            <span className="font-medium">Valor:</span> R$ {Number(event.event_metadata.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </div>
                         )}
                         {event.event_metadata.supplier_name && (
