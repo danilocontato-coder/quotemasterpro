@@ -212,10 +212,20 @@ export function AINegotiationCard({
               <Button 
                 size="sm" 
                 onClick={handleStartNegotiation}
-                className="flex-1 bg-green-600 hover:bg-green-700"
+                disabled={!negotiation.id}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Negociar via WhatsApp
+                {!negotiation.id ? (
+                  <>
+                    <Brain className="h-4 w-4 mr-2 animate-pulse" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Negociar via WhatsApp
+                  </>
+                )}
               </Button>
             </>
           )}

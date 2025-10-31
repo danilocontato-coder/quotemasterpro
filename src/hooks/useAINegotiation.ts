@@ -151,12 +151,23 @@ export function useAINegotiation() {
         throw error;
       }
 
+      // ✅ CORREÇÃO 1: Atualizar estado imediatamente com a negociação retornada
+      if (data?.negotiation) {
+        console.log('🤖 [AI-NEGOTIATION] Atualizando estado com negociação:', data.negotiation);
+        setNegotiations(prev => {
+          // Remove qualquer negociação antiga da mesma cotação
+          const filtered = prev.filter(n => n.quote_id !== quoteId);
+          // Adiciona a nova negociação com o ID correto
+          return [...filtered, data.negotiation];
+        });
+      }
+
       toast({
         title: 'Análise Iniciada',
         description: 'A IA está analisando as propostas...',
       });
 
-      // Fetch negotiations after delay to allow database update
+      // Refetch continua como backup para garantir sincronização
       setTimeout(() => fetchNegotiations(), 1000);
       
       return data;

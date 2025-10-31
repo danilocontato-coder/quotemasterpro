@@ -390,8 +390,23 @@ async function startNegotiation(sb: any, negotiationId: string) {
     .single();
 
   if (negotiationError || !negotiation) {
-    console.error('Erro ao buscar negociação:', negotiationError);
-    throw new Error('Negociação não encontrada');
+    console.error('❌ Negociação não encontrada:', {
+      negotiationId,
+      error: negotiationError,
+      negotiationFound: !!negotiation
+    });
+    
+    return new Response(
+      JSON.stringify({ 
+        success: false,
+        error: 'Negociação não encontrada',
+        details: {
+          receivedId: negotiationId,
+          dbError: negotiationError?.message || 'Registro não existe no banco de dados'
+        }
+      }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
 // Buscar cotação relacionada
