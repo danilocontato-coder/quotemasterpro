@@ -2922,6 +2922,135 @@ export type Database = {
         }
         Relationships: []
       }
+      invitation_letter_suppliers: {
+        Row: {
+          created_at: string
+          id: string
+          invitation_letter_id: string
+          response_attachment_url: string | null
+          response_date: string | null
+          response_notes: string | null
+          response_status: Database["public"]["Enums"]["supplier_response_status"]
+          response_token: string | null
+          sent_at: string | null
+          supplier_id: string
+          token_expires_at: string | null
+          updated_at: string
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invitation_letter_id: string
+          response_attachment_url?: string | null
+          response_date?: string | null
+          response_notes?: string | null
+          response_status?: Database["public"]["Enums"]["supplier_response_status"]
+          response_token?: string | null
+          sent_at?: string | null
+          supplier_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invitation_letter_id?: string
+          response_attachment_url?: string | null
+          response_date?: string | null
+          response_notes?: string | null
+          response_status?: Database["public"]["Enums"]["supplier_response_status"]
+          response_token?: string | null
+          sent_at?: string | null
+          supplier_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_letter_suppliers_invitation_letter_id_fkey"
+            columns: ["invitation_letter_id"]
+            isOneToOne: false
+            referencedRelation: "invitation_letters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_letter_suppliers_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitation_letters: {
+        Row: {
+          attachments: Json | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          deadline: string
+          description: string | null
+          id: string
+          letter_number: string | null
+          metadata: Json | null
+          quote_id: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["invitation_letter_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachments?: Json | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          deadline: string
+          description?: string | null
+          id?: string
+          letter_number?: string | null
+          metadata?: Json | null
+          quote_id: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["invitation_letter_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachments?: Json | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string
+          description?: string | null
+          id?: string
+          letter_number?: string | null
+          metadata?: Json | null
+          quote_id?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["invitation_letter_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_letters_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_letters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
@@ -5978,6 +6107,7 @@ export type Database = {
       generate_contract_alerts: { Args: never; Returns: undefined }
       generate_delivery_code: { Args: never; Returns: string }
       generate_friendly_payment_id: { Args: never; Returns: string }
+      generate_letter_number: { Args: { p_client_id: string }; Returns: string }
       get_accessible_client_ids: {
         Args: { p_user_id: string }
         Returns: string[]
@@ -6046,6 +6176,18 @@ export type Database = {
       get_current_user_plan: { Args: never; Returns: Json }
       get_current_user_supplier_id: { Args: never; Returns: string }
       get_default_supplier_plan_id: { Args: never; Returns: string }
+      get_invitation_letter_stats: {
+        Args: { p_letter_id: string }
+        Returns: {
+          accepted_count: number
+          declined_count: number
+          pending_count: number
+          responded_count: number
+          sent_count: number
+          total_suppliers: number
+          viewed_count: number
+        }[]
+      }
       get_or_create_client_usage: {
         Args: { client_uuid: string }
         Returns: {
@@ -6304,9 +6446,15 @@ export type Database = {
         | "collaborator"
       campaign_status: "draft" | "active" | "paused" | "completed" | "cancelled"
       client_type: "direct" | "administradora" | "condominio_vinculado"
+      invitation_letter_status: "draft" | "sent" | "cancelled"
       lead_status: "new" | "contacted" | "qualified" | "converted" | "lost"
       lead_type: "client" | "supplier"
       outreach_channel: "whatsapp" | "email" | "phone" | "linkedin"
+      supplier_response_status:
+        | "pending"
+        | "accepted"
+        | "declined"
+        | "no_interest"
       supplier_status: "pending" | "approved" | "suspended" | "rejected"
       user_status: "active" | "inactive" | "pending" | "suspended"
     }
@@ -6452,9 +6600,16 @@ export const Constants = {
       ],
       campaign_status: ["draft", "active", "paused", "completed", "cancelled"],
       client_type: ["direct", "administradora", "condominio_vinculado"],
+      invitation_letter_status: ["draft", "sent", "cancelled"],
       lead_status: ["new", "contacted", "qualified", "converted", "lost"],
       lead_type: ["client", "supplier"],
       outreach_channel: ["whatsapp", "email", "phone", "linkedin"],
+      supplier_response_status: [
+        "pending",
+        "accepted",
+        "declined",
+        "no_interest",
+      ],
       supplier_status: ["pending", "approved", "suspended", "rejected"],
       user_status: ["active", "inactive", "pending", "suspended"],
     },
