@@ -22,6 +22,7 @@ const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
 const ForgotPasswordPage = React.lazy(() => import('@/pages/auth/ForgotPassword'));
 const ResetPasswordPage = React.lazy(() => import('@/pages/auth/ResetPassword'));
 const Quotes = React.lazy(() => import('@/pages/Quotes'));
+const InvitationLettersList = React.lazy(() => import('@/pages/quotes/InvitationLettersList'));
 const Contracts = React.lazy(() => import('@/pages/Contracts'));
 const ContractDetails = React.lazy(() => import('@/pages/contracts/ContractDetails'));
 const Suppliers = React.lazy(() => import('@/pages/Suppliers'));
@@ -376,6 +377,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="quotes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <Quotes />
+          </Suspense>
+        } />
+        <Route path="invitation-letters" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <InvitationLettersList />
           </Suspense>
         } />
         <Route path="contracts" element={

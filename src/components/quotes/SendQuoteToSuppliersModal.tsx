@@ -15,6 +15,9 @@ import { ShortLinkDisplay } from "@/components/ui/short-link-display";
 import { selectBestSupplier } from "@/lib/supplierDeduplication";
 import { generateQuoteShortLink } from "@/lib/quoteTokens";
 import { getCachedBaseUrl } from "@/utils/systemConfig";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { InvitationLetterModal } from "./InvitationLetterModal";
+import { FileText } from "lucide-react";
 
 interface SendQuoteToSuppliersModalProps {
   quote: any;
@@ -40,6 +43,7 @@ export function SendQuoteToSuppliersModal({
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
   const [sendEmail, setSendEmail] = useState(true);
+  const [sendMode, setSendMode] = useState<'direct' | 'invitation_letter'>('direct');
   const [resolvedWebhookUrl, setResolvedWebhookUrl] = useState<string | null>(null);
   const [evolutionConfigured, setEvolutionConfigured] = useState(false);
   const [generatedShortLinks, setGeneratedShortLinks] = useState<any[]>([]);
@@ -473,6 +477,57 @@ export function SendQuoteToSuppliersModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Seleção de Modalidade de Envio */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Modalidade de Envio</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup value={sendMode} onValueChange={(value: any) => setSendMode(value)}>
+                <div className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-accent transition-colors"
+                     onClick={() => setSendMode('direct')}>
+                  <RadioGroupItem value="direct" id="mode-direct" />
+                  <div className="flex-1">
+                    <Label htmlFor="mode-direct" className="cursor-pointer font-medium">
+                      Envio Direto (WhatsApp/Email)
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Envio imediato via WhatsApp e/ou e-mail com link personalizado
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-accent transition-colors mt-2"
+                     onClick={() => setSendMode('invitation_letter')}>
+                  <RadioGroupItem value="invitation_letter" id="mode-invitation" />
+                  <div className="flex-1">
+                    <Label htmlFor="mode-invitation" className="cursor-pointer font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Carta Convite Formal
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Processo formal com PDF profissional, anexos e prazos
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      <Badge variant="outline" className="text-xs">PDF</Badge>
+                      <Badge variant="outline" className="text-xs">Anexos</Badge>
+                      <Badge variant="outline" className="text-xs">Protocolo</Badge>
+                    </div>
+                  </div>
+                </div>
+              </RadioGroup>
+              
+              {sendMode === 'invitation_letter' && (
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mt-3">
+                  <p className="text-sm text-blue-900">
+                    A Carta Convite permite adicionar descrição detalhada, anexar documentos, 
+                    definir prazos e gerar um PDF profissional.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Quote Summary */}
           <Card>
             <CardHeader className="pb-3">
@@ -773,23 +828,40 @@ export function SendQuoteToSuppliersModal({
             >
               Cancelar
             </Button>
-            <Button
-              onClick={handleSend}
-              disabled={isLoading || selectedSuppliers.length === 0}
-              className="flex items-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  Enviar para {selectedSuppliers.length} Fornecedor{selectedSuppliers.length !== 1 ? 'es' : ''}
-                </>
-              )}
-            </Button>
+            
+            {sendMode === 'invitation_letter' ? (
+              <InvitationLetterModal
+                quote={quote}
+                trigger={
+                  <Button className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Criar Carta Convite
+                  </Button>
+                }
+                onSuccess={() => {
+                  setOpen(false);
+                  refetch();
+                }}
+              />
+            ) : (
+              <Button
+                onClick={handleSend}
+                disabled={isLoading || selectedSuppliers.length === 0}
+                className="flex items-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Enviar para {selectedSuppliers.length} Fornecedor{selectedSuppliers.length !== 1 ? 'es' : ''}
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
