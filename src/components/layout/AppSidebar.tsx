@@ -1,3 +1,4 @@
+import React from "react";
 import { 
   BarChart3, 
   FileText, 
@@ -17,7 +18,9 @@ import {
   HelpCircle,
   FileSignature,
   Truck,
-  Star
+  Star,
+  ChevronDown,
+  ShoppingCart
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -33,6 +36,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 import { useBranding } from '@/contexts/BrandingContext';
 import { useModuleAccess, type ModuleKey } from '@/hooks/useModuleAccess';
@@ -48,11 +56,16 @@ interface NavItem {
 const navigationItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Insights IA", url: "/predictive", icon: Brain },
-  { title: "Cotações", url: "/quotes", icon: FileText, requiredModule: 'quotes' },
   { title: "Contratos", url: "/contracts", icon: FileSignature, requiredModule: 'contracts' },
   { title: "Fornecedores", url: "/suppliers", icon: Users, requiredModule: 'suppliers' },
   { title: "Itens", url: "/products", icon: Package },
   { title: "Minhas Avaliações", url: "/client/ratings", icon: Star },
+];
+
+// Submenu de Cotações
+const quotesItems: NavItem[] = [
+  { title: "Cotações Comuns", url: "/quotes", icon: FileText, requiredModule: 'quotes' },
+  { title: "Cartas Convite", url: "/invitation-letters", icon: Mail, requiredModule: 'quotes' },
 ];
 
 // Módulos AVANÇADOS - aprovações
@@ -95,6 +108,17 @@ export function AppSidebar() {
 
   const isActive = (path: string) => currentPath === path;
   
+  // Estado para controlar o submenu de Cotações
+  const isQuotesActive = currentPath.startsWith('/quotes') || currentPath.startsWith('/invitation-letters');
+  const [quotesOpen, setQuotesOpen] = React.useState(isQuotesActive);
+
+  // Manter submenu aberto quando navegar para rotas relacionadas
+  React.useEffect(() => {
+    if (isQuotesActive && !quotesOpen) {
+      setQuotesOpen(true);
+    }
+  }, [isQuotesActive, quotesOpen]);
+  
   const handleLinkClick = () => {
     if (isMobile) {
       // Force close sidebar on mobile
@@ -117,6 +141,7 @@ export function AppSidebar() {
   };
 
   const filteredNavigationItems = filterMenuItems(navigationItems);
+  const filteredQuotesItems = filterMenuItems(quotesItems);
   const filteredApprovalItems = filterMenuItems(approvalItems);
   const filteredFinancialItems = filterMenuItems(financialItems);
   const filteredSystemItems = filterMenuItems(systemItems);
@@ -147,7 +172,6 @@ export function AppSidebar() {
                       className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
                       onClick={handleLinkClick}
                       data-tour={
-                        item.url === '/quotes' ? 'menu-quotes' :
                         item.url === '/suppliers' ? 'menu-suppliers' :
                         item.url === '/products' ? 'menu-products' :
                         undefined
@@ -159,6 +183,45 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Submenu de Cotações */}
+              {filteredQuotesItems.length > 0 && (
+                <Collapsible open={quotesOpen} onOpenChange={setQuotesOpen}>
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton className="h-10 w-full" data-tour="menu-quotes">
+                        <ShoppingCart className="h-5 w-5" />
+                        {!isCollapsed && (
+                          <>
+                            <span>Cotações</span>
+                            <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${quotesOpen ? 'rotate-180' : ''}`} />
+                          </>
+                        )}
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    {!isCollapsed && (
+                      <CollapsibleContent>
+                        <SidebarMenu className="ml-6 mt-1 space-y-1">
+                          {filteredQuotesItems.map((item) => (
+                            <SidebarMenuItem key={item.title}>
+                              <SidebarMenuButton asChild className="h-9">
+                                <TransitionNavLink 
+                                  to={item.url} 
+                                  className={`nav-item ${isActive(item.url) ? 'active' : ''}`}
+                                  onClick={handleLinkClick}
+                                >
+                                  <item.icon className="h-4 w-4" />
+                                  <span className="text-sm">{item.title}</span>
+                                </TransitionNavLink>
+                              </SidebarMenuButton>
+                            </SidebarMenuItem>
+                          ))}
+                        </SidebarMenu>
+                      </CollapsibleContent>
+                    )}
+                  </SidebarMenuItem>
+                </Collapsible>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
