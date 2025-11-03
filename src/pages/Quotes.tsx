@@ -107,8 +107,7 @@ export default function Quotes() {
       console.log('=== createQuote RETORNOU ===');
       console.log('New quote created:', newQuote);
       if (newQuote) {
-        console.log('=== SUCESSO - MOSTRANDO TOAST ===');
-        toast.success(`Cotação criada com sucesso!`);
+        console.log('=== SUCESSO - cotação criada (notificação via trigger DB) ===');
         setIsCreateModalOpen(false);
         setEditingQuote(null);
         return newQuote;
