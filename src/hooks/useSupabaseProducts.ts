@@ -37,6 +37,7 @@ export const useSupabaseProducts = () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .neq('status', 'inactive')  // Filtrar produtos inativados
         .order('name', { ascending: true });
 
       if (error) {
@@ -98,6 +99,10 @@ export const useSupabaseProducts = () => {
           
           // 🔒 RLS já filtra no nível do banco, apenas adicionar localmente
           const newProduct = payload.new as Product;
+          
+          // Não adicionar produtos inativos
+          if (newProduct.status === 'inactive') return;
+          
           setProducts(prev => {
             const exists = prev.find(p => p.id === newProduct.id);
             if (exists) return prev; // Evita duplicação do real-time
@@ -114,7 +119,15 @@ export const useSupabaseProducts = () => {
         },
         (payload) => {
           console.log('[useSupabaseProducts] 🔄 Real-time UPDATE:', payload.new);
-          setProducts(prev => prev.map(p => p.id === payload.new.id ? payload.new as Product : p));
+          const updatedProduct = payload.new as Product;
+          
+          // Se produto foi inativado, remover da lista
+          if (updatedProduct.status === 'inactive') {
+            setProducts(prev => prev.filter(p => p.id !== updatedProduct.id));
+          } else {
+            // Caso contrário, atualizar normalmente
+            setProducts(prev => prev.map(p => p.id === payload.new.id ? updatedProduct : p));
+          }
         }
       )
       .on(
@@ -264,6 +277,48 @@ export const useSupabaseProducts = () => {
   const deleteProduct = async (id: string, productName: string) => {
     try {
       console.log('Attempting to delete product:', id, productName);
+      
+      // Verificar se o produto está sendo usado em cotações
+      const { data: quoteItems, error: checkError } = await supabase
+        .from('quote_items')
+        .select('id')
+        .eq('product_id', id)
+        .limit(1);
+
+      if (checkError) {
+        console.error('Error checking product usage:', checkError);
+        throw checkError;
+      }
+
+      // Se o produto está sendo usado em cotações, inativar ao invés de deletar
+      if (quoteItems && quoteItems.length > 0) {
+        console.log('Product is in use, marking as inactive instead of deleting');
+        
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ status: 'inactive' })
+          .eq('id', id);
+
+        if (updateError) {
+          console.error('Error inactivating product:', updateError);
+          throw updateError;
+        }
+
+        // Update local state
+        setProducts(prev => prev.map(product => 
+          product.id === id ? { ...product, status: 'inactive' } : product
+        ));
+
+        toast({
+          title: "Produto inativado",
+          description: `O produto "${productName}" está sendo usado em cotações e foi inativado. Ele não aparecerá mais nas listagens, mas o histórico foi preservado.`,
+          variant: "default"
+        });
+
+        return true;
+      }
+
+      // Se não está sendo usado, pode deletar permanentemente
       const { error } = await supabase
         .from('products')
         .delete()
@@ -281,7 +336,7 @@ export const useSupabaseProducts = () => {
       
       toast({
         title: "Produto removido",
-        description: `O produto "${productName}" foi removido com sucesso.`,
+        description: `O produto "${productName}" foi removido permanentemente.`,
       });
       return true;
     } catch (error) {
