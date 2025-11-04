@@ -6182,9 +6182,7 @@ export type Database = {
           accepted_count: number
           declined_count: number
           pending_count: number
-          responded_count: number
-          sent_count: number
-          total_suppliers: number
+          responses_count: number
           viewed_count: number
         }[]
       }

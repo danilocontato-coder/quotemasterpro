@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useOptimizedCache } from '@/hooks/useOptimizedCache';
 
 export interface InvitationLetter {
   id: string;
@@ -26,7 +25,7 @@ export interface InvitationLetterSupplier {
   id: string;
   invitation_letter_id: string;
   supplier_id: string;
-  response_status: 'pending' | 'accepted' | 'declined' | null;
+  response_status: 'pending' | 'accepted' | 'declined' | 'no_interest' | null;
   response_date: string | null;
   response_notes: string | null;
   response_attachment_url: string | null;
@@ -52,27 +51,17 @@ export function useSupabaseInvitationLetters() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { getCachedData, setCachedData } = useOptimizedCache<InvitationLetter[]>('invitation_letters', 5 * 60 * 1000);
-
   // Fetch letters with stats
   const fetchLetters = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Check cache first
-      const cached = getCachedData();
-      if (cached) {
-        setLetters(cached);
-        setIsLoading(false);
-        return;
-      }
-
       // Fetch letters
       const { data: lettersData, error: lettersError } = await supabase
         .from('invitation_letters')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
 
       if (lettersError) throw lettersError;
 
@@ -83,16 +72,18 @@ export function useSupabaseInvitationLetters() {
             p_letter_id: letter.id
           });
 
+          // stats is an array with single element
+          const statsRow = Array.isArray(stats) && stats.length > 0 ? stats[0] : null;
+
           return {
             ...letter,
-            responses_count: stats?.responses_count || 0,
-            viewed_count: stats?.viewed_count || 0
+            responses_count: statsRow?.responses_count || 0,
+            viewed_count: statsRow?.viewed_count || 0
           };
         })
       );
 
       setLetters(lettersWithStats);
-      setCachedData(lettersWithStats);
 
     } catch (err: any) {
       console.error('[useSupabaseInvitationLetters] Error fetching letters:', err);
@@ -103,7 +94,7 @@ export function useSupabaseInvitationLetters() {
     } finally {
       setIsLoading(false);
     }
-  }, [getCachedData, setCachedData]);
+  }, []);
 
   // Create letter
   const createLetter = async (data: CreateLetterData): Promise<string | null> => {
@@ -139,11 +130,23 @@ export function useSupabaseInvitationLetters() {
         );
       }
 
+      // Get client_id from current user
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (!profileData?.client_id) {
+        throw new Error('Cliente não encontrado');
+      }
+
       // Create letter record
       const { data: letterData, error: letterError } = await supabase
         .from('invitation_letters')
         .insert({
           quote_id: data.quote_id,
+          client_id: profileData.client_id,
           title: data.title,
           description: data.description,
           deadline: data.deadline,
