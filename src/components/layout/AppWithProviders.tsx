@@ -22,7 +22,9 @@ const RegisterPage = React.lazy(() => import('@/pages/auth/Register'));
 const ForgotPasswordPage = React.lazy(() => import('@/pages/auth/ForgotPassword'));
 const ResetPasswordPage = React.lazy(() => import('@/pages/auth/ResetPassword'));
 const Quotes = React.lazy(() => import('@/pages/Quotes'));
-const InvitationLettersList = React.lazy(() => import('@/pages/quotes/InvitationLettersList'));
+const InvitationLettersList = React.lazy(() => import('@/pages/InvitationLettersList'));
+const InvitationResponsePublic = React.lazy(() => import('@/pages/InvitationResponsePublic'));
+const InvitationResponseSuccess = React.lazy(() => import('@/pages/InvitationResponseSuccess'));
 const Contracts = React.lazy(() => import('@/pages/Contracts'));
 const ContractDetails = React.lazy(() => import('@/pages/contracts/ContractDetails'));
 const Suppliers = React.lazy(() => import('@/pages/Suppliers'));
@@ -631,6 +633,18 @@ export const AppWithProviders: React.FC = () => {
         } />
       </Route>
 
+      {/* Rotas públicas de resposta a cartas convite */}
+      <Route path="/invitation-response/:token" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <InvitationResponsePublic />
+        </Suspense>
+      } />
+      <Route path="/invitation-response-success" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <InvitationResponseSuccess />
+        </Suspense>
+      } />
+
       {/* Rotas diretas do fornecedor - DEVEM VIR ANTES DAS PROTEGIDAS */}
       <Route path="/supplier/auth/:quoteId/:token" element={<SupplierAuth />} />
       <Route path="/supplier/link-expired" element={
@@ -648,7 +662,7 @@ export const AppWithProviders: React.FC = () => {
           <SupplierRegisterWithToken />
         </Suspense>
       } />
-      <Route path="/supplier/quote/:quoteId/response/:token" element={<SupplierQuoteResponse />} />
+      <Route path="/supplier/quote/:quoteId/:response/:token" element={<SupplierQuoteResponse />} />
       <Route path="/supplier/quick-response/:quoteId/:token" element={<SupplierQuickResponse />} />
       <Route path="/supplier/response-success" element={<SupplierResponseSuccess />} />
 
