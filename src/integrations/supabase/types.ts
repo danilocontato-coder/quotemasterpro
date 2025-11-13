@@ -2993,10 +2993,14 @@ export type Database = {
           created_by: string | null
           deadline: string
           description: string | null
+          direct_emails: string[] | null
+          estimated_budget: number | null
           id: string
+          items_summary: Json | null
           letter_number: string | null
           metadata: Json | null
-          quote_id: string
+          quote_category: string | null
+          quote_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invitation_letter_status"]
           title: string
@@ -3009,10 +3013,14 @@ export type Database = {
           created_by?: string | null
           deadline: string
           description?: string | null
+          direct_emails?: string[] | null
+          estimated_budget?: number | null
           id?: string
+          items_summary?: Json | null
           letter_number?: string | null
           metadata?: Json | null
-          quote_id: string
+          quote_category?: string | null
+          quote_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invitation_letter_status"]
           title: string
@@ -3025,10 +3033,14 @@ export type Database = {
           created_by?: string | null
           deadline?: string
           description?: string | null
+          direct_emails?: string[] | null
+          estimated_budget?: number | null
           id?: string
+          items_summary?: Json | null
           letter_number?: string | null
           metadata?: Json | null
-          quote_id?: string
+          quote_category?: string | null
+          quote_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invitation_letter_status"]
           title?: string

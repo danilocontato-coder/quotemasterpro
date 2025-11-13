@@ -200,9 +200,18 @@ export default function InvitationLettersList() {
                     <CardContent className="p-6">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-3">
+                           <div className="flex items-center gap-3">
                             <h3 className="text-lg font-semibold">{letter.title}</h3>
                             {getStatusBadge(letter.status)}
+                            {letter.quote_id ? (
+                              <Badge variant="outline" className="text-xs">
+                                🔗 Vinculada
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">
+                                📄 Independente
+                              </Badge>
+                            )}
                           </div>
                           <div className="text-sm text-muted-foreground space-y-1">
                             <p><strong>Nº:</strong> {letter.letter_number}</p>

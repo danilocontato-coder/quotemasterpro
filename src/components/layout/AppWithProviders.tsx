@@ -760,6 +760,11 @@ export const AppWithProviders: React.FC = () => {
             <CotacoesPage />
           </Suspense>
         } />
+        <Route path="cartas-convite" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <InvitationLettersList />
+          </Suspense>
+        } />
         <Route path="aprovacoes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <AprovacoesPage />

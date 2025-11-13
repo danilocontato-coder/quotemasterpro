@@ -66,12 +66,10 @@ serve(async (req) => {
       `)
       .eq('invitation_letter_id', letterId);
 
-    if (suppliersError || !suppliers || suppliers.length === 0) {
-      console.error('[send-invitation-letter] No suppliers found:', suppliersError);
-      throw new Error('Nenhum fornecedor encontrado para esta carta');
+    if (suppliersError) {
+      console.error('[send-invitation-letter] Error fetching suppliers:', suppliersError);
+      throw new Error('Erro ao buscar fornecedores');
     }
-
-    console.log('[send-invitation-letter] Found', suppliers.length, 'suppliers');
 
     // Resolve email config
     const emailConfig = await resolveEmailConfig(supabase, letter.client_id);
@@ -85,36 +83,39 @@ serve(async (req) => {
     let sentCount = 0;
     const errors: string[] = [];
 
-    // Send email to each supplier
-    for (const supplierRecord of suppliers) {
-      try {
-        const supplier = supplierRecord.suppliers;
-        if (!supplier) continue;
+    // Send email to registered suppliers
+    if (suppliers && suppliers.length > 0) {
+      console.log('[send-invitation-letter] Found', suppliers.length, 'registered suppliers');
+      
+      for (const supplierRecord of suppliers) {
+        try {
+          const supplier = supplierRecord.suppliers;
+          if (!supplier) continue;
 
-        // Get or generate token
-        let token = supplierRecord.response_token;
-        let tokenExpiresAt = supplierRecord.token_expires_at;
+          // Get or generate token
+          let token = supplierRecord.response_token;
+          let tokenExpiresAt = supplierRecord.token_expires_at;
 
-        if (!token || (isResend && new Date(tokenExpiresAt!) < new Date())) {
-          // Generate new token (valid for 30 days)
-          token = crypto.randomUUID();
-          tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          if (!token || (isResend && new Date(tokenExpiresAt!) < new Date())) {
+            // Generate new token (valid for 30 days)
+            token = crypto.randomUUID();
+            tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-          await supabase
-            .from('invitation_letter_suppliers')
-            .update({
-              response_token: token,
-              token_expires_at: tokenExpiresAt,
-              sent_at: new Date().toISOString()
-            })
-            .eq('id', supplierRecord.id);
-        }
+            await supabase
+              .from('invitation_letter_suppliers')
+              .update({
+                response_token: token,
+                token_expires_at: tokenExpiresAt,
+                sent_at: new Date().toISOString()
+              })
+              .eq('id', supplierRecord.id);
+          }
 
-        // Build response URL
-        const responseUrl = `${appUrl}/invitation-response/${token}`;
+          // Build response URL
+          const responseUrl = `${appUrl}/invitation-response/${token}`;
 
-        // Email template
-        const emailHtml = `
+          // Email template for linked quotes
+          const emailHtml = letter.quote_id ? `
 <!DOCTYPE html>
 <html>
 <head>
@@ -142,6 +143,7 @@ serve(async (req) => {
       <div class="info-box">
         <strong>Carta:</strong> ${letter.letter_number}<br>
         <strong>Cliente:</strong> ${letter.clients?.name || 'N/A'}<br>
+        <strong>RFQ:</strong> ${letter.quotes?.local_code || 'N/A'}<br>
         <strong>Título:</strong> ${letter.title}<br>
         <strong>Prazo de Resposta:</strong> ${new Date(letter.deadline).toLocaleDateString('pt-BR')}
       </div>
@@ -176,27 +178,177 @@ serve(async (req) => {
   </div>
 </body>
 </html>
-        `;
+          ` : `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #003366; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f5f5f5; }
+    .button { display: inline-block; padding: 12px 24px; background: #003366; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+    .info-box { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #003366; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Sondagem de Mercado</h1>
+    </div>
+    <div class="content">
+      <p>Prezado(a) fornecedor <strong>${supplier.name}</strong>,</p>
+      
+      <p>Estamos realizando uma sondagem de mercado e gostaríamos de convidá-lo(a) a participar:</p>
+      
+      <div class="info-box">
+        <strong>Carta:</strong> ${letter.letter_number}<br>
+        <strong>Cliente:</strong> ${letter.clients?.name || 'N/A'}<br>
+        <strong>Categoria:</strong> ${letter.quote_category || 'Geral'}<br>
+        ${letter.estimated_budget ? `<strong>Orçamento Estimado:</strong> R$ ${letter.estimated_budget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br>` : ''}
+        <strong>Título:</strong> ${letter.title}<br>
+        <strong>Prazo de Resposta:</strong> ${new Date(letter.deadline).toLocaleDateString('pt-BR')}
+      </div>
+      
+      <p><strong>Detalhes:</strong></p>
+      <p>${letter.description}</p>
+      
+      ${letter.attachments && letter.attachments.length > 0 ? `
+        <p><strong>Anexos:</strong></p>
+        <ul>
+          ${letter.attachments.map((att: any) => `<li>${att.name}</li>`).join('')}
+        </ul>
+      ` : ''}
+      
+      <p>Para visualizar os detalhes completos e manifestar seu interesse, clique no botão abaixo:</p>
+      
+      <div style="text-align: center;">
+        <a href="${responseUrl}" class="button">Responder Convite</a>
+      </div>
+      
+      <p style="font-size: 12px; color: #666;">
+        Ou copie e cole este link no seu navegador:<br>
+        <a href="${responseUrl}">${responseUrl}</a>
+      </p>
+      
+      <p><strong>Atenção:</strong> Este link é único e pessoal. Não compartilhe com terceiros.</p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático da plataforma Cotiz. Não responda diretamente a este email.</p>
+      <p>© ${new Date().getFullYear()} Cotiz - Plataforma de Gestão de Cotações</p>
+    </div>
+  </div>
+</body>
+</html>
+          `;
 
-        // Send email
-        const emailResult = await sendEmail(emailConfig, {
-          to: supplier.email || supplier.contacts?.email,
-          subject: `Carta Convite de Cotação - ${letter.letter_number}`,
-          html: emailHtml,
-          plainText: `Você foi convidado a participar da cotação ${letter.letter_number}. Acesse: ${responseUrl}`
-        });
+          // Send email
+          const emailResult = await sendEmail(emailConfig, {
+            to: supplier.email || supplier.contacts?.email,
+            subject: letter.quote_id 
+              ? `Carta Convite de Cotação - ${letter.letter_number}`
+              : `Sondagem de Mercado - ${letter.letter_number}`,
+            html: emailHtml,
+            plainText: letter.quote_id
+              ? `Você foi convidado a participar da cotação ${letter.letter_number}. Acesse: ${responseUrl}`
+              : `Você foi convidado a participar de uma sondagem de mercado ${letter.letter_number}. Acesse: ${responseUrl}`
+          });
 
-        if (emailResult.success) {
-          sentCount++;
-          console.log('[send-invitation-letter] Email sent to:', supplier.name);
-        } else {
-          errors.push(`${supplier.name}: ${emailResult.error}`);
-          console.error('[send-invitation-letter] Failed to send to:', supplier.name, emailResult.error);
+          if (emailResult.success) {
+            sentCount++;
+            console.log('[send-invitation-letter] Email sent to:', supplier.name);
+          } else {
+            errors.push(`${supplier.name}: ${emailResult.error}`);
+            console.error('[send-invitation-letter] Failed to send to:', supplier.name, emailResult.error);
+          }
+
+        } catch (err: any) {
+          errors.push(`${supplierRecord.suppliers?.name || 'Unknown'}: ${err.message}`);
+          console.error('[send-invitation-letter] Error sending to supplier:', err);
         }
+      }
+    }
 
-      } catch (err: any) {
-        errors.push(`${supplierRecord.suppliers?.name || 'Unknown'}: ${err.message}`);
-        console.error('[send-invitation-letter] Error sending to supplier:', err);
+    // Send to direct emails (standalone mode)
+    if (letter.direct_emails && letter.direct_emails.length > 0) {
+      console.log('[send-invitation-letter] Found', letter.direct_emails.length, 'direct emails');
+
+      const directEmailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #003366; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f5f5f5; }
+    .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+    .info-box { background: white; padding: 15px; margin: 15px 0; border-left: 4px solid #003366; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Convite para Participar de Processo</h1>
+    </div>
+    <div class="content">
+      <p>Prezado(a) fornecedor,</p>
+      
+      <p>Você foi convidado(a) a participar de um processo de cotação/sondagem:</p>
+      
+      <div class="info-box">
+        <strong>Carta:</strong> ${letter.letter_number}<br>
+        <strong>Cliente:</strong> ${letter.clients?.name || 'N/A'}<br>
+        <strong>Categoria:</strong> ${letter.quote_category || 'Geral'}<br>
+        ${letter.estimated_budget ? `<strong>Orçamento Estimado:</strong> R$ ${letter.estimated_budget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br>` : ''}
+        <strong>Título:</strong> ${letter.title}<br>
+        <strong>Prazo de Resposta:</strong> ${new Date(letter.deadline).toLocaleDateString('pt-BR')}
+      </div>
+      
+      <p><strong>Detalhes:</strong></p>
+      <p>${letter.description}</p>
+      
+      ${letter.attachments && letter.attachments.length > 0 ? `
+        <p><strong>Anexos disponíveis após cadastro:</strong></p>
+        <ul>
+          ${letter.attachments.map((att: any) => `<li>${att.name}</li>`).join('')}
+        </ul>
+      ` : ''}
+      
+      <p>Para participar, por favor entre em contato conosco através deste email ou acesse nossa plataforma.</p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático da plataforma Cotiz.</p>
+      <p>© ${new Date().getFullYear()} Cotiz - Plataforma de Gestão de Cotações</p>
+    </div>
+  </div>
+</body>
+</html>
+      `;
+
+      for (const email of letter.direct_emails) {
+        try {
+          const emailResult = await sendEmail(emailConfig, {
+            to: email,
+            subject: `Convite para Participação - ${letter.letter_number}`,
+            html: directEmailHtml,
+            plainText: `Você foi convidado a participar do processo ${letter.letter_number}. Entre em contato para mais informações.`
+          });
+
+          if (emailResult.success) {
+            sentCount++;
+            console.log('[send-invitation-letter] Direct email sent to:', email);
+          } else {
+            errors.push(`${email}: ${emailResult.error}`);
+            console.error('[send-invitation-letter] Failed to send to:', email, emailResult.error);
+          }
+        } catch (err: any) {
+          errors.push(`${email}: ${err.message}`);
+          console.error('[send-invitation-letter] Error sending to direct email:', err);
+        }
       }
     }
 
@@ -220,7 +372,7 @@ serve(async (req) => {
         details: {
           letter_number: letter.letter_number,
           sent_count: sentCount,
-          total_suppliers: suppliers.length,
+          total_suppliers: (suppliers?.length || 0) + (letter.direct_emails?.length || 0),
           errors: errors.length > 0 ? errors : undefined
         }
       });
@@ -231,7 +383,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         sentCount,
-        totalSuppliers: suppliers.length,
+        totalSuppliers: (suppliers?.length || 0) + (letter.direct_emails?.length || 0),
         errors: errors.length > 0 ? errors : undefined
       }),
       {

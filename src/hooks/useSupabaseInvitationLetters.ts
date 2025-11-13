@@ -6,12 +6,16 @@ export interface InvitationLetter {
   id: string;
   letter_number: string;
   client_id: string;
-  quote_id: string;
+  quote_id: string | null;
   title: string;
   description: string;
   deadline: string;
   status: 'draft' | 'sent' | 'cancelled';
   attachments: any | null;
+  quote_category: string | null;
+  estimated_budget: number | null;
+  items_summary: any | null;
+  direct_emails: string[] | null;
   created_at: string;
   updated_at: string;
   sent_at: string | null;
@@ -37,11 +41,14 @@ export interface InvitationLetterSupplier {
 }
 
 export interface CreateLetterData {
-  quote_id: string;
+  quote_id?: string;
+  quote_category?: string;
+  estimated_budget?: number;
   title: string;
   description: string;
   deadline: string;
   supplier_ids: string[];
+  direct_emails?: string[];
   attachments?: File[];
   send_immediately?: boolean;
 }
@@ -145,8 +152,11 @@ export function useSupabaseInvitationLetters() {
       const { data: letterData, error: letterError } = await supabase
         .from('invitation_letters')
         .insert({
-          quote_id: data.quote_id,
+          quote_id: data.quote_id || null,
           client_id: profileData.client_id,
+          quote_category: data.quote_category || null,
+          estimated_budget: data.estimated_budget || null,
+          direct_emails: data.direct_emails || [],
           title: data.title,
           description: data.description,
           deadline: data.deadline,

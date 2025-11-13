@@ -10,7 +10,8 @@ import {
   Users,
   Settings,
   Package,
-  TrendingUp
+  TrendingUp,
+  Mail
 } from 'lucide-react';
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const menuItems = [
   { title: 'Dashboard', url: '/administradora/dashboard', icon: LayoutDashboard },
   { title: 'Meus Condomínios', url: '/administradora/condominios', icon: Building2 },
   { title: 'Cotações', url: '/administradora/cotacoes', icon: FileText },
+  { title: 'Cartas Convite', url: '/administradora/cartas-convite', icon: Mail },
   { title: 'Aprovações', url: '/administradora/aprovacoes', icon: CheckCircle },
   { title: 'Pagamentos', url: '/administradora/pagamentos', icon: DollarSign },
   { title: 'Fornecedores', url: '/administradora/fornecedores', icon: Users },
