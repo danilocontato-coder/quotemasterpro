@@ -12,12 +12,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useSupabaseInvitationLetters } from '@/hooks/useSupabaseInvitationLetters';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { useSupabaseQuotes } from '@/hooks/useSupabaseQuotes';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
 import { SupplierSelectionWithDocs } from '@/components/suppliers/SupplierSelectionWithDocs';
+import { SupplierEligibilitySummary } from './SupplierEligibilitySummary';
 import { DOCUMENT_TYPES } from '@/hooks/useSupplierDocuments';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useDropzone } from 'react-dropzone';
+import { useLetterEligibilitySummary } from '@/hooks/useLetterEligibilitySummary';
+import { exportEligibilityReport } from '@/utils/exportEligibilityReport';
+import { useLetterDocuments } from '@/hooks/useLetterDocuments';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CreateInvitationLetterModalProps {
   open: boolean;
@@ -81,6 +86,202 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
         return [...prev, { type: docType, label: DOCUMENT_TYPES[docType], mandatory: true }];
       }
     });
+  };
+
+  // Mapeamento de documentos por categoria
+  const DOCUMENTS_BY_CATEGORY: Record<string, string[]> = {
+    reforma: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro', 'certidao_inss', 'certidao_fgts'],
+    construcao: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro', 'certidao_inss', 'certidao_fgts', 'certificado_iso'],
+    ampliacao: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro', 'certidao_inss'],
+    instalacao_eletrica: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro', 'certificado_iso'],
+    instalacao_hidraulica: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro'],
+    pintura: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro'],
+    esquadrias: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro'],
+    alvenaria: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro', 'certidao_inss'],
+    impermeabilizacao: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'apolice_seguro'],
+    limpeza: ['cnpj', 'certidao_regularidade_fiscal', 'alvara'],
+    seguranca: ['cnpj', 'certidao_regularidade_fiscal', 'alvara', 'certidao_trabalhista'],
+    manutencao: ['cnpj', 'certidao_regularidade_fiscal', 'alvara'],
+  };
+
+  // Auto-sugestão de documentos ao mudar categoria
+  useEffect(() => {
+    if (category && DOCUMENTS_BY_CATEGORY[category]) {
+      const suggestedDocs = DOCUMENTS_BY_CATEGORY[category].map(docType => ({
+        type: docType,
+        label: DOCUMENT_TYPES[docType as keyof typeof DOCUMENT_TYPES],
+        mandatory: true
+      }));
+      setRequiredDocuments(suggestedDocs);
+      toast.success(`✅ ${suggestedDocs.length} documentos sugeridos para esta categoria`);
+    }
+  }, [category]);
+
+  // Calcular elegibilidade ao selecionar fornecedores
+  const [eligibilitySummary, setEligibilitySummary] = useState({
+    total: 0,
+    eligible: 0,
+    pending: 0,
+    ineligible: 0,
+    notChecked: 0
+  });
+  const [calculatingEligibility, setCalculatingEligibility] = useState(false);
+
+  useEffect(() => {
+    const calculateEligibility = async () => {
+      if (selectedSuppliers.length === 0 || requiredDocuments.length === 0) {
+        setEligibilitySummary({
+          total: 0,
+          eligible: 0,
+          pending: 0,
+          ineligible: 0,
+          notChecked: 0
+        });
+        return;
+      }
+
+      setCalculatingEligibility(true);
+      try {
+        const results = await Promise.all(
+          selectedSuppliers.map(async (supplierId) => {
+            try {
+              const { data, error } = await supabase.rpc(
+                'get_supplier_eligibility_for_letter' as any,
+                {
+                  p_supplier_id: supplierId,
+                  p_client_id: user?.clientId,
+                  p_required_docs: requiredDocuments
+                }
+              );
+
+              if (error) {
+                console.error('Error calculating eligibility:', error);
+                return 'not_checked';
+              }
+
+              return (data as any)?.status || 'not_checked';
+            } catch (err) {
+              console.error('Error:', err);
+              return 'not_checked';
+            }
+          })
+        );
+
+        const eligible = results.filter(s => s === 'eligible').length;
+        const pending = results.filter(s => s === 'pending').length;
+        const ineligible = results.filter(s => s === 'ineligible').length;
+        const notChecked = results.filter(s => s === 'not_checked').length;
+
+        setEligibilitySummary({
+          total: selectedSuppliers.length,
+          eligible,
+          pending,
+          ineligible,
+          notChecked
+        });
+      } catch (error) {
+        console.error('Error calculating eligibility:', error);
+      } finally {
+        setCalculatingEligibility(false);
+      }
+    };
+
+    calculateEligibility();
+  }, [selectedSuppliers, requiredDocuments, user?.clientId]);
+
+  // Função para exportar relatório de elegibilidade
+  const handleExportReport = async () => {
+    if (selectedSuppliers.length === 0 || requiredDocuments.length === 0) {
+      toast.error('Selecione fornecedores e documentos obrigatórios primeiro');
+      return;
+    }
+
+    toast.info('Gerando relatório...');
+    
+    try {
+      // Coletar dados completos de cada fornecedor
+      const suppliersData = await Promise.all(
+        selectedSuppliers.map(async (supplierId) => {
+          const supplier = suppliers.find(s => s.id === supplierId);
+          
+          try {
+            const { data, error } = await supabase.rpc(
+              'get_supplier_eligibility_for_letter' as any,
+              {
+                p_supplier_id: supplierId,
+                p_client_id: user?.clientId,
+                p_required_docs: requiredDocuments
+              }
+            );
+
+            if (error) {
+              console.error('Error calculating eligibility:', error);
+              return null;
+            }
+
+            const eligibilityData = data as any;
+            
+            return {
+              supplierId,
+              supplierName: supplier?.name || 'Fornecedor Desconhecido',
+              status: eligibilityData.status,
+              reason: eligibilityData.reason,
+              score: eligibilityData.score,
+              documents: eligibilityData.documents || [],
+              missingDocs: eligibilityData.missing_docs || [],
+              pendingDocs: eligibilityData.pending_docs || [],
+              expiredDocs: eligibilityData.expired_docs || [],
+              rejectedDocs: eligibilityData.rejected_docs || [],
+            };
+          } catch (err) {
+            console.error('Error:', err);
+            return null;
+          }
+        })
+      );
+
+      const validSuppliersData = suppliersData.filter(s => s !== null);
+
+      if (validSuppliersData.length === 0) {
+        toast.error('Não foi possível coletar dados dos fornecedores');
+        return;
+      }
+
+      // Mapear categoria para label
+      const categoryLabels: Record<string, string> = {
+        reforma: '🏗️ Reforma Predial',
+        ampliacao: '🏢 Ampliação/Expansão',
+        construcao: '🏗️ Nova Construção',
+        instalacao_eletrica: '⚡ Instalações Elétricas',
+        instalacao_hidraulica: '💧 Instalações Hidráulicas',
+        pintura: '🎨 Pintura e Acabamento',
+        esquadrias: '🪟 Esquadrias e Vidros',
+        alvenaria: '🧱 Alvenaria e Estrutura',
+        impermeabilizacao: '🏠 Impermeabilização',
+        manutencao: '🔧 Manutenção Predial',
+        limpeza: '🧹 Materiais de Limpeza',
+        seguranca: '🔐 Segurança',
+        jardinagem: '🌳 Jardinagem',
+        elevadores: '🛗 Elevadores',
+        piscina: '🏊 Piscina e Área de Lazer',
+        portaria: '🚪 Portaria e Recepção',
+        outros: '📋 Outros',
+      };
+
+      await exportEligibilityReport({
+        letterNumber: 'RASCUNHO',
+        letterTitle: title || 'Carta Convite (em criação)',
+        category: category ? categoryLabels[category] : undefined,
+        deadline: deadline || undefined,
+        requiredDocuments,
+        suppliers: validSuppliersData as any,
+      });
+
+      toast.success('Relatório exportado com sucesso!');
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      toast.error('Erro ao exportar relatório');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -215,14 +416,32 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
                     <SelectValue placeholder="Selecione a categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="manutencao">Manutenção Predial</SelectItem>
-                    <SelectItem value="limpeza">Materiais de Limpeza</SelectItem>
-                    <SelectItem value="seguranca">Segurança</SelectItem>
-                    <SelectItem value="jardinagem">Jardinagem</SelectItem>
-                    <SelectItem value="elevadores">Elevadores</SelectItem>
-                    <SelectItem value="piscina">Piscina e Área de Lazer</SelectItem>
-                    <SelectItem value="portaria">Portaria e Recepção</SelectItem>
-                    <SelectItem value="outros">Outros</SelectItem>
+                    <SelectGroup>
+                      <SelectLabel className="text-primary font-semibold">🏗️ Obras e Projetos</SelectLabel>
+                      <SelectItem value="reforma">🏗️ Reforma Predial</SelectItem>
+                      <SelectItem value="ampliacao">🏢 Ampliação/Expansão</SelectItem>
+                      <SelectItem value="construcao">🏗️ Nova Construção</SelectItem>
+                      <SelectItem value="instalacao_eletrica">⚡ Instalações Elétricas</SelectItem>
+                      <SelectItem value="instalacao_hidraulica">💧 Instalações Hidráulicas</SelectItem>
+                      <SelectItem value="pintura">🎨 Pintura e Acabamento</SelectItem>
+                      <SelectItem value="esquadrias">🪟 Esquadrias e Vidros</SelectItem>
+                      <SelectItem value="alvenaria">🧱 Alvenaria e Estrutura</SelectItem>
+                      <SelectItem value="impermeabilizacao">🏠 Impermeabilização</SelectItem>
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel className="text-primary font-semibold">🔧 Operacional</SelectLabel>
+                      <SelectItem value="manutencao">🔧 Manutenção Predial</SelectItem>
+                      <SelectItem value="limpeza">🧹 Materiais de Limpeza</SelectItem>
+                      <SelectItem value="seguranca">🔐 Segurança</SelectItem>
+                      <SelectItem value="jardinagem">🌳 Jardinagem</SelectItem>
+                      <SelectItem value="elevadores">🛗 Elevadores</SelectItem>
+                      <SelectItem value="piscina">🏊 Piscina e Área de Lazer</SelectItem>
+                      <SelectItem value="portaria">🚪 Portaria e Recepção</SelectItem>
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel className="text-primary font-semibold">📋 Outros</SelectLabel>
+                      <SelectItem value="outros">📋 Outros</SelectItem>
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
@@ -281,8 +500,10 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
 
           {/* Documentos Obrigatórios */}
           <div className="space-y-2">
-            <Label>Documentos Obrigatórios (opcional)</Label>
-            <p className="text-sm text-muted-foreground">Exigir documentos específicos dos fornecedores</p>
+            <Label>Documentos Obrigatórios</Label>
+            <p className="text-sm text-muted-foreground">
+              {category ? '✨ Documentos sugeridos para a categoria selecionada. Você pode ajustá-los.' : 'Exigir documentos específicos dos fornecedores'}
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(DOCUMENT_TYPES).map(([key, label]) => (
                 <div key={key} className="flex items-center space-x-2">
@@ -296,6 +517,35 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
               ))}
             </div>
           </div>
+
+          {/* Dashboard de Elegibilidade */}
+          {selectedSuppliers.length > 0 && requiredDocuments.length > 0 && (
+            <SupplierEligibilitySummary
+              total={eligibilitySummary.total}
+              eligible={eligibilitySummary.eligible}
+              pending={eligibilitySummary.pending}
+              ineligible={eligibilitySummary.ineligible}
+              notChecked={eligibilitySummary.notChecked}
+              isLoading={calculatingEligibility}
+              onExportReport={handleExportReport}
+              onFilterEligible={() => {
+                // Filtrar apenas fornecedores elegíveis
+                const eligibleSupplierIds = selectedSuppliers.filter(async (supplierId) => {
+                  const { data } = await supabase.rpc(
+                    'get_supplier_eligibility_for_letter' as any,
+                    {
+                      p_supplier_id: supplierId,
+                      p_client_id: user?.clientId,
+                      p_required_docs: requiredDocuments
+                    }
+                  );
+                  return (data as any)?.status === 'eligible';
+                });
+                
+                toast.success(`Filtrado para ${eligibilitySummary.eligible} fornecedor(es) elegível(is)`);
+              }}
+            />
+          )}
 
           {/* Fornecedores */}
           <div className="space-y-2">
