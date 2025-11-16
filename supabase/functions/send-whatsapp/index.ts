@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { resolveEvolutionConfig, sendEvolutionWhatsApp, normalizePhone } from '../_shared/evolution.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,7 +9,14 @@ const corsHeaders = {
 
 interface WhatsAppRequest {
   to: string;
-  message: string;
+  message?: string;
+  template?: 'delivery_code';
+  template_data?: {
+    client_name?: string;
+    confirmation_code?: string;
+    delivery_id?: string;
+    quote_id?: string;
+  };
 }
 
 serve(async (req) => {
@@ -17,61 +26,109 @@ serve(async (req) => {
   }
 
   try {
-    const { to, message }: WhatsAppRequest = await req.json();
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-    console.log('[send-whatsapp] Enviando mensagem para:', to);
+    const { to, message, template, template_data }: WhatsAppRequest = await req.json();
 
-    // Validar número de telefone
-    const cleanNumber = to.replace(/\D/g, '');
-    if (cleanNumber.length < 10 || cleanNumber.length > 13) {
+    console.log('[send-whatsapp] Request:', { to, hasMessage: !!message, template });
+
+    // Normalizar telefone
+    const normalizedPhone = normalizePhone(to);
+    
+    if (!normalizedPhone || normalizedPhone.length < 10) {
       throw new Error('Número de telefone inválido');
     }
 
-    // Aqui você pode integrar com Twilio, WhatsApp Business API, ou outro provedor
-    // Por enquanto, vamos apenas logar e retornar sucesso
+    // Resolver configuração Evolution API
+    const config = await resolveEvolutionConfig(supabase, null, true);
     
-    // Exemplo com Twilio (descomente quando tiver as credenciais):
-    /*
-    const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const twilioWhatsAppNumber = Deno.env.get('TWILIO_WHATSAPP_NUMBER');
-
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
-    
-    const formData = new URLSearchParams();
-    formData.append('From', `whatsapp:${twilioWhatsAppNumber}`);
-    formData.append('To', `whatsapp:+${cleanNumber}`);
-    formData.append('Body', message);
-
-    const twilioResponse = await fetch(twilioUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData,
-    });
-
-    const twilioData = await twilioResponse.json();
-    
-    if (!twilioResponse.ok) {
-      console.error('[send-whatsapp] Erro Twilio:', twilioData);
-      throw new Error(twilioData.message || 'Erro ao enviar via Twilio');
+    if (!config || !config.apiUrl || !config.token) {
+      console.error('Evolution API not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'WhatsApp not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log('[send-whatsapp] ✅ Mensagem enviada com sucesso:', twilioData.sid);
-    */
+    // Construir mensagem baseada no template ou usar mensagem direta
+    let finalMessage = message || '';
 
-    // Log simulado (remover quando integrar com provedor real)
-    console.log('[send-whatsapp] 📱 Simulação - Mensagem enviada para:', cleanNumber);
-    console.log('[send-whatsapp] 💬 Conteúdo:', message);
+    if (template === 'delivery_code' && template_data) {
+      // Template de código de entrega
+      finalMessage = `🚚 *Entrega Agendada - Cotiz*
+
+Olá ${template_data.client_name || 'Cliente'}!
+
+Sua entrega foi agendada. Para confirmar o recebimento dos produtos/serviços, use o código abaixo:
+
+🔐 *Código de Confirmação:* ${template_data.confirmation_code}
+
+⚠️ *Importante:*
+• Validade: 7 dias
+• Confirme apenas após receber tudo
+• O pagamento será liberado automaticamente
+
+📲 Acesse: ${Deno.env.get('SUPABASE_URL')?.replace('https://', '').replace('.supabase.co', '')}.lovable.app/client/deliveries
+
+Dúvidas? Fale conosco!`;
+
+      // Registrar no audit log
+      if (template_data.delivery_id) {
+        await supabase.from('audit_logs').insert({
+          action: 'DELIVERY_CODE_WHATSAPP_SENT',
+          entity_type: 'deliveries',
+          entity_id: template_data.delivery_id,
+          panel_type: 'system',
+          details: {
+            phone: normalizedPhone,
+            confirmation_code: template_data.confirmation_code,
+            quote_id: template_data.quote_id
+          }
+        });
+      }
+    }
+
+    if (!finalMessage) {
+      throw new Error('Mensagem não fornecida');
+    }
+
+    // Enviar via Evolution API
+    const result = await sendEvolutionWhatsApp(config, normalizedPhone, finalMessage);
+
+    if (!result.success) {
+      console.error('Failed to send WhatsApp:', result.error);
+      
+      // Registrar falha se for template de delivery
+      if (template === 'delivery_code' && template_data?.delivery_id) {
+        await supabase.from('audit_logs').insert({
+          action: 'DELIVERY_CODE_WHATSAPP_FAILED',
+          entity_type: 'deliveries',
+          entity_id: template_data.delivery_id,
+          panel_type: 'system',
+          details: {
+            phone: normalizedPhone,
+            error: result.error,
+            quote_id: template_data.quote_id
+          }
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: false, error: result.error }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[send-whatsapp] ✅ Message sent successfully');
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'WhatsApp enviado com sucesso',
-        to: cleanNumber,
-        simulated: true, // Remover quando integrar com provedor real
+        to: normalizedPhone
       }),
       {
         status: 200,

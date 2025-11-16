@@ -1,8 +1,5 @@
 project_id = "bpsqyaxdhqejozmlejcb"
 
-[functions.send-delivery-code-whatsapp]
-verify_jwt = false
-
 [functions.send-delivery-code-email]
 verify_jwt = false
 
@@ -130,9 +127,6 @@ verify_jwt = true
 [functions.generate-email-content]
 verify_jwt = true
 
-[functions.send-email-campaign]
-verify_jwt = false
-
 [functions.track-email-events]
 verify_jwt = false
 
@@ -160,16 +154,7 @@ verify_jwt = true
 [functions.ai-predictive-insights]
 verify_jwt = true
 
-[functions.ai-quote-generator-administradora]
-verify_jwt = true
-
 [functions.create-condominio-user]
-verify_jwt = true
-
-[functions.decrypt-temp-password]
-verify_jwt = true
-
-[functions.reset-client-data]
 verify_jwt = true
 
 [functions.send-invitation-letter]
