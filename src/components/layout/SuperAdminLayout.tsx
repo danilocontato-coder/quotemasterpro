@@ -26,10 +26,18 @@ export const SuperAdminLayout = () => {
           <SuperAdminSidebar />
           
           <div className="flex-1 flex flex-col">
-            {/* Top Header */}
-            <header className="h-14 md:h-16 border-b border-border bg-card flex items-center justify-between px-3 md:px-6">
+            {/* Top Header - Mobile Optimized */}
+            <header className="h-14 md:h-16 border-b border-border bg-card flex items-center justify-between px-3 md:px-6 sticky top-0 z-50">
               <div className="flex items-center gap-2 md:gap-4">
-                <SidebarTrigger />
+                <SidebarTrigger className="lg:hidden" />
+                
+                {/* Título do painel em mobile */}
+                <div className="flex items-center gap-2 lg:hidden">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-sm">SuperAdmin</span>
+                </div>
+                
+                {/* Busca - Desktop only */}
                 <div className="relative hidden lg:block">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
@@ -44,12 +52,9 @@ export const SuperAdminLayout = () => {
                 </div>
               </div>
 
-              {/* Right side actions */}
-              <div className="flex items-center gap-2 md:gap-3">
-                {/* Notifications */}
+              {/* Right side actions - Compacto em mobile */}
+              <div className="flex items-center gap-1 md:gap-3">
                 <RoleBasedNotificationDropdown />
-                
-                {/* User Menu */}
                 <UserDropdown />
               </div>
             </header>
@@ -61,21 +66,20 @@ export const SuperAdminLayout = () => {
               </div>
             </main>
             
-            {/* Footer - Hidden on mobile */}
-            <footer className="hidden md:flex h-12 bg-card border-t items-center justify-between px-6 text-sm text-muted-foreground flex-shrink-0">
-              <div className="flex items-center gap-4">
-                <span className="hidden lg:inline">© 2024 {settings.companyName} - SuperAdmin Panel</span>
+            {/* Footer - Versão compacta em mobile */}
+            <footer className="flex h-10 md:h-12 bg-card border-t items-center justify-between px-3 md:px-6 text-xs md:text-sm text-muted-foreground flex-shrink-0">
+              <div className="flex items-center gap-2 md:gap-4">
+                <span className="hidden sm:inline">© 2024 {settings.companyName}</span>
+                <span className="sm:hidden">© 2024</span>
                 <Badge variant="outline" className="text-xs">
-                  <Shield className="h-3 w-3 mr-1" />
-                  Ambiente Seguro
+                  <Shield className="h-2 w-2 md:h-3 md:w-3 mr-1" />
+                  <span className="hidden sm:inline">Seguro</span>
+                  <span className="sm:hidden">🔒</span>
                 </Badge>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="hidden xl:inline">Última atualização: Hoje às 15:30</span>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Online</span>
-                </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Online</span>
               </div>
             </footer>
           </div>

@@ -132,30 +132,41 @@ export const SuperAdminDashboard = () => {
 
   return (
     <div className="w-full h-full bg-background">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary via-primary/90 to-primary/70 px-6 py-8 border-b">
+      {/* Hero Header - Mobile Optimized */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary via-primary/90 to-primary/70 px-4 md:px-6 py-6 md:py-8 border-b">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />
-        <div className="relative flex items-center justify-between">
+        <div className="relative space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">SuperAdmin Dashboard</h1>
-            <p className="text-white/80">Controle total e insights estratégicos da plataforma</p>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-1 md:mb-2">
+              SuperAdmin Dashboard
+            </h1>
+            <p className="text-sm md:text-base text-white/80">
+              Controle total e insights estratégicos da plataforma
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="bg-white/20 text-white border-white/30 backdrop-blur">
+          
+          {/* Ações em coluna no mobile, linha no desktop */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 md:gap-3">
+            <Badge variant="outline" className="bg-white/20 text-white border-white/30 backdrop-blur text-xs md:text-sm">
               <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
               Sistema Online
             </Badge>
-            <Button variant="outline" size="sm" className="bg-white/10 text-white border-white/30 hover:bg-white/20" onClick={() => navigate('/admin/audit')}>
-              <Shield className="h-4 w-4 mr-2" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-white/10 text-white border-white/30 hover:bg-white/20 w-full sm:w-auto text-xs md:text-sm" 
+              onClick={() => navigate('/admin/audit')}
+            >
+              <Shield className="h-3 w-3 md:h-4 md:w-4 mr-2" />
               Auditoria
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-6 overflow-auto">
+      <div className="p-3 md:p-4 lg:p-6 space-y-4 md:space-y-6 overflow-auto">
         {/* Métricas Principais - KPIs Estratégicos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6 animate-fade-in">
           <MetricCard
             title="Usuários Ativos"
             value={isLoading ? "..." : metrics.totalUsers.toLocaleString()}
@@ -191,11 +202,11 @@ export const SuperAdminDashboard = () => {
         </div>
 
         {/* Gráficos Principais */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           {analyticsLoading ? (
             <>
-              <Skeleton className="h-96" />
-              <Skeleton className="h-96" />
+              <Skeleton className="h-64 md:h-80 lg:h-96" />
+              <Skeleton className="h-64 md:h-80 lg:h-96" />
             </>
           ) : (
             <>
@@ -205,22 +216,24 @@ export const SuperAdminDashboard = () => {
           )}
         </div>
 
-        {/* Mapa Geográfico + Funil de Conversão */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <GeographicDistributionMap />
+        {/* Mapa Geográfico + Funil de Conversão - 1 coluna em mobile */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 md:gap-4 lg:gap-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <div className="xl:col-span-2">
+            <GeographicDistributionMap />
+          </div>
           {analyticsLoading ? (
-            <Skeleton className="h-96" />
+            <Skeleton className="h-64 md:h-80 lg:h-96" />
           ) : (
             <ConversionFunnelChart data={conversionFunnel} />
           )}
         </div>
 
         {/* Top Clientes + Heatmap de Atividade */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 animate-fade-in" style={{ animationDelay: '0.3s' }}>
           {analyticsLoading ? (
             <>
-              <Skeleton className="h-96" />
-              <Skeleton className="h-96" />
+              <Skeleton className="h-64 md:h-80 lg:h-96" />
+              <Skeleton className="h-64 md:h-80 lg:h-96" />
             </>
           ) : (
             <>
@@ -320,17 +333,24 @@ export const SuperAdminDashboard = () => {
         </Card>
 
         {/* Tabs com Informações Detalhadas */}
-        <Tabs defaultValue="overview" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="accounts">Contas</TabsTrigger>
-            <TabsTrigger value="system">Sistema</TabsTrigger>
-            <TabsTrigger value="integrations">Integrações</TabsTrigger>
-            <TabsTrigger value="analytics" className="hidden lg:block">Analytics</TabsTrigger>
+        <Tabs defaultValue="overview" className="space-y-4 md:space-y-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">
+              <span className="hidden sm:inline">Visão Geral</span>
+              <span className="sm:hidden">Geral</span>
+            </TabsTrigger>
+            <TabsTrigger value="accounts" className="text-xs sm:text-sm">Contas</TabsTrigger>
+            <TabsTrigger value="system" className="text-xs sm:text-sm">Sistema</TabsTrigger>
+            <TabsTrigger value="integrations" className="text-xs sm:text-sm hidden sm:block">
+              Integrações
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="text-xs sm:text-sm hidden lg:block">
+              Analytics
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="overview" className="space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               {/* Atividades Recentes */}
               <PaginatedActivities
                 activities={activities}
@@ -341,14 +361,16 @@ export const SuperAdminDashboard = () => {
 
               {/* Status do Sistema */}
               <Card className="overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-muted/50 to-transparent border-b">
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
+                <CardHeader className="bg-gradient-to-r from-muted/50 to-transparent border-b p-4 md:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                    <Shield className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                     Status do Sistema
                   </CardTitle>
-                  <CardDescription>Monitoramento em tempo real</CardDescription>
+                  <CardDescription className="text-xs md:text-sm">
+                    Monitoramento em tempo real
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-6">
+                <CardContent className="space-y-2 md:space-y-3 pt-4 md:pt-6">
                   {isLoading ? (
                     <div className="text-center py-4">
                       <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
@@ -403,13 +425,13 @@ export const SuperAdminDashboard = () => {
 
               <Card className="border-primary/20 overflow-hidden">
                 <div className="h-2 bg-gradient-to-r from-orange-500 to-red-500" />
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Truck className="h-5 w-5 text-orange-600" />
+                <CardHeader className="pb-3 p-4 md:p-6">
+                  <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                    <Truck className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
                     Fornecedores
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 md:p-6 pt-0">
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
                       <span className="text-sm text-muted-foreground">Ativos</span>
@@ -429,13 +451,13 @@ export const SuperAdminDashboard = () => {
 
               <Card className="border-primary/20 overflow-hidden">
                 <div className="h-2 bg-gradient-to-r from-green-500 to-emerald-600" />
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-green-600" />
+                <CardHeader className="pb-3 p-4 md:p-6">
+                  <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
                     Financeiro
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 md:p-6 pt-0">
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-2 rounded-lg hover:bg-muted/50 transition-colors">
                       <span className="text-sm text-muted-foreground">Receita Total</span>
@@ -455,51 +477,51 @@ export const SuperAdminDashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="accounts">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <TabsContent value="accounts" className="space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/accounts')}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
+                <CardHeader className="p-4 md:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                    <Users className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                     Usuários
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">{metrics.totalUsers}</p>
-                  <p className="text-sm text-muted-foreground mt-2">Gerenciar todos os usuários</p>
+                <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
+                  <p className="text-2xl md:text-3xl font-bold">{metrics.totalUsers}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground mt-2">Gerenciar todos os usuários</p>
                 </CardContent>
               </Card>
 
               <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/clients')}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5 text-blue-600" />
+                <CardHeader className="p-4 md:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                    <Building2 className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
                     Clientes
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">{metrics.totalClients}</p>
-                  <p className="text-sm text-muted-foreground mt-2">Gerenciar clientes e condomínios</p>
+                <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
+                  <p className="text-2xl md:text-3xl font-bold">{metrics.totalClients}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground mt-2">Gerenciar clientes e condomínios</p>
                 </CardContent>
               </Card>
 
               <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/admin/suppliers')}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Truck className="h-5 w-5 text-orange-600" />
+                <CardHeader className="p-4 md:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                    <Truck className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
                     Fornecedores
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">{metrics.totalSuppliers}</p>
-                  <p className="text-sm text-muted-foreground mt-2">Gerenciar fornecedores</p>
+                <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
+                  <p className="text-2xl md:text-3xl font-bold">{metrics.totalSuppliers}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground mt-2">Gerenciar fornecedores</p>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          <TabsContent value="system">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <TabsContent value="system" className="space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -552,8 +574,8 @@ export const SuperAdminDashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="integrations">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <TabsContent value="integrations" className="space-y-4 md:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <Card className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -600,16 +622,18 @@ export const SuperAdminDashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="analytics">
+          <TabsContent value="analytics" className="space-y-4 md:space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
+              <CardHeader className="p-4 md:p-6">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                   Analytics Avançado
                 </CardTitle>
-                <CardDescription>Relatórios e métricas detalhadas</CardDescription>
+                <CardDescription className="text-xs md:text-sm">
+                  Relatórios e métricas detalhadas
+                </CardDescription>
               </CardHeader>
-              <CardContent className="text-center py-8">
+              <CardContent className="text-center py-6 md:py-8 px-4 md:px-6">
                 <Activity className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Analytics Completo</h3>
                 <p className="text-muted-foreground mb-4">
