@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProviderV2 } from '@/contexts/AuthContextV2';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
@@ -48,12 +49,17 @@ function App() {
   // ✅ Checar atualizações automaticamente
   useVersionChecker();
   
+  // 🚀 Feature Flag: Permite alternar entre AuthContext (atual) e AuthContextV2 (novo modular)
+  // Configure VITE_USE_AUTH_V2=true no .env para usar a nova versão
+  const USE_AUTH_V2 = import.meta.env.VITE_USE_AUTH_V2 === 'true';
+  const AuthProviderComponent = USE_AUTH_V2 ? AuthProviderV2 : AuthProvider;
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <BrandingProvider>
-            <AuthProvider>
+            <AuthProviderComponent>
               <ThemeSyncWrapper />
               <SubscriptionProvider>
                 <TourProvider>
@@ -65,7 +71,7 @@ function App() {
                   </Router>
                 </TourProvider>
               </SubscriptionProvider>
-            </AuthProvider>
+            </AuthProviderComponent>
           </BrandingProvider>
         </ThemeProvider>
       </TooltipProvider>
