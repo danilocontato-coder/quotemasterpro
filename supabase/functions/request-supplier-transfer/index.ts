@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { getAsaasConfig } from '../_shared/asaas-utils.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { validateSupplierAuth } from '../_shared/auth-helper.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -13,18 +14,8 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get JWT from header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    
-    if (userError || !user) {
-      throw new Error('Unauthorized');
-    }
+    // Validate authentication and get supplier profile
+    const { user, profile } = await validateSupplierAuth(req, supabaseClient);
 
     // Parse request body
     const { amount, transferMethod, bankAccount, notes } = await req.json();
@@ -39,17 +30,6 @@ Deno.serve(async (req) => {
 
     if (!bankAccount) {
       throw new Error('Dados bancários não fornecidos');
-    }
-
-    // Buscar fornecedor do usuário
-    const { data: profile } = await supabaseClient
-      .from('profiles')
-      .select('supplier_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile?.supplier_id) {
-      throw new Error('Fornecedor não encontrado');
     }
 
     // Buscar wallet do fornecedor
