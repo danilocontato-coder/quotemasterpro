@@ -10,6 +10,7 @@ export interface SupplierQuote {
   description: string;
   client: string;
   clientId: string;
+  clientName?: string;
   supplierId?: string;
   status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired' | 'paid' | 'delivering' | 'awaiting_visit' | 'visit_scheduled' | 'visit_confirmed' | 'visit_overdue';
   deadline: string;
@@ -22,6 +23,7 @@ export interface SupplierQuote {
   requires_visit?: boolean;
   visit_deadline?: string;
   client_name?: string;
+  supplierCount?: number; // Número de fornecedores convidados para esta cotação
 }
 
 export interface SupplierQuoteItem {
@@ -262,6 +264,24 @@ export const useSupabaseSupplierQuotes = () => {
       const uniqueQuotesArray = Array.from(quotesMap.values());
       console.log('✅ Total de cotações únicas para o fornecedor:', uniqueQuotesArray.length);
 
+      // PASSO 3: Buscar contagem de fornecedores para cada cotação
+      const quoteIds = uniqueQuotesArray.map(q => q.id);
+      const { data: supplierCounts, error: countsError } = await supabase
+        .from('quote_suppliers')
+        .select('quote_id')
+        .in('quote_id', quoteIds);
+
+      if (countsError) {
+        console.error('⚠️ Erro ao buscar contagem de fornecedores:', countsError);
+      }
+
+      // Criar mapa de contagem de fornecedores por cotação
+      const supplierCountMap = new Map<string, number>();
+      supplierCounts?.forEach(item => {
+        const currentCount = supplierCountMap.get(item.quote_id) || 0;
+        supplierCountMap.set(item.quote_id, currentCount + 1);
+      });
+
       // Transform to SupplierQuote format
       const transformedQuotes: SupplierQuote[] = uniqueQuotesArray.map(quote => {
         const response = responsesMap.get(quote.id);
@@ -275,6 +295,7 @@ export const useSupabaseSupplierQuotes = () => {
           description: quote.description || '',
           client: clientName,
           clientId: quote.client_id,
+          clientName: clientName,
           supplierId: user.supplierId, // ID do fornecedor logado
           client_name: clientName, // Adicionar para uso no modal
           status: getSupplierStatus(quote.status, response?.status),
@@ -285,6 +306,7 @@ export const useSupabaseSupplierQuotes = () => {
           sentAt: response ? response.created_at : undefined,
           requires_visit: quote.requires_visit || false,
           visit_deadline: quote.visit_deadline,
+          supplierCount: supplierCountMap.get(quote.id) || 1, // Número de fornecedores convidados
         };
       });
 

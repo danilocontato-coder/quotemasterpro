@@ -29,8 +29,13 @@ import {
   Package,
   CreditCard,
   Calendar,
-  Truck
+  Truck,
+  Filter
 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { QuoteCompetitiveContext } from "@/components/supplier/QuoteCompetitiveContext";
+import { QuoteUrgencyBadge } from "@/components/supplier/QuoteUrgencyBadge";
+import { QuoteInfoTooltip } from "@/components/supplier/QuoteInfoTooltip";
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
 import { SupplierQuoteViewModal } from "@/components/supplier/SupplierQuoteViewModal";
@@ -39,6 +44,8 @@ import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryMod
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [urgencyFilter, setUrgencyFilter] = useState("all");
+  const [competitiveFilter, setCompetitiveFilter] = useState("all");
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
@@ -48,6 +55,16 @@ export default function SupplierQuotes() {
   
   const { user, isLoading: isAuthLoading } = useAuth();
   const { supplierQuotes, isLoading } = useSupabaseSupplierQuotes();
+
+  // Helper para obter iniciais do cliente
+  const getClientInitials = (clientName: string) => {
+    return clientName
+      .split(' ')
+      .slice(0, 2)
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
 
   // Early return if auth is still loading or user is not available
   if (isAuthLoading || !user) {
@@ -107,13 +124,45 @@ export default function SupplierQuotes() {
       const matchesSearch = 
         quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         quote.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (quote.local_code && quote.local_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
         quote.id.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
       
-      return matchesSearch && matchesStatus;
+      // Filtro de urgência
+      let matchesUrgency = true;
+      if (urgencyFilter !== 'all') {
+        const now = new Date();
+        const deadline = new Date(quote.deadline);
+        const hoursRemaining = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+        
+        if (urgencyFilter === 'urgent') {
+          matchesUrgency = hoursRemaining > 0 && hoursRemaining <= 24;
+        } else if (urgencyFilter === 'soon') {
+          matchesUrgency = hoursRemaining > 24 && hoursRemaining <= 72;
+        } else if (urgencyFilter === 'normal') {
+          matchesUrgency = hoursRemaining > 72;
+        } else if (urgencyFilter === 'expired') {
+          matchesUrgency = hoursRemaining < 0;
+        }
+      }
+      
+      // Filtro de competitividade
+      let matchesCompetitive = true;
+      if (competitiveFilter !== 'all') {
+        const supplierCount = quote.supplierCount || 1;
+        if (competitiveFilter === 'exclusive') {
+          matchesCompetitive = supplierCount === 1;
+        } else if (competitiveFilter === 'low') {
+          matchesCompetitive = supplierCount >= 2 && supplierCount <= 3;
+        } else if (competitiveFilter === 'high') {
+          matchesCompetitive = supplierCount >= 5;
+        }
+      }
+      
+      return matchesSearch && matchesStatus && matchesUrgency && matchesCompetitive;
     });
-  }, [supplierQuotes, searchTerm, statusFilter]);
+  }, [supplierQuotes, searchTerm, statusFilter, urgencyFilter, competitiveFilter]);
 
   const statusCounts = useMemo(() => {
     return supplierQuotes.reduce((acc, quote) => {
@@ -131,7 +180,7 @@ export default function SupplierQuotes() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, urgencyFilter, competitiveFilter]);
 
   const handleViewQuote = (quote: any) => {
     setSelectedQuote(quote);
@@ -209,30 +258,67 @@ export default function SupplierQuotes() {
       </div>
       )}
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card className="card-corporate">
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Buscar por título, cliente, ou ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar por título, cliente, código ou ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 por página</SelectItem>
+                  <SelectItem value="10">10 por página</SelectItem>
+                  <SelectItem value="25">25 por página</SelectItem>
+                  <SelectItem value="50">50 por página</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5 por página</SelectItem>
-                <SelectItem value="10">10 por página</SelectItem>
-                <SelectItem value="25">25 por página</SelectItem>
-                <SelectItem value="50">50 por página</SelectItem>
-              </SelectContent>
-            </Select>
+            
+            {/* Filtros Inteligentes */}
+            <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Filtros:</span>
+              </div>
+              
+              {/* Filtro de Urgência */}
+              <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Urgência" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas urgências</SelectItem>
+                  <SelectItem value="urgent">🔴 Urgente (&lt;24h)</SelectItem>
+                  <SelectItem value="soon">🟡 Em breve (1-3d)</SelectItem>
+                  <SelectItem value="normal">🟢 Normal (&gt;3d)</SelectItem>
+                  <SelectItem value="expired">⏰ Expiradas</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Filtro de Competitividade */}
+              <Select value={competitiveFilter} onValueChange={setCompetitiveFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Concorrência" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="exclusive">⭐ Exclusivas</SelectItem>
+                  <SelectItem value="low">👥 Baixa (2-3)</SelectItem>
+                  <SelectItem value="high">⚠️ Alta (5+)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -267,34 +353,66 @@ export default function SupplierQuotes() {
               <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
+                  <TableHead className="w-[280px]">Código & Cliente</TableHead>
                   <TableHead>Título</TableHead>
-                  <TableHead>Cliente</TableHead>
+                  <TableHead>Concorrência</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Prazo</TableHead>
+                  <TableHead>Urgência</TableHead>
                   <TableHead>Valor Estimado</TableHead>
                   <TableHead>Visita</TableHead>
-                  <TableHead>Proposta</TableHead>
+                  <TableHead className="text-center">Info</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {currentQuotes.map((quote) => (
                   <TableRow key={quote.id}>
-                    <TableCell className="font-mono text-sm">{quote.local_code || quote.id}</TableCell>
+                    {/* Coluna: Código + Cliente com Avatar */}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9 border-2 border-primary/20">
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                            {getClientInitials(quote.clientName || quote.client)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm font-semibold text-foreground">
+                              {quote.local_code || quote.id.slice(0, 8)}
+                            </span>
+                          </div>
+                          <Badge variant="outline" className="text-xs w-fit">
+                            {quote.clientName || quote.client}
+                          </Badge>
+                        </div>
+                      </div>
+                    </TableCell>
+                    
+                    {/* Coluna: Título */}
                     <TableCell>
                       <div>
                         <p className="font-medium">{quote.title}</p>
-                        <p className="text-sm text-muted-foreground">{quote.description}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-1">{quote.description}</p>
                       </div>
                     </TableCell>
-                     <TableCell>{quote.client}</TableCell>
-                     <TableCell>{getStatusBadge(quote.status, quote.proposal?.status)}</TableCell>
+                    
+                    {/* Coluna: Contexto Competitivo */}
                     <TableCell>
-                      <span className={quote.status === 'expired' ? 'text-red-600' : ''}>
-                        {new Date(quote.deadline).toLocaleDateString('pt-BR')}
-                      </span>
+                      <QuoteCompetitiveContext 
+                        supplierCount={quote.supplierCount || 1}
+                        isExclusive={quote.supplierCount === 1}
+                      />
                     </TableCell>
+                    
+                    {/* Coluna: Status */}
+                    <TableCell>{getStatusBadge(quote.status, quote.proposal?.status)}</TableCell>
+                    
+                    {/* Coluna: Urgência (Prazo) */}
+                    <TableCell>
+                      <QuoteUrgencyBadge deadline={quote.deadline} />
+                    </TableCell>
+                    
+                    {/* Coluna: Valor Estimado */}
                     <TableCell>
                       {quote.estimatedValue ? (
                         <span className="font-medium text-green-600">
@@ -304,6 +422,8 @@ export default function SupplierQuotes() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
+                    
+                    {/* Coluna: Visita */}
                     <TableCell>
                       {quote.requires_visit ? (
                         <Badge 
@@ -330,22 +450,19 @@ export default function SupplierQuotes() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {quote.proposal ? (
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium">
-                            R$ {quote.proposal.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </span>
-                          <Badge variant={quote.proposal.status === 'sent' ? 'default' : 'secondary'}>
-                            {quote.proposal.status === 'sent' ? 'Enviada' : 'Rascunho'}
-                          </Badge>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                    
+                    {/* Coluna: Info Tooltip */}
+                    <TableCell className="text-center">
+                      <QuoteInfoTooltip 
+                        itemCount={quote.items?.length || 0}
+                        estimatedValue={quote.estimatedValue}
+                        createdAt={quote.createdAt}
+                        supplierCount={quote.supplierCount || 1}
+                      />
                     </TableCell>
-                     <TableCell>
+                    
+                    {/* Coluna: Ações */}
+                    <TableCell>
                        <div className="flex items-center gap-2">
                          <Button 
                            variant="ghost" 
