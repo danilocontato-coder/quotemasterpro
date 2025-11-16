@@ -1215,6 +1215,38 @@ export type Database = {
         }
         Relationships: []
       }
+      client_invitation_letter_counters: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          current_counter: number
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          current_counter?: number
+          updated_at?: string | null
+          year?: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          current_counter?: number
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_invitation_letter_counters_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_payment_counters: {
         Row: {
           client_id: string
@@ -6311,7 +6343,10 @@ export type Database = {
       generate_contract_alerts: { Args: never; Returns: undefined }
       generate_delivery_code: { Args: never; Returns: string }
       generate_friendly_payment_id: { Args: never; Returns: string }
-      generate_letter_number: { Args: { p_client_id: string }; Returns: string }
+      generate_invitation_letter_number: {
+        Args: { p_client_id: string }
+        Returns: string
+      }
       get_accessible_client_ids: {
         Args: { p_user_id: string }
         Returns: string[]
