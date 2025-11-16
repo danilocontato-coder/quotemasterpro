@@ -1,6 +1,6 @@
 // Página de Fornecedores - Sistema funcionando ✅
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight, Wrench } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Phone, Mail, Users, Building, UserPlus, Shield, MapPin, Star, ChevronLeft, ChevronRight, Wrench, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SupplierFormModal } from "@/components/suppliers/SupplierFormModal";
 import { NewGroupModal } from "@/components/suppliers/NewGroupModal";
+import { SupplierDetailModal } from "@/components/suppliers/SupplierDetailModal";
 import { useSupabaseSuppliers } from "@/hooks/useSupabaseSuppliers";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageLoader } from "@/components/ui/page-loader";
@@ -28,6 +29,8 @@ export default function Suppliers() {
   const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
@@ -512,17 +515,27 @@ export default function Suppliers() {
 
                    {/* Actions */}
                    <div className="flex gap-2 pt-2">
+                     <Button 
+                       variant="outline" 
+                       size="sm" 
+                       className="flex-1"
+                       onClick={() => {
+                         setSelectedSupplier(supplier);
+                         setShowDetailModal(true);
+                       }}
+                     >
+                       <FileText className="h-4 w-4 mr-2" />
+                       Ver Detalhes
+                     </Button>
                      {supplier.type === 'certified' ? (
                        // Certificados: apenas visualização (sem botões de ação para clientes)
                        user?.role === 'admin' && (
                          <Button 
                            variant="outline" 
                            size="sm" 
-                           className="flex-1"
                            onClick={() => handleEditSupplier(supplier)}
                          >
-                           <Edit className="h-4 w-4 mr-2" />
-                           Editar (Admin)
+                           <Edit className="h-4 w-4" />
                          </Button>
                        )
                      ) : (
@@ -530,13 +543,11 @@ export default function Suppliers() {
                        <>
                          <Button 
                            variant="outline" 
-                           size="sm" 
-                           className="flex-1"
+                           size="sm"
                            onClick={() => handleEditSupplier(supplier)}
                            disabled={!canEditSupplier(supplier)}
                          >
-                           <Edit className="h-4 w-4 mr-2" />
-                           Editar
+                           <Edit className="h-4 w-4" />
                          </Button>
                          
                          <Button 
@@ -644,6 +655,14 @@ export default function Suppliers() {
         onGroupCreate={handleGroupCreate}
         existingGroups={[]}
         onGroupDelete={handleGroupDelete}
+      />
+
+      <SupplierDetailModal
+        supplier={selectedSupplier}
+        clientId={currentClientId}
+        open={showDetailModal}
+        onOpenChange={setShowDetailModal}
+        canEdit={user?.role === 'supplier'}
       />
     </div>
   );
