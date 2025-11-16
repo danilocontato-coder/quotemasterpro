@@ -162,3 +162,50 @@ verify_jwt = true
 
 [functions.generate-invitation-pdf]
 verify_jwt = true
+
+[functions.validate-action]
+verify_jwt = true
+
+[functions.check-module-access]
+verify_jwt = true
+
+[functions.check-subscription]
+verify_jwt = true
+
+[functions.automatic-billing]
+verify_jwt = false
+schedule = "0 2 * * *"
+
+[functions.schedule-delivery]
+verify_jwt = true
+
+[functions.update-quote-status]
+verify_jwt = true
+
+[functions.upgrade-subscription]
+verify_jwt = true
+
+[functions.create-payment-checkout]
+verify_jwt = true
+
+[functions.create-payment-intent]
+verify_jwt = true
+
+[functions.setup-client-billing]
+verify_jwt = true
+
+[functions.create-automatic-payment]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.delete-asaas-customer]
+verify_jwt = true
+
+[functions.create-asaas-customer]
+verify_jwt = true
+
+[functions.check-quote-deadlines]
+verify_jwt = false
+schedule = "0 */6 * * *"
