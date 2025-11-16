@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Mail, Calendar, FileText, Users, CheckCircle, XCircle, Clock, Download } from 'lucide-react';
+import { Mail, Calendar, FileText, Users, CheckCircle, XCircle, Clock, Download, FileCheck } from 'lucide-react';
 import { useSupabaseInvitationLetters, InvitationLetter, InvitationLetterSupplier } from '@/hooks/useSupabaseInvitationLetters';
 import { formatLocalDate } from '@/utils/dateUtils';
 import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { supabase } from '@/integrations/supabase/client';
+
+const DocumentValidationWorkspace = lazy(() => import('./DocumentValidationWorkspace'));
+const DocumentValidationSnapshot = lazy(() => import('./DocumentValidationSnapshot'));
 
 interface InvitationLetterDetailModalProps {
   letter: InvitationLetter;
@@ -212,62 +215,118 @@ export default function InvitationLetterDetailModal({ letter, open, onClose }: I
             </Card>
           </div>
 
-          {/* Tabela de fornecedores */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Fornecedores Convidados</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <OptimizedSkeleton className="h-40" />
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fornecedor</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Enviado</TableHead>
-                      <TableHead>Visualizado</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Data Resposta</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {suppliers.map((supplier) => (
-                      <TableRow key={supplier.id}>
-                        <TableCell className="font-medium">
-                          {getSupplierName(supplier.supplier_id)}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {getSupplierEmail(supplier.supplier_id)}
-                        </TableCell>
-                        <TableCell>
-                          {supplier.sent_at ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {supplier.viewed_at ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {getResponseStatusBadge(supplier.response_status)}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {supplier.response_date ? formatLocalDate(supplier.response_date) : '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+          {/* Tabela de fornecedores com Tabs */}
+          <Tabs defaultValue="suppliers" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="suppliers">
+                <Users className="h-4 w-4 mr-2" />
+                Fornecedores ({suppliers.length})
+              </TabsTrigger>
+              <TabsTrigger value="summary">
+                <FileText className="h-4 w-4 mr-2" />
+                Resumo
+              </TabsTrigger>
+              <TabsTrigger value="documentation">
+                <FileCheck className="h-4 w-4 mr-2" />
+                Documentação
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Tab de Fornecedores */}
+            <TabsContent value="suppliers">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Fornecedores Convidados</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <OptimizedSkeleton className="h-40" />
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fornecedor</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Enviado</TableHead>
+                          <TableHead>Visualizado</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Data Resposta</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {suppliers.map((supplier) => (
+                          <TableRow key={supplier.id}>
+                            <TableCell className="font-medium">
+                              {getSupplierName(supplier.supplier_id)}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {getSupplierEmail(supplier.supplier_id)}
+                            </TableCell>
+                            <TableCell>
+                              {supplier.sent_at ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {supplier.viewed_at ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {getResponseStatusBadge(supplier.response_status)}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {supplier.response_date ? formatLocalDate(supplier.response_date) : '-'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab de Resumo */}
+            <TabsContent value="summary">
+              <Card>
+                <CardContent className="pt-6 space-y-4">
+                  <div>
+                    <h4 className="font-semibold mb-2">Estatísticas de Resposta</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total de Respostas</p>
+                        <p className="text-2xl font-bold">{responsesCount}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Pendentes</p>
+                        <p className="text-2xl font-bold">{pendingCount}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Tab de Documentação */}
+            <TabsContent value="documentation">
+              <Suspense fallback={<OptimizedSkeleton className="h-64" />}>
+                {letter.status === 'draft' ? (
+                  <DocumentValidationWorkspace
+                    letterId={letter.id}
+                    clientId={letter.client_id}
+                    onValidationChange={() => loadSuppliers()}
+                  />
+                ) : (
+                  <DocumentValidationSnapshot letterId={letter.id} />
+                )}
+              </Suspense>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="flex justify-end pt-4 border-t">

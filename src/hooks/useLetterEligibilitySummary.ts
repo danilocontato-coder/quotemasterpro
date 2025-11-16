@@ -56,7 +56,7 @@ export function useLetterEligibilitySummary(letterId: string) {
       // Calcular elegibilidade de cada fornecedor em paralelo
       const eligibilityPromises = letterSuppliers.map(async (ls) => {
         const { data, error } = await supabase.rpc(
-          'get_supplier_eligibility_for_letter',
+          'get_supplier_eligibility_for_letter' as any,
           {
             p_supplier_id: ls.supplier_id,
             p_client_id: letter.client_id,
@@ -69,7 +69,8 @@ export function useLetterEligibilitySummary(letterId: string) {
           return 'not_checked';
         }
 
-        return data.status;
+        const eligibilityData = data as any;
+        return eligibilityData.status;
       });
 
       const statuses = await Promise.all(eligibilityPromises);
