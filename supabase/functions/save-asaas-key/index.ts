@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { corsHeaders } from '../_shared/cors.ts';
+import { validateUserAuth } from '../_shared/auth-helper.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,18 +13,8 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get JWT from header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    
-    if (userError || !user) {
-      throw new Error('Unauthorized');
-    }
+    // Validate authentication
+    const user = await validateUserAuth(req, supabaseClient);
 
     // Check if user is admin
     const { data: roles, error: rolesError } = await supabaseClient

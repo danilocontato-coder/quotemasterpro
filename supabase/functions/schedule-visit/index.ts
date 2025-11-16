@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { validateSupplierAuth } from "../_shared/auth-helper.ts";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,19 +13,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get auth header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
-    }
-
-    // Get user from auth header
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      throw new Error('Unauthorized');
-    }
+    // Validate authentication and get supplier profile
+    const { user, profile } = await validateSupplierAuth(req, supabase);
+    const supplierId = profile.supplier_id;
 
     const { quoteId, scheduledDate, notes } = await req.json();
 
@@ -33,19 +24,6 @@ serve(async (req) => {
     }
 
     console.log('Scheduling visit:', { quoteId, scheduledDate, userId: user.id });
-
-    // Get supplier_id from user profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('supplier_id')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile?.supplier_id) {
-      throw new Error('User is not a supplier');
-    }
-
-    const supplierId = profile.supplier_id;
 
     // Get quote details
     const { data: quote, error: quoteError } = await supabase

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from '../_shared/cors.ts';
+import { validateUserAuth } from '../_shared/auth-helper.ts';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -15,22 +16,18 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    
     console.log('🚀 [CONFIRM-DELIVERY] Início da requisição', {
       timestamp: new Date().toISOString(),
-      hasAuthHeader: !!authHeader,
       method: req.method
     });
+
+    // Validate authentication
+    const user = await validateUserAuth(req, supabase);
     
-    if (!authHeader) {
-      console.error('❌ [CONFIRM-DELIVERY] Authorization header ausente');
-      return new Response(
-        JSON.stringify({ error: 'Authorization header is required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('🔐 [CONFIRM-DELIVERY] Usuário autenticado', {
+      user_id: user.id,
+      user_email: user.email
+    });
 
     // Parse request body
     const { confirmation_code } = await req.json();
@@ -47,25 +44,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Get user from JWT
-    const jwt = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
-
-    if (userError || !user) {
-      console.error('❌ [CONFIRM-DELIVERY] Token inválido', {
-        error: userError?.message
-      });
-      return new Response(
-        JSON.stringify({ error: 'Token inválido' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('🔐 [CONFIRM-DELIVERY] Usuário autenticado', {
-      user_id: user.id,
-      user_email: user.email
-    });
 
     // Buscar código de confirmação válido
     console.log('🔍 [CONFIRM-DELIVERY] Buscando código de confirmação', {
