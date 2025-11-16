@@ -20,7 +20,8 @@ import {
   Truck,
   Star,
   ChevronDown,
-  ShoppingCart
+  ShoppingCart,
+  FileCheck
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { TransitionNavLink } from "./TransitionNavLink";
@@ -58,6 +59,7 @@ const navigationItems: NavItem[] = [
   { title: "Insights IA", url: "/predictive", icon: Brain },
   { title: "Contratos", url: "/contracts", icon: FileSignature, requiredModule: 'contracts' },
   { title: "Fornecedores", url: "/suppliers", icon: Users, requiredModule: 'suppliers' },
+  { title: "Validar Documentos", url: "/suppliers/documents", icon: FileCheck, requiredModule: 'suppliers' },
   { title: "Itens", url: "/products", icon: Package },
   { title: "Minhas Avaliações", url: "/client/ratings", icon: Star },
 ];

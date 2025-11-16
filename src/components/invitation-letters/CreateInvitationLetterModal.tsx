@@ -8,10 +8,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useSupabaseInvitationLetters } from '@/hooks/useSupabaseInvitationLetters';
 import { useSupabaseSuppliers } from '@/hooks/useSupabaseSuppliers';
 import { useSupabaseQuotes } from '@/hooks/useSupabaseQuotes';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SupplierSelectionWithDocs } from '@/components/suppliers/SupplierSelectionWithDocs';
+import { DOCUMENT_TYPES } from '@/hooks/useSupplierDocuments';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useDropzone } from 'react-dropzone';
 
@@ -21,6 +25,7 @@ interface CreateInvitationLetterModalProps {
 }
 
 export default function CreateInvitationLetterModal({ open, onClose }: CreateInvitationLetterModalProps) {
+  const { user } = useAuth();
   const [mode, setMode] = useState<'standalone' | 'linked'>('standalone');
   const [quoteId, setQuoteId] = useState('');
   const [title, setTitle] = useState('');
@@ -33,6 +38,7 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
   const [attachments, setAttachments] = useState<File[]>([]);
   const [sendImmediately, setSendImmediately] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requiredDocuments, setRequiredDocuments] = useState<Array<{ type: string; label: string; mandatory: boolean }>>([]);
 
   const { createLetter } = useSupabaseInvitationLetters();
   const { suppliers } = useSupabaseSuppliers();
@@ -64,6 +70,17 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
         ? prev.filter(id => id !== supplierId)
         : [...prev, supplierId]
     );
+  };
+
+  const toggleRequiredDocument = (docType: string) => {
+    setRequiredDocuments(prev => {
+      const exists = prev.find(d => d.type === docType);
+      if (exists) {
+        return prev.filter(d => d.type !== docType);
+      } else {
+        return [...prev, { type: docType, label: DOCUMENT_TYPES[docType], mandatory: true }];
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,7 +125,8 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
         supplier_ids: selectedSuppliers,
         direct_emails: directEmailsArray,
         attachments,
-        send_immediately: sendImmediately
+        send_immediately: sendImmediately,
+        required_documents: requiredDocuments.length > 0 ? requiredDocuments : undefined,
       });
 
       if (letterId) {
@@ -261,36 +279,34 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
             />
           </div>
 
+          {/* Documentos Obrigatórios */}
+          <div className="space-y-2">
+            <Label>Documentos Obrigatórios (opcional)</Label>
+            <p className="text-sm text-muted-foreground">Exigir documentos específicos dos fornecedores</p>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(DOCUMENT_TYPES).map(([key, label]) => (
+                <div key={key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`doc-${key}`}
+                    checked={requiredDocuments.some(d => d.type === key)}
+                    onCheckedChange={() => toggleRequiredDocument(key)}
+                  />
+                  <Label htmlFor={`doc-${key}`} className="text-sm cursor-pointer">{label}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Fornecedores */}
           <div className="space-y-2">
             <Label>Fornecedores Convidados ({selectedSuppliers.length} selecionados)</Label>
-            <div className="border rounded-lg p-4 max-h-60 overflow-y-auto space-y-2">
-              {activeSuppliers.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum fornecedor ativo disponível
-                </p>
-              ) : (
-                activeSuppliers.map(supplier => (
-                  <div
-                    key={supplier.id}
-                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                      selectedSuppliers.includes(supplier.id)
-                        ? 'bg-primary/10 border-2 border-primary'
-                        : 'bg-muted hover:bg-muted/80'
-                    }`}
-                    onClick={() => toggleSupplier(supplier.id)}
-                  >
-                    <div>
-                      <p className="font-medium">{supplier.name}</p>
-                      <p className="text-sm text-muted-foreground">{supplier.email}</p>
-                    </div>
-                    {selectedSuppliers.includes(supplier.id) && (
-                      <Badge variant="default">Selecionado</Badge>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
+            <SupplierSelectionWithDocs
+              suppliers={activeSuppliers}
+              selectedSuppliers={selectedSuppliers}
+              onToggleSupplier={toggleSupplier}
+              requiredDocuments={requiredDocuments}
+              clientId={user?.clientId || ''}
+            />
           </div>
 
           {/* E-mails Diretos (apenas modo independente) */}
