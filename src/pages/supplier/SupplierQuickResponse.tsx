@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
 import { useAuth } from '@/contexts/AuthContext';
+import { VisitManagementModal } from '@/components/supplier/VisitManagementModal';
+import { useQuoteVisits } from '@/hooks/useQuoteVisits';
 
 interface QuoteItem {
   id: string;
@@ -52,6 +54,15 @@ const SupplierQuickResponse = () => {
   const [submitting, setSubmitting] = useState(false);
   const [dataConfirmed, setDataConfirmed] = useState(false);
   const [existingSupplier, setExistingSupplier] = useState<SupplierData | null>(null);
+  const [visitModalOpen, setVisitModalOpen] = useState(false);
+  
+  // Hook para gerenciar visitas
+  const { visits, isLoading: visitsLoading, fetchVisits } = useQuoteVisits(quote?.id);
+  
+  // Verificar status da visita
+  const latestVisit = visits[0];
+  const hasConfirmedVisit = latestVisit?.status === 'confirmed';
+  const canSubmitProposal = !quote?.requires_visit || hasConfirmedVisit;
   
   const [supplierData, setSupplierData] = useState<SupplierData>({
     name: '',
@@ -215,11 +226,11 @@ const SupplierQuickResponse = () => {
     try {
       setSubmitting(true);
 
-      // VALIDAÇÃO: Se requer visita, bloquear envio
-      if (quote?.requires_visit) {
+      // VALIDAÇÃO: Se requer visita E não tem visita confirmada, bloquear
+      if (quote?.requires_visit && !hasConfirmedVisit) {
         toast({
-          title: "Visita técnica obrigatória",
-          description: "Esta cotação requer uma visita técnica antes de enviar a proposta. Use o painel de cotações para agendar e confirmar a visita.",
+          title: "Visita técnica pendente",
+          description: "Você precisa agendar e confirmar a visita técnica antes de enviar a proposta.",
           variant: "destructive"
         });
         setSubmitting(false);
@@ -356,10 +367,22 @@ const SupplierQuickResponse = () => {
         <div className="text-center space-y-4">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground">Carregando cotação...</p>
-        </div>
       </div>
-    );
-  }
+
+      {/* Modal de Gestão de Visita */}
+      {quote && quote.requires_visit && (
+        <VisitManagementModal
+          quote={quote}
+          open={visitModalOpen}
+          onOpenChange={setVisitModalOpen}
+          onVisitUpdated={() => {
+            fetchVisits();
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
   if (!quote) {
     return (
@@ -451,36 +474,73 @@ const SupplierQuickResponse = () => {
         </Card>
 
         {/* Alerta de Visita Técnica Obrigatória */}
-        {quote.requires_visit && (
+        {quote.requires_visit && !hasConfirmedVisit && (
           <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1">
                   <div>
                     <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
                       Visita Técnica Obrigatória
                     </h3>
                     <p className="text-sm text-amber-700 dark:text-amber-200">
-                      Esta cotação requer uma visita técnica ao local. Por favor, acesse o 
-                      <strong> Painel de Cotações → Visitas Técnicas</strong> para agendar 
-                      e confirmar a visita antes de enviar sua proposta.
+                      Esta cotação requer uma visita técnica ao local antes de enviar sua proposta. 
+                      Clique no botão abaixo para agendar e confirmar a visita.
                     </p>
                   </div>
+                  
+                  {/* Status da visita */}
+                  {visitsLoading ? (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      Carregando informações da visita...
+                    </p>
+                  ) : latestVisit ? (
+                    <div className="text-xs text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/40 p-2 rounded">
+                      <strong>Status:</strong>{' '}
+                      {latestVisit.status === 'scheduled' 
+                        ? `Agendada para ${new Date(latestVisit.scheduled_date).toLocaleString('pt-BR')}`
+                        : latestVisit.status === 'confirmed'
+                        ? '✅ Confirmada - Você já pode enviar a proposta'
+                        : latestVisit.status}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      Nenhuma visita agendada ainda
+                    </p>
+                  )}
+                  
                   {quote.visit_deadline && (
                     <p className="text-xs text-amber-600 dark:text-amber-400">
                       Prazo para visita: {new Date(quote.visit_deadline).toLocaleDateString('pt-BR')}
                     </p>
                   )}
+                  
                   <Button 
-                    variant="outline" 
+                    variant="default" 
                     size="sm"
-                    onClick={() => navigate('/supplier/quotes?filter=awaiting_visit')}
-                    className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:border-amber-500 dark:text-amber-300 dark:hover:bg-amber-950"
+                    onClick={() => setVisitModalOpen(true)}
+                    className="bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700"
                   >
-                    Ir para Visitas Técnicas
+                    {latestVisit?.status === 'scheduled' 
+                      ? 'Gerenciar Visita' 
+                      : 'Agendar Visita Agora'}
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Badge de visita confirmada */}
+        {quote.requires_visit && hasConfirmedVisit && (
+          <Card className="border-green-300 bg-green-50 dark:bg-green-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
+                <p className="text-sm text-green-700 dark:text-green-300 font-medium">
+                  ✅ Visita técnica confirmada! Você já pode enviar sua proposta.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -705,7 +765,7 @@ const SupplierQuickResponse = () => {
 
                 <Button
                   onClick={handleSubmitProposal}
-                  disabled={submitting || quote?.requires_visit}
+                  disabled={submitting || !canSubmitProposal}
                   className="w-full"
                   size="lg"
                 >
@@ -726,6 +786,18 @@ const SupplierQuickResponse = () => {
           </>
         )}
       </div>
+
+      {/* Modal de Gestão de Visita */}
+      {quote && quote.requires_visit && (
+        <VisitManagementModal
+          quote={quote}
+          open={visitModalOpen}
+          onOpenChange={setVisitModalOpen}
+          onVisitUpdated={() => {
+            fetchVisits();
+          }}
+        />
+      )}
     </div>
   );
 };
