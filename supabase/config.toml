@@ -21,9 +21,6 @@ verify_jwt = false
 [functions.save-asaas-key]
 verify_jwt = true
 
-[functions.test-asaas-connection]
-verify_jwt = true
-
 [functions.create-asaas-wallet]
 verify_jwt = true
 
@@ -62,9 +59,6 @@ verify_jwt = true
 
 [functions.process-supplier-response]
 verify_jwt = false
-
-[functions.test-integration]
-verify_jwt = true
 
 [functions.extract-pdf-data]
 verify_jwt = false
@@ -124,9 +118,6 @@ verify_jwt = true
 [functions.send-whatsapp]
 verify_jwt = false
 
-[functions.test-email]
-verify_jwt = true
-
 [functions.send-password-reset]
 verify_jwt = false
 
@@ -164,9 +155,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.request-supplier-transfer]
-verify_jwt = true
-
-[functions.debug-auth-user]
 verify_jwt = true
 
 [functions.ai-predictive-insights]
