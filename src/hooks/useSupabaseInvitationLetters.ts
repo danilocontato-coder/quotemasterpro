@@ -16,6 +16,7 @@ export interface InvitationLetter {
   estimated_budget: number | null;
   items_summary: any | null;
   direct_emails: string[] | null;
+  required_documents: any | null;
   created_at: string;
   updated_at: string;
   sent_at: string | null;

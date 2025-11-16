@@ -8,12 +8,16 @@ import { FilterMetricCard } from '@/components/ui/filter-metric-card';
 import { OptimizedSkeleton } from '@/components/ui/optimized-components';
 import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { useSupabaseInvitationLetters } from '@/hooks/useSupabaseInvitationLetters';
+import { useLetterEligibilitySummary } from '@/hooks/useLetterEligibilitySummary';
 import { formatLocalDate } from '@/utils/dateUtils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 // Lazy load modals
 const CreateInvitationLetterModal = lazy(() => import('@/components/invitation-letters/CreateInvitationLetterModal'));
 const InvitationLetterDetailModal = lazy(() => import('@/components/invitation-letters/InvitationLetterDetailModal'));
+const PreSendDocumentCheckModal = lazy(() => import('@/components/invitation-letters/PreSendDocumentCheckModal'));
+const LetterDocumentStatusBadge = lazy(() => import('@/components/invitation-letters/LetterDocumentStatusBadge'));
 
 export default function InvitationLettersList() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +25,13 @@ export default function InvitationLettersList() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [viewingLetter, setViewingLetter] = useState<any | null>(null);
+  const [preSendCheckModal, setPreSendCheckModal] = useState<{
+    open: boolean;
+    letterId: string;
+    eligibleSuppliers: any[];
+    pendingSuppliers: any[];
+    ineligibleSuppliers: any[];
+  } | null>(null);
 
   const { letters, isLoading, error, sendLetter, resendLetter, cancelLetter, generatePDF, refetch } = useSupabaseInvitationLetters();
 
@@ -44,6 +55,72 @@ export default function InvitationLettersList() {
   };
 
   const handleSendLetter = async (letterId: string) => {
+    const letter = letters.find(l => l.id === letterId);
+    if (!letter) return;
+
+    // Verificar elegibilidade dos fornecedores
+    if (letter.required_documents && Array.isArray(letter.required_documents) && letter.required_documents.length > 0) {
+      try {
+        // Buscar fornecedores
+        const { data: letterSuppliers, error: suppliersError } = await supabase
+          .from('invitation_letter_suppliers')
+          .select('supplier_id, suppliers(id, name)')
+          .eq('invitation_letter_id', letterId);
+
+        if (suppliersError) throw suppliersError;
+
+        // Calcular elegibilidade de cada fornecedor
+        const eligibilityChecks = await Promise.all(
+          (letterSuppliers || []).map(async (ls: any) => {
+            const { data, error } = await supabase.rpc(
+              'get_supplier_eligibility_for_letter' as any,
+              {
+                p_supplier_id: ls.supplier_id,
+                p_client_id: letter.client_id,
+                p_required_docs: letter.required_documents
+              }
+            );
+
+            if (error) {
+              console.error('Error checking eligibility:', error);
+              return null;
+            }
+
+            const eligibilityData = data as any;
+            const missingDocs = eligibilityData.details
+              .filter((d: any) => d.mandatory && d.status !== 'validated')
+              .map((d: any) => d.label);
+
+            return {
+              id: ls.supplier_id,
+              name: ls.suppliers?.name || 'Desconhecido',
+              status: eligibilityData.status,
+              missingDocs
+            };
+          })
+        );
+
+        const eligibleSuppliers = eligibilityChecks.filter((s: any) => s && s.status === 'eligible');
+        const pendingSuppliers = eligibilityChecks.filter((s: any) => s && s.status === 'pending');
+        const ineligibleSuppliers = eligibilityChecks.filter((s: any) => s && s.status === 'ineligible');
+
+        // Se há pendentes ou não elegíveis, abrir modal
+        if (pendingSuppliers.length > 0 || ineligibleSuppliers.length > 0) {
+          setPreSendCheckModal({
+            open: true,
+            letterId,
+            eligibleSuppliers,
+            pendingSuppliers,
+            ineligibleSuppliers
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking document eligibility:', error);
+      }
+    }
+
+    // Se não há documentos exigidos ou todos elegíveis, enviar direto
     const success = await sendLetter(letterId);
     if (success) {
       toast.success('Carta enviada com sucesso!');

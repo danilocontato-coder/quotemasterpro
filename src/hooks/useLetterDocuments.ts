@@ -56,7 +56,9 @@ export function useLetterDocuments(letterId: string) {
 
       if (letterError) throw letterError;
 
-      const required = (letter.required_documents || []) as RequiredDocument[];
+      const required = Array.isArray(letter.required_documents) 
+        ? (letter.required_documents as unknown as RequiredDocument[])
+        : [];
       setRequiredDocuments(required);
 
       // 2. Buscar fornecedores vinculados
@@ -79,7 +81,7 @@ export function useLetterDocuments(letterId: string) {
       // 3. Para cada fornecedor, calcular elegibilidade via RPC
       const eligibilityPromises = (letterSuppliers || []).map(async (ls: any) => {
         const { data: eligibility, error: rpcError } = await supabase.rpc(
-          'get_supplier_eligibility_for_letter',
+          'get_supplier_eligibility_for_letter' as any,
           {
             p_supplier_id: ls.supplier_id,
             p_client_id: letter.client_id,
@@ -92,13 +94,15 @@ export function useLetterDocuments(letterId: string) {
           return null;
         }
 
+        const eligibilityData = eligibility as any;
+
         return {
           supplierId: ls.supplier_id,
           supplierName: ls.suppliers?.name || 'Desconhecido',
-          eligible: eligibility.eligible,
-          status: eligibility.status,
-          documents: eligibility.details,
-          summary: eligibility.summary
+          eligible: eligibilityData.eligible,
+          status: eligibilityData.status,
+          documents: eligibilityData.details,
+          summary: eligibilityData.summary
         } as SupplierEligibility;
       });
 

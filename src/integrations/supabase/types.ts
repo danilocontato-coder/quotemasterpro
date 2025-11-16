@@ -2925,6 +2925,8 @@ export type Database = {
       invitation_letter_suppliers: {
         Row: {
           created_at: string
+          document_status: string | null
+          document_validation_notes: Json | null
           id: string
           invitation_letter_id: string
           response_attachment_url: string | null
@@ -2933,13 +2935,17 @@ export type Database = {
           response_status: Database["public"]["Enums"]["supplier_response_status"]
           response_token: string | null
           sent_at: string | null
+          sent_despite_docs: boolean | null
           supplier_id: string
           token_expires_at: string | null
           updated_at: string
+          validated_at: string | null
           viewed_at: string | null
         }
         Insert: {
           created_at?: string
+          document_status?: string | null
+          document_validation_notes?: Json | null
           id?: string
           invitation_letter_id: string
           response_attachment_url?: string | null
@@ -2948,13 +2954,17 @@ export type Database = {
           response_status?: Database["public"]["Enums"]["supplier_response_status"]
           response_token?: string | null
           sent_at?: string | null
+          sent_despite_docs?: boolean | null
           supplier_id: string
           token_expires_at?: string | null
           updated_at?: string
+          validated_at?: string | null
           viewed_at?: string | null
         }
         Update: {
           created_at?: string
+          document_status?: string | null
+          document_validation_notes?: Json | null
           id?: string
           invitation_letter_id?: string
           response_attachment_url?: string | null
@@ -2963,9 +2973,11 @@ export type Database = {
           response_status?: Database["public"]["Enums"]["supplier_response_status"]
           response_token?: string | null
           sent_at?: string | null
+          sent_despite_docs?: boolean | null
           supplier_id?: string
           token_expires_at?: string | null
           updated_at?: string
+          validated_at?: string | null
           viewed_at?: string | null
         }
         Relationships: [
@@ -6448,6 +6460,14 @@ export type Database = {
           recommendation_rate: number
           total_ratings: number
         }[]
+      }
+      get_supplier_eligibility_for_letter: {
+        Args: {
+          p_client_id: string
+          p_required_docs: Json
+          p_supplier_id: string
+        }
+        Returns: Json
       }
       get_user_created_at: { Args: never; Returns: string }
       get_user_enabled_modules: { Args: never; Returns: string[] }
