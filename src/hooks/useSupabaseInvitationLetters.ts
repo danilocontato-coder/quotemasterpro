@@ -53,6 +53,7 @@ export interface CreateLetterData {
   attachments?: File[];
   required_documents?: Array<{ type: string; label: string; mandatory: boolean }>;
   send_immediately?: boolean;
+  send_whatsapp?: boolean;
 }
 
 export function useSupabaseInvitationLetters() {
@@ -271,19 +272,25 @@ export function useSupabaseInvitationLetters() {
   };
 
   // Send letter (for drafts)
-  const sendLetter = async (letterId: string): Promise<boolean> => {
+  const sendLetter = async (letterId: string, sendWhatsapp: boolean = false): Promise<{ success: boolean; emailCount?: number; whatsappCount?: number }> => {
     try {
-      console.log('[useSupabaseInvitationLetters] Sending letter:', letterId);
+      console.log('[useSupabaseInvitationLetters] Sending letter:', letterId, 'sendWhatsapp:', sendWhatsapp);
 
-      const { error } = await supabase.functions.invoke('send-invitation-letter', {
-        body: { letterId }
+      const { data, error } = await supabase.functions.invoke('send-invitation-letter', {
+        body: { letterId, sendWhatsapp }
       });
 
       if (error) throw error;
 
-      toast.success('Carta enviada com sucesso!');
+      const emailCount = data?.sent_count || 0;
+      const whatsappCount = data?.whatsapp_sent_count || 0;
+      
       await fetchLetters();
-      return true;
+      return { 
+        success: true, 
+        emailCount,
+        whatsappCount
+      };
 
     } catch (err: any) {
       console.error('[useSupabaseInvitationLetters] Error sending letter:', err);
@@ -296,24 +303,30 @@ export function useSupabaseInvitationLetters() {
       }
       
       toast.error('Erro ao enviar carta', { description: errorDescription });
-      return false;
+      return { success: false };
     }
   };
 
   // Resend letter
-  const resendLetter = async (letterId: string): Promise<boolean> => {
+  const resendLetter = async (letterId: string, sendWhatsapp: boolean = false): Promise<{ success: boolean; emailCount?: number; whatsappCount?: number }> => {
     try {
-      console.log('[useSupabaseInvitationLetters] Resending letter:', letterId);
+      console.log('[useSupabaseInvitationLetters] Resending letter:', letterId, 'sendWhatsapp:', sendWhatsapp);
 
-      const { error } = await supabase.functions.invoke('send-invitation-letter', {
-        body: { letterId, isResend: true }
+      const { data, error } = await supabase.functions.invoke('send-invitation-letter', {
+        body: { letterId, isResend: true, sendWhatsapp }
       });
 
       if (error) throw error;
 
-      toast.success('Carta reenviada com sucesso!');
+      const emailCount = data?.sent_count || 0;
+      const whatsappCount = data?.whatsapp_sent_count || 0;
+      
       await fetchLetters();
-      return true;
+      return { 
+        success: true, 
+        emailCount,
+        whatsappCount
+      };
 
     } catch (err: any) {
       console.error('[useSupabaseInvitationLetters] Error resending letter:', err);
@@ -326,7 +339,7 @@ export function useSupabaseInvitationLetters() {
       }
       
       toast.error('Erro ao reenviar carta', { description: errorDescription });
-      return false;
+      return { success: false };
     }
   };
 

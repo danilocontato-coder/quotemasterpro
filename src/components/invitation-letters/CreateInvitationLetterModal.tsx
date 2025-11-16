@@ -42,6 +42,7 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
   const [selectedSuppliers, setSelectedSuppliers] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [sendImmediately, setSendImmediately] = useState(false);
+  const [sendWhatsapp, setSendWhatsapp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requiredDocuments, setRequiredDocuments] = useState<Array<{ type: string; label: string; mandatory: boolean }>>([]);
 
@@ -615,25 +616,48 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
           </div>
 
           {/* Enviar Imediatamente */}
-          <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
-            <div className="space-y-1 flex-1">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="send-immediately" className="font-semibold cursor-pointer">
-                  {sendImmediately ? '✉️ Criar e Enviar Agora' : '💾 Salvar como Rascunho'}
-                </Label>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="send-immediately" className="font-semibold cursor-pointer">
+                    {sendImmediately ? '✉️ Criar e Enviar Agora' : '💾 Salvar como Rascunho'}
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {sendImmediately 
+                    ? 'A carta será enviada imediatamente para os fornecedores selecionados'
+                    : 'A carta será salva e você poderá revisar antes de enviar'
+                  }
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {sendImmediately 
-                  ? 'A carta será enviada imediatamente para os fornecedores selecionados'
-                  : 'A carta será salva e você poderá revisar antes de enviar'
-                }
-              </p>
+              <Switch
+                id="send-immediately"
+                checked={sendImmediately}
+                onCheckedChange={setSendImmediately}
+              />
             </div>
-            <Switch
-              id="send-immediately"
-              checked={sendImmediately}
-              onCheckedChange={setSendImmediately}
-            />
+
+            {/* Toggle WhatsApp - Só aparece se "Enviar Imediatamente" estiver ativo */}
+            {sendImmediately && (
+              <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30 ml-4">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="send-whatsapp" className="font-semibold cursor-pointer">
+                      📱 Enviar por WhatsApp
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Além do e-mail, enviar notificação via WhatsApp (se configurado)
+                  </p>
+                </div>
+                <Switch
+                  id="send-whatsapp"
+                  checked={sendWhatsapp}
+                  onCheckedChange={setSendWhatsapp}
+                />
+              </div>
+            )}
           </div>
 
           {/* Botões */}

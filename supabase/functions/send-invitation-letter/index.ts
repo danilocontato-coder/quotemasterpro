@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { resolveEmailConfig, sendEmail, replaceVariables } from '../_shared/email.ts';
+import { resolveEvolutionConfig, normalizePhone, sendEvolutionWhatsApp } from '../_shared/evolution.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +11,7 @@ const corsHeaders = {
 interface SendLetterRequest {
   letterId: string;
   isResend?: boolean;
+  sendWhatsapp?: boolean;
 }
 
 serve(async (req) => {
@@ -22,9 +24,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { letterId, isResend = false }: SendLetterRequest = await req.json();
+    const { letterId, isResend = false, sendWhatsapp = false }: SendLetterRequest = await req.json();
 
-    console.log('[send-invitation-letter] Processing letter:', letterId, 'isResend:', isResend);
+    console.log('[send-invitation-letter] Processing letter:', letterId, 'isResend:', isResend, 'sendWhatsapp:', sendWhatsapp);
 
     // Fetch letter data
     const { data: letter, error: letterError } = await supabase
@@ -77,10 +79,23 @@ serve(async (req) => {
       throw new Error('Configuração de email não encontrada');
     }
 
+    // Resolve WhatsApp config if requested
+    let evolutionConfig = null;
+    if (sendWhatsapp) {
+      try {
+        evolutionConfig = await resolveEvolutionConfig(supabase, letter.client_id, false);
+        console.log('[send-invitation-letter] Evolution config resolved:', evolutionConfig ? 'Yes' : 'No');
+      } catch (err) {
+        console.error('[send-invitation-letter] Evolution config error:', err);
+        // Continue without WhatsApp if config fails
+      }
+    }
+
     // Get app URL
     const appUrl = Deno.env.get('APP_URL') || 'https://bpsqyaxdhqejozmlejcb.supabase.co';
 
     let sentCount = 0;
+    let whatsappSentCount = 0;
     const errors: string[] = [];
 
     // Send email to registered suppliers
@@ -259,6 +274,39 @@ serve(async (req) => {
           if (emailResult.success) {
             sentCount++;
             console.log('[send-invitation-letter] Email sent to:', supplier.name);
+
+            // Send WhatsApp if requested and configured
+            if (sendWhatsapp && evolutionConfig) {
+              const phone = supplier.contacts?.phone || supplier.contacts?.whatsapp;
+              if (phone) {
+                try {
+                  const normalizedPhone = normalizePhone(phone);
+                  const whatsappMessage = `🔔 *Carta Convite - ${letter.letter_number}*
+
+Olá, ${supplier.name}!
+
+Você foi convidado para: *${letter.title}*
+
+📋 Cliente: ${letter.clients?.name}
+⏰ Prazo: ${new Date(letter.deadline).toLocaleDateString('pt-BR')}
+
+🔗 Acesse para responder:
+${responseUrl}
+
+_Link único e pessoal. Não compartilhar._`;
+
+                  const whatsappResult = await sendEvolutionWhatsApp(evolutionConfig, normalizedPhone, whatsappMessage);
+                  if (whatsappResult.success) {
+                    whatsappSentCount++;
+                    console.log('[send-invitation-letter] WhatsApp sent to:', normalizedPhone);
+                  } else {
+                    console.error('[send-invitation-letter] WhatsApp failed for:', normalizedPhone, whatsappResult.error);
+                  }
+                } catch (whatsappError: any) {
+                  console.error('[send-invitation-letter] WhatsApp error for', supplier.name, ':', whatsappError);
+                }
+              }
+            }
           } else {
             errors.push(`${supplier.name}: ${emailResult.error}`);
             console.error('[send-invitation-letter] Failed to send to:', supplier.name, emailResult.error);
@@ -372,17 +420,19 @@ serve(async (req) => {
         details: {
           letter_number: letter.letter_number,
           sent_count: sentCount,
+          whatsapp_sent_count: whatsappSentCount,
           total_suppliers: (suppliers?.length || 0) + (letter.direct_emails?.length || 0),
           errors: errors.length > 0 ? errors : undefined
         }
       });
 
-    console.log('[send-invitation-letter] Completed. Sent:', sentCount, 'Errors:', errors.length);
+    console.log('[send-invitation-letter] Completed. Emails:', sentCount, 'WhatsApp:', whatsappSentCount, 'Errors:', errors.length);
 
     return new Response(
       JSON.stringify({
         success: true,
-        sentCount,
+        sent_count: sentCount,
+        whatsapp_sent_count: whatsappSentCount,
         totalSuppliers: (suppliers?.length || 0) + (letter.direct_emails?.length || 0),
         errors: errors.length > 0 ? errors : undefined
       }),
