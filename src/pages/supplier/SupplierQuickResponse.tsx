@@ -27,6 +27,8 @@ interface Quote {
   deadline: string;
   client_name: string;
   supplier_id?: string;
+  requires_visit?: boolean;
+  visit_deadline?: string;
   items: QuoteItem[];
 }
 
@@ -126,7 +128,7 @@ const SupplierQuickResponse = () => {
       // Buscar cotação
     const { data: quoteData, error: quoteError } = await supabase
       .from('quotes')
-      .select('id, local_code, title, description, deadline, client_name, supplier_id, status')
+      .select('id, local_code, title, description, deadline, client_name, supplier_id, status, requires_visit, visit_deadline')
       .eq('id', quoteId)
       .single();
 
@@ -213,6 +215,17 @@ const SupplierQuickResponse = () => {
     try {
       setSubmitting(true);
 
+      // VALIDAÇÃO: Se requer visita, bloquear envio
+      if (quote?.requires_visit) {
+        toast({
+          title: "Visita técnica obrigatória",
+          description: "Esta cotação requer uma visita técnica antes de enviar a proposta. Use o painel de cotações para agendar e confirmar a visita.",
+          variant: "destructive"
+        });
+        setSubmitting(false);
+        return;
+      }
+
       // Validações
       if (!proposalData.totalAmount || !proposalData.deliveryDays) {
         toast({
@@ -220,6 +233,7 @@ const SupplierQuickResponse = () => {
           description: "Por favor, informe o valor total e prazo de entrega",
           variant: "destructive"
         });
+        setSubmitting(false);
         return;
       }
 
@@ -435,6 +449,42 @@ const SupplierQuickResponse = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Alerta de Visita Técnica Obrigatória */}
+        {quote.requires_visit && (
+          <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                      Visita Técnica Obrigatória
+                    </h3>
+                    <p className="text-sm text-amber-700 dark:text-amber-200">
+                      Esta cotação requer uma visita técnica ao local. Por favor, acesse o 
+                      <strong> Painel de Cotações → Visitas Técnicas</strong> para agendar 
+                      e confirmar a visita antes de enviar sua proposta.
+                    </p>
+                  </div>
+                  {quote.visit_deadline && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      Prazo para visita: {new Date(quote.visit_deadline).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate('/supplier/quotes?filter=awaiting_visit')}
+                    className="border-amber-600 text-amber-700 hover:bg-amber-100 dark:border-amber-500 dark:text-amber-300 dark:hover:bg-amber-950"
+                  >
+                    Ir para Visitas Técnicas
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Dados do Fornecedor */}
         {!dataConfirmed ? (
@@ -655,7 +705,7 @@ const SupplierQuickResponse = () => {
 
                 <Button
                   onClick={handleSubmitProposal}
-                  disabled={submitting}
+                  disabled={submitting || quote?.requires_visit}
                   className="w-full"
                   size="lg"
                 >
