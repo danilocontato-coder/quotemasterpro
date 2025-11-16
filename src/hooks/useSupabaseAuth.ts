@@ -6,9 +6,39 @@ export const useSupabaseAuth = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { toast } = useToast();
 
+  const validatePasswordStrength = (password: string): { valid: boolean; message?: string } => {
+    if (password.length < 12) {
+      return { valid: false, message: "A senha deve ter no mínimo 12 caracteres" };
+    }
+    if (!/[A-Z]/.test(password)) {
+      return { valid: false, message: "A senha deve conter pelo menos uma letra maiúscula" };
+    }
+    if (!/[a-z]/.test(password)) {
+      return { valid: false, message: "A senha deve conter pelo menos uma letra minúscula" };
+    }
+    if (!/[0-9]/.test(password)) {
+      return { valid: false, message: "A senha deve conter pelo menos um número" };
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      return { valid: false, message: "A senha deve conter pelo menos um caractere especial" };
+    }
+    return { valid: true };
+  };
+
   const changePassword = async (newPassword: string) => {
     try {
       setIsChangingPassword(true);
+      
+      // Validate password strength
+      const validation = validatePasswordStrength(newPassword);
+      if (!validation.valid) {
+        toast({
+          title: "Senha fraca",
+          description: validation.message,
+          variant: "destructive"
+        });
+        return false;
+      }
       
       const { error } = await supabase.auth.updateUser({
         password: newPassword
@@ -22,7 +52,6 @@ export const useSupabaseAuth = () => {
       });
       return true;
     } catch (error: any) {
-      console.error('Error changing password:', error);
       toast({
         title: "Erro ao alterar senha",
         description: error.message || "Não foi possível alterar a senha.",
