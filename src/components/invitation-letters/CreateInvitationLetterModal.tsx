@@ -615,13 +615,18 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
           </div>
 
           {/* Enviar Imediatamente */}
-          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-            <div>
-              <Label htmlFor="send-immediately" className="cursor-pointer">
-                Enviar Imediatamente
-              </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                Marque para enviar emails aos fornecedores agora
+          <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
+            <div className="space-y-1 flex-1">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="send-immediately" className="font-semibold cursor-pointer">
+                  {sendImmediately ? '✉️ Criar e Enviar Agora' : '💾 Salvar como Rascunho'}
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {sendImmediately 
+                  ? 'A carta será enviada imediatamente para os fornecedores selecionados'
+                  : 'A carta será salva e você poderá revisar antes de enviar'
+                }
               </p>
             </div>
             <Switch
@@ -636,12 +641,17 @@ export default function CreateInvitationLetterModal({ open, onClose }: CreateInv
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting
-                ? 'Salvando...'
-                : sendImmediately
-                ? 'Criar e Enviar'
-                : 'Salvar Rascunho'}
+            <Button type="submit" disabled={isSubmitting} className="gap-2">
+              {isSubmitting ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  {sendImmediately ? 'Enviando...' : 'Salvando...'}
+                </>
+              ) : (
+                <>
+                  {sendImmediately ? '✉️ Criar e Enviar Agora' : '💾 Salvar como Rascunho'}
+                </>
+              )}
             </Button>
           </div>
         </form>

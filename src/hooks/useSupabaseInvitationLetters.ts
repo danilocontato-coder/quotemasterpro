@@ -242,9 +242,30 @@ export function useSupabaseInvitationLetters() {
 
     } catch (err: any) {
       console.error('[useSupabaseInvitationLetters] Error creating letter:', err);
-      toast.error('Erro ao criar carta convite', {
-        description: err.message
-      });
+      
+      // Tratamento específico de erros
+      let errorTitle = 'Erro ao criar carta convite';
+      let errorDescription = err.message;
+      
+      if (err.code === '23505') {
+        // Duplicate key error
+        if (err.message.includes('letter_number')) {
+          errorTitle = 'Número de carta duplicado';
+          errorDescription = 'Ocorreu um conflito ao gerar o número da carta. Por favor, tente novamente.';
+        }
+      } else if (err.code === '23503') {
+        // Foreign key violation
+        errorTitle = 'Dados relacionados não encontrados';
+        errorDescription = 'Cliente ou fornecedor não encontrado. Verifique os dados e tente novamente.';
+      } else if (err.message.includes('storage')) {
+        errorTitle = 'Erro ao fazer upload de anexos';
+        errorDescription = 'Não foi possível fazer upload dos anexos. Verifique o tamanho e formato dos arquivos.';
+      } else if (err.message.includes('cliente')) {
+        errorTitle = 'Cliente não identificado';
+        errorDescription = 'Não foi possível identificar o seu cliente. Faça login novamente.';
+      }
+      
+      toast.error(errorTitle, { description: errorDescription });
       return null;
     }
   };
@@ -266,9 +287,15 @@ export function useSupabaseInvitationLetters() {
 
     } catch (err: any) {
       console.error('[useSupabaseInvitationLetters] Error sending letter:', err);
-      toast.error('Erro ao enviar carta', {
-        description: err.message
-      });
+      
+      let errorDescription = err.message;
+      if (err.message.includes('not found') || err.message.includes('não encontrad')) {
+        errorDescription = 'Carta não encontrada. Ela pode ter sido excluída ou você não tem permissão para enviá-la.';
+      } else if (err.message.includes('email') || err.message.includes('e-mail')) {
+        errorDescription = 'Erro ao enviar e-mails. Verifique os endereços dos fornecedores.';
+      }
+      
+      toast.error('Erro ao enviar carta', { description: errorDescription });
       return false;
     }
   };
@@ -290,9 +317,15 @@ export function useSupabaseInvitationLetters() {
 
     } catch (err: any) {
       console.error('[useSupabaseInvitationLetters] Error resending letter:', err);
-      toast.error('Erro ao reenviar carta', {
-        description: err.message
-      });
+      
+      let errorDescription = err.message;
+      if (err.message.includes('not found') || err.message.includes('não encontrad')) {
+        errorDescription = 'Carta não encontrada. Ela pode ter sido excluída.';
+      } else if (err.message.includes('email') || err.message.includes('e-mail')) {
+        errorDescription = 'Erro ao enviar e-mails. Verifique os endereços dos fornecedores.';
+      }
+      
+      toast.error('Erro ao reenviar carta', { description: errorDescription });
       return false;
     }
   };
@@ -324,9 +357,13 @@ export function useSupabaseInvitationLetters() {
 
     } catch (err: any) {
       console.error('[useSupabaseInvitationLetters] Error cancelling letter:', err);
-      toast.error('Erro ao cancelar carta', {
-        description: err.message
-      });
+      
+      let errorDescription = err.message;
+      if (err.message.includes('not found') || err.message.includes('não encontrad')) {
+        errorDescription = 'Carta não encontrada. Ela pode já ter sido cancelada ou excluída.';
+      }
+      
+      toast.error('Erro ao cancelar carta', { description: errorDescription });
       return false;
     }
   };
