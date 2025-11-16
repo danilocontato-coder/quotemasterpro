@@ -121,16 +121,20 @@ export default function InvitationLettersList() {
     }
 
     // Se não há documentos exigidos ou todos elegíveis, enviar direto
-    const success = await sendLetter(letterId);
-    if (success) {
-      toast.success('Carta enviada com sucesso!');
+    const result = await sendLetter(letterId, false);
+    if (result.success) {
+      toast.success('Carta enviada com sucesso!', {
+        description: `📧 ${result.emailCount || 0} e-mails enviados${result.whatsappCount ? ` | 📱 ${result.whatsappCount} WhatsApp` : ''}`
+      });
     }
   };
 
   const handleResendLetter = async (letterId: string) => {
-    const success = await resendLetter(letterId);
-    if (success) {
-      toast.success('Carta reenviada com sucesso!');
+    const result = await resendLetter(letterId, false);
+    if (result.success) {
+      toast.success('Carta reenviada com sucesso!', {
+        description: `📧 ${result.emailCount || 0} e-mails enviados${result.whatsappCount ? ` | 📱 ${result.whatsappCount} WhatsApp` : ''}`
+      });
     }
   };
 
