@@ -110,35 +110,6 @@ export function useSupabaseInvitationLetters() {
     try {
       console.log('[useSupabaseInvitationLetters] Creating letter:', data);
 
-      // Upload attachments first if any
-      let attachmentUrls: any[] = [];
-      if (data.attachments && data.attachments.length > 0) {
-        attachmentUrls = await Promise.all(
-          data.attachments.map(async (file) => {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const filePath = `${data.quote_id}/${fileName}`;
-
-            const { error: uploadError, data: uploadData } = await supabase.storage
-              .from('invitation-attachments')
-              .upload(filePath, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = supabase.storage
-              .from('invitation-attachments')
-              .getPublicUrl(filePath);
-
-            return {
-              name: file.name,
-              url: urlData.publicUrl,
-              size: file.size,
-              type: file.type
-            };
-          })
-        );
-      }
-
       // Get client_id from current user
       const { data: profileData } = await supabase
         .from('profiles')
@@ -150,7 +121,7 @@ export function useSupabaseInvitationLetters() {
         throw new Error('Cliente não encontrado');
       }
 
-      // Create letter record
+      // Create letter record WITHOUT attachments first
       const { data: letterData, error: letterError } = await supabase
         .from('invitation_letters')
         .insert({
@@ -159,16 +130,64 @@ export function useSupabaseInvitationLetters() {
           quote_category: data.quote_category || null,
           estimated_budget: data.estimated_budget || null,
           direct_emails: data.direct_emails || [],
+          required_documents: data.required_documents || null,
           title: data.title,
           description: data.description,
           deadline: data.deadline,
-          status: data.send_immediately ? 'draft' : 'draft', // Will be updated to 'sent' by edge function
-          attachments: attachmentUrls.length > 0 ? attachmentUrls : null
+          status: 'draft',
+          attachments: null // Will be updated after upload
         })
         .select()
         .single();
 
       if (letterError) throw letterError;
+
+      console.log('[useSupabaseInvitationLetters] Letter created:', letterData);
+
+      // NOW upload attachments using the correct letter_id
+      let attachmentUrls: any[] = [];
+      if (data.attachments && data.attachments.length > 0) {
+        try {
+          attachmentUrls = await Promise.all(
+            data.attachments.map(async (file) => {
+              const fileExt = file.name.split('.').pop();
+              const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+              const filePath = `${letterData.id}/${fileName}`; // ✅ Using letter_id instead of quote_id
+
+              const { error: uploadError } = await supabase.storage
+                .from('invitation-attachments')
+                .upload(filePath, file);
+
+              if (uploadError) throw uploadError;
+
+              const { data: urlData } = supabase.storage
+                .from('invitation-attachments')
+                .getPublicUrl(filePath);
+
+              return {
+                name: file.name,
+                url: urlData.publicUrl,
+                size: file.size,
+                type: file.type
+              };
+            })
+          );
+
+          // Update letter with attachments
+          const { error: updateError } = await supabase
+            .from('invitation_letters')
+            .update({ attachments: attachmentUrls })
+            .eq('id', letterData.id);
+
+          if (updateError) throw updateError;
+
+        } catch (uploadError: any) {
+          console.error('[useSupabaseInvitationLetters] Upload error:', uploadError);
+          // Rollback: delete the created letter
+          await supabase.from('invitation_letters').delete().eq('id', letterData.id);
+          throw new Error(`Erro no upload de anexos: ${uploadError.message}`);
+        }
+      }
 
       console.log('[useSupabaseInvitationLetters] Letter created:', letterData);
 
