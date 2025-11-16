@@ -50,6 +50,7 @@ export interface CreateLetterData {
   supplier_ids: string[];
   direct_emails?: string[];
   attachments?: File[];
+  required_documents?: Array<{ type: string; label: string; mandatory: boolean }>;
   send_immediately?: boolean;
 }
 

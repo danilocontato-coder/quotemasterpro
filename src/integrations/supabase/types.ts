@@ -3001,6 +3001,7 @@ export type Database = {
           metadata: Json | null
           quote_category: string | null
           quote_id: string | null
+          required_documents: Json | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invitation_letter_status"]
           title: string
@@ -3021,6 +3022,7 @@ export type Database = {
           metadata?: Json | null
           quote_category?: string | null
           quote_id?: string | null
+          required_documents?: Json | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invitation_letter_status"]
           title: string
@@ -3041,6 +3043,7 @@ export type Database = {
           metadata?: Json | null
           quote_category?: string | null
           quote_id?: string | null
+          required_documents?: Json | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invitation_letter_status"]
           title?: string

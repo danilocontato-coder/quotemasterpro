@@ -52,6 +52,7 @@ const DebugCostCenters = React.lazy(() => import('@/pages/DebugCostCenters'));
 const Help = React.lazy(() => import('@/pages/Help'));
 const PredictiveDashboard = React.lazy(() => import('@/pages/PredictiveDashboard'));
 const LinkExpiredPage = React.lazy(() => import('@/pages/supplier/LinkExpiredPage'));
+const SupplierDocumentsValidation = React.lazy(() => import('@/pages/SupplierDocumentsValidation'));
 // BrandingSettings removido - só acessível por admins via /admin/brand
 
 // Admin pages
@@ -533,6 +534,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="suppliers" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <Suppliers />
+          </Suspense>
+        } />
+        <Route path="suppliers/documents" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <SupplierDocumentsValidation />
           </Suspense>
         } />
         <Route path="products" element={

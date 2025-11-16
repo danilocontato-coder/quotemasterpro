@@ -104,3 +104,132 @@ export function getDocumentMask(type: 'cpf' | 'cnpj'): string {
 export function getDocumentPlaceholder(type: 'cpf' | 'cnpj'): string {
   return type === 'cpf' ? 'Digite o CPF' : 'Digite o CNPJ';
 }
+
+// ============== NOVAS FUNÇÕES PARA DOCUMENTOS DE FORNECEDORES ==============
+
+import { SupplierDocument } from "@/hooks/useSupplierDocuments";
+import { differenceInDays } from "date-fns";
+
+/**
+ * Verifica se um documento está expirado
+ */
+export function isDocumentExpired(expiryDate: string | null): boolean {
+  if (!expiryDate) return false;
+  return new Date(expiryDate) < new Date();
+}
+
+/**
+ * Verifica se um documento está vencendo em breve
+ */
+export function isDocumentExpiringSoon(expiryDate: string | null, days: number = 30): boolean {
+  if (!expiryDate) return false;
+  const daysUntilExpiry = differenceInDays(new Date(expiryDate), new Date());
+  return daysUntilExpiry > 0 && daysUntilExpiry <= days;
+}
+
+/**
+ * Calcula o score de documentação de um fornecedor (0-100)
+ */
+export function calculateDocumentScore(documents: SupplierDocument[]): number {
+  if (documents.length === 0) return 0;
+
+  const weights = {
+    validated: 100,
+    pending: 50,
+    rejected: 0,
+    expired: 0,
+  };
+
+  const totalScore = documents.reduce((sum, doc) => {
+    const status = isDocumentExpired(doc.expiry_date) ? 'expired' : doc.status;
+    return sum + weights[status as keyof typeof weights];
+  }, 0);
+
+  return Math.round(totalScore / documents.length);
+}
+
+/**
+ * Verifica o status de documentos obrigatórios de um fornecedor
+ */
+export interface RequiredDocumentStatus {
+  type: string;
+  label: string;
+  mandatory: boolean;
+  status: 'missing' | 'pending' | 'validated' | 'rejected' | 'expired';
+  document?: SupplierDocument;
+}
+
+export function getRequiredDocumentsStatus(
+  supplierDocuments: SupplierDocument[],
+  requiredDocs: { type: string; label: string; mandatory: boolean }[]
+): RequiredDocumentStatus[] {
+  return requiredDocs.map(required => {
+    const document = supplierDocuments.find(doc => doc.document_type === required.type);
+    
+    let status: RequiredDocumentStatus['status'] = 'missing';
+    
+    if (document) {
+      if (isDocumentExpired(document.expiry_date)) {
+        status = 'expired';
+      } else {
+        status = document.status as 'pending' | 'validated' | 'rejected';
+      }
+    }
+
+    return {
+      ...required,
+      status,
+      document,
+    };
+  });
+}
+
+/**
+ * Verifica se um fornecedor é elegível baseado nos documentos obrigatórios
+ */
+export function isSupplierEligible(
+  supplierDocuments: SupplierDocument[],
+  requiredDocs: { type: string; label: string; mandatory: boolean }[]
+): { eligible: boolean; reason?: string } {
+  const mandatoryDocs = requiredDocs.filter(doc => doc.mandatory);
+  
+  if (mandatoryDocs.length === 0) {
+    return { eligible: true };
+  }
+
+  const statuses = getRequiredDocumentsStatus(supplierDocuments, mandatoryDocs);
+  
+  const missingMandatory = statuses.filter(doc => doc.mandatory && doc.status === 'missing');
+  if (missingMandatory.length > 0) {
+    return {
+      eligible: false,
+      reason: `Documentos obrigatórios faltando: ${missingMandatory.map(d => d.label).join(', ')}`,
+    };
+  }
+
+  const expiredMandatory = statuses.filter(doc => doc.mandatory && doc.status === 'expired');
+  if (expiredMandatory.length > 0) {
+    return {
+      eligible: false,
+      reason: `Documentos obrigatórios expirados: ${expiredMandatory.map(d => d.label).join(', ')}`,
+    };
+  }
+
+  const rejectedMandatory = statuses.filter(doc => doc.mandatory && doc.status === 'rejected');
+  if (rejectedMandatory.length > 0) {
+    return {
+      eligible: false,
+      reason: `Documentos obrigatórios rejeitados: ${rejectedMandatory.map(d => d.label).join(', ')}`,
+    };
+  }
+
+  const pendingMandatory = statuses.filter(doc => doc.mandatory && doc.status === 'pending');
+  if (pendingMandatory.length > 0) {
+    return {
+      eligible: false,
+      reason: `Documentos obrigatórios pendentes de validação: ${pendingMandatory.map(d => d.label).join(', ')}`,
+    };
+  }
+
+  return { eligible: true };
+}
