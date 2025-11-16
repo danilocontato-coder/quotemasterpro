@@ -4926,6 +4926,88 @@ export type Database = {
           },
         ]
       }
+      supplier_documents: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          document_type: string
+          expiry_date: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          metadata: Json | null
+          mime_type: string | null
+          rejection_reason: string | null
+          status: string | null
+          supplier_id: string
+          updated_at: string | null
+          validated_at: string | null
+          validated_by: string | null
+          validation_data: Json | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          document_type: string
+          expiry_date?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          metadata?: Json | null
+          mime_type?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          supplier_id: string
+          updated_at?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_data?: Json | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          document_type?: string
+          expiry_date?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          metadata?: Json | null
+          mime_type?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          supplier_id?: string
+          updated_at?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_documents_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_documents_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_ratings: {
         Row: {
           client_id: string
@@ -5067,9 +5149,75 @@ export type Database = {
           },
         ]
       }
+      supplier_validations: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          performed_at: string | null
+          performed_by: string | null
+          score: number | null
+          status: string | null
+          supplier_id: string
+          validation_data: Json | null
+          validation_type: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          score?: number | null
+          status?: string | null
+          supplier_id: string
+          validation_data?: Json | null
+          validation_type: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          performed_at?: string | null
+          performed_by?: string | null
+          score?: number | null
+          status?: string | null
+          supplier_id?: string
+          validation_data?: Json | null
+          validation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_validations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_validations_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_validations_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: Json | null
+          approved_at: string | null
+          approved_by: string | null
           asaas_wallet_id: string | null
           bank_data: Json | null
           business_info: Json | null
@@ -5079,6 +5227,7 @@ export type Database = {
           city: string | null
           client_id: string | null
           cnpj: string
+          cnpj_data: Json | null
           completed_orders: number | null
           created_at: string | null
           document_number: string | null
@@ -5088,12 +5237,17 @@ export type Database = {
           invited_by_clients: string[] | null
           is_certified: boolean | null
           last_invitation_sent: string | null
+          last_validation_date: string | null
           name: string
+          next_validation_due: string | null
           phone: string | null
+          qualification_score: number | null
+          qualification_status: string | null
           rating: number | null
           region: string | null
           registration_completed_at: string | null
           registration_status: string | null
+          rejection_reason: string | null
           specialties: string[] | null
           state: string | null
           status: string | null
@@ -5106,6 +5260,8 @@ export type Database = {
         }
         Insert: {
           address?: Json | null
+          approved_at?: string | null
+          approved_by?: string | null
           asaas_wallet_id?: string | null
           bank_data?: Json | null
           business_info?: Json | null
@@ -5115,6 +5271,7 @@ export type Database = {
           city?: string | null
           client_id?: string | null
           cnpj: string
+          cnpj_data?: Json | null
           completed_orders?: number | null
           created_at?: string | null
           document_number?: string | null
@@ -5124,12 +5281,17 @@ export type Database = {
           invited_by_clients?: string[] | null
           is_certified?: boolean | null
           last_invitation_sent?: string | null
+          last_validation_date?: string | null
           name: string
+          next_validation_due?: string | null
           phone?: string | null
+          qualification_score?: number | null
+          qualification_status?: string | null
           rating?: number | null
           region?: string | null
           registration_completed_at?: string | null
           registration_status?: string | null
+          rejection_reason?: string | null
           specialties?: string[] | null
           state?: string | null
           status?: string | null
@@ -5142,6 +5304,8 @@ export type Database = {
         }
         Update: {
           address?: Json | null
+          approved_at?: string | null
+          approved_by?: string | null
           asaas_wallet_id?: string | null
           bank_data?: Json | null
           business_info?: Json | null
@@ -5151,6 +5315,7 @@ export type Database = {
           city?: string | null
           client_id?: string | null
           cnpj?: string
+          cnpj_data?: Json | null
           completed_orders?: number | null
           created_at?: string | null
           document_number?: string | null
@@ -5160,12 +5325,17 @@ export type Database = {
           invited_by_clients?: string[] | null
           is_certified?: boolean | null
           last_invitation_sent?: string | null
+          last_validation_date?: string | null
           name?: string
+          next_validation_due?: string | null
           phone?: string | null
+          qualification_score?: number | null
+          qualification_status?: string | null
           rating?: number | null
           region?: string | null
           registration_completed_at?: string | null
           registration_status?: string | null
+          rejection_reason?: string | null
           specialties?: string[] | null
           state?: string | null
           status?: string | null
@@ -5177,6 +5347,13 @@ export type Database = {
           whatsapp?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "suppliers_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "suppliers_subscription_plan_id_fkey"
             columns: ["subscription_plan_id"]
