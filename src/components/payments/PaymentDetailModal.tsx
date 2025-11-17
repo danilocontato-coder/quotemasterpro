@@ -262,30 +262,38 @@ export function PaymentDetailModal({
 
                     {/* Price Breakdown */}
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal dos Itens:</span>
-                        <span className="font-medium">
-                          {formatCurrency(
-                            payment.quote_responses[0].items.reduce((sum: number, item: any) => sum + item.total, 0)
-                          )}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Frete:</span>
-                        <span className="font-medium">
-                          {formatCurrency(payment.quote_responses[0].shipping_cost || 0)}
-                        </span>
-                      </div>
+                      {(() => {
+                        const subtotal = payment.quote_responses[0].items.reduce((sum: number, item: any) => sum + item.total, 0);
+                        const shipping = payment.quote_responses[0].shipping_cost || 0;
+                        const total = subtotal + shipping;
+                        
+                        return (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Subtotal dos Itens:</span>
+                              <span className="font-medium">
+                                {formatCurrency(subtotal)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Frete:</span>
+                              <span className="font-medium">
+                                {formatCurrency(shipping)}
+                              </span>
+                            </div>
 
-                      <Separator />
+                            <Separator />
 
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Total:</span>
-                        <span className="font-bold text-xl text-primary">
-                          {formatCurrency(payment.amount)}
-                        </span>
-                      </div>
+                            <div className="flex justify-between">
+                              <span className="font-semibold">Total a Pagar:</span>
+                              <span className="font-bold text-xl text-primary">
+                                {formatCurrency(total)}
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* Additional Info */}
