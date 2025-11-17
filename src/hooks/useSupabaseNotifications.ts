@@ -36,29 +36,34 @@ export function useSupabaseNotifications() {
 
       console.log('🔔 [NOTIFICATIONS] Fetching notifications for user:', user.id);
 
-      // Buscar client_id do usuário
+      // Buscar client_id e supplier_id do usuário para incluir notificações broadcast
       const { data: profile } = await supabase
         .from('profiles')
-        .select('client_id')
+        .select('client_id, supplier_id')
         .eq('id', user.id)
         .single();
 
       const clientId = profile?.client_id;
-      console.log('🔔 [NOTIFICATIONS] User client_id:', clientId);
+      const supplierId = profile?.supplier_id;
+      console.log('🔔 [NOTIFICATIONS] User client_id:', clientId, 'supplier_id:', supplierId);
 
-      // Buscar notificações próprias do usuário ou broadcast para seu cliente
+      // Buscar notificações próprias do usuário OU broadcast para seu cliente/fornecedor
       let query = supabase
         .from('notifications')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
+      // Construir filtro dinâmico
+      const filters: string[] = [`user_id.eq.${user.id}`];
       if (clientId) {
-        // Buscar notificações do usuário OU do cliente
-        query = query.or(`user_id.eq.${user.id},client_id.eq.${clientId}`);
-      } else {
-        query = query.eq('user_id', user.id);
+        filters.push(`client_id.eq.${clientId}`);
       }
+      if (supplierId) {
+        filters.push(`supplier_id.eq.${supplierId}`);
+      }
+
+      query = query.or(filters.join(','));
 
       const { data, error } = await query;
 
@@ -132,83 +137,106 @@ export function useSupabaseNotifications() {
 
     console.log('🔔 [NOTIFICATIONS] Setting up real-time subscription for user:', user.id);
 
-    // Use a unique channel name to avoid conflicts
-    const channel = supabase
-      .channel(`notifications-main-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('🔔 [NOTIFICATIONS] New notification received:', payload);
-          
-          const newNotification = payload.new as any;
-          
-          // Show immediate toast for new notification
-          toast(newNotification.title, {
-            description: newNotification.message,
-            duration: newNotification.priority === 'high' ? 8000 : 5000,
-            action: newNotification.action_url ? {
-              label: 'Ver',
-              onClick: () => {
-                if (newNotification.action_url) {
-                  // Use custom event to trigger navigation
-                  window.dispatchEvent(new CustomEvent('navigate-to', { detail: newNotification.action_url }));
+    // Buscar client_id e supplier_id para incluir no filtro realtime
+    const setupSubscription = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id, supplier_id')
+        .eq('id', user.id)
+        .single();
+
+      const clientId = profile?.client_id;
+      const supplierId = profile?.supplier_id;
+
+      // Construir filtro de realtime
+      const filters: string[] = [`user_id=eq.${user.id}`];
+      if (clientId) {
+        filters.push(`client_id=eq.${clientId}`);
+      }
+      if (supplierId) {
+        filters.push(`supplier_id=eq.${supplierId}`);
+      }
+
+      // Use a unique channel name to avoid conflicts
+      const channel = supabase
+        .channel(`notifications-main-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: filters.join(','),
+          },
+          (payload) => {
+            console.log('🔔 [NOTIFICATIONS] New notification received:', payload);
+            
+            const newNotification = payload.new as any;
+            
+            // Show immediate toast for new notification
+            toast(newNotification.title, {
+              description: newNotification.message,
+              duration: newNotification.priority === 'high' ? 8000 : 5000,
+              action: newNotification.action_url ? {
+                label: 'Ver',
+                onClick: () => {
+                  if (newNotification.action_url) {
+                    // Use custom event to trigger navigation
+                    window.dispatchEvent(new CustomEvent('navigate-to', { detail: newNotification.action_url }));
+                  }
                 }
-              }
-            } : undefined
-          });
+              } : undefined
+            });
 
-          // Add notification to state immediately
-          const formattedNotification = {
-            id: newNotification.id,
-            title: newNotification.title,
-            message: newNotification.message,
-            type: newNotification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
-            created_at: newNotification.created_at,
-            read: false,
-            priority: newNotification.priority as 'low' | 'normal' | 'high',
-            action_url: newNotification.action_url,
-            metadata: newNotification.metadata,
-          };
+            // Add notification to state immediately
+            const formattedNotification = {
+              id: newNotification.id,
+              title: newNotification.title,
+              message: newNotification.message,
+              type: newNotification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
+              created_at: newNotification.created_at,
+              read: false,
+              priority: newNotification.priority as 'low' | 'normal' | 'high',
+              action_url: newNotification.action_url,
+              metadata: newNotification.metadata,
+            };
 
-          setNotifications(prev => [formattedNotification, ...prev]);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('🔔 [NOTIFICATIONS] Notification updated:', payload);
-          
-          // Update specific notification instead of refetching all
-          const updatedNotification = payload.new as any;
-          setNotifications(prev => 
-            prev.map(n => 
-              n.id === updatedNotification.id 
-                ? { ...n, read: updatedNotification.read }
-                : n
-            )
-          );
-        }
-      )
-      .subscribe((status) => {
-        console.log('🔔 [NOTIFICATIONS] Real-time subscription status:', status);
-      });
+            setNotifications(prev => [formattedNotification, ...prev]);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: filters.join(','),
+          },
+          (payload) => {
+            console.log('🔔 [NOTIFICATIONS] Notification updated:', payload);
+            
+            // Update specific notification instead of refetching all
+            const updatedNotification = payload.new as any;
+            setNotifications(prev => 
+              prev.map(n => 
+                n.id === updatedNotification.id 
+                  ? { ...n, read: updatedNotification.read }
+                  : n
+              )
+            );
+          }
+        )
+        .subscribe((status) => {
+          console.log('🔔 [NOTIFICATIONS] Real-time subscription status:', status);
+        });
 
-    return () => {
-      console.log('🔔 [NOTIFICATIONS] Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
+      return () => {
+        console.log('🔔 [NOTIFICATIONS] Cleaning up real-time subscription');
+        supabase.removeChannel(channel);
+      };
     };
+
+    setupSubscription();
   }, [user?.id]); // Changed dependency to be more specific
 
   const markAsRead = async (id: string) => {

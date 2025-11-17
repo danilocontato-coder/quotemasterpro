@@ -3294,6 +3294,7 @@ export type Database = {
           metadata: Json | null
           priority: string | null
           read: boolean | null
+          supplier_id: string | null
           title: string
           type: string
           user_id: string | null
@@ -3307,6 +3308,7 @@ export type Database = {
           metadata?: Json | null
           priority?: string | null
           read?: boolean | null
+          supplier_id?: string | null
           title: string
           type: string
           user_id?: string | null
@@ -3320,6 +3322,7 @@ export type Database = {
           metadata?: Json | null
           priority?: string | null
           read?: boolean | null
+          supplier_id?: string | null
           title?: string
           type?: string
           user_id?: string | null
@@ -3330,6 +3333,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -6359,6 +6369,7 @@ export type Database = {
       }
       check_overdue_accounts: { Args: never; Returns: undefined }
       check_quote_deadlines_for_suppliers: { Args: never; Returns: undefined }
+      check_supplier_quote_deadlines: { Args: never; Returns: undefined }
       check_usage_integrity: {
         Args: never
         Returns: {
@@ -6708,6 +6719,18 @@ export type Database = {
           p_message: string
           p_metadata?: Json
           p_priority?: string
+          p_title: string
+          p_type?: string
+        }
+        Returns: undefined
+      }
+      notify_supplier_users: {
+        Args: {
+          p_action_url?: string
+          p_message: string
+          p_metadata?: Json
+          p_priority?: string
+          p_supplier_id: string
           p_title: string
           p_type?: string
         }
