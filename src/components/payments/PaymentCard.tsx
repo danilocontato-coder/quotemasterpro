@@ -184,7 +184,15 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
               </Badge>
             </div>
             <div className="text-lg font-bold text-primary">
-              {formatCurrency(payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0))}
+              {(() => {
+                const resp = payment.quote_responses?.[0];
+                if (resp && Array.isArray(resp.items)) {
+                  const subtotal = resp.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+                  const shipping = resp.shipping_cost || 0;
+                  return formatCurrency(subtotal + shipping);
+                }
+                return formatCurrency(payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0));
+              })()}
             </div>
           </div>
         </div>
