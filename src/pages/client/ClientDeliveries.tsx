@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Package, Search, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, Search, Filter, Clock } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DeliveryMetrics } from '@/components/client/DeliveryMetrics';
@@ -10,10 +12,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ClientDeliveries() {
   const { deliveries, isLoading, refetch } = useClientDeliveries();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<ClientDelivery | null>(null);
+  const [awaitingScheduling, setAwaitingScheduling] = useState<any[]>([]);
 
   const handleConfirm = (deliveryId: string) => {
     const delivery = deliveries.find(d => d.id === deliveryId);
@@ -27,6 +31,85 @@ export default function ClientDeliveries() {
     refetch();
     setSelectedDelivery(null);
   };
+
+  // Buscar cotações com pagamento confirmado mas sem entrega agendada
+  useEffect(() => {
+    const fetchAwaitingScheduling = async () => {
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.client_id) return;
+
+      const { data: payments } = await supabase
+        .from('payments')
+        .select(`
+          id,
+          amount,
+          status,
+          quote_id,
+          quotes!inner (
+            id,
+            local_code,
+            title
+          ),
+          suppliers!inner (
+            name
+          )
+        `)
+        .eq('quotes.client_id', profile.client_id)
+        .eq('status', 'in_escrow');
+
+      if (!payments) return;
+
+      // Filtrar apenas os que não têm delivery
+      const pending = [];
+      for (const payment of payments) {
+        const { data: delivery } = await supabase
+          .from('deliveries')
+          .select('id')
+          .eq('quote_id', payment.quote_id)
+          .maybeSingle();
+
+        if (!delivery) {
+          pending.push({
+            quote_id: payment.quote_id,
+            quote_local_code: payment.quotes?.local_code,
+            quote_title: payment.quotes?.title,
+            supplier_name: payment.suppliers?.name,
+            payment_amount: payment.amount,
+          });
+        }
+      }
+
+      setAwaitingScheduling(pending);
+    };
+
+    fetchAwaitingScheduling();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('client-awaiting-scheduling')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deliveries' },
+        () => fetchAwaitingScheduling()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments' },
+        () => fetchAwaitingScheduling()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const filteredDeliveries = deliveries.filter(delivery => {
     const matchesSearch = !searchTerm || 
@@ -89,6 +172,37 @@ export default function ClientDeliveries() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Awaiting Scheduling Cards */}
+      {awaitingScheduling.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Clock className="w-5 h-5 text-yellow-600" />
+            Aguardando Agendamento
+          </h3>
+          {awaitingScheduling.map((item) => (
+            <div
+              key={item.quote_id}
+              className="border-2 border-yellow-200 bg-yellow-50 rounded-lg p-4"
+            >
+              <div className="flex items-center gap-3">
+                <Clock className="w-6 h-6 text-yellow-600" />
+                <div className="flex-1">
+                  <p className="font-semibold">
+                    Cotação #{item.quote_local_code} - {item.quote_title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Fornecedor: {item.supplier_name}
+                  </p>
+                  <p className="text-sm text-yellow-800 mt-1">
+                    💰 Pagamento confirmado. O fornecedor está preparando a entrega.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Deliveries List */}
       {isLoading ? (

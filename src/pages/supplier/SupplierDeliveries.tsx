@@ -6,11 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Calendar, MapPin, Clock, CheckCircle, Copy, Key } from "lucide-react";
+import { Package, Truck, Calendar, MapPin, Clock, CheckCircle, Copy, Key, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { UberDeliveryForm } from "@/components/supplier/delivery/UberDeliveryForm";
+import { PendingDeliveriesTab } from "@/components/supplier/PendingDeliveriesTab";
+import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
+import { PostPaymentActionModal } from "@/components/supplier/PostPaymentActionModal";
+import { usePendingDeliveries } from "@/hooks/usePendingDeliveries";
 
 // Componente para mostrar código de confirmação
 const DeliveryCodeDisplay = ({ deliveryId }: { deliveryId: string }) => {
@@ -120,11 +124,18 @@ export default function SupplierDeliveries() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [selectedQuoteForSchedule, setSelectedQuoteForSchedule] = useState<string | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [postPaymentModal, setPostPaymentModal] = useState<{
+    open: boolean;
+    quoteData?: any;
+  }>({ open: false });
   const [trackingCode, setTrackingCode] = useState("");
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
+  const { pendingDeliveries } = usePendingDeliveries();
 
   const fetchDeliveries = async () => {
     try {
@@ -278,6 +289,56 @@ export default function SupplierDeliveries() {
       supabase.removeChannel(channel);
     };
   }, [user?.supplierId]);
+
+  const handleScheduleDelivery = (quoteId: string) => {
+    setSelectedQuoteForSchedule(quoteId);
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleScheduleModalClose = () => {
+    setIsScheduleModalOpen(false);
+    setSelectedQuoteForSchedule(null);
+  };
+
+  const handleDeliveryScheduled = () => {
+    fetchDeliveries();
+    handleScheduleModalClose();
+  };
+
+  // Listener para notificações de pagamento confirmado
+  useEffect(() => {
+    const handlePaymentConfirmed = async (event: any) => {
+      const { quoteId, amount } = event.detail;
+
+      const { data: quote } = await supabase
+        .from('quotes')
+        .select('local_code, title, client_name')
+        .eq('id', quoteId)
+        .single();
+
+      if (!quote) return;
+
+      const dismissedQuotes = JSON.parse(
+        localStorage.getItem('dismissed_payment_modals') || '[]'
+      );
+
+      if (!dismissedQuotes.includes(quote.local_code)) {
+        setPostPaymentModal({
+          open: true,
+          quoteData: {
+            quoteId,
+            quoteLocalCode: quote.local_code,
+            quoteTitle: quote.title,
+            clientName: quote.client_name,
+            paymentAmount: amount,
+          },
+        });
+      }
+    };
+
+    window.addEventListener('payment-confirmed', handlePaymentConfirmed as EventListener);
+    return () => window.removeEventListener('payment-confirmed', handlePaymentConfirmed as EventListener);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
