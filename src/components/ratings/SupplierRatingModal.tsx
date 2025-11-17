@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Star, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -69,7 +69,6 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
             filter: `user_id=eq.${user.id}`
           },
           (payload: any) => {
-            // Nova conquista desbloqueada - mostrar toast animado!
             const achievement = payload.new;
             toast({
               title: "🎉 Nova Conquista Desbloqueada!",
@@ -106,34 +105,41 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
   const StarRating = ({ 
     value, 
     onChange, 
-    label 
+    label,
+    size = "default"
   }: { 
     value: number; 
     onChange: (rating: number) => void; 
     label: string;
-  }) => (
-    <div className="space-y-2">
-      <label className="text-sm font-medium">{label}</label>
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => onChange(star)}
-            className="focus:outline-none"
-          >
-            <Star
-              className={`w-5 h-5 ${
-                star <= value 
-                  ? 'fill-yellow-400 text-yellow-400' 
-                  : 'text-gray-300'
-              }`}
-            />
-          </button>
-        ))}
+    size?: "default" | "sm";
+  }) => {
+    const starSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
+    const labelSize = size === "sm" ? "text-xs" : "text-sm";
+    
+    return (
+      <div className="space-y-1.5">
+        <label className={`${labelSize} font-medium`}>{label}</label>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => onChange(star)}
+              className="focus:outline-none focus:ring-2 focus:ring-primary rounded"
+            >
+              <Star
+                className={`${starSize} ${
+                  star <= value 
+                    ? 'fill-yellow-400 text-yellow-400' 
+                    : 'text-gray-300'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const handleSubmit = async () => {
     if (ratings.overall === 0) {
@@ -187,7 +193,6 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
 
       if (error) throw error;
 
-      // Marcar notificação como lida se vier de um prompt
       if (notificationId) {
         try {
           await supabase
@@ -199,7 +204,6 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
         }
       }
 
-      // Toast de sucesso (conquistas serão notificadas pelo listener real-time)
       toast({
         title: "Sucesso!",
         description: "Avaliação enviada com sucesso."
@@ -208,7 +212,6 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
       onRatingSubmitted?.();
       onClose();
       
-      // Reset form
       setRatings({
         overall: 0,
         quality: 0,
@@ -233,105 +236,106 @@ const SupplierRatingModal: React.FC<SupplierRatingModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Avaliar Fornecedor</DialogTitle>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Avalie sua experiência com {supplierName}
           </p>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Avaliação Geral */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Avaliação Geral *</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <StarRating
-                label="Como você avalia este fornecedor no geral?"
-                value={ratings.overall}
-                onChange={(rating) => setRatings(prev => ({ ...prev, overall: rating }))}
-              />
-            </CardContent>
-          </Card>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-base">Avaliação Geral *</h3>
+            <StarRating
+              label="Como você avalia este fornecedor no geral?"
+              value={ratings.overall}
+              onChange={(rating) => setRatings(prev => ({ ...prev, overall: rating }))}
+            />
+          </div>
+
+          <Separator />
 
           {/* Critérios Específicos */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Critérios Específicos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div>
+              <h3 className="font-semibold text-base">Critérios Específicos</h3>
+              <p className="text-xs text-muted-foreground">(Opcional) Avalie aspectos específicos</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <StarRating
-                label="Qualidade dos Produtos/Serviços"
+                label="Qualidade"
                 value={ratings.quality}
                 onChange={(rating) => setRatings(prev => ({ ...prev, quality: rating }))}
-              />
-              
-              <StarRating
-                label="Prazo de Entrega"
-                value={ratings.delivery}
-                onChange={(rating) => setRatings(prev => ({ ...prev, delivery: rating }))}
+                size="sm"
               />
               
               <StarRating
                 label="Comunicação"
                 value={ratings.communication}
                 onChange={(rating) => setRatings(prev => ({ ...prev, communication: rating }))}
+                size="sm"
               />
               
               <StarRating
-                label="Preço/Custo-Benefício"
+                label="Entrega"
+                value={ratings.delivery}
+                onChange={(rating) => setRatings(prev => ({ ...prev, delivery: rating }))}
+                size="sm"
+              />
+              
+              <StarRating
+                label="Custo-Benefício"
                 value={ratings.price}
                 onChange={(rating) => setRatings(prev => ({ ...prev, price: rating }))}
+                size="sm"
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+
+          <Separator />
 
           {/* Recomendação */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recomendação *</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">
-                Você recomendaria este fornecedor para outros clientes?
-              </p>
-              <div className="flex gap-4">
-                <Button
-                  variant={wouldRecommend === true ? "default" : "outline"}
-                  onClick={() => setWouldRecommend(true)}
-                  className="flex items-center gap-2"
-                >
-                  <ThumbsUp className="w-4 h-4" />
-                  Sim, recomendo
-                </Button>
-                <Button
-                  variant={wouldRecommend === false ? "destructive" : "outline"}
-                  onClick={() => setWouldRecommend(false)}
-                  className="flex items-center gap-2"
-                >
-                  <ThumbsDown className="w-4 h-4" />
-                  Não recomendo
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-base">Recomendação *</h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Você recomendaria este fornecedor para outros clientes?
+            </p>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant={wouldRecommend === true ? "default" : "outline"}
+                onClick={() => setWouldRecommend(true)}
+                className="flex items-center gap-2"
+              >
+                <ThumbsUp className="w-4 h-4" />
+                Sim, recomendo
+              </Button>
+              <Button
+                type="button"
+                variant={wouldRecommend === false ? "destructive" : "outline"}
+                onClick={() => setWouldRecommend(false)}
+                className="flex items-center gap-2"
+              >
+                <ThumbsDown className="w-4 h-4" />
+                Não recomendo
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
 
           {/* Comentários */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Comentários Adicionais</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Compartilhe detalhes sobre sua experiência com este fornecedor..."
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                rows={4}
-              />
-            </CardContent>
-          </Card>
+          <div className="space-y-2">
+            <h3 className="font-semibold text-base">Comentários Adicionais</h3>
+            <Textarea
+              placeholder="Compartilhe detalhes sobre sua experiência com este fornecedor..."
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              rows={3}
+            />
+          </div>
         </div>
 
         <DialogFooter>
