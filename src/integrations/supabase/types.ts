@@ -2135,7 +2135,7 @@ export type Database = {
           actual_delivery_date: string | null
           client_id: string
           created_at: string
-          delivery_address: string
+          delivery_address: string | null
           delivery_method: string | null
           id: string
           local_code: string | null
@@ -2161,7 +2161,7 @@ export type Database = {
           actual_delivery_date?: string | null
           client_id: string
           created_at?: string
-          delivery_address: string
+          delivery_address?: string | null
           delivery_method?: string | null
           id?: string
           local_code?: string | null
@@ -2187,7 +2187,7 @@ export type Database = {
           actual_delivery_date?: string | null
           client_id?: string
           created_at?: string
-          delivery_address?: string
+          delivery_address?: string | null
           delivery_method?: string | null
           id?: string
           local_code?: string | null
