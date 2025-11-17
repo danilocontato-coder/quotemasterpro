@@ -33,6 +33,8 @@ serve(async (req) => {
 
     const { quote_id, scheduled_date, delivery_address, notes } = await req.json();
     if (!quote_id || !scheduled_date) throw new Error("quote_id and scheduled_date are required");
+    
+    log("Request parameters", { quote_id, scheduled_date, has_address: !!delivery_address });
 
     // Buscar local_code da cotação
     const { data: quote } = await supabase
@@ -99,20 +101,36 @@ serve(async (req) => {
       // ATUALIZAR delivery placeholder existente
       log("Updating existing placeholder delivery", { deliveryId: existingDelivery.id });
       
+      const updateData: Record<string, any> = {
+        scheduled_date: scheduled_date,
+        notes: notes,
+        status: "scheduled",
+        updated_at: new Date().toISOString()
+      };
+      
+      // Only update delivery_address if provided
+      if (delivery_address) {
+        updateData.delivery_address = delivery_address;
+      }
+      
+      log("Update data", updateData);
+      
       const { data: updatedDelivery, error: updateError } = await supabase
         .from("deliveries")
-        .update({
-          scheduled_date: scheduled_date,
-          delivery_address: delivery_address,
-          notes: notes,
-          status: "scheduled",
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq("id", existingDelivery.id)
         .select()
         .single();
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        log("Update error", { error: updateError, code: updateError.code, details: updateError.details });
+        throw new Error(
+          `Não foi possível atualizar o status da entrega: ${updateError.message}\n` +
+          `Código: ${updateError.code || 'N/A'}\n` +
+          `Detalhes: ${updateError.details || 'N/A'}\n\n` +
+          `Se o erro persistir, verifique os logs da edge function para mais detalhes.`
+        );
+      }
       delivery = updatedDelivery;
       
     } else if (existingDelivery) {
@@ -196,10 +214,34 @@ serve(async (req) => {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    log("ERROR", { message });
-    return new Response(JSON.stringify({ error: message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+    log("ERROR", { 
+      message,
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined
     });
+    
+    // Provide more helpful error messages
+    let userMessage = message;
+    
+    // Check for common database trigger errors
+    if (message?.includes('current_setting') || message?.includes('app.supabase_url')) {
+      userMessage = 
+        "Erro de configuração do sistema. Os parâmetros do banco de dados não estão configurados.\n\n" +
+        "Por favor, entre em contato com o suporte técnico informando este erro:\n" +
+        "Faltam configurações: app.supabase_url e app.service_role_key no banco de dados.\n\n" +
+        "Erro original: " + message;
+    }
+    
+    return new Response(
+      JSON.stringify({ 
+        error: userMessage,
+        technical_details: message,
+        hint: "Verifique os logs da edge function 'schedule-delivery' para mais detalhes"
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      }
+    );
   }
 });

@@ -59,9 +59,29 @@ export function ScheduleDeliveryModal({
       setNotes("");
     } catch (error: any) {
       console.error('Error scheduling delivery:', error);
-      const errorMessage = error.message || 
-        'Erro ao agendar entrega. Verifique se já existe uma entrega para esta cotação ou se o pagamento foi confirmado.';
-      toast.error(errorMessage);
+      
+      // Parse error from edge function response
+      let errorMessage = 'Erro ao agendar entrega';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error) {
+        errorMessage = error.error;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      // Show detailed error with hint if available
+      if (error?.hint) {
+        toast.error(errorMessage, {
+          description: error.hint,
+          duration: 6000
+        });
+      } else {
+        toast.error(errorMessage, {
+          duration: 5000
+        });
+      }
     } finally {
       setIsLoading(false);
       setIsSubmitting(false);
