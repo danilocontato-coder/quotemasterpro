@@ -20,6 +20,11 @@ export function RoleBasedNotificationDropdown() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // FASE 8: Contar notificações de alta prioridade não lidas
+  const highPriorityUnread = notifications.filter(n => 
+    !n.read && n.priority === 'high'
+  ).length;
+
   const handleClearAll = () => {
     if (window.confirm('Deseja realmente limpar todas as notificações? Esta ação não pode ser desfeita.')) {
       clearAllNotifications();
@@ -33,6 +38,7 @@ export function RoleBasedNotificationDropdown() {
   console.log('🔔 [ROLE-BASED-DROPDOWN] Rendering with real Supabase notifications:', {
     total: notifications.length,
     unread: unreadCount,
+    highPriority: highPriorityUnread,
     isLoading
   });
 
@@ -42,12 +48,20 @@ export function RoleBasedNotificationDropdown() {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
-            >
-              {unreadCount}
-            </Badge>
+            <>
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+              >
+                {unreadCount}
+              </Badge>
+              {highPriorityUnread > 0 && (
+                <span 
+                  className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-destructive rounded-full animate-pulse" 
+                  title={`${highPriorityUnread} notificação(ões) urgente(s)`}
+                />
+              )}
+            </>
           )}
         </Button>
       </DropdownMenuTrigger>

@@ -204,3 +204,87 @@ export const createTicketNotification = async (ticketData: {
     console.error('Erro ao criar notificação de ticket:', error);
   }
 };
+
+// ============================================
+// FASE 6: NOTIFICAÇÕES PARA FORNECEDORES
+// ============================================
+
+export const createSupplierQuoteNotification = async (data: {
+  supplier_id: string;
+  quote_id: string;
+  local_code: string;
+  quote_title: string;
+  deadline: string;
+}) => {
+  try {
+    await supabase.rpc('notify_supplier_users', {
+      p_supplier_id: data.supplier_id,
+      p_title: '📋 Nova Cotação Recebida',
+      p_message: `Você recebeu uma nova cotação: ${data.quote_title}. Prazo: ${new Date(data.deadline).toLocaleDateString('pt-BR')}`,
+      p_type: 'quote',
+      p_priority: 'high',
+      p_action_url: '/supplier/quotes',
+      p_metadata: {
+        quote_id: data.quote_id,
+        local_code: data.local_code,
+        deadline: data.deadline
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao notificar fornecedor sobre nova cotação:', error);
+  }
+};
+
+export const createSupplierPaymentNotification = async (data: {
+  supplier_id: string;
+  quote_id: string;
+  local_code: string;
+  amount: number;
+}) => {
+  try {
+    await supabase.rpc('notify_supplier_users', {
+      p_supplier_id: data.supplier_id,
+      p_title: '💰 Pagamento Confirmado!',
+      p_message: `O pagamento de R$ ${data.amount.toFixed(2)} foi confirmado e está em custódia. Agende a entrega!`,
+      p_type: 'payment',
+      p_priority: 'high',
+      p_action_url: '/supplier/deliveries',
+      p_metadata: {
+        quote_id: data.quote_id,
+        local_code: data.local_code,
+        amount: data.amount,
+        action: 'schedule_delivery'
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao notificar fornecedor sobre pagamento:', error);
+  }
+};
+
+export const createSupplierProposalStatusNotification = async (data: {
+  supplier_id: string;
+  quote_id: string;
+  local_code: string;
+  quote_title: string;
+  status: 'approved' | 'rejected';
+}) => {
+  try {
+    const isApproved = data.status === 'approved';
+    
+    await supabase.rpc('notify_supplier_users', {
+      p_supplier_id: data.supplier_id,
+      p_title: isApproved ? '✅ Proposta Aprovada!' : '❌ Proposta Não Selecionada',
+      p_message: `Sua proposta para "${data.quote_title}" foi ${isApproved ? 'aprovada' : 'não selecionada'}.`,
+      p_type: isApproved ? 'success' : 'warning',
+      p_priority: 'high',
+      p_action_url: '/supplier/quotes',
+      p_metadata: {
+        quote_id: data.quote_id,
+        local_code: data.local_code,
+        status: data.status
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao notificar fornecedor sobre status da proposta:', error);
+  }
+};
