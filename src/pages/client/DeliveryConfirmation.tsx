@@ -44,7 +44,7 @@ export default function DeliveryConfirmation() {
               <div className="text-sm">
                 <p className="font-medium text-blue-900 mb-2">Como funciona:</p>
                 <ol className="list-decimal list-inside space-y-1 text-blue-700">
-                  <li>O fornecedor compartilha um código de 4 dígitos com você</li>
+                  <li>O fornecedor compartilha um código de 6 dígitos com você</li>
                   <li>Você insere esse código para confirmar o recebimento</li>
                   <li>O pagamento é liberado automaticamente</li>
                   <li>A entrega é marcada como concluída</li>
