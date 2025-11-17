@@ -172,13 +172,20 @@ export function PaymentDetailModal({
                   <div>
                     <p className="text-sm text-muted-foreground">Cotação</p>
                     <p className="font-medium">
-                      {payment.quotes?.local_code || payment.quotes?.title || 'Cotação não informada'}
+                      {payment.quotes?.local_code || 'Cotação'} - {payment.quotes?.title || 'Sem título'}
                     </p>
-                    <p className="text-sm text-muted-foreground font-mono">{payment.quote_id}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Valor</p>
-                    <p className="text-2xl font-bold text-primary">{formatCurrency(payment.amount)}</p>
+                    <p className="text-sm text-muted-foreground">Valor Total</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {payment.quote_responses?.[0] 
+                        ? formatCurrency(
+                            payment.quote_responses[0].items.reduce((sum: number, item: any) => sum + item.total, 0) +
+                            (payment.quote_responses[0].shipping_cost || 0)
+                          )
+                        : formatCurrency(payment.amount)
+                      }
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-3">
