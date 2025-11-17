@@ -9,14 +9,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, CheckCircle, Settings, DollarSign, Eye, EyeOff, AlertTriangle, FileText, Calendar } from 'lucide-react';
+import { AlertCircle, CheckCircle, Settings, DollarSign, Eye, EyeOff, AlertTriangle, FileText, Calendar, Copy, Key, RefreshCw } from 'lucide-react';
 import { useAsaasIntegration } from '@/hooks/useAsaasIntegration';
 import { toast } from 'sonner';
 
 export function AsaasIntegrationPanel() {
-  const { settings, updateSettings, testConnection, isLoading } = useAsaasIntegration();
+  const { settings, updateSettings, testConnection, generateWebhookToken, isLoading } = useAsaasIntegration();
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showWebhookToken, setShowWebhookToken] = useState(false);
+  const [webhookToken, setWebhookToken] = useState('');
   const [asaasConfig, setAsaasConfig] = useState(settings?.asaas_config || {
     api_key_configured: false,
     platform_commission_percentage: 5.0,
@@ -29,6 +31,7 @@ export function AsaasIntegrationPanel() {
   useEffect(() => {
     if (settings?.asaas_config) {
       setAsaasConfig(settings.asaas_config);
+      setWebhookToken(settings.asaas_config.webhook_token || '');
     }
   }, [settings]);
 
@@ -85,6 +88,24 @@ export function AsaasIntegrationPanel() {
     }
   };
 
+  const handleGenerateWebhookToken = async () => {
+    const newToken = generateWebhookToken();
+    try {
+      await updateSettings({ asaas_webhook_token: newToken });
+      setWebhookToken(newToken);
+      toast.success("Token gerado! Configure-o no painel Asaas agora.");
+    } catch (error) {
+      toast.error("Erro ao gerar token");
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copiado!`);
+  };
+
+  const webhookUrl = `https://bpsqyaxdhqejozmlejcb.supabase.co/functions/v1/asaas-webhook`;
+
   const isConfigured = asaasConfig.api_key_configured;
 
   return (
@@ -121,6 +142,10 @@ export function AsaasIntegrationPanel() {
             <TabsTrigger value="config">
               <Settings className="h-4 w-4 mr-2" />
               Configuração
+            </TabsTrigger>
+            <TabsTrigger value="webhook">
+              <Key className="h-4 w-4 mr-2" />
+              Webhook
             </TabsTrigger>
             <TabsTrigger value="advanced">
               <DollarSign className="h-4 w-4 mr-2" />
@@ -216,6 +241,117 @@ export function AsaasIntegrationPanel() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="webhook" className="space-y-4">
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-muted/50 p-4">
+                <h3 className="text-sm font-medium mb-2">URL do Webhook</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Configure esta URL no painel do Asaas para receber notificações de pagamento.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={webhookUrl}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(webhookUrl, "URL")}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/50 p-4">
+                <h3 className="text-sm font-medium mb-2">Token de Autenticação</h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Use este token no header <code className="bg-muted px-1 py-0.5 rounded">asaas-access-token</code> ao configurar o webhook.
+                </p>
+                
+                {webhookToken ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        type={showWebhookToken ? "text" : "password"}
+                        value={webhookToken}
+                        readOnly
+                        className="font-mono text-xs"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowWebhookToken(!showWebhookToken)}
+                      >
+                        {showWebhookToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(webhookToken, "Token")}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleGenerateWebhookToken}
+                      className="w-full"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Gerar Novo Token
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleGenerateWebhookToken}
+                    className="w-full"
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    Gerar Token de Webhook
+                  </Button>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-border bg-card p-4">
+                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-primary" />
+                  Instruções de Configuração
+                </h3>
+                <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside">
+                  <li>Acesse o painel do Asaas ({asaasConfig.environment === 'sandbox' ? 'Sandbox' : 'Produção'})</li>
+                  <li>Vá em <strong>Integrações → Webhooks</strong></li>
+                  <li>Clique em <strong>Novo Webhook</strong></li>
+                  <li>Cole a URL do webhook acima</li>
+                  <li>Adicione um header customizado:
+                    <div className="ml-6 mt-1 bg-muted p-2 rounded font-mono text-xs">
+                      Nome: asaas-access-token<br />
+                      Valor: {webhookToken || '[gere o token primeiro]'}
+                    </div>
+                  </li>
+                  <li>Marque os seguintes eventos:
+                    <ul className="ml-6 mt-1 space-y-1">
+                      <li>✓ PAYMENT_RECEIVED</li>
+                      <li>✓ PAYMENT_CONFIRMED</li>
+                      <li>✓ PAYMENT_OVERDUE</li>
+                    </ul>
+                  </li>
+                  <li>Salve a configuração</li>
+                </ol>
+              </div>
+
+              {asaasConfig.environment === 'sandbox' && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Você está em modo <strong>Sandbox</strong>. Configure o webhook no painel sandbox do Asaas.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="advanced" className="space-y-4">

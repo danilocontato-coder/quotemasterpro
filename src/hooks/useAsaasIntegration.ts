@@ -8,6 +8,7 @@ interface AsaasConfig {
   auto_release_days: number;
   split_enabled: boolean;
   environment?: 'sandbox' | 'production';
+  webhook_token?: string;
 }
 
 interface AsaasSettings {
@@ -30,18 +31,27 @@ export function useAsaasIntegration() {
         .eq('setting_key', 'asaas_config')
         .single();
 
+      const { data: tokenData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'asaas_webhook_token')
+        .single();
+
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
 
+      const value = data?.setting_value as any;
+      const token = tokenData?.setting_value as any;
+
       if (data) {
-        const value = data.setting_value as any;
         setSettings({ asaas_config: {
           api_key_configured: value?.api_key_configured ?? false,
           platform_commission_percentage: value?.platform_commission_percentage ?? 5.0,
           auto_release_days: value?.auto_release_days ?? 7,
           split_enabled: value?.split_enabled ?? true,
-          environment: value?.environment ?? 'sandbox'
+          environment: value?.environment ?? 'sandbox',
+          webhook_token: token?.token ?? ''
         }});
       } else {
         // Valores padrão
@@ -51,7 +61,8 @@ export function useAsaasIntegration() {
             platform_commission_percentage: 5.0,
             auto_release_days: 7,
             split_enabled: true,
-            environment: 'sandbox'
+            environment: 'sandbox',
+            webhook_token: ''
           }
         });
       }
@@ -61,7 +72,11 @@ export function useAsaasIntegration() {
     }
   };
 
-  const updateSettings = async ({ asaas_api_key, asaas_config }: { asaas_api_key?: string; asaas_config?: AsaasConfig }) => {
+  const updateSettings = async ({ asaas_api_key, asaas_config, asaas_webhook_token }: { 
+    asaas_api_key?: string; 
+    asaas_config?: AsaasConfig;
+    asaas_webhook_token?: string;
+  }) => {
     setIsLoading(true);
     try {
       // Se tiver chave da API, salvar como secret via Edge Function
@@ -79,6 +94,16 @@ export function useAsaasIntegration() {
         if (secretError) {
           throw secretError;
         }
+      }
+
+      // Atualizar o webhook token se fornecido
+      if (asaas_webhook_token !== undefined) {
+        await supabase
+          .from('system_settings')
+          .upsert({
+            setting_key: 'asaas_webhook_token',
+            setting_value: { token: asaas_webhook_token }
+          });
       }
 
       // Atualizar ou criar configuração no system_settings
@@ -123,7 +148,7 @@ export function useAsaasIntegration() {
       
       if (error) throw error;
       
-      if (data.success) {
+      if (data?.success) {
         toast.success(
           `Conexão bem-sucedida! Ambiente: ${data.environment || 'desconhecido'}. Saldo: R$ ${data.balance?.toFixed(2) || '0.00'}`
         );
@@ -143,10 +168,15 @@ export function useAsaasIntegration() {
     }
   };
 
+  const generateWebhookToken = () => {
+    return crypto.randomUUID();
+  };
+
   return {
     settings,
     updateSettings,
     testConnection,
+    generateWebhookToken,
     isLoading
   };
 }
