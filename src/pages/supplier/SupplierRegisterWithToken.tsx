@@ -357,6 +357,9 @@ export default function SupplierRegisterWithToken() {
                 maxLength={15}
               />
         </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Use um número de celular (com 9 após o DDD)
+        </p>
         {errors.whatsapp && (
           <p className="text-sm text-destructive mt-1">{errors.whatsapp}</p>
         )}
