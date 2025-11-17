@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, CheckCircle, Settings, DollarSign, Eye, EyeOff, AlertTriangle, FileText, Calendar, Copy, Key, RefreshCw } from 'lucide-react';
 import { useAsaasIntegration } from '@/hooks/useAsaasIntegration';
 import { toast } from 'sonner';
+import { TestWebhookSimulator } from './TestWebhookSimulator';
 
 export function AsaasIntegrationPanel() {
   const { settings, updateSettings, testConnection, generateWebhookToken, isLoading } = useAsaasIntegration();
@@ -404,6 +405,10 @@ export function AsaasIntegrationPanel() {
             <Button onClick={handleSaveConfig} disabled={isLoading} className="w-full">
               {isLoading ? 'Salvando...' : 'Salvar Configurações de Escrow'}
             </Button>
+          </TabsContent>
+
+          <TabsContent value="tests" className="space-y-4">
+            <TestWebhookSimulator />
           </TabsContent>
         </Tabs>
       </CardContent>
