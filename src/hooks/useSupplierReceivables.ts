@@ -89,25 +89,57 @@ export const useSupplierReceivables = () => {
   useEffect(() => {
     fetchReceivables();
 
-    // Real-time subscription para atualizações
-    const channel = supabase
-      .channel('supplier-payments')
+    // Subscribe to real-time updates for payments and deliveries
+    const paymentsChannel = supabase
+      .channel('supplier-receivables-payments')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'payments',
-          filter: `supplier_id=eq.${user?.supplierId}`
+          table: 'payments'
+        },
+        (payload) => {
+          console.log('Payment updated, refetching receivables');
+          fetchReceivables();
+
+          // Notificar quando pagamento for confirmado (mudou para in_escrow)
+          if (payload.eventType === 'UPDATE' && payload.new.status === 'in_escrow') {
+            const oldStatus = (payload.old as any)?.status;
+            if (oldStatus !== 'in_escrow') {
+              // Disparar evento customizado para notificação
+              window.dispatchEvent(new CustomEvent('payment-confirmed', {
+                detail: {
+                  paymentId: payload.new.id,
+                  quoteId: payload.new.quote_id,
+                  amount: payload.new.amount
+                }
+              }));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    const deliveriesChannel = supabase
+      .channel('supplier-receivables-deliveries')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deliveries'
         },
         () => {
+          console.log('Delivery updated, refetching receivables');
           fetchReceivables();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(paymentsChannel);
+      supabase.removeChannel(deliveriesChannel);
     };
   }, [user?.supplierId]);
 

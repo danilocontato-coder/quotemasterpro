@@ -38,6 +38,7 @@ import { QuoteUrgencyBadge } from "@/components/supplier/QuoteUrgencyBadge";
 import { QuoteInfoTooltip } from "@/components/supplier/QuoteInfoTooltip";
 import { useSupabaseSupplierQuotes } from "@/hooks/useSupabaseSupplierQuotes";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { SupplierQuoteViewModal } from "@/components/supplier/SupplierQuoteViewModal";
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
 
@@ -49,12 +50,39 @@ export default function SupplierQuotes() {
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [quotesWithDeliveries, setQuotesWithDeliveries] = useState<Set<string>>(new Set());
   
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const { user, isLoading: isAuthLoading } = useAuth();
   const { supplierQuotes, isLoading } = useSupabaseSupplierQuotes();
+
+  // Verificar quais cotações já têm entrega agendada
+  useEffect(() => {
+    const checkDeliveries = async () => {
+      if (!user || !supplierQuotes.length) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('supplier_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.supplier_id) return;
+
+      const { data: deliveries } = await supabase
+        .from('deliveries')
+        .select('quote_id')
+        .eq('supplier_id', profile.supplier_id);
+
+      if (deliveries) {
+        setQuotesWithDeliveries(new Set(deliveries.map(d => d.quote_id)));
+      }
+    };
+
+    checkDeliveries();
+  }, [user, supplierQuotes]);
 
   // Helper para obter iniciais do cliente
   const getClientInitials = (clientName: string) => {
