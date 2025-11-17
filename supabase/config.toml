@@ -215,3 +215,12 @@ verify_jwt = true
 [functions.check-quote-deadlines]
 verify_jwt = false
 schedule = "0 */6 * * *"
+
+[functions.sync-asaas-payment-status]
+verify_jwt = true
+
+[functions.scheduled-sync-payments]
+verify_jwt = false
+
+[functions.test-asaas-webhook]
+verify_jwt = false

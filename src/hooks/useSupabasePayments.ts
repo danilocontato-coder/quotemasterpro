@@ -243,8 +243,33 @@ export const useSupabasePayments = () => {
           schema: 'public',
           table: 'payments'
         },
-        () => {
+        (payload) => {
+          console.log('🔔 Pagamento atualizado em tempo real:', payload);
           fetchPayments();
+          
+          // Toast para atualizações importantes
+          if (payload.eventType === 'UPDATE') {
+            const newStatus = (payload.new as any).status;
+            const oldStatus = (payload.old as any)?.status;
+            
+            if (newStatus === 'completed' && oldStatus !== 'completed') {
+              toast({
+                title: "Pagamento confirmado",
+                description: "Um pagamento foi automaticamente confirmado.",
+              });
+            } else if (newStatus === 'in_escrow' && oldStatus === 'pending') {
+              toast({
+                title: "Pagamento recebido",
+                description: "Um pagamento foi recebido e está em garantia.",
+              });
+            } else if (newStatus === 'overdue' && oldStatus !== 'overdue') {
+              toast({
+                title: "Pagamento vencido",
+                description: "Um pagamento está vencido.",
+                variant: "destructive"
+              });
+            }
+          }
         }
       )
       .subscribe();
@@ -252,7 +277,7 @@ export const useSupabasePayments = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [toast]);
 
   return {
     payments,

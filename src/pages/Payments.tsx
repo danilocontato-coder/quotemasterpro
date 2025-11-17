@@ -28,6 +28,7 @@ import { OfflinePaymentModal } from "@/components/payments/OfflinePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 
 import { PixQRCodeModal } from "@/components/payments/PixQRCodeModal";
+import { PaymentsSyncStatus } from "@/components/payments/PaymentsSyncStatus";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -334,6 +335,12 @@ export default function Payments() {
       {/* Escrow Dashboard */}
       <EscrowDashboard payments={payments} />
 
+      {/* Sync Status Monitor */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="md:col-span-1">
+          <PaymentsSyncStatus />
+        </div>
+      </div>
 
       {/* Filter Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
