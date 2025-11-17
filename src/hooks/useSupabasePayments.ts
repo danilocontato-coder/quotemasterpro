@@ -6,35 +6,56 @@ export interface Payment {
   id: string;
   quote_id: string;
   client_id: string;
-  supplier_id: string;
+  supplier_id: string | null;
   amount: number;
-  status: 'pending' | 'processing' | 'in_escrow' | 'completed' | 'failed' | 'disputed' | 'refunded';
-  stripe_payment_intent_id?: string;
-  stripe_session_id?: string;
-  escrow_release_date?: string;
+  status: 'pending' | 'processing' | 'in_escrow' | 'completed' | 'failed' | 'disputed' | 'refunded' | 'waiting_confirmation';
+  payment_method: string | null;
+  stripe_payment_intent_id: string | null;
+  stripe_session_id: string | null;
+  pix_qr_code: string | null;
+  pix_code: string | null;
+  boleto_url: string | null;
+  paid_at: string | null;
+  escrow_release_date: string | null;
   created_at: string;
   updated_at: string;
-  quotes?: {
+  quotes: {
     id: string;
     local_code: string;
     title: string;
     total: number;
     client_name: string;
-    suppliers?: {
+    supplier_id: string | null;
+    suppliers: {
       id: string;
       name: string;
-      asaas_wallet_id?: string;
-    };
-  };
-  suppliers?: {
+      asaas_wallet_id: string | null;
+    } | null;
+  } | null;
+  suppliers: {
     id: string;
     name: string;
-    asaas_wallet_id?: string;
-  };
-  clients?: {
+    asaas_wallet_id: string | null;
+  } | null;
+  clients: {
     id: string;
     name: string;
-  };
+  } | null;
+  quote_responses?: Array<{
+    id: string;
+    items: Array<{
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+      total: number;
+      brand?: string;
+      specifications?: string;
+    }>;
+    shipping_cost: number;
+    delivery_time: number;
+    warranty_months: number;
+    total_amount: number;
+  }>;
 }
 
 export const useSupabasePayments = () => {
@@ -47,7 +68,8 @@ export const useSupabasePayments = () => {
       setIsLoading(true);
       console.log('Fetching payments...');
       
-      const { data, error } = await supabase
+      // Primeiro busca os pagamentos
+      const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
         .select(`
           *,
@@ -57,15 +79,37 @@ export const useSupabasePayments = () => {
         `)
         .order('created_at', { ascending: false });
 
-      console.log('Payments query result:', { data, error });
-
-      if (error) {
-        console.error('Payments fetch error:', error);
-        throw error;
+      if (paymentsError) {
+        console.error('Payments fetch error:', paymentsError);
+        throw paymentsError;
       }
+
+      // Para cada pagamento, buscar a resposta aprovada do fornecedor
+      const paymentsWithResponses = await Promise.all(
+        (paymentsData || []).map(async (payment) => {
+          if (!payment.quote_id || !payment.supplier_id) {
+            return payment as unknown as Payment;
+          }
+
+          const { data: responseData } = await supabase
+            .from('quote_responses')
+            .select('id, items, shipping_cost, delivery_time, warranty_months, total_amount')
+            .eq('quote_id', payment.quote_id)
+            .eq('supplier_id', payment.supplier_id)
+            .eq('status', 'approved')
+            .maybeSingle();
+
+          return {
+            ...payment,
+            quote_responses: responseData ? [responseData as any] : undefined
+          } as unknown as Payment;
+        })
+      );
+
+      console.log('Payments query result:', paymentsWithResponses);
       
-      setPayments((data as Payment[]) || []);
-      console.log('Payments set to state:', data);
+      setPayments(paymentsWithResponses || []);
+      console.log('Payments set to state:', paymentsWithResponses);
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast({

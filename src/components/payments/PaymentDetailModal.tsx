@@ -171,7 +171,9 @@ export function PaymentDetailModal({
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Cotação</p>
-                    <p className="font-medium">{payment.quotes?.title || 'Cotação não informada'}</p>
+                    <p className="font-medium">
+                      {payment.quotes?.local_code || payment.quotes?.title || 'Cotação não informada'}
+                    </p>
                     <p className="text-sm text-muted-foreground font-mono">{payment.quote_id}</p>
                   </div>
                   <div>
@@ -220,6 +222,97 @@ export function PaymentDetailModal({
               )}
             </CardContent>
           </Card>
+
+          {/* Order Summary */}
+          {payment.quote_responses?.[0] && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Resumo do Pedido
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Items List */}
+                {payment.quote_responses[0].items?.length > 0 ? (
+                  <>
+                    <div className="space-y-3">
+                      {payment.quote_responses[0].items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-start p-3 bg-muted/50 rounded-lg">
+                          <div className="flex-1">
+                            <p className="font-medium">{item.product_name}</p>
+                            {item.brand && (
+                              <p className="text-sm text-muted-foreground">Marca: {item.brand}</p>
+                            )}
+                            {item.specifications && (
+                              <p className="text-sm text-muted-foreground">{item.specifications}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Quantidade: {item.quantity} × {formatCurrency(item.unit_price)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">{formatCurrency(item.total)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Separator />
+
+                    {/* Price Breakdown */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal dos Itens:</span>
+                        <span className="font-medium">
+                          {formatCurrency(
+                            payment.quote_responses[0].items.reduce((sum: number, item: any) => sum + item.total, 0)
+                          )}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Frete:</span>
+                        <span className="font-medium">
+                          {formatCurrency(payment.quote_responses[0].shipping_cost || 0)}
+                        </span>
+                      </div>
+
+                      <Separator />
+
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Total:</span>
+                        <span className="font-bold text-xl text-primary">
+                          {formatCurrency(payment.amount)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Additional Info */}
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs text-muted-foreground">Prazo de Entrega</p>
+                        <p className="font-medium text-sm">
+                          {payment.quote_responses[0].delivery_time} dias
+                        </p>
+                      </div>
+                      <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="text-xs text-muted-foreground">Garantia</p>
+                        <p className="font-medium text-sm">
+                          {payment.quote_responses[0].warranty_months} meses
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Nenhum item encontrado nesta proposta</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Parties Involved */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
