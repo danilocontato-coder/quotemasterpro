@@ -48,6 +48,28 @@ serve(async (req) => {
       status: payment?.status 
     })
 
+    if (payment) {
+      console.log('🔍 Estrutura do payment:', {
+        payment_id: payment.id,
+        amount: payment.amount,
+        quotes_structure: {
+          id: payment.quotes?.id,
+          local_code: payment.quotes?.local_code,
+          title: payment.quotes?.title
+        },
+        supplier: {
+          id: payment.suppliers?.id,
+          name: payment.suppliers?.name,
+          asaas_wallet_id: payment.suppliers?.asaas_wallet_id
+        },
+        client: {
+          id: payment.clients?.id,
+          name: payment.clients?.name,
+          asaas_customer_id: payment.clients?.asaas_customer_id
+        }
+      })
+    }
+
     if (paymentError || !payment) {
       console.error('❌ Erro ao buscar pagamento:', paymentError)
       
@@ -99,7 +121,13 @@ serve(async (req) => {
         const subtotal = quoteResponse.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
         const shipping = quoteResponse.shipping_cost || 0;
         totalAmount = subtotal + shipping;
-        console.log(`Valor calculado: Subtotal R$ ${subtotal} + Frete R$ ${shipping} = Total R$ ${totalAmount}`);
+        console.log('💰 Valor para Asaas:', {
+          payment_amount_original: payment.amount,
+          subtotal: subtotal,
+          shipping: shipping,
+          calculated_total: totalAmount,
+          will_use: totalAmount
+        });
       }
     }
 
@@ -162,12 +190,15 @@ serve(async (req) => {
     // Determinar se deve incluir split
     const shouldIncludeSplit = splitEnabled && payment.suppliers.asaas_wallet_id
 
+    // Garantir acesso robusto ao local_code
+    const quoteCode = payment.quotes?.local_code || 'SEM-CÓDIGO'
+    
     const paymentBody: any = {
       customer: asaasCustomerId,
       billingType: 'UNDEFINED', // Cliente escolhe: PIX, Boleto ou Cartão
       value: totalAmount,
       dueDate: dueDate.toISOString().split('T')[0],
-      description: `Pagamento da cotação ${payment.quotes.local_code || payment.quote_id}`,
+      description: `Pagamento da cotação ${quoteCode}`,
       externalReference: payment.id,
       postalService: false,
     }
@@ -185,6 +216,15 @@ serve(async (req) => {
     } else {
       console.log(`Split desabilitado ou wallet inválida - cobrança sem split`)
     }
+
+    console.log('📤 Enviando para Asaas:', {
+      value: paymentBody.value,
+      description: paymentBody.description,
+      dueDate: paymentBody.dueDate,
+      customer: paymentBody.customer,
+      billingType: paymentBody.billingType,
+      hasSplit: !!paymentBody.split
+    })
 
     const asaasResponse = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
