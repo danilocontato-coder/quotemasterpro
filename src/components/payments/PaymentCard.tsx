@@ -11,10 +11,13 @@ import {
   CheckCircle2,
   AlertCircle,
   DollarSign,
-  Lock
+  Lock,
+  ExternalLink,
+  RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { differenceInDays, parseISO } from "date-fns";
 
 interface PaymentCardProps {
   payment: any;
@@ -80,8 +83,23 @@ const getStatusInfo = (status: string) => {
 
 export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, onOfflinePayment }: PaymentCardProps) {
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const statusInfo = getStatusInfo(payment.status);
   const StatusIcon = statusInfo.icon;
+
+  // Verificar se o boleto está expirado
+  const isPaymentExpired = () => {
+    if (!payment.asaas_due_date) return false;
+    try {
+      const dueDate = parseISO(payment.asaas_due_date);
+      const today = new Date();
+      return differenceInDays(today, dueDate) > 0;
+    } catch {
+      return false;
+    }
+  };
+
+  const expired = isPaymentExpired();
 
   // Handler para criar pagamento Asaas
   const handleAsaasPayment = async () => {
@@ -122,6 +140,30 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
       toast.error('Erro ao criar pagamento');
     } finally {
       setIsCreatingPayment(false);
+    }
+  };
+
+  // Handler para regenerar boleto expirado
+  const handleRegeneratePayment = async () => {
+    setIsRegenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('regenerate-asaas-payment', {
+        body: { paymentId: payment.id }
+      });
+
+      if (error) {
+        toast.error('Erro ao regenerar pagamento: ' + (error.message || 'Erro desconhecido'));
+        return;
+      }
+
+      toast.success('Pagamento resetado! Clique em "Pagar com Segurança" para gerar novo boleto.');
+      
+      // Recarregar a página após 1 segundo
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      toast.error('Erro ao regenerar pagamento');
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -213,6 +255,42 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                     </Button>
                   </div>
                 </TooltipTrigger>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* Botão para acessar pagamento em processamento/aguardando */}
+          {(payment.status === 'processing' || payment.status === 'waiting_confirmation') && payment.asaas_invoice_url && !expired && (
+            <Button 
+              onClick={() => window.open(payment.asaas_invoice_url, '_blank')}
+              className="flex-1 min-w-[120px]"
+              variant="outline"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              🔗 Acessar Pagamento
+            </Button>
+          )}
+
+          {/* Botão para regenerar boleto expirado */}
+          {(payment.status === 'processing' || payment.status === 'waiting_confirmation' || payment.status === 'failed') && expired && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex-1 min-w-[120px]">
+                    <Button 
+                      onClick={handleRegeneratePayment}
+                      disabled={isRegenerating}
+                      className="w-full"
+                      variant="destructive"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
+                      {isRegenerating ? 'Regenerando...' : '🔄 Gerar Novo Boleto'}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>⚠️ Boleto expirado. Clique para gerar um novo.</p>
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}

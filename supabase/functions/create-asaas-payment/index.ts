@@ -254,6 +254,7 @@ serve(async (req) => {
       .update({
         asaas_payment_id: asaasPayment.id,
         asaas_invoice_url: invoiceUrl,
+        asaas_due_date: asaasPayment.dueDate || null,
         status: 'processing',
         escrow_release_date: new Date(Date.now() + autoReleaseDays * 24 * 60 * 60 * 1000).toISOString(),
         updated_at: new Date().toISOString(),

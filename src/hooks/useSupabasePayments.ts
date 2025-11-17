@@ -17,6 +17,8 @@ export interface Payment {
   boleto_url: string | null;
   paid_at: string | null;
   escrow_release_date: string | null;
+  asaas_invoice_url: string | null;
+  asaas_due_date: string | null;
   created_at: string;
   updated_at: string;
   quotes: {
