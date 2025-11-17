@@ -100,40 +100,34 @@ export function usePendingDeliveries() {
   useEffect(() => {
     fetchPendingDeliveries();
 
-    // Subscrever a mudanças em payments e deliveries
-    const paymentsChannel = supabase
-      .channel('pending-deliveries-payments')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'payments',
-        },
-        () => {
-          fetchPendingDeliveries();
-        }
-      )
-      .subscribe();
+    // Escutar eventos do sistema centralizado de realtime
+    const handlePaymentUpdate = () => {
+      console.log('🔄 [PENDING-DELIVERIES] Payment updated, refetching...');
+      fetchPendingDeliveries();
+    };
+    
+    const handleDeliveryUpdate = () => {
+      console.log('🔄 [PENDING-DELIVERIES] Delivery updated, refetching...');
+      fetchPendingDeliveries();
+    };
 
-    const deliveriesChannel = supabase
-      .channel('pending-deliveries-deliveries')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'deliveries',
-        },
-        () => {
-          fetchPendingDeliveries();
-        }
-      )
-      .subscribe();
+    window.addEventListener('supplier-payments-updated', handlePaymentUpdate);
+    window.addEventListener('supplier-deliveries-updated', handleDeliveryUpdate);
+
+    // Auto-refetch quando a aba volta a ficar ativa
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('👁️ [PENDING-DELIVERIES] Tab became visible, refetching...');
+        fetchPendingDeliveries();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      supabase.removeChannel(paymentsChannel);
-      supabase.removeChannel(deliveriesChannel);
+      window.removeEventListener('supplier-payments-updated', handlePaymentUpdate);
+      window.removeEventListener('supplier-deliveries-updated', handleDeliveryUpdate);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user]);
 
