@@ -63,23 +63,43 @@ export const sendSupplierWelcomeNotifications = async ({
       }
     }
 
-    // 3. Criar notificação no sistema
+    // 3. Criar notificação no sistema (CORRIGIDO: buscar usuários do fornecedor)
     console.log('[SupplierNotification] Criando notificação in-app');
-    const { error: notificationError } = await supabase.from('notifications').insert({
-      user_id: supplierId,
-      type: 'supplier_registered',
-      title: 'Bem-vindo ao Cotiz!',
-      message: `Você foi adicionado como fornecedor da ${administradoraName}.`,
-      metadata: {
-        administradora_name: administradoraName,
-      },
-    });
+    
+    // Buscar todos os usuários ativos vinculados ao fornecedor
+    const { data: supplierUsers, error: usersError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('supplier_id', supplierId)
+      .eq('active', true);
 
-    if (notificationError) {
-      console.error('[SupplierNotification] Erro ao criar notificação:', notificationError);
+    if (usersError) {
+      console.error('[SupplierNotification] Erro ao buscar usuários do fornecedor:', usersError);
+    } else if (supplierUsers && supplierUsers.length > 0) {
+      // Criar uma notificação para cada usuário do fornecedor
+      const notificationRows = supplierUsers.map(user => ({
+        user_id: user.id,
+        supplier_id: supplierId,
+        type: 'supplier_registered',
+        title: 'Bem-vindo ao Cotiz!',
+        message: `Você foi adicionado como fornecedor da ${administradoraName}.`,
+        metadata: {
+          administradora_name: administradoraName,
+        },
+      }));
+
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert(notificationRows);
+
+      if (notificationError) {
+        console.error('[SupplierNotification] Erro ao criar notificações:', notificationError);
+      } else {
+        results.notification = true;
+        console.log(`[SupplierNotification] ✅ ${notificationRows.length} notificações criadas com sucesso`);
+      }
     } else {
-      results.notification = true;
-      console.log('[SupplierNotification] ✅ Notificação criada com sucesso');
+      console.warn('[SupplierNotification] Nenhum usuário ativo encontrado para o fornecedor:', supplierId);
     }
 
     return { success: true, results };

@@ -54,13 +54,15 @@ export function useSupabaseNotifications() {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      // Construir filtro dinâmico
+      // Construir filtro dinâmico (incluindo LEGACY FIX para notificações antigas)
       const filters: string[] = [`user_id.eq.${user.id}`];
       if (clientId) {
         filters.push(`client_id.eq.${clientId}`);
       }
       if (supplierId) {
         filters.push(`supplier_id.eq.${supplierId}`);
+        // LEGACY FIX: resgatar notificações antigas gravadas incorretamente
+        filters.push(`user_id.eq.${supplierId}`);
       }
 
       query = query.or(filters.join(','));
@@ -148,87 +150,128 @@ export function useSupabaseNotifications() {
       const clientId = profile?.client_id;
       const supplierId = profile?.supplier_id;
 
-      // Construir filtro de realtime
-      const filters: string[] = [`user_id=eq.${user.id}`];
-      if (clientId) {
-        filters.push(`client_id=eq.${clientId}`);
-      }
-      if (supplierId) {
-        filters.push(`supplier_id=eq.${supplierId}`);
-      }
-
-      // Use a unique channel name to avoid conflicts
-      const channel = supabase
-        .channel(`notifications-main-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: filters.join(','),
-          },
-          (payload) => {
-            console.log('🔔 [NOTIFICATIONS] New notification received:', payload);
-            
-            const newNotification = payload.new as any;
-            
-            // Show immediate toast for new notification
-            toast(newNotification.title, {
-              description: newNotification.message,
-              duration: newNotification.priority === 'high' ? 8000 : 5000,
-              action: newNotification.action_url ? {
-                label: 'Ver',
-                onClick: () => {
-                  if (newNotification.action_url) {
-                    // Use custom event to trigger navigation
-                    window.dispatchEvent(new CustomEvent('navigate-to', { detail: newNotification.action_url }));
-                  }
-                }
-              } : undefined
-            });
-
-            // Add notification to state immediately
-            const formattedNotification = {
-              id: newNotification.id,
-              title: newNotification.title,
-              message: newNotification.message,
-              type: newNotification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
-              created_at: newNotification.created_at,
-              read: false,
-              priority: newNotification.priority as 'low' | 'normal' | 'high',
-              action_url: newNotification.action_url,
-              metadata: newNotification.metadata,
-            };
-
-            setNotifications(prev => [formattedNotification, ...prev]);
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'notifications',
-            filter: filters.join(','),
-          },
-          (payload) => {
-            console.log('🔔 [NOTIFICATIONS] Notification updated:', payload);
-            
-            // Update specific notification instead of refetching all
-            const updatedNotification = payload.new as any;
-            setNotifications(prev => 
-              prev.map(n => 
-                n.id === updatedNotification.id 
-                  ? { ...n, read: updatedNotification.read }
-                  : n
-              )
-            );
-          }
-        )
-        .subscribe((status) => {
-          console.log('🔔 [NOTIFICATIONS] Real-time subscription status:', status);
+      // Handlers de INSERT e UPDATE reutilizáveis
+      const handleInsert = (payload: any) => {
+        console.log('🔔 [NOTIFICATIONS] New notification received:', payload);
+        
+        const newNotification = payload.new as any;
+        
+        // Show immediate toast for new notification
+        toast(newNotification.title, {
+          description: newNotification.message,
+          duration: newNotification.priority === 'high' ? 8000 : 5000,
+          action: newNotification.action_url ? {
+            label: 'Ver',
+            onClick: () => {
+              if (newNotification.action_url) {
+                window.dispatchEvent(new CustomEvent('navigate-to', { detail: newNotification.action_url }));
+              }
+            }
+          } : undefined
         });
+
+        // Add notification to state immediately
+        const formattedNotification = {
+          id: newNotification.id,
+          title: newNotification.title,
+          message: newNotification.message,
+          type: newNotification.type as 'info' | 'success' | 'warning' | 'error' | 'proposal' | 'delivery' | 'payment' | 'quote' | 'ticket',
+          created_at: newNotification.created_at,
+          read: false,
+          priority: newNotification.priority as 'low' | 'normal' | 'high',
+          action_url: newNotification.action_url,
+          metadata: newNotification.metadata,
+        };
+
+        setNotifications(prev => [formattedNotification, ...prev]);
+      };
+
+      const handleUpdate = (payload: any) => {
+        console.log('🔔 [NOTIFICATIONS] Notification updated:', payload);
+        
+        const updatedNotification = payload.new as any;
+        setNotifications(prev => 
+          prev.map(n => 
+            n.id === updatedNotification.id 
+              ? { ...n, read: updatedNotification.read }
+              : n
+          )
+        );
+      };
+
+      // CORRIGIDO: usar múltiplos listeners específicos em vez de um único com filtro combinado
+      const channel = supabase.channel(`notifications-main-${user.id}`);
+      
+      // Listener principal: notificações diretas do usuário
+      channel.on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'notifications', 
+        filter: `user_id=eq.${user.id}` 
+      }, handleInsert);
+      
+      channel.on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'notifications', 
+        filter: `user_id=eq.${user.id}` 
+      }, handleUpdate);
+
+      // Se houver clientId: broadcast para cliente
+      if (clientId) {
+        channel.on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications', 
+          filter: `client_id=eq.${clientId}` 
+        }, handleInsert);
+        
+        channel.on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'notifications', 
+          filter: `client_id=eq.${clientId}` 
+        }, handleUpdate);
+      }
+
+      // Se houver supplierId: broadcast para fornecedor
+      if (supplierId) {
+        channel.on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications', 
+          filter: `supplier_id=eq.${supplierId}` 
+        }, handleInsert);
+        
+        channel.on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'notifications', 
+          filter: `supplier_id=eq.${supplierId}` 
+        }, handleUpdate);
+
+        // LEGACY FIX: notificações antigas gravadas incorretamente (user_id = supplierId)
+        channel.on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications', 
+          filter: `user_id=eq.${supplierId}` 
+        }, handleInsert);
+        
+        channel.on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'notifications', 
+          filter: `user_id=eq.${supplierId}` 
+        }, handleUpdate);
+      }
+
+      channel.subscribe((status) => {
+        console.log('🔔 [NOTIFICATIONS] Real-time subscription status:', status);
+        if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+          console.error('🔔 [NOTIFICATIONS] Subscription error:', status);
+        }
+      });
 
       return () => {
         console.log('🔔 [NOTIFICATIONS] Cleaning up real-time subscription');
