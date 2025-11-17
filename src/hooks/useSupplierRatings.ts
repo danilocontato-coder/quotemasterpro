@@ -72,8 +72,8 @@ export const useSupplierRatings = () => {
 
   const fetchRatingPrompts = async () => {
     try {
-      // Buscar notificações de tipo rating_prompt
-      const { data, error } = await supabase
+      // 1. Buscar notificações de rating_prompt não lidas
+      const { data: notifications, error: notifError } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user?.id)
@@ -81,27 +81,65 @@ export const useSupplierRatings = () => {
         .eq('read', false)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (notifError) throw notifError;
 
-      const prompts: RatingPrompt[] = data?.map(notification => {
-        const metadata = typeof notification.metadata === 'object' && notification.metadata !== null 
-          ? notification.metadata as any 
-          : {};
-        
-        return {
-          id: notification.id,
-          type: 'rating_prompt',
-          supplier_id: metadata.supplier_id || '',
-          supplier_name: metadata.supplier_name || 'Fornecedor',
-          quote_id: metadata.quote_id,
-          quote_local_code: metadata.quote_local_code,
-          payment_id: metadata.payment_id,
-          created_at: notification.created_at,
-          dismissed: false
-        };
-      }) || [];
+      // 2. Buscar avaliações já existentes
+      const { data: existingRatings, error: ratingsError } = await supabase
+        .from('supplier_ratings')
+        .select('supplier_id, quote_id, payment_id')
+        .eq('client_id', user?.clientId);
 
-      setRatingPrompts(prompts);
+      if (ratingsError) throw ratingsError;
+
+      // 3. Criar Set de combinações já avaliadas
+      const ratedCombinations = new Set(
+        existingRatings?.map(r => 
+          `${r.supplier_id}-${r.quote_id || ''}-${r.payment_id || ''}`
+        ) || []
+      );
+
+      // 4. Filtrar notificações já avaliadas
+      const filteredPrompts: RatingPrompt[] = notifications
+        ?.map(notification => {
+          const metadata = typeof notification.metadata === 'object' && notification.metadata !== null 
+            ? notification.metadata as any 
+            : {};
+          
+          return {
+            id: notification.id,
+            type: 'rating_prompt' as const,
+            supplier_id: metadata.supplier_id || '',
+            supplier_name: metadata.supplier_name || 'Fornecedor',
+            quote_id: metadata.quote_id,
+            quote_local_code: metadata.quote_local_code,
+            payment_id: metadata.payment_id,
+            created_at: notification.created_at,
+            dismissed: false
+          };
+        })
+        .filter(prompt => {
+          const combination = `${prompt.supplier_id}-${prompt.quote_id || ''}-${prompt.payment_id || ''}`;
+          return !ratedCombinations.has(combination);
+        }) || [];
+
+      setRatingPrompts(filteredPrompts);
+      
+      // 5. Marcar automaticamente como lidas as notificações já avaliadas
+      const alreadyRatedNotificationIds = notifications
+        ?.filter(n => {
+          const metadata = n.metadata as any;
+          const combination = `${metadata.supplier_id || ''}-${metadata.quote_id || ''}-${metadata.payment_id || ''}`;
+          return ratedCombinations.has(combination);
+        })
+        .map(n => n.id) || [];
+
+      if (alreadyRatedNotificationIds.length > 0) {
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .in('id', alreadyRatedNotificationIds);
+      }
+      
     } catch (error) {
       console.error('Erro ao buscar prompts de avaliação:', error);
     }
