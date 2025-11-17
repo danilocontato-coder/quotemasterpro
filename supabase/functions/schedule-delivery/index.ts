@@ -54,7 +54,24 @@ serve(async (req) => {
 
     // Verificar se pagamento está em custódia
     if (payment.status !== "in_escrow") {
-      throw new Error("O pagamento precisa estar em custódia para agendar a entrega.");
+      const statusMessages: Record<string, string> = {
+        'pending': 'O pagamento ainda está pendente. Aguarde a confirmação do pagamento pelo cliente.',
+        'paid': 'O pagamento já foi liberado. Esta entrega já foi confirmada.',
+        'completed': 'O pagamento já foi finalizado. Esta entrega já foi confirmada.',
+        'overdue': 'O pagamento está vencido. Solicite ao cliente que regularize o pagamento.',
+        'cancelled': 'O pagamento foi cancelado. Entre em contato com o suporte.'
+      };
+
+      const detailedMessage = statusMessages[payment.status] || 
+        'O pagamento não está no status adequado para agendamento de entrega.';
+
+      throw new Error(
+        `Não é possível agendar a entrega. ${detailedMessage}\n\n` +
+        `Status atual: ${payment.status}\n` +
+        `Status necessário: in_escrow (pagamento confirmado em custódia)\n\n` +
+        `Se o pagamento foi recentemente confirmado, aguarde alguns instantes para sincronização. ` +
+        `Caso o problema persista, entre em contato com o suporte.`
+      );
     }
 
     // Verificar se usuário é o fornecedor da cotação

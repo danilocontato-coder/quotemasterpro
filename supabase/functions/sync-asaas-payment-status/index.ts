@@ -80,10 +80,27 @@ serve(async (req) => {
 
     const asaasPayment = await asaasResponse.json();
     
-    // Mapear status do Asaas para nosso sistema
+    // Mapear status do Asaas para nosso sistema COM ESCROW
     let newStatus = payment.status;
+    let quoteStatus = null;
+
     if (asaasPayment.status === 'RECEIVED' || asaasPayment.status === 'CONFIRMED') {
-      newStatus = 'paid';
+      // Se pagamento estava pendente, vai para CUSTÓDIA (não paid diretamente)
+      if (payment.status === 'pending') {
+        newStatus = 'in_escrow';  // ✅ Custódia até confirmação de entrega
+        quoteStatus = 'approved';  // ✅ Cotação aprovada (não paid ainda)
+        console.log(`💰 Pagamento ${payment_id} movido para escrow`);
+      }
+      // Se já estava em custódia, manter em custódia
+      else if (payment.status === 'in_escrow') {
+        newStatus = 'in_escrow';  // Mantém custódia
+        console.log(`💰 Pagamento ${payment_id} mantém status escrow`);
+      }
+      // Se já estava paid/completed, manter
+      else if (payment.status === 'paid' || payment.status === 'completed') {
+        newStatus = payment.status;
+        console.log(`✅ Pagamento ${payment_id} já finalizado: ${payment.status}`);
+      }
     } else if (asaasPayment.status === 'OVERDUE') {
       newStatus = 'overdue';
     } else if (asaasPayment.status === 'PENDING') {
@@ -100,15 +117,19 @@ serve(async (req) => {
         })
         .eq('id', payment_id);
 
-      // Se foi pago, atualizar cotação também
-      if (newStatus === 'paid') {
+      console.log(`✅ Pagamento ${payment_id}: ${payment.status} → ${newStatus}`);
+
+      // Atualizar cotação se necessário
+      if (quoteStatus) {
         await supabaseClient
           .from('quotes')
           .update({
-            status: 'paid',
+            status: quoteStatus,
             updated_at: new Date().toISOString()
           })
           .eq('id', payment.quote_id);
+
+        console.log(`📋 Cotação ${payment.quote_id}: status → ${quoteStatus}`);
       }
 
       // Log de auditoria

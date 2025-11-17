@@ -68,23 +68,49 @@ serve(async (req) => {
       if (paymentRecord && !paymentError) {
         console.log('✅ Pagamento de cotação encontrado:', paymentRecord.id);
 
-        // Atualizar status do pagamento
+        // Atualizar status do pagamento para ESCROW (não paid diretamente)
         await supabaseClient
           .from('payments')
           .update({
-            status: 'paid',
+            status: 'in_escrow',  // ✅ Pagamento em custódia até confirmação da entrega
+            asaas_payment_id: payment.id,
             updated_at: new Date().toISOString()
           })
           .eq('id', paymentRecord.id);
 
-        // Atualizar status da cotação
+        console.log('💰 Pagamento movido para custódia (in_escrow)');
+
+        // Atualizar status da cotação para APPROVED (não paid)
         await supabaseClient
           .from('quotes')
           .update({
-            status: 'paid',
+            status: 'approved',  // ✅ Aprovada, aguardando entrega
             updated_at: new Date().toISOString()
           })
           .eq('id', paymentRecord.quote_id);
+
+        console.log('📋 Cotação atualizada para approved');
+
+        // Notificar fornecedor sobre pagamento em custódia
+        console.log('📦 Notificando fornecedor sobre pagamento em custódia...');
+        
+        await supabaseClient.rpc('notify_supplier_users', {
+          p_supplier_id: paymentRecord.quotes.supplier_id,
+          p_title: '💰 Pagamento Confirmado!',
+          p_message: `O pagamento de R$ ${payment.value.toFixed(2)} foi confirmado e está em custódia. Agende a entrega para liberar os fundos!`,
+          p_type: 'payment',
+          p_priority: 'high',
+          p_action_url: '/supplier/deliveries',
+          p_metadata: {
+            payment_id: paymentRecord.id,
+            quote_id: paymentRecord.quote_id,
+            quote_code: paymentRecord.quotes.local_code,
+            amount: payment.value,
+            action: 'schedule_delivery'
+          }
+        });
+
+        console.log('✅ Fornecedor notificado sobre pagamento em escrow');
 
         // Log de auditoria
         await supabaseClient
