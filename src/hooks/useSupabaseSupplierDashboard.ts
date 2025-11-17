@@ -112,33 +112,79 @@ export const useSupabaseSupplierDashboard = () => {
       // Buscar cotações disponíveis APENAS para este fornecedor específico
       console.log('🎯 CRÍTICO: Buscando cotações EXCLUSIVAS para fornecedor:', user.supplierId);
       
-      // CORREÇÃO DE SEGURANÇA: Buscar apenas cotações específicas do fornecedor
-      const { data: quotesData, error: quotesError } = await supabase
-        .from('quotes')
-        .select('*')
-        .or(`supplier_id.eq.${user.supplierId},selected_supplier_ids.cs.{${user.supplierId}}`)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // FASE 1: Buscar cotações através de quote_suppliers
+      const { data: quoteSupplierData, error: quotesError } = await supabase
+        .from('quote_suppliers')
+        .select(`
+          quote_id,
+          quotes:quote_id (
+            id,
+            title,
+            client_name,
+            status,
+            total,
+            deadline,
+            created_at
+          )
+        `)
+        .eq('supplier_id', user.supplierId)
+        .order('created_at', { ascending: false });
 
       if (quotesError) {
         console.error('Erro ao buscar cotações:', quotesError);
         throw quotesError;
       }
       
+      // Flatten quotes data
+      const quotesData = quoteSupplierData?.map(qs => qs.quotes).filter(Boolean) || [];
+      
       console.log('🎯 Cotações encontradas:', quotesData?.length || 0);
       console.log('📋 Dados das cotações:', quotesData);
 
-      // Transform to recent quotes format
-      const transformedRecentQuotes: RecentSupplierQuote[] = (quotesData || []).map(quote => {
-        return {
-          id: quote.id,
-          title: quote.title,
-          client: quote.client_name || 'Cliente não informado',
-          status: getSupplierStatusFromQuoteStatus(quote.status),
-          deadline: quote.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          estimatedValue: quote.total || 0,
-        };
-      });
+      // FASE 2: Buscar TODAS as propostas do fornecedor
+      const { data: proposalsData, error: proposalsError } = await supabase
+        .from('quote_responses')
+        .select('*')
+        .eq('supplier_id', user.supplierId)
+        .order('created_at', { ascending: false });
+
+      if (proposalsError) {
+        console.error('Erro ao buscar propostas:', proposalsError);
+        // Não travar, continuar com propostas vazias
+      }
+
+      console.log('📊 Propostas encontradas:', proposalsData?.length || 0);
+
+      // FASE 4: Transform to recent quotes format with proposal status
+      const transformedRecentQuotes: RecentSupplierQuote[] = (quotesData || [])
+        .slice(0, 10)
+        .map(quote => {
+          // Buscar proposta do fornecedor para esta cotação
+          const proposal = proposalsData?.find(p => p.quote_id === quote.id);
+
+          // Status do fornecedor (não da cotação)
+          let supplierStatus: RecentSupplierQuote['status'] = 'pending';
+          if (proposal) {
+            if (['approved', 'selected'].includes(proposal.status)) {
+              supplierStatus = 'approved';
+            } else if (['sent', 'submitted'].includes(proposal.status)) {
+              supplierStatus = 'proposal_sent';
+            } else if (proposal.status === 'rejected') {
+              supplierStatus = 'rejected';
+            }
+          }
+
+          return {
+            id: quote.id,
+            title: quote.title,
+            client: quote.client_name || 'Cliente não informado',
+            status: supplierStatus,
+            deadline: quote.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            estimatedValue: proposal?.total_amount 
+              ? Number(proposal.total_amount) 
+              : (quote.total || 0),
+          };
+        });
 
       setRecentQuotes(transformedRecentQuotes);
 
@@ -146,49 +192,57 @@ export const useSupabaseSupplierDashboard = () => {
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       
-      // Active quotes count
-      const activeQuotes = quotesData?.length || 0;
+      // FASE 3.1: Cotações ativas (abertas para propostas)
+      const activeQuotes = quotesData?.filter(quote => {
+        return quote && ['sent', 'receiving', 'under_review'].includes(quote.status);
+      }).length || 0;
       
-      // Pending proposals (quotes with status 'sent' or 'receiving')
-      const pendingProposals = quotesData?.filter(q => 
-        ['sent', 'receiving'].includes(q.status)
+      // FASE 3.2: Propostas pendentes (enviadas mas não aprovadas/rejeitadas)
+      const pendingProposals = proposalsData?.filter(p => 
+        ['sent', 'submitted'].includes(p.status)
       ).length || 0;
 
-      // Monthly revenue (approved quotes this month)
-      const monthlyQuotes = quotesData?.filter(q => {
-        const quoteDate = new Date(q.created_at);
-        return q.status === 'approved' && 
-               quoteDate.getMonth() === currentMonth && 
-               quoteDate.getFullYear() === currentYear;
+      // FASE 3.3: Receita mensal baseada em propostas aprovadas
+      const monthlyProposals = proposalsData?.filter(p => {
+        const proposalDate = new Date(p.created_at);
+        return ['approved', 'selected'].includes(p.status) && 
+               proposalDate.getMonth() === currentMonth && 
+               proposalDate.getFullYear() === currentYear;
       }) || [];
       
-      const monthlyRevenue = monthlyQuotes.reduce((sum, quote) => 
-        sum + (quote.total || 0), 0
+      const monthlyRevenue = monthlyProposals.reduce((sum, proposal) => 
+        sum + (Number(proposal.total_amount) || 0), 0
       );
 
-      // Previous month for growth calculation
-      const prevMonthQuotes = quotesData?.filter(q => {
-        const quoteDate = new Date(q.created_at);
-        return q.status === 'approved' && 
-               quoteDate.getMonth() === currentMonth - 1 && 
-               quoteDate.getFullYear() === currentYear;
+      // FASE 3.5: Crescimento de vendas baseado em propostas
+      const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+      const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+      
+      const prevMonthProposals = proposalsData?.filter(p => {
+        const proposalDate = new Date(p.created_at);
+        return ['approved', 'selected'].includes(p.status) && 
+               proposalDate.getMonth() === prevMonth && 
+               proposalDate.getFullYear() === prevYear;
       }) || [];
       
-      const prevMonthRevenue = prevMonthQuotes.reduce((sum, quote) => 
-        sum + (quote.total || 0), 0
+      const prevMonthRevenue = prevMonthProposals.reduce((sum, proposal) => 
+        sum + (Number(proposal.total_amount) || 0), 0
       );
 
       const revenueGrowth = prevMonthRevenue > 0 
         ? ((monthlyRevenue - prevMonthRevenue) / prevMonthRevenue) * 100 
-        : 0;
+        : monthlyRevenue > 0 ? 100 : 0;
 
-      // Approval rate calculation (simplified)
-      const allQuotes = quotesData || [];
-      const completedQuotes = allQuotes.filter(q => ['approved', 'rejected'].includes(q.status));
-      const approvedQuotes = allQuotes.filter(q => q.status === 'approved');
+      // FASE 3.4: Taxa de aprovação baseada em propostas
+      const submittedProposals = proposalsData?.filter(p => 
+        ['sent', 'submitted', 'approved', 'selected', 'rejected'].includes(p.status)
+      ) || [];
+      const approvedProposals = proposalsData?.filter(p => 
+        ['approved', 'selected'].includes(p.status)
+      ) || [];
       
-      const approvalRate = completedQuotes.length > 0 
-        ? (approvedQuotes.length / completedQuotes.length) * 100 
+      const approvalRate = submittedProposals.length > 0 
+        ? (approvedProposals.length / submittedProposals.length) * 100 
         : 0;
 
       // Simple approval growth (last 30 days vs previous 30 days)
@@ -197,34 +251,48 @@ export const useSupabaseSupplierDashboard = () => {
       const sixtyDaysAgo = new Date();
       sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-      const recentCompletedQuotes = allQuotes.filter(q => 
-        ['approved', 'rejected'].includes(q.status) && 
-        new Date(q.created_at) >= thirtyDaysAgo
-      );
-      const recentApprovedQuotes = allQuotes.filter(q => 
-        q.status === 'approved' && 
-        new Date(q.created_at) >= thirtyDaysAgo
-      );
+      const recentCompletedProposals = proposalsData?.filter(p => 
+        ['approved', 'selected', 'rejected'].includes(p.status) && 
+        new Date(p.created_at) >= thirtyDaysAgo
+      ) || [];
+      const recentApprovedProposals = proposalsData?.filter(p => 
+        ['approved', 'selected'].includes(p.status) && 
+        new Date(p.created_at) >= thirtyDaysAgo
+      ) || [];
       
-      const prevCompletedQuotes = allQuotes.filter(q => 
-        ['approved', 'rejected'].includes(q.status) && 
-        new Date(q.created_at) >= sixtyDaysAgo && 
-        new Date(q.created_at) < thirtyDaysAgo
-      );
-      const prevApprovedQuotes = allQuotes.filter(q => 
-        q.status === 'approved' && 
-        new Date(q.created_at) >= sixtyDaysAgo && 
-        new Date(q.created_at) < thirtyDaysAgo
-      );
+      const prevCompletedProposals = proposalsData?.filter(p => 
+        ['approved', 'selected', 'rejected'].includes(p.status) && 
+        new Date(p.created_at) >= sixtyDaysAgo && 
+        new Date(p.created_at) < thirtyDaysAgo
+      ) || [];
+      const prevApprovedProposals = proposalsData?.filter(p => 
+        ['approved', 'selected'].includes(p.status) && 
+        new Date(p.created_at) >= sixtyDaysAgo && 
+        new Date(p.created_at) < thirtyDaysAgo
+      ) || [];
 
-      const recentApprovalRate = recentCompletedQuotes.length > 0 
-        ? (recentApprovedQuotes.length / recentCompletedQuotes.length) * 100 
+      const recentApprovalRate = recentCompletedProposals.length > 0 
+        ? (recentApprovedProposals.length / recentCompletedProposals.length) * 100 
         : 0;
-      const prevApprovalRate = prevCompletedQuotes.length > 0 
-        ? (prevApprovedQuotes.length / prevCompletedQuotes.length) * 100 
+      const prevApprovalRate = prevCompletedProposals.length > 0 
+        ? (prevApprovedProposals.length / prevCompletedProposals.length) * 100 
         : 0;
       
       const approvalGrowth = recentApprovalRate - prevApprovalRate;
+
+      // FASE 5: Logs de depuração
+      console.log('📊 [MÉTRICAS CALCULADAS]', {
+        activeQuotes,
+        pendingProposals,
+        monthlyRevenue,
+        approvalRate: approvalRate.toFixed(2) + '%',
+        revenueGrowth: revenueGrowth.toFixed(2) + '%',
+        totalProposals: proposalsData?.length || 0,
+        totalQuotesLinked: quotesData?.length || 0,
+        submittedProposals: submittedProposals.length,
+        approvedProposals: approvedProposals.length,
+        monthlyProposals: monthlyProposals.length,
+      });
 
       setMetrics({
         activeQuotes,
