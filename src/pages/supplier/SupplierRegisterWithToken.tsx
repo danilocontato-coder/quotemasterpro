@@ -256,6 +256,8 @@ export default function SupplierRegisterWithToken() {
       console.log('✅ Cadastro concluído, redirecionando para:', redirectUrl);
       
       sessionStorage.setItem('redirectAfterLogin', redirectUrl);
+      // Marcar que o registro acabou de ser completado
+      sessionStorage.setItem('supplier_registration_completed', 'true');
       
       toast({
         title: "Cadastro Concluído!",
