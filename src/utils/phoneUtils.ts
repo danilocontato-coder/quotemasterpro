@@ -39,3 +39,24 @@ export function normalizePhoneForDB(phone: string): string {
   // Adiciona +55 (Brasil)
   return `+55${numbers}`;
 }
+
+/**
+ * Valida se é um número de celular brasileiro válido
+ * @param phone - Telefone em qualquer formato
+ * @returns true se for celular válido
+ */
+export function isValidWhatsApp(phone: string): boolean {
+  const numbers = phone.replace(/\D/g, '');
+  
+  // Deve ter 11 dígitos
+  if (numbers.length !== 11) return false;
+  
+  // DDD deve ser válido (11-99)
+  const ddd = parseInt(numbers.slice(0, 2));
+  if (ddd < 11 || ddd > 99) return false;
+  
+  // Terceiro dígito deve ser 9 (celular)
+  if (numbers[2] !== '9') return false;
+  
+  return true;
+}

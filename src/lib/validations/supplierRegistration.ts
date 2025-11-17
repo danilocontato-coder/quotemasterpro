@@ -12,14 +12,14 @@ export const supplierRegistrationSchema = z.object({
   document_number: z.string()
     .min(1, 'Documento é obrigatório'),
   
-  // WhatsApp obrigatório
+  // WhatsApp obrigatório (apenas celular brasileiro)
   whatsapp: z.string()
     .min(1, 'WhatsApp é obrigatório')
     .transform(val => val.replace(/\D/g, '')) // Remove formatação
-    .refine(val => val.length === 10 || val.length === 11, 
-      'WhatsApp deve ter 10 ou 11 dígitos')
-    .refine(val => /^[1-9]{2}9?[0-9]{8}$/.test(val), 
-      'WhatsApp inválido'),
+    .refine(val => val.length === 11, 
+      'WhatsApp deve ter 11 dígitos (celular)')
+    .refine(val => /^[1-9]{2}9[0-9]{8}$/.test(val), 
+      'WhatsApp inválido. Deve ser um celular brasileiro no formato (XX) 9XXXX-XXXX'),
   
   // Endereço completo
   cep: z.string()
