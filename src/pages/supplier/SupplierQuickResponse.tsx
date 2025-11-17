@@ -118,6 +118,29 @@ const SupplierQuickResponse = () => {
     }
   }, [quoteId, token, user, authLoading]);
 
+  // Auto-confirmar dados para fornecedores recém-cadastrados
+  useEffect(() => {
+    const justRegistered = sessionStorage.getItem('supplier_registration_completed');
+    
+    if (justRegistered === 'true' && existingSupplier && !dataConfirmed) {
+      setDataConfirmed(true);
+      sessionStorage.removeItem('supplier_registration_completed');
+      
+      toast({
+        title: "Cadastro concluído!",
+        description: "Agora você pode enviar sua proposta",
+      });
+      
+      // Scroll suave até a seção de proposta
+      setTimeout(() => {
+        const proposalSection = document.getElementById('proposal-section');
+        if (proposalSection) {
+          proposalSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 500);
+    }
+  }, [existingSupplier, dataConfirmed]);
+
   const validateTokenAndFetchData = async () => {
     try {
       setLoading(true);
@@ -644,7 +667,7 @@ const SupplierQuickResponse = () => {
             </Card>
 
             {/* Formulário de Proposta */}
-            <Card>
+            <Card id="proposal-section">
               <CardHeader>
                 <CardTitle>Sua Proposta</CardTitle>
                 <CardDescription>
