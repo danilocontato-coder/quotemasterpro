@@ -217,15 +217,13 @@ serve(async (req) => {
     console.log('💰 [CONFIRM-DELIVERY] Liberando pagamento', {
       quote_id: confirmationData.deliveries.quote_id,
       old_status: 'in_escrow',
-      new_status: 'completed',
-      completed_at: new Date().toISOString()
+      new_status: 'completed'
     });
     
     const { error: updatePaymentError } = await supabase
       .from('payments')
       .update({
-        status: 'completed',
-        completed_at: new Date().toISOString()
+        status: 'completed'
       })
       .eq('quote_id', confirmationData.deliveries.quote_id)
       .eq('status', 'in_escrow');
