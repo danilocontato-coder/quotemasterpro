@@ -2142,7 +2142,7 @@ export type Database = {
           notes: string | null
           payment_id: string | null
           quote_id: string
-          scheduled_date: string
+          scheduled_date: string | null
           status: string
           supplier_id: string
           tracking_code: string | null
@@ -2168,7 +2168,7 @@ export type Database = {
           notes?: string | null
           payment_id?: string | null
           quote_id: string
-          scheduled_date: string
+          scheduled_date?: string | null
           status?: string
           supplier_id: string
           tracking_code?: string | null
@@ -2194,7 +2194,7 @@ export type Database = {
           notes?: string | null
           payment_id?: string | null
           quote_id?: string
-          scheduled_date?: string
+          scheduled_date?: string | null
           status?: string
           supplier_id?: string
           tracking_code?: string | null

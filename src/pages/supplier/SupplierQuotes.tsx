@@ -41,6 +41,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { SupplierQuoteViewModal } from "@/components/supplier/SupplierQuoteViewModal";
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
+import { usePendingDeliveries } from "@/hooks/usePendingDeliveries";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,6 +58,13 @@ export default function SupplierQuotes() {
   
   const { user, isLoading: isAuthLoading } = useAuth();
   const { supplierQuotes, isLoading } = useSupabaseSupplierQuotes();
+  const { pendingDeliveries } = usePendingDeliveries();
+  
+  // Criar um Set de quote_ids que estão pendentes de agendamento
+  const pendingDeliveryQuoteIds = useMemo(() => 
+    new Set(pendingDeliveries.map(pd => pd.quote_id)),
+    [pendingDeliveries]
+  );
 
   // Verificar quais cotações já têm entrega agendada
   useEffect(() => {
@@ -528,6 +536,23 @@ export default function SupplierQuotes() {
                               Ver & Confirmar
                             </Button>
                           )}
+                         
+                         {/* Botão Agendar Entrega - quando pagamento em custódia sem entrega agendada */}
+                         {pendingDeliveryQuoteIds.has(quote.id) && !quotesWithDeliveries.has(quote.id) && (
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={() => {
+                               setSelectedQuote(quote);
+                               setIsDeliveryModalOpen(true);
+                             }}
+                             className="bg-green-600 hover:bg-green-700"
+                             title="Agendar entrega"
+                           >
+                             <Truck className="h-4 w-4 mr-1" />
+                             Agendar Entrega
+                           </Button>
+                         )}
                          
                          {/* Botão Enviar Proposta - SÓ se visita confirmada OU não requer visita */}
                          {((!quote.requires_visit && quote.status === 'pending') || quote.status === 'visit_confirmed') && (

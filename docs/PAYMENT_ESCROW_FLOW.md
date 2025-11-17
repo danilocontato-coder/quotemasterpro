@@ -16,24 +16,30 @@ O sistema Cotiz implementa um fluxo de pagamento seguro com **custódia (escrow)
 ### **2️⃣ Cliente Realiza Pagamento (Asaas)**
 - **Status do Pagamento**: `pending` → `in_escrow` ✅
 - **Status da Cotação**: `approved` (mantém)
+- **Status da Entrega**: (criada automaticamente como `pending`)
 - **Ação**: Cliente paga via Asaas (boleto, cartão, PIX, etc.)
 - **Webhook**: `PAYMENT_RECEIVED` ou `PAYMENT_CONFIRMED`
 - **Sistema**: 
   - Pagamento vai para **custódia (in_escrow)**
+  - **Trigger automático cria entrega placeholder** (status `pending`, sem data agendada)
   - Fornecedor recebe **notificação de alta prioridade** 🔔
   - Cotação permanece `approved` (não vai direto para `paid`)
+  - Entrega aparece no módulo de entregas do fornecedor
 
 ### **3️⃣ Fornecedor Recebe Notificação**
 - **Notificação**: "💰 Pagamento Confirmado! O pagamento de R$ X foi confirmado e está em custódia. Agende a entrega!"
 - **Prioridade**: Alta (badge vermelho no sino de notificações)
-- **Ação**: Fornecedor clica em "Agendar Agora" ou acessa `/supplier/deliveries`
+- **Entrega Placeholder**: Aparece automaticamente em `/supplier/deliveries` com status "Aguardando Agendamento"
+- **Ação**: Fornecedor clica em "Agendar Entrega" no módulo de entregas ou de cotações
 
 ### **4️⃣ Fornecedor Agenda Entrega**
 - **Status do Pagamento**: `in_escrow` (mantém)
 - **Status da Cotação**: `approved` → `delivering`
-- **Status da Entrega**: `scheduled`
-- **Ação**: Fornecedor define data, endereço e observações da entrega
+- **Status da Entrega**: `pending` → `scheduled` ✅
+- **Ação**: Fornecedor preenche data, endereço e observações da entrega
+- **Sistema**: Atualiza o registro placeholder existente (não cria novo)
 - **Validação**: Edge function valida que pagamento está em `in_escrow`
+- **Notificação**: Cliente recebe notificação de entrega agendada
 
 ### **5️⃣ Fornecedor Realiza Entrega**
 - **Status do Pagamento**: `in_escrow` (mantém)
@@ -105,12 +111,20 @@ Criada  Cliente    Fornecedor  Entrega
    - Mantém quote em `approved`
    - Notifica fornecedor (prioridade alta)
 
-2. **`sync-asaas-payment-status`**: Sincroniza status manualmente
+2. **Database Trigger `trg_create_placeholder_delivery_on_escrow`**: Cria entrega placeholder
+   - Dispara automaticamente quando payment muda para `in_escrow`
+   - Cria registro em `deliveries` com status `pending` e `scheduled_date = NULL`
+   - Garante idempotência via índice único `(quote_id, supplier_id)`
+   - Registra em `audit_logs` como `DELIVERY_PLACEHOLDER_CREATED`
+   - **NÃO notifica o cliente** (notificação só após agendamento)
+
+3. **`sync-asaas-payment-status`**: Sincroniza status manualmente
    - Consulta API Asaas
    - Aplica mesma lógica do webhook
    - Útil para sincronizações manuais
 
-3. **`schedule-delivery`**: Agenda entrega
+4. **`schedule-delivery`**: Agenda entrega
+   - **ATUALIZA** a entrega placeholder existente (não insere nova)
    - Valida que payment está em `in_escrow`
    - Cria registro de delivery
    - Muda quote para `delivering`
