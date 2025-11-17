@@ -26,6 +26,7 @@ serve(async (req) => {
     }
 
     const { paymentId } = await req.json()
+    console.log(`🔍 Buscando pagamento: ${paymentId}`)
 
     // Buscar dados do pagamento
     const { data: payment, error: paymentError } = await supabase
@@ -40,9 +41,44 @@ serve(async (req) => {
       .eq('status', 'pending')
       .single()
 
+    console.log('📋 Resultado da busca:', { 
+      found: !!payment, 
+      error: paymentError?.message,
+      payment_id: payment?.id,
+      status: payment?.status 
+    })
+
     if (paymentError || !payment) {
+      console.error('❌ Erro ao buscar pagamento:', paymentError)
+      
+      // Tentar busca sem inner joins para debug
+      const { data: debugPayment } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', paymentId)
+        .maybeSingle()
+      
+      console.log('🔍 Debug - Pagamento existe?', { 
+        exists: !!debugPayment,
+        status: debugPayment?.status,
+        quote_id: debugPayment?.quote_id,
+        supplier_id: debugPayment?.supplier_id,
+        client_id: debugPayment?.client_id
+      })
+      
       return new Response(
-        JSON.stringify({ error: 'Pagamento não encontrado' }),
+        JSON.stringify({ 
+          error: 'Pagamento não encontrado ou dados relacionados incompletos',
+          details: paymentError?.message || 'Payment not found or not in pending status',
+          paymentId,
+          debug: {
+            payment_exists: !!debugPayment,
+            payment_status: debugPayment?.status,
+            has_quote: !!debugPayment?.quote_id,
+            has_supplier: !!debugPayment?.supplier_id,
+            has_client: !!debugPayment?.client_id
+          }
+        }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
