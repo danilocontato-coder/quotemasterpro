@@ -28,6 +28,21 @@ export interface AdministradoraPayment {
   clients: {
     name: string;
   } | null;
+  quote_responses?: Array<{
+    id: string;
+    items: Array<{
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+      total: number;
+      brand?: string;
+      specifications?: string;
+    }>;
+    shipping_cost: number;
+    delivery_time: number;
+    warranty_months: number;
+    total_amount: number;
+  }>;
 }
 
 export function useAdministradoraPayments() {
@@ -75,7 +90,30 @@ export function useAdministradoraPayments() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setPayments(data || []);
+
+      // Para cada pagamento, buscar a resposta aprovada do fornecedor
+      const paymentsWithResponses = await Promise.all(
+        (data || []).map(async (payment) => {
+          if (!payment.quote_id || !payment.supplier_id) {
+            return payment as unknown as AdministradoraPayment;
+          }
+
+          const { data: responseData } = await supabase
+            .from('quote_responses')
+            .select('id, items, shipping_cost, delivery_time, warranty_months, total_amount')
+            .eq('quote_id', payment.quote_id)
+            .eq('supplier_id', payment.supplier_id)
+            .eq('status', 'approved')
+            .maybeSingle();
+
+          return {
+            ...payment,
+            quote_responses: responseData ? [responseData as any] : undefined
+          } as unknown as AdministradoraPayment;
+        })
+      );
+
+      setPayments(paymentsWithResponses || []);
     } catch (error: any) {
       console.error('Erro ao buscar pagamentos:', error);
       toast.error('Erro ao carregar pagamentos');
