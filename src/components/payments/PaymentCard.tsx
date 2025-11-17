@@ -57,6 +57,20 @@ const getStatusInfo = (status: string) => {
         icon: CheckCircle2,
         color: 'text-green-600'
       };
+    case 'paid':
+      return { 
+        label: 'Pago', 
+        variant: 'default' as const,
+        icon: CheckCircle2,
+        color: 'text-green-600'
+      };
+    case 'overdue':
+      return { 
+        label: 'Vencido', 
+        variant: 'destructive' as const,
+        icon: AlertCircle,
+        color: 'text-orange-600'
+      };
     case 'failed':
       return { 
         label: 'Falhou', 
@@ -84,6 +98,7 @@ const getStatusInfo = (status: string) => {
 export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, onOfflinePayment }: PaymentCardProps) {
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const statusInfo = getStatusInfo(payment.status);
   const StatusIcon = statusInfo.icon;
 
@@ -164,6 +179,35 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
       toast.error('Erro ao regenerar pagamento');
     } finally {
       setIsRegenerating(false);
+    }
+  };
+
+  // Handler para sincronizar status com Asaas
+  const handleSyncStatus = async () => {
+    if (!payment.asaas_payment_id) {
+      toast.error('Pagamento não possui ID do Asaas');
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-asaas-payment-status', {
+        body: { payment_id: payment.id }
+      });
+
+      if (error) throw error;
+
+      if (data.synced) {
+        toast.success(`Status atualizado: ${data.old_status} → ${data.new_status}`);
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.info('Status já está atualizado');
+      }
+    } catch (error: any) {
+      console.error('Error syncing status:', error);
+      toast.error(error.message || 'Erro ao sincronizar status');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -290,6 +334,30 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>⚠️ Boleto expirado. Clique para gerar um novo.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* Botão para sincronizar status com Asaas */}
+          {payment.asaas_payment_id && (payment.status === 'pending' || payment.status === 'processing' || payment.status === 'waiting_confirmation') && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex-1 min-w-[120px]">
+                    <Button 
+                      onClick={handleSyncStatus}
+                      disabled={isSyncing}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                      {isSyncing ? 'Sincronizando...' : '🔄 Verificar Status'}
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Verificar status atual no Asaas</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

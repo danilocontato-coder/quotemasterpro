@@ -55,7 +55,61 @@ serve(async (req) => {
     if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
       console.log(`Payment received: ${payment.id}`);
 
-      // Buscar invoice pelo asaas_charge_id
+      // PRIMEIRO: Buscar em payments (cotações)
+      const { data: paymentRecord, error: paymentError } = await supabaseClient
+        .from('payments')
+        .select(`
+          *,
+          quotes!inner(id, local_code, client_id, supplier_id, status)
+        `)
+        .eq('asaas_payment_id', payment.id)
+        .single();
+
+      if (paymentRecord && !paymentError) {
+        console.log('✅ Pagamento de cotação encontrado:', paymentRecord.id);
+
+        // Atualizar status do pagamento
+        await supabaseClient
+          .from('payments')
+          .update({
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', paymentRecord.id);
+
+        // Atualizar status da cotação
+        await supabaseClient
+          .from('quotes')
+          .update({
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', paymentRecord.quote_id);
+
+        // Log de auditoria
+        await supabaseClient
+          .from('audit_logs')
+          .insert({
+            action: 'PAYMENT_CONFIRMED',
+            entity_type: 'payments',
+            entity_id: paymentRecord.id,
+            panel_type: 'system',
+            details: {
+              asaas_payment_id: payment.id,
+              quote_id: paymentRecord.quote_id,
+              amount: payment.value,
+              payment_method: payment.billingType,
+              quote_code: paymentRecord.quotes.local_code
+            }
+          });
+
+        console.log('✅ Pagamento de cotação processado com sucesso');
+        return new Response(JSON.stringify({ ok: true, type: 'quote_payment' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // SE NÃO ENCONTROU: Buscar invoice pelo asaas_charge_id (assinaturas)
       const { data: invoice, error: invError } = await supabaseClient
         .from('invoices')
         .select('*, subscriptions!subscription_id(id, client_id, supplier_id, subscription_plan_id)')
@@ -63,7 +117,7 @@ serve(async (req) => {
         .single();
 
       if (invError || !invoice) {
-        console.log('Invoice not found for payment:', payment.id);
+        console.log('⚠️ Pagamento não encontrado em payments nem invoices:', payment.id);
         return new Response(JSON.stringify({ ok: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -185,6 +239,45 @@ serve(async (req) => {
     if (event === 'PAYMENT_OVERDUE') {
       console.log(`Payment overdue: ${payment.id}`);
 
+      // PRIMEIRO: Buscar em payments (cotações)
+      const { data: paymentRecord, error: paymentError } = await supabaseClient
+        .from('payments')
+        .select('*, quotes!inner(id, local_code)')
+        .eq('asaas_payment_id', payment.id)
+        .single();
+
+      if (paymentRecord && !paymentError) {
+        console.log('✅ Pagamento de cotação vencido:', paymentRecord.id);
+
+        await supabaseClient
+          .from('payments')
+          .update({
+            status: 'overdue',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', paymentRecord.id);
+
+        // Log de auditoria
+        await supabaseClient
+          .from('audit_logs')
+          .insert({
+            action: 'PAYMENT_OVERDUE',
+            entity_type: 'payments',
+            entity_id: paymentRecord.id,
+            panel_type: 'system',
+            details: {
+              asaas_payment_id: payment.id,
+              quote_code: paymentRecord.quotes.local_code
+            }
+          });
+
+        console.log('✅ Pagamento de cotação marcado como vencido');
+        return new Response(JSON.stringify({ ok: true, type: 'quote_payment' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // SE NÃO ENCONTROU: Buscar invoice (assinaturas)
       const { data: invoice } = await supabaseClient
         .from('invoices')
         .select('*, subscriptions!subscription_id(id, client_id, supplier_id)')
