@@ -85,35 +85,62 @@ serve(async (req) => {
       throw new Error("Apenas o fornecedor designado pode agendar a entrega");
     }
 
-    // Verificar se já existe uma entrega para esta cotação + fornecedor
+    // Buscar entrega existente (placeholder ou já agendada)
     const { data: existingDelivery } = await supabase
       .from("deliveries")
-      .select("id")
+      .select("id, status")
       .eq("quote_id", quote_id)
       .eq("supplier_id", profile.supplier_id)
       .maybeSingle();
 
-    if (existingDelivery) {
-      throw new Error("Já existe uma entrega agendada para esta cotação");
+    let delivery;
+    
+    if (existingDelivery && (existingDelivery.status === 'pending' || existingDelivery.status === 'scheduled')) {
+      // ATUALIZAR delivery placeholder existente
+      log("Updating existing placeholder delivery", { deliveryId: existingDelivery.id });
+      
+      const { data: updatedDelivery, error: updateError } = await supabase
+        .from("deliveries")
+        .update({
+          scheduled_date: scheduled_date,
+          delivery_address: delivery_address,
+          notes: notes,
+          status: "scheduled",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", existingDelivery.id)
+        .select()
+        .single();
+      
+      if (updateError) throw updateError;
+      delivery = updatedDelivery;
+      
+    } else if (existingDelivery) {
+      // Já existe entrega em outro status (completed, etc)
+      throw new Error("Já existe uma entrega finalizada para esta cotação");
+      
+    } else {
+      // INSERIR nova delivery (fallback para casos legacy)
+      log("Creating new delivery (legacy fallback)");
+      
+      const { data: newDelivery, error: insertError } = await supabase
+        .from("deliveries")
+        .insert({
+          payment_id: payment.id,
+          quote_id: quote_id,
+          client_id: payment.client_id,
+          supplier_id: payment.supplier_id,
+          scheduled_date: scheduled_date,
+          delivery_address: delivery_address,
+          notes: notes,
+          status: "scheduled"
+        })
+        .select()
+        .single();
+      
+      if (insertError) throw insertError;
+      delivery = newDelivery;
     }
-
-    // Criar agendamento de entrega
-    const { data: delivery, error: deliveryError } = await supabase
-      .from("deliveries")
-      .insert({
-        payment_id: payment.id,
-        quote_id: quote_id,
-        client_id: payment.client_id,
-        supplier_id: payment.supplier_id,
-        scheduled_date: scheduled_date,
-        delivery_address: delivery_address,
-        notes: notes,
-        status: "scheduled"
-      })
-      .select()
-      .single();
-
-    if (deliveryError) throw deliveryError;
 
     // Atualizar status da cotação para 'delivering'
     await supabase

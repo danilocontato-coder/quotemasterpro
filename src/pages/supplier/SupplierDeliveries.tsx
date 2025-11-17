@@ -299,11 +299,34 @@ export default function SupplierDeliveries() {
     setIsScheduleModalOpen(false);
     setSelectedQuoteForSchedule(null);
   };
-
+  
   const handleDeliveryScheduled = () => {
     fetchDeliveries();
     handleScheduleModalClose();
   };
+  
+  // Buscar dados da cotação para o modal
+  const [quoteForModal, setQuoteForModal] = useState<any>(null);
+  
+  useEffect(() => {
+    if (selectedQuoteForSchedule) {
+      const loadQuoteData = async () => {
+        const { data } = await supabase
+          .from('quotes')
+          .select('id, local_code, title, client_name, total')
+          .eq('id', selectedQuoteForSchedule)
+          .single();
+        
+        if (data) {
+          setQuoteForModal(data);
+        }
+      };
+      loadQuoteData();
+    } else {
+      setQuoteForModal(null);
+    }
+  }, [selectedQuoteForSchedule]);
+
 
   // Listener para notificações de pagamento confirmado
   useEffect(() => {
@@ -454,6 +477,9 @@ export default function SupplierDeliveries() {
         </Card>
       </div>
 
+      {/* Seção de Entregas Pendentes de Agendamento */}
+      <PendingDeliveriesTab onScheduleDelivery={handleScheduleDelivery} />
+
       {/* Lista de entregas */}
       {deliveries.length === 0 ? (
         <Card>
@@ -575,7 +601,17 @@ export default function SupplierDeliveries() {
         </div>
       )}
 
-      {/* Modal de agendamento */}
+      {/* Modal para agendar entrega a partir de pending deliveries */}
+      {quoteForModal && (
+        <ScheduleDeliveryModal
+          quote={quoteForModal}
+          open={isScheduleModalOpen}
+          onOpenChange={handleScheduleModalClose}
+          onDeliveryScheduled={handleDeliveryScheduled}
+        />
+      )}
+
+      {/* Modal para atualizar entrega existente */}
       {selectedDelivery && selectedDelivery.status === 'pending' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="w-full max-w-2xl my-8">
