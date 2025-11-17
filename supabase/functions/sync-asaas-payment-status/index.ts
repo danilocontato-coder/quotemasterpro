@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { corsHeaders } from '../_shared/cors.ts';
+import { getAsaasConfig } from '../_shared/asaas-utils.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -55,25 +56,9 @@ serve(async (req) => {
       });
     }
 
-    // Buscar configuração Asaas
-    const { data: settings } = await supabaseClient
-      .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', 'asaas_config')
-      .single();
-
-    if (!settings?.setting_value?.api_key) {
-      return new Response(JSON.stringify({ error: 'Configuração Asaas não encontrada' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const asaasApiKey = settings.setting_value.api_key;
-    const asaasEnv = settings.setting_value.environment || 'sandbox';
-    const asaasUrl = asaasEnv === 'production' 
-      ? 'https://api.asaas.com/v3'
-      : 'https://sandbox.asaas.com/api/v3';
+    // Buscar configuração Asaas usando utilitário compartilhado
+    const asaasConfig = await getAsaasConfig(supabaseClient);
+    const { apiKey: asaasApiKey, baseUrl: asaasUrl } = asaasConfig;
 
     // Consultar status no Asaas
     const asaasResponse = await fetch(`${asaasUrl}/payments/${payment.asaas_payment_id}`, {
