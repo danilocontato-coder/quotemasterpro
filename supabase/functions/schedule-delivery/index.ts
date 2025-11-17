@@ -204,6 +204,64 @@ serve(async (req) => {
 
     log("Delivery scheduled successfully", { deliveryId: delivery.id });
 
+    // Buscar código de confirmação criado pelo trigger
+    const { data: confirmationData } = await supabase
+      .from("delivery_confirmations")
+      .select("confirmation_code")
+      .eq("delivery_id", delivery.id)
+      .eq("is_used", false)
+      .single();
+
+    if (confirmationData?.confirmation_code) {
+      log("Sending confirmation code to client", { code: confirmationData.confirmation_code });
+
+      // Buscar informações do cliente
+      const { data: clientData } = await supabase
+        .from("clients")
+        .select("name, email, phone")
+        .eq("id", payment.client_id)
+        .single();
+
+      if (clientData) {
+        // Enviar código via e-mail
+        try {
+          await supabase.functions.invoke('send-delivery-code-email', {
+            body: {
+              email: clientData.email,
+              client_name: clientData.name,
+              confirmation_code: confirmationData.confirmation_code,
+              delivery_id: delivery.id,
+              quote_id: quote_id
+            }
+          });
+          log("Email sent successfully");
+        } catch (emailError) {
+          log("Error sending email", { error: emailError });
+        }
+
+        // Enviar código via WhatsApp (se telefone disponível)
+        if (clientData.phone) {
+          try {
+            await supabase.functions.invoke('send-whatsapp', {
+              body: {
+                to: clientData.phone,
+                template: 'delivery_code',
+                template_data: {
+                  client_name: clientData.name,
+                  confirmation_code: confirmationData.confirmation_code,
+                  delivery_id: delivery.id,
+                  quote_id: quote_id
+                }
+              }
+            });
+            log("WhatsApp sent successfully");
+          } catch (whatsappError) {
+            log("Error sending WhatsApp", { error: whatsappError });
+          }
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 

@@ -16,86 +16,20 @@ import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryMod
 import { PostPaymentActionModal } from "@/components/supplier/PostPaymentActionModal";
 import { usePendingDeliveries } from "@/hooks/usePendingDeliveries";
 
-// Componente para mostrar código de confirmação
-const DeliveryCodeDisplay = ({ deliveryId }: { deliveryId: string }) => {
-  const [confirmationCode, setConfirmationCode] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchCode = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('delivery_confirmations')
-          .select('confirmation_code, expires_at, is_used')
-          .eq('delivery_id', deliveryId)
-          .eq('is_used', false)
-          .gt('expires_at', new Date().toISOString())
-          .single();
-
-        if (error || !data) {
-          console.error('Erro ao buscar código:', error);
-          setConfirmationCode(null);
-        } else {
-          setConfirmationCode(data.confirmation_code);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar código:', error);
-        setConfirmationCode(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCode();
-  }, [deliveryId]);
-
-  const copyToClipboard = () => {
-    if (confirmationCode) {
-      navigator.clipboard.writeText(confirmationCode);
-      toast({
-        title: "Código copiado!",
-        description: "Código de confirmação copiado para a área de transferência.",
-      });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Clock className="w-4 h-4" />
-        Carregando código...
-      </div>
-    );
-  }
-
-  if (!confirmationCode) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Key className="w-4 h-4" />
-        Código não disponível
-      </div>
-    );
-  }
-
+// Componente para mostrar status de envio do código
+const DeliveryCodeStatus = ({ deliveryId, clientEmail }: { deliveryId: string; clientEmail?: string }) => {
   return (
-    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-      <Key className="w-4 h-4 text-primary" />
+    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
+      <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
       <div className="flex-1">
-        <div className="text-sm font-medium">Código de Confirmação</div>
-        <div className="text-lg font-mono font-bold text-primary">{confirmationCode}</div>
-        <div className="text-xs text-muted-foreground">
-          Compartilhe com o cliente para confirmar a entrega
+        <div className="text-sm font-medium text-green-900 dark:text-green-100">
+          Código de Confirmação Enviado
+        </div>
+        <div className="text-xs text-green-700 dark:text-green-300">
+          {clientEmail ? `Enviado para ${clientEmail} via e-mail e WhatsApp` : 'Enviado para o cliente via e-mail e WhatsApp'}
         </div>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={copyToClipboard}
-        className="ml-2"
-      >
-        <Copy className="w-4 h-4" />
-      </Button>
+      <AlertCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
     </div>
   );
 };
@@ -554,9 +488,9 @@ export default function SupplierDeliveries() {
                   </div>
                 )}
 
-                {/* Mostrar código de confirmação quando entrega estiver agendada ou em trânsito */}
+                {/* Mostrar status de envio do código quando entrega estiver agendada ou em trânsito */}
                 {(delivery.status === 'scheduled' || delivery.status === 'in_transit') && (
-                  <DeliveryCodeDisplay deliveryId={delivery.id} />
+                  <DeliveryCodeStatus deliveryId={delivery.id} />
                 )}
 
                 <div className="flex gap-2 pt-2">
