@@ -34,7 +34,7 @@ serve(async (req) => {
     const { paymentId } = await req.json()
     console.log(`🔄 Regenerando pagamento: ${paymentId}`)
 
-    // Buscar dados do pagamento
+    // Buscar dados do pagamento com informações detalhadas
     const { data: payment, error: paymentError } = await supabaseClient
       .from('payments')
       .select(`
@@ -46,6 +46,16 @@ serve(async (req) => {
       .eq('id', paymentId)
       .in('status', ['processing', 'waiting_confirmation', 'failed'])
       .single()
+
+    if (payment) {
+      console.log('🔍 Dados do pagamento para regeneração:', {
+        payment_id: payment.id,
+        status: payment.status,
+        amount: payment.amount,
+        local_code: payment.quotes?.local_code,
+        asaas_payment_id: payment.asaas_payment_id
+      })
+    }
 
     if (paymentError || !payment) {
       console.error('❌ Pagamento não encontrado ou status inválido:', paymentError)
