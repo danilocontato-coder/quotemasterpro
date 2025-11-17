@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Button } from '@/components/ui/button';
 import { Brain, CheckCircle, AlertTriangle, TrendingUp, Eye } from 'lucide-react';
 import { ComparativeConsultantAnalysis } from '@/services/ProposalConsultantService';
@@ -64,14 +65,15 @@ export function ConsultantAnalysisCard({
           
           <div className="flex flex-col gap-2">
             {onApprove && (
-              <Button
+              <LoadingButton
                 onClick={() => onApprove(recommendedProposal.id)}
-                disabled={isApproving}
+                isLoading={isApproving}
+                loadingText="Aprovando..."
                 className="bg-green-600 hover:bg-green-700"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
-                {isApproving ? 'Aprovando...' : 'Aprovar'}
-              </Button>
+                Aprovar
+              </LoadingButton>
             )}
             {onViewDetails && (
               <Button
