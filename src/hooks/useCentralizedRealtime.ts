@@ -75,6 +75,13 @@ export function useCentralizedRealtime() {
           }
         )
         .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `supplier_id=eq.${user.supplierId}` },
+          () => {
+            console.log('🔔 [CENTRAL-REALTIME] Notification updated (supplier broadcast)');
+            window.dispatchEvent(new CustomEvent('notifications-updated'));
+          }
+        )
+        .on('postgres_changes',
           { event: '*', schema: 'public', table: 'payments' },
           () => {
             console.log('💰 [CENTRAL-REALTIME] Payment updated (supplier)');
