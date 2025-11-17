@@ -11,6 +11,9 @@ export interface PendingDelivery {
   payment_amount: number;
   payment_status: string;
   payment_date: string;
+  client_address?: string;
+  client_city?: string;
+  client_state?: string;
 }
 
 export function usePendingDeliveries() {
@@ -50,7 +53,15 @@ export function usePendingDeliveries() {
             local_code,
             title,
             client_name,
-            status
+            status,
+            client_id,
+            clients!inner (
+              id,
+              name,
+              address,
+              city,
+              state
+            )
           )
         `)
         .eq('supplier_id', profile.supplier_id)
@@ -84,6 +95,9 @@ export function usePendingDeliveries() {
             payment_amount: payment.amount,
             payment_status: payment.status,
             payment_date: payment.created_at,
+            client_address: (quote as any).clients?.address,
+            client_city: (quote as any).clients?.city,
+            client_state: (quote as any).clients?.state,
           });
         }
       }

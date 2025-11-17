@@ -97,6 +97,14 @@ export function ScheduleDeliveryModal({
 
   if (!quote) return null;
 
+  // Extrair dados do endereço do cliente
+  const clientAddress = quote.client_address || '';
+  const clientCity = quote.client_city || '';
+  const clientState = quote.client_state || '';
+  const fullAddress = [clientAddress, clientCity, clientState]
+    .filter(Boolean)
+    .join(', ');
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -131,6 +139,28 @@ export function ScheduleDeliveryModal({
             </div>
           </div>
 
+          {/* Endereço de Entrega Padrão */}
+          <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
+            <h3 className="font-medium mb-2 flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-blue-600" />
+              Endereço de Entrega Padrão
+            </h3>
+            {fullAddress ? (
+              <div className="space-y-1 text-sm">
+                <p className="font-medium text-foreground">{fullAddress}</p>
+                <p className="text-muted-foreground text-xs">
+                  Este é o endereço cadastrado do cliente. 
+                  Se a entrega for para outro local, preencha o campo abaixo.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                ⚠️ Cliente não possui endereço cadastrado. 
+                Por favor, informe o endereço de entrega abaixo.
+              </p>
+            )}
+          </div>
+
           {/* Delivery Form */}
           <div className="space-y-4">
             <div className="space-y-2">
@@ -151,11 +181,11 @@ export function ScheduleDeliveryModal({
             <div className="space-y-2">
               <Label htmlFor="delivery-address" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Endereço de Entrega (opcional)
+                Endereço Alternativo (opcional)
               </Label>
               <Textarea
                 id="delivery-address"
-                placeholder="Endereço específico para entrega (se diferente do cadastrado)"
+                placeholder="Preencha apenas se a entrega for para um endereço diferente do padrão"
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
                 rows={3}
