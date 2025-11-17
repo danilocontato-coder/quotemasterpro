@@ -3559,6 +3559,7 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          asaas_due_date: string | null
           asaas_invoice_url: string | null
           asaas_payment_id: string | null
           auto_release_enabled: boolean | null
@@ -3589,6 +3590,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          asaas_due_date?: string | null
           asaas_invoice_url?: string | null
           asaas_payment_id?: string | null
           auto_release_enabled?: boolean | null
@@ -3619,6 +3621,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          asaas_due_date?: string | null
           asaas_invoice_url?: string | null
           asaas_payment_id?: string | null
           auto_release_enabled?: boolean | null
