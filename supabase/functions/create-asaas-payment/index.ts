@@ -32,7 +32,7 @@ serve(async (req) => {
       .from('payments')
       .select(`
         *,
-        quotes!inner(id, title, client_id),
+        quotes!inner(id, title, local_code, client_id),
         suppliers!inner(id, name, email, asaas_wallet_id),
         clients!inner(id, name, email, cnpj, asaas_customer_id)
       `)
@@ -45,6 +45,26 @@ serve(async (req) => {
         JSON.stringify({ error: 'Pagamento não encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Buscar resposta da cotação para calcular valor correto (subtotal + frete)
+    let totalAmount = payment.amount;
+    
+    if (payment.quote_id && payment.supplier_id) {
+      const { data: quoteResponse } = await supabase
+        .from('quote_responses')
+        .select('items, shipping_cost')
+        .eq('quote_id', payment.quote_id)
+        .eq('supplier_id', payment.supplier_id)
+        .eq('status', 'approved')
+        .maybeSingle();
+
+      if (quoteResponse && Array.isArray(quoteResponse.items)) {
+        const subtotal = quoteResponse.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+        const shipping = quoteResponse.shipping_cost || 0;
+        totalAmount = subtotal + shipping;
+        console.log(`Valor calculado: Subtotal R$ ${subtotal} + Frete R$ ${shipping} = Total R$ ${totalAmount}`);
+      }
     }
 
     // Obter configuração do Asaas (incluindo ambiente, URL e comissões)
@@ -96,8 +116,8 @@ serve(async (req) => {
     const splitEnabled = config.split_enabled !== false // Default true
 
     // Calcular split: plataforma fica com X%, fornecedor recebe (100-X)%
-    const platformAmount = payment.amount * (commissionPercentage / 100)
-    const supplierAmount = payment.amount - platformAmount
+    const platformAmount = totalAmount * (commissionPercentage / 100)
+    const supplierAmount = totalAmount - platformAmount
 
     // Criar cobrança no Asaas (com ou sem split)
     const dueDate = new Date()
@@ -109,9 +129,9 @@ serve(async (req) => {
     const paymentBody: any = {
       customer: asaasCustomerId,
       billingType: 'UNDEFINED', // Cliente escolhe: PIX, Boleto ou Cartão
-      value: payment.amount,
+      value: totalAmount,
       dueDate: dueDate.toISOString().split('T')[0],
-      description: `Pagamento da cotação ${payment.quote_id}`,
+      description: `Pagamento da cotação ${payment.quotes.local_code || payment.quote_id}`,
       externalReference: payment.id,
       postalService: false,
     }
