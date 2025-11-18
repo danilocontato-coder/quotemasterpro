@@ -1,9 +1,13 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Monitor, Smartphone, FileText, Maximize2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Maximize2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
+import { replaceVariables } from "@/lib/replaceVariables";
 
 interface EmailPreviewProps {
   htmlContent: string;
@@ -14,123 +18,81 @@ interface EmailPreviewProps {
 
 export function EmailPreview({ htmlContent, plainTextContent, subjectLine, previewText }: EmailPreviewProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [previewWithRealData, setPreviewWithRealData] = useState(false);
+  const { client } = useSupabaseCurrentClient();
 
-  const renderPreviewContent = (isModal = false) => (
-    <Tabs defaultValue="desktop" className="w-full">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="desktop">
-          <Monitor className="h-4 w-4 mr-2" />
-          Desktop
-        </TabsTrigger>
-        <TabsTrigger value="mobile">
-          <Smartphone className="h-4 w-4 mr-2" />
-          Mobile
-        </TabsTrigger>
-        <TabsTrigger value="plain">
-          <FileText className="h-4 w-4 mr-2" />
-          Texto
-        </TabsTrigger>
-      </TabsList>
+  const mergeTags = useMemo(() => {
+    if (!client || !previewWithRealData) return {};
+    
+    return {
+      client_name: client.name || '',
+      client_email: client.email || '',
+      current_date: new Date().toLocaleDateString('pt-BR'),
+      current_year: new Date().getFullYear(),
+    };
+  }, [client, previewWithRealData]);
 
-      <TabsContent value="desktop" className="mt-4">
-        <div 
-          className={`border rounded-lg bg-background overflow-auto ${
-            isModal ? 'h-[calc(100vh-200px)]' : 'max-h-[600px]'
-          } p-4`}
-        >
-          {isModal && subjectLine && (
-            <div className="bg-muted border-b p-4 mb-4 rounded-t-lg">
-              <div className="space-y-1 max-w-3xl mx-auto">
-                <p className="text-xs text-muted-foreground">De: Sistema Cotiz</p>
-                <p className="text-sm font-semibold">Assunto: {subjectLine}</p>
-                {previewText && <p className="text-xs text-muted-foreground">{previewText}</p>}
-              </div>
-            </div>
-          )}
-          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
-          </div>
-        </div>
-      </TabsContent>
+  const processedHtmlContent = useMemo(() => {
+    if (!previewWithRealData || !htmlContent) return htmlContent;
+    return replaceVariables(htmlContent, mergeTags);
+  }, [htmlContent, previewWithRealData, mergeTags]);
 
-      <TabsContent value="mobile" className="mt-4">
-        <div 
-          className={`border rounded-lg bg-background overflow-auto mx-auto p-4 ${
-            isModal ? 'h-[calc(100vh-200px)]' : 'max-h-[600px]'
-          }`}
-          style={{ maxWidth: '375px' }}
-        >
-          {isModal && subjectLine && (
-            <div className="bg-muted border-b p-3 mb-4 rounded-t-lg">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">De: Sistema Cotiz</p>
-                <p className="text-sm font-semibold">{subjectLine}</p>
-                {previewText && <p className="text-xs text-muted-foreground line-clamp-1">{previewText}</p>}
-              </div>
-            </div>
-          )}
-          <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="plain" className="mt-4">
-        <div 
-          className={`border rounded-lg bg-muted overflow-auto p-4 ${
-            isModal ? 'h-[calc(100vh-200px)]' : 'max-h-[600px]'
-          }`}
-        >
-          <pre className="text-sm whitespace-pre-wrap font-mono">
-            {plainTextContent || stripHtml(htmlContent)}
-          </pre>
-        </div>
-      </TabsContent>
-    </Tabs>
-  );
+  const processedSubject = useMemo(() => {
+    if (!previewWithRealData || !subjectLine) return subjectLine;
+    return replaceVariables(subjectLine, mergeTags);
+  }, [subjectLine, previewWithRealData, mergeTags]);
 
   return (
     <>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <CardTitle>Preview do E-mail</CardTitle>
-              {subjectLine && (
-                <div className="space-y-1 mt-2">
-                  <p className="text-sm font-semibold">{subjectLine}</p>
-                  {previewText && <p className="text-xs text-muted-foreground">{previewText}</p>}
-                </div>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
+            <CardTitle>Preview do E-mail</CardTitle>
+            <Button 
+              variant="default"
+              size="sm"
               onClick={() => setIsFullscreen(true)}
-              title="Ver em tela cheia"
             >
-              <Maximize2 className="h-4 w-4" />
+              <Maximize2 className="h-4 w-4 mr-2" />
+              Ver em Tela Cheia
             </Button>
+          </div>
+          {processedSubject && (
+            <div className="text-sm mt-2">
+              <span className="font-medium">Assunto:</span> {processedSubject}
+            </div>
+          )}
+          <div className="flex items-center space-x-2 mt-4">
+            <Switch 
+              id="preview-mode"
+              checked={previewWithRealData} 
+              onCheckedChange={setPreviewWithRealData} 
+            />
+            <Label htmlFor="preview-mode" className="text-sm cursor-pointer">
+              Visualizar com dados reais
+            </Label>
           </div>
         </CardHeader>
         <CardContent>
-          {renderPreviewContent(false)}
+          <div className="border rounded-lg bg-background overflow-auto max-h-[800px] p-4 relative">
+            {processedHtmlContent ? (
+              <div dangerouslySetInnerHTML={{ __html: processedHtmlContent }} />
+            ) : (
+              <div className="flex items-center justify-center h-64 text-muted-foreground">
+                Nenhum conteúdo gerado ainda
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] h-[95vh]">
-          <DialogHeader>
-            <DialogTitle>Preview do E-mail - Tela Cheia</DialogTitle>
-          </DialogHeader>
-          {renderPreviewContent(true)}
+        <DialogContent className="max-w-[90vw] h-[90vh]">
+          <div className="border rounded-lg bg-background overflow-auto h-full p-4">
+            <div dangerouslySetInnerHTML={{ __html: processedHtmlContent }} />
+          </div>
         </DialogContent>
       </Dialog>
     </>
   );
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 }

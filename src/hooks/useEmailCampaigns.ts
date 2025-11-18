@@ -150,7 +150,7 @@ export function useEmailCampaigns() {
 
   const sendCampaign = async (id: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('send-email-campaign', {
+      const { data, error } = await supabase.functions.invoke('send-campaign-batch', {
         body: { campaign_id: id }
       });
 

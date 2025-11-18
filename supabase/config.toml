@@ -185,6 +185,9 @@ schedule = "0 2 * * *"
 [functions.subscription-catchup]
 verify_jwt = false
 
+[functions.send-campaign-batch]
+verify_jwt = true
+
 [functions.schedule-delivery]
 verify_jwt = true
 
