@@ -182,6 +182,9 @@ verify_jwt = true
 verify_jwt = false
 schedule = "0 2 * * *"
 
+[functions.subscription-catchup]
+verify_jwt = false
+
 [functions.schedule-delivery]
 verify_jwt = true
 
