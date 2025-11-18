@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { AIContentGenerator } from '@/components/email-marketing/AIContentGenerator';
 import { EmailPreview } from '@/components/email-marketing/EmailPreview';
 import { MergeTagsPanel } from '@/components/email-marketing/MergeTagsPanel';
+import { SegmentBuilder } from '@/components/email-marketing/SegmentBuilder';
 import { useEmailCampaigns } from '@/hooks/useEmailCampaigns';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseCurrentClient } from '@/hooks/useSupabaseCurrentClient';
@@ -20,6 +21,7 @@ export default function EditorComplete() {
   const [campaignName, setCampaignName] = useState('');
   const [fromName, setFromName] = useState('Cotiz');
   const [generatedContent, setGeneratedContent] = useState<any>(null);
+  const [segmentFilters, setSegmentFilters] = useState<any>(null);
 
   const handleSave = async (sendNow = false) => {
     if (!client?.id) {
@@ -39,6 +41,7 @@ export default function EditorComplete() {
       subject_line: generatedContent.subject_lines?.[0] || '',
       html_content: generatedContent.html_body || '',
       plain_text_content: generatedContent.plain_text_body || '',
+      target_segment: segmentFilters,
       status: sendNow ? 'sending' : 'draft'
     });
 
@@ -73,6 +76,7 @@ export default function EditorComplete() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <AIContentGenerator onGenerated={setGeneratedContent} />
+          <SegmentBuilder onSegmentChange={setSegmentFilters} />
           <MergeTagsPanel />
         </div>
 
