@@ -44,19 +44,59 @@ serve(async (req) => {
       throw new Error("Campanha já foi enviada");
     }
 
-    // 3. Buscar destinatários da campanha
-    const { data: contacts, error: contactsError } = await supabaseClient
-      .from("email_contacts")
-      .select("email, name, metadata")
-      .eq("client_id", campaign.client_id)
-      .eq("status", "active")
-      .not("unsubscribed", "is", true);
+    // 3. Buscar destinatários da campanha com filtros
+    let contactsQuery = supabaseClient
+      .from("clients")
+      .select("id, email, name, client_type, group_id, region, state")
+      .eq("status", "active");
 
-    if (contactsError || !contacts || contacts.length === 0) {
-      throw new Error("Nenhum contato ativo encontrado. Cadastre contatos antes de enviar.");
+    // Aplicar filtros de segmentação se existirem
+    if (campaign.target_segment && campaign.target_segment.criteria && campaign.target_segment.criteria.length > 0) {
+      console.log('📊 Aplicando filtros de segmentação:', campaign.target_segment);
+      
+      for (const rule of campaign.target_segment.criteria) {
+        if (!rule.value) continue;
+
+        switch (rule.field) {
+          case 'group_id':
+            if (rule.operator === 'equals') {
+              contactsQuery = contactsQuery.eq('group_id', rule.value);
+            } else if (rule.operator === 'not_equals') {
+              contactsQuery = contactsQuery.neq('group_id', rule.value);
+            }
+            break;
+          case 'client_type':
+            if (rule.operator === 'equals') {
+              contactsQuery = contactsQuery.eq('client_type', rule.value);
+            } else if (rule.operator === 'not_equals') {
+              contactsQuery = contactsQuery.neq('client_type', rule.value);
+            }
+            break;
+          case 'state':
+            if (rule.operator === 'equals') {
+              contactsQuery = contactsQuery.eq('state', rule.value);
+            } else if (rule.operator === 'contains') {
+              contactsQuery = contactsQuery.ilike('state', `%${rule.value}%`);
+            }
+            break;
+          case 'region':
+            if (rule.operator === 'equals') {
+              contactsQuery = contactsQuery.eq('region', rule.value);
+            } else if (rule.operator === 'contains') {
+              contactsQuery = contactsQuery.ilike('region', `%${rule.value}%`);
+            }
+            break;
+        }
+      }
     }
 
-    console.log(`📧 Enviando campanha para ${contacts.length} destinatários`);
+    const { data: contacts, error: contactsError } = await contactsQuery;
+
+    if (contactsError || !contacts || contacts.length === 0) {
+      throw new Error("Nenhum cliente ativo encontrado para os filtros selecionados.");
+    }
+
+    console.log(`📧 Enviando campanha para ${contacts.length} cliente(s)`);
 
     // 4. Buscar merge tags do cliente UMA VEZ
     const clientMergeTags = await getClientMergeTags(supabaseClient, campaign.client_id);
@@ -91,7 +131,7 @@ serve(async (req) => {
           ...clientMergeTags,
           recipient_name: contact.name || '',
           recipient_email: contact.email,
-          recipient_phone: contact.metadata?.phone || '',
+          recipient_type: contact.client_type || '',
           unsubscribe_url: `${baseUrl}/unsubscribe/${contact.email}`
         };
         
