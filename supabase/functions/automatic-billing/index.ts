@@ -251,18 +251,10 @@ async function handleDailyBilling(supabaseClient: any) {
       );
     }
 
-    // Check if today is billing day
+    // Check for subscriptions with expired periods
     const today = new Date();
-    const billingDay = settings.billing_day || 1;
-    
-    if (today.getDate() !== billingDay) {
-      return new Response(
-        JSON.stringify({ message: `Not billing day. Billing day is ${billingDay}` }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
-    // Find subscriptions that need billing
+    // Find subscriptions that need billing (period already ended)
     const { data: subscriptions, error: subscriptionsError } = await supabaseClient
       .from('subscriptions')
       .select(`
@@ -277,76 +269,142 @@ async function handleDailyBilling(supabaseClient: any) {
     let billedCount = 0;
 
     for (const subscription of subscriptions || []) {
-      // Calculate amount
-      const plan = subscription.subscription_plans;
-      const amount = subscription.billing_cycle === 'monthly' 
-        ? plan.monthly_price 
-        : plan.yearly_price;
-
-      const dueDate = new Date();
-      const dueDays = settings.due_days || 30;
-      dueDate.setDate(dueDate.getDate() + dueDays);
-
-      // Generate boleto if configured
-      let boletoData = {};
-      if (settings?.boleto_config?.provider && settings.boleto_config.email && settings.boleto_config.token) {
-        try {
-          boletoData = await generateBoleto(settings.boleto_config, amount, dueDate);
-        } catch (error) {
-          logStep("Error generating boleto", { error });
+      try {
+        const periodEnd = new Date(subscription.current_period_end);
+        const today = new Date();
+        
+        // Calculate how many periods behind this subscription is
+        let periodsToAdd = 0;
+        let tempEnd = new Date(periodEnd);
+        
+        const billingCycle = subscription.billing_cycle || settings.default_billing_cycle || 'monthly';
+        
+        while (tempEnd < today) {
+          periodsToAdd++;
+          switch (billingCycle) {
+            case 'monthly':
+              tempEnd.setMonth(tempEnd.getMonth() + 1);
+              break;
+            case 'quarterly':
+              tempEnd.setMonth(tempEnd.getMonth() + 3);
+              break;
+            case 'semiannual':
+              tempEnd.setMonth(tempEnd.getMonth() + 6);
+              break;
+            case 'yearly':
+              tempEnd.setFullYear(tempEnd.getFullYear() + 1);
+              break;
+            default:
+              tempEnd.setMonth(tempEnd.getMonth() + 1);
+          }
+          
+          // Safety limit: maximum 12 periods at once
+          if (periodsToAdd > 12) break;
         }
+        
+        logStep("Subscription needs period updates", { 
+          subscriptionId: subscription.id,
+          periodsToAdd,
+          currentPeriodEnd: subscription.current_period_end
+        });
+        
+        // Create invoices for all missed periods
+        for (let i = 0; i < periodsToAdd; i++) {
+          const periodStart = new Date(subscription.current_period_end);
+          const periodEndNew = new Date(periodStart);
+          
+          switch (billingCycle) {
+            case 'monthly':
+              periodEndNew.setMonth(periodEndNew.getMonth() + 1);
+              break;
+            case 'quarterly':
+              periodEndNew.setMonth(periodEndNew.getMonth() + 3);
+              break;
+            case 'semiannual':
+              periodEndNew.setMonth(periodEndNew.getMonth() + 6);
+              break;
+            case 'yearly':
+              periodEndNew.setFullYear(periodEndNew.getFullYear() + 1);
+              break;
+            default:
+              periodEndNew.setMonth(periodEndNew.getMonth() + 1);
+          }
+          
+          // Calculate amount for this period
+          const plan = subscription.subscription_plans;
+          const amount = billingCycle === 'monthly' 
+            ? plan.monthly_price 
+            : plan.yearly_price;
+          
+          const dueDate = new Date();
+          const dueDays = settings.due_days || 30;
+          dueDate.setDate(dueDate.getDate() + dueDays);
+          
+          // Generate boleto if configured (only for current period, not retroactive)
+          let boletoData = {};
+          if (i === periodsToAdd - 1 && settings?.boleto_config?.provider && settings.boleto_config.email && settings.boleto_config.token) {
+            try {
+              boletoData = await generateBoleto(settings.boleto_config, amount, dueDate);
+            } catch (error) {
+              logStep("Error generating boleto", { error });
+            }
+          }
+          
+          // Create invoice for this period
+          // Past periods are marked as past_due, current period as open
+          const invoiceStatus = i < periodsToAdd - 1 ? 'past_due' : 'open';
+          
+          const { data: invoice, error: invoiceError } = await supabaseClient
+            .from('invoices')
+            .insert({
+              subscription_id: subscription.id,
+              client_id: subscription.client_id,
+              supplier_id: subscription.supplier_id,
+              amount,
+              currency: 'BRL',
+              status: invoiceStatus,
+              due_date: dueDate.toISOString(),
+              payment_method: boletoData ? 'boleto' : 'stripe',
+              ...boletoData
+            })
+            .select()
+            .single();
+          
+          if (invoiceError) {
+            logStep("Error creating invoice", { 
+              subscriptionId: subscription.id,
+              period: i + 1,
+              error: invoiceError 
+            });
+            continue;
+          }
+          
+          // Update subscription period after each invoice
+          await supabaseClient
+            .from('subscriptions')
+            .update({
+              current_period_start: periodStart.toISOString(),
+              current_period_end: periodEndNew.toISOString()
+            })
+            .eq('id', subscription.id);
+          
+          logStep("Invoice created for period", { 
+            invoiceId: invoice.id, 
+            amount,
+            period: i + 1,
+            totalPeriods: periodsToAdd,
+            status: invoiceStatus
+          });
+        }
+        
+        billedCount++;
+        
+      } catch (error: any) {
+        logStep("Error processing subscription", { 
+          subscriptionId: subscription.id,
+          error: error?.message || error 
+        });
       }
-
-      // Create invoice
-      const { data: invoice, error: invoiceError } = await supabaseClient
-        .from('invoices')
-        .insert({
-          subscription_id: subscription.id,
-          client_id: subscription.client_id,
-          supplier_id: subscription.supplier_id,
-          amount,
-          currency: 'BRL',
-          status: 'open',
-          due_date: dueDate.toISOString(),
-          payment_method: boletoData ? 'boleto' : 'stripe',
-          ...boletoData
-        })
-        .select()
-        .single();
-
-      if (invoiceError) throw invoiceError;
-
-      // Update subscription period based on billing cycle
-      const nextPeriodStart = new Date(subscription.current_period_end);
-      const nextPeriodEnd = new Date(nextPeriodStart);
-      
-      switch (subscription.billing_cycle || settings.default_billing_cycle) {
-        case 'monthly':
-          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
-          break;
-        case 'quarterly':
-          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 3);
-          break;
-        case 'semiannual':
-          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 6);
-          break;
-        case 'yearly':
-          nextPeriodEnd.setFullYear(nextPeriodEnd.getFullYear() + 1);
-          break;
-        default:
-          nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
-      }
-
-      await supabaseClient
-        .from('subscriptions')
-        .update({
-          current_period_start: nextPeriodStart.toISOString(),
-          current_period_end: nextPeriodEnd.toISOString()
-        })
-        .eq('id', subscription.id);
-
-      billedCount++;
-      logStep("Invoice created", { invoiceId: invoice.id, amount });
     }
 
     return new Response(
