@@ -128,11 +128,19 @@ export const useAuthCore = () => {
             .eq('auth_user_id', supabaseUser.id);
         }
 
+        // Buscar role via função SQL segura (evita ataques de escalação de privilégio)
+        const { data: secureRole, error: roleError } = await supabase
+          .rpc('get_user_role');
+
+        if (roleError) {
+          logger.error('auth', 'Erro ao buscar role seguro', roleError);
+        }
+
         const userProfile: User = {
           id: profile.id,
           email: profile.email,
           name: profile.name,
-          role: profile.role as UserRole,
+          role: (secureRole || profile.role || 'collaborator') as UserRole,
           avatar: profile.avatar_url,
           companyName: profile.company_name,
           active: profile.active,

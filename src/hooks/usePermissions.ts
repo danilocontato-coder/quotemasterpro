@@ -42,18 +42,19 @@ export const usePermissions = (): PermissionCheck => {
     queryFn: async () => {
       if (!user?.id) return { roles: [] };
       
-      // Buscar roles via RLS (só retorna se usuário tem acesso)
-      const { data: roles, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
+      // Buscar role via função SQL segura (evita exposição direta da tabela user_roles)
+      const { data: userRole, error } = await supabase
+        .rpc('get_user_role');
       
       if (error) {
-        console.error('Error fetching roles:', error);
+        console.error('Error fetching role:', error);
         return { roles: [] };
       }
       
-      return { roles: roles?.map(r => r.role) || [] };
+      // Se não retornou role da função segura, usar o role do contexto como fallback
+      const roles = userRole ? [userRole] : (user?.role ? [user.role] : []);
+      
+      return { roles };
     },
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000, // Cache 5 minutos
