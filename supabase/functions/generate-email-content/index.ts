@@ -24,7 +24,7 @@ serve(async (req) => {
     
     const branding = { ...defaultBranding, ...(payload.branding || {}) };
     
-    // 1. Gerar conteúdo textual com Lovable AI
+    // 1. Gerar conteúdo textual com Lovable AI usando structured output
     const textResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -40,8 +40,7 @@ serve(async (req) => {
             Crie e-mails profissionais, persuasivos e otimizados para conversão.
             Evite palavras que acionam filtros de spam (grátis, urgente, clique aqui, 100% garantido).
             Use HTML semântico e responsivo (max-width: 600px).
-            Inclua sempre um link de descadastro no rodapé.
-            Use cores profissionais: primária #003366, secundária #0F172A, destaque #FFD700.`
+            Inclua sempre um link de descadastro no rodapé.`
           },
           {
             role: 'user',
@@ -65,39 +64,71 @@ O e-mail DEVE incluir:
 2. Corpo usando as cores do branding fornecidas
 3. RODAPÉ com: "${branding.footer_text}" e link {{unsubscribe_url}} para descadastro
 
-${payload.generate_variants ? 'Gere 3 variações de assunto para teste A/B.' : 'Gere 1 assunto otimizado.'}
-
-Retorne APENAS um JSON válido (sem markdown, sem \`\`\`json):
-{
-  "subject_lines": ["assunto 1", "assunto 2", "assunto 3"],
-  "preview_text": "texto do pre-header atraente",
-  "html_body": "HTML completo responsivo com inline styles",
-  "plain_text_body": "versão texto puro limpa",
-  "suggested_cta": {"text": "texto do botão CTA", "url": "#"}
-}`
+${payload.generate_variants ? 'Gere 3 variações de assunto para teste A/B.' : 'Gere 1 assunto otimizado.'}`
           }
-        ]
+        ],
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'generate_email_content',
+              description: 'Gera conteúdo completo de e-mail marketing em HTML',
+              parameters: {
+                type: 'object',
+                properties: {
+                  subject_lines: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Lista de assuntos para teste A/B (1-3 variações)'
+                  },
+                  preview_text: {
+                    type: 'string',
+                    description: 'Texto do pre-header atraente e curto'
+                  },
+                  html_body: {
+                    type: 'string',
+                    description: 'HTML completo e responsivo com inline styles (max-width: 600px)'
+                  },
+                  plain_text_body: {
+                    type: 'string',
+                    description: 'Versão texto puro limpa e formatada'
+                  },
+                  suggested_cta: {
+                    type: 'object',
+                    properties: {
+                      text: { type: 'string', description: 'Texto do botão CTA' },
+                      url: { type: 'string', description: 'URL para o CTA' }
+                    },
+                    required: ['text', 'url']
+                  }
+                },
+                required: ['subject_lines', 'preview_text', 'html_body', 'plain_text_body', 'suggested_cta'],
+                additionalProperties: false
+              }
+            }
+          }
+        ],
+        tool_choice: { type: 'function', function: { name: 'generate_email_content' } }
       })
     });
 
     if (!textResponse.ok) {
-      throw new Error(`AI API error: ${await textResponse.text()}`);
+      const errorText = await textResponse.text();
+      console.error('❌ AI API error:', errorText);
+      throw new Error(`AI API error: ${errorText}`);
     }
 
     const textData = await textResponse.json();
     console.log('✅ AI response received');
     
-    // Extrair conteúdo da resposta
-    let content;
-    try {
-      const messageContent = textData.choices[0].message.content;
-      // Remover possíveis backticks de markdown
-      const cleanedContent = messageContent.replace(/```json\n?|\n?```/g, '').trim();
-      content = JSON.parse(cleanedContent);
-    } catch (parseError) {
-      console.error('❌ Parse error:', parseError);
-      throw new Error('Failed to parse AI response as JSON');
+    // Extrair conteúdo estruturado da tool call
+    const toolCall = textData.choices[0].message.tool_calls?.[0];
+    if (!toolCall || toolCall.function.name !== 'generate_email_content') {
+      console.error('❌ No valid tool call in response');
+      throw new Error('AI did not return structured content');
     }
+    
+    const content = JSON.parse(toolCall.function.arguments);
     
     // 2. Gerar imagens se solicitado (Nano Banana - google/gemini-2.5-flash-image-preview)
     let images = [];
