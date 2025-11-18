@@ -43,6 +43,7 @@ const AINegotiations = React.lazy(() => import('@/pages/AINegotiations'));
 const AdminSuppliers = React.lazy(() => import('@/pages/AdminSuppliers'));
 const NotificationsTesting = React.lazy(() => import('@/pages/NotificationsTesting'));
 const SuperAdminAIUsage = React.lazy(() => import('@/pages/admin/SuperAdminAIUsage'));
+const UserRoles = React.lazy(() => import('@/pages/admin/UserRoles'));
 const PlansPage = React.lazy(() => import('@/pages/client/PlansPage'));
 const ClientDeliveries = React.lazy(() => import('@/pages/client/ClientDeliveries'));
 const ClientRatings = React.lazy(() => import('@/pages/client/ClientRatings'));
@@ -276,6 +277,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="support" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <SupportDashboard />
+          </Suspense>
+        } />
+        <Route path="user-roles" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <UserRoles />
           </Suspense>
         } />
         <Route path="financial" element={

@@ -226,6 +226,13 @@ const navigation = [
         description: 'Logs e histórico'
       },
       {
+        name: 'Gestão de Roles',
+        href: '/admin/user-roles',
+        icon: UserCog,
+        description: 'Permissões de usuários',
+        badge: 'Segurança'
+      },
+      {
         name: 'Logs do Sistema',
         href: '/admin/logs',
         icon: Activity,
