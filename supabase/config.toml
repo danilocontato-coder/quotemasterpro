@@ -3,53 +3,14 @@ project_id = "bpsqyaxdhqejozmlejcb"
 [functions.update-asaas-bank-account]
 verify_jwt = true
 
-[functions.test-asaas-webhook]
-verify_jwt = true
-
-[functions.send-delivery-code-email]
-verify_jwt = false
-
-[functions.uber-delivery-quote]
-verify_jwt = true
-
-[functions.uber-delivery-create]
-verify_jwt = true
-
-[functions.uber-delivery-webhook]
-verify_jwt = false
-
-[functions.send-overdue-reminders]
-verify_jwt = false
-
-[functions.save-asaas-key]
-verify_jwt = true
-
 [functions.create-asaas-wallet]
 verify_jwt = true
 
 [functions.create-asaas-payment]
 verify_jwt = true
 
-[functions.regenerate-asaas-payment]
-verify_jwt = true
-
-[functions.create-asaas-subscription]
-verify_jwt = true
-
 [functions.asaas-webhook]
 verify_jwt = false
-
-[functions.issue-nfse]
-verify_jwt = true
-
-[functions.release-escrow-payment]
-verify_jwt = true
-
-[functions.evolution-webhook]
-verify_jwt = false
-
-[functions.confirm-delivery]
-verify_jwt = true
 
 [functions.create-auth-user]
 verify_jwt = true
@@ -60,62 +21,10 @@ verify_jwt = false
 [functions.send-quote-to-suppliers]
 verify_jwt = true
 
-[functions.send-quote-reminders]
-verify_jwt = true
-
 [functions.process-supplier-response]
 verify_jwt = false
 
-[functions.extract-pdf-data]
-verify_jwt = false
-
-[functions.extract-quote-from-pdf]
-verify_jwt = false
-
 [functions.public-branding]
-verify_jwt = false
-
-[functions.ai-market-analysis]
-verify_jwt = true
-
-[functions.ai-quote-generator]
-verify_jwt = true
-
-[functions.ai-lead-scoring]
-verify_jwt = true
-
-[functions.submit-quick-response]
-verify_jwt = false
-
-[functions.validate-quote-token]
-verify_jwt = false
-
-[functions.send-supplier-welcome]
-verify_jwt = false
-
-[functions.complete-supplier-registration]
-verify_jwt = false
-
-[functions.schedule-visit]
-verify_jwt = true
-
-[functions.confirm-visit]
-verify_jwt = true
-
-[functions.reschedule-visit]
-verify_jwt = true
-
-[functions.check-visit-overdue]
-verify_jwt = false
-schedule = "0 0 * * *"
-
-[functions.analyze-supplier-response]
-verify_jwt = true
-
-[functions.generate-contextual-questions]
-verify_jwt = true
-
-[functions.update-exchange-rates]
 verify_jwt = false
 
 [functions.send-email]
@@ -127,112 +36,5 @@ verify_jwt = false
 [functions.send-password-reset]
 verify_jwt = false
 
-[functions.create-supplier-user]
-verify_jwt = true
-
-[functions.ai-proposal-consultant]
-verify_jwt = true
-
-[functions.generate-email-content]
-verify_jwt = true
-
-[functions.track-email-events]
-verify_jwt = false
-
-[functions.ai-negotiation-agent]
-verify_jwt = true
-
-[functions.scheduled-ai-analysis]
-verify_jwt = false
-
-[functions.analyze-product-pricing]
-verify_jwt = true
-
-[functions.analyze-inventory-optimization]
-verify_jwt = true
-
-[functions.generate-restock-suggestions]
-verify_jwt = true
-
-[functions.get-supplier-balance]
-verify_jwt = true
-
-[functions.request-supplier-transfer]
-verify_jwt = true
-
-[functions.ai-predictive-insights]
-verify_jwt = true
-
-[functions.create-condominio-user]
-verify_jwt = true
-
-[functions.send-invitation-letter]
-verify_jwt = true
-
-[functions.generate-invitation-pdf]
-verify_jwt = true
-
-[functions.validate-action]
-verify_jwt = true
-
-[functions.check-module-access]
-verify_jwt = true
-
 [functions.check-subscription]
 verify_jwt = true
-
-[functions.automatic-billing]
-verify_jwt = false
-schedule = "0 2 * * *"
-
-[functions.manage-user-roles]
-verify_jwt = true
-
-[functions.subscription-catchup]
-verify_jwt = false
-
-[functions.send-campaign-batch]
-verify_jwt = true
-
-[functions.schedule-delivery]
-verify_jwt = true
-
-[functions.update-quote-status]
-verify_jwt = true
-
-[functions.upgrade-subscription]
-verify_jwt = true
-
-[functions.create-payment-checkout]
-verify_jwt = true
-
-[functions.create-payment-intent]
-verify_jwt = true
-
-[functions.setup-client-billing]
-verify_jwt = true
-
-[functions.create-automatic-payment]
-verify_jwt = true
-
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.delete-asaas-customer]
-verify_jwt = true
-
-[functions.create-asaas-customer]
-verify_jwt = true
-
-[functions.check-quote-deadlines]
-verify_jwt = false
-schedule = "0 */6 * * *"
-
-[functions.sync-asaas-payment-status]
-verify_jwt = true
-
-[functions.scheduled-sync-payments]
-verify_jwt = false
-
-[functions.test-asaas-webhook]
-verify_jwt = false
