@@ -28,13 +28,16 @@ if (import.meta.env.DEV) {
   });
 }
 
+// ⚡ OTIMIZAÇÃO: Cache agressivo para reduzir requisições de API
+// Redução estimada: 50% do tráfego de queries
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 2 * 60 * 1000,     // ✅ Reduzir para 2 minutos
-      gcTime: 5 * 60 * 1000,        // ✅ Reduzir para 5 minutos
-      refetchOnWindowFocus: true,   // ✅ Revalidar ao focar janela
-      refetchOnMount: 'always',     // ✅ Sempre buscar ao montar
+      staleTime: 5 * 60 * 1000,      // 5 min - dados considerados "frescos"
+      gcTime: 10 * 60 * 1000,        // 10 min - manter em cache
+      refetchOnWindowFocus: false,   // Não recarregar ao focar janela
+      refetchOnMount: false,         // Não recarregar ao montar
+      refetchOnReconnect: false,     // Não recarregar ao reconectar
       retry: 1,
       networkMode: 'online',
     },
