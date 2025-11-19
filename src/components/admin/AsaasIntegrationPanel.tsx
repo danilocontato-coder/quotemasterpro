@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, CheckCircle, Settings, DollarSign, Eye, EyeOff, AlertTriangle, FileText, Calendar, Copy, Key, RefreshCw } from 'lucide-react';
 import { useAsaasIntegration } from '@/hooks/useAsaasIntegration';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { TestWebhookSimulator } from './TestWebhookSimulator';
 
@@ -37,6 +38,36 @@ export function AsaasIntegrationPanel() {
   }, [settings]);
 
   const handleSaveConfig = async () => {
+    // Validar se todos os fornecedores têm bank_data antes de ativar split
+    if (!asaasConfig.split_enabled && apiKey === '' && asaasConfig.api_key_configured) {
+      // Usuário está tentando ativar split
+      const { data: suppliers, error } = await supabase
+        .from('suppliers')
+        .select('id, name, document_number, asaas_wallet_id, bank_data, status')
+        .eq('status', 'active');
+
+      if (error) {
+        toast.error('Erro ao verificar fornecedores');
+        return;
+      }
+
+      const suppliersWithoutBankData = (suppliers || []).filter(s => {
+        const bankData = s.bank_data as any;
+        return !bankData?.bank_code || !bankData?.account_number || !s.asaas_wallet_id;
+      });
+
+      if (suppliersWithoutBankData.length > 0) {
+        toast.error(
+          `Não é possível ativar split. ${suppliersWithoutBankData.length} fornecedor(es) sem dados bancários completos.`,
+          {
+            description: 'Configure os dados bancários de todos os fornecedores antes de ativar o split.',
+            duration: 5000,
+          }
+        );
+        return;
+      }
+    }
+    
     if (apiKey && apiKey.trim()) {
       // Salvar a chave da API primeiro
       try {

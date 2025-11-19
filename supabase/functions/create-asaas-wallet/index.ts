@@ -251,26 +251,50 @@ serve(async (req) => {
       console.log('🆕 Criando nova subconta no Asaas...');
     }
     
+    // Preparar payload básico
+    const accountPayload: any = {
+      name: supplier.name,
+      email: supplier.email,
+      cpfCnpj: cleanDocument,
+      companyType: companyType,
+      incomeValue: Number(incomeValue),
+      mobilePhone: supplier.phone || supplier.whatsapp,
+      address: supplier.address?.street,
+      addressNumber: supplier.address?.number,
+      complement: supplier.address?.complement,
+      province: supplier.address?.neighborhood,
+      postalCode: supplier.address?.postal_code,
+      accountType: 'SUPPLIER',
+    };
+    
+    // Se bank_data está completo, incluir no payload
+    const hasBankData = bankData.bank_code && bankData.account_number && 
+                       bankData.account_holder_name && bankData.account_holder_document && 
+                       bankData.agency;
+    
+    if (hasBankData) {
+      console.log('💳 Incluindo dados bancários na criação da wallet');
+      accountPayload.bankAccount = {
+        bank: { code: bankData.bank_code },
+        accountName: supplier.name,
+        ownerName: bankData.account_holder_name,
+        cpfCnpj: bankData.account_holder_document.replace(/\D/g, ''),
+        agency: bankData.agency,
+        agencyDigit: bankData.agency_digit || '',
+        account: bankData.account_number,
+        accountDigit: bankData.account_digit || ''
+      };
+    } else {
+      console.log('⚠️ bank_data incompleto - criando wallet sem dados bancários');
+    }
+    
     const asaasResponse = await fetch(`${baseUrl}/accounts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'access_token': apiKey,
       },
-      body: JSON.stringify({
-        name: supplier.name,
-        email: supplier.email,
-        cpfCnpj: cleanDocument,
-        companyType: companyType,
-        incomeValue: Number(incomeValue),
-        mobilePhone: supplier.phone || supplier.whatsapp,
-        address: supplier.address?.street,
-        addressNumber: supplier.address?.number,
-        complement: supplier.address?.complement,
-        province: supplier.address?.neighborhood,
-        postalCode: supplier.address?.postal_code,
-        accountType: 'SUPPLIER',
-      }),
+      body: JSON.stringify(accountPayload),
     })
 
     if (!asaasResponse.ok) {

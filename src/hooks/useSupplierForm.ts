@@ -209,8 +209,9 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
     { id: 1, title: 'Dados Básicos', description: 'Nome e identificação' },
     { id: 2, title: 'Contato', description: 'WhatsApp e email' },
     { id: 3, title: 'Localização', description: 'Estado e cidade' },
-    { id: 4, title: 'Especialidades', description: 'Produtos e serviços' },
-    { id: 5, title: 'Confirmação', description: 'Revisar dados' },
+    { id: 4, title: 'Dados Bancários', description: 'Conta para recebimento' },
+    { id: 5, title: 'Especialidades', description: 'Produtos e serviços' },
+    { id: 6, title: 'Confirmação', description: 'Revisar dados' },
   ];
 
   const updateField = useCallback((field: keyof SupplierFormData, value: any) => {
@@ -306,9 +307,24 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
           locationSchema.parse(formData);
           break;
         case 4:
-          specialtiesSchema.parse(formData);
+          // Validar dados bancários (opcional, mas se preencher, deve estar completo)
+          const hasBankData = formData.bank_code || formData.account_number || formData.agency;
+          if (hasBankData) {
+            if (!formData.bank_code || !formData.account_number || !formData.agency || 
+                !formData.account_holder_name || !formData.account_holder_document || !formData.account_type) {
+              throw {
+                errors: [{
+                  path: ['bank_code'],
+                  message: 'Complete todos os campos bancários obrigatórios ou deixe em branco'
+                }]
+              };
+            }
+          }
           break;
         case 5:
+          specialtiesSchema.parse(formData);
+          break;
+        case 6:
           // Validation for confirmation step (full form)
           console.log('[useSupplierForm] 🔍 Validando formulário completo', {
             formData,
@@ -440,6 +456,22 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
       // Cenário 2: Criar novo fornecedor
       console.log('[useSupplierForm] Criando novo fornecedor');
       
+      // Construir bank_data se houver dados bancários
+      const bank_data = formData.bank_code ? {
+        bank_code: formData.bank_code,
+        bank_name: formData.bank_name,
+        agency: formData.agency,
+        agency_digit: formData.agency_digit,
+        account_number: formData.account_number,
+        account_digit: formData.account_digit,
+        account_type: formData.account_type,
+        account_holder_name: formData.account_holder_name,
+        account_holder_document: formData.account_holder_document,
+        pix_key: formData.pix_key,
+        verified: false,
+        verified_at: null
+      } : null;
+      
       // Se formData.client_id existe (admin selecionou cliente), usar serviço completo
       if (formData.client_id) {
         console.log('[useSupplierForm] Admin criando fornecedor com auth e notificações para cliente:', formData.client_id);
@@ -460,6 +492,7 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
           specialties: validatedData.specialties,
           clientId: formData.client_id,
           type: validatedData.type || 'local',
+          bank_data,
         });
         
         console.log('[useSupplierForm] ✅ Criação completa finalizada:', result);

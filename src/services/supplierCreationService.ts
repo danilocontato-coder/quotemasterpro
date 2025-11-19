@@ -16,6 +16,20 @@ export interface CreateSupplierParams {
   specialties?: string[];
   clientId: string;
   type?: 'local' | 'certified';
+  bank_data?: {
+    bank_code?: string;
+    bank_name?: string;
+    agency?: string;
+    agency_digit?: string;
+    account_number?: string;
+    account_digit?: string;
+    account_type?: string;
+    account_holder_name?: string;
+    account_holder_document?: string;
+    pix_key?: string;
+    verified?: boolean;
+    verified_at?: string | null;
+  };
 }
 
 export interface CreateSupplierResult {
@@ -75,7 +89,7 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
     console.log('[SupplierCreationService] ✅ Fornecedor:', supplierId, isNewSupplier ? '(NOVO)' : '(EXISTENTE)');
     
     // Se fornecedor já existia, atualizar campos extras
-    if (!isNewSupplier && (supplierData.whatsapp || supplierData.website || supplierData.address)) {
+    if (!isNewSupplier && (supplierData.whatsapp || supplierData.website || supplierData.address || params.bank_data)) {
       console.log('[SupplierCreationService] 📝 Fornecedor existente - atualizando campos extras');
       
       const updateData: any = {};
@@ -85,6 +99,7 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
       if (supplierData.state) updateData.state = supplierData.state;
       if (supplierData.address) updateData.address = { street: supplierData.address };
       if (supplierData.specialties?.length) updateData.specialties = supplierData.specialties;
+      if (params.bank_data) updateData.bank_data = params.bank_data;
       
       const { error: updateError } = await supabase
         .from('suppliers')
@@ -95,6 +110,21 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
         console.warn('[SupplierCreationService] ⚠️ Erro ao atualizar campos extras (não crítico):', updateError);
       } else {
         console.log('[SupplierCreationService] ✅ Campos extras atualizados');
+      }
+    }
+    
+    // Se fornecedor é novo e tem bank_data, salvar
+    if (isNewSupplier && params.bank_data) {
+      console.log('[SupplierCreationService] 💳 Salvando dados bancários do novo fornecedor');
+      const { error: bankDataError } = await supabase
+        .from('suppliers')
+        .update({ bank_data: params.bank_data })
+        .eq('id', supplierId);
+      
+      if (bankDataError) {
+        console.warn('[SupplierCreationService] ⚠️ Erro ao salvar bank_data (não crítico):', bankDataError);
+      } else {
+        console.log('[SupplierCreationService] ✅ Dados bancários salvos');
       }
     }
     
