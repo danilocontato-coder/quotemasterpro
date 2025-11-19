@@ -49,8 +49,43 @@ serve(async (req) => {
       }
     }
 
+    // ✅ CORREÇÃO: Buscar valor correto da resposta aprovada (items + frete)
+    let finalAmount = amount; // Fallback
+    
+    if (quote_id) {
+      const { data: approvedResponse } = await supabase
+        .from('quote_responses')
+        .select('total_amount, shipping_cost, items')
+        .eq('quote_id', quote_id)
+        .eq('status', 'approved')
+        .maybeSingle();
+
+      if (approvedResponse) {
+        // Recalcular: somar itens + frete se total_amount não incluir
+        const itemsTotal = Array.isArray(approvedResponse.items) 
+          ? approvedResponse.items.reduce((sum, item) => sum + (item.total || 0), 0)
+          : 0;
+        
+        const shipping = approvedResponse.shipping_cost || 0;
+        const calculatedTotal = itemsTotal + shipping;
+        
+        // Se total_amount da response já estiver correto (inclui frete), usar ele
+        // Senão, usar o valor calculado
+        finalAmount = approvedResponse.total_amount || calculatedTotal;
+        
+        console.log('💰 [CREATE-AUTOMATIC-PAYMENT] Valor recalculado:', {
+          original_amount: amount,
+          items_total: itemsTotal,
+          shipping_cost: shipping,
+          response_total_amount: approvedResponse.total_amount,
+          calculated_amount: calculatedTotal,
+          final_amount: finalAmount
+        });
+      }
+    }
+    
     // Validate required fields
-    if (!quote_id || !client_id || !amount) {
+    if (!quote_id || !client_id || !finalAmount) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: quote_id, client_id, amount' }),
         { 
@@ -84,7 +119,7 @@ serve(async (req) => {
         quote_id,
         client_id,
         supplier_id: finalSupplierId || null,
-        amount,
+        amount: finalAmount, // ✅ Usar valor recalculado
         status: 'pending'
       })
       .select()
