@@ -150,28 +150,46 @@ serve(async (req) => {
       }
     }
 
-    // Buscar resposta da cotação para calcular valor correto (subtotal + frete)
+    // ✅ Buscar resposta da cotação para validar valor correto (subtotal + frete)
     let totalAmount = payment.amount;
     
     if (payment.quote_id && payment.supplier_id) {
       const { data: quoteResponse } = await supabase
         .from('quote_responses')
-        .select('items, shipping_cost')
+        .select('items, shipping_cost, total_amount')
         .eq('quote_id', payment.quote_id)
         .eq('supplier_id', payment.supplier_id)
         .eq('status', 'approved')
         .maybeSingle();
 
-      if (quoteResponse && Array.isArray(quoteResponse.items)) {
-        const subtotal = quoteResponse.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+      if (quoteResponse) {
+        const subtotal = Array.isArray(quoteResponse.items)
+          ? quoteResponse.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0)
+          : 0;
         const shipping = quoteResponse.shipping_cost || 0;
-        totalAmount = subtotal + shipping;
-        console.log('💰 Valor para Asaas:', {
+        const calculatedTotal = subtotal + shipping;
+        
+        // Se payment.amount difere do valor correto, avisar e usar valor calculado
+        if (Math.abs(payment.amount - calculatedTotal) > 0.01) {
+          console.warn('⚠️ [ASAAS] Discrepância detectada! Valor do pagamento diferente da resposta aprovada:', {
+            payment_amount: payment.amount,
+            items_total: subtotal,
+            shipping_cost: shipping,
+            calculated_total: calculatedTotal,
+            response_total_amount: quoteResponse.total_amount,
+            difference: payment.amount - calculatedTotal
+          });
+          
+          // Usar valor calculado (items + shipping) como fonte de verdade
+          totalAmount = calculatedTotal;
+        }
+        
+        console.log('💰 Valor final para Asaas:', {
           payment_amount_original: payment.amount,
           subtotal: subtotal,
           shipping: shipping,
-          calculated_total: totalAmount,
-          will_use: totalAmount
+          calculated_total: calculatedTotal,
+          final_amount: totalAmount
         });
       }
     }

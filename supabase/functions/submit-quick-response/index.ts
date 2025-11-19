@@ -170,13 +170,23 @@ serve(async (req) => {
     
     console.log('🚚 [Quick Response] shipping_cost recebido:', shipping_cost, '-> normalizado:', shippingCostNum);
     
+    // ✅ CORREÇÃO: Calcular total_amount incluindo frete
+    const itemsTotal = parseFloat(String(total_amount).replace(',', '.')) || 0;
+    const finalTotalAmount = itemsTotal + shippingCostNum;
+    
+    console.log('💰 [Quick Response] Valores calculados:', {
+      items_total: itemsTotal,
+      shipping_cost: shippingCostNum,
+      final_total: finalTotalAmount
+    });
+    
     // Criar ou atualizar resposta da cotação (UPSERT)
     console.log('💾 [Quick Response] Salvando resposta da cotação (UPSERT)...');
     console.log('📊 [Quick Response] Dados da proposta:', {
       quote_id: tokenData.quote_id,
       supplier_id: supplierId,
       supplier_name: supplier_name,
-      total_amount: total_amount,
+      total_amount: finalTotalAmount,
       delivery_time: delivery_days || 7,
       shipping_cost: shippingCostNum,
       payment_terms: payment_terms || '30 dias',
@@ -192,7 +202,7 @@ serve(async (req) => {
         quote_id: tokenData.quote_id,
         supplier_id: supplierId,
         supplier_name: supplier_name,
-        total_amount: total_amount,
+        total_amount: finalTotalAmount,
         delivery_time: delivery_days || 7,
         shipping_cost: shippingCostNum,
         payment_terms: payment_terms || '30 dias',
