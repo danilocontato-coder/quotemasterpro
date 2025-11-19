@@ -7,6 +7,8 @@ import { Wallet, CheckCircle, AlertTriangle, XCircle, Edit, RefreshCw } from 'lu
 import { supabase } from '@/integrations/supabase/client';
 import { EditBankDataModal } from '@/components/suppliers/EditBankDataModal';
 import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export function WalletStatusDashboard() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -14,6 +16,7 @@ export function WalletStatusDashboard() {
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [validatingWallets, setValidatingWallets] = useState<Set<string>>(new Set());
   const [walletStatuses, setWalletStatuses] = useState<Record<string, 'valid' | 'invalid' | 'pending' | 'unknown'>>({});
+  const [lastValidation, setLastValidation] = useState<Date | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     withWalletComplete: 0,
@@ -72,6 +75,27 @@ export function WalletStatusDashboard() {
 
   useEffect(() => {
     fetchSuppliers();
+    
+    // ✅ FASE 4: Auto-validação inicial ao montar o componente
+    const autoValidateOnMount = async () => {
+      if (suppliers.length > 0) {
+        await handleValidateAllWallets();
+      }
+    };
+    
+    // Executar após 2 segundos para dar tempo de carregar fornecedores
+    const timer = setTimeout(autoValidateOnMount, 2000);
+    
+    // ✅ FASE 4: Re-validação automática a cada 10 minutos
+    const validationInterval = setInterval(async () => {
+      console.log('🔄 Auto-validação programada iniciando...');
+      await handleValidateAllWallets();
+    }, 10 * 60 * 1000); // 10 minutos
+    
+    return () => {
+      clearTimeout(timer);
+      clearInterval(validationInterval);
+    };
   }, []);
 
   const getBankDataStatus = (supplier: any) => {
@@ -159,6 +183,7 @@ export function WalletStatusDashboard() {
   // FASE 3: Validar todas as wallets
   const handleValidateAllWallets = async () => {
     setIsLoading(true);
+    setLastValidation(new Date()); // ✅ FASE 4: Registrar timestamp da validação
     
     try {
       const suppliersWithWallet = suppliers.filter(s => s.asaas_wallet_id);
@@ -188,20 +213,19 @@ export function WalletStatusDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* FASE 3: Botão de validação global */}
+          {/* ✅ FASE 4: Substituir botão por indicador de última validação */}
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-muted-foreground">
               {suppliers.filter(s => s.asaas_wallet_id).length} fornecedores com wallet Asaas
             </div>
-            <Button 
-              onClick={handleValidateAllWallets}
-              disabled={isLoading}
-              variant="outline"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Validar Todas as Wallets
-            </Button>
+            <div className="flex items-center gap-2">
+              {lastValidation && (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>✅ Última validação: {formatDistanceToNow(lastValidation, { locale: ptBR, addSuffix: true })}</span>
+                  {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Estatísticas */}

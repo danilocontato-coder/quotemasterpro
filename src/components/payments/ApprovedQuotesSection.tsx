@@ -3,20 +3,27 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabasePayments } from "@/hooks/useSupabasePayments";
-import { CheckCircle, Clock, CreditCard } from "lucide-react";
-
+import { CheckCircle, Clock, CreditCard, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function ApprovedQuotesSection() {
   const { quotes } = useSupabaseQuotes();
   const { payments, createCheckoutSession } = useSupabasePayments();
+  const [processingQuotes, setProcessingQuotes] = useState<Set<string>>(new Set());
 
   // Todas as cotações aprovadas (independente de valor)
   const approvedQuotes = quotes.filter(quote => quote.status === 'approved');
 
   // Handler para processar pagamento direto via Stripe
   const handleProcessPayment = async (quote: any) => {
+    // ✅ FASE 1: Prevenir cliques duplos
+    if (processingQuotes.has(quote.id)) {
+      return;
+    }
+    
+    setProcessingQuotes(prev => new Set(prev).add(quote.id));
     try {
       // Primeiro criar o pagamento via edge function
       const { data, error } = await supabase.functions.invoke('create-automatic-payment', {
@@ -29,7 +36,25 @@ export function ApprovedQuotesSection() {
       });
 
       if (error) {
-        toast.error('Erro ao criar pagamento: ' + error.message);
+        // ✅ FASE 3: Capturar erro de duplicação (409 Conflict)
+        if (error.message?.includes('duplicate') || error.message?.includes('unique constraint')) {
+          toast.info('Pagamento já existe para esta cotação. Redirecionando...');
+          // Buscar payment existente e redirecionar
+          const existingPayment = payments.find(p => p.quote_id === quote.id);
+          if (existingPayment) {
+            const sessionData = await createCheckoutSession(existingPayment.id);
+            if (sessionData?.url) {
+              window.location.href = sessionData.url;
+            }
+          }
+        } else {
+          toast.error('Erro ao criar pagamento: ' + error.message);
+        }
+        setProcessingQuotes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(quote.id);
+          return newSet;
+        });
         return;
       }
 
@@ -52,6 +77,12 @@ export function ApprovedQuotesSection() {
     } catch (error: any) {
       console.error('Error processing payment:', error);
       toast.error('Erro ao processar pagamento');
+    } finally {
+      setProcessingQuotes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(quote.id);
+        return newSet;
+      });
     }
   };
 
@@ -89,7 +120,8 @@ export function ApprovedQuotesSection() {
         <div className="space-y-3">
           {approvedQuotes.map((quote) => {
             const hasPayment = payments.some(p => p.quote_id === quote.id);
-            const canPay = (quote.total || 0) > 0 && !hasPayment;
+            const isProcessing = processingQuotes.has(quote.id);
+            const canPay = (quote.total || 0) > 0 && !hasPayment && !isProcessing;
             return (
               <div key={quote.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex-1">

@@ -29,6 +29,7 @@ import { PaymentCard } from "@/components/payments/PaymentCard";
 
 import { PixQRCodeModal } from "@/components/payments/PixQRCodeModal";
 import { PaymentsSyncStatus } from "@/components/payments/PaymentsSyncStatus";
+import { AutoSyncIndicator } from "@/components/payments/AutoSyncIndicator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +80,15 @@ export default function Payments() {
   
   // Enable automatic payment creation for approved quotes
   useAutomaticPayments();
+  
+  // ✅ FASE 4: Auto-sync ao entrar na página se última sync > 5 min
+  useEffect(() => {
+    const autoSyncOnMount = async () => {
+      await refetch(true); // Force sync
+    };
+    
+    autoSyncOnMount();
+  }, [refetch]);
 
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = 
@@ -341,6 +351,9 @@ export default function Payments() {
           <PaymentsSyncStatus />
         </div>
       </div>
+      
+      {/* ✅ FASE 4: Indicador automático de sync */}
+      <AutoSyncIndicator />
 
       {/* Filter Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">

@@ -105,6 +105,51 @@ serve(async (req) => {
       )
     }
 
+    // ✅ FASE 2: Verificar se já possui cobrança Asaas criada (prevenir duplicação)
+    if (payment.asaas_payment_id) {
+      console.log('⚠️ Payment já possui asaas_payment_id:', payment.asaas_payment_id);
+      
+      // Obter configuração do Asaas para verificar cobrança existente
+      const tempConfig = await getAsaasConfig(supabase);
+      
+      try {
+        const checkResponse = await fetch(`${tempConfig.baseUrl}/payments/${payment.asaas_payment_id}`, {
+          method: 'GET',
+          headers: { 'access_token': tempConfig.apiKey }
+        });
+        
+        if (checkResponse.ok) {
+          const existingCharge = await checkResponse.json();
+          console.log('✅ Cobrança já existe no Asaas, retornando dados existentes');
+          
+          return new Response(
+            JSON.stringify({ 
+              error: 'Cobrança já existe no Asaas',
+              asaas_payment_id: payment.asaas_payment_id,
+              invoice_url: existingCharge.invoiceUrl,
+              bank_slip_url: existingCharge.bankSlipUrl,
+              pix_code: existingCharge.pixCode,
+              pix_qr_code: existingCharge.encodedImage
+            }),
+            { 
+              status: 409, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        } else if (checkResponse.status === 404) {
+          console.log('ℹ️ Cobrança foi deletada no Asaas, limpando ID e continuando...');
+          // Cobrança foi deletada no Asaas, limpar ID e continuar
+          await supabase
+            .from('payments')
+            .update({ asaas_payment_id: null })
+            .eq('id', paymentId);
+        }
+      } catch (checkError) {
+        console.error('Erro ao verificar cobrança existente:', checkError);
+        // Se houver erro na verificação, continuar normalmente
+      }
+    }
+
     // Buscar resposta da cotação para calcular valor correto (subtotal + frete)
     let totalAmount = payment.amount;
     

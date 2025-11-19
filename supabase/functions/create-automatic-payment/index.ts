@@ -65,7 +65,7 @@ serve(async (req) => {
       .from('payments')
       .select('id')
       .eq('quote_id', quote_id)
-      .single()
+      .maybeSingle()
 
     if (existingPayment) {
       return new Response(

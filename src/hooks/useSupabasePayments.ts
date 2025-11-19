@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -64,9 +64,30 @@ export const useSupabasePayments = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const lastSyncTime = useRef<number>(0);
 
-  const fetchPayments = async () => {
+  // ✅ FASE 4: Auto-sync inteligente - verifica se deve sincronizar
+  const shouldAutoSync = () => {
+    return Date.now() - lastSyncTime.current > 5 * 60 * 1000; // 5 minutos
+  };
+
+  const triggerBackgroundSync = async () => {
     try {
+      await supabase.functions.invoke('sync-asaas-payments');
+      lastSyncTime.current = Date.now();
+      console.log('🔄 Background sync executado com sucesso');
+    } catch (error) {
+      console.error('Erro no background sync:', error);
+    }
+  };
+
+  const fetchPayments = async (forceSync = false) => {
+    try {
+      // ✅ FASE 4: Auto-sync se necessário antes de buscar
+      if (forceSync || shouldAutoSync()) {
+        await triggerBackgroundSync();
+      }
+      
       setIsLoading(true);
       console.log('Fetching payments...');
       
