@@ -244,16 +244,76 @@ serve(async (req) => {
       postalService: false,
     }
 
+    // ============================================
+    // FASE 1: VALIDAÇÃO PROATIVA DE WALLET (AUTO-HEAL)
+    // ============================================
+    let validatedWalletId = payment.suppliers.asaas_wallet_id;
+    
+    if (shouldIncludeSplit && validatedWalletId) {
+      console.log(`🔍 Validando wallet antes de criar pagamento: ${validatedWalletId}`)
+      
+      // Validar se wallet existe no Asaas
+      const validateWalletResponse = await fetch(`${baseUrl}/accounts/${validatedWalletId}`, {
+        method: 'GET',
+        headers: { 'access_token': apiKey }
+      })
+      
+      if (!validateWalletResponse.ok) {
+        console.warn(`⚠️ Wallet inválida detectada (${validatedWalletId}), tentando recriar...`)
+        
+        try {
+          // Tentar recriar wallet via edge function
+          const { data: newWallet, error: walletError } = await supabase.functions.invoke('create-asaas-wallet', {
+            body: { supplierId: payment.supplier_id, force: true }
+          })
+          
+          if (walletError) throw walletError
+          
+          if (newWallet?.wallet_id) {
+            console.log(`✅ Nova wallet criada com sucesso: ${newWallet.wallet_id}`)
+            validatedWalletId = newWallet.wallet_id
+            
+            // Atualizar supplier com nova wallet
+            await supabase
+              .from('suppliers')
+              .update({ asaas_wallet_id: newWallet.wallet_id })
+              .eq('id', payment.supplier_id)
+            
+            // Log de auditoria
+            await supabase.from('audit_logs').insert({
+              action: 'WALLET_AUTO_HEALED',
+              entity_type: 'suppliers',
+              entity_id: payment.supplier_id,
+              user_id: user.id,
+              panel_type: 'system',
+              details: {
+                old_wallet_id: payment.suppliers.asaas_wallet_id,
+                new_wallet_id: newWallet.wallet_id,
+                reason: 'invalid_wallet_detected_during_payment',
+                payment_id: paymentId
+              }
+            })
+          }
+        } catch (healError) {
+          console.error('❌ Falha ao recriar wallet:', healError)
+          // Continuar sem split se não conseguir recriar
+          validatedWalletId = null
+        }
+      } else {
+        console.log(`✅ Wallet validada: ${validatedWalletId}`)
+      }
+    }
+
     // Incluir split somente se habilitado e wallet válida
-    if (shouldIncludeSplit) {
+    if (shouldIncludeSplit && validatedWalletId) {
       paymentBody.split = [
         {
-          walletId: payment.suppliers.asaas_wallet_id,
+          walletId: validatedWalletId,
           fixedValue: supplierAmount,
           percentualValue: null,
         }
       ]
-      console.log(`Split habilitado: R$ ${supplierAmount} para fornecedor (wallet: ${payment.suppliers.asaas_wallet_id})`)
+      console.log(`Split habilitado: R$ ${supplierAmount} para fornecedor (wallet: ${validatedWalletId})`)
     } else {
       console.log(`Split desabilitado ou wallet inválida - cobrança sem split`)
     }

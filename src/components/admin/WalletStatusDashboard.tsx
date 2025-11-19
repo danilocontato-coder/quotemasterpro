@@ -12,11 +12,15 @@ export function WalletStatusDashboard() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
+  const [validatingWallets, setValidatingWallets] = useState<Set<string>>(new Set());
+  const [walletStatuses, setWalletStatuses] = useState<Record<string, 'valid' | 'invalid' | 'pending' | 'unknown'>>({});
   const [stats, setStats] = useState({
     total: 0,
     withWalletComplete: 0,
     withWalletPending: 0,
     withoutWallet: 0,
+    validWallets: 0,
+    invalidWallets: 0,
   });
 
   const fetchSuppliers = async () => {
@@ -43,12 +47,18 @@ export function WalletStatusDashboard() {
         return s.asaas_wallet_id && (!bankData?.bank_code || !bankData?.account_number);
       }).length;
       const withoutWallet = suppliers.filter(s => !s.asaas_wallet_id).length;
+      
+      // FASE 3: Contar wallets válidas/inválidas
+      const validWallets = Object.values(walletStatuses).filter(s => s === 'valid').length;
+      const invalidWallets = Object.values(walletStatuses).filter(s => s === 'invalid').length;
 
       setStats({
         total,
         withWalletComplete,
         withWalletPending,
         withoutWallet,
+        validWallets,
+        invalidWallets,
       });
 
       setSuppliers(suppliers);
@@ -79,18 +89,89 @@ export function WalletStatusDashboard() {
     }
   };
 
-  const handleValidateWallet = async (supplierId: string) => {
+  // FASE 2: Validar wallet individual no Asaas
+  const handleValidateWallet = async (supplierId: string, walletId: string) => {
+    setValidatingWallets(prev => new Set(prev).add(supplierId));
+    
     try {
-      const { data, error } = await supabase.functions.invoke('create-asaas-wallet', {
-        body: { supplierId, force: false }
+      const { data, error } = await supabase.functions.invoke('validate-asaas-wallet', {
+        body: { supplierId, walletId }
       });
 
       if (error) throw error;
 
-      toast.success('Wallet validada com sucesso!');
+      setWalletStatuses(prev => ({
+        ...prev,
+        [supplierId]: data?.valid ? 'valid' : 'invalid'
+      }));
+
+      if (data?.valid) {
+        toast.success('✅ Wallet validada com sucesso!');
+      } else {
+        toast.error('⚠️ Wallet inválida - recrie a wallet');
+      }
+      
       fetchSuppliers();
     } catch (error: any) {
+      setWalletStatuses(prev => ({
+        ...prev,
+        [supplierId]: 'invalid'
+      }));
       toast.error(error.message || 'Erro ao validar wallet');
+    } finally {
+      setValidatingWallets(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(supplierId);
+        return newSet;
+      });
+    }
+  };
+
+  // FASE 2: Recriar wallet com force=true
+  const handleRecreateWallet = async (supplierId: string) => {
+    setValidatingWallets(prev => new Set(prev).add(supplierId));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('create-asaas-wallet', {
+        body: { supplierId, force: true }
+      });
+
+      if (error) throw error;
+
+      setWalletStatuses(prev => ({
+        ...prev,
+        [supplierId]: 'valid'
+      }));
+
+      toast.success('✅ Wallet recriada com sucesso!');
+      fetchSuppliers();
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao recriar wallet');
+    } finally {
+      setValidatingWallets(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(supplierId);
+        return newSet;
+      });
+    }
+  };
+
+  // FASE 3: Validar todas as wallets
+  const handleValidateAllWallets = async () => {
+    setIsLoading(true);
+    
+    try {
+      const suppliersWithWallet = suppliers.filter(s => s.asaas_wallet_id);
+      
+      for (const supplier of suppliersWithWallet) {
+        await handleValidateWallet(supplier.id, supplier.asaas_wallet_id);
+      }
+      
+      toast.success(`Validação concluída: ${suppliersWithWallet.length} wallets verificadas`);
+    } catch (error: any) {
+      toast.error('Erro ao validar wallets');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -107,8 +188,24 @@ export function WalletStatusDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* FASE 3: Botão de validação global */}
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-muted-foreground">
+              {suppliers.filter(s => s.asaas_wallet_id).length} fornecedores com wallet Asaas
+            </div>
+            <Button 
+              onClick={handleValidateAllWallets}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Validar Todas as Wallets
+            </Button>
+          </div>
+
           {/* Estatísticas */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-6 gap-4 mb-6">
             <div className="bg-muted/50 p-4 rounded-lg">
               <div className="text-2xl font-bold">{stats.total}</div>
               <div className="text-sm text-muted-foreground">Total de Fornecedores</div>
@@ -131,6 +228,14 @@ export function WalletStatusDashboard() {
                 Sem Wallet ({stats.total > 0 ? Math.round((stats.withoutWallet / stats.total) * 100) : 0}%)
               </div>
             </div>
+            <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{stats.validWallets}</div>
+              <div className="text-sm text-muted-foreground">Wallets Validadas ✅</div>
+            </div>
+            <div className="bg-orange-50 dark:bg-orange-950/20 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">{stats.invalidWallets}</div>
+              <div className="text-sm text-muted-foreground">Wallets Inválidas ⚠️</div>
+            </div>
           </div>
 
           {/* Tabela */}
@@ -141,6 +246,7 @@ export function WalletStatusDashboard() {
                   <TableHead>Fornecedor</TableHead>
                   <TableHead>Documento</TableHead>
                   <TableHead>Wallet ID</TableHead>
+                  <TableHead>Status Validação</TableHead>
                   <TableHead>Dados Bancários</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -148,13 +254,13 @@ export function WalletStatusDashboard() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : suppliers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Nenhum fornecedor ativo encontrado
                     </TableCell>
                   </TableRow>
@@ -162,6 +268,7 @@ export function WalletStatusDashboard() {
                   suppliers.map((supplier) => {
                     const statusInfo = getBankDataStatus(supplier);
                     const StatusIcon = statusInfo.icon;
+                    const walletStatus = walletStatuses[supplier.id] || 'unknown';
                     
                     return (
                       <TableRow key={supplier.id}>
@@ -181,6 +288,24 @@ export function WalletStatusDashboard() {
                           )}
                         </TableCell>
                         <TableCell>
+                          {supplier.asaas_wallet_id ? (
+                            <Badge 
+                              variant={
+                                walletStatus === 'valid' ? 'default' : 
+                                walletStatus === 'invalid' ? 'destructive' : 
+                                'outline'
+                              }
+                            >
+                              {walletStatus === 'valid' && '✅ Válida'}
+                              {walletStatus === 'invalid' && '⚠️ Inválida'}
+                              {walletStatus === 'pending' && '⏳ Validando'}
+                              {walletStatus === 'unknown' && '❓ Não validada'}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <Badge variant={statusInfo.variant as any} className="gap-1">
                             <StatusIcon className="h-3 w-3" />
                             {statusInfo.label}
@@ -197,13 +322,29 @@ export function WalletStatusDashboard() {
                               Configurar
                             </Button>
                             {supplier.asaas_wallet_id && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleValidateWallet(supplier.id)}
-                              >
-                                <RefreshCw className="h-3 w-3" />
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleValidateWallet(supplier.id, supplier.asaas_wallet_id)}
+                                  disabled={validatingWallets.has(supplier.id)}
+                                  title="Validar wallet no Asaas"
+                                >
+                                  <RefreshCw className={`h-3 w-3 ${validatingWallets.has(supplier.id) ? 'animate-spin' : ''}`} />
+                                </Button>
+                                {walletStatuses[supplier.id] === 'invalid' && (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleRecreateWallet(supplier.id)}
+                                    disabled={validatingWallets.has(supplier.id)}
+                                    title="Recriar wallet"
+                                  >
+                                    <RefreshCw className="h-3 w-3 mr-1" />
+                                    Recriar
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                         </TableCell>
