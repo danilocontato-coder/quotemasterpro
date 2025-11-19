@@ -2235,6 +2235,7 @@ export type Database = {
       }
       delivery_confirmations: {
         Row: {
+          code_sent: boolean | null
           confirmation_code: string
           confirmed_at: string | null
           confirmed_by: string | null
@@ -2244,9 +2245,12 @@ export type Database = {
           generated_at: string
           id: string
           is_used: boolean
+          sent_at: string | null
+          sent_channels: Json | null
           updated_at: string
         }
         Insert: {
+          code_sent?: boolean | null
           confirmation_code: string
           confirmed_at?: string | null
           confirmed_by?: string | null
@@ -2256,9 +2260,12 @@ export type Database = {
           generated_at?: string
           id?: string
           is_used?: boolean
+          sent_at?: string | null
+          sent_channels?: Json | null
           updated_at?: string
         }
         Update: {
+          code_sent?: boolean | null
           confirmation_code?: string
           confirmed_at?: string | null
           confirmed_by?: string | null
@@ -2268,6 +2275,8 @@ export type Database = {
           generated_at?: string
           id?: string
           is_used?: boolean
+          sent_at?: string | null
+          sent_channels?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -6741,6 +6750,14 @@ export type Database = {
         Returns: Json
       }
       reset_monthly_usage: { Args: never; Returns: undefined }
+      retry_unsent_delivery_codes: {
+        Args: never
+        Returns: {
+          code_sent: boolean
+          delivery_id: string
+          error_message: string
+        }[]
+      }
       run_automatic_billing: { Args: never; Returns: undefined }
       search_supplier_by_cnpj: {
         Args: { search_cnpj: string }
