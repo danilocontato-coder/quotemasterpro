@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Search, Filter, Clock } from 'lucide-react';
+import { Package, Search, Filter, Clock, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -9,15 +9,19 @@ import { DeliveryCard } from '@/components/client/DeliveryCard';
 import { DeliveryConfirmationModal } from '@/components/supplier/DeliveryConfirmationModal';
 import { useClientDeliveries, ClientDelivery } from '@/hooks/useClientDeliveries';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 export default function ClientDeliveries() {
   const { deliveries, isLoading, refetch } = useClientDeliveries();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<ClientDelivery | null>(null);
   const [awaitingScheduling, setAwaitingScheduling] = useState<any[]>([]);
+  const [resendingCode, setResendingCode] = useState<string | null>(null);
 
   const handleConfirm = (deliveryId: string) => {
     const delivery = deliveries.find(d => d.id === deliveryId);
@@ -30,6 +34,32 @@ export default function ClientDeliveries() {
   const handleConfirmed = () => {
     refetch();
     setSelectedDelivery(null);
+  };
+
+  const handleResendCode = async (deliveryId: string) => {
+    try {
+      setResendingCode(deliveryId);
+      
+      const { data, error } = await supabase.functions.invoke('resend-delivery-code', {
+        body: { delivery_id: deliveryId }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Código reenviado",
+        description: data.message || "O código de confirmação foi reenviado com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Error resending code:', error);
+      toast({
+        title: "Erro ao reenviar código",
+        description: error.message || "Não foi possível reenviar o código. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setResendingCode(null);
+    }
   };
 
   // Buscar cotações com pagamento confirmado mas sem entrega agendada
@@ -228,11 +258,25 @@ export default function ClientDeliveries() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredDeliveries.map((delivery) => (
-            <DeliveryCard
-              key={delivery.id}
-              delivery={delivery}
-              onConfirm={handleConfirm}
-            />
+                <div className="space-y-2">
+                  <DeliveryCard
+                    key={delivery.id}
+                    delivery={delivery}
+                    onConfirm={handleConfirm}
+                  />
+                  {delivery.status === 'scheduled' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleResendCode(delivery.id)}
+                      disabled={resendingCode === delivery.id}
+                      className="w-full"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      {resendingCode === delivery.id ? 'Reenviando...' : 'Reenviar Código de Confirmação'}
+                    </Button>
+                  )}
+                </div>
           ))}
         </div>
       )}
