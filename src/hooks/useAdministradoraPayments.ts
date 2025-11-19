@@ -61,8 +61,8 @@ export function useAdministradoraPayments() {
     }
     
     try {
-      // Construir query base
-      let paymentsQuery = supabase
+      // Construir query base com LEFT JOIN
+      let query = supabase
         .from('payments')
         .select(`
           *,
@@ -74,53 +74,41 @@ export function useAdministradoraPayments() {
             client_id,
             on_behalf_of_client_id
           ),
-          suppliers (
-            name
-          ),
-          clients (
-            name
+          suppliers (name),
+          clients (name),
+          quote_responses!left (
+            id,
+            items,
+            shipping_cost,
+            delivery_time,
+            warranty_months,
+            total_amount,
+            status
           )
         `)
         .order('created_at', { ascending: false });
 
+      // Aplicar filtros por cliente
       if (currentClientId === 'all') {
         const condominioIds = condominios.map(c => c.id);
         const allClientIds = [adminClientId, ...condominioIds];
-        paymentsQuery = paymentsQuery.in('client_id', allClientIds);
+        query = query.in('client_id', allClientIds);
       } else if (currentClientId) {
-        paymentsQuery = paymentsQuery.eq('client_id', currentClientId);
+        query = query.eq('client_id', currentClientId);
       }
 
-      // ✅ Buscar pagamentos e responses em paralelo
-      const [paymentsResult, responsesResult] = await Promise.all([
-        paymentsQuery,
-        supabase
-          .from('quote_responses')
-          .select('id, quote_id, supplier_id, items, shipping_cost, delivery_time, warranty_months, total_amount')
-          .eq('status', 'approved')
-      ]);
+      const { data, error } = await query;
+      if (error) throw error;
 
-      if (paymentsResult.error) throw paymentsResult.error;
+      // Filtrar apenas responses aprovadas no JavaScript
+      const paymentsWithApprovedResponses = (data || []).map(payment => ({
+        ...payment,
+        quote_responses: Array.isArray(payment.quote_responses)
+          ? payment.quote_responses.filter((r: any) => r.status === 'approved')
+          : []
+      }));
 
-      // Criar mapa de respostas por quote_id + supplier_id
-      const responsesMap = new Map<string, any>();
-      (responsesResult.data || []).forEach(response => {
-        const key = `${response.quote_id}-${response.supplier_id}`;
-        responsesMap.set(key, response);
-      });
-
-      // Associar respostas aos pagamentos
-      const paymentsWithResponses = (paymentsResult.data || []).map(payment => {
-        const key = `${payment.quote_id}-${payment.supplier_id}`;
-        const response = responsesMap.get(key);
-        
-        return {
-          ...payment,
-          quote_responses: response ? [response] : undefined
-        };
-      });
-
-      setPayments(paymentsWithResponses as AdministradoraPayment[]);
+      setPayments(paymentsWithApprovedResponses as AdministradoraPayment[]);
     } catch (error: any) {
       console.error('Erro ao buscar pagamentos:', error);
       toast.error('Erro ao carregar pagamentos');
