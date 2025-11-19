@@ -198,8 +198,8 @@ function PaymentsSyncStatusComponent() {
     // Executar após 1 minuto da montagem (para não sobrecarregar no load inicial)
     const initialTimeout = setTimeout(validateWalletsJob, 60000);
     
-    // Repetir a cada 6 horas (21600000 ms)
-    const intervalId = setInterval(validateWalletsJob, 21600000);
+    // ✅ FASE 4: Repetir a cada 15 minutos (ao invés de 6 horas)
+    const intervalId = setInterval(validateWalletsJob, 15 * 60 * 1000); // 15 minutos
     
     return () => {
       clearTimeout(initialTimeout);
