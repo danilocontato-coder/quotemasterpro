@@ -28,21 +28,6 @@ export interface AdministradoraPayment {
   clients: {
     name: string;
   } | null;
-  quote_responses?: Array<{
-    id: string;
-    items: Array<{
-      product_name: string;
-      quantity: number;
-      unit_price: number;
-      total: number;
-      brand?: string;
-      specifications?: string;
-    }>;
-    shipping_cost: number;
-    delivery_time: number;
-    warranty_months: number;
-    total_amount: number;
-  }>;
 }
 
 export function useAdministradoraPayments() {
@@ -52,7 +37,10 @@ export function useAdministradoraPayments() {
   const [isRefetching, setIsRefetching] = useState(false);
 
   const fetchPayments = async (isInitialLoad = false) => {
-    if (!adminClientId) return;
+    if (!adminClientId) {
+      console.warn('⚠️ [AdministradoraPayments] adminClientId não disponível');
+      return;
+    }
     
     if (isInitialLoad) {
       setIsLoading(true);
@@ -60,8 +48,14 @@ export function useAdministradoraPayments() {
       setIsRefetching(true);
     }
     
+    console.log('🔍 [AdministradoraPayments] Iniciando busca...', {
+      adminClientId,
+      currentClientId,
+      isInitialLoad
+    });
+    
     try {
-      // Construir query base com LEFT JOIN
+      // Construir query base SEM LEFT JOIN de quote_responses
       let query = supabase
         .from('payments')
         .select(`
@@ -75,16 +69,7 @@ export function useAdministradoraPayments() {
             on_behalf_of_client_id
           ),
           suppliers (name),
-          clients (name),
-          quote_responses!left (
-            id,
-            items,
-            shipping_cost,
-            delivery_time,
-            warranty_months,
-            total_amount,
-            status
-          )
+          clients (name)
         `)
         .order('created_at', { ascending: false });
 
@@ -93,25 +78,33 @@ export function useAdministradoraPayments() {
         const condominioIds = condominios.map(c => c.id);
         const allClientIds = [adminClientId, ...condominioIds];
         query = query.in('client_id', allClientIds);
+        console.log('🔍 [AdministradoraPayments] Filtrando por múltiplos clientes:', allClientIds.length);
       } else if (currentClientId) {
         query = query.eq('client_id', currentClientId);
+        console.log('🔍 [AdministradoraPayments] Filtrando por cliente específico:', currentClientId);
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      
+      if (error) {
+        console.error('❌ [AdministradoraPayments] Erro na query:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
 
-      // Filtrar apenas responses aprovadas no JavaScript
-      const paymentsWithApprovedResponses = (data || []).map(payment => ({
-        ...payment,
-        quote_responses: Array.isArray(payment.quote_responses)
-          ? payment.quote_responses.filter((r: any) => r.status === 'approved')
-          : []
-      }));
+      console.log('✅ [AdministradoraPayments] Busca concluída:', {
+        count: data?.length || 0,
+        sample: data?.[0]?.id || 'nenhum'
+      });
 
-      setPayments(paymentsWithApprovedResponses as AdministradoraPayment[]);
+      setPayments(data as AdministradoraPayment[]);
     } catch (error: any) {
-      console.error('Erro ao buscar pagamentos:', error);
-      toast.error('Erro ao carregar pagamentos');
+      console.error('💥 [AdministradoraPayments] Erro fatal:', error);
+      toast.error('Erro ao carregar pagamentos: ' + (error.message || error.hint || 'Erro desconhecido'));
     } finally {
       setIsLoading(false);
       setIsRefetching(false);
