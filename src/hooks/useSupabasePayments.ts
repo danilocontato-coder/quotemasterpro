@@ -71,51 +71,49 @@ export const useSupabasePayments = () => {
       setIsLoading(true);
       console.log('Fetching payments...');
       
-      // ✅ Query otimizada: buscar pagamentos e responses em paralelo
-      const [paymentsResult, responsesResult] = await Promise.all([
-        supabase
-          .from('payments')
-          .select(`
-            *,
-            quotes(id, local_code, title, total, client_name, supplier_id, suppliers(id, name, asaas_wallet_id)),
-            suppliers(id, name, asaas_wallet_id),
-            clients(id, name)
-          `)
-          .order('created_at', { ascending: false }),
-        
-        supabase
-          .from('quote_responses')
-          .select('id, quote_id, supplier_id, items, shipping_cost, delivery_time, warranty_months, total_amount')
-          .eq('status', 'approved')
-      ]);
+      // Query única com LEFT JOIN (abordagem original que funcionava)
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select(`
+          *,
+          quotes(
+            id, 
+            local_code, 
+            title, 
+            total, 
+            client_name, 
+            supplier_id, 
+            suppliers(id, name, asaas_wallet_id)
+          ),
+          suppliers(id, name, asaas_wallet_id),
+          clients(id, name),
+          quote_responses!left(
+            id,
+            items,
+            shipping_cost,
+            delivery_time,
+            warranty_months,
+            total_amount,
+            status
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-      if (paymentsResult.error) {
-        console.error('Payments fetch error:', paymentsResult.error);
-        throw paymentsResult.error;
+      if (paymentsError) {
+        console.error('Payments fetch error:', paymentsError);
+        throw paymentsError;
       }
 
-      // Criar mapa de respostas por quote_id + supplier_id para busca rápida
-      const responsesMap = new Map<string, any>();
-      (responsesResult.data || []).forEach(response => {
-        const key = `${response.quote_id}-${response.supplier_id}`;
-        responsesMap.set(key, response);
-      });
+      // Filtrar apenas responses aprovadas no JavaScript
+      const paymentsWithApprovedResponses = (paymentsData || []).map(payment => ({
+        ...payment,
+        quote_responses: Array.isArray(payment.quote_responses)
+          ? payment.quote_responses.filter((r: any) => r.status === 'approved')
+          : []
+      }));
 
-      // Associar respostas aos pagamentos
-      const paymentsWithResponses = (paymentsResult.data || []).map(payment => {
-        const key = `${payment.quote_id}-${payment.supplier_id}`;
-        const response = responsesMap.get(key);
-        
-        return {
-          ...payment,
-          quote_responses: response ? [response] : undefined
-        };
-      });
-
-      console.log('Payments query result:', paymentsWithResponses);
-      
-      setPayments(paymentsWithResponses as any);
-      console.log('Payments set to state:', paymentsWithResponses);
+      console.log('Payments query result:', paymentsWithApprovedResponses);
+      setPayments(paymentsWithApprovedResponses as any);
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast({
