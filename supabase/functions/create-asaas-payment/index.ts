@@ -187,8 +187,49 @@ serve(async (req) => {
     const dueDate = new Date()
     dueDate.setDate(dueDate.getDate() + 1) // Vencimento amanhã
 
-    // Determinar se deve incluir split
-    const shouldIncludeSplit = splitEnabled && payment.suppliers.asaas_wallet_id
+    // Validar dados bancários antes de tentar split
+    const bankData = payment.suppliers.bank_data as any
+    const hasBankData = bankData?.bank_code && 
+                        bankData?.account_number && 
+                        bankData?.account_holder_document && 
+                        bankData?.agency
+
+    // Determinar se deve incluir split (requer wallet E dados bancários)
+    const shouldIncludeSplit = splitEnabled && 
+                              payment.suppliers.asaas_wallet_id && 
+                              hasBankData
+
+    // Log se split foi desabilitado por falta de dados bancários
+    if (splitEnabled && payment.suppliers.asaas_wallet_id && !hasBankData) {
+      console.warn(`⚠️ Split desabilitado: Wallet existe mas dados bancários incompletos`)
+      console.log('Campos faltantes:', {
+        bank_code: !bankData?.bank_code,
+        account_number: !bankData?.account_number,
+        account_holder_document: !bankData?.account_holder_document,
+        agency: !bankData?.agency
+      })
+      
+      // Log de auditoria
+      await supabase.from('audit_logs').insert({
+        action: 'PAYMENT_SPLIT_SKIPPED',
+        entity_type: 'payments',
+        entity_id: paymentId,
+        user_id: user.id,
+        panel_type: 'admin',
+        details: {
+          reason: 'incomplete_bank_data',
+          supplier_id: payment.supplier_id,
+          supplier_name: payment.suppliers.name,
+          wallet_id: payment.suppliers.asaas_wallet_id,
+          missing_fields: [
+            !bankData?.bank_code && 'bank_code',
+            !bankData?.account_number && 'account_number',
+            !bankData?.account_holder_document && 'account_holder_document',
+            !bankData?.agency && 'agency'
+          ].filter(Boolean)
+        }
+      })
+    }
 
     // Garantir acesso robusto ao local_code
     const quoteCode = payment.quotes?.local_code || 'SEM-CÓDIGO'
