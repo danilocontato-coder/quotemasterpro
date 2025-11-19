@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSupplierModal } from "@/components/suppliers/CreateSupplierModal";
 import { DeleteSupplierModal } from "@/components/admin/DeleteSupplierModal";
+import { EditBankDataModal } from "@/components/suppliers/EditBankDataModal";
 import { useSupabaseAdminSuppliers } from "@/hooks/useSupabaseAdminSuppliers";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +45,7 @@ export const SuppliersManagement = () => {
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [deletingSupplier, setDeletingSupplier] = useState<any>(null);
   const [certifyingSupplier, setCertifyingSupplier] = useState<any>(null);
+  const [editingBankData, setEditingBankData] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [toggleStatusLoading, setToggleStatusLoading] = useState<string | null>(null);
   const { toast } = useToast();
@@ -522,6 +524,14 @@ export const SuppliersManagement = () => {
                               Editar
                             </DropdownMenuItem>
                             
+                            <DropdownMenuItem 
+                              onClick={() => setEditingBankData(supplier)}
+                              className="text-green-600"
+                            >
+                              <Wallet className="h-4 w-4 mr-2" />
+                              Gerenciar Dados Bancários
+                            </DropdownMenuItem>
+                            
                             {!(supplier as any).asaas_wallet_id ? (
                               <DropdownMenuItem
                                 onClick={() => handleCreateAsaasWallet(supplier, false)}
@@ -735,6 +745,23 @@ export const SuppliersManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Bank Data Modal */}
+      {editingBankData && (
+        <EditBankDataModal
+          open={!!editingBankData}
+          onClose={() => setEditingBankData(null)}
+          supplier={editingBankData}
+          onSuccess={() => {
+            setEditingBankData(null);
+            refetch();
+            toast({
+              title: "Dados bancários atualizados",
+              description: "Os dados bancários do fornecedor foram atualizados com sucesso.",
+            });
+          }}
+        />
+      )}
     </div>
   );
 };

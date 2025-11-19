@@ -40,6 +40,7 @@ import { IntegrationDetailsModal } from '@/components/admin/IntegrationDetailsMo
 import { StripeIntegrationPanel } from '@/components/admin/StripeIntegrationPanel';
 import { BoletoIntegrationPanel } from '@/components/admin/BoletoIntegrationPanel';
 import { AsaasIntegrationPanel } from '@/components/admin/AsaasIntegrationPanel';
+import { WalletStatusDashboard } from '@/components/admin/WalletStatusDashboard';
 import { useSupabaseIntegrations, Integration } from '@/hooks/useSupabaseIntegrations';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -512,6 +513,11 @@ export const IntegrationsAndApisManagement = () => {
               <StripeIntegrationPanel />
               <BoletoIntegrationPanel />
               <AsaasIntegrationPanel />
+            </div>
+            
+            {/* Dashboard de Status de Wallets */}
+            <div className="mt-8">
+              <WalletStatusDashboard />
             </div>
           </TabsContent>
 
