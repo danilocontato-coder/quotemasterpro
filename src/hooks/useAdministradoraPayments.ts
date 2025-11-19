@@ -49,13 +49,20 @@ export function useAdministradoraPayments() {
   const { currentClientId, adminClientId, condominios } = useAdministradora();
   const [payments, setPayments] = useState<AdministradoraPayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefetching, setIsRefetching] = useState(false);
 
-  const fetchPayments = async () => {
+  const fetchPayments = async (isInitialLoad = false) => {
     if (!adminClientId) return;
     
-    setIsLoading(true);
+    if (isInitialLoad) {
+      setIsLoading(true);
+    } else {
+      setIsRefetching(true);
+    }
+    
     try {
-      let query = supabase
+      // Construir query base
+      let paymentsQuery = supabase
         .from('payments')
         .select(`
           *,
@@ -77,55 +84,58 @@ export function useAdministradoraPayments() {
         .order('created_at', { ascending: false });
 
       if (currentClientId === 'all') {
-        // Buscar todos os pagamentos da administradora e condomínios vinculados
         const condominioIds = condominios.map(c => c.id);
         const allClientIds = [adminClientId, ...condominioIds];
-        
-        query = query.in('client_id', allClientIds);
+        paymentsQuery = paymentsQuery.in('client_id', allClientIds);
       } else if (currentClientId) {
-        // Filtrar por condomínio específico
-        query = query.eq('client_id', currentClientId);
+        paymentsQuery = paymentsQuery.eq('client_id', currentClientId);
       }
 
-      const { data, error } = await query;
+      // ✅ Buscar pagamentos e responses em paralelo
+      const [paymentsResult, responsesResult] = await Promise.all([
+        paymentsQuery,
+        supabase
+          .from('quote_responses')
+          .select('id, quote_id, supplier_id, items, shipping_cost, delivery_time, warranty_months, total_amount')
+          .eq('status', 'approved')
+      ]);
 
-      if (error) throw error;
+      if (paymentsResult.error) throw paymentsResult.error;
 
-      // Para cada pagamento, buscar a resposta aprovada do fornecedor
-      const paymentsWithResponses = await Promise.all(
-        (data || []).map(async (payment) => {
-          if (!payment.quote_id || !payment.supplier_id) {
-            return payment as unknown as AdministradoraPayment;
-          }
+      // Criar mapa de respostas por quote_id + supplier_id
+      const responsesMap = new Map<string, any>();
+      (responsesResult.data || []).forEach(response => {
+        const key = `${response.quote_id}-${response.supplier_id}`;
+        responsesMap.set(key, response);
+      });
 
-          const { data: responseData } = await supabase
-            .from('quote_responses')
-            .select('id, items, shipping_cost, delivery_time, warranty_months, total_amount')
-            .eq('quote_id', payment.quote_id)
-            .eq('supplier_id', payment.supplier_id)
-            .eq('status', 'approved')
-            .maybeSingle();
+      // Associar respostas aos pagamentos
+      const paymentsWithResponses = (paymentsResult.data || []).map(payment => {
+        const key = `${payment.quote_id}-${payment.supplier_id}`;
+        const response = responsesMap.get(key);
+        
+        return {
+          ...payment,
+          quote_responses: response ? [response] : undefined
+        };
+      });
 
-          return {
-            ...payment,
-            quote_responses: responseData ? [responseData as any] : undefined
-          } as unknown as AdministradoraPayment;
-        })
-      );
-
-      setPayments(paymentsWithResponses || []);
+      setPayments(paymentsWithResponses as AdministradoraPayment[]);
     } catch (error: any) {
       console.error('Erro ao buscar pagamentos:', error);
       toast.error('Erro ao carregar pagamentos');
     } finally {
       setIsLoading(false);
+      setIsRefetching(false);
     }
   };
 
   useEffect(() => {
-    fetchPayments();
+    fetchPayments(true); // Initial load
 
-    // Subscrever a mudanças em tempo real
+    let timeoutId: NodeJS.Timeout;
+
+    // ✅ Subscrever a mudanças em tempo real com debounce
     const channel = supabase
       .channel('administradora-payments')
       .on(
@@ -136,12 +146,20 @@ export function useAdministradoraPayments() {
           table: 'payments'
         },
         () => {
-          fetchPayments();
+          // Limpar timeout anterior
+          clearTimeout(timeoutId);
+          
+          // Aguardar 2 segundos antes de refetch para agrupar múltiplas mudanças
+          timeoutId = setTimeout(() => {
+            console.log('🔄 [Administradora] Refetch após mudanças agrupadas');
+            fetchPayments(false);
+          }, 2000);
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, [currentClientId, adminClientId, condominios.length]);
@@ -185,7 +203,8 @@ export function useAdministradoraPayments() {
   return {
     payments,
     isLoading,
-    refetch: fetchPayments,
+    isRefetching,
+    refetch: () => fetchPayments(false),
     createCheckoutSession,
     confirmDelivery
   };

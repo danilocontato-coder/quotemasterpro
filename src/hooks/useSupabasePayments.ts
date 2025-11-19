@@ -66,72 +66,55 @@ export const useSupabasePayments = () => {
   const { toast } = useToast();
   const lastSyncTime = useRef<number>(0);
 
-  // ✅ FASE 4: Auto-sync inteligente - verifica se deve sincronizar
-  const shouldAutoSync = () => {
-    return Date.now() - lastSyncTime.current > 5 * 60 * 1000; // 5 minutos
-  };
-
-  const triggerBackgroundSync = async () => {
+  const fetchPayments = async () => {
     try {
-      await supabase.functions.invoke('sync-asaas-payments');
-      lastSyncTime.current = Date.now();
-      console.log('🔄 Background sync executado com sucesso');
-    } catch (error) {
-      console.error('Erro no background sync:', error);
-    }
-  };
-
-  const fetchPayments = async (forceSync = false) => {
-    try {
-      // ✅ FASE 4: Auto-sync se necessário antes de buscar
-      if (forceSync || shouldAutoSync()) {
-        await triggerBackgroundSync();
-      }
-      
       setIsLoading(true);
       console.log('Fetching payments...');
       
-      // Primeiro busca os pagamentos
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payments')
-        .select(`
-          *,
-          quotes(id, local_code, title, total, client_name, supplier_id, suppliers(id, name, asaas_wallet_id)),
-          suppliers(id, name, asaas_wallet_id),
-          clients(id, name)
-        `)
-        .order('created_at', { ascending: false });
+      // ✅ Query otimizada: buscar pagamentos e responses em paralelo
+      const [paymentsResult, responsesResult] = await Promise.all([
+        supabase
+          .from('payments')
+          .select(`
+            *,
+            quotes(id, local_code, title, total, client_name, supplier_id, suppliers(id, name, asaas_wallet_id)),
+            suppliers(id, name, asaas_wallet_id),
+            clients(id, name)
+          `)
+          .order('created_at', { ascending: false }),
+        
+        supabase
+          .from('quote_responses')
+          .select('id, quote_id, supplier_id, items, shipping_cost, delivery_time, warranty_months, total_amount')
+          .eq('status', 'approved')
+      ]);
 
-      if (paymentsError) {
-        console.error('Payments fetch error:', paymentsError);
-        throw paymentsError;
+      if (paymentsResult.error) {
+        console.error('Payments fetch error:', paymentsResult.error);
+        throw paymentsResult.error;
       }
 
-      // Para cada pagamento, buscar a resposta aprovada do fornecedor
-      const paymentsWithResponses = await Promise.all(
-        (paymentsData || []).map(async (payment) => {
-          if (!payment.quote_id || !payment.supplier_id) {
-            return payment as unknown as Payment;
-          }
+      // Criar mapa de respostas por quote_id + supplier_id para busca rápida
+      const responsesMap = new Map<string, any>();
+      (responsesResult.data || []).forEach(response => {
+        const key = `${response.quote_id}-${response.supplier_id}`;
+        responsesMap.set(key, response);
+      });
 
-          const { data: responseData } = await supabase
-            .from('quote_responses')
-            .select('id, items, shipping_cost, delivery_time, warranty_months, total_amount')
-            .eq('quote_id', payment.quote_id)
-            .eq('supplier_id', payment.supplier_id)
-            .eq('status', 'approved')
-            .maybeSingle();
-
-          return {
-            ...payment,
-            quote_responses: responseData ? [responseData as any] : undefined
-          } as unknown as Payment;
-        })
-      );
+      // Associar respostas aos pagamentos
+      const paymentsWithResponses = (paymentsResult.data || []).map(payment => {
+        const key = `${payment.quote_id}-${payment.supplier_id}`;
+        const response = responsesMap.get(key);
+        
+        return {
+          ...payment,
+          quote_responses: response ? [response] : undefined
+        };
+      });
 
       console.log('Payments query result:', paymentsWithResponses);
       
-      setPayments(paymentsWithResponses || []);
+      setPayments(paymentsWithResponses as any);
       console.log('Payments set to state:', paymentsWithResponses);
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -251,9 +234,11 @@ export const useSupabasePayments = () => {
     }
   };
 
-  // Real-time subscription
+  // Real-time subscription com debounce
   useEffect(() => {
     fetchPayments();
+    
+    let timeoutId: NodeJS.Timeout;
     
     const channel = supabase
       .channel('payments-changes')
@@ -266,7 +251,13 @@ export const useSupabasePayments = () => {
         },
         (payload) => {
           console.log('🔔 Pagamento atualizado em tempo real:', payload);
-          fetchPayments();
+          
+          // ✅ Debounce: aguarda 2s antes de refetch
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            console.log('🔄 [Payments] Refetch após mudanças agrupadas');
+            fetchPayments();
+          }, 2000);
           
           // Toast para atualizações importantes
           if (payload.eventType === 'UPDATE') {
@@ -296,6 +287,7 @@ export const useSupabasePayments = () => {
       .subscribe();
 
     return () => {
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, [toast]);

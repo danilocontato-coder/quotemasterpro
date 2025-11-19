@@ -16,7 +16,7 @@ export function AutoSyncIndicator() {
       const { data } = await supabase
         .from('audit_logs')
         .select('created_at')
-        .eq('action', 'PAYMENT_SYNC')
+        .eq('action', 'SCHEDULED_SYNC_COMPLETED')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -41,7 +41,7 @@ export function AutoSyncIndicator() {
           event: 'INSERT',
           schema: 'public',
           table: 'audit_logs',
-          filter: 'action=eq.PAYMENT_SYNC'
+          filter: 'action=eq.SCHEDULED_SYNC_COMPLETED'
         },
         (payload) => {
           const newDate = new Date(payload.new.created_at);
@@ -53,16 +53,28 @@ export function AutoSyncIndicator() {
       )
       .subscribe();
 
-    // Atualizar a cada 30 segundos para manter o "X min atrás" atualizado
-    const interval = setInterval(() => {
-      setLastSync(prev => prev ? new Date(prev) : null);
-    }, 30000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
   }, []);
+
+  // ✅ Atualizar timestamp apenas quando necessário (menos re-renders)
+  useEffect(() => {
+    if (!lastSync) return;
+
+    const lastSyncTime = lastSync.getTime();
+    const now = Date.now();
+    const diffMs = now - lastSyncTime;
+    
+    // Atualizar a cada 1 min se < 10 min atrás, senão a cada 5 min
+    const updateInterval = diffMs < 10 * 60 * 1000 ? 60000 : 300000;
+    
+    const interval = setInterval(() => {
+      setLastSync(new Date(lastSyncTime)); // Forçar re-render
+    }, updateInterval);
+
+    return () => clearInterval(interval);
+  }, [lastSync?.getTime()]);
 
   if (!lastSync && !isSyncing) return null;
 
