@@ -390,10 +390,6 @@ serve(async (req) => {
       
       // Verificar se é erro de wallet inválida
       const isWalletError = error.errors?.some((e: any) => 
-        e.code === 'invalid_action' && e.description?.includes('Wallet') && e.description?.includes('inexistente')
-      )
-      
-      const isWalletError = error.errors?.some((e: any) => 
         e.code === 'invalid_action' && (
           e.description?.includes('Wallet') || 
           e.description?.includes('inexistente') ||
