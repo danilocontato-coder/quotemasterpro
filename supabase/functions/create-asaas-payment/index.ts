@@ -223,10 +223,11 @@ serve(async (req) => {
       dueDate: paymentBody.dueDate,
       customer: paymentBody.customer,
       billingType: paymentBody.billingType,
-      hasSplit: !!paymentBody.split
+      hasSplit: !!paymentBody.split,
+      walletId: paymentBody.split?.[0]?.walletId || null
     })
 
-    const asaasResponse = await fetch(`${baseUrl}/payments`, {
+    let asaasResponse = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -235,18 +236,73 @@ serve(async (req) => {
       body: JSON.stringify(paymentBody),
     })
 
+    // Se falhou com split, tentar novamente SEM split (fallback automático)
+    if (!asaasResponse.ok && paymentBody.split) {
+      const error = await asaasResponse.json()
+      const isWalletError = error.errors?.some((e: any) => 
+        e.code === 'invalid_action' && (
+          e.description?.includes('Wallet') || 
+          e.description?.includes('inexistente') ||
+          e.description?.includes('inválida')
+        )
+      )
+      
+      if (isWalletError) {
+        console.warn('⚠️ Wallet inválida detectada, tentando criar pagamento SEM split...')
+        
+        // Remover split e tentar novamente
+        delete paymentBody.split
+        asaasResponse = await fetch(`${baseUrl}/payments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': apiKey,
+          },
+          body: JSON.stringify(paymentBody),
+        })
+        
+        if (asaasResponse.ok) {
+          console.log('✅ Pagamento criado sem split (fallback)')
+          
+          // Log de auditoria sobre o fallback
+          await supabase.from('audit_logs').insert({
+            action: 'ASAAS_PAYMENT_SPLIT_FALLBACK',
+            entity_type: 'payments',
+            entity_id: paymentId,
+            user_id: user.id,
+            details: {
+              reason: 'wallet_invalid',
+              wallet_id: payment.suppliers.asaas_wallet_id,
+              supplier_id: payment.supplier_id,
+              supplier_name: payment.suppliers.name,
+              original_error: error.errors?.[0]?.description,
+              action_taken: 'payment_created_without_split'
+            },
+          })
+        }
+      }
+    }
+
     if (!asaasResponse.ok) {
       const error = await asaasResponse.json()
-      console.error('Erro ao criar cobrança Asaas:', error)
+      console.error('❌ Erro ao criar cobrança Asaas:', error)
       
       // Verificar se é erro de wallet inválida
       const isWalletError = error.errors?.some((e: any) => 
         e.code === 'invalid_action' && e.description?.includes('Wallet') && e.description?.includes('inexistente')
       )
       
+      const isWalletError = error.errors?.some((e: any) => 
+        e.code === 'invalid_action' && (
+          e.description?.includes('Wallet') || 
+          e.description?.includes('inexistente') ||
+          e.description?.includes('inválida')
+        )
+      )
+      
       if (isWalletError) {
         const walletId = payment.suppliers.asaas_wallet_id
-        const errorMessage = `Wallet Asaas do fornecedor inválida para o ambiente atual (${config.environment || 'sandbox'}). Atualize o asaas_wallet_id do fornecedor com um WalletId válido do Asaas ${config.environment === 'production' ? 'Produção' : 'Sandbox'}.`
+        const errorMessage = `Wallet Asaas do fornecedor inválida ou inativa. A wallet ${walletId} existe no banco, mas não está ativa/configurada no Asaas ${config.environment === 'production' ? 'Produção' : 'Sandbox'}. Possíveis causas: 1) Wallet pendente de ativação, 2) Dados bancários não configurados, 3) Wallet de outro ambiente (sandbox vs produção).`
         
         // Log de auditoria do erro
         await supabase.from('audit_logs').insert({
@@ -259,7 +315,9 @@ serve(async (req) => {
             wallet_id: walletId,
             environment: config.environment || 'sandbox',
             supplier_id: payment.supplier_id,
-            asaas_error: error.errors?.[0]?.description
+            supplier_name: payment.suppliers.name,
+            asaas_error: error.errors?.[0]?.description,
+            suggestion: 'Verifique no painel Asaas se a wallet está ativa e com dados bancários configurados'
           },
         })
         
@@ -269,7 +327,14 @@ serve(async (req) => {
             details: {
               wallet_id: walletId,
               environment: config.environment || 'sandbox',
-              suggestion: 'Desative split_enabled temporariamente ou atualize o wallet do fornecedor'
+              supplier: payment.suppliers.name,
+              steps_to_fix: [
+                '1. Acesse o painel Asaas Sandbox: https://sandbox.asaas.com/',
+                `2. Localize a subconta/wallet: ${walletId}`,
+                '3. Verifique se o status é ATIVO',
+                '4. Configure dados bancários se necessário',
+                '5. Ou desative "Split Automático" em /admin/integrations'
+              ]
             }
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
