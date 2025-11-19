@@ -129,6 +129,84 @@ function PaymentsSyncStatusComponent() {
     }
   };
 
+  // FASE 3: Validação periódica de wallets (a cada 6 horas)
+  useEffect(() => {
+    const validateWalletsJob = async () => {
+      console.log('🔄 Iniciando validação periódica de wallets...');
+      
+      try {
+        const { data: suppliers, error } = await supabase
+          .from('suppliers')
+          .select('id, name, asaas_wallet_id')
+          .not('asaas_wallet_id', 'is', null)
+          .eq('status', 'active');
+        
+        if (error) throw error;
+        
+        let invalidCount = 0;
+        
+        for (const supplier of suppliers || []) {
+          try {
+            const { data } = await supabase.functions.invoke('validate-asaas-wallet', {
+              body: { supplierId: supplier.id, walletId: supplier.asaas_wallet_id }
+            });
+            
+            if (!data?.valid) {
+              invalidCount++;
+              console.warn(`⚠️ Wallet inválida detectada: ${supplier.name} (${supplier.asaas_wallet_id})`);
+              
+              // Buscar admin para notificar
+              const { data: adminProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('role', 'admin')
+                .limit(1)
+                .single();
+              
+              if (adminProfile) {
+                // Criar notificação para admin
+                await supabase.from('notifications').insert({
+                  user_id: adminProfile.id,
+                  title: 'Wallet Inválida Detectada',
+                  message: `A wallet do fornecedor "${supplier.name}" está inválida e precisa ser recriada.`,
+                  type: 'warning',
+                  priority: 'high',
+                  action_url: '/admin/suppliers',
+                  metadata: {
+                    supplier_id: supplier.id,
+                    wallet_id: supplier.asaas_wallet_id,
+                    reason: 'periodic_validation'
+                  }
+                });
+              }
+            }
+          } catch (error) {
+            console.error(`Erro ao validar wallet de ${supplier.name}:`, error);
+          }
+        }
+        
+        if (invalidCount > 0) {
+          console.warn(`⚠️ ${invalidCount} wallets inválidas encontradas na validação periódica`);
+        } else {
+          console.log(`✅ Todas as ${suppliers?.length || 0} wallets estão válidas`);
+        }
+      } catch (error) {
+        console.error('Erro na validação periódica de wallets:', error);
+      }
+    };
+    
+    // Executar após 1 minuto da montagem (para não sobrecarregar no load inicial)
+    const initialTimeout = setTimeout(validateWalletsJob, 60000);
+    
+    // Repetir a cada 6 horas (21600000 ms)
+    const intervalId = setInterval(validateWalletsJob, 21600000);
+    
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(intervalId);
+    };
+  }, []);
+
   if (loading) {
     return (
       <Card>

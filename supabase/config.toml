@@ -236,3 +236,9 @@ verify_jwt = false
 
 [functions.test-asaas-webhook]
 verify_jwt = false
+
+[functions.validate-asaas-wallet]
+verify_jwt = true
+
+[functions.test-asaas-connection]
+verify_jwt = true
