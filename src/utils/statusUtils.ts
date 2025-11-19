@@ -130,3 +130,29 @@ export const getNextAutomaticStatus = (currentStatus: string, context?: any): st
       return null;
   }
 };
+
+/**
+ * Verifica se uma cotação está em um status final que impede novas ações
+ * @param status - Status atual da cotação
+ * @returns true se a cotação estiver bloqueada para edição/aprovação
+ */
+export const isQuoteLocked = (status: string): boolean => {
+  const lockedStatuses = [
+    'approved',      // Já aprovada
+    'rejected',      // Rejeitada
+    'finalized',     // Finalizada
+    'cancelled',     // Cancelada
+    'paid',          // Pagamento confirmado
+    'received',      // Pagamento recebido
+    'trash'          // Na lixeira
+  ];
+  
+  return lockedStatuses.includes(status);
+};
+
+/**
+ * Verifica se uma cotação ainda pode receber ações (aprovação, negociação, etc)
+ */
+export const canQuoteReceiveActions = (status: string): boolean => {
+  return !isQuoteLocked(status);
+};

@@ -44,7 +44,7 @@ import { ProposalComparisonTable } from './ProposalComparisonTable';
 import { ProposalDashboardMetrics } from './ProposalDashboardMetrics';
 // ProposalRecommendationBadge removido - usar apenas DecisionMatrixWidget
 import { DecisionMatrixWidget } from './DecisionMatrixWidget';
-import { getStatusText } from "@/utils/statusUtils";
+import { getStatusText, isQuoteLocked as checkQuoteLocked } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate, formatRelativeTime } from "@/utils/dateUtils";
 import { ItemAnalysisData } from '@/hooks/useItemAnalysis';
 import { supabase } from '@/integrations/supabase/client';
@@ -447,7 +447,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
   const negotiation = quote ? getNegotiationByQuoteId(quote.id) : null;
 
   // Verifica se a cotação está bloqueada para aprovação
-  const isQuoteLocked = quote?.status === 'pending_approval' || quote?.status === 'approved';
+  const isQuoteLockedForActions = quote?.status ? checkQuoteLocked(quote.status) : false;
 
   // Verifica se o prazo da cotação expirou
   const isDeadlineExpired = useMemo(() => {
@@ -1066,6 +1066,28 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 />
               )}
 
+              {/* Mensagem informativa quando cotação está finalizada */}
+              {isQuoteLockedForActions && proposals.length > 0 && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900 mb-1">
+                        Cotação Finalizada
+                      </h4>
+                      <p className="text-sm text-blue-700">
+                        Esta cotação está com status "{getStatusText(quote.status)}" e não aceita mais modificações.
+                        {quote.status === 'received' && ' O pagamento já foi recebido e processado.'}
+                        {quote.status === 'approved' && ' Uma proposta já foi aprovada anteriormente.'}
+                        {quote.status === 'paid' && ' O pagamento já foi confirmado.'}
+                        {quote.status === 'finalized' && ' Esta cotação foi finalizada.'}
+                        {quote.status === 'cancelled' && ' Esta cotação foi cancelada.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Tabela de Comparação de Propostas */}
               {proposals.length > 0 && (
                 <Card>
@@ -1074,7 +1096,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       <CardTitle>
                         {proposals.length === 1 ? 'Detalhes da Proposta' : 'Comparação de Propostas'}
                       </CardTitle>
-                      {!isQuoteLocked && proposals.length === 1 && (
+                      {!isQuoteLockedForActions && proposals.length === 1 && (
                         <Button
                           onClick={() => onApprove?.(proposals[0])}
                           className="flex items-center gap-2"
@@ -1092,7 +1114,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                     />
                     
                     {/* Botões de aprovação para múltiplas propostas */}
-                    {!isQuoteLocked && proposals.length > 1 && !shouldShowMatrix && (
+                    {!isQuoteLockedForActions && proposals.length > 1 && !shouldShowMatrix && (
                       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <div className="flex items-start gap-3">
                           <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
