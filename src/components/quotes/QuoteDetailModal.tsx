@@ -25,7 +25,8 @@ import {
   Brain,
   User,
   AlertTriangle,
-  ShoppingCart
+  ShoppingCart,
+  Sparkles
 } from 'lucide-react';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
@@ -946,15 +947,16 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                       </Button>
                     )}
 
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowItemAnalysis(true)}
-                      disabled={quote.status === 'pending_approval' || quote.status === 'approved'}
-                      className="flex items-center gap-2"
-                    >
-                      <Package className="h-4 w-4" />
-                      🧩 Combinação Inteligente
-                    </Button>
+              {!isQuoteLockedForActions && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowItemAnalysis(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Package className="h-4 w-4" />
+                  🧩 Combinação Inteligente
+                </Button>
+              )}
 
                     <Button 
                       variant="outline" 
@@ -1014,17 +1016,17 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
               )}
 
               {/* Decision Matrix Widget */}
-              {shouldShowMatrix && (
-                <DecisionMatrixWidget
-                  proposals={proposals}
-                  quoteItems={quoteItems}
-                  quoteId={quote.id}
-                  quoteName={quote.title}
-                  defaultOpen={true}
-                  onApprove={onApprove}
-                  quoteStatus={quote.status}
-                />
-              )}
+            {shouldShowMatrix && !isQuoteLockedForActions && (
+              <DecisionMatrixWidget
+                proposals={proposals}
+                quoteItems={quoteItems}
+                quoteId={quote.id}
+                quoteName={quote.title}
+                defaultOpen={true}
+                onApprove={onApprove}
+                quoteStatus={quote.status}
+              />
+            )}
 
               {/* AI Consultant Analysis Button */}
               {proposals.length >= 2 && !hasAnalyses && (
@@ -1184,7 +1186,8 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
 
             <TabsContent value="analysis" className="space-y-6">
               {/* AI Negotiation Card */}
-              {negotiation ? (
+            {!isQuoteLockedForActions ? (
+              negotiation ? (
                 <AINegotiationCard
                   negotiation={negotiation}
                   onStartNegotiation={startNegotiation}
@@ -1196,165 +1199,43 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      🧩 Combinação Inteligente
+                      <Sparkles className="h-5 w-5 text-purple-600" />
+                      Combinação Inteligente
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Encontre automaticamente o melhor preço de cada item entre todos os fornecedores. 
-                      <strong className="text-primary"> Análise 100% local, sem consumo de tokens de IA.</strong>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Encontre a combinação ótima de fornecedores para cada item da sua cotação, maximizando economia e qualidade.
                     </p>
-                    {!bestCombination ? (
-                      <div className="text-center py-4 text-muted-foreground">
-                        Aguardando propostas de fornecedores...
-                      </div>
-                    ) : (
-                      <Button 
-                        onClick={() => {
-                          toast({
-                            title: '✅ Combinação Calculada',
-                            description: `Economia de R$ ${bestCombination.totalSavings.toFixed(2)} (${bestCombination.savingsPercentage.toFixed(1)}%) identificada!`,
-                          });
-                        }} 
-                        className="flex items-center gap-2"
-                      >
-                        <Package className="h-4 w-4" />
-                        Atualizar Combinação Inteligente
-                      </Button>
-                    )}
+                    <Button
+                      onClick={() => setShowItemAnalysis(true)}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      Ver Análise Detalhada
+                    </Button>
                   </CardContent>
                 </Card>
-              )}
+              )
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-muted-foreground" />
+                    Análise Não Disponível
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    As análises de IA e combinações inteligentes não estão disponíveis para cotações finalizadas.
+                    Esta cotação está com status "{getStatusText(quote.status)}".
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
               {/* Smart Combination Analysis */}
-              {bestCombination && (
-                <>
-                  <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-green-700">
-                        <Package className="h-5 w-5" />
-                        🧩 Combinação Inteligente - Melhores Preços
-                      </CardTitle>
-                      <p className="text-sm text-green-700 mt-2">
-                        💡 <strong>Monte a compra ideal:</strong> Veja quanto você economiza comprando cada item do fornecedor 
-                        que oferece o melhor preço, mesmo que isso signifique comprar de múltiplos fornecedores.
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">💰 Economia Total</p>
-                          <p className="text-2xl font-bold text-green-600">
-                            R$ {bestCombination.totalSavings.toFixed(2)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">📊 Percentual</p>
-                          <p className="text-2xl font-bold text-green-600">
-                            {bestCombination.savingsPercentage.toFixed(1)}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">💵 Custo Otimizado</p>
-                          <p className="text-2xl font-bold text-blue-600">
-                            R$ {bestCombination.totalCost.toFixed(2)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">🏪 Fornecedores</p>
-                          <p className="text-2xl font-bold">
-                            {bestCombination.uniqueSuppliers.length}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {bestCombination.isMultiSupplier && (
-                        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium text-yellow-900">
-                                ⚠️ Estratégia Multi-fornecedor Detectada
-                              </p>
-                              <p className="text-sm text-yellow-800">
-                                Comprar de <strong>{bestCombination.uniqueSuppliers.length} fornecedores diferentes</strong> pode 
-                                gerar múltiplos fretes e complexidade logística. Considere:
-                              </p>
-                              <ul className="text-sm text-yellow-800 space-y-1 ml-4">
-                                <li>• Negociar frete grátis com os fornecedores</li>
-                                <li>• Verificar se a economia compensa os custos adicionais</li>
-                                <li>• Consultar a análise do <strong>Consultor IA</strong> para uma visão mais completa</li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Item Analysis */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Análise Item por Item</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {bestCombination.items.map((item) => (
-                          <div key={item.id} className="border rounded-lg p-4">
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <h4 className="font-semibold">{item.productName}</h4>
-                                <p className="text-sm text-muted-foreground">Quantidade: {item.quantity}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-bold text-green-600">
-                                  Economia: R$ {((item.savings || 0) * (item.quantity || 0)).toFixed(2)}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  por unidade: R$ {(item.savings || 0).toFixed(2)}
-                                </p>
-                              </div>
-                            </div>
-
-                            {item.bestProposal && (
-                              <div className="bg-green-50 p-3 rounded">
-                                <div className="flex justify-between items-center">
-                                  <div>
-                                    <p className="font-medium text-green-800">
-                                      Melhor: {item.bestProposal.supplierName}
-                                    </p>
-                                    <p className="text-sm text-green-600">
-                                      R$ {(item.bestProposal?.item?.unitPrice || 0).toFixed(2)}/un
-                                      {item.bestProposal.item?.brand && ` • ${item.bestProposal.item.brand}`}
-                                    </p>
-                                  </div>
-                                  <Badge variant="default">
-                                    {item.bestProposal.reputation}/5 ⭐
-                                  </Badge>
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="mt-3 text-xs text-muted-foreground">
-                              <p>Outras opções: {item.allProposals.length - 1} fornecedor(es)</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {bestCombination.items.length > 0 && (
-                        <div className="mt-6 pt-4 border-t">
-                          <Button onClick={handleApproveOptimal} className="w-full">
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Aprovar Combinação Ótima
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </>
-              )}
             </TabsContent>
 
             {/* AI Analyses History Tab */}
