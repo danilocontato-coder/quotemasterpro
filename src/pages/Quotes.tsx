@@ -913,6 +913,18 @@ export default function Quotes() {
           }}
           onApprove={async (proposal: any) => {
             try {
+              // Validação de segurança: verificar se a cotação ainda pode ser aprovada
+              if (viewingQuote && viewingQuote.status) {
+                const { isQuoteLocked } = await import('@/utils/statusUtils');
+                if (isQuoteLocked(viewingQuote.status)) {
+                  const { getStatusText } = await import('@/utils/statusUtils');
+                  toast.error('Cotação já finalizada', {
+                    description: `Esta cotação está com status "${getStatusText(viewingQuote.status)}" e não pode mais ser modificada.`
+                  });
+                  return;
+                }
+              }
+              
               const { data, error } = await supabase.functions.invoke('approve-proposal', {
                 body: {
                   responseId: proposal.id,

@@ -10,6 +10,7 @@ import { NegotiationResultModal } from './NegotiationResultModal';
 import { ProposalCard } from './ProposalCard';
 import { DollarSign, Clock, Package, Shield, Star, Zap, Save, CheckCircle, Settings, Brain } from 'lucide-react';
 import { QuoteProposal } from './QuoteDetailModal';
+import { isQuoteLocked as checkQuoteLocked } from '@/utils/statusUtils';
 import { useSavedDecisionMatrices } from '@/hooks/useSavedDecisionMatrices';
 import { useAINegotiation } from '@/hooks/useAINegotiation';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +42,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   onApprove,
   quoteStatus
 }) => {
-  const isQuoteLocked = quoteStatus === 'pending_approval' || quoteStatus === 'approved';
+  const isQuoteLocked = checkQuoteLocked(quoteStatus);
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [weights, setWeights] = useState<WeightConfig>(DEFAULT_WEIGHT_TEMPLATES.equilibrado);
   const [isSaving, setIsSaving] = useState(false);
