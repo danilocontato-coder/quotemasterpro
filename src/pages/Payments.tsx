@@ -81,10 +81,10 @@ export default function Payments() {
   // Enable automatic payment creation for approved quotes
   useAutomaticPayments();
   
-  // ✅ FASE 4: Auto-sync ao entrar na página se última sync > 5 min
+  // ✅ FASE 4: Auto-sync ao entrar na página
   useEffect(() => {
     const autoSyncOnMount = async () => {
-      await refetch(true); // Force sync
+      await refetch(); // Fetch on mount
     };
     
     autoSyncOnMount();

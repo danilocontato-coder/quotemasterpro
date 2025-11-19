@@ -40,7 +40,7 @@ export default function PagamentosPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
   
-  const { payments, isLoading, refetch, createCheckoutSession, confirmDelivery } = useAdministradoraPayments();
+  const { payments, isLoading, isRefetching, refetch, createCheckoutSession, confirmDelivery } = useAdministradoraPayments();
   const { currentClientId, condominios } = useAdministradora();
 
   const filteredPayments = payments.filter(payment => {
@@ -120,7 +120,8 @@ export default function PagamentosPage() {
     });
   };
 
-  if (isLoading) {
+  // Mostrar loader completo apenas no primeiro carregamento
+  if (isLoading && payments.length === 0) {
     return (
       <PageLoader
         hasHeader={true}
@@ -135,6 +136,16 @@ export default function PagamentosPage() {
 
   return (
     <div className="space-y-6">
+      {/* ✅ Indicador sutil de refetch em background */}
+      {isRefetching && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="flex items-center gap-2 bg-secondary text-secondary-foreground px-3 py-2 rounded-full shadow-lg">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            <span className="text-xs">Atualizando...</span>
+          </div>
+        </div>
+      )}
+      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Pagamentos</h1>
