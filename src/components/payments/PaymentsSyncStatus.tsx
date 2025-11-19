@@ -136,13 +136,10 @@ function PaymentsSyncStatusComponent() {
           <div className="flex items-center justify-center">
             <Activity className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Memoizar para evitar re-renders desnecessários
-export const PaymentsSyncStatus = memo(PaymentsSyncStatusComponent);
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -214,3 +211,7 @@ export const PaymentsSyncStatus = memo(PaymentsSyncStatusComponent);
     </Card>
   );
 }
+
+// Memoizar para evitar re-renders desnecessários
+export const PaymentsSyncStatus = memo(PaymentsSyncStatusComponent);
+
