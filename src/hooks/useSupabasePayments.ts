@@ -43,21 +43,6 @@ export interface Payment {
     id: string;
     name: string;
   } | null;
-  quote_responses?: Array<{
-    id: string;
-    items: Array<{
-      product_name: string;
-      quantity: number;
-      unit_price: number;
-      total: number;
-      brand?: string;
-      specifications?: string;
-    }>;
-    shipping_cost: number;
-    delivery_time: number;
-    warranty_months: number;
-    total_amount: number;
-  }>;
 }
 
 export const useSupabasePayments = () => {
@@ -67,11 +52,10 @@ export const useSupabasePayments = () => {
   const lastSyncTime = useRef<number>(0);
 
   const fetchPayments = async () => {
+    setIsLoading(true);
+    console.log('🔍 [Payments] Iniciando busca de pagamentos...');
+    
     try {
-      setIsLoading(true);
-      console.log('Fetching payments...');
-      
-      // Query única com LEFT JOIN (abordagem original que funcionava)
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
         .select(`
@@ -86,40 +70,32 @@ export const useSupabasePayments = () => {
             suppliers(id, name, asaas_wallet_id)
           ),
           suppliers(id, name, asaas_wallet_id),
-          clients(id, name),
-          quote_responses!left(
-            id,
-            items,
-            shipping_cost,
-            delivery_time,
-            warranty_months,
-            total_amount,
-            status
-          )
+          clients(id, name)
         `)
         .order('created_at', { ascending: false });
 
       if (paymentsError) {
-        console.error('Payments fetch error:', paymentsError);
+        console.error('❌ [Payments] Erro na query:', {
+          code: paymentsError.code,
+          message: paymentsError.message,
+          details: paymentsError.details,
+          hint: paymentsError.hint
+        });
         throw paymentsError;
       }
 
-      // Filtrar apenas responses aprovadas no JavaScript
-      const paymentsWithApprovedResponses = (paymentsData || []).map(payment => ({
-        ...payment,
-        quote_responses: Array.isArray(payment.quote_responses)
-          ? payment.quote_responses.filter((r: any) => r.status === 'approved')
-          : []
-      }));
+      console.log('✅ [Payments] Busca concluída:', {
+        count: paymentsData?.length || 0,
+        sample: paymentsData?.[0]?.id || 'nenhum'
+      });
 
-      console.log('Payments query result:', paymentsWithApprovedResponses);
-      setPayments(paymentsWithApprovedResponses as any);
-    } catch (error) {
-      console.error('Error fetching payments:', error);
+      setPayments(paymentsData as any);
+    } catch (error: any) {
+      console.error('💥 [Payments] Erro fatal ao buscar pagamentos:', error);
       toast({
-        title: "Erro ao carregar pagamentos",
-        description: "Não foi possível carregar a lista de pagamentos.",
-        variant: "destructive"
+        title: 'Erro ao carregar pagamentos',
+        description: error.message || error.hint || 'Erro desconhecido ao buscar pagamentos',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
