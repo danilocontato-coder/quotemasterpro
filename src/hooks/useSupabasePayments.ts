@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -51,7 +51,7 @@ export const useSupabasePayments = () => {
   const { toast } = useToast();
   const lastSyncTime = useRef<number>(0);
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     setIsLoading(true);
     console.log('🔍 [Payments] Iniciando busca de pagamentos...');
     
@@ -100,7 +100,7 @@ export const useSupabasePayments = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   const createPaymentIntent = async (paymentId: string) => {
     try {
@@ -264,7 +264,7 @@ export const useSupabasePayments = () => {
       clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, [fetchPayments, toast]);
 
   return {
     payments,
