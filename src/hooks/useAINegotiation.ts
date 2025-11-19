@@ -275,13 +275,16 @@ export function useAINegotiation() {
 
   // Polling inteligente para negociações travadas em "analyzing"
   useEffect(() => {
+    // ⚡ OTIMIZAÇÃO: Só verificar se houver negociações ativas
+    if (negotiations.length === 0) return;
+
     const checkStuckAnalysis = async () => {
       const stuck = negotiations.filter(n => {
         if (n.status !== 'analyzing') return false;
         const created = new Date(n.created_at).getTime();
         const now = Date.now();
         const minutesStuck = (now - created) / 1000 / 60;
-        return minutesStuck > 2; // Travada por mais de 2 minutos
+        return minutesStuck > 2;
       });
 
       if (stuck.length > 0) {
@@ -296,8 +299,8 @@ export function useAINegotiation() {
       }
     };
 
-    // Verificar a cada 30 segundos se há negociações travadas
-    const interval = setInterval(checkStuckAnalysis, 30000);
+    // ⚡ OTIMIZAÇÃO: Aumentar intervalo de 30s -> 2 min (-75% requisições)
+    const interval = setInterval(checkStuckAnalysis, 120000);
     return () => clearInterval(interval);
   }, [negotiations, startAnalysis]);
 

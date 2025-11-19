@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle, AlertCircle, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useRealtimeTable } from "@/hooks/useRealtimeTable";
 
 interface SyncStatus {
   lastSync: string | null;
@@ -13,23 +14,61 @@ interface SyncStatus {
   isHealthy: boolean;
 }
 
-export function PaymentsSyncStatus() {
-  const [status, setStatus] = useState<SyncStatus>({
-    lastSync: null,
-    webhookEvents: 0,
-    nextCronRun: null,
-    isHealthy: true
+const CACHE_KEY = 'payment-sync-status-cache';
+const CACHE_TTL = 1 * 60 * 1000; // 1 minuto
+const FALLBACK_INTERVAL = 2 * 60 * 1000; // 2 minutos (reduzido de 30s)
+
+function PaymentsSyncStatusComponent() {
+  const [status, setStatus] = useState<SyncStatus>(() => {
+    // Carregar do cache
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_TTL) {
+        return data;
+      }
+    }
+    return {
+      lastSync: null,
+      webhookEvents: 0,
+      nextCronRun: null,
+      isHealthy: true
+    };
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchSyncStatus();
     
-    // Atualizar a cada 30 segundos
-    const interval = setInterval(fetchSyncStatus, 30000);
+    // Fallback polling a cada 2 minutos (reduzido de 30s -> -75% requisições)
+    const interval = setInterval(fetchSyncStatus, FALLBACK_INTERVAL);
     
     return () => clearInterval(interval);
   }, []);
+
+  // Realtime para audit_logs (substituir parte do polling)
+  useRealtimeTable({
+    table: 'audit_logs',
+    event: 'INSERT',
+    filter: 'action=eq.SCHEDULED_SYNC_COMPLETED',
+    onData: (payload) => {
+      setStatus(prev => ({
+        ...prev,
+        lastSync: payload.new.created_at,
+        isHealthy: true
+      }));
+      
+      // Atualizar cache
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: {
+          ...status,
+          lastSync: payload.new.created_at,
+          isHealthy: true
+        },
+        timestamp: Date.now()
+      }));
+    }
+  });
 
   const fetchSyncStatus = async () => {
     try {
@@ -66,15 +105,23 @@ export function PaymentsSyncStatus() {
       }
 
       const isHealthy = lastSyncLog 
-        ? new Date().getTime() - new Date(lastSyncLog.created_at).getTime() < 10 * 60 * 1000 // < 10 min
+        ? new Date().getTime() - new Date(lastSyncLog.created_at).getTime() < 10 * 60 * 1000
         : false;
 
-      setStatus({
+      const newStatus = {
         lastSync: lastSyncLog?.created_at || null,
         webhookEvents: webhookCount || 0,
         nextCronRun: nextRun.toISOString(),
         isHealthy
-      });
+      };
+
+      setStatus(newStatus);
+      
+      // Salvar no cache
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: newStatus,
+        timestamp: Date.now()
+      }));
     } catch (error) {
       console.error('Erro ao buscar status de sincronização:', error);
     } finally {
@@ -89,10 +136,13 @@ export function PaymentsSyncStatus() {
           <div className="flex items-center justify-center">
             <Activity className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
+      </CardContent>
+    </Card>
+  );
+}
+
+// Memoizar para evitar re-renders desnecessários
+export const PaymentsSyncStatus = memo(PaymentsSyncStatusComponent);
 
   return (
     <Card>

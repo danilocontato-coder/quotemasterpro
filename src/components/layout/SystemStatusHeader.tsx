@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import {
   Timer
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 
 interface SystemStats {
   totalUsers: number;
@@ -29,17 +30,31 @@ interface SystemStats {
   lastUpdate: string;
 }
 
-export function SystemStatusHeader() {
-  const [stats, setStats] = useState<SystemStats>({
-    totalUsers: 0,
-    onlineUsers: 0,
-    systemLoad: 0,
-    uptime: 99.9,
-    activeAlerts: 0,
-    totalQuotes: 0,
-    totalSuppliers: 0,
-    totalIntegrations: 0,
-    lastUpdate: new Date().toLocaleTimeString('pt-BR')
+const CACHE_KEY = 'system-stats-cache';
+const CACHE_TTL = 2 * 60 * 1000; // 2 minutos
+const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutos (reduzido de 30s)
+
+function SystemStatusHeaderComponent() {
+  const [stats, setStats] = useState<SystemStats>(() => {
+    // Carregar do cache no mount
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_TTL) {
+        return data;
+      }
+    }
+    return {
+      totalUsers: 0,
+      onlineUsers: 0,
+      systemLoad: 0,
+      uptime: 99.9,
+      activeAlerts: 0,
+      totalQuotes: 0,
+      totalSuppliers: 0,
+      totalIntegrations: 0,
+      lastUpdate: new Date().toLocaleTimeString('pt-BR')
+    };
   });
   
   const [isLoading, setIsLoading] = useState(false);
@@ -76,17 +91,25 @@ export function SystemStatusHeader() {
       
       const systemLoad = Math.min(Math.round((recentQuotes / 10) * 100), 100);
 
-      setStats({
+      const newStats = {
         totalUsers: usersResult.data?.length || 0,
         onlineUsers: onlineCount,
         systemLoad,
-        uptime: 99.9 - Math.random() * 0.5, // Simular pequenas variações
+        uptime: 99.9 - Math.random() * 0.5,
         activeAlerts: notificationsResult.data?.length || 0,
         totalQuotes: quotesResult.data?.length || 0,
         totalSuppliers: suppliersResult.data?.filter(s => s.status === 'active').length || 0,
         totalIntegrations: integrationsResult.data?.filter(i => i.active).length || 0,
         lastUpdate: new Date().toLocaleTimeString('pt-BR')
-      });
+      };
+
+      setStats(newStats);
+      
+      // Salvar no cache
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: newStats,
+        timestamp: Date.now()
+      }));
 
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -96,13 +119,29 @@ export function SystemStatusHeader() {
   };
 
   useEffect(() => {
+    // Carregar inicial
     loadSystemStats();
     
-    // Atualizar a cada 30 segundos
-    const interval = setInterval(loadSystemStats, 30000);
+    // Atualizar a cada 5 minutos (reduzido de 30s -> -90% requisições)
+    const interval = setInterval(loadSystemStats, REFRESH_INTERVAL);
     
     return () => clearInterval(interval);
   }, []);
+
+  // Realtime para notificações (substituir polling)
+  useRealtimeTable({
+    table: 'notifications',
+    filter: user?.id ? `user_id=eq.${user.id}` : undefined,
+    enabled: !!user?.id,
+    onData: () => {
+      // Apenas incrementar contador de alertas sem refetch completo
+      setStats(prev => ({
+        ...prev,
+        activeAlerts: prev.activeAlerts + 1,
+        lastUpdate: new Date().toLocaleTimeString('pt-BR')
+      }));
+    }
+  });
 
   const getLoadColor = (load: number) => {
     if (load < 30) return 'text-green-600';
@@ -203,3 +242,6 @@ export function SystemStatusHeader() {
     </div>
   );
 }
+
+// Memoizar para evitar re-renders desnecessários
+export const SystemStatusHeader = memo(SystemStatusHeaderComponent);
