@@ -89,6 +89,73 @@ export const supplierFormSchema = z.object({
   
   // Campos opcionais
   status: z.enum(['active', 'inactive', 'pending']).default('active'),
+  
+  // Dados Bancários (opcionais no cadastro inicial, mas necessários para split)
+  bank_code: z
+    .string()
+    .trim()
+    .regex(/^\d{3}$/, 'Código do banco deve ter 3 dígitos')
+    .optional()
+    .or(z.literal('')),
+  
+  bank_name: z
+    .string()
+    .trim()
+    .max(100, 'Nome do banco muito longo')
+    .optional()
+    .or(z.literal('')),
+  
+  agency: z
+    .string()
+    .trim()
+    .max(10, 'Agência deve ter no máximo 10 caracteres')
+    .optional()
+    .or(z.literal('')),
+  
+  agency_digit: z
+    .string()
+    .trim()
+    .max(2, 'Dígito da agência inválido')
+    .optional()
+    .or(z.literal('')),
+  
+  account_number: z
+    .string()
+    .trim()
+    .max(20, 'Número da conta deve ter no máximo 20 caracteres')
+    .optional()
+    .or(z.literal('')),
+  
+  account_digit: z
+    .string()
+    .trim()
+    .max(2, 'Dígito da conta inválido')
+    .optional()
+    .or(z.literal('')),
+  
+  account_type: z
+    .enum(['corrente', 'poupanca'])
+    .optional(),
+  
+  account_holder_name: z
+    .string()
+    .trim()
+    .max(150, 'Nome do titular muito longo')
+    .optional()
+    .or(z.literal('')),
+  
+  account_holder_document: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal('')),
+  
+  pix_key: z
+    .string()
+    .trim()
+    .max(100, 'Chave PIX muito longa')
+    .optional()
+    .or(z.literal('')),
 }).refine((data) => {
   // Validação condicional do documento baseado no tipo
   const normalized = normalizeDocument(data.document_number);
@@ -147,7 +214,21 @@ export const specialtiesSchema = supplierFormSchema.pick({
   specialties: true,
 });
 
+export const bankDataSchema = supplierFormSchema.pick({
+  bank_code: true,
+  bank_name: true,
+  agency: true,
+  agency_digit: true,
+  account_number: true,
+  account_digit: true,
+  account_type: true,
+  account_holder_name: true,
+  account_holder_document: true,
+  pix_key: true,
+});
+
 export type BasicInfoData = z.infer<typeof basicInfoSchema>;
 export type ContactData = z.infer<typeof contactSchema>;
 export type LocationData = z.infer<typeof locationSchema>;
 export type SpecialtiesData = z.infer<typeof specialtiesSchema>;
+export type BankData = z.infer<typeof bankDataSchema>;
