@@ -81,14 +81,11 @@ export default function Payments() {
   // Enable automatic payment creation for approved quotes
   useAutomaticPayments();
   
-  // ✅ FASE 4: Auto-sync ao entrar na página
+  // ✅ Buscar pagamentos apenas uma vez ao montar
   useEffect(() => {
-    const autoSyncOnMount = async () => {
-      await refetch(); // Fetch on mount
-    };
-    
-    autoSyncOnMount();
-  }, [refetch]);
+    refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependências vazias - executa apenas uma vez (refetch já está memoizado)
 
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = 

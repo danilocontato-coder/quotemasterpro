@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdministradora } from '@/contexts/AdministradoraContext';
 import { toast } from 'sonner';
@@ -36,7 +36,7 @@ export function useAdministradoraPayments() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
 
-  const fetchPayments = async (isInitialLoad = false) => {
+  const fetchPayments = useCallback(async (isInitialLoad = false) => {
     if (!adminClientId) {
       console.warn('⚠️ [AdministradoraPayments] adminClientId não disponível');
       return;
@@ -109,7 +109,7 @@ export function useAdministradoraPayments() {
       setIsLoading(false);
       setIsRefetching(false);
     }
-  };
+  }, [adminClientId, currentClientId, condominios]);
 
   useEffect(() => {
     fetchPayments(true); // Initial load
@@ -143,7 +143,7 @@ export function useAdministradoraPayments() {
       clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
-  }, [currentClientId, adminClientId, condominios.length]);
+  }, [fetchPayments]);
 
   const createCheckoutSession = async (paymentId: string) => {
     try {
@@ -185,7 +185,7 @@ export function useAdministradoraPayments() {
     payments,
     isLoading,
     isRefetching,
-    refetch: () => fetchPayments(false),
+    refetch: fetchPayments,
     createCheckoutSession,
     confirmDelivery
   };
