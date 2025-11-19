@@ -16,7 +16,7 @@ interface SyncStatus {
 
 const CACHE_KEY = 'payment-sync-status-cache';
 const CACHE_TTL = 1 * 60 * 1000; // 1 minuto
-const FALLBACK_INTERVAL = 2 * 60 * 1000; // 2 minutos (reduzido de 30s)
+const FALLBACK_INTERVAL = 5 * 60 * 1000; // 5 minutos (apenas fallback, realtime é principal)
 
 function PaymentsSyncStatusComponent() {
   const [status, setStatus] = useState<SyncStatus>(() => {
@@ -52,44 +52,52 @@ function PaymentsSyncStatusComponent() {
     event: 'INSERT',
     filter: 'action=eq.SCHEDULED_SYNC_COMPLETED',
     onData: (payload) => {
-      setStatus(prev => ({
-        ...prev,
-        lastSync: payload.new.created_at,
-        isHealthy: true
-      }));
-      
-      // Atualizar cache
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-        data: {
-          ...status,
+      setStatus(prev => {
+        const newStatus = {
+          ...prev,
           lastSync: payload.new.created_at,
           isHealthy: true
-        },
-        timestamp: Date.now()
-      }));
+        };
+        
+        // Atualizar cache com o status correto (não usar closure stale)
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          data: newStatus,
+          timestamp: Date.now()
+        }));
+        
+        return newStatus;
+      });
     }
   });
 
   const fetchSyncStatus = async () => {
     try {
-      // Buscar último log de sincronização automática
-      const { data: lastSyncLog } = await supabase
+      // Buscar último log de sincronização automática - usar maybeSingle
+      const { data: lastSyncLog, error: syncError } = await supabase
         .from('audit_logs')
         .select('created_at, details')
         .eq('action', 'SCHEDULED_SYNC_COMPLETED')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
+      
+      if (syncError) {
+        console.warn('[PaymentsSyncStatus] Erro ao buscar último sync:', syncError);
+      }
 
       // Buscar eventos de webhook das últimas 24h
       const oneDayAgo = new Date();
       oneDayAgo.setHours(oneDayAgo.getHours() - 24);
       
-      const { count: webhookCount } = await supabase
+      const { count: webhookCount, error: webhookError } = await supabase
         .from('audit_logs')
         .select('*', { count: 'exact', head: true })
         .eq('action', 'PAYMENT_WEBHOOK_RECEIVED')
         .gte('created_at', oneDayAgo.toISOString());
+      
+      if (webhookError) {
+        console.warn('[PaymentsSyncStatus] Erro ao buscar webhooks:', webhookError);
+      }
 
       // Calcular próxima execução (a cada 5 min)
       const now = new Date();
@@ -104,9 +112,10 @@ function PaymentsSyncStatusComponent() {
         nextRun.setMinutes(nextRun.getMinutes() + 5);
       }
 
+      // Se não houver sync ainda, considerar healthy (sistema novo)
       const isHealthy = lastSyncLog 
         ? new Date().getTime() - new Date(lastSyncLog.created_at).getTime() < 10 * 60 * 1000
-        : false;
+        : true;
 
       const newStatus = {
         lastSync: lastSyncLog?.created_at || null,
@@ -123,7 +132,8 @@ function PaymentsSyncStatusComponent() {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.error('Erro ao buscar status de sincronização:', error);
+      console.error('[PaymentsSyncStatus] Erro geral:', error);
+      // Não quebrar a interface, apenas logar
     } finally {
       setLoading(false);
     }
@@ -251,7 +261,7 @@ function PaymentsSyncStatusComponent() {
                   addSuffix: true, 
                   locale: ptBR 
                 })
-              : 'Nunca'}
+              : 'Aguardando primeira sincronização'}
           </span>
         </div>
 
