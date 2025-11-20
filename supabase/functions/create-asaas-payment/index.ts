@@ -513,7 +513,7 @@ serve(async (req) => {
     
     console.log(`📋 Invoice URL gerada: ${invoiceUrl}`)
 
-    // Atualizar pagamento com dados do Asaas
+    // Atualizar pagamento com dados do Asaas e comissões
     await supabase
       .from('payments')
       .update({
@@ -523,6 +523,10 @@ serve(async (req) => {
         status: 'processing',
         escrow_release_date: new Date(Date.now() + autoReleaseDays * 24 * 60 * 60 * 1000).toISOString(),
         updated_at: new Date().toISOString(),
+        platform_commission_percentage: commissionPercentage,
+        platform_commission_amount: platformAmount,
+        supplier_net_amount: supplierAmount,
+        split_applied: shouldIncludeSplit && !!validatedWalletId,
       })
       .eq('id', paymentId)
 

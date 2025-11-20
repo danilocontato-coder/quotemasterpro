@@ -241,6 +241,42 @@ export default function SupplierReceivables() {
         </TabsList>
 
         <TabsContent value="receivables" className="space-y-4">
+          {/* Resumo Financeiro */}
+          <Card className="border-blue-100 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Resumo Financeiro
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Total Bruto</p>
+                  <p className="text-xl font-bold">
+                    {formatCurrency(receivables.reduce((sum, r) => sum + r.amount, 0))}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Comissão Plataforma</p>
+                  <p className="text-xl font-bold text-red-600">
+                    -{formatCurrency(receivables.reduce((sum, r) => 
+                      sum + (r.platform_commission_amount || 0), 0
+                    ))}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Total Líquido</p>
+                  <p className="text-xl font-bold text-green-600">
+                    {formatCurrency(receivables.reduce((sum, r) => 
+                      sum + (r.supplier_net_amount || r.amount), 0
+                    ))}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Filtros */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -282,7 +318,10 @@ export default function SupplierReceivables() {
                       <TableRow>
                         <TableHead>Cotação</TableHead>
                         <TableHead>Cliente</TableHead>
-                        <TableHead>Valor</TableHead>
+                        <TableHead>Valor Bruto</TableHead>
+                        <TableHead>Comissão</TableHead>
+                        <TableHead>Valor Líquido</TableHead>
+                        <TableHead>Split</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Data</TableHead>
                         <TableHead>Método</TableHead>
@@ -301,8 +340,20 @@ export default function SupplierReceivables() {
                               <div className="text-sm text-muted-foreground">{receivable.quote_title}</div>
                             </div>
                           </TableCell>
-                          <TableCell className="font-bold">
-                            {formatCurrency(receivable.amount)}
+                          <TableCell className="font-medium">{formatCurrency(receivable.amount)}</TableCell>
+                          <TableCell className="text-red-600">
+                            -{formatCurrency(receivable.platform_commission_amount || 0)}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({receivable.platform_commission_percentage || 5}%)
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-semibold text-green-600">
+                            {formatCurrency(receivable.supplier_net_amount || receivable.amount * 0.95)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={receivable.split_applied ? "approved" : "draft"}>
+                              {receivable.split_applied ? "✓ Aplicado" : "Manual"}
+                            </Badge>
                           </TableCell>
                           <TableCell>{getStatusBadge(receivable.status)}</TableCell>
                           <TableCell>
