@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,11 @@ export default function SupplierReceivables() {
     getStatusText: getTransferStatusText, 
     getStatusColor: getTransferStatusColor 
   } = useSupplierTransfers();
+
+  // Carregar saldo ao montar componente
+  useEffect(() => {
+    fetchBalance();
+  }, []);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -106,6 +111,73 @@ export default function SupplierReceivables() {
         </div>
       </div>
 
+      {/* Wallet Asaas - Saldo Disponível */}
+      <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-green-600" />
+              Wallet Asaas
+            </span>
+            <Button onClick={fetchBalance} variant="ghost" size="sm" disabled={isLoadingBalance}>
+              <RefreshCw className={`h-4 w-4 ${isLoadingBalance ? 'animate-spin' : ''}`} />
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoadingBalance ? (
+            <div className="animate-pulse space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                </div>
+                <div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                </div>
+                <div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              </div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Disponível</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(balance?.availableForTransfer || 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Bloqueado</p>
+                  <p className="text-xl font-medium text-orange-600">
+                    {formatCurrency(balance?.blockedBalance || 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Total</p>
+                  <p className="text-xl font-medium">
+                    {formatCurrency(balance?.totalBalance || 0)}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => setIsTransferDialogOpen(true)} 
+                className="w-full"
+                disabled={(balance?.availableForTransfer || 0) <= 0}
+              >
+                <ArrowDownCircle className="h-4 w-4 mr-2" />
+                Solicitar Transferência
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Métricas */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -164,6 +236,7 @@ export default function SupplierReceivables() {
       <Tabs defaultValue="receivables" className="w-full">
         <TabsList>
           <TabsTrigger value="receivables">Recebimentos</TabsTrigger>
+          <TabsTrigger value="transfers">Transferências</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
 
@@ -318,11 +391,62 @@ export default function SupplierReceivables() {
         </TabsContent>
 
         <TabsContent value="transfers" className="space-y-4">
+          {/* Resumo de Saldo */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Disponível para Saque</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {formatCurrency(balance?.availableForTransfer || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pode ser transferido agora
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Bloqueado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {formatCurrency(balance?.blockedBalance || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Em garantia ou processamento
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Transferido</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {formatCurrency(
+                    transfers
+                      .filter(t => t.status === 'completed')
+                      .reduce((sum, t) => sum + t.amount, 0)
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Já sacado para sua conta
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Histórico de Transferências ({transfers.length})</span>
-                <Button onClick={() => setIsTransferDialogOpen(true)} size="sm">
+                <Button 
+                  onClick={() => setIsTransferDialogOpen(true)} 
+                  size="sm"
+                  disabled={(balance?.availableForTransfer || 0) <= 0}
+                >
                   <ArrowDownCircle className="h-4 w-4 mr-2" />
                   Nova Transferência
                 </Button>
