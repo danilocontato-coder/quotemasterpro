@@ -78,7 +78,7 @@ export function EditBankDataModal({ open, onClose, supplier, onSuccess }: EditBa
 
     setIsSaving(true);
     try {
-      // Atualizar bank_data local primeiro
+      // Atualizar bank_data local
       const { error: updateError } = await supabase
         .from('suppliers')
         .update({ 
@@ -89,32 +89,15 @@ export function EditBankDataModal({ open, onClose, supplier, onSuccess }: EditBa
 
       if (updateError) throw updateError;
 
-      // Se já tem asaas_wallet_id, atualizar no Asaas via edge function
+      // Verificar se já tem wallet
       const { data: supplierData } = await supabase
         .from('suppliers')
         .select('asaas_wallet_id')
         .eq('id', supplier.id)
         .single();
 
-      if (supplierData?.asaas_wallet_id) {
-        const { data, error: edgeFunctionError } = await supabase.functions.invoke(
-          'update-asaas-bank-account',
-          {
-            body: { 
-              supplierId: supplier.id, 
-              bank_data: formData 
-            }
-          }
-        );
-
-        if (edgeFunctionError) {
-          console.error('Erro ao atualizar no Asaas:', edgeFunctionError);
-          toast.warning('Dados salvos localmente, mas erro ao sincronizar com Asaas. Tente revalidar a wallet.');
-        } else {
-          toast.success('✅ Dados bancários configurados no Asaas!');
-        }
-      } else {
-        // Criar wallet com dados bancários
+      // Se não tem wallet, criar uma
+      if (!supplierData?.asaas_wallet_id) {
         const { data, error: walletError } = await supabase.functions.invoke(
           'create-asaas-wallet',
           {
@@ -126,10 +109,14 @@ export function EditBankDataModal({ open, onClose, supplier, onSuccess }: EditBa
         );
 
         if (walletError) {
-          toast.warning('Dados salvos, mas erro ao criar wallet. Configure manualmente depois.');
+          console.error('Erro ao criar wallet:', walletError);
+          toast.warning('Dados salvos. Configure a wallet depois para receber transferências.');
         } else {
-          toast.success('✅ Wallet criada com dados bancários!');
+          toast.success('✅ Dados bancários salvos! A wallet foi criada automaticamente.');
         }
+      } else {
+        // Wallet já existe - dados bancários serão usados nas próximas transferências
+        toast.success('✅ Dados bancários atualizados! Serão usados nas suas próximas transferências.');
       }
 
       onSuccess?.();
