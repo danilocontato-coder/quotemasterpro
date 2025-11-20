@@ -3591,15 +3591,19 @@ export type Database = {
           offline_notes: string | null
           payment_method: string | null
           payment_type: string | null
+          platform_commission_amount: number | null
+          platform_commission_percentage: number | null
           quote_id: string
           related_payment_id: string | null
           release_reason: string | null
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          split_applied: boolean | null
           status: string | null
           stripe_session_id: string | null
           supplier_id: string | null
+          supplier_net_amount: number | null
           transaction_id: string | null
           transfer_date: string | null
           transfer_method: string | null
@@ -3622,15 +3626,19 @@ export type Database = {
           offline_notes?: string | null
           payment_method?: string | null
           payment_type?: string | null
+          platform_commission_amount?: number | null
+          platform_commission_percentage?: number | null
           quote_id: string
           related_payment_id?: string | null
           release_reason?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          split_applied?: boolean | null
           status?: string | null
           stripe_session_id?: string | null
           supplier_id?: string | null
+          supplier_net_amount?: number | null
           transaction_id?: string | null
           transfer_date?: string | null
           transfer_method?: string | null
@@ -3653,15 +3661,19 @@ export type Database = {
           offline_notes?: string | null
           payment_method?: string | null
           payment_type?: string | null
+          platform_commission_amount?: number | null
+          platform_commission_percentage?: number | null
           quote_id?: string
           related_payment_id?: string | null
           release_reason?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          split_applied?: boolean | null
           status?: string | null
           stripe_session_id?: string | null
           supplier_id?: string | null
+          supplier_net_amount?: number | null
           transaction_id?: string | null
           transfer_date?: string | null
           transfer_method?: string | null
