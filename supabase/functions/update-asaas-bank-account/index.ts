@@ -93,9 +93,9 @@ serve(async (req) => {
       account: bankAccountPayload.account
     })
 
-    // Chamar API Asaas para atualizar dados bancários
+    // Chamar API Asaas para atualizar dados bancários (endpoint correto para subaccounts)
     const asaasResponse = await fetch(
-      `${asaasConfig.baseUrl}/accounts/${supplier.asaas_wallet_id}/bankAccount`,
+      `${asaasConfig.baseUrl}/subaccounts/${supplier.asaas_wallet_id}/bankAccount`,
       {
         method: 'POST',
         headers: {
@@ -105,6 +105,20 @@ serve(async (req) => {
         body: JSON.stringify(bankAccountPayload)
       }
     )
+
+    // Verificar se a resposta é HTML (erro de autenticação/endpoint)
+    const contentType = asaasResponse.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      const textResponse = await asaasResponse.text()
+      console.error('❌ API Asaas retornou HTML ao invés de JSON:', textResponse.substring(0, 200))
+      return new Response(
+        JSON.stringify({ 
+          error: 'Erro de comunicação com Asaas',
+          details: 'A API retornou um formato inválido. Verifique as credenciais e o ambiente (sandbox/production).'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     const asaasData = await asaasResponse.json()
 
