@@ -12,6 +12,9 @@ import { OfflinePaymentSupplierView } from '@/components/payments/OfflinePayment
 import { useSupplierBalance } from '@/hooks/useSupplierBalance';
 import { useSupplierTransfers } from '@/hooks/useSupplierTransfers';
 import { RequestTransferDialog } from '@/components/supplier/RequestTransferDialog';
+import { useSupplierData } from '@/hooks/useSupplierData';
+import { EditBankDataModal } from '@/components/suppliers/EditBankDataModal';
+import { toast } from 'sonner';
 
 export default function SupplierReceivables() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,6 +23,7 @@ export default function SupplierReceivables() {
   const [selectedPayment, setSelectedPayment] = useState<SupplierReceivable | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [isEditBankModalOpen, setIsEditBankModalOpen] = useState(false);
   const itemsPerPage = 10;
 
   const { 
@@ -38,6 +42,7 @@ export default function SupplierReceivables() {
     getStatusText: getTransferStatusText, 
     getStatusColor: getTransferStatusColor 
   } = useSupplierTransfers();
+  const { supplierData, refetch: refetchSupplier } = useSupplierData();
 
   // Carregar saldo ao montar componente
   useEffect(() => {
@@ -586,7 +591,12 @@ export default function SupplierReceivables() {
                 <p className="text-sm text-gray-700 mb-3">
                   Mantenha seus dados bancários atualizados para recebimentos por transferência
                 </p>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setIsEditBankModalOpen(true)}
+                  disabled={!supplierData}
+                >
                   Atualizar Dados
                 </Button>
               </div>
@@ -629,6 +639,26 @@ export default function SupplierReceivables() {
           fetchBalance();
         }}
       />
+
+      {/* Modal de edição de dados bancários */}
+      {supplierData && (
+        <EditBankDataModal
+          open={isEditBankModalOpen}
+          onClose={() => setIsEditBankModalOpen(false)}
+          supplier={{
+            id: supplierData.id,
+            name: supplierData.name,
+            document_number: supplierData.document_number || '',
+            bank_data: supplierData.bank_data
+          }}
+          onSuccess={() => {
+            refetchSupplier();
+            fetchBalance();
+            toast.success('Dados bancários atualizados com sucesso!');
+            setIsEditBankModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
