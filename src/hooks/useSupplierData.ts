@@ -11,6 +11,8 @@ export interface SupplierData {
   subscription_plan_id?: string;
   planDisplayName?: string;
   bank_data?: any;
+  document_number?: string;
+  document_type?: string;
 }
 
 export const useSupplierData = () => {
@@ -52,7 +54,9 @@ export const useSupplierData = () => {
           status: supplier.status,
           subscription_plan_id: supplier.subscription_plan_id,
           planDisplayName: supplier.subscription_plans?.display_name || 'Basic',
-          bank_data: supplier.bank_data
+          bank_data: supplier.bank_data,
+          document_number: supplier.document_number,
+          document_type: supplier.document_type
         });
       }
     } catch (error) {
