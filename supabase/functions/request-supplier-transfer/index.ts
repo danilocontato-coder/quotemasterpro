@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
     const { apiKey, baseUrl } = await getAsaasConfig(supabaseClient);
 
     console.log(`Requesting transfer: R$ ${amount} via ${transferMethod}`);
+    console.log('Bank account data received:', JSON.stringify(bankAccount, null, 2));
 
     // Criar transferência no Asaas
     const asaasPayload = {
@@ -88,6 +89,8 @@ Deno.serve(async (req) => {
       },
       walletId: supplier.asaas_wallet_id
     };
+
+    console.log('Asaas payload being sent:', JSON.stringify(asaasPayload, null, 2));
 
     const response = await fetch(`${baseUrl}/transfers`, {
       method: 'POST',
