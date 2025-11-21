@@ -21,33 +21,42 @@ function mapAccountType(accountType: string): string {
 function detectPixKeyType(pixKey: string): string | null {
   if (!pixKey) return null;
   
-  const cleanKey = pixKey.replace(/[^\w@.-]/g, ''); // Remove caracteres especiais exceto @ . -
+  console.log(`🔍 Detectando tipo de chave PIX: "${pixKey}"`);
   
-  // CPF: xxx.xxx.xxx-xx ou xxxxxxxxxxx
+  // Remove apenas espaços em branco
+  const cleanKey = pixKey.trim();
+  
+  // CPF: 015.229.475-90 ou 01522947590
   if (/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(cleanKey)) {
+    console.log('✅ Tipo detectado: CPF');
     return 'CPF';
   }
   
-  // CNPJ: xx.xxx.xxx/xxxx-xx ou xxxxxxxxxxxxxx
-  if (/^\d{2}\.?\d{3}\.?\d{3}\/?0001-?\d{2}$/.test(cleanKey)) {
+  // CNPJ: 12.345.678/0001-90 ou 12345678000190
+  if (/^\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}$/.test(cleanKey)) {
+    console.log('✅ Tipo detectado: CNPJ');
     return 'CNPJ';
   }
   
   // Email
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanKey)) {
+    console.log('✅ Tipo detectado: EMAIL');
     return 'EMAIL';
   }
   
-  // Telefone: +5511999999999
-  if (/^\+?55\d{10,11}$/.test(cleanKey)) {
+  // Telefone: +5571985350277 ou 5571985350277
+  if (/^\+?55\d{10,11}$/.test(cleanKey.replace(/\D/g, ''))) {
+    console.log('✅ Tipo detectado: PHONE');
     return 'PHONE';
   }
   
   // EVP (chave aleatória) - UUID format
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanKey)) {
+    console.log('✅ Tipo detectado: EVP');
     return 'EVP';
   }
   
+  console.log('❌ Tipo não detectado');
   return null;
 }
 
@@ -122,9 +131,13 @@ Deno.serve(async (req) => {
     // Adicionar chave PIX se disponível e método for PIX
     if (transferMethod === 'PIX' && bankAccount.pix_key) {
       const pixKeyType = detectPixKeyType(bankAccount.pix_key);
+      console.log(`🔑 PIX Key Type detected: ${pixKeyType}`);
       if (pixKeyType) {
         bankAccountPayload.pixAddressKey = bankAccount.pix_key;
         bankAccountPayload.pixAddressKeyType = pixKeyType;
+        console.log(`✅ PIX fields added to payload`);
+      } else {
+        console.log(`⚠️ PIX key type not detected, skipping PIX fields`);
       }
     }
 
