@@ -420,7 +420,7 @@ export default function SupplierReceivables() {
                               {receivable.split_applied ? "✓ Aplicado" : "Manual"}
                             </Badge>
                           </TableCell>
-                          <TableCell>{getStatusBadge(receivable.status)}</TableCell>
+                          <TableCell>{getStatusBadge(receivable.status, receivable)}</TableCell>
                           <TableCell>
                             {new Date(receivable.created_at).toLocaleDateString('pt-BR')}
                           </TableCell>

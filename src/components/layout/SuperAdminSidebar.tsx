@@ -108,6 +108,13 @@ const navigation = [
         href: '/admin/financial',
         icon: CreditCard,
         description: 'Receitas e pagamentos'
+      },
+      {
+        name: 'Dashboard de Liquidez',
+        href: '/admin/liquidity',
+        icon: TrendingUp,
+        description: 'Escrow e fluxo de caixa',
+        badge: 'Novo'
       }
     ]
   },
