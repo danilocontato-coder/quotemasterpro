@@ -246,36 +246,60 @@ export default function SupplierReceivables() {
         </TabsList>
 
         <TabsContent value="receivables" className="space-y-4">
-          {/* Resumo Financeiro */}
-          <Card className="border-blue-100 bg-blue-50/50">
+          {/* Resumo Financeiro Detalhado */}
+          <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
             <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Resumo Financeiro
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+                Resumo Financeiro das Vendas
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Total Bruto</p>
-                  <p className="text-xl font-bold">
-                    {formatCurrency(receivables.reduce((sum, r) => sum + r.amount, 0))}
-                  </p>
+              <div className="space-y-4">
+                {/* Cálculo detalhado */}
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">💰 Total Bruto (Vendas)</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {formatCurrency(receivables.reduce((sum, r) => sum + r.amount, 0))}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Valor total de todas as suas vendas
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">📊 Comissão Plataforma ({receivables[0]?.platform_commission_percentage || 5}%)</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      -{formatCurrency(receivables.reduce((sum, r) => {
+                        const commission = r.platform_commission_amount || 
+                          (r.amount * ((r.platform_commission_percentage || 5) / 100));
+                        return sum + commission;
+                      }, 0))}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Taxa de intermediação da plataforma
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">✅ Valor Líquido (Seu Crédito)</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {formatCurrency(receivables.reduce((sum, r) => {
+                        const netAmount = r.supplier_net_amount || 
+                          (r.amount * (1 - ((r.platform_commission_percentage || 5) / 100)));
+                        return sum + netAmount;
+                      }, 0))}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Este é o valor que você receberá
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Comissão Plataforma</p>
-                  <p className="text-xl font-bold text-red-600">
-                    -{formatCurrency(receivables.reduce((sum, r) => 
-                      sum + (r.platform_commission_amount || 0), 0
-                    ))}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Total Líquido</p>
-                  <p className="text-xl font-bold text-green-600">
-                    {formatCurrency(receivables.reduce((sum, r) => 
-                      sum + (r.supplier_net_amount || r.amount), 0
-                    ))}
+
+                {/* Alerta informativo */}
+                <div className="bg-blue-100 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>💡 Como funciona:</strong> A comissão de {receivables[0]?.platform_commission_percentage || 5}% é descontada automaticamente do valor bruto. 
+                    Você recebe o valor líquido diretamente na sua Wallet Asaas.
                   </p>
                 </div>
               </div>
@@ -347,13 +371,21 @@ export default function SupplierReceivables() {
                           </TableCell>
                           <TableCell className="font-medium">{formatCurrency(receivable.amount)}</TableCell>
                           <TableCell className="text-red-600">
-                            -{formatCurrency(receivable.platform_commission_amount || 0)}
+                            {(() => {
+                              const commission = receivable.platform_commission_amount || 
+                                (receivable.amount * ((receivable.platform_commission_percentage || 5) / 100));
+                              return `-${formatCurrency(commission)}`;
+                            })()}
                             <span className="text-xs text-muted-foreground ml-1">
                               ({receivable.platform_commission_percentage || 5}%)
                             </span>
                           </TableCell>
                           <TableCell className="font-semibold text-green-600">
-                            {formatCurrency(receivable.supplier_net_amount || receivable.amount * 0.95)}
+                            {(() => {
+                              const netAmount = receivable.supplier_net_amount || 
+                                (receivable.amount * (1 - ((receivable.platform_commission_percentage || 5) / 100)));
+                              return formatCurrency(netAmount);
+                            })()}
                           </TableCell>
                           <TableCell>
                             <Badge variant={receivable.split_applied ? "approved" : "draft"}>
