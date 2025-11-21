@@ -3,6 +3,20 @@ import { getAsaasConfig } from '../_shared/asaas-utils.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { validateSupplierAuth } from '../_shared/auth-helper.ts';
 
+// Função para mapear tipo de conta PT → EN (Asaas)
+function mapAccountType(accountType: string): string {
+  const mapping: Record<string, string> = {
+    'corrente': 'CHECKING_ACCOUNT',
+    'poupanca': 'SAVINGS_ACCOUNT',
+    'poupança': 'SAVINGS_ACCOUNT',
+    'salario': 'SALARY_ACCOUNT',
+    'salário': 'SALARY_ACCOUNT',
+    'pagamento': 'PAYMENT_ACCOUNT'
+  };
+  
+  return mapping[accountType?.toLowerCase()] || 'CHECKING_ACCOUNT';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -44,7 +58,7 @@ Deno.serve(async (req) => {
     }
 
     // Validar dados bancários completos
-    const requiredFields = ['bank_code', 'agency', 'account_number', 'account_digit', 'account_holder_name', 'account_holder_document'];
+    const requiredFields = ['bank_code', 'agency', 'account_number', 'account_digit', 'account_holder_name', 'account_holder_document', 'account_type'];
     const missingFields = requiredFields.filter(field => !bankAccount[field]);
     
     if (missingFields.length > 0) {
@@ -69,7 +83,8 @@ Deno.serve(async (req) => {
         cpfCnpj: bankAccount.account_holder_document,
         agency: bankAccount.agency,
         account: bankAccount.account_number,
-        accountDigit: bankAccount.account_digit
+        accountDigit: bankAccount.account_digit,
+        bankAccountType: mapAccountType(bankAccount.account_type)
       },
       walletId: supplier.asaas_wallet_id
     };
