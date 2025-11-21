@@ -136,7 +136,6 @@ Deno.serve(async (req) => {
         // Fallback: usar dados bancários
         asaasPayload.bankAccount = {
           bank: { code: bankAccount.bank_code },
-          accountName: bankAccount.account_holder_name,
           ownerName: bankAccount.account_holder_name,
           cpfCnpj: bankAccount.account_holder_document,
           agency: bankAccount.agency,
@@ -149,7 +148,6 @@ Deno.serve(async (req) => {
       // Transferência TED ou PIX sem chave - usar dados bancários
       asaasPayload.bankAccount = {
         bank: { code: bankAccount.bank_code },
-        accountName: bankAccount.account_holder_name,
         ownerName: bankAccount.account_holder_name,
         cpfCnpj: bankAccount.account_holder_document,
         agency: bankAccount.agency,
@@ -184,7 +182,6 @@ Deno.serve(async (req) => {
       // Tentar novamente com dados bancários completos
       asaasPayload.bankAccount = {
         bank: { code: bankAccount.bank_code },
-        accountName: bankAccount.account_holder_name,
         ownerName: bankAccount.account_holder_name,
         cpfCnpj: bankAccount.account_holder_document,
         agency: bankAccount.agency,
