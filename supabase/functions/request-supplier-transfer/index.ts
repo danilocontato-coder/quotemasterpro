@@ -17,6 +17,40 @@ function mapAccountType(accountType: string): string {
   return mapping[accountType?.toLowerCase()] || 'CHECKING_ACCOUNT';
 }
 
+// Função para detectar tipo de chave PIX
+function detectPixKeyType(pixKey: string): string | null {
+  if (!pixKey) return null;
+  
+  const cleanKey = pixKey.replace(/[^\w@.-]/g, ''); // Remove caracteres especiais exceto @ . -
+  
+  // CPF: xxx.xxx.xxx-xx ou xxxxxxxxxxx
+  if (/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(cleanKey)) {
+    return 'CPF';
+  }
+  
+  // CNPJ: xx.xxx.xxx/xxxx-xx ou xxxxxxxxxxxxxx
+  if (/^\d{2}\.?\d{3}\.?\d{3}\/?0001-?\d{2}$/.test(cleanKey)) {
+    return 'CNPJ';
+  }
+  
+  // Email
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanKey)) {
+    return 'EMAIL';
+  }
+  
+  // Telefone: +5511999999999
+  if (/^\+?55\d{10,11}$/.test(cleanKey)) {
+    return 'PHONE';
+  }
+  
+  // EVP (chave aleatória) - UUID format
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanKey)) {
+    return 'EVP';
+  }
+  
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -87,7 +121,11 @@ Deno.serve(async (req) => {
 
     // Adicionar chave PIX se disponível e método for PIX
     if (transferMethod === 'PIX' && bankAccount.pix_key) {
-      bankAccountPayload.pixAddressKey = bankAccount.pix_key;
+      const pixKeyType = detectPixKeyType(bankAccount.pix_key);
+      if (pixKeyType) {
+        bankAccountPayload.pixAddressKey = bankAccount.pix_key;
+        bankAccountPayload.pixAddressKeyType = pixKeyType;
+      }
     }
 
     const asaasPayload = {
