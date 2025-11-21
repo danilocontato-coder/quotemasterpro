@@ -72,21 +72,28 @@ Deno.serve(async (req) => {
     console.log('Bank account data received:', JSON.stringify(bankAccount, null, 2));
 
     // Criar transferência no Asaas
+    const bankAccountPayload: any = {
+      bank: {
+        code: bankAccount.bank_code
+      },
+      accountName: bankAccount.account_holder_name,
+      ownerName: bankAccount.account_holder_name,
+      cpfCnpj: bankAccount.account_holder_document,
+      agency: bankAccount.agency,
+      account: bankAccount.account_number,
+      accountDigit: bankAccount.account_digit,
+      bankAccountType: mapAccountType(bankAccount.account_type)
+    };
+
+    // Adicionar chave PIX se disponível e método for PIX
+    if (transferMethod === 'PIX' && bankAccount.pix_key) {
+      bankAccountPayload.pixAddressKey = bankAccount.pix_key;
+    }
+
     const asaasPayload = {
       value: amount,
       operationType: transferMethod,
-      bankAccount: {
-        bank: {
-          code: bankAccount.bank_code
-        },
-        accountName: bankAccount.account_holder_name,
-        ownerName: bankAccount.account_holder_name,
-        cpfCnpj: bankAccount.account_holder_document,
-        agency: bankAccount.agency,
-        account: bankAccount.account_number,
-        accountDigit: bankAccount.account_digit,
-        bankAccountType: mapAccountType(bankAccount.account_type)
-      },
+      bankAccount: bankAccountPayload,
       walletId: supplier.asaas_wallet_id
     };
 
