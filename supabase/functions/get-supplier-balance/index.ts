@@ -74,7 +74,14 @@ Deno.serve(async (req) => {
 
     const balanceData = await response.json();
 
-    console.log('✅ Balance fetched successfully');
+    console.log('✅ Balance fetched successfully:', JSON.stringify(balanceData, null, 2));
+
+    // A API do Asaas pode retornar campos diferentes dependendo da versão
+    // Mapear todos os campos possíveis
+    const balance = balanceData.balance ?? 0;
+    const availableForTransfer = balanceData.availableForTransfer ?? balance;
+    const blockedBalance = balanceData.blockedBalance ?? 0;
+    const totalBalance = balanceData.totalBalance ?? balance;
 
     // Log de auditoria
     await supabaseClient
@@ -87,7 +94,8 @@ Deno.serve(async (req) => {
         panel_type: 'supplier',
         details: {
           wallet_id: supplier.asaas_wallet_id,
-          balance: balanceData.balance,
+          raw_response: balanceData,
+          balance: balance,
           timestamp: new Date().toISOString()
         }
       });
@@ -95,10 +103,10 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        balance: balanceData.balance || 0,
-        availableForTransfer: balanceData.availableForTransfer || 0,
-        blockedBalance: balanceData.blockedBalance || 0,
-        totalBalance: balanceData.totalBalance || 0
+        balance: balance,
+        availableForTransfer: availableForTransfer,
+        blockedBalance: blockedBalance,
+        totalBalance: totalBalance
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
