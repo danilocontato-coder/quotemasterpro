@@ -207,7 +207,21 @@ Deno.serve(async (req) => {
         body: JSON.stringify(asaasPayload)
       });
       
-      transferData = await response.json();
+      // Verificar se há conteúdo na resposta antes de fazer parse
+      const responseText = await response.text();
+      console.log('📄 Retry response text:', responseText);
+      
+      if (responseText) {
+        try {
+          transferData = JSON.parse(responseText);
+        } catch (e) {
+          console.error('❌ Failed to parse retry response:', e);
+          throw new Error('Resposta inválida da API Asaas no retry');
+        }
+      } else {
+        console.error('❌ Empty response from Asaas on retry');
+        throw new Error('Resposta vazia da API Asaas no retry');
+      }
     }
 
     if (!response.ok) {
