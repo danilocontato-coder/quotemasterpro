@@ -72,18 +72,6 @@ const integrationTypes = [
     ]
   },
   {
-    id: 'payment_stripe',
-    name: 'Pagamentos (Stripe)',
-    description: 'Processamento de pagamentos via Stripe',
-    icon: CreditCard,
-    fields: [
-      { key: 'public_key', label: 'Chave Pública', type: 'text', required: false, help: 'Deixe vazio para usar chave global' },
-      { key: 'secret_key', label: 'Chave Secreta', type: 'password', required: false, help: 'Deixe vazio para usar chave global' },
-      { key: 'webhook_secret', label: 'Webhook Secret', type: 'password', required: false },
-      { key: 'currency', label: 'Moeda', type: 'select', options: ['BRL', 'USD', 'EUR'], required: true }
-    ]
-  },
-  {
     id: 'zapier_webhook',
     name: 'Zapier Webhook',
     description: 'Automação de workflows via Zapier',

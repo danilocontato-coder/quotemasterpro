@@ -66,7 +66,7 @@ export const RequestTransferDialog = ({ open, onOpenChange, availableBalance, on
   const isBankDataComplete = supplierData?.bank_data && 
     supplierData.bank_data.bank_code &&
     supplierData.bank_data.agency &&
-    supplierData.bank_data.account &&
+    supplierData.bank_data.account_number &&
     supplierData.bank_data.account_digit &&
     supplierData.bank_data.account_holder_name &&
     supplierData.bank_data.account_holder_document;
