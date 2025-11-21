@@ -77,11 +77,18 @@ Deno.serve(async (req) => {
     console.log('✅ Balance fetched successfully:', JSON.stringify(balanceData, null, 2));
 
     // A API do Asaas pode retornar campos diferentes dependendo da versão
-    // Mapear todos os campos possíveis
-    const balance = balanceData.balance ?? 0;
+    // Mapear todos os campos possíveis com fallback correto
+    const totalBalance = balanceData.totalBalance ?? 0;
+    const balance = balanceData.balance ?? totalBalance;
     const availableForTransfer = balanceData.availableForTransfer ?? balance;
     const blockedBalance = balanceData.blockedBalance ?? 0;
-    const totalBalance = balanceData.totalBalance ?? balance;
+
+    console.log('📊 Mapped balance values:', {
+      totalBalance,
+      balance,
+      availableForTransfer,
+      blockedBalance
+    });
 
     // Log de auditoria
     await supabaseClient
