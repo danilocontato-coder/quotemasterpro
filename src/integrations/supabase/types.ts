@@ -2806,6 +2806,50 @@ export type Database = {
           },
         ]
       }
+      escrow_release_errors: {
+        Row: {
+          created_at: string | null
+          error_details: Json | null
+          error_message: string
+          error_type: string
+          id: string
+          next_retry_at: string | null
+          payment_id: string
+          resolved_at: string | null
+          retry_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_details?: Json | null
+          error_message: string
+          error_type: string
+          id?: string
+          next_retry_at?: string | null
+          payment_id: string
+          resolved_at?: string | null
+          retry_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          error_details?: Json | null
+          error_message?: string
+          error_type?: string
+          id?: string
+          next_retry_at?: string | null
+          payment_id?: string
+          resolved_at?: string | null
+          retry_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escrow_release_errors_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exchange_rates: {
         Row: {
           created_at: string | null
@@ -3581,6 +3625,7 @@ export type Database = {
           asaas_due_date: string | null
           asaas_invoice_url: string | null
           asaas_payment_id: string | null
+          asaas_transfer_id: string | null
           auto_release_enabled: boolean | null
           client_id: string
           cost_center_id: string | null
@@ -3616,6 +3661,7 @@ export type Database = {
           asaas_due_date?: string | null
           asaas_invoice_url?: string | null
           asaas_payment_id?: string | null
+          asaas_transfer_id?: string | null
           auto_release_enabled?: boolean | null
           client_id: string
           cost_center_id?: string | null
@@ -3651,6 +3697,7 @@ export type Database = {
           asaas_due_date?: string | null
           asaas_invoice_url?: string | null
           asaas_payment_id?: string | null
+          asaas_transfer_id?: string | null
           auto_release_enabled?: boolean | null
           client_id?: string
           cost_center_id?: string | null

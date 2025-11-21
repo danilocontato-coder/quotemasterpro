@@ -75,6 +75,7 @@ const EmailSettings = React.lazy(() => import('@/pages/admin/EmailSettings'));
 const IntegrationsAndApisManagement = React.lazy(() => import('@/pages/admin/IntegrationsAndApisManagement'));
 const DomainSettings = React.lazy(() => import('@/pages/admin/DomainSettings'));
 const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialManagement'));
+const LiquidityDashboard = React.lazy(() => import('@/pages/admin/LiquidityDashboard'));
 const EmailMarketingDashboard = React.lazy(() => import('@/pages/admin/EmailMarketing/index'));
 const EmailMarketingEditor = React.lazy(() => import('@/pages/admin/EmailMarketing/Editor'));
 const EmailMarketingCampaigns = React.lazy(() => import('@/pages/admin/EmailMarketing/Campaigns'));
@@ -287,6 +288,11 @@ export const AppWithProviders: React.FC = () => {
         <Route path="financial" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <FinancialManagement />
+          </Suspense>
+        } />
+        <Route path="liquidity" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <LiquidityDashboard />
           </Suspense>
         } />
         <Route path="audit" element={
