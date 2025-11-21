@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     }
 
     // Validar dados bancários completos
-    const requiredFields = ['bank_code', 'agency', 'account', 'account_digit', 'account_holder_name', 'account_holder_document'];
+    const requiredFields = ['bank_code', 'agency', 'account_number', 'account_digit', 'account_holder_name', 'account_holder_document'];
     const missingFields = requiredFields.filter(field => !bankAccount[field]);
     
     if (missingFields.length > 0) {
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
         ownerName: bankAccount.account_holder_name,
         cpfCnpj: bankAccount.account_holder_document,
         agency: bankAccount.agency,
-        account: bankAccount.account,
+        account: bankAccount.account_number,
         accountDigit: bankAccount.account_digit
       },
       walletId: supplier.asaas_wallet_id
