@@ -114,39 +114,51 @@ Deno.serve(async (req) => {
     console.log(`Requesting transfer: R$ ${amount} via ${transferMethod}`);
     console.log('Bank account data received:', JSON.stringify(bankAccount, null, 2));
 
-    // Criar transferência no Asaas
-    const bankAccountPayload: any = {
-      bank: {
-        code: bankAccount.bank_code
-      },
-      accountName: bankAccount.account_holder_name,
-      ownerName: bankAccount.account_holder_name,
-      cpfCnpj: bankAccount.account_holder_document,
-      agency: bankAccount.agency,
-      account: bankAccount.account_number,
-      accountDigit: bankAccount.account_digit,
-      bankAccountType: mapAccountType(bankAccount.account_type)
+    // Montar payload base
+    const asaasPayload: any = {
+      value: amount,
+      operationType: transferMethod,
+      walletId: supplier.asaas_wallet_id
     };
 
-    // Adicionar chave PIX se disponível e método for PIX
+    // Para transferências PIX, priorizar chave PIX se disponível
     if (transferMethod === 'PIX' && bankAccount.pix_key) {
       const pixKeyType = detectPixKeyType(bankAccount.pix_key);
       console.log(`🔑 PIX Key Type detected: ${pixKeyType}`);
+      
       if (pixKeyType) {
-        bankAccountPayload.pixAddressKey = bankAccount.pix_key;
-        bankAccountPayload.pixAddressKeyType = pixKeyType;
-        console.log(`✅ PIX fields added to payload`);
+        // Transferência PIX via chave - NÃO enviar dados bancários
+        asaasPayload.pixAddressKey = bankAccount.pix_key;
+        asaasPayload.pixAddressKeyType = pixKeyType;
+        console.log(`✅ Using PIX key transfer (no bank account data)`);
       } else {
-        console.log(`⚠️ PIX key type not detected, skipping PIX fields`);
+        console.log(`⚠️ PIX key type not detected, falling back to bank account data`);
+        // Fallback: usar dados bancários
+        asaasPayload.bankAccount = {
+          bank: { code: bankAccount.bank_code },
+          accountName: bankAccount.account_holder_name,
+          ownerName: bankAccount.account_holder_name,
+          cpfCnpj: bankAccount.account_holder_document,
+          agency: bankAccount.agency,
+          account: bankAccount.account_number,
+          accountDigit: bankAccount.account_digit,
+          bankAccountType: mapAccountType(bankAccount.account_type)
+        };
       }
+    } else {
+      // Transferência TED ou PIX sem chave - usar dados bancários
+      asaasPayload.bankAccount = {
+        bank: { code: bankAccount.bank_code },
+        accountName: bankAccount.account_holder_name,
+        ownerName: bankAccount.account_holder_name,
+        cpfCnpj: bankAccount.account_holder_document,
+        agency: bankAccount.agency,
+        account: bankAccount.account_number,
+        accountDigit: bankAccount.account_digit,
+        bankAccountType: mapAccountType(bankAccount.account_type)
+      };
+      console.log(`✅ Using bank account data transfer`);
     }
-
-    const asaasPayload = {
-      value: amount,
-      operationType: transferMethod,
-      bankAccount: bankAccountPayload,
-      walletId: supplier.asaas_wallet_id
-    };
 
     console.log('Asaas payload being sent:', JSON.stringify(asaasPayload, null, 2));
 
