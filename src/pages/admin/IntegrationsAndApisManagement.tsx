@@ -37,7 +37,6 @@ import {
 } from '@/components/ui/select';
 import { IntegrationFormModal } from '@/components/admin/IntegrationFormModal';
 import { IntegrationDetailsModal } from '@/components/admin/IntegrationDetailsModal';
-import { StripeIntegrationPanel } from '@/components/admin/StripeIntegrationPanel';
 import { BoletoIntegrationPanel } from '@/components/admin/BoletoIntegrationPanel';
 import { AsaasIntegrationPanel } from '@/components/admin/AsaasIntegrationPanel';
 import { WalletStatusDashboard } from '@/components/admin/WalletStatusDashboard';
@@ -54,20 +53,6 @@ interface ApiKey {
 }
 
 const apiConfigurations: Record<string, ApiKey[]> = {
-  stripe: [
-    {
-      name: 'STRIPE_SECRET_KEY',
-      description: 'Chave secreta do Stripe para processar pagamentos',
-      required: true,
-      configured: true
-    },
-    {
-      name: 'STRIPE_WEBHOOK_SECRET',
-      description: 'Chave secreta para validar webhooks do Stripe',
-      required: false,
-      configured: false
-    }
-  ],
   evolution: [
     {
       name: 'EVOLUTION_API_URL',
@@ -140,7 +125,6 @@ const getIntegrationIcon = (type: string) => {
     case 'whatsapp_evolution': return MessageSquare;
     case 'email_sendgrid': 
     case 'email_smtp': return Mail;
-    case 'payment_stripe':
     case 'payment_pagseguro': return CreditCard;
     case 'zapier_webhook':
     case 'n8n_webhook': return Zap;
@@ -179,8 +163,6 @@ const getScopeBadge = (integration: Integration) => {
 
 const getServiceIcon = (service: string) => {
   switch (service) {
-    case 'stripe':
-      return '💳';
     case 'evolution':
       return '📱';
     case 'n8n':
@@ -198,8 +180,6 @@ const getServiceIcon = (service: string) => {
 
 const getServiceName = (service: string) => {
   switch (service) {
-    case 'stripe':
-      return 'Stripe (Pagamentos)';
     case 'evolution':
       return 'Evolution API (WhatsApp)';
     case 'n8n':
@@ -510,7 +490,6 @@ export const IntegrationsAndApisManagement = () => {
               <p className="text-muted-foreground mb-4">Configure métodos de pagamento para o sistema</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <StripeIntegrationPanel />
               <BoletoIntegrationPanel />
               <AsaasIntegrationPanel />
             </div>
@@ -523,8 +502,8 @@ export const IntegrationsAndApisManagement = () => {
 
           {/* Tab Chaves de API */}
           <TabsContent value="api-keys" className="space-y-6">
-            <Tabs defaultValue="stripe" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+            <Tabs defaultValue="evolution" className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
                 {Object.keys(apiConfigurations).map((service) => (
                   <TabsTrigger key={service} value={service} className="flex items-center gap-2">
                     <span>{getServiceIcon(service)}</span>
@@ -688,7 +667,6 @@ export const IntegrationsAndApisManagement = () => {
                         <SelectItem value="whatsapp_evolution">WhatsApp (Evolution API)</SelectItem>
                         <SelectItem value="email_sendgrid">E-mail SendGrid</SelectItem>
                         <SelectItem value="email_smtp">E-mail SMTP</SelectItem>
-                        <SelectItem value="payment_stripe">Stripe</SelectItem>
                         <SelectItem value="zapier_webhook">Zapier</SelectItem>
                         <SelectItem value="n8n_webhook">N8N</SelectItem>
                         <SelectItem value="perplexity">Perplexity AI</SelectItem>

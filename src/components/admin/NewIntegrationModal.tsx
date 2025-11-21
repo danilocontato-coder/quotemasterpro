@@ -58,14 +58,6 @@ const integrationTypes = [
     color: 'hsl(239, 84%, 67%)'
   },
   {
-    id: 'payment_stripe',
-    name: 'Pagamentos (Stripe)',
-    description: 'Processamento de pagamentos via Stripe',
-    icon: CreditCard,
-    category: 'Pagamentos',
-    color: 'hsl(271, 91%, 65%)'
-  },
-  {
     id: 'payment_pagseguro',
     name: 'Pagamentos (PagSeguro)',
     description: 'Processamento de pagamentos via PagSeguro',
@@ -184,13 +176,6 @@ export function NewIntegrationModal({ open, onOpenChange, onIntegrationCreate, e
           secure: true,
           fromEmail: "",
           fromName: ""
-        };
-      case 'payment_stripe':
-        return {
-          publicKey: "",
-          secretKey: "",
-          webhookSecret: "",
-          currency: "BRL"
         };
       case 'payment_pagseguro':
         return {
@@ -444,77 +429,11 @@ export function NewIntegrationModal({ open, onOpenChange, onIntegrationCreate, e
           </div>
         );
 
-      case 'payment_stripe':
+      case 'email_smtp':
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Chave Pública *</label>
-                <Input
-                  placeholder="pk_test_xxxxxxxxxxxxxxxxxxxxxxxx"
-                  value={formData.settings.publicKey || ""}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    settings: { ...prev.settings, publicKey: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Chave Secreta *</label>
-                <div className="relative">
-                  <Input
-                    type={showApiKey ? "text" : "password"}
-                    placeholder="sk_test_xxxxxxxxxxxxxxxxxxxxxxxx"
-                    value={formData.settings.secretKey || ""}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      settings: { ...prev.settings, secretKey: e.target.value }
-                    }))}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                  >
-                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Webhook Secret</label>
-                <Input
-                  type="password"
-                  placeholder="whsec_xxxxxxxxxxxxxxxxxxxxxxxx"
-                  value={formData.settings.webhookSecret || ""}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    settings: { ...prev.settings, webhookSecret: e.target.value }
-                  }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Moeda</label>
-                <Select 
-                  value={formData.settings.currency || "BRL"} 
-                  onValueChange={(value) => setFormData(prev => ({
-                    ...prev,
-                    settings: { ...prev.settings, currency: value }
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BRL">Real (BRL)</SelectItem>
-                    <SelectItem value="USD">Dólar (USD)</SelectItem>
-                    <SelectItem value="EUR">Euro (EUR)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+...
             </div>
           </div>
         );
