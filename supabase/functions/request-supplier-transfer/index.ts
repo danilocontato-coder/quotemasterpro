@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
 
     console.log('Asaas payload being sent:', JSON.stringify(asaasPayload, null, 2));
 
-    const response = await fetch(`${baseUrl}/transfers`, {
+    let response = await fetch(`${baseUrl}/transfers`, {
       method: 'POST',
       headers: {
         'access_token': apiKey,
@@ -171,7 +171,43 @@ Deno.serve(async (req) => {
       body: JSON.stringify(asaasPayload)
     });
 
-    const transferData = await response.json();
+    let transferData = await response.json();
+
+    // Se falhar com "chave não encontrada" no sandbox e temos dados bancários, tentar com dados bancários
+    if (!response.ok && 
+        transferData.errors?.[0]?.description?.includes('chave informada não foi encontrada') &&
+        transferMethod === 'PIX' &&
+        environment === 'sandbox') {
+      
+      console.log('⚠️ PIX key not found in sandbox, retrying with bank account data...');
+      
+      // Tentar novamente com dados bancários completos
+      asaasPayload.bankAccount = {
+        bank: { code: bankAccount.bank_code },
+        accountName: bankAccount.account_holder_name,
+        ownerName: bankAccount.account_holder_name,
+        cpfCnpj: bankAccount.account_holder_document,
+        agency: bankAccount.agency,
+        account: bankAccount.account_number,
+        accountDigit: bankAccount.account_digit,
+        bankAccountType: mapAccountType(bankAccount.account_type)
+      };
+      delete asaasPayload.pixAddressKey;
+      delete asaasPayload.pixAddressKeyType;
+      
+      console.log('🔄 Retrying with bank account data:', JSON.stringify(asaasPayload, null, 2));
+      
+      response = await fetch(`${baseUrl}/transfers`, {
+        method: 'POST',
+        headers: {
+          'access_token': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(asaasPayload)
+      });
+      
+      transferData = await response.json();
+    }
 
     if (!response.ok) {
       console.error('Asaas transfer error:', transferData);
