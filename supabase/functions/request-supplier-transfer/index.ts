@@ -194,6 +194,7 @@ Deno.serve(async (req) => {
       };
       delete asaasPayload.pixAddressKey;
       delete asaasPayload.pixAddressKeyType;
+      delete asaasPayload.operationType; // Deixar Asaas decidir automaticamente PIX ou TED
       
       console.log('🔄 Retrying with bank account data:', JSON.stringify(asaasPayload, null, 2));
       
