@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     }
 
     // Obter configuração do Asaas
-    const { apiKey, baseUrl } = await getAsaasConfig(supabaseClient);
+    const { apiKey, baseUrl, environment } = await getAsaasConfig(supabaseClient);
 
     console.log(`Requesting transfer: R$ ${amount} via ${transferMethod}`);
     console.log('Bank account data received:', JSON.stringify(bankAccount, null, 2));
