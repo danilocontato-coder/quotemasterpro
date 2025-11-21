@@ -56,7 +56,35 @@ export default function SupplierReceivables() {
     }).format(value);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, receivable?: SupplierReceivable) => {
+    // Badge especial para escrow
+    if (status === 'in_escrow') {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge className="bg-blue-500 text-white">
+            💰 {getStatusText(status)}
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            Aguardando entrega
+          </span>
+        </div>
+      );
+    }
+    
+    // Badge especial para completed mostrando que foi transferido
+    if (status === 'completed') {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge className="bg-green-500 text-white">
+            ✅ {getStatusText(status)}
+          </Badge>
+          <span className="text-xs text-green-600 font-medium">
+            Transferido
+          </span>
+        </div>
+      );
+    }
+    
     return (
       <Badge className={`${getStatusColor(status)} text-white`}>
         {getStatusText(status)}

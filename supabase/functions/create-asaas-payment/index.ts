@@ -367,19 +367,29 @@ serve(async (req) => {
       }
     }
 
-    // Incluir split somente se habilitado e wallet válida
-    if (shouldIncludeSplit && validatedWalletId) {
-      paymentBody.split = [
-        {
-          walletId: validatedWalletId,
-          fixedValue: supplierAmount,
-          percentualValue: null,
-        }
-      ]
-      console.log(`Split habilitado: R$ ${supplierAmount} para fornecedor (wallet: ${validatedWalletId})`)
-    } else {
-      console.log(`Split desabilitado ou wallet inválida - cobrança sem split`)
-    }
+    // ⚠️ ESCROW FLOW: Split desabilitado - todo valor vai para conta principal
+    // A transferência será feita manualmente via edge function após confirmação de entrega
+    console.log(`💰 ESCROW: Pagamento sem split - Valor total (R$ ${totalAmount}) vai para conta principal Cotiz`)
+    console.log(`📊 Comissão: ${commissionPercentage}% = R$ ${platformAmount}`)
+    console.log(`💸 Valor líquido para fornecedor: R$ ${supplierAmount} (será transferido após entrega)`)
+    
+    // Log de auditoria
+    await supabase.from('audit_logs').insert({
+      action: 'PAYMENT_CREATED_WITHOUT_SPLIT',
+      entity_type: 'payments',
+      entity_id: paymentId,
+      user_id: user.id,
+      panel_type: 'system',
+      details: {
+        reason: 'escrow_flow_enabled',
+        supplier_id: payment.supplier_id,
+        supplier_name: payment.suppliers.name,
+        total_amount: totalAmount,
+        platform_commission: platformAmount,
+        supplier_net_amount: supplierAmount,
+        wallet_id: payment.suppliers.asaas_wallet_id
+      }
+    })
 
     console.log('📤 Enviando para Asaas:', {
       value: paymentBody.value,
