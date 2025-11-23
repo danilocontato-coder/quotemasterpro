@@ -223,7 +223,7 @@ export const createSupplierQuoteNotification = async (data: {
       p_message: `Você recebeu uma nova cotação: ${data.quote_title}. Prazo: ${new Date(data.deadline).toLocaleDateString('pt-BR')}`,
       p_type: 'quote',
       p_priority: 'high',
-      p_action_url: '/supplier/quotes',
+      p_action_url: `/supplier/quotes`, // 🆕 Navega direto para a lista de cotações
       p_metadata: {
         quote_id: data.quote_id,
         local_code: data.local_code,

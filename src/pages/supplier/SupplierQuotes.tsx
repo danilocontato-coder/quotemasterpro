@@ -30,7 +30,8 @@ import {
   CreditCard,
   Calendar,
   Truck,
-  Filter
+  Filter,
+  Sparkles
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { QuoteCompetitiveContext } from "@/components/supplier/QuoteCompetitiveContext";
@@ -42,6 +43,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SupplierQuoteViewModal } from "@/components/supplier/SupplierQuoteViewModal";
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
 import { usePendingDeliveries } from "@/hooks/usePendingDeliveries";
+import { useQuoteViews } from "@/hooks/useQuoteViews";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,6 +61,11 @@ export default function SupplierQuotes() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { supplierQuotes, isLoading } = useSupabaseSupplierQuotes();
   const { pendingDeliveries } = usePendingDeliveries();
+  
+  // 🆕 Hook para rastrear visualizações
+  const { isViewed, markAsViewed, getNewQuotesCount } = useQuoteViews(
+    supplierQuotes.map(q => q.id)
+  );
   
   // Criar um Set de quote_ids que estão pendentes de agendamento
   const pendingDeliveryQuoteIds = useMemo(() => 
@@ -163,7 +170,13 @@ export default function SupplierQuotes() {
         (quote.local_code && quote.local_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
         quote.id.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
+      // 🆕 Filtro de status + novas cotações
+      let matchesStatus = true;
+      if (statusFilter === 'new') {
+        matchesStatus = !isViewed(quote.id);
+      } else if (statusFilter !== 'all') {
+        matchesStatus = quote.status === statusFilter;
+      }
       
       // Filtro de urgência
       let matchesUrgency = true;
@@ -198,7 +211,7 @@ export default function SupplierQuotes() {
       
       return matchesSearch && matchesStatus && matchesUrgency && matchesCompetitive;
     });
-  }, [supplierQuotes, searchTerm, statusFilter, urgencyFilter, competitiveFilter]);
+  }, [supplierQuotes, searchTerm, statusFilter, urgencyFilter, competitiveFilter, isViewed]);
 
   const statusCounts = useMemo(() => {
     return supplierQuotes.reduce((acc, quote) => {
@@ -221,6 +234,7 @@ export default function SupplierQuotes() {
   const handleViewQuote = (quote: any) => {
     setSelectedQuote(quote);
     setIsViewModalOpen(true);
+    markAsViewed(quote.id); // 🆕 Marcar como visualizada
   };
 
   const handleSendProposal = (quote: any) => {
@@ -238,7 +252,14 @@ export default function SupplierQuotes() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Minhas Cotações</h1>
+        <h1 className="text-3xl font-bold text-foreground">
+          Minhas Cotações
+          {getNewQuotesCount() > 0 && (
+            <Badge variant="destructive" className="ml-3 animate-pulse">
+              {getNewQuotesCount()} Novas
+            </Badge>
+          )}
+        </h1>
         <p className="text-muted-foreground">
           Gerencie suas solicitações de cotação e propostas
         </p>
@@ -252,13 +273,21 @@ export default function SupplierQuotes() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <FilterMetricCard
           title="Todos"
           value={supplierQuotes.length}
           icon={<FileText />}
           isActive={statusFilter === 'all'}
           onClick={() => setStatusFilter('all')}
+        />
+        <FilterMetricCard
+          title="Novas"
+          value={getNewQuotesCount()}
+          icon={<Sparkles />}
+          isActive={statusFilter === 'new'}
+          onClick={() => setStatusFilter('new')}
+          variant="destructive"
         />
         <FilterMetricCard
           title="Aguardando"
@@ -402,7 +431,10 @@ export default function SupplierQuotes() {
               </TableHeader>
               <TableBody>
                 {currentQuotes.map((quote) => (
-                  <TableRow key={quote.id}>
+                  <TableRow 
+                    key={quote.id}
+                    className={!isViewed(quote.id) ? 'bg-blue-50/50 hover:bg-blue-50 dark:bg-blue-950/20 dark:hover:bg-blue-950/30' : ''}
+                  >
                     {/* Coluna: Código + Cliente com Avatar */}
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -416,6 +448,11 @@ export default function SupplierQuotes() {
                             <span className="font-mono text-sm font-semibold text-foreground">
                               {quote.local_code || quote.id.slice(0, 8)}
                             </span>
+                            {!isViewed(quote.id) && (
+                              <Badge variant="destructive" className="text-xs animate-pulse">
+                                Novo
+                              </Badge>
+                            )}
                           </div>
                           <Badge variant="outline" className="text-xs w-fit">
                             {quote.clientName || quote.client}

@@ -310,8 +310,15 @@ export const useSupabaseSupplierQuotes = () => {
         };
       });
 
-      setSupplierQuotes(transformedQuotes);
-      console.log('✅ Supplier quotes set successfully:', transformedQuotes.length);
+      // 🆕 Ordenar por created_at DESC (mais recentes primeiro)
+      const sortedQuotes = transformedQuotes.sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA; // Mais recentes primeiro
+      });
+
+      setSupplierQuotes(sortedQuotes);
+      console.log('✅ Supplier quotes sorted by date (newest first):', sortedQuotes.length);
 
     } catch (error) {
       console.error('❌ Error in fetchSupplierQuotes:', error);
