@@ -25,6 +25,9 @@ export interface AdministradoraPayment {
   suppliers: {
     name: string;
   } | null;
+  issued_by_supplier: {
+    name: string;
+  } | null;
   clients: {
     name: string;
   } | null;
@@ -69,6 +72,7 @@ export function useAdministradoraPayments() {
             on_behalf_of_client_id
           ),
           suppliers!supplier_id (name),
+          issued_by_supplier:suppliers!issued_by (name),
           clients (name)
         `)
         .order('created_at', { ascending: false });
