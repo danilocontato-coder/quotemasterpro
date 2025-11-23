@@ -63,8 +63,20 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     } else {
-      const error = await validateResponse.json()
-      console.warn(`⚠️ Wallet inválida:`, error)
+      // Tentar parsear resposta de erro, mas lidar com respostas vazias
+      let error: any = null
+      const responseText = await validateResponse.text()
+      
+      if (responseText) {
+        try {
+          error = JSON.parse(responseText)
+        } catch (parseError) {
+          console.warn(`⚠️ Resposta não é JSON válido:`, responseText)
+          error = { message: responseText }
+        }
+      }
+      
+      console.warn(`⚠️ Wallet inválida (Status ${validateResponse.status}):`, error || 'Sem resposta')
       
       // Log de auditoria
       await supabase.from('audit_logs').insert({
@@ -76,15 +88,17 @@ serve(async (req) => {
         details: {
           wallet_id: walletId,
           asaas_error: error,
-          http_status: validateResponse.status
+          http_status: validateResponse.status,
+          response_text: responseText
         }
       })
       
       return new Response(
         JSON.stringify({ 
           valid: false,
-          error: error.errors?.[0]?.description || 'Wallet inválida',
-          message: 'Wallet não encontrada ou inválida no Asaas'
+          error: error?.errors?.[0]?.description || error?.message || 'Wallet inválida',
+          message: 'Wallet não encontrada ou inválida no Asaas',
+          http_status: validateResponse.status
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
