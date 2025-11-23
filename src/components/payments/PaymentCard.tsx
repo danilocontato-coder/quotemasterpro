@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { 
   CreditCard, 
   Clock, 
@@ -314,78 +315,83 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
           />
         </div>
 
-        <div className="flex gap-2 flex-wrap">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* Botão Pagar com Segurança */}
           {payment.status === 'pending' && payment.supplier_id && payment.amount > 0 && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex-1 min-w-[120px]">
-                    <Button 
-                      onClick={handleAsaasPayment}
-                      disabled={isCreatingPayment}
-                      className="w-full"
-                    >
-                      <Lock className="h-4 w-4 mr-2" />
-                      {isCreatingPayment ? 'Criando...' : '🔒 Pagar com Segurança'}
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
-          {/* Botão para acessar pagamento em processamento/aguardando */}
-          {(payment.status === 'processing' || payment.status === 'waiting_confirmation') && payment.asaas_invoice_url && !expired && (
-            <Button 
-              onClick={() => window.open(payment.asaas_invoice_url, '_blank')}
-              className="flex-1 min-w-[120px]"
-              variant="outline"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              🔗 Acessar Pagamento
-            </Button>
-          )}
-
-          {/* Botão para regenerar boleto expirado */}
-          {(payment.status === 'processing' || payment.status === 'waiting_confirmation' || payment.status === 'failed') && expired && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex-1 min-w-[120px]">
-                    <Button 
-                      onClick={handleRegeneratePayment}
-                      disabled={isRegenerating}
-                      className="w-full"
-                      variant="destructive"
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating ? 'animate-spin' : ''}`} />
-                      {isRegenerating ? 'Regenerando...' : '🔄 Gerar Novo Boleto'}
-                    </Button>
-                  </div>
+                  <LoadingButton
+                    onClick={handleAsaasPayment}
+                    isLoading={isCreatingPayment}
+                    loadingText="Criando..."
+                    className="w-full"
+                  >
+                    <Lock className="h-4 w-4" />
+                    Pagar com Segurança
+                  </LoadingButton>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>⚠️ Boleto expirado. Clique para gerar um novo.</p>
+                  <p>Pagamento processado pela Asaas com garantia de segurança</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
 
-          {/* Botão para sincronizar status com Asaas */}
-          {payment.asaas_payment_id && (payment.status === 'pending' || payment.status === 'processing' || payment.status === 'waiting_confirmation') && (
+          {/* Acessar Pagamento */}
+          {(payment.status === 'processing' || payment.status === 'waiting_confirmation') && 
+           payment.asaas_invoice_url && !expired && (
+            <Button 
+              onClick={() => window.open(payment.asaas_invoice_url, '_blank')}
+              className="w-full"
+              variant="outline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Acessar Pagamento
+            </Button>
+          )}
+
+          {/* Gerar Novo Boleto */}
+          {(payment.status === 'processing' || payment.status === 'waiting_confirmation' || 
+            payment.status === 'failed') && expired && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex-1 min-w-[120px]">
-                    <Button 
-                      onClick={handleSyncStatus}
-                      disabled={isSyncing}
-                      className="w-full"
-                      variant="outline"
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                      {isSyncing ? 'Sincronizando...' : '🔄 Verificar Status'}
-                    </Button>
-                  </div>
+                  <LoadingButton
+                    onClick={handleRegeneratePayment}
+                    isLoading={isRegenerating}
+                    loadingText="Regenerando..."
+                    className="w-full"
+                    variant="destructive"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Gerar Novo Boleto
+                  </LoadingButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Boleto expirado. Clique para gerar um novo.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* Verificar Status */}
+          {payment.asaas_payment_id && 
+           (payment.status === 'pending' || payment.status === 'processing' || 
+            payment.status === 'waiting_confirmation') && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <LoadingButton
+                    onClick={handleSyncStatus}
+                    isLoading={isSyncing}
+                    loadingText="Sincronizando..."
+                    className="w-full"
+                    variant="outline"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Verificar Status
+                  </LoadingButton>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Verificar status atual no Asaas</p>
@@ -394,8 +400,9 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
             </TooltipProvider>
           )}
           
+          {/* Alerta de erro */}
           {payment.status === 'pending' && (!payment.supplier_id || payment.amount <= 0) && (
-            <div className="flex-1 min-w-[200px] text-sm text-amber-600 flex items-center gap-2 p-2 bg-amber-50 rounded">
+            <div className="col-span-full text-sm text-amber-600 flex items-center gap-2 p-2 bg-amber-50 rounded">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <span>
                 {!payment.supplier_id 
@@ -405,35 +412,39 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
             </div>
           )}
           
+          {/* Liberar Fundos */}
           {payment.status === 'in_escrow' && (
             <Button 
               onClick={() => onConfirmDelivery(payment)}
-              className="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700"
+              className="w-full col-span-full bg-green-600 hover:bg-green-700"
             >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              🔓 Liberar Fundos
+              <CheckCircle2 className="h-4 w-4" />
+              Liberar Fundos
             </Button>
           )}
 
-          <Button 
-            onClick={() => onViewDetails(payment)}
-            variant="outline"
-            size="sm"
-          >
-            <Eye className="h-4 w-4 mr-1" />
-            Ver Detalhes
-          </Button>
-          
-          {payment.status === 'pending' && onOfflinePayment && (
+          {/* Botões secundários */}
+          <div className="col-span-full flex gap-2 flex-wrap">
             <Button 
-              onClick={() => onOfflinePayment(payment)}
-              variant="secondary"
+              onClick={() => onViewDetails(payment)}
+              variant="outline"
               size="sm"
             >
-              <FileText className="h-4 w-4 mr-1" />
-              💰 Pagar Direto ao Fornecedor
+              <Eye className="h-4 w-4 mr-1" />
+              Ver Detalhes
             </Button>
-          )}
+            
+            {payment.status === 'pending' && onOfflinePayment && (
+              <Button 
+                onClick={() => onOfflinePayment(payment)}
+                variant="secondary"
+                size="sm"
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                Pagar Direto ao Fornecedor
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="mt-4 pt-4 border-t text-xs text-muted-foreground">
