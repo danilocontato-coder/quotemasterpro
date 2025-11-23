@@ -5,7 +5,7 @@ export const getStatusText = (status: string) => {
     case 'draft': return 'Rascunho';
     case 'sent': return 'Enviada';
     case 'receiving': return 'Recebendo Propostas';
-    case 'received': return 'Recebida';
+    case 'received': return 'Recebida'; // Propostas recebidas - ainda pode ser aprovada/negociada
     case 'ai_analyzing': return 'IA Analisando';
     case 'ai_negotiating': return 'IA Negociando';
     case 'awaiting_ai_approval': return 'Aguardando Aprovação da IA';
@@ -133,6 +133,10 @@ export const getNextAutomaticStatus = (currentStatus: string, context?: any): st
 
 /**
  * Verifica se uma cotação está em um status final que impede novas ações
+ * 
+ * IMPORTANTE: 'received' NÃO está nesta lista pois significa "propostas recebidas",
+ * não "pagamento recebido". Cotações neste status ainda podem ser aprovadas/negociadas.
+ * 
  * @param status - Status atual da cotação
  * @returns true se a cotação estiver bloqueada para edição/aprovação
  */
@@ -142,10 +146,10 @@ export const isQuoteLocked = (status: string): boolean => {
     'rejected',      // Rejeitada
     'finalized',     // Finalizada
     'cancelled',     // Cancelada
-    'paid',          // Pagamento confirmado
-    'received',      // Pagamento recebido
+    'paid',          // Pagamento confirmado (status de payment)
     'trash'          // Na lixeira
   ];
+  // REMOVIDO: 'received' - indica "propostas recebidas", não bloqueia ações
   
   return lockedStatuses.includes(status);
 };
