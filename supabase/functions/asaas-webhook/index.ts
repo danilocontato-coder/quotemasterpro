@@ -68,6 +68,34 @@ serve(async (req) => {
       if (paymentRecord && !paymentError) {
         console.log('✅ Pagamento de cotação encontrado:', paymentRecord.id);
 
+        // Validar valor recebido vs esperado
+        const expectedAmount = (paymentRecord.base_amount || paymentRecord.amount) + (paymentRecord.asaas_fee || 0);
+        const receivedAmount = payment.value;
+        
+        if (Math.abs(expectedAmount - receivedAmount) > 0.01) {
+          console.warn('⚠️ Divergência de valores:', {
+            esperado: expectedAmount,
+            recebido: receivedAmount,
+            diferenca: receivedAmount - expectedAmount
+          });
+          
+          await supabaseClient.from('audit_logs').insert({
+            action: 'PAYMENT_AMOUNT_MISMATCH',
+            entity_type: 'payments',
+            entity_id: paymentRecord.id,
+            panel_type: 'system',
+            details: {
+              expected: expectedAmount,
+              received: receivedAmount,
+              difference: receivedAmount - expectedAmount,
+              base_amount: paymentRecord.base_amount,
+              asaas_fee: paymentRecord.asaas_fee
+            }
+          });
+        } else {
+          console.log('✅ Valor recebido confere com o esperado');
+        }
+
         // Atualizar status do pagamento para ESCROW (não paid diretamente)
         await supabaseClient
           .from('payments')

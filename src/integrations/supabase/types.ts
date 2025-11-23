@@ -3623,10 +3623,12 @@ export type Database = {
         Row: {
           amount: number
           asaas_due_date: string | null
+          asaas_fee: number | null
           asaas_invoice_url: string | null
           asaas_payment_id: string | null
           asaas_transfer_id: string | null
           auto_release_enabled: boolean | null
+          base_amount: number | null
           client_id: string
           cost_center_id: string | null
           created_at: string | null
@@ -3636,6 +3638,7 @@ export type Database = {
           offline_notes: string | null
           payment_method: string | null
           payment_type: string | null
+          platform_commission: number | null
           platform_commission_amount: number | null
           platform_commission_percentage: number | null
           quote_id: string
@@ -3659,10 +3662,12 @@ export type Database = {
         Insert: {
           amount: number
           asaas_due_date?: string | null
+          asaas_fee?: number | null
           asaas_invoice_url?: string | null
           asaas_payment_id?: string | null
           asaas_transfer_id?: string | null
           auto_release_enabled?: boolean | null
+          base_amount?: number | null
           client_id: string
           cost_center_id?: string | null
           created_at?: string | null
@@ -3672,6 +3677,7 @@ export type Database = {
           offline_notes?: string | null
           payment_method?: string | null
           payment_type?: string | null
+          platform_commission?: number | null
           platform_commission_amount?: number | null
           platform_commission_percentage?: number | null
           quote_id: string
@@ -3695,10 +3701,12 @@ export type Database = {
         Update: {
           amount?: number
           asaas_due_date?: string | null
+          asaas_fee?: number | null
           asaas_invoice_url?: string | null
           asaas_payment_id?: string | null
           asaas_transfer_id?: string | null
           auto_release_enabled?: boolean | null
+          base_amount?: number | null
           client_id?: string
           cost_center_id?: string | null
           created_at?: string | null
@@ -3708,6 +3716,7 @@ export type Database = {
           offline_notes?: string | null
           payment_method?: string | null
           payment_type?: string | null
+          platform_commission?: number | null
           platform_commission_amount?: number | null
           platform_commission_percentage?: number | null
           quote_id?: string

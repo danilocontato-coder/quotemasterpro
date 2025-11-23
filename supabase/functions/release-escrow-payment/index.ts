@@ -61,18 +61,17 @@ serve(async (req) => {
       )
     }
 
-    // Calcular valores
-    const totalAmount = payment.amount
-    const commissionPercentage = payment.platform_commission_percentage || 5.0
-    const platformCommission = totalAmount * (commissionPercentage / 100)
-    const supplierNetAmount = totalAmount - platformCommission
+    // Calcular valores - usar supplier_net_amount se disponível
+    const supplierNetAmount = payment.supplier_net_amount || (payment.base_amount ? payment.base_amount * 0.95 : payment.amount * 0.95);
+    const platformCommission = payment.platform_commission || (payment.base_amount ? payment.base_amount * 0.05 : payment.amount * 0.05);
+    const baseAmount = payment.base_amount || payment.amount;
 
-    console.log(`💰 Valores calculados:`, {
-      total: totalAmount,
-      commission: platformCommission,
-      net: supplierNetAmount,
-      percentage: commissionPercentage
-    })
+    console.log(`💰 Valores do pagamento:`, {
+      base_amount: baseAmount,
+      platform_commission: platformCommission,
+      supplier_net_amount: supplierNetAmount,
+      asaas_fee: payment.asaas_fee || 0
+    });
 
     // Obter configuração Asaas
     const { apiKey, baseUrl } = await getAsaasConfig(supabase)
@@ -89,7 +88,7 @@ serve(async (req) => {
       body: JSON.stringify({
         walletId: payment.suppliers.asaas_wallet_id,
         value: supplierNetAmount,
-        description: `Pagamento cotação ${payment.quotes.local_code} - Líquido após comissão de ${commissionPercentage}%`,
+        description: `Cotação ${payment.quotes.local_code} - Líquido após comissão`,
         operationType: 'PIX'
       })
     })
@@ -160,9 +159,9 @@ serve(async (req) => {
         quote_id: payment.quote_id,
         supplier_id: payment.supplier_id,
         supplier_name: payment.suppliers.name,
-        total_amount: totalAmount,
-        commission: platformCommission,
-        net_amount: supplierNetAmount,
+        base_amount: baseAmount,
+        platform_commission: platformCommission,
+        supplier_net_amount: supplierNetAmount,
         transfer_id: transferData.id,
         retry_attempt: retryAttempt
       }
@@ -185,8 +184,8 @@ serve(async (req) => {
         success: true,
         payment_id: paymentId,
         transfer_id: transferData.id,
-        amount: supplierNetAmount,
-        commission: platformCommission,
+        supplier_received: supplierNetAmount,
+        platform_commission: platformCommission,
         message: 'Pagamento liberado e transferido com sucesso'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
