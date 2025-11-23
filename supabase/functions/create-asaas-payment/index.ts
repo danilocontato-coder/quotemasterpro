@@ -201,6 +201,23 @@ serve(async (req) => {
     // Verificar/Criar customer no Asaas
     let asaasCustomerId = payment.clients.asaas_customer_id;
 
+    // Validar se customer existe no Asaas
+    if (asaasCustomerId) {
+      console.log(`🔍 Validando customer no Asaas: ${asaasCustomerId}`);
+      
+      const validateCustomerResponse = await fetch(`${baseUrl}/customers/${asaasCustomerId}`, {
+        method: 'GET',
+        headers: { 'access_token': apiKey }
+      });
+      
+      if (!validateCustomerResponse.ok) {
+        console.warn(`⚠️ Customer inválido detectado (${asaasCustomerId}), será recriado...`);
+        asaasCustomerId = null; // Força recriação
+      } else {
+        console.log(`✅ Customer validado: ${asaasCustomerId}`);
+      }
+    }
+
     if (!asaasCustomerId) {
       console.log(`Criando customer Asaas para cliente: ${payment.clients.name}`);
       
@@ -234,9 +251,7 @@ serve(async (req) => {
         .update({ asaas_customer_id: asaasCustomerId })
         .eq('id', payment.client_id);
 
-      console.log(`Customer Asaas criado: ${asaasCustomerId}`);
-    } else {
-      console.log(`Reutilizando customer Asaas existente: ${asaasCustomerId}`);
+      console.log(`✅ Customer Asaas criado: ${asaasCustomerId}`);
     }
 
     // ✅ NOVO: Calcular valores corretos (cliente paga base + taxa, fornecedor paga comissão)
