@@ -68,7 +68,7 @@ export function useAdministradoraPayments() {
             client_id,
             on_behalf_of_client_id
           ),
-          suppliers (name),
+          suppliers!supplier_id (name),
           clients (name)
         `)
         .order('created_at', { ascending: false });
