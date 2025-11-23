@@ -42,6 +42,11 @@ export interface Payment {
     name: string;
     asaas_wallet_id: string | null;
   } | null;
+  issued_by_supplier: {
+    id: string;
+    name: string;
+    asaas_wallet_id: string | null;
+  } | null;
   clients: {
     id: string;
     name: string;
@@ -70,9 +75,10 @@ export const useSupabasePayments = () => {
             total, 
             client_name, 
             supplier_id, 
-            suppliers(id, name, asaas_wallet_id)
+            suppliers!supplier_id(id, name, asaas_wallet_id)
           ),
-          suppliers(id, name, asaas_wallet_id),
+          suppliers!supplier_id(id, name, asaas_wallet_id),
+          issued_by_supplier:suppliers!issued_by(id, name, asaas_wallet_id),
           clients(id, name)
         `)
         .order('created_at', { ascending: false });

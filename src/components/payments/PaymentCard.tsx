@@ -275,10 +275,10 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
                 <StatusIcon className="h-3 w-3" />
                 {statusInfo.label}
               </Badge>
-              {payment.issued_by && payment.suppliers?.name && (
+              {payment.issued_by && payment.issued_by_supplier?.name && (
                 <Badge variant="outline" className="gap-1 text-xs">
                   <FileText className="h-3 w-3" />
-                  Emitido por {payment.suppliers.name}
+                  Emitido por {payment.issued_by_supplier.name}
                 </Badge>
               )}
             </div>
