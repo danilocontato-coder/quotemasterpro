@@ -4415,6 +4415,57 @@ export type Database = {
           },
         ]
       }
+      quote_sending_logs: {
+        Row: {
+          channel: string
+          created_at: string | null
+          endpoint_used: string | null
+          error_message: string | null
+          id: string
+          quote_id: string | null
+          response_data: Json | null
+          status: string
+          supplier_id: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string | null
+          endpoint_used?: string | null
+          error_message?: string | null
+          id?: string
+          quote_id?: string | null
+          response_data?: Json | null
+          status: string
+          supplier_id?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string | null
+          endpoint_used?: string | null
+          error_message?: string | null
+          id?: string
+          quote_id?: string | null
+          response_data?: Json | null
+          status?: string
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_sending_logs_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_sending_logs_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_supplier_status: {
         Row: {
           client_id: string | null

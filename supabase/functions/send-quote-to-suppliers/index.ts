@@ -985,10 +985,32 @@ const handler = async (req: Request): Promise<Response> => {
 
             if (!sent.success) {
               console.error(`❌ Evolution API error for ${supplier.name}:`, sent.error);
+              
+              // 📊 Registrar falha no log
+              await supabase.from('quote_sending_logs').insert({
+                quote_id: quoteId,
+                supplier_id: supplier.id,
+                channel: 'whatsapp',
+                status: 'failed',
+                error_message: String(sent.error).substring(0, 500),
+                response_data: { tried_endpoints: sent.tried_endpoints }
+              }).catch(err => console.error('Failed to log WhatsApp failure:', err));
+              
               errorCount++;
               errors.push(`${supplier.name}: ${String(sent.error).substring(0, 100)}`);
             } else {
               console.log(`✅ Message sent to ${supplier.name} (${finalPhone}) via ${sent.endpoint}`);
+              
+              // 📊 Registrar sucesso no log
+              await supabase.from('quote_sending_logs').insert({
+                quote_id: quoteId,
+                supplier_id: supplier.id,
+                channel: 'whatsapp',
+                status: 'success',
+                endpoint_used: sent.endpoint,
+                response_data: { messageId: sent.messageId, phone: finalPhone }
+              }).catch(err => console.error('Failed to log WhatsApp success:', err));
+              
               successCount++;
             }
           }
@@ -1068,12 +1090,31 @@ const handler = async (req: Request): Promise<Response> => {
               
               if (emailError) {
                 console.error(`❌ [${supplier.name}] Email error:`, emailError);
+                
+                // 📊 Registrar falha no log
+                await supabase.from('quote_sending_logs').insert({
+                  quote_id: quoteId,
+                  supplier_id: supplier.id,
+                  channel: 'email',
+                  status: 'failed',
+                  error_message: emailError.message || String(emailError)
+                }).catch(err => console.error('Failed to log email failure:', err));
+                
                 emailErrors.push({
                   supplier: supplier.name,
                   error: emailError.message || String(emailError)
                 });
               } else {
                 console.log(`✅ [${supplier.name}] Email sent successfully`);
+                
+                // 📊 Registrar sucesso no log
+                await supabase.from('quote_sending_logs').insert({
+                  quote_id: quoteId,
+                  supplier_id: supplier.id,
+                  channel: 'email',
+                  status: 'success'
+                }).catch(err => console.error('Failed to log email success:', err));
+                
                 emailsSent++;
                 
                 // If only sending email (no WhatsApp), count in success
@@ -1083,6 +1124,16 @@ const handler = async (req: Request): Promise<Response> => {
               }
             } catch (emailError: any) {
               console.error(`❌ [${supplier.name}] Failed to send email:`, emailError);
+              
+              // 📊 Registrar falha no log
+              await supabase.from('quote_sending_logs').insert({
+                quote_id: quoteId,
+                supplier_id: supplier.id,
+                channel: 'email',
+                status: 'failed',
+                error_message: emailError.message || String(emailError)
+              }).catch(err => console.error('Failed to log email failure:', err));
+              
               emailErrors.push({
                 supplier: supplier.name,
                 error: emailError.message || String(emailError)
@@ -1099,27 +1150,31 @@ const handler = async (req: Request): Promise<Response> => {
 
       console.log(`Direct Evolution sending completed: ${successCount} success, ${errorCount} errors`);
 
-      // Update quote status SYNCHRONOUSLY (not in background)
-      console.log(`📝 Updating quote ${quoteId} status to 'sent'...`);
-      
-      try {
-        const { error: statusError } = await supabase
-          .from('quotes')
-          .update({ 
-            status: 'sent',
-            suppliers_sent_count: successCount,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', quoteId);
+      // ✅ CORREÇÃO: Só marcar como 'sent' se pelo menos 1 envio foi bem-sucedido
+      if (successCount > 0) {
+        console.log(`📝 Updating quote ${quoteId} status to 'sent' (${successCount}/${suppliers.length} successful)...`);
+        
+        try {
+          const { error: statusError } = await supabase
+            .from('quotes')
+            .update({ 
+              status: 'sent',
+              suppliers_sent_count: successCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', quoteId);
 
-        if (statusError) {
-          console.error('❌ Failed to update quote status:', statusError);
-          // Still continue - status update failure shouldn't block notifications
-        } else {
-          console.log(`✅ Quote ${quoteId} status updated to 'sent' (${successCount} suppliers)`);
+          if (statusError) {
+            console.error('❌ Failed to update quote status:', statusError);
+          } else {
+            console.log(`✅ Quote ${quoteId} marked as 'sent' (${successCount}/${suppliers.length} suppliers)`);
+          }
+        } catch (error) {
+          console.error('❌ Error updating quote status:', error);
         }
-      } catch (error) {
-        console.error('❌ Error updating quote status:', error);
+      } else {
+        console.warn(`⚠️ Quote ${quoteId} NOT marked as 'sent' - all sends failed (0/${suppliers.length})`);
+        console.warn(`⚠️ Check WhatsApp/Email integration settings`);
       }
 
       // Create notifications in background (keep as-is)
