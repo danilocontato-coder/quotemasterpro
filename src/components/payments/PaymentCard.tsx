@@ -18,6 +18,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { differenceInDays, parseISO } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
+import { PaymentBreakdown } from "@/components/quotes/PaymentBreakdown";
 
 interface PaymentCardProps {
   payment: any;
@@ -96,11 +98,15 @@ const getStatusInfo = (status: string) => {
 };
 
 export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, onOfflinePayment }: PaymentCardProps) {
+  const { user } = useAuth();
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const statusInfo = getStatusInfo(payment.status);
   const StatusIcon = statusInfo.icon;
+  
+  // Determinar se deve mostrar informações de fornecedor (comissão da plataforma)
+  const showSupplierInfo = user?.role === 'admin' || user?.role === 'supplier';
 
   // Verificar se o boleto está expirado
   const isPaymentExpired = () => {
@@ -281,6 +287,15 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
               })()}
             </div>
           </div>
+        </div>
+
+        {/* Composição de custos e taxas */}
+        <div className="mt-4">
+          <PaymentBreakdown
+            baseAmount={payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0)}
+            billingType={payment.asaas_billing_type as 'PIX' | 'BOLETO' | 'CREDIT_CARD' | undefined}
+            showSupplierInfo={showSupplierInfo}
+          />
         </div>
 
         <div className="flex gap-2 flex-wrap">
