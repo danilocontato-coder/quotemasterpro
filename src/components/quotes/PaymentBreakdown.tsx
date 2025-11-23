@@ -7,6 +7,7 @@ interface PaymentBreakdownProps {
   productAmount: number;
   shippingCost?: number;
   billingType?: 'PIX' | 'BOLETO' | 'CREDIT_CARD';
+  calculatedFee?: number;
   showSupplierInfo?: boolean;
 }
 
@@ -20,12 +21,17 @@ export function PaymentBreakdown({
   productAmount, 
   shippingCost = 0,
   billingType,
+  calculatedFee,
   showSupplierInfo = false 
 }: PaymentBreakdownProps) {
   const baseAmount = productAmount + shippingCost;
-  const asaasFee = billingType 
-    ? (billingType === 'CREDIT_CARD' ? ASAAS_FEES.CREDIT_CARD(baseAmount) : ASAAS_FEES[billingType])
-    : ASAAS_FEES.CREDIT_CARD(baseAmount); // Pior cenário
+  
+  // Usar taxa calculada se disponível, senão calcular
+  const asaasFee = calculatedFee ?? (
+    billingType 
+      ? (billingType === 'CREDIT_CARD' ? ASAAS_FEES.CREDIT_CARD(baseAmount) : ASAAS_FEES[billingType])
+      : ASAAS_FEES.CREDIT_CARD(baseAmount)
+  );
     
   const customerTotal = baseAmount + asaasFee;
   const platformCommission = baseAmount * 0.05;
