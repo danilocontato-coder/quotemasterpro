@@ -292,7 +292,14 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
         {/* Composição de custos e taxas */}
         <div className="mt-4">
           <PaymentBreakdown
-            baseAmount={payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0)}
+            productAmount={(() => {
+              const resp = payment.quote_responses?.[0];
+              if (resp && Array.isArray(resp.items)) {
+                return resp.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+              }
+              return payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0);
+            })()}
+            shippingCost={payment.quote_responses?.[0]?.shipping_cost || 0}
             billingType={payment.asaas_billing_type as 'PIX' | 'BOLETO' | 'CREDIT_CARD' | undefined}
             showSupplierInfo={showSupplierInfo}
           />
