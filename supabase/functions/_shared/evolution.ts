@@ -70,6 +70,9 @@ export function buildEndpoints(cfg: EvolutionConfig): string[] {
 export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string, text: string) {
   const endpoints = buildEndpoints(cfg)
   
+  console.log(`🔍 [Evolution] Starting WhatsApp send to ${number}`)
+  console.log(`🔍 [Evolution] Will try ${endpoints.length} endpoint(s)`)
+  
   // ✅ CORREÇÃO 6: Adicionar mais variantes de header
   const headersVariants: Record<string, string>[] = [
     { 'Content-Type': 'application/json', 'apikey': cfg.token },
@@ -93,12 +96,16 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
 
   let lastError = ''
   let lastEndpoint = ''
+  let attemptCount = 0
   
   for (const endpoint of endpoints) {
     for (const headers of headersVariants) {
       for (const body of payloads) {
         try {
-          console.log(`Trying endpoint: ${endpoint} with headers: ${JSON.stringify(Object.keys(headers))} and payload keys: ${JSON.stringify(Object.keys(body))}`)
+          attemptCount++
+          console.log(`[${attemptCount}] Trying: ${endpoint}`)
+          console.log(`    Headers: [${Object.keys(headers).join(', ')}]`)
+          console.log(`    Payload: {${Object.keys(body).join(', ')}}`)
           
           const res = await fetch(endpoint, {
             method: 'POST',
@@ -108,24 +115,30 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
           
           if (res.ok) {
             const data = await res.json().catch(() => ({}))
-            console.log(`Success on endpoint: ${endpoint}`)
+            console.log(`✅ SUCCESS! Endpoint worked: ${endpoint}`)
+            console.log(`✅ Response: ${JSON.stringify(data).substring(0, 200)}`)
             return { success: true, endpoint, messageId: data.messageId || data.id || `whatsapp_${Date.now()}` }
           } else {
             const txt = await res.text()
-            lastError = `HTTP ${res.status} ${res.statusText} - ${txt}`
+            lastError = `HTTP ${res.status} - ${txt.substring(0, 100)}`
             lastEndpoint = endpoint
-            console.log(`Failed ${endpoint}: ${res.status} ${txt.substring(0, 100)}`)
+            console.log(`❌ Failed: ${res.status} ${res.statusText}`)
           }
         } catch (e: any) {
           lastError = e?.message || String(e)
           lastEndpoint = endpoint
-          console.log(`Error on ${endpoint}: ${lastError}`)
+          console.log(`❌ Exception: ${lastError}`)
         }
       }
     }
   }
   
-  return { success: false, error: `${lastError} (last: ${lastEndpoint})`, tried_endpoints: endpoints }
+  console.error(`⚠️ All ${attemptCount} attempts failed for ${number}`)
+  console.error(`⚠️ Last error: ${lastError}`)
+  console.error(`⚠️ Last endpoint: ${lastEndpoint}`)
+  console.error(`⚠️ Suggestion: Configure 'send_endpoint' in Evolution integration`)
+  
+  return { success: false, error: `All ${attemptCount} attempts failed. Last: ${lastError}`, tried_endpoints: endpoints }
 }
 
 // Resolve Evolution config with DB integration priority over ENV for admin control

@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, Loader2, Mail, MessageCircle } from 'lucide-react
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface SendingResult {
   supplierId: string;
@@ -84,23 +85,54 @@ export function QuoteSendingProgress({
     );
   }
 
+  const allFailed = getSuccessCount() === 0 && getTotalSentCount() > 0;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CheckCircle className="h-5 w-5 text-green-600" />
-          Envio Concluído
+          {allFailed ? (
+            <>
+              <XCircle className="h-5 w-5 text-red-600" />
+              Falha no Envio
+            </>
+          ) : (
+            <>
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Envio Concluído
+            </>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Alerta crítico se NENHUM enviou */}
+        {allFailed && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              <div className="font-semibold mb-2">⚠️ Nenhum fornecedor foi notificado</div>
+              <div className="text-sm">
+                Verifique as configurações de integração em <strong>API & Integrações</strong>:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>WhatsApp (Evolution API): URL, Token e Instância</li>
+                  <li>E-mail: Configuração do provedor (Resend/SendGrid/SMTP)</li>
+                </ul>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Resumo */}
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <div className="text-2xl font-bold text-green-600">{getSuccessCount()}</div>
+            <div className={`text-2xl font-bold ${allFailed ? 'text-muted-foreground' : 'text-green-600'}`}>
+              {getSuccessCount()}
+            </div>
             <div className="text-xs text-muted-foreground">Enviados</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-red-600">{getTotalSentCount() - getSuccessCount()}</div>
+            <div className={`text-2xl font-bold ${allFailed ? 'text-red-600' : 'text-muted-foreground'}`}>
+              {getTotalSentCount() - getSuccessCount()}
+            </div>
             <div className="text-xs text-muted-foreground">Falhas</div>
           </div>
           <div>
