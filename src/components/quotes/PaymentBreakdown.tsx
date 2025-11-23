@@ -4,7 +4,8 @@ import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Info } from "lucide-react";
 
 interface PaymentBreakdownProps {
-  baseAmount: number;
+  productAmount: number;
+  shippingCost?: number;
   billingType?: 'PIX' | 'BOLETO' | 'CREDIT_CARD';
   showSupplierInfo?: boolean;
 }
@@ -16,10 +17,12 @@ const ASAAS_FEES = {
 };
 
 export function PaymentBreakdown({ 
-  baseAmount, 
+  productAmount, 
+  shippingCost = 0,
   billingType,
   showSupplierInfo = false 
 }: PaymentBreakdownProps) {
+  const baseAmount = productAmount + shippingCost;
   const asaasFee = billingType 
     ? (billingType === 'CREDIT_CARD' ? ASAAS_FEES.CREDIT_CARD(baseAmount) : ASAAS_FEES[billingType])
     : ASAAS_FEES.CREDIT_CARD(baseAmount); // Pior cenário
@@ -39,12 +42,32 @@ export function PaymentBreakdown({
       <CardContent className="space-y-4">
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Valor da cotação</span>
+            <span className="text-muted-foreground">Valor dos produtos</span>
+            <span className="font-medium">R$ {productAmount.toFixed(2)}</span>
+          </div>
+          
+          {shippingCost > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Frete</span>
+              <span className="font-medium">+ R$ {shippingCost.toFixed(2)}</span>
+            </div>
+          )}
+          
+          <div className="flex justify-between border-t pt-2">
+            <span className="text-muted-foreground">Subtotal</span>
             <span className="font-medium">R$ {baseAmount.toFixed(2)}</span>
           </div>
           
           <div className="flex justify-between text-muted-foreground">
-            <span>Taxa de processamento {billingType ? `(${billingType})` : '(estimada)'}</span>
+            <div className="flex flex-col">
+              <span>Taxa de processamento</span>
+              <span className="text-xs">
+                {billingType === 'PIX' && '(PIX: Grátis)'}
+                {billingType === 'BOLETO' && '(Boleto: R$ 3,49)'}
+                {billingType === 'CREDIT_CARD' && '(Cartão: 1,99% + R$ 0,49)'}
+                {!billingType && '(Cartão estimado: 1,99% + R$ 0,49)'}
+              </span>
+            </div>
             <span>+ R$ {asaasFee.toFixed(2)}</span>
           </div>
           
