@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getAsaasConfig } from '../_shared/asaas-utils.ts'
+import { calculateCustomerTotal } from '../_shared/asaas-fees.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 serve(async (req) => {
@@ -238,13 +239,17 @@ serve(async (req) => {
       console.log(`Reutilizando customer Asaas existente: ${asaasCustomerId}`);
     }
 
-    const commissionPercentage = config.platform_commission_percentage || 5.0
-    const autoReleaseDays = config.auto_release_days || 7
-    const splitEnabled = config.split_enabled !== false // Default true
+    // ✅ NOVO: Calcular valores corretos (cliente paga base + taxa, fornecedor paga comissão)
+    const baseAmount = totalAmount; // Valor da cotação (itens + frete)
+    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED'); // Cliente ainda não escolheu
 
-    // Calcular split: plataforma fica com X%, fornecedor recebe (100-X)%
-    const platformAmount = totalAmount * (commissionPercentage / 100)
-    const supplierAmount = totalAmount - platformAmount
+    console.log('💰 Detalhamento de valores:', {
+      valor_base_cotacao: calculation.baseAmount,
+      taxa_asaas: calculation.asaasFee,
+      total_cobrado_cliente: calculation.customerTotal,
+      comissao_plataforma: calculation.platformCommission,
+      liquido_fornecedor: calculation.supplierNet
+    });
 
     // Criar cobrança no Asaas (com ou sem split)
     const dueDate = new Date()
@@ -300,7 +305,7 @@ serve(async (req) => {
     const paymentBody: any = {
       customer: asaasCustomerId,
       billingType: 'UNDEFINED', // Cliente escolhe: PIX, Boleto ou Cartão
-      value: totalAmount,
+      value: calculation.customerTotal, // ⬅️ VALOR COM TAXA ASAAS INCLUÍDA
       dueDate: dueDate.toISOString().split('T')[0],
       description: `Pagamento da cotação ${quoteCode}`,
       externalReference: payment.id,
@@ -369,9 +374,12 @@ serve(async (req) => {
 
     // ⚠️ ESCROW FLOW: Split desabilitado - todo valor vai para conta principal
     // A transferência será feita manualmente via edge function após confirmação de entrega
-    console.log(`💰 ESCROW: Pagamento sem split - Valor total (R$ ${totalAmount}) vai para conta principal Cotiz`)
-    console.log(`📊 Comissão: ${commissionPercentage}% = R$ ${platformAmount}`)
-    console.log(`💸 Valor líquido para fornecedor: R$ ${supplierAmount} (será transferido após entrega)`)
+    console.log(`💰 ESCROW: Pagamento sem split`)
+    console.log(`📊 Cliente paga: R$ ${calculation.customerTotal}`)
+    console.log(`📊 Base da cotação: R$ ${calculation.baseAmount}`)
+    console.log(`📊 Taxa Asaas: R$ ${calculation.asaasFee}`)
+    console.log(`📊 Comissão plataforma (5%): R$ ${calculation.platformCommission}`)
+    console.log(`💸 Líquido fornecedor: R$ ${calculation.supplierNet} (será transferido após entrega)`)
     
     // Log de auditoria
     await supabase.from('audit_logs').insert({
@@ -384,9 +392,11 @@ serve(async (req) => {
         reason: 'escrow_flow_enabled',
         supplier_id: payment.supplier_id,
         supplier_name: payment.suppliers.name,
-        total_amount: totalAmount,
-        platform_commission: platformAmount,
-        supplier_net_amount: supplierAmount,
+        base_amount: calculation.baseAmount,
+        asaas_fee: calculation.asaasFee,
+        customer_total: calculation.customerTotal,
+        platform_commission: calculation.platformCommission,
+        supplier_net: calculation.supplierNet,
         wallet_id: payment.suppliers.asaas_wallet_id
       }
     })
@@ -523,7 +533,7 @@ serve(async (req) => {
     
     console.log(`📋 Invoice URL gerada: ${invoiceUrl}`)
 
-    // Atualizar pagamento com dados do Asaas e comissões
+    // Atualizar pagamento com dados do Asaas e valores detalhados
     await supabase
       .from('payments')
       .update({
@@ -531,12 +541,14 @@ serve(async (req) => {
         asaas_invoice_url: invoiceUrl,
         asaas_due_date: asaasPayment.dueDate || null,
         status: 'processing',
-        escrow_release_date: new Date(Date.now() + autoReleaseDays * 24 * 60 * 60 * 1000).toISOString(),
+        escrow_release_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dias
         updated_at: new Date().toISOString(),
-        platform_commission_percentage: commissionPercentage,
-        platform_commission_amount: platformAmount,
-        supplier_net_amount: supplierAmount,
-        split_applied: shouldIncludeSplit && !!validatedWalletId,
+        base_amount: calculation.baseAmount,
+        asaas_fee: calculation.asaasFee,
+        amount: calculation.customerTotal,
+        platform_commission: calculation.platformCommission,
+        supplier_net_amount: calculation.supplierNet,
+        split_applied: false, // Sempre false no escrow
       })
       .eq('id', paymentId)
 
@@ -550,19 +562,16 @@ serve(async (req) => {
         user_id: user.id,
         details: {
           asaas_payment_id: asaasPayment.id,
-          amount: payment.amount,
-          commission: platformAmount,
-          supplier_amount: supplierAmount,
-          split_enabled: shouldIncludeSplit,
+          base_amount: calculation.baseAmount,
+          asaas_fee: calculation.asaasFee,
+          customer_total: calculation.customerTotal,
+          platform_commission: calculation.platformCommission,
+          supplier_net: calculation.supplierNet,
           environment: config.environment || 'sandbox',
         },
       })
 
-    const logMessage = shouldIncludeSplit 
-      ? `Cobrança Asaas criada: ${asaasPayment.id} - Split: R$ ${supplierAmount} para fornecedor`
-      : `Cobrança Asaas criada: ${asaasPayment.id} - SEM split (valor total na plataforma)`
-    
-    console.log(logMessage)
+    console.log(`✅ Cobrança Asaas criada: ${asaasPayment.id} - Escrow (valor líquido R$ ${calculation.supplierNet} será transferido após entrega)`)
 
     return new Response(
       JSON.stringify({
