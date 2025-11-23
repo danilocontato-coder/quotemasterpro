@@ -125,7 +125,8 @@ serve(async (req) => {
           
           return new Response(
             JSON.stringify({ 
-              error: 'Cobrança já existe no Asaas',
+              success: true,
+              already_exists: true,
               asaas_payment_id: payment.asaas_payment_id,
               invoice_url: existingCharge.invoiceUrl,
               bank_slip_url: existingCharge.bankSlipUrl,
@@ -133,7 +134,7 @@ serve(async (req) => {
               pix_qr_code: existingCharge.encodedImage
             }),
             { 
-              status: 409, 
+              status: 200, 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
             }
           );
