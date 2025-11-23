@@ -197,6 +197,12 @@ serve(async (req) => {
 
     // Obter configuração do Asaas (incluindo ambiente, URL e comissões)
     const { apiKey, baseUrl, config } = await getAsaasConfig(supabase);
+    
+    console.log('🔧 Asaas Config:', {
+      split_enabled: config.split_enabled,
+      platform_commission: config.platform_commission_percentage,
+      environment: config.environment
+    });
 
     // Verificar/Criar customer no Asaas
     let asaasCustomerId = payment.clients.asaas_customer_id;
@@ -278,12 +284,12 @@ serve(async (req) => {
                         bankData?.agency
 
     // Determinar se deve incluir split (requer wallet E dados bancários)
-    const shouldIncludeSplit = splitEnabled && 
+    const shouldIncludeSplit = config.split_enabled && 
                               payment.suppliers.asaas_wallet_id && 
                               hasBankData
 
     // Log se split foi desabilitado por falta de dados bancários
-    if (splitEnabled && payment.suppliers.asaas_wallet_id && !hasBankData) {
+    if (config.split_enabled && payment.suppliers.asaas_wallet_id && !hasBankData) {
       console.warn(`⚠️ Split desabilitado: Wallet existe mas dados bancários incompletos`)
       console.log('Campos faltantes:', {
         bank_code: !bankData?.bank_code,
