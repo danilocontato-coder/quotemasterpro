@@ -87,7 +87,7 @@ export default function ClientDeliveries() {
             local_code,
             title
           ),
-          suppliers!inner (
+          suppliers!supplier_id!inner (
             name
           )
         `)

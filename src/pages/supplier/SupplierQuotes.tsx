@@ -42,6 +42,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { SupplierQuoteViewModal } from "@/components/supplier/SupplierQuoteViewModal";
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
+import { IssueInvoiceModal } from "@/components/supplier/IssueInvoiceModal";
 import { usePendingDeliveries } from "@/hooks/usePendingDeliveries";
 import { useQuoteViews } from "@/hooks/useQuoteViews";
 
@@ -53,6 +54,7 @@ export default function SupplierQuotes() {
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [isIssueInvoiceModalOpen, setIsIssueInvoiceModalOpen] = useState(false);
   const [quotesWithDeliveries, setQuotesWithDeliveries] = useState<Set<string>>(new Set());
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -560,6 +562,23 @@ export default function SupplierQuotes() {
                             </Button>
                           )}
 
+                          {/* Botão Emitir Cobrança - quando cotação aprovada */}
+                          {quote.status === 'approved' && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedQuote(quote);
+                                setIsIssueInvoiceModalOpen(true);
+                              }}
+                              className="bg-primary hover:bg-primary/90"
+                              title="Emitir cobrança para o cliente"
+                            >
+                              <CreditCard className="h-4 w-4 mr-1" />
+                              Emitir Cobrança
+                            </Button>
+                          )}
+
                           {/* Botão Confirmar Visita - integrado no modal principal */}
                           {quote.requires_visit && quote.status === 'visit_scheduled' && (
                             <Button
@@ -706,6 +725,14 @@ export default function SupplierQuotes() {
         open={isDeliveryModalOpen}
         onOpenChange={setIsDeliveryModalOpen}
         onDeliveryScheduled={handleRefetch}
+      />
+
+      <IssueInvoiceModal
+        open={isIssueInvoiceModalOpen}
+        onOpenChange={setIsIssueInvoiceModalOpen}
+        quoteId={selectedQuote?.id || ''}
+        quoteTitle={selectedQuote?.title || ''}
+        quoteAmount={selectedQuote?.total || 0}
       />
     </div>
   );

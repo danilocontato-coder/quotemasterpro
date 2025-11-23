@@ -1502,6 +1502,7 @@ export type Database = {
           state: string | null
           status: string | null
           subscription_plan_id: string | null
+          supplier_issues_invoice: boolean | null
           updated_at: string | null
           username: string | null
         }
@@ -1530,6 +1531,7 @@ export type Database = {
           state?: string | null
           status?: string | null
           subscription_plan_id?: string | null
+          supplier_issues_invoice?: boolean | null
           updated_at?: string | null
           username?: string | null
         }
@@ -1558,6 +1560,7 @@ export type Database = {
           state?: string | null
           status?: string | null
           subscription_plan_id?: string | null
+          supplier_issues_invoice?: boolean | null
           updated_at?: string | null
           username?: string | null
         }
@@ -3625,6 +3628,8 @@ export type Database = {
           asaas_due_date: string | null
           asaas_fee: number | null
           asaas_invoice_url: string | null
+          asaas_messaging_fee: number | null
+          asaas_payment_fee: number | null
           asaas_payment_id: string | null
           asaas_transfer_id: string | null
           auto_release_enabled: boolean | null
@@ -3634,6 +3639,9 @@ export type Database = {
           created_at: string | null
           escrow_release_date: string | null
           id: string
+          invoice_issued_at: string | null
+          invoice_number: string | null
+          issued_by: string | null
           offline_attachments: string[] | null
           offline_notes: string | null
           payment_method: string | null
@@ -3664,6 +3672,8 @@ export type Database = {
           asaas_due_date?: string | null
           asaas_fee?: number | null
           asaas_invoice_url?: string | null
+          asaas_messaging_fee?: number | null
+          asaas_payment_fee?: number | null
           asaas_payment_id?: string | null
           asaas_transfer_id?: string | null
           auto_release_enabled?: boolean | null
@@ -3673,6 +3683,9 @@ export type Database = {
           created_at?: string | null
           escrow_release_date?: string | null
           id: string
+          invoice_issued_at?: string | null
+          invoice_number?: string | null
+          issued_by?: string | null
           offline_attachments?: string[] | null
           offline_notes?: string | null
           payment_method?: string | null
@@ -3703,6 +3716,8 @@ export type Database = {
           asaas_due_date?: string | null
           asaas_fee?: number | null
           asaas_invoice_url?: string | null
+          asaas_messaging_fee?: number | null
+          asaas_payment_fee?: number | null
           asaas_payment_id?: string | null
           asaas_transfer_id?: string | null
           auto_release_enabled?: boolean | null
@@ -3712,6 +3727,9 @@ export type Database = {
           created_at?: string | null
           escrow_release_date?: string | null
           id?: string
+          invoice_issued_at?: string | null
+          invoice_number?: string | null
+          issued_by?: string | null
           offline_attachments?: string[] | null
           offline_notes?: string | null
           payment_method?: string | null
@@ -3750,6 +3768,13 @@ export type Database = {
             columns: ["cost_center_id"]
             isOneToOne: false
             referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
           {
