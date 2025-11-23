@@ -276,15 +276,7 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
               </Badge>
             </div>
             <div className="text-lg font-bold text-primary">
-              {(() => {
-                const resp = payment.quote_responses?.[0];
-                if (resp && Array.isArray(resp.items)) {
-                  const subtotal = resp.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
-                  const shipping = resp.shipping_cost || 0;
-                  return formatCurrency(subtotal + shipping);
-                }
-                return formatCurrency(payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0));
-              })()}
+              {formatCurrency(payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0))}
             </div>
           </div>
         </div>
@@ -297,10 +289,27 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
               if (resp && Array.isArray(resp.items)) {
                 return resp.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
               }
-              return payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0);
+              return payment.quotes?.total || 0;
             })()}
-            shippingCost={payment.quote_responses?.[0]?.shipping_cost || 0}
+            shippingCost={(() => {
+              const resp = payment.quote_responses?.[0];
+              if (resp?.shipping_cost) {
+                return resp.shipping_cost;
+              }
+              // Calcular frete: base_amount - produtos
+              if (payment.base_amount) {
+                const productAmount = (() => {
+                  if (resp && Array.isArray(resp.items)) {
+                    return resp.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+                  }
+                  return payment.quotes?.total || 0;
+                })();
+                return payment.base_amount - productAmount;
+              }
+              return 0;
+            })()}
             billingType={payment.asaas_billing_type as 'PIX' | 'BOLETO' | 'CREDIT_CARD' | undefined}
+            calculatedFee={payment.asaas_fee}
             showSupplierInfo={showSupplierInfo}
           />
         </div>
