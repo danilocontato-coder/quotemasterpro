@@ -270,11 +270,17 @@ export function PaymentCard({ payment, onPay, onConfirmDelivery, onViewDetails, 
             </div>
           </div>
           <div className="text-right">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex flex-col items-end gap-2 mb-2">
               <Badge variant={statusInfo.variant} className="gap-1">
                 <StatusIcon className="h-3 w-3" />
                 {statusInfo.label}
               </Badge>
+              {payment.issued_by && payment.suppliers?.name && (
+                <Badge variant="outline" className="gap-1 text-xs">
+                  <FileText className="h-3 w-3" />
+                  Emitido por {payment.suppliers.name}
+                </Badge>
+              )}
             </div>
             <div className="text-lg font-bold text-primary">
               {formatCurrency(payment.amount > 0 ? payment.amount : (payment.quotes?.total || 0))}

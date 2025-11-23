@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Plus,
   CheckCircle, 
-  AlertTriangle
+  AlertTriangle,
+  Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,11 +22,11 @@ import { useSupabasePayments } from "@/hooks/useSupabasePayments";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
-import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
 import { ReleaseEscrowModal } from "@/components/payments/ReleaseEscrowModal";
 import { EscrowDashboard } from "@/components/payments/EscrowDashboard";
 import { OfflinePaymentModal } from "@/components/payments/OfflinePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
+import { Badge } from "@/components/ui/badge";
 
 import { PixQRCodeModal } from "@/components/payments/PixQRCodeModal";
 import { PaymentsSyncStatus } from "@/components/payments/PaymentsSyncStatus";
@@ -44,7 +45,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { toast } from "sonner";
-import { useAutomaticPayments } from "@/hooks/useAutomaticPayments";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -78,16 +78,16 @@ export default function Payments() {
   
   const { quotes } = useSupabaseQuotes();
   
-  // Enable automatic payment creation for approved quotes
-  useAutomaticPayments();
-  
   // ✅ Buscar pagamentos apenas uma vez ao montar
   useEffect(() => {
     refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Dependências vazias - executa apenas uma vez (refetch já está memoizado)
 
-  const filteredPayments = payments.filter(payment => {
+  // ✅ Filtrar apenas cobranças emitidas por fornecedores
+  const supplierIssuedPayments = payments.filter(payment => payment.issued_by !== null);
+  
+  const filteredPayments = supplierIssuedPayments.filter(payment => {
     const matchesSearch = 
       (payment.quote_id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -108,12 +108,12 @@ export default function Payments() {
     return matchesSearch && matchesFilter;
   });
 
-  // Calculate metrics
-  const totalPayments = payments.length;
-  const pendingPayments = payments.filter(p => p.status === "pending").length;
-  const processingPayments = payments.filter(p => p.status === "processing").length;
-  const completedPayments = payments.filter(p => p.status === "completed").length;
-  const disputedPayments = payments.filter(p => p.status === "disputed").length;
+  // Calculate metrics (apenas cobranças emitidas por fornecedores)
+  const totalPayments = supplierIssuedPayments.length;
+  const pendingPayments = supplierIssuedPayments.filter(p => p.status === "pending").length;
+  const processingPayments = supplierIssuedPayments.filter(p => p.status === "processing").length;
+  const completedPayments = supplierIssuedPayments.filter(p => p.status === "completed").length;
+  const disputedPayments = supplierIssuedPayments.filter(p => p.status === "disputed").length;
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
@@ -263,81 +263,31 @@ export default function Payments() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight animate-fade-in" style={{ animationDelay: '0.1s', opacity: 0, animationFillMode: 'forwards' }}>
-            Pagamentos
+            Cobranças a Pagar
           </h1>
           <p className="text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
-            Gerencie pagamentos seguros com sistema de escrow
+            Visualize e pague as cobranças emitidas pelos fornecedores
           </p>
         </div>
-        <div className="flex gap-2 animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
-          <CreatePaymentModal
-            onPaymentCreate={async (quoteId: string, amount: number) => {
-              try {
-                // Buscar dados completos da cotação incluindo itens
-                const { data: quoteData, error: quoteError } = await supabase
-                  .from('quotes')
-                  .select(`
-                    *,
-                    quote_items(quantity, unit_price)
-                  `)
-                  .eq('id', quoteId)
-                  .single();
-
-                if (quoteError || !quoteData) {
-                  toast.error('Cotação não encontrada');
-                  throw new Error('Quote not found');
-                }
-
-                // Calcular total real da cotação
-                let totalAmount = quoteData.total || 0;
-                
-                // Se total for zero, calcular a partir dos itens
-                if (totalAmount === 0 && quoteData.quote_items?.length > 0) {
-                  totalAmount = quoteData.quote_items.reduce((sum: number, item: any) => {
-                    return sum + ((item.quantity || 0) * (item.unit_price || 0));
-                  }, 0);
-                }
-
-                // Validar valor mínimo
-                if (totalAmount <= 0) {
-                  toast.error('O valor do pagamento deve ser maior que zero. Verifique se a cotação possui itens válidos.');
-                  throw new Error('Invalid payment amount');
-                }
-
-                // Criar pagamento (ID será gerado automaticamente pelo trigger)
-                const { data, error } = await supabase
-                  .from('payments')
-                  .insert({
-                    quote_id: quoteId,
-                    client_id: quoteData.client_id,
-                    supplier_id: quoteData.supplier_id || null,
-                    amount: totalAmount,
-                    status: 'pending'
-                  } as any)
-                  .select()
-                  .single();
-                
-                if (error) {
-                  throw error;
-                }
-                
-                toast.success(`Pagamento ${data.id} criado com sucesso no valor de R$ ${totalAmount.toFixed(2)}`);
-                refetch();
-                return data.id;
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : 'Erro ao criar pagamento');
-                throw error;
-              }
-            }}
-            trigger={
-              <Button className="btn-corporate">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Pagamento
-              </Button>
-            }
-          />
-        </div>
       </div>
+
+      {/* Info Card - Novo Fluxo */}
+      <Card className="border-primary/20 bg-primary/5 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-primary mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                Como funciona o novo fluxo de pagamentos?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Após aprovar uma cotação, o <strong>fornecedor emite a cobrança</strong> com os dados da nota fiscal. 
+                Você receberá uma notificação e poderá pagar diretamente pela plataforma com proteção de escrow.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Escrow Dashboard */}
       <EscrowDashboard payments={payments} />
@@ -513,20 +463,19 @@ export default function Payments() {
         {filteredPayments.length === 0 && (
         <Card className="card-corporate">
           <CardContent className="p-12 text-center">
-            <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhum pagamento encontrado</h3>
+            <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {searchTerm || activeFilter !== "all" 
+                ? "Nenhuma cobrança encontrada"
+                : "Aguardando cobranças dos fornecedores"
+              }
+            </h3>
             <p className="text-muted-foreground mb-4">
               {searchTerm || activeFilter !== "all" 
                 ? "Tente ajustar os filtros de busca"
-                : "Comece criando seu primeiro pagamento"
+                : "Após aprovar uma cotação, o fornecedor emitirá a cobrança e você será notificado"
               }
             </p>
-            {!searchTerm && activeFilter === "all" && (
-              <Button className="btn-corporate">
-                <Plus className="h-4 w-4 mr-2" />
-                Criar Primeiro Pagamento
-              </Button>
-            )}
           </CardContent>
         </Card>
       )}
