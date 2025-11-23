@@ -4437,6 +4437,48 @@ export type Database = {
           },
         ]
       }
+      quote_supplier_views: {
+        Row: {
+          first_viewed_at: string | null
+          id: string
+          last_viewed_at: string | null
+          quote_id: string
+          supplier_id: string
+          view_count: number | null
+        }
+        Insert: {
+          first_viewed_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          quote_id: string
+          supplier_id: string
+          view_count?: number | null
+        }
+        Update: {
+          first_viewed_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          quote_id?: string
+          supplier_id?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_supplier_views_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_supplier_views_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_suppliers: {
         Row: {
           created_at: string | null
