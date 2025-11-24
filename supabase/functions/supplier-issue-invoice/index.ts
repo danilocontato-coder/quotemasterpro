@@ -99,9 +99,16 @@ serve(async (req) => {
     console.log(`✅ Asaas payment created:`, asaasPayment.id)
 
     // 6. Criar registro de payment no banco
+    // Preparar notas offline (combinando notes + nfeUrl se fornecido)
+    let offlineNotes = notes || '';
+    if (nfeUrl) {
+      offlineNotes += (offlineNotes ? '\n\n' : '') + `NF-e: ${nfeUrl}`;
+    }
+
     const { data: payment, error: paymentError } = await supabaseClient
       .from('payments')
       .insert({
+        id: `PAY${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`,
         quote_id: quoteId,
         client_id: quote.client_id,
         supplier_id: quote.supplier_id,
@@ -114,15 +121,12 @@ serve(async (req) => {
         supplier_net_amount: calculation.supplierNet,
         status: 'pending',
         asaas_payment_id: asaasPayment.id,
+        asaas_invoice_url: asaasPayment.invoiceUrl || null,
         issued_by: quote.supplier_id,
         invoice_number: invoiceNumber,
         invoice_issued_at: new Date().toISOString(),
-        metadata: {
-          asaas_invoice_url: asaasPayment.invoiceUrl,
-          asaas_bank_slip_url: asaasPayment.bankSlipUrl,
-          notes: notes,
-          nfe_url: nfeUrl // URL da NF-e enviada pelo fornecedor
-        }
+        offline_notes: offlineNotes || null,
+        offline_attachments: nfeUrl ? [nfeUrl] : null
       })
       .select()
       .single()
