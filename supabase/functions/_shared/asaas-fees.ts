@@ -88,7 +88,12 @@ export function calculateCustomerTotal(
   // O fornecedor paga a comissão, não o cliente
   const commissionPercentage = 5.0; // Pode vir de config depois
   const platformCommission = baseAmount * (commissionPercentage / 100);
-  const supplierNet = baseAmount - platformCommission;
+  
+  // 🆕 CORREÇÃO: Fornecedor paga comissão + taxas Asaas
+  // Cliente paga: baseAmount + taxas Asaas (R$ 1.000 + R$ 1,98 = R$ 1.001,98)
+  // Asaas retém: R$ 1,98 (taxas)
+  // Fornecedor recebe: baseAmount - comissão - taxas (R$ 1.000 - R$ 50 - R$ 1,98 = R$ 948,02)
+  const supplierNet = baseAmount - platformCommission - fees.totalFees;
 
   return {
     baseAmount,
