@@ -56,6 +56,21 @@ export default function SupplierQuotes() {
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [isIssueInvoiceModalOpen, setIsIssueInvoiceModalOpen] = useState(false);
   const [quotesWithDeliveries, setQuotesWithDeliveries] = useState<Set<string>>(new Set());
+  const [invoiceModalData, setInvoiceModalData] = useState<{
+    clientData?: {
+      name: string;
+      cnpj: string;
+      email: string;
+      phone?: string;
+      address?: string;
+    };
+    quoteItems?: Array<{
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+      total: number;
+    }>;
+  }>({});
   
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -567,8 +582,27 @@ export default function SupplierQuotes() {
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => {
+                              onClick={async () => {
                                 setSelectedQuote(quote);
+                                
+                                // Buscar dados completos da cotação
+                                const { data: fullQuote } = await supabase
+                                  .from('quotes')
+                                  .select(`
+                                    *,
+                                    client:client_id(name, cnpj, email, phone, address),
+                                    items:quote_items(product_name, quantity, unit_price, total)
+                                  `)
+                                  .eq('id', quote.id)
+                                  .single();
+                                
+                                if (fullQuote) {
+                                  setInvoiceModalData({
+                                    clientData: fullQuote.client as any,
+                                    quoteItems: fullQuote.items as any
+                                  });
+                                }
+                                
                                 setIsIssueInvoiceModalOpen(true);
                               }}
                               className="bg-primary hover:bg-primary/90"
@@ -733,6 +767,8 @@ export default function SupplierQuotes() {
         quoteId={selectedQuote?.id || ''}
         quoteTitle={selectedQuote?.title || ''}
         quoteAmount={selectedQuote?.total || 0}
+        clientData={invoiceModalData.clientData}
+        quoteItems={invoiceModalData.quoteItems}
       />
     </div>
   );
