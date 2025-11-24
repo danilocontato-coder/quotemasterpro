@@ -70,6 +70,8 @@ export default function SupplierQuotes() {
       unit_price: number;
       total: number;
     }>;
+    quoteTotal?: number;
+    freightCost?: number;
   }>({});
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -599,7 +601,9 @@ export default function SupplierQuotes() {
                                 if (fullQuote) {
                                   setInvoiceModalData({
                                     clientData: fullQuote.client as any,
-                                    quoteItems: fullQuote.items as any
+                                    quoteItems: fullQuote.items as any,
+                                    quoteTotal: fullQuote.total || 0,
+                                    freightCost: fullQuote.freight_cost || 0
                                   });
                                 }
                                 
@@ -766,7 +770,8 @@ export default function SupplierQuotes() {
         onOpenChange={setIsIssueInvoiceModalOpen}
         quoteId={selectedQuote?.id || ''}
         quoteTitle={selectedQuote?.title || ''}
-        quoteAmount={selectedQuote?.total || 0}
+        quoteAmount={invoiceModalData.quoteTotal || 0}
+        freightCost={invoiceModalData.freightCost || 0}
         clientData={invoiceModalData.clientData}
         quoteItems={invoiceModalData.quoteItems}
       />

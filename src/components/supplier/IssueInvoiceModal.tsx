@@ -19,6 +19,7 @@ interface IssueInvoiceModalProps {
   quoteId: string;
   quoteTitle: string;
   quoteAmount: number;
+  freightCost?: number;
   clientData?: {
     name: string;
     cnpj: string;
@@ -46,6 +47,7 @@ export function IssueInvoiceModal({
   quoteId,
   quoteTitle,
   quoteAmount,
+  freightCost = 0,
   clientData,
   quoteItems = [],
 }: IssueInvoiceModalProps) {
@@ -59,7 +61,9 @@ export function IssueInvoiceModal({
 
   // Calcular breakdown de valores
   const itemsSubtotal = quoteItems.reduce((sum, item) => sum + (item.total || 0), 0);
-  const effectiveTotal = quoteAmount > 0 ? quoteAmount : itemsSubtotal;
+  
+  // Se quoteAmount está definido e > 0, usar ele. Caso contrário, calcular: itens + frete
+  const effectiveTotal = quoteAmount > 0 ? quoteAmount : (itemsSubtotal + freightCost);
   
   const breakdown = calculateCustomerTotal(effectiveTotal, 'UNDEFINED');
   const platformCommission = breakdown.platformCommission;
@@ -215,8 +219,26 @@ export function IssueInvoiceModal({
                 </div>
               )}
 
+              {/* Subtotal dos itens */}
+              {quoteItems.length > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal dos Itens</span>
+                  <span>R$ {itemsSubtotal.toFixed(2)}</span>
+                </div>
+              )}
+
+              {/* Frete se houver */}
+              {freightCost > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Frete/Entrega</span>
+                  <span>R$ {freightCost.toFixed(2)}</span>
+                </div>
+              )}
+
+              {(quoteItems.length > 0 || freightCost > 0) && <Separator />}
+
               <div className="flex justify-between text-sm font-medium">
-                <span>Subtotal (Base)</span>
+                <span>Valor Base (Cotação)</span>
                 <span>R$ {breakdown.baseAmount.toFixed(2)}</span>
               </div>
 

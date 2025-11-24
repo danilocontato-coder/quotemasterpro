@@ -4787,6 +4787,7 @@ export type Database = {
           created_by: string | null
           deadline: string | null
           description: string | null
+          freight_cost: number | null
           id: string
           items_count: number | null
           local_code: string
@@ -4814,6 +4815,7 @@ export type Database = {
           created_by?: string | null
           deadline?: string | null
           description?: string | null
+          freight_cost?: number | null
           id: string
           items_count?: number | null
           local_code: string
@@ -4841,6 +4843,7 @@ export type Database = {
           created_by?: string | null
           deadline?: string | null
           description?: string | null
+          freight_cost?: number | null
           id?: string
           items_count?: number | null
           local_code?: string
