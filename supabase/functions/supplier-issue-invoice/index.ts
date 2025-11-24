@@ -63,6 +63,28 @@ serve(async (req) => {
     
     console.log(`💰 Calculation:`, calculation)
 
+    // 🛡️ Validação de sanidade
+    if (calculation.supplierNet > calculation.baseAmount) {
+      console.error('❌ ERRO CRÍTICO: supplierNet maior que baseAmount!', {
+        baseAmount: calculation.baseAmount,
+        supplierNet: calculation.supplierNet,
+        platformCommission: calculation.platformCommission,
+        asaasFee: calculation.asaasFee,
+        quoteId: quote.id
+      });
+      throw new Error('Erro no cálculo financeiro: valor líquido não pode ser maior que valor base');
+    }
+
+    if (calculation.supplierNet < 0) {
+      console.warn('⚠️ Valor líquido negativo detectado', {
+        baseAmount: calculation.baseAmount,
+        supplierNet: calculation.supplierNet,
+        quoteId: quote.id
+      });
+    }
+
+    console.log('✅ Cálculo financeiro validado:', calculation)
+
     // 4. Buscar configuração do Asaas
     const asaasConfig = await getAsaasConfig(supabaseClient)
 
