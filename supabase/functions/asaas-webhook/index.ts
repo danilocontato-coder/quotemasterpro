@@ -140,6 +140,27 @@ serve(async (req) => {
 
         console.log('✅ Fornecedor notificado sobre pagamento em escrow');
 
+        // 🆕 Notificar cliente sobre pagamento confirmado
+        console.log('📦 Notificando cliente sobre pagamento confirmado...');
+        
+        await supabaseClient.rpc('notify_client_users', {
+          p_client_id: paymentRecord.quotes.client_id,
+          p_title: '✅ Pagamento Confirmado',
+          p_message: `O pagamento de R$ ${payment.value.toFixed(2)} para a cotação #${paymentRecord.quotes.local_code} foi confirmado e está sendo processado.`,
+          p_type: 'payment',
+          p_priority: 'high',
+          p_action_url: '/payments',
+          p_metadata: {
+            payment_id: paymentRecord.id,
+            quote_id: paymentRecord.quote_id,
+            quote_code: paymentRecord.quotes.local_code,
+            amount: payment.value,
+            status: 'in_escrow'
+          }
+        });
+
+        console.log('✅ Cliente notificado sobre pagamento confirmado');
+
         // Log de auditoria
         await supabaseClient
           .from('audit_logs')
