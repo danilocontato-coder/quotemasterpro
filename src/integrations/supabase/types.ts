@@ -4207,6 +4207,48 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_client_views: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          last_responses_count: number
+          last_viewed_at: string
+          quote_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          last_responses_count?: number
+          last_viewed_at?: string
+          quote_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          last_responses_count?: number
+          last_viewed_at?: string
+          quote_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_client_views_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_client_views_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_conversations: {
         Row: {
           client_id: string
