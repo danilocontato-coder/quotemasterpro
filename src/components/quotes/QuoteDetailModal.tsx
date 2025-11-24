@@ -788,8 +788,13 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-6' : 'grid-cols-5'}`}>
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-              <TabsTrigger value="proposals">
+              <TabsTrigger value="proposals" className="flex items-center gap-2">
                 Propostas ({proposals.length})
+                {proposals.length > 0 && (
+                  <Badge variant="secondary" className="bg-blue-500 text-white text-xs">
+                    <Sparkles className="h-3 w-3" />
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="analysis">🧩 Combinação Inteligente</TabsTrigger>
               {quote.requires_visit && (

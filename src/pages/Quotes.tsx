@@ -12,11 +12,15 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { useSupabaseQuotes } from "@/hooks/useSupabaseQuotes";
 import { useSupabaseSubscriptionGuard } from "@/hooks/useSupabaseSubscriptionGuard";
 import { useAIQuoteFeature } from "@/hooks/useAIQuoteFeature";
+import { useQuoteUpdates } from "@/hooks/useQuoteUpdates";
+import { useAuth } from "@/contexts/AuthContext";
 import { getStatusColor, getStatusText } from "@/utils/statusUtils";
 import { formatLocalDateTime, formatLocalDate } from "@/utils/dateUtils";
 import { AnimatedHeader, AnimatedGrid, AnimatedSection } from '@/components/ui/animated-page';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { QuoteUpdateBadge } from "@/components/quotes/QuoteUpdateBadge";
+import { Bell } from "lucide-react";
 
 // Lazy load modais pesados
 const CreateQuoteModalSupabase = lazy(() => import("@/components/quotes/CreateQuoteModalSupabase").then(m => ({ default: m.CreateQuoteModalSupabase })));
@@ -52,6 +56,15 @@ export default function Quotes() {
   const { quotes, createQuote, updateQuote, deleteQuote, isLoading, error, markQuoteAsReceived, refetch } = useSupabaseQuotes();
   const { enforceLimit } = useSupabaseSubscriptionGuard();
   const { isEnabled: aiFeatureEnabled, isLoading: aiFeatureLoading } = useAIQuoteFeature();
+  const { user } = useAuth();
+  const { 
+    hasUpdates, 
+    getQuoteUpdates, 
+    getTotalUpdatesCount, 
+    getQuotesWithUpdates, 
+    markAsViewed,
+    isLoading: updatesLoading 
+  } = useQuoteUpdates(quotes);
 
   console.log('🤖 [QUOTES-PAGE] AI Feature Status:', { 
     aiFeatureEnabled, 
@@ -93,6 +106,52 @@ export default function Quotes() {
       toast.error('Sua sessão expirou. Recarregue a página para fazer login novamente.');
     }
   }, [error]);
+
+  // Realtime subscription para novas propostas
+  useEffect(() => {
+    if (!user?.clientId) return;
+
+    const channel = supabase
+      .channel('client-quote-updates')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'quote_responses',
+      }, async (payload) => {
+        console.log('🎉 Nova proposta recebida:', payload);
+        
+        // Buscar informações da cotação
+        const { data: quote } = await supabase
+          .from('quotes')
+          .select('id, title, local_code, client_id')
+          .eq('id', (payload.new as any).quote_id)
+          .single();
+
+        // Verificar se pertence ao cliente logado
+        if (quote && quote.client_id === user.clientId) {
+          toast.success(`🎉 Nova proposta recebida para ${quote.local_code || quote.title}!`, {
+            action: {
+              label: 'Ver',
+              onClick: () => {
+                const quoteToView = quotes.find(q => q.id === quote.id);
+                if (quoteToView) {
+                  setViewingQuote(quoteToView);
+                  setIsDetailModalOpen(true);
+                }
+              }
+            }
+          });
+          
+          // Atualizar lista de cotações
+          refetch();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.clientId, quotes, refetch]);
 
   const handleForceRefresh = () => {
     refetch();
@@ -179,6 +238,8 @@ export default function Quotes() {
   const handleViewClick = (quote: any) => {
     setViewingQuote(quote);
     setIsDetailModalOpen(true);
+    // Marcar como visualizada
+    markAsViewed(quote.id);
   };
 
   const handleMarkAsReceived = async (quote: any) => {
@@ -231,6 +292,8 @@ export default function Quotes() {
       matchesFilter = quote.status === "approved";
     } else if (activeFilter === "rejected") {
       matchesFilter = quote.status === "rejected";
+    } else if (activeFilter === "updates") {
+      matchesFilter = hasUpdates(quote.id);
     }
     
     let matchesVisitFilter = true;
@@ -335,6 +398,35 @@ export default function Quotes() {
         </div>
       )}
 
+      {/* Updates Alert Card */}
+      {getTotalUpdatesCount() > 0 && (
+        <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-none animate-fade-in">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-full">
+                  <Bell className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium opacity-90">Você tem atualizações!</p>
+                  <p className="text-2xl font-bold">{getTotalUpdatesCount()} {getTotalUpdatesCount() === 1 ? 'cotação' : 'cotações'}</p>
+                </div>
+              </div>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => {
+                  setActiveFilter("updates");
+                  setVisitFilter("all");
+                }}
+              >
+                Ver Todas
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col gap-4 animate-fade-in">
         <div className="space-y-2">
@@ -436,15 +528,25 @@ export default function Quotes() {
         </div>
         <div className="animate-scale-in" style={{ animationDelay: '0.25s', opacity: 0, animationFillMode: 'forwards' }}>
           <FilterMetricCard
+            title="Com Atualizações"
+            value={getTotalUpdatesCount()}
+            icon={<Bell />}
+            isActive={activeFilter === "updates"}
+            onClick={() => { setActiveFilter("updates"); setVisitFilter("all"); }}
+            variant="destructive"
+          />
+        </div>
+        <div className="animate-scale-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+          <FilterMetricCard
             title="Aprovadas"
             value={approvedQuotes}
-            icon={<Plus />}
+            icon={<CheckCircle />}
             isActive={activeFilter === "approved"}
             onClick={() => { setActiveFilter("approved"); setVisitFilter("all"); }}
             variant="success"
           />
         </div>
-        <div className="animate-scale-in" style={{ animationDelay: '0.3s', opacity: 0, animationFillMode: 'forwards' }}>
+        <div className="animate-scale-in" style={{ animationDelay: '0.35s', opacity: 0, animationFillMode: 'forwards' }}>
           <FilterMetricCard
             title="Em Análise"
             value={underReviewQuotes}
@@ -627,9 +729,15 @@ export default function Quotes() {
                     <CardTitle className="text-base leading-tight line-clamp-2 mb-2">
                       {quote.title}
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground font-mono">
-                      {quote.local_code || quote.id}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {quote.local_code || quote.id}
+                      </p>
+                      <QuoteUpdateBadge 
+                        updates={getQuoteUpdates(quote.id)} 
+                        onClick={() => handleViewClick(quote)}
+                      />
+                    </div>
                     {/* Visit Status Badges */}
                     {quote.status === 'awaiting_visit' && (
                       <Badge variant="secondary" className="mt-2 bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-400">
