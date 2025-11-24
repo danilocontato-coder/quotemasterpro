@@ -31,6 +31,24 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
 
   // Layout para proposta única
   if (isSingleProposal) {
+    // ✅ FASE 2: Criar lista unificada - itens da cotação + itens extras da proposta
+    const unifiedItems = [...quoteItems];
+    const existingItemNames = new Set(quoteItems.map(qi => qi.product_name.toLowerCase()));
+    
+    proposal.items.forEach(pi => {
+      if (!existingItemNames.has(pi.productName.toLowerCase())) {
+        unifiedItems.push({
+          id: pi.productId || crypto.randomUUID(),
+          product_name: pi.productName,
+          quantity: pi.quantity,
+          unit_price: pi.unitPrice,
+          total: pi.total
+        });
+      }
+    });
+
+    console.log('📦 [ITEMS-SINGLE] Total de itens a exibir:', unifiedItems.length);
+    
     // 💰 Calcular total normalizado a partir dos itens
     const itemsSubtotal = proposal.items.reduce((sum, item) => sum + (item.total || 0), 0);
     const computedTotal = itemsSubtotal + proposal.shippingCost;
@@ -100,20 +118,35 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
                 </tr>
               </thead>
               <tbody>
-                {quoteItems.map((item, idx) => {
+                {unifiedItems.map((item, idx) => {
                   const proposalItem = proposal.items.find(pi => 
-                    pi.productId === item.product_name || pi.productName === item.product_name
+                    pi.productId === item.product_name || 
+                    pi.productName === item.product_name ||
+                    pi.productName.toLowerCase() === item.product_name.toLowerCase()
                   );
                   const unitPrice = proposalItem?.unitPrice || 0;
-                  const subtotal = unitPrice * item.quantity;
+                  const quantity = proposalItem?.quantity || item.quantity;
+                  const subtotal = unitPrice * quantity;
+                  
+                  // 🏷️ Badge se item foi adicionado pelo fornecedor
+                  const isExtraItem = !quoteItems.some(qi => 
+                    qi.product_name.toLowerCase() === item.product_name.toLowerCase()
+                  );
                   
                   return (
                     <tr key={item.id} className={`border-b border-border ${idx % 2 === 0 ? 'bg-muted/20' : ''}`}>
                       <td className="p-3">
-                        <p className="font-medium text-foreground">{item.product_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground">{item.product_name}</p>
+                          {isExtraItem && (
+                            <Badge variant="secondary" className="text-xs">
+                              ➕ Adicionado
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="text-center p-3 text-muted-foreground">
-                        {item.quantity}
+                        {quantity}
                       </td>
                       <td className="text-right p-3 font-medium text-foreground">
                         {unitPrice > 0 ? (
@@ -133,17 +166,18 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
                   );
                 })}
                 
-                {/* Linha de Frete */}
-                <tr className="border-b border-border bg-blue-50/30">
-                  <td colSpan={3} className="p-3 font-medium text-foreground">Frete</td>
-                  <td className="text-right p-3 font-semibold text-foreground">
-                    {proposal.shippingCost === 0 ? (
-                      <span className="text-green-600">Grátis</span>
-                    ) : (
-                      `R$ ${proposal.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    )}
-                  </td>
-                </tr>
+                {/* ✅ FASE 4: Linha de Frete - só aparece se > 0 */}
+                {proposal.shippingCost > 0 && (
+                  <tr className="border-t-2 border-dashed border-border bg-blue-50/50">
+                    <td colSpan={3} className="p-3 font-medium text-blue-900 flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Custo de Frete/Entrega
+                    </td>
+                    <td className="text-right p-3 font-semibold text-blue-900">
+                      R$ {proposal.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                )}
                 
                 {/* Linha de Total */}
                 <tr className="font-bold bg-muted border-t-2 border-border">
@@ -174,6 +208,33 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
   }
 
   // Layout para múltiplas propostas (comparação)
+  // ✅ FASE 3: Criar lista unificada de TODOS os itens de TODAS as propostas
+  const unifiedItemsMap = new Map<string, QuoteItem>();
+  
+  // Adicionar itens da cotação original
+  quoteItems.forEach(qi => {
+    unifiedItemsMap.set(qi.product_name.toLowerCase(), qi);
+  });
+  
+  // Adicionar itens extras de cada proposta
+  proposals.forEach(prop => {
+    prop.items.forEach(pi => {
+      const key = pi.productName.toLowerCase();
+      if (!unifiedItemsMap.has(key)) {
+        unifiedItemsMap.set(key, {
+          id: pi.productId || crypto.randomUUID(),
+          product_name: pi.productName,
+          quantity: pi.quantity,
+          unit_price: pi.unitPrice,
+          total: pi.total
+        });
+      }
+    });
+  });
+  
+  const allItems = Array.from(unifiedItemsMap.values());
+  console.log('📦 [COMPARISON] Total de itens únicos:', allItems.length);
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm border-collapse">
@@ -188,24 +249,42 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
           </tr>
         </thead>
         <tbody>
-          {quoteItems.map((item, idx) => {
+          {allItems.map((item, idx) => {
             const prices = proposals.map(p => {
               const proposalItem = p.items.find(pi => 
-                pi.productId === item.product_name || pi.productName === item.product_name
+                pi.productId === item.product_name || 
+                pi.productName === item.product_name ||
+                pi.productName.toLowerCase() === item.product_name.toLowerCase()
               );
               return proposalItem?.unitPrice || 0;
             });
             const minPrice = Math.min(...prices.filter(p => p > 0));
             
+            // 🏷️ Badge se item foi adicionado
+            const isExtraItem = !quoteItems.some(qi => 
+              qi.product_name.toLowerCase() === item.product_name.toLowerCase()
+            );
+            
             return (
               <tr key={item.id} className={`border-b border-border ${idx % 2 === 0 ? 'bg-muted/20' : ''}`}>
                 <td className="p-3">
-                  <p className="font-medium">{item.product_name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Quantidade: {item.quantity}</p>
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <p className="font-medium">{item.product_name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Quantidade: {item.quantity}</p>
+                    </div>
+                    {isExtraItem && (
+                      <Badge variant="secondary" className="text-xs">
+                        ➕ Adicionado
+                      </Badge>
+                    )}
+                  </div>
                 </td>
                 {proposals.map((p) => {
                   const proposalItem = p.items.find(pi => 
-                    pi.productId === item.product_name || pi.productName === item.product_name
+                    pi.productId === item.product_name || 
+                    pi.productName === item.product_name ||
+                    pi.productName.toLowerCase() === item.product_name.toLowerCase()
                   );
                   const price = proposalItem?.unitPrice || 0;
                   const isBest = price === minPrice && price > 0 && minPrice < Infinity;
@@ -236,19 +315,24 @@ export function ProposalComparisonTable({ proposals, quoteItems }: ProposalCompa
             );
           })}
           
-          {/* Shipping costs */}
-          <tr className="border-b border-border bg-blue-50/30">
-            <td className="p-3 font-medium">Frete</td>
-            {proposals.map(p => (
-              <td key={p.id} className="text-center p-3 font-medium">
-                {p.shippingCost === 0 ? (
-                  <span className="text-green-600">Grátis</span>
-                ) : (
-                  `R$ ${p.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                )}
+          {/* ✅ FASE 4: Linha de Frete - só aparece se alguma proposta tiver frete > 0 */}
+          {proposals.some(p => p.shippingCost > 0) && (
+            <tr className="border-t-2 border-dashed border-border bg-blue-50/50">
+              <td className="p-3 font-medium text-blue-900 flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Custo de Frete/Entrega
               </td>
-            ))}
-          </tr>
+              {proposals.map(p => (
+                <td key={p.id} className="text-center p-3 font-semibold text-blue-900">
+                  {p.shippingCost === 0 ? (
+                    <span className="text-green-600">Grátis</span>
+                  ) : (
+                    `R$ ${p.shippingCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                  )}
+                </td>
+              ))}
+            </tr>
+          )}
           
           {/* Total row */}
           <tr className="font-bold bg-muted border-t-2 border-border">
