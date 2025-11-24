@@ -189,10 +189,8 @@ export const useSupabaseApprovals = () => {
         )
       );
 
-      toast({
-        title: "Cotação aprovada",
-        description: "A cotação foi aprovada com sucesso.",
-      });
+      // ✅ Notificação já é criada pelo ApprovalService no sino
+      // Sem toast duplicado
 
       return true;
     } catch (error) {
