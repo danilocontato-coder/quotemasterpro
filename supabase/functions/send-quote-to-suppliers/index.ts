@@ -987,14 +987,15 @@ const handler = async (req: Request): Promise<Response> => {
               console.error(`❌ Evolution API error for ${supplier.name}:`, sent.error);
               
               // 📊 Registrar falha no log
-              await supabase.from('quote_sending_logs').insert({
+              const { error: logError1 } = await supabase.from('quote_sending_logs').insert({
                 quote_id: quoteId,
                 supplier_id: supplier.id,
                 channel: 'whatsapp',
                 status: 'failed',
                 error_message: String(sent.error).substring(0, 500),
                 response_data: { tried_endpoints: sent.tried_endpoints }
-              }).catch(err => console.error('Failed to log WhatsApp failure:', err));
+              });
+              if (logError1) console.error('Failed to log WhatsApp failure:', logError1);
               
               errorCount++;
               errors.push(`${supplier.name}: ${String(sent.error).substring(0, 100)}`);
@@ -1002,14 +1003,15 @@ const handler = async (req: Request): Promise<Response> => {
               console.log(`✅ Message sent to ${supplier.name} (${finalPhone}) via ${sent.endpoint}`);
               
               // 📊 Registrar sucesso no log
-              await supabase.from('quote_sending_logs').insert({
+              const { error: logError2 } = await supabase.from('quote_sending_logs').insert({
                 quote_id: quoteId,
                 supplier_id: supplier.id,
                 channel: 'whatsapp',
                 status: 'success',
                 endpoint_used: sent.endpoint,
                 response_data: { messageId: sent.messageId, phone: finalPhone }
-              }).catch(err => console.error('Failed to log WhatsApp success:', err));
+              });
+              if (logError2) console.error('Failed to log WhatsApp success:', logError2);
               
               successCount++;
             }
@@ -1092,13 +1094,14 @@ const handler = async (req: Request): Promise<Response> => {
                 console.error(`❌ [${supplier.name}] Email error:`, emailError);
                 
                 // 📊 Registrar falha no log
-                await supabase.from('quote_sending_logs').insert({
+                const { error: logError3 } = await supabase.from('quote_sending_logs').insert({
                   quote_id: quoteId,
                   supplier_id: supplier.id,
                   channel: 'email',
                   status: 'failed',
                   error_message: emailError.message || String(emailError)
-                }).catch(err => console.error('Failed to log email failure:', err));
+                });
+                if (logError3) console.error('Failed to log email failure:', logError3);
                 
                 emailErrors.push({
                   supplier: supplier.name,
@@ -1108,12 +1111,13 @@ const handler = async (req: Request): Promise<Response> => {
                 console.log(`✅ [${supplier.name}] Email sent successfully`);
                 
                 // 📊 Registrar sucesso no log
-                await supabase.from('quote_sending_logs').insert({
+                const { error: logError4 } = await supabase.from('quote_sending_logs').insert({
                   quote_id: quoteId,
                   supplier_id: supplier.id,
                   channel: 'email',
                   status: 'success'
-                }).catch(err => console.error('Failed to log email success:', err));
+                });
+                if (logError4) console.error('Failed to log email success:', logError4);
                 
                 emailsSent++;
                 
@@ -1126,13 +1130,14 @@ const handler = async (req: Request): Promise<Response> => {
               console.error(`❌ [${supplier.name}] Failed to send email:`, emailError);
               
               // 📊 Registrar falha no log
-              await supabase.from('quote_sending_logs').insert({
+              const { error: logError5 } = await supabase.from('quote_sending_logs').insert({
                 quote_id: quoteId,
                 supplier_id: supplier.id,
                 channel: 'email',
                 status: 'failed',
                 error_message: emailError.message || String(emailError)
-              }).catch(err => console.error('Failed to log email failure:', err));
+              });
+              if (logError5) console.error('Failed to log email failure:', logError5);
               
               emailErrors.push({
                 supplier: supplier.name,
