@@ -452,34 +452,49 @@ export default function SupplierReceivables() {
                                     asaasFee = breakdown.asaasFee;
                                   }
 
+                                  // Verificar se valor está correto (calculado vs armazenado)
+                                  const calculatedNet = baseAmount - commission - asaasFee;
+                                  const isValidated = receivable.supplier_net_amount && 
+                                    Math.abs(receivable.supplier_net_amount - calculatedNet) < 0.01;
+
                                   return (
                                     <>
-                                      <span>{formatCurrency(netAmount)}</span>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-xs">
-                                          <div className="text-xs space-y-1">
-                                            <div className="flex justify-between gap-4">
-                                              <span>Valor da venda:</span>
-                                              <span className="font-medium">{formatCurrency(baseAmount)}</span>
-                                            </div>
-                                            <div className="flex justify-between gap-4 text-red-600">
-                                              <span>Comissão (5%):</span>
-                                              <span>-{formatCurrency(commission)}</span>
-                                            </div>
-                                            <div className="flex justify-between gap-4 text-red-600">
-                                              <span>Taxa Asaas:</span>
-                                              <span>-{formatCurrency(asaasFee)}</span>
-                                            </div>
-                                            <div className="flex justify-between gap-4 font-bold border-t pt-1 mt-1">
-                                              <span>Você recebe:</span>
-                                              <span className="text-green-600">{formatCurrency(netAmount)}</span>
-                                            </div>
-                                          </div>
-                                        </TooltipContent>
-                                      </Tooltip>
+                                      <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-1">
+                                          <span>{formatCurrency(netAmount)}</span>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-xs">
+                                              <div className="text-xs space-y-1">
+                                                <div className="flex justify-between gap-4">
+                                                  <span>Valor da venda:</span>
+                                                  <span className="font-medium">{formatCurrency(baseAmount)}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-4 text-red-600">
+                                                  <span>Comissão (5%):</span>
+                                                  <span>-{formatCurrency(commission)}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-4 text-red-600">
+                                                  <span>Taxa Asaas:</span>
+                                                  <span>-{formatCurrency(asaasFee)}</span>
+                                                </div>
+                                                <div className="flex justify-between gap-4 font-bold border-t pt-1 mt-1">
+                                                  <span>Você recebe:</span>
+                                                  <span className="text-green-600">{formatCurrency(netAmount)}</span>
+                                                </div>
+                                              </div>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </div>
+                                        {isValidated && (
+                                          <Badge variant="outline" className="text-xs w-fit">
+                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                            Valor Validado
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </>
                                   );
                                 })()}
