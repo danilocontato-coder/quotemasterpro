@@ -46,12 +46,15 @@ interface Delivery {
   updated_at: string;
   payments?: {
     amount: number;
-    quotes?: {
-      title: string;
-      client_name: string;
-      local_code?: string;
-      shipping_cost?: number;
-    };
+  quotes?: {
+    title: string;
+    client_name: string;
+    local_code?: string;
+    shipping_cost?: number;
+    client_address?: string;
+    client_phone?: string;
+    client_email?: string;
+  };
   };
 }
 
@@ -117,7 +120,18 @@ export default function SupplierDeliveries() {
       const [quotesRes, paymentsRes, quoteResponsesRes] = await Promise.all([
         supabase
           .from('quotes')
-          .select('id, local_code, title, client_name, total')
+          .select(`
+            id, 
+            local_code, 
+            title, 
+            client_name, 
+            total,
+            clients!quotes_client_id_fkey (
+              address,
+              phone,
+              email
+            )
+          `)
           .in('id', quoteIds),
         supabase
           .from('payments')
@@ -130,7 +144,18 @@ export default function SupplierDeliveries() {
           .eq('status', 'approved')
       ]);
 
-      const quotes = (quotesRes.data || []) as Array<{ id: string; local_code: string; title: string; client_name: string; total: number }>;
+      const quotes = (quotesRes.data || []) as Array<{ 
+        id: string; 
+        local_code: string; 
+        title: string; 
+        client_name: string; 
+        total: number;
+        clients: {
+          address: string;
+          phone: string;
+          email: string;
+        } | null;
+      }>;
       const payments = (paymentsRes.data || []) as Array<{ quote_id: string; amount: number; status: string }>;
       const quoteResponses = (quoteResponsesRes.data || []) as Array<{ quote_id: string; shipping_cost: number | null }>;
 
@@ -165,7 +190,10 @@ export default function SupplierDeliveries() {
                   title: quote.title, 
                   client_name: quote.client_name,
                   local_code: quote.local_code,
-                  shipping_cost: shipping
+                  shipping_cost: shipping,
+                  client_address: quote.clients?.address || '',
+                  client_phone: quote.clients?.phone || '',
+                  client_email: quote.clients?.email || ''
                 }
               }
             : undefined
@@ -260,11 +288,23 @@ export default function SupplierDeliveries() {
   useEffect(() => {
     if (selectedQuoteForSchedule) {
       const loadQuoteData = async () => {
-        const { data } = await supabase
-          .from('quotes')
-          .select('id, local_code, title, client_name, total')
-          .eq('id', selectedQuoteForSchedule)
-          .single();
+      const { data } = await supabase
+        .from('quotes')
+        .select(`
+          id, 
+          local_code, 
+          title, 
+          client_name, 
+          total,
+          clients!quotes_client_id_fkey (
+            name,
+            address,
+            phone,
+            email
+          )
+        `)
+        .eq('id', selectedQuoteForSchedule)
+        .single();
         
         if (data) {
           setQuoteForModal(data);
