@@ -591,7 +591,7 @@ export default function SupplierQuotes() {
                               onClick={async () => {
                                 setSelectedQuote(quote);
                                 
-                                // Buscar resposta aprovada (status 'selected') ou a mais recente enviada
+                                // Buscar resposta aprovada (status 'approved') ou a mais recente enviada
                                 const { data: responses, error: responseError } = await supabase
                                   .from('quote_responses')
                                   .select(`
@@ -603,7 +603,7 @@ export default function SupplierQuotes() {
                                     created_at
                                   `)
                                   .eq('quote_id', quote.id)
-                                  .in('status', ['selected', 'sent'])
+                                  .in('status', ['approved', 'sent'])
                                   .order('created_at', { ascending: false });
 
                                 if (responseError) {
@@ -612,8 +612,8 @@ export default function SupplierQuotes() {
                                   return;
                                 }
 
-                                // Priorizar resposta 'selected', caso contrário usar a mais recente 'sent'
-                                const approvedResponse = responses?.find(r => r.status === 'selected') || responses?.[0];
+                                // Priorizar resposta 'approved', caso contrário usar a mais recente 'sent'
+                                const approvedResponse = responses?.find(r => r.status === 'approved') || responses?.[0];
 
                                 if (!approvedResponse) {
                                   console.error('Nenhuma resposta encontrada para quote:', quote.id);
