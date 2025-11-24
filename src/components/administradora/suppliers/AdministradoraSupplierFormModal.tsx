@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Stepper } from '@/components/ui/stepper';
-import { ArrowLeft, ArrowRight, Save, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Save, X, CheckCircle, Loader2 } from 'lucide-react';
 import { useAdministradoraSupplierForm } from '@/hooks/useAdministradoraSupplierForm';
 import { BasicInfoStep } from '@/components/suppliers/forms/BasicInfoStep';
 import { ContactStep } from '@/components/suppliers/forms/ContactStep';
 import { LocationStep } from '@/components/suppliers/forms/LocationStep';
 import { SpecialtiesStep } from '@/components/suppliers/forms/SpecialtiesStep';
 import { ConfirmationStep } from '@/components/suppliers/forms/ConfirmationStep';
+import { SupplierCreationProgressBar } from '@/components/suppliers/SupplierCreationProgressBar';
+import { ProgressTracker } from '@/components/ui/progress-tracker';
 
 interface AdministradoraSupplierFormModalProps {
   open: boolean;
@@ -40,6 +43,8 @@ export function AdministradoraSupplierFormModal({
     canGoPrev,
     isLastStep,
     isEditMode,
+    submissionProgress,
+    completionPercentage,
   } = useAdministradoraSupplierForm({
     administradoraId,
     editingSupplier,
@@ -127,6 +132,9 @@ export function AdministradoraSupplierFormModal({
               <X className="h-4 w-4" />
             </Button>
           </div>
+          <div className="mt-4">
+            <SupplierCreationProgressBar completionPercentage={completionPercentage} />
+          </div>
           
           <div className="mt-4">
             <Stepper
@@ -145,6 +153,21 @@ export function AdministradoraSupplierFormModal({
 
         <div className="py-6">
           {renderStepContent()}
+          
+          {/* Progress Tracker durante submissão */}
+          {isLoading && submissionProgress.step !== 'idle' && (
+            <div className="mt-6">
+              <ProgressTracker
+                steps={[
+                  { id: '1', label: 'Validação completa', status: submissionProgress.step === 'validating' ? 'inProgress' : 'completed' },
+                  { id: '2', label: 'Fornecedor criado', status: submissionProgress.step === 'creating_supplier' ? 'inProgress' : submissionProgress.step === 'validating' ? 'pending' : 'completed' },
+                  { id: '3', label: 'Criando usuário de acesso...', status: submissionProgress.step === 'creating_user' ? 'inProgress' : ['validating', 'creating_supplier'].includes(submissionProgress.step) ? 'pending' : 'completed' },
+                  { id: '4', label: 'Aguardando sincronização', status: submissionProgress.step === 'syncing_profile' ? 'inProgress' : ['validating', 'creating_supplier', 'creating_user'].includes(submissionProgress.step) ? 'pending' : 'completed' },
+                  { id: '5', label: 'Enviando notificações', status: submissionProgress.step === 'sending_notifications' ? 'inProgress' : submissionProgress.step === 'completed' ? 'completed' : 'pending' },
+                ]}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t">
@@ -192,24 +215,17 @@ export function AdministradoraSupplierFormModal({
                 <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button
+              <LoadingButton
                 type="button"
                 onClick={handleSubmit}
+                isLoading={isLoading}
+                loadingText={submissionProgress.message || 'Salvando...'}
                 disabled={isLoading}
                 className="flex items-center gap-2 bg-success hover:bg-success/90 text-white"
               >
-                {isLoading ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    {isEditMode ? 'Atualizar' : 'Cadastrar'} Fornecedor
-                  </>
-                )}
-              </Button>
+                <Save className="h-4 w-4" />
+                {isEditMode ? 'Atualizar' : 'Cadastrar'} Fornecedor
+              </LoadingButton>
             )}
           </div>
         </div>

@@ -290,4 +290,33 @@ All colors MUST be HSL. Design system for enterprise quote management.
       transition: none !important;
     }
   }
+
+  /* Supplier creation success animations */
+  @keyframes pulse-border {
+    0%, 100% {
+      border-color: hsl(142 76% 36%);
+      box-shadow: 0 0 0 0 hsla(142, 76%, 36%, 0.4);
+    }
+    50% {
+      border-color: hsl(142 76% 46%);
+      box-shadow: 0 0 0 8px hsla(142, 76%, 36%, 0);
+    }
+  }
+
+  @keyframes fade-highlight {
+    0% {
+      background-color: hsl(142 76% 95%);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  .animate-pulse-border {
+    animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) 3;
+  }
+
+  .animate-fade-highlight {
+    animation: fade-highlight 3s ease-out forwards;
+  }
 }
