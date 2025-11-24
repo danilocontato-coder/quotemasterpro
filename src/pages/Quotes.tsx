@@ -770,6 +770,11 @@ export default function Quotes() {
                         🔓 NÃO ENVIADA
                       </Badge>
                     )}
+                    {quote.status === 'sending' && (
+                      <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400 animate-pulse">
+                        📤 Enviando...
+                      </Badge>
+                    )}
                     <Suspense fallback={<div className="h-8 w-8 rounded-full bg-muted animate-pulse" />}>
                       <StatusProgressIndicator status={quote.status} />
                     </Suspense>
