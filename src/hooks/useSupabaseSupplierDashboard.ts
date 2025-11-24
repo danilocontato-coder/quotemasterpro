@@ -131,7 +131,19 @@ export const useSupabaseSupplierDashboard = () => {
         .order('created_at', { ascending: false });
 
       if (quotesError) {
-        console.error('Erro ao buscar cotações:', quotesError);
+        console.error('❌ [SUPPLIER-DASHBOARD] Erro ao buscar cotações:', {
+          error: quotesError,
+          supplierId: user.supplierId,
+          errorMessage: quotesError?.message,
+          errorCode: quotesError?.code,
+          errorDetails: quotesError?.details,
+          errorHint: quotesError?.hint,
+        });
+        toast({
+          title: 'Erro ao carregar cotações',
+          description: `${quotesError?.message || 'Erro desconhecido'}. Verifique o console (F12) para mais detalhes.`,
+          variant: 'destructive',
+        });
         throw quotesError;
       }
       
@@ -149,7 +161,17 @@ export const useSupabaseSupplierDashboard = () => {
         .order('created_at', { ascending: false });
 
       if (proposalsError) {
-        console.error('Erro ao buscar propostas:', proposalsError);
+        console.error('❌ [SUPPLIER-DASHBOARD] Erro ao buscar propostas:', {
+          error: proposalsError,
+          supplierId: user.supplierId,
+          errorMessage: proposalsError?.message,
+          errorCode: proposalsError?.code,
+        });
+        toast({
+          title: 'Aviso',
+          description: `Erro ao carregar propostas: ${proposalsError?.message || 'Erro desconhecido'}`,
+          variant: 'default',
+        });
         // Não travar, continuar com propostas vazias
       }
 
@@ -303,12 +325,26 @@ export const useSupabaseSupplierDashboard = () => {
         approvalGrowth,
       });
 
-    } catch (err) {
+      console.log('✅ [SUPPLIER-DASHBOARD] Dashboard data loaded successfully', {
+        quotesCount: quotesData?.length || 0,
+        proposalsCount: proposalsData?.length || 0,
+        recentQuotesCount: transformedRecentQuotes.length,
+      });
+
+    } catch (err: any) {
+      console.error('❌ [SUPPLIER-DASHBOARD] Erro CRÍTICO ao buscar dados do dashboard:', {
+        error: err,
+        supplierId: user?.supplierId,
+        errorMessage: err?.message,
+        errorCode: err?.code,
+        errorDetails: err?.details,
+        stack: err?.stack,
+      });
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar dados do dashboard';
       setError(errorMessage);
       toast({
-        title: 'Erro',
-        description: errorMessage,
+        title: '❌ Erro Crítico',
+        description: `${errorMessage}. Pressione F12 para ver detalhes no console ou consulte o guia de troubleshooting.`,
         variant: 'destructive',
       });
     } finally {
