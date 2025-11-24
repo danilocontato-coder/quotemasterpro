@@ -1153,10 +1153,33 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
+      // ✅ FASE 1: Atualizar status para 'sending' ANTES de enviar mensagens
+      console.log(`📝 Updating quote ${quoteId} status to 'sending' (preparing to send)...`);
+      
+      try {
+        const { error: preSendStatusError } = await supabase
+          .from('quotes')
+          .update({ 
+            status: 'sending',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', quoteId);
+
+        if (preSendStatusError) {
+          console.error('❌ Failed to update quote status to sending:', preSendStatusError);
+        } else {
+          console.log(`✅ Quote ${quoteId} marked as 'sending'`);
+        }
+      } catch (error) {
+        console.error('❌ Error updating quote status to sending:', error);
+      }
+
       console.log(`Direct Evolution sending completed: ${successCount} success, ${errorCount} errors`);
 
-      // ✅ CORREÇÃO: Só marcar como 'sent' se pelo menos 1 envio foi bem-sucedido
+      // ✅ Atualizar status final baseado no resultado dos envios
+      let finalStatus = 'draft';
       if (successCount > 0) {
+        finalStatus = 'sent';
         console.log(`📝 Updating quote ${quoteId} status to 'sent' (${successCount}/${suppliers.length} successful)...`);
         
         try {
@@ -1259,10 +1282,12 @@ const handler = async (req: Request): Promise<Response> => {
         ? `${successCount} fornecedor(es) notificado(s) • ${emailsSent} e-mail(s) enviado(s)`
         : `Falha ao enviar para todos os fornecedores (${errorCount} erro(s))`;
 
+      // ✅ FASE 2: Retornar status final na resposta
       return new Response(
         JSON.stringify({ 
           success: successCount > 0, 
           message: responseMessage,
+          quote_status: finalStatus, // ✅ NOVO: status final da cotação
           suppliers_sent: successCount,
           whatsapp_sent: send_whatsapp ? successCount : 0,
           emails_sent: emailsSent,

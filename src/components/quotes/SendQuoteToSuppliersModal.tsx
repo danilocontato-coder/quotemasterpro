@@ -405,8 +405,14 @@ export function SendQuoteToSuppliersModal({
           }
         );
         
-        // Status update is handled by backend - invalidate cache to show fresh data
-        await refetch();
+        // ✅ FASE 3: Atualizar UI imediatamente com status da resposta
+        if (data.quote_status) {
+          console.log(`✅ Updating quote status to: ${data.quote_status}`);
+          await updateQuoteStatus(quote.id, data.quote_status);
+        }
+        
+        // Refetch em background (sem await) para sincronizar
+        refetch();
         
         // Store generated short links for display
         setGeneratedShortLinks(validShortLinks);

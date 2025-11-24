@@ -3,6 +3,7 @@ export const getStatusText = (status: string) => {
   switch (status) {
     // Quote statuses
     case 'draft': return 'Rascunho';
+    case 'sending': return 'Enviando'; // ✅ FASE 5: Status intermediário
     case 'sent': return 'Enviada';
     case 'receiving': return 'Recebendo Propostas';
     case 'received': return 'Recebida'; // Propostas recebidas - ainda pode ser aprovada/negociada
@@ -37,6 +38,7 @@ export const getStatusText = (status: string) => {
 export const getStatusColor = (status: string) => {
   switch (status) {
     case 'draft': return 'bg-gray-100 text-gray-800';
+    case 'sending': return 'bg-blue-100 text-blue-600 animate-pulse'; // ✅ FASE 5: Estilo intermediário
     case 'sent': return 'bg-blue-100 text-blue-800';
     case 'receiving': return 'bg-cyan-100 text-cyan-800';
     case 'received': return 'bg-emerald-100 text-emerald-800';
@@ -65,7 +67,9 @@ export const getStatusColor = (status: string) => {
 export const getValidStatusTransitions = (currentStatus: string): string[] => {
   switch (currentStatus) {
     case 'draft':
-      return ['sent', 'awaiting_visit', 'cancelled'];
+      return ['sending', 'sent', 'awaiting_visit', 'cancelled']; // ✅ Permite 'sending'
+    case 'sending':
+      return ['sent', 'draft', 'cancelled']; // ✅ Pode retornar para draft se falhar
     case 'sent':
       return ['receiving', 'awaiting_visit', 'cancelled'];
     case 'awaiting_visit':
