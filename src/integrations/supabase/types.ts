@@ -6720,7 +6720,6 @@ export type Database = {
           }
       generate_contract_alerts: { Args: never; Returns: undefined }
       generate_delivery_code: { Args: never; Returns: string }
-      generate_friendly_payment_id: { Args: never; Returns: string }
       generate_invitation_letter_number: {
         Args: { p_client_id: string }
         Returns: string
