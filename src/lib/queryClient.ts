@@ -9,17 +9,21 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 min - dados considerados "frescos"
+      staleTime: 2 * 60 * 1000, // 2 min - mais responsivo
       gcTime: 10 * 60 * 1000, // 10 min - manter em cache
-      refetchOnWindowFocus: false, // Não recarregar ao focar janela
-      refetchOnMount: false, // Não recarregar ao montar componente
-      refetchOnReconnect: false, // Não recarregar ao reconectar
+      refetchOnWindowFocus: true, // Reativar para manter dados frescos
+      refetchOnMount: false, // Manter desabilitado (evita duplicatas)
+      refetchOnReconnect: true, // Reativar (importante após offline)
       retry: 1, // Apenas 1 retry em caso de erro
       networkMode: 'online'
     },
     mutations: {
       retry: 1,
-      networkMode: 'online'
+      networkMode: 'online',
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['quotes'] });
+        queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      }
     }
   }
 });

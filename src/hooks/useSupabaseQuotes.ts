@@ -318,6 +318,7 @@ export const useSupabaseQuotes = () => {
 
       console.log('✅ Quote created successfully:', quoteId);
       await fetchQuotes(); // Refresh the list
+      clearCache(`quotes_${user.role}_${user.clientId || user.supplierId || user.id}`);
       return completeQuote;
     } catch (error) {
       console.error('❌ Error creating quote:', error);
@@ -342,6 +343,7 @@ export const useSupabaseQuotes = () => {
       setQuotes(prev => 
         prev.map(quote => quote.id === quoteId ? { ...quote, ...updates } : quote)
       );
+      clearCache(`quotes_${user.role}_${user.clientId || user.supplierId || user.id}`);
       
       return data;
     } catch (error) {
@@ -386,6 +388,7 @@ export const useSupabaseQuotes = () => {
       setQuotes(prev => {
         const filtered = prev.filter(quote => quote.id !== quoteId);
         console.log('🔍 Local state updated, remaining quotes:', filtered.length);
+        clearCache(`quotes_${user.role}_${user.clientId || user.supplierId || user.id}`);
         return filtered;
       });
     } catch (error) {
@@ -422,15 +425,13 @@ export const useSupabaseQuotes = () => {
   useEffect(() => {
     let quotesSubscription: any = null;
     let responsesSubscription: any = null;
+    let updateTimeout: NodeJS.Timeout;
 
     const setupRealtime = () => {
       if (!stableUser.id) {
         console.log('🔍 [DEBUG-QUOTES] ⚠️ Sem usuário para subscription');
         return;
       }
-
-      // REAL-TIME TEMPORARIAMENTE DESABILITADO
-      return; // Early return para desabilitar toda a subscrição real-time
 
       // Set up real-time subscription for quotes com ID único por user
       quotesSubscription = supabase
@@ -447,11 +448,19 @@ export const useSupabaseQuotes = () => {
             
             if (payload.eventType === 'UPDATE') {
               const updatedQuote = payload.new as Quote;
-              console.log('🔍 [DEBUG-QUOTES] 📝 Updating quote in real-time:', updatedQuote.id, 'new status:', updatedQuote.status);
               
-              setQuotes(prev => 
-                prev.map(quote => quote.id === updatedQuote.id ? updatedQuote : quote)
-              );
+              // Debounce de 500ms para evitar updates duplicados
+              if (updateTimeout) {
+                clearTimeout(updateTimeout);
+              }
+              
+              updateTimeout = setTimeout(() => {
+                console.log('🔍 [REALTIME] Atualizando quote:', updatedQuote.id);
+                setQuotes(prev => 
+                  prev.map(q => q.id === updatedQuote.id ? { ...q, ...updatedQuote } : q)
+                );
+                clearCache(`quotes_${stableUser.role}_${stableUser.clientId || stableUser.supplierId || stableUser.id}`);
+              }, 500);
             } else if (payload.eventType === 'INSERT') {
               const newQuote = payload.new as Quote;
               console.log('🔍 [DEBUG-QUOTES] 📝 Adding new quote in real-time:', newQuote.id);
