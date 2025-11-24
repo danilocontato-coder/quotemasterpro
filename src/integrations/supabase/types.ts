@@ -7026,6 +7026,10 @@ export type Database = {
           visibility_scope: string
         }[]
       }
+      supplier_can_read_client: {
+        Args: { client_id_param: string }
+        Returns: boolean
+      }
       trigger_scheduled_email_campaigns: { Args: never; Returns: undefined }
       trigger_send_overdue_reminders: { Args: never; Returns: undefined }
       user_belongs_to_client: {
