@@ -50,6 +50,7 @@ interface Delivery {
       title: string;
       client_name: string;
       local_code?: string;
+      freight_cost?: number;
     };
   };
 }
@@ -116,7 +117,7 @@ export default function SupplierDeliveries() {
       const [quotesRes, paymentsRes] = await Promise.all([
         supabase
           .from('quotes')
-          .select('id, local_code, title, client_name, total')
+          .select('id, local_code, title, client_name, total, freight_cost')
           .in('id', quoteIds),
         supabase
           .from('payments')
@@ -124,7 +125,7 @@ export default function SupplierDeliveries() {
           .in('quote_id', quoteIds)
       ]);
 
-      const quotes = (quotesRes.data || []) as Array<{ id: string; local_code: string; title: string; client_name: string; total: number }>;
+      const quotes = (quotesRes.data || []) as Array<{ id: string; local_code: string; title: string; client_name: string; total: number; freight_cost?: number }>;
       const payments = (paymentsRes.data || []) as Array<{ quote_id: string; amount: number; status: string }>;
 
       const quoteMap = new Map(quotes.map((q) => [q.id, q]));
@@ -150,7 +151,8 @@ export default function SupplierDeliveries() {
                 quotes: { 
                   title: quote.title, 
                   client_name: quote.client_name,
-                  local_code: quote.local_code 
+                  local_code: quote.local_code,
+                  freight_cost: quote.freight_cost
                 }
               }
             : undefined
@@ -442,7 +444,7 @@ export default function SupplierDeliveries() {
               </CardHeader>
               
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Cotação</p>
                     <p className="font-medium">
@@ -465,6 +467,22 @@ export default function SupplierDeliveries() {
                     <p className="font-bold">
                       {delivery.payments ? formatCurrency(delivery.payments.amount) : 'N/A'}
                     </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Frete</p>
+                    <div className="flex items-center gap-2">
+                      {delivery.payments?.quotes?.freight_cost === 0 ? (
+                        <Badge variant="approved" className="text-xs">
+                          Grátis
+                        </Badge>
+                      ) : (
+                        <p className="font-medium">
+                          {delivery.payments?.quotes?.freight_cost 
+                            ? formatCurrency(delivery.payments.quotes.freight_cost) 
+                            : 'N/A'}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
