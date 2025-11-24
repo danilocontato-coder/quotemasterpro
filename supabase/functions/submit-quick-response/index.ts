@@ -111,62 +111,80 @@ serve(async (req) => {
       );
     }
 
-    // Buscar ou criar fornecedor
+    // ✅ FASE 1: Buscar fornecedor (prevenir duplicatas)
     console.log('🔍 [Quick Response] Buscando fornecedor:', supplier_email);
     let supplierId: string;
     
+    // 1. Buscar por email primeiro
     const { data: existingSupplier } = await supabase
       .from('suppliers')
-      .select('id')
+      .select('id, name')
       .eq('email', supplier_email)
       .maybeSingle();
 
     if (existingSupplier) {
       supplierId = existingSupplier.id;
-      console.log('✅ Fornecedor existente encontrado:', supplierId);
+      console.log('✅ Fornecedor encontrado por email:', supplierId);
     } else {
-      console.log('➕ Criando novo fornecedor...');
-      
-      // ✅ FASE 1: Gerar CNPJ temporário de 14 dígitos
-      // Formato: timestamp (12 dígitos) + random (2 dígitos) = 14 dígitos
-      const timestamp = Date.now().toString().slice(-12); // 12 dígitos do timestamp
-      const random = Math.floor(Math.random() * 100).toString().padStart(2, '0'); // 2 dígitos
-      const tempCnpj = `${timestamp}${random}`; // Total: 14 dígitos ✅
-      
-      // ✅ FASE 2: Validar comprimento antes de usar
-      if (tempCnpj.length !== 14) {
-        console.error(`❌ CNPJ inválido gerado: ${tempCnpj.length} dígitos - esperado 14`);
-        throw new Error(`CNPJ temporário inválido: ${tempCnpj} (${tempCnpj.length} dígitos)`);
-      }
-      
-      console.log('🔢 CNPJ temporário gerado (14 dígitos):', tempCnpj);
-      
-      // Criar novo fornecedor
-      const { data: newSupplier, error: supplierError } = await supabase
+      // 2. Buscar por nome + client_id para evitar duplicatas
+      const { data: supplierByName } = await supabase
         .from('suppliers')
-        .insert({
-          name: supplier_name,
-          email: supplier_email,
-          status: 'active',
-          type: 'local',
-          client_id: tokenData.client_id,
-          cnpj: tempCnpj,
-          document_type: 'cpf',
-          document_number: tempCnpj
-        })
-        .select('id')
-        .single();
+        .select('id, name, email')
+        .eq('client_id', tokenData.client_id)
+        .ilike('name', supplier_name.trim())
+        .maybeSingle();
 
-      if (supplierError || !newSupplier) {
-        console.error('❌ Erro ao criar fornecedor:', supplierError);
-        return new Response(
-          JSON.stringify({ success: false, error: 'Erro ao criar fornecedor: ' + supplierError?.message }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }, status: 500 }
-        );
+      if (supplierByName) {
+        // Fornecedor existe com nome similar - atualizar email e usar ID existente
+        supplierId = supplierByName.id;
+        
+        await supabase
+          .from('suppliers')
+          .update({ email: supplier_email })
+          .eq('id', supplierId);
+          
+        console.log('✅ Fornecedor encontrado por nome, email atualizado:', supplierId);
+      } else {
+        // 3. Criar novo fornecedor
+        console.log('➕ Criando novo fornecedor...');
+        
+        const timestamp = Date.now().toString().slice(-12);
+        const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        const tempCnpj = `${timestamp}${random}`;
+        
+        if (tempCnpj.length !== 14) {
+          console.error(`❌ CNPJ inválido gerado: ${tempCnpj.length} dígitos - esperado 14`);
+          throw new Error(`CNPJ temporário inválido: ${tempCnpj} (${tempCnpj.length} dígitos)`);
+        }
+        
+        console.log('🔢 CNPJ temporário gerado (14 dígitos):', tempCnpj);
+        
+        const { data: newSupplier, error: supplierError } = await supabase
+          .from('suppliers')
+          .insert({
+            name: supplier_name,
+            email: supplier_email,
+            status: 'active',
+            type: 'local',
+            client_id: tokenData.client_id,
+            cnpj: tempCnpj,
+            document_type: 'cpf',
+            document_number: tempCnpj
+          })
+          .select('id')
+          .single();
+
+        if (supplierError || !newSupplier) {
+          console.error('❌ Erro ao criar fornecedor:', supplierError);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Erro ao criar fornecedor: ' + supplierError?.message }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }, status: 500 }
+          );
+        }
+
+        supplierId = newSupplier.id;
+        console.log('✅ Novo fornecedor criado:', supplierId);
       }
-
-      supplierId = newSupplier.id;
-      console.log('✅ Novo fornecedor criado:', supplierId);
     }
 
     // Normalizar shipping_cost
@@ -239,10 +257,26 @@ serve(async (req) => {
     }
     console.log('✅ Resposta salva com sucesso:', response.id);
     
-    // NOTA: O trigger trg_sync_supplier_on_response irá automaticamente:
-    // 1. Adicionar supplier_id ao selected_supplier_ids da cotação
-    // 2. Incrementar suppliers_sent_count
-    // 3. Disparar trg_auto_associate_quote_suppliers para criar client_suppliers
+    // ✅ FASE 5: Vincular resposta ao fornecedor original em quote_suppliers
+    const { data: existingLink } = await supabase
+      .from('quote_suppliers')
+      .select('id')
+      .eq('quote_id', tokenData.quote_id)
+      .eq('supplier_id', supplierId)
+      .maybeSingle();
+
+    if (!existingLink) {
+      await supabase
+        .from('quote_suppliers')
+        .insert({
+          quote_id: tokenData.quote_id,
+          supplier_id: supplierId
+        });
+      console.log('✅ Vinculação criada em quote_suppliers');
+    } else {
+      console.log('✅ Vinculação já existe em quote_suppliers');
+    }
+    
     console.log('🔄 Triggers automáticos de sincronização serão disparados pelo banco');
 
     // Agendar visita técnica se fornecida
