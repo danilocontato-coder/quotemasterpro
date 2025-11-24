@@ -35,8 +35,8 @@ serve(async (req) => {
       .select(`
         *,
         quotes!inner(id, title, local_code, client_id),
-        suppliers!inner(id, name, email, asaas_wallet_id),
-        clients!inner(id, name, email, cnpj, asaas_customer_id)
+        suppliers!payments_supplier_id_fkey!inner(id, name, email, asaas_wallet_id, bank_data),
+        clients!payments_client_id_fkey!inner(id, name, email, cnpj, asaas_customer_id)
       `)
       .eq('id', paymentId)
       .eq('status', 'pending')
