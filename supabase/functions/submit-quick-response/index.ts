@@ -127,13 +127,19 @@ serve(async (req) => {
     } else {
       console.log('➕ Criando novo fornecedor...');
       
-      // Gerar CNPJ temporário único baseado em timestamp + random
-      // Formato: QR + timestamp (últimos 10 dígitos) + random (2 dígitos)
-      const timestamp = Date.now().toString().slice(-10);
-      const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-      const tempCnpj = `${timestamp}${random}`;
+      // ✅ FASE 1: Gerar CNPJ temporário de 14 dígitos
+      // Formato: timestamp (12 dígitos) + random (2 dígitos) = 14 dígitos
+      const timestamp = Date.now().toString().slice(-12); // 12 dígitos do timestamp
+      const random = Math.floor(Math.random() * 100).toString().padStart(2, '0'); // 2 dígitos
+      const tempCnpj = `${timestamp}${random}`; // Total: 14 dígitos ✅
       
-      console.log('🔢 CNPJ temporário gerado:', tempCnpj);
+      // ✅ FASE 2: Validar comprimento antes de usar
+      if (tempCnpj.length !== 14) {
+        console.error(`❌ CNPJ inválido gerado: ${tempCnpj.length} dígitos - esperado 14`);
+        throw new Error(`CNPJ temporário inválido: ${tempCnpj} (${tempCnpj.length} dígitos)`);
+      }
+      
+      console.log('🔢 CNPJ temporário gerado (14 dígitos):', tempCnpj);
       
       // Criar novo fornecedor
       const { data: newSupplier, error: supplierError } = await supabase
