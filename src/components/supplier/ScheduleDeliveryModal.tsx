@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, MapPin, Clock, Package } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, MapPin, Clock, Package, Truck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -24,6 +26,8 @@ export function ScheduleDeliveryModal({
   const [scheduledDate, setScheduledDate] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [transportType, setTransportType] = useState("");
+  const [transportDetails, setTransportDetails] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,7 +47,9 @@ export function ScheduleDeliveryModal({
           quote_id: quote.id,
           scheduled_date: scheduledDate,
           delivery_address: deliveryAddress,
-          notes: notes
+          notes: notes,
+          transport_type: transportType,
+          transport_details: transportDetails
         }
       });
 
@@ -57,6 +63,8 @@ export function ScheduleDeliveryModal({
       setScheduledDate("");
       setDeliveryAddress("");
       setNotes("");
+      setTransportType("");
+      setTransportDetails("");
     } catch (error: any) {
       console.error('Error scheduling delivery:', error);
       
@@ -128,22 +136,22 @@ export function ScheduleDeliveryModal({
                 <p className="text-muted-foreground">Cliente</p>
                 <p className="font-medium">{quote.clients?.name || quote.client_name}</p>
               </div>
-              <div>
-                <p className="text-muted-foreground">Valor Total</p>
-                <p className="font-medium text-green-600">{formatCurrency(quote.total || 0)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Status</p>
-                <p className="font-medium">Pagamento Confirmado</p>
+              <div className="col-span-2">
+                <p className="text-muted-foreground">Frete</p>
+                {quote.shipping_cost === 0 ? (
+                  <Badge variant="approved">Grátis</Badge>
+                ) : (
+                  <p className="font-medium">{formatCurrency(quote.shipping_cost || 0)}</p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Endereço de Entrega Padrão */}
+          {/* Endereço do Cliente */}
           <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
             <h3 className="font-medium mb-2 flex items-center gap-2">
               <MapPin className="h-4 w-4 text-blue-600" />
-              Endereço de Entrega Padrão
+              Endereço do Cliente
             </h3>
             {fullAddress ? (
               <div className="space-y-1 text-sm">
@@ -191,6 +199,38 @@ export function ScheduleDeliveryModal({
                 rows={3}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transport-type" className="flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Tipo de Transporte (opcional)
+              </Label>
+              <Select value={transportType} onValueChange={setTransportType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo de transporte" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="own">Transporte Próprio</SelectItem>
+                  <SelectItem value="uber">Uber Solicitado Externamente</SelectItem>
+                  <SelectItem value="other">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {transportType && (
+              <div className="space-y-2">
+                <Label htmlFor="transport-details">
+                  Detalhes do Transporte (opcional)
+                </Label>
+                <Textarea
+                  id="transport-details"
+                  placeholder="Ex: Placa do veículo, nome do motorista, código do Uber, etc."
+                  value={transportDetails}
+                  onChange={(e) => setTransportDetails(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="notes" className="flex items-center gap-2">

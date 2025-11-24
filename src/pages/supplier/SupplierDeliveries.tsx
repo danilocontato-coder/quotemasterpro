@@ -457,7 +457,7 @@ export default function SupplierDeliveries() {
               </CardHeader>
               
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Cotação</p>
                     <p className="font-medium">
@@ -473,12 +473,6 @@ export default function SupplierDeliveries() {
                     <p className="text-sm text-muted-foreground">Cliente</p>
                     <p className="font-medium">
                       {delivery.payments?.quotes?.client_name || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Valor</p>
-                    <p className="font-bold">
-                      {delivery.payments ? formatCurrency(delivery.payments.amount) : 'N/A'}
                     </p>
                   </div>
                   <div>
