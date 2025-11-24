@@ -62,9 +62,11 @@ export function IssueInvoiceModal({
   // Calcular breakdown de valores
   const itemsSubtotal = quoteItems.reduce((sum, item) => sum + (item.total || 0), 0);
   
-  // Frete deve SEMPRE ser adicionado ao valor base (itens), independente da origem
-  // quoteAmount = total_amount da resposta (apenas itens), freightCost = shipping_cost
-  const effectiveTotal = (quoteAmount > 0 ? quoteAmount : itemsSubtotal) + freightCost;
+  // IMPORTANTE: quote_responses.total_amount JÁ inclui shipping_cost
+  // Apenas somar frete se estivermos calculando manualmente dos itens
+  const effectiveTotal = quoteAmount > 0 
+    ? quoteAmount  // Total da resposta já tem frete incluído
+    : itemsSubtotal + freightCost; // Fallback: calcular itens + frete manualmente
   
   const breakdown = calculateCustomerTotal(effectiveTotal, 'UNDEFINED');
   const platformCommission = breakdown.platformCommission;
