@@ -583,8 +583,8 @@ export default function SupplierQuotes() {
                             </Button>
                           )}
 
-                          {/* Botão Emitir Cobrança - quando cotação aprovada */}
-                          {quote.status === 'approved' && (
+                          {/* Botão Emitir Cobrança - quando cotação aprovada e sem pagamento */}
+                          {quote.status === 'approved' && !quote.payment_id && (
                             <Button
                               variant="default"
                               size="sm"
