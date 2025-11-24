@@ -189,6 +189,14 @@ export const useSupabaseApprovals = () => {
         )
       );
 
+      // Disparar evento custom para outros componentes
+      const approval = approvals.find(a => a.id === approvalId);
+      if (approval?.quote_id) {
+        window.dispatchEvent(new CustomEvent('quote-updated', { 
+          detail: { quoteId: approval.quote_id, status: 'approved' }
+        }));
+      }
+
       // ✅ Notificação já é criada pelo ApprovalService no sino
       // Sem toast duplicado
 
@@ -219,6 +227,14 @@ export const useSupabaseApprovals = () => {
             : approval
         )
       );
+
+      // Disparar evento custom para outros componentes
+      const approval = approvals.find(a => a.id === approvalId);
+      if (approval?.quote_id) {
+        window.dispatchEvent(new CustomEvent('quote-updated', { 
+          detail: { quoteId: approval.quote_id, status: 'rejected' }
+        }));
+      }
 
       toast({
         title: "Cotação rejeitada",

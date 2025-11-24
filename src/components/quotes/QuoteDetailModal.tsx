@@ -396,19 +396,20 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
     }
   }, [quote?.id, (quote as any)?.selected_supplier_ids]);
 
+  const [dataLoaded, setDataLoaded] = useState(false);
+
   useEffect(() => {
     console.log('🔄 QuoteDetailModal useEffect - open:', open, 'quote?.id:', quote?.id);
-    if (open && quote?.id) {
+    if (open && quote?.id && !dataLoaded) {
       console.log('✅ Iniciando carregamento completo de dados');
       
       const loadAllData = async () => {
         await fetchQuoteItems();
         await fetchAuditLogs();
-        await fetchSupplierNames(); // ✅ Executar antes de fetchProposals
-        await fetchProposals();      // ✅ Garantir que supplierNames já está populado
+        await fetchSupplierNames();
+        await fetchProposals();
         await loadSavedAnalyses(quote.id);
         
-        // Verificar análises salvas
         const { count } = await supabase
           .from('ai_proposal_analyses')
           .select('id', { count: 'exact' })
@@ -416,22 +417,19 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
         
         setAnalysesCount(count || 0);
         setHasAnalysesHistory((count || 0) > 0);
+        setDataLoaded(true);
         
         console.log('✅ Todos os dados carregados');
       };
       
       loadAllData();
     }
-  }, [open, quote?.id]);
-
-  // Forçar atualização ao mudar para aba de propostas
-  useEffect(() => {
-    if (activeTab === 'proposals' && quote?.id) {
-      console.log('🔄 Mudou para aba Propostas - atualizando dados');
-      fetchProposals();
-      fetchSupplierNames();
+    
+    // Reset flag quando modal fecha
+    if (!open) {
+      setDataLoaded(false);
     }
-  }, [activeTab, quote?.id, fetchProposals, fetchSupplierNames]);
+  }, [open, quote?.id, dataLoaded]);
 
   // Log audit logs for debugging
   useEffect(() => {
@@ -441,6 +439,24 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
       quoteId: quote?.id 
     });
   }, [auditLogs, quote?.id]);
+
+  // Listener de eventos custom para atualização externa
+  useEffect(() => {
+    const handleQuoteUpdate = (event: CustomEvent) => {
+      if (event.detail.quoteId === quote?.id) {
+        console.log('🔔 [MODAL] Recebeu notificação de atualização externa');
+        setDataLoaded(false);
+        fetchProposals();
+        fetchSupplierNames();
+      }
+    };
+    
+    window.addEventListener('quote-updated', handleQuoteUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('quote-updated', handleQuoteUpdate as EventListener);
+    };
+  }, [quote?.id, fetchProposals, fetchSupplierNames]);
 
   // Auto-marcação removida para evitar gasto desnecessário de tokens AI
   // Status 'received' agora deve ser definido manualmente pelo usuário
@@ -977,6 +993,25 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
             </TabsContent>
 
             <TabsContent value="proposals" className="space-y-6">
+              {/* Botão de atualização manual */}
+              <div className="flex justify-end mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    setDataLoaded(false);
+                    await fetchProposals();
+                    await fetchSupplierNames();
+                    setDataLoaded(true);
+                    toast({ title: "✅ Dados atualizados" });
+                  }}
+                  disabled={isLoading}
+                >
+                  <Download className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </Button>
+              </div>
+              
               {/* Dashboard Metrics */}
               {proposals.length > 0 && (
                 <ProposalDashboardMetrics
