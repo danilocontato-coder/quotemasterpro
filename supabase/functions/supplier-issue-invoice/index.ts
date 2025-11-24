@@ -25,7 +25,7 @@ serve(async (req) => {
       .select(`
         *,
         supplier:supplier_id(id, name, asaas_wallet_id),
-        client:client_id(id, name, email)
+        client:client_id(id, name, email, asaas_customer_id)
       `)
       .eq('id', quoteId)
       .single()
@@ -40,6 +40,10 @@ serve(async (req) => {
 
     if (!quote.supplier || !quote.supplier.asaas_wallet_id) {
       throw new Error('Fornecedor não possui wallet do Asaas configurado')
+    }
+
+    if (!quote.client.asaas_customer_id) {
+      throw new Error('Cliente não possui cadastro no Asaas. Entre em contato com o suporte.')
     }
 
     // 2. Verificar se já existe pagamento para esta cotação
@@ -64,7 +68,7 @@ serve(async (req) => {
 
     // 5. Criar cobrança no Asaas
     const asaasPayload = {
-      customer: quote.client.email,
+      customer: quote.client.asaas_customer_id, // ID do cliente no Asaas
       billingType: 'UNDEFINED', // Cliente escolhe ao pagar
       value: calculation.customerTotal,
       dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
