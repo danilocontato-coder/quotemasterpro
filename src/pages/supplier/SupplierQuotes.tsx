@@ -628,32 +628,50 @@ export default function SupplierQuotes() {
                                   totalAmount: approvedResponse.total_amount
                                 });
 
-                                // Buscar dados do cliente
-                                const { data: clientData } = await supabase
+                                // Buscar dados do cliente COM tratamento de erro
+                                const { data: clientData, error: clientError } = await supabase
                                   .from('clients')
                                   .select('name, cnpj, email, phone, address')
                                   .eq('id', quote.clientId)
                                   .single();
-                                
-                                if (clientData) {
-                                  setInvoiceModalData({
+
+                                if (clientError) {
+                                  console.error('❌ Erro ao buscar cliente:', {
                                     quoteId: quote.id,
-                                    quoteTitle: quote.title || quote.description || "Cotação",
-                                    quoteAmount: approvedResponse.total_amount,
-                                    quoteItems: (approvedResponse.items || []) as Array<{
-                                      product_name: string;
-                                      quantity: number;
-                                      unit_price: number;
-                                      total: number;
-                                    }>,
-                                    quoteTotal: approvedResponse.total_amount,
-                                    freightCost: approvedResponse.shipping_cost || 0,
-                                    clientData: clientData
+                                    clientId: quote.clientId,
+                                    error: clientError
                                   });
-                                  setIsIssueInvoiceModalOpen(true);
-                                } else {
-                                  toast.error("Erro ao carregar dados do cliente");
+                                  toast.error(`Erro ao carregar dados do cliente: ${clientError.message}`);
+                                  return;
                                 }
+
+                                if (!clientData || !clientData.name) {
+                                  console.error('⚠️ Dados do cliente incompletos:', clientData);
+                                  toast.error("Dados do cliente não encontrados ou incompletos");
+                                  return;
+                                }
+
+                                console.log('✅ Dados do cliente carregados:', {
+                                  clientId: quote.clientId,
+                                  clientName: clientData.name
+                                });
+
+                                // Abrir modal com dados completos
+                                setInvoiceModalData({
+                                  quoteId: quote.id,
+                                  quoteTitle: quote.title || quote.description || "Cotação",
+                                  quoteAmount: approvedResponse.total_amount,
+                                  quoteItems: (approvedResponse.items || []) as Array<{
+                                    product_name: string;
+                                    quantity: number;
+                                    unit_price: number;
+                                    total: number;
+                                  }>,
+                                  quoteTotal: approvedResponse.total_amount,
+                                  freightCost: approvedResponse.shipping_cost || 0,
+                                  clientData: clientData
+                                });
+                                setIsIssueInvoiceModalOpen(true);
                               }}
                               className="bg-primary hover:bg-primary/90"
                               title="Emitir cobrança para o cliente"
