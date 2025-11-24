@@ -50,7 +50,7 @@ interface Delivery {
       title: string;
       client_name: string;
       local_code?: string;
-      freight_cost?: number;
+      shipping_cost?: number;
     };
   };
 }
@@ -114,19 +114,30 @@ export default function SupplierDeliveries() {
       // Buscar dados relacionados em lote para evitar N+1
       const quoteIds = Array.from(new Set(rows.map((d: any) => d.quote_id)));
 
-      const [quotesRes, paymentsRes] = await Promise.all([
+      const [quotesRes, paymentsRes, quoteResponsesRes] = await Promise.all([
         supabase
           .from('quotes')
-          .select('id, local_code, title, client_name, total, freight_cost')
+          .select('id, local_code, title, client_name, total')
           .in('id', quoteIds),
         supabase
           .from('payments')
           .select('quote_id, amount, status')
+          .in('quote_id', quoteIds),
+        supabase
+          .from('quote_responses')
+          .select('quote_id, shipping_cost')
           .in('quote_id', quoteIds)
+          .eq('status', 'approved')
       ]);
 
-      const quotes = (quotesRes.data || []) as Array<{ id: string; local_code: string; title: string; client_name: string; total: number; freight_cost?: number }>;
+      const quotes = (quotesRes.data || []) as Array<{ id: string; local_code: string; title: string; client_name: string; total: number }>;
       const payments = (paymentsRes.data || []) as Array<{ quote_id: string; amount: number; status: string }>;
+      const quoteResponses = (quoteResponsesRes.data || []) as Array<{ quote_id: string; shipping_cost: number | null }>;
+
+      const shippingMap = new Map<string, number>();
+      for (const qr of quoteResponses) {
+        shippingMap.set(qr.quote_id, qr.shipping_cost ?? 0);
+      }
 
       const quoteMap = new Map(quotes.map((q) => [q.id, q]));
 
@@ -143,6 +154,8 @@ export default function SupplierDeliveries() {
       const deliveriesWithPayments: Delivery[] = rows.map((delivery: any) => {
         const quote = quoteMap.get(delivery.quote_id);
         const pay = paymentsMap.get(delivery.quote_id);
+        const shipping = shippingMap.get(delivery.quote_id) ?? 0;
+        
         return {
           ...delivery,
           payments: quote
@@ -152,7 +165,7 @@ export default function SupplierDeliveries() {
                   title: quote.title, 
                   client_name: quote.client_name,
                   local_code: quote.local_code,
-                  freight_cost: quote.freight_cost
+                  shipping_cost: shipping
                 }
               }
             : undefined
@@ -471,14 +484,14 @@ export default function SupplierDeliveries() {
                   <div>
                     <p className="text-sm text-muted-foreground">Frete</p>
                     <div className="flex items-center gap-2">
-                      {delivery.payments?.quotes?.freight_cost === 0 ? (
+                      {delivery.payments?.quotes?.shipping_cost === 0 ? (
                         <Badge variant="approved" className="text-xs">
                           Grátis
                         </Badge>
                       ) : (
                         <p className="font-medium">
-                          {delivery.payments?.quotes?.freight_cost 
-                            ? formatCurrency(delivery.payments.quotes.freight_cost) 
+                          {delivery.payments?.quotes?.shipping_cost 
+                            ? formatCurrency(delivery.payments.quotes.shipping_cost) 
                             : 'N/A'}
                         </p>
                       )}
