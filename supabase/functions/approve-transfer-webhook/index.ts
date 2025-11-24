@@ -14,10 +14,52 @@ serve(async (req) => {
   console.log('🔔 [approve-transfer-webhook] Recebendo requisição do Asaas');
 
   try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ========================================
+    // 0. VALIDAR CONFIGURAÇÃO DO WEBHOOK
+    // ========================================
+    const { data: webhookConfig } = await supabase
+      .from('system_settings')
+      .select('setting_value')
+      .eq('setting_key', 'asaas_webhook_config')
+      .single();
+
+    const config = webhookConfig?.setting_value as any;
+
+    // Validar se webhook está ativo
+    if (!config?.enabled) {
+      console.warn('⚠️ Webhook desabilitado nas configurações');
+      return new Response(
+        JSON.stringify({ 
+          status: 'REJECTED',
+          message: 'Webhook não está ativo'
+        }),
+        { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Validar token de autenticação se configurado
+    const authToken = req.headers.get('asaas-webhook-token');
+    if (config?.auth_token && authToken !== config.auth_token) {
+      console.error('❌ Token de autenticação inválido');
+      return new Response(
+        JSON.stringify({ 
+          status: 'REJECTED',
+          message: 'Token de autenticação inválido'
+        }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     const payload = await req.json();
     console.log('📦 Payload recebido:', JSON.stringify(payload, null, 2));
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Validar estrutura do payload
     if (!payload.transfer || !payload.transfer.id) {
@@ -106,9 +148,9 @@ serve(async (req) => {
     }
 
     // ========================================
-    // 3. VALIDAÇÃO DE LIMITE (OPCIONAL)
+    // 3. VALIDAÇÃO DE LIMITE (CONFIGURÁVEL)
     // ========================================
-    const MAX_TRANSFER_VALUE = 50000; // R$ 50.000 limite máximo por transferência
+    const MAX_TRANSFER_VALUE = config?.max_auto_approve_amount || 50000;
     if (value > MAX_TRANSFER_VALUE) {
       console.warn(`⚠️ Valor excede limite máximo: R$ ${value} > R$ ${MAX_TRANSFER_VALUE}`);
       
@@ -134,38 +176,40 @@ serve(async (req) => {
     }
 
     // ========================================
-    // 4. VALIDAÇÃO DE DADOS BANCÁRIOS
+    // 4. VALIDAÇÃO DE DADOS BANCÁRIOS (se habilitado)
     // ========================================
-    const supplierBankData = supplierTransfer.suppliers?.bank_data;
-    
-    if (supplierBankData) {
-      const expectedPixKey = supplierBankData.pix_key;
-      const expectedAccount = supplierBankData.account;
+    if (config?.validate_pix_key !== false) {
+      const supplierBankData = supplierTransfer.suppliers?.bank_data;
+      
+      if (supplierBankData) {
+        const expectedPixKey = supplierBankData.pix_key;
+        const expectedAccount = supplierBankData.account;
 
-      if (expectedPixKey && pixKey) {
-        const pixMatches = expectedPixKey.toLowerCase().trim() === pixKey.toLowerCase().trim();
-        if (!pixMatches) {
-          console.error(`❌ Chave PIX não confere: esperado=${expectedPixKey}, recebido=${pixKey}`);
-          
-          await supabase
-            .from('supplier_transfers')
-            .update({ 
-              status: 'failed',
-              error_message: 'Chave PIX não confere com cadastro do fornecedor',
-              processed_at: new Date().toISOString()
-            })
-            .eq('id', supplierTransfer.id);
+        if (expectedPixKey && pixKey) {
+          const pixMatches = expectedPixKey.toLowerCase().trim() === pixKey.toLowerCase().trim();
+          if (!pixMatches) {
+            console.error(`❌ Chave PIX não confere: esperado=${expectedPixKey}, recebido=${pixKey}`);
+            
+            await supabase
+              .from('supplier_transfers')
+              .update({ 
+                status: 'failed',
+                error_message: 'Chave PIX não confere com cadastro do fornecedor',
+                processed_at: new Date().toISOString()
+              })
+              .eq('id', supplierTransfer.id);
 
-          return new Response(
-            JSON.stringify({ 
-              status: 'REJECTED',
-              message: 'Dados bancários não conferem'
-            }),
-            { 
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
+            return new Response(
+              JSON.stringify({ 
+                status: 'REJECTED',
+                message: 'Dados bancários não conferem'
+              }),
+              { 
+                status: 200,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              }
+            );
+          }
         }
       }
     }

@@ -39,6 +39,7 @@ import { IntegrationFormModal } from '@/components/admin/IntegrationFormModal';
 import { IntegrationDetailsModal } from '@/components/admin/IntegrationDetailsModal';
 import { BoletoIntegrationPanel } from '@/components/admin/BoletoIntegrationPanel';
 import { AsaasIntegrationPanel } from '@/components/admin/AsaasIntegrationPanel';
+import { AsaasWebhookConfigPanel } from '@/components/admin/AsaasWebhookConfigPanel';
 import { WalletStatusDashboard } from '@/components/admin/WalletStatusDashboard';
 import { useSupabaseIntegrations, Integration } from '@/hooks/useSupabaseIntegrations';
 import { useToast } from '@/hooks/use-toast';
@@ -492,6 +493,11 @@ export const IntegrationsAndApisManagement = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <BoletoIntegrationPanel />
               <AsaasIntegrationPanel />
+            </div>
+
+            {/* Configuração do Webhook de Transferências */}
+            <div className="mt-6">
+              <AsaasWebhookConfigPanel />
             </div>
             
             {/* Dashboard de Status de Wallets */}
