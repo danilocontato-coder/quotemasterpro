@@ -45,6 +45,7 @@ import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryMod
 import { IssueInvoiceModal } from "@/components/supplier/IssueInvoiceModal";
 import { usePendingDeliveries } from "@/hooks/usePendingDeliveries";
 import { useQuoteViews } from "@/hooks/useQuoteViews";
+import { toast } from "sonner";
 
 export default function SupplierQuotes() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,6 +58,8 @@ export default function SupplierQuotes() {
   const [isIssueInvoiceModalOpen, setIsIssueInvoiceModalOpen] = useState(false);
   const [quotesWithDeliveries, setQuotesWithDeliveries] = useState<Set<string>>(new Set());
   const [invoiceModalData, setInvoiceModalData] = useState<{
+    quoteId?: string;
+    quoteTitle?: string;
     clientData?: {
       name: string;
       cnpj: string;
@@ -71,6 +74,7 @@ export default function SupplierQuotes() {
       total: number;
     }>;
     quoteTotal?: number;
+    quoteAmount?: number;
     freightCost?: number;
   }>({});
   
@@ -587,27 +591,43 @@ export default function SupplierQuotes() {
                               onClick={async () => {
                                 setSelectedQuote(quote);
                                 
-                                // Buscar dados completos da cotação
-                                const { data: fullQuote } = await supabase
-                                  .from('quotes')
+                                // Buscar resposta aprovada com valores corretos
+                                const { data: approvedResponse } = await supabase
+                                  .from('quote_responses')
                                   .select(`
                                     *,
-                                    client:client_id(name, cnpj, email, phone, address),
-                                    items:quote_items(product_name, quantity, unit_price, total)
+                                    items
                                   `)
-                                  .eq('id', quote.id)
+                                  .eq('quote_id', quote.id)
+                                  .eq('status', 'approved')
+                                  .single();
+
+                                // Buscar dados do cliente
+                                const { data: clientData } = await supabase
+                                  .from('clients')
+                                  .select('name, cnpj, email, phone, address')
+                                  .eq('id', quote.clientId)
                                   .single();
                                 
-                                if (fullQuote) {
+                                if (approvedResponse && clientData) {
                                   setInvoiceModalData({
-                                    clientData: fullQuote.client as any,
-                                    quoteItems: fullQuote.items as any,
-                                    quoteTotal: fullQuote.total || 0,
-                                    freightCost: fullQuote.freight_cost || 0
+                                    quoteId: quote.id,
+                                    quoteTitle: quote.title || quote.description || "Cotação",
+                                    quoteAmount: approvedResponse.total_amount,
+                                    quoteItems: (approvedResponse.items || []) as Array<{
+                                      product_name: string;
+                                      quantity: number;
+                                      unit_price: number;
+                                      total: number;
+                                    }>,
+                                    quoteTotal: approvedResponse.total_amount,
+                                    freightCost: approvedResponse.shipping_cost || 0,
+                                    clientData: clientData
                                   });
+                                  setIsIssueInvoiceModalOpen(true);
+                                } else {
+                                  toast.error("Erro ao carregar dados da cotação aprovada");
                                 }
-                                
-                                setIsIssueInvoiceModalOpen(true);
                               }}
                               className="bg-primary hover:bg-primary/90"
                               title="Emitir cobrança para o cliente"
@@ -768,9 +788,9 @@ export default function SupplierQuotes() {
       <IssueInvoiceModal
         open={isIssueInvoiceModalOpen}
         onOpenChange={setIsIssueInvoiceModalOpen}
-        quoteId={selectedQuote?.id || ''}
-        quoteTitle={selectedQuote?.title || ''}
-        quoteAmount={invoiceModalData.quoteTotal || 0}
+        quoteId={invoiceModalData.quoteId || selectedQuote?.id || ''}
+        quoteTitle={invoiceModalData.quoteTitle || selectedQuote?.title || ''}
+        quoteAmount={invoiceModalData.quoteAmount || invoiceModalData.quoteTotal || 0}
         freightCost={invoiceModalData.freightCost || 0}
         clientData={invoiceModalData.clientData}
         quoteItems={invoiceModalData.quoteItems}
