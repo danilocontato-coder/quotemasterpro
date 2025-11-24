@@ -591,16 +591,42 @@ export default function SupplierQuotes() {
                               onClick={async () => {
                                 setSelectedQuote(quote);
                                 
-                                // Buscar resposta aprovada com valores corretos
-                                const { data: approvedResponse } = await supabase
+                                // Buscar resposta aprovada (status 'selected') ou a mais recente enviada
+                                const { data: responses, error: responseError } = await supabase
                                   .from('quote_responses')
                                   .select(`
-                                    *,
-                                    items
+                                    id,
+                                    status,
+                                    total_amount,
+                                    shipping_cost,
+                                    items,
+                                    created_at
                                   `)
                                   .eq('quote_id', quote.id)
-                                  .eq('status', 'approved')
-                                  .single();
+                                  .in('status', ['selected', 'sent'])
+                                  .order('created_at', { ascending: false });
+
+                                if (responseError) {
+                                  console.error('Erro ao buscar respostas:', responseError);
+                                  toast.error("Erro ao carregar dados da cotação");
+                                  return;
+                                }
+
+                                // Priorizar resposta 'selected', caso contrário usar a mais recente 'sent'
+                                const approvedResponse = responses?.find(r => r.status === 'selected') || responses?.[0];
+
+                                if (!approvedResponse) {
+                                  console.error('Nenhuma resposta encontrada para quote:', quote.id);
+                                  toast.error("Esta cotação ainda não possui uma proposta aprovada ou enviada");
+                                  return;
+                                }
+
+                                console.log('📊 Response encontrada:', {
+                                  quoteId: quote.id,
+                                  responseId: approvedResponse.id,
+                                  status: approvedResponse.status,
+                                  totalAmount: approvedResponse.total_amount
+                                });
 
                                 // Buscar dados do cliente
                                 const { data: clientData } = await supabase
@@ -609,7 +635,7 @@ export default function SupplierQuotes() {
                                   .eq('id', quote.clientId)
                                   .single();
                                 
-                                if (approvedResponse && clientData) {
+                                if (clientData) {
                                   setInvoiceModalData({
                                     quoteId: quote.id,
                                     quoteTitle: quote.title || quote.description || "Cotação",
@@ -626,7 +652,7 @@ export default function SupplierQuotes() {
                                   });
                                   setIsIssueInvoiceModalOpen(true);
                                 } else {
-                                  toast.error("Erro ao carregar dados da cotação aprovada");
+                                  toast.error("Erro ao carregar dados do cliente");
                                 }
                               }}
                               className="bg-primary hover:bg-primary/90"
