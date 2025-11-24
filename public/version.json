@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
-  "releaseDate": "2025-10-23",
-  "description": "Sistema de cache otimizado e detecção automática de atualizações"
+  "version": "1.0.2",
+  "releaseDate": "2025-01-24",
+  "description": "Sistema de cache corrigido - sem conflitos de Service Worker"
 }

@@ -74,15 +74,22 @@ export default defineConfig(({ mode }) => ({
             }
           },
           {
-            // ✅ Assets críticos da aplicação - NetworkFirst
+            // ✅ Assets críticos - SEMPRE buscar da rede
             urlPattern: /\.(?:js|css|html)$/i,
-            handler: 'NetworkFirst',
+            handler: 'NetworkOnly',
             options: {
               cacheName: 'app-assets',
-              networkTimeoutSeconds: 3,
+            }
+          },
+          {
+            // ✅ Imagens e fontes - Cache agressivo
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|woff|woff2)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'static-assets',
               expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 // 24 horas
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 ano
               }
             }
           }

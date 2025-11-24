@@ -12,7 +12,7 @@ import { BrandingProvider } from '@/contexts/BrandingContext';
 import { GlobalNavigationProvider } from '@/hooks/useGlobalNavigationSetup';
 import { AppWithProviders } from '@/components/layout/AppWithProviders';
 import { TourProvider } from '@/components/tour/TourProvider';
-import { useVersionChecker } from '@/hooks/useVersionChecker';
+import { usePWAUpdate } from '@/hooks/usePWAUpdate';
 import { useThemeSync } from '@/hooks/useThemeSync';
 import '@/styles/tour-custom.css';
 
@@ -49,8 +49,8 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // ✅ Checar atualizações automaticamente
-  useVersionChecker();
+  // ✅ Sistema unificado de atualização via PWA
+  usePWAUpdate();
   
   // 🚀 Feature Flag: Permite alternar entre AuthContext (atual) e AuthContextV2 (novo modular)
   // Configure VITE_USE_AUTH_V2=true no .env para usar a nova versão
