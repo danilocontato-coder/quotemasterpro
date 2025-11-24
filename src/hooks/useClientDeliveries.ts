@@ -37,6 +37,7 @@ export function useClientDeliveries() {
     setIsLoading(true);
     try {
       // Query principal com local_code e sem join direto com suppliers
+      // Filtra deliveries pendentes (ainda não agendadas pelo fornecedor)
       const { data, error } = await supabase
         .from('deliveries')
         .select(`
@@ -56,6 +57,7 @@ export function useClientDeliveries() {
           payments!inner(id, amount, status)
         `)
         .eq('client_id', user.clientId)
+        .neq('status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

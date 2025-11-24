@@ -62,61 +62,33 @@ export default function ClientDeliveries() {
     }
   };
 
-  // Buscar cotações com pagamento confirmado mas sem entrega agendada
+  // Buscar entregas pendentes (status='pending') - criadas pelo trigger mas ainda não agendadas
   useEffect(() => {
     const fetchAwaitingScheduling = async () => {
-      if (!user) return;
+      if (!user?.clientId) return;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('client_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.client_id) return;
-
-      const { data: payments } = await supabase
-        .from('payments')
+      const { data } = await supabase
+        .from('deliveries')
         .select(`
           id,
-          amount,
-          status,
           quote_id,
-          quotes!inner (
-            id,
-            local_code,
-            title
-          ),
-          suppliers!supplier_id!inner (
-            name
-          )
+          quotes!inner(local_code, title),
+          payments!inner(amount),
+          suppliers!deliveries_supplier_id_fkey!inner(name)
         `)
-        .eq('quotes.client_id', profile.client_id)
-        .eq('status', 'in_escrow');
+        .eq('client_id', user.clientId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
 
-      if (!payments) return;
+      const formatted = (data || []).map((d: any) => ({
+        quote_id: d.quote_id,
+        quote_local_code: d.quotes.local_code,
+        quote_title: d.quotes.title,
+        supplier_name: d.suppliers.name,
+        payment_amount: d.payments.amount,
+      }));
 
-      // Filtrar apenas os que não têm delivery
-      const pending = [];
-      for (const payment of payments) {
-        const { data: delivery } = await supabase
-          .from('deliveries')
-          .select('id')
-          .eq('quote_id', payment.quote_id)
-          .maybeSingle();
-
-        if (!delivery) {
-          pending.push({
-            quote_id: payment.quote_id,
-            quote_local_code: payment.quotes?.local_code,
-            quote_title: payment.quotes?.title,
-            supplier_name: payment.suppliers?.name,
-            payment_amount: payment.amount,
-          });
-        }
-      }
-
-      setAwaitingScheduling(pending);
+      setAwaitingScheduling(formatted);
     };
 
     fetchAwaitingScheduling();
@@ -126,12 +98,12 @@ export default function ClientDeliveries() {
       .channel('client-awaiting-scheduling')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'deliveries' },
-        () => fetchAwaitingScheduling()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'payments' },
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'deliveries',
+          filter: `client_id=eq.${user?.clientId}`
+        },
         () => fetchAwaitingScheduling()
       )
       .subscribe();
@@ -139,7 +111,7 @@ export default function ClientDeliveries() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.clientId]);
 
   const filteredDeliveries = deliveries.filter(delivery => {
     const matchesSearch = !searchTerm || 
