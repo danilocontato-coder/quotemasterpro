@@ -213,26 +213,49 @@ serve(async (req) => {
 
     console.log('✅ [CONFIRM-DELIVERY] Entrega atualizada para delivered');
 
-    // Liberar pagamento (mover de escrow para completed)
-    console.log('💰 [CONFIRM-DELIVERY] Liberando pagamento', {
-      quote_id: confirmationData.deliveries.quote_id,
-      old_status: 'in_escrow',
-      new_status: 'completed'
+    // 🆕 CORREÇÃO: Chamar release-escrow-payment para transferir o dinheiro
+    console.log('💰 [CONFIRM-DELIVERY] Buscando pagamento em escrow', {
+      quote_id: confirmationData.deliveries.quote_id
     });
-    
-    const { error: updatePaymentError } = await supabase
-      .from('payments')
-      .update({
-        status: 'completed'
-      })
-      .eq('quote_id', confirmationData.deliveries.quote_id)
-      .eq('status', 'in_escrow');
 
-    if (updatePaymentError) {
-      console.error('❌ [CONFIRM-DELIVERY] Erro ao atualizar pagamento:', updatePaymentError);
-    } else {
-      console.log('✅ [CONFIRM-DELIVERY] Pagamento liberado');
+    const { data: payment, error: paymentQueryError } = await supabase
+      .from('payments')
+      .select('id, amount, supplier_net_amount')
+      .eq('quote_id', confirmationData.deliveries.quote_id)
+      .eq('status', 'in_escrow')
+      .single();
+
+    if (paymentQueryError || !payment) {
+      console.error('❌ [CONFIRM-DELIVERY] Pagamento em escrow não encontrado', {
+        error: paymentQueryError,
+        quote_id: confirmationData.deliveries.quote_id
+      });
+      throw new Error('Pagamento em escrow não encontrado');
     }
+
+    console.log('💰 [CONFIRM-DELIVERY] Chamando release-escrow-payment', {
+      payment_id: payment.id,
+      supplier_net_amount: payment.supplier_net_amount
+    });
+
+    // Chamar edge function que faz a transferência Asaas
+    const { data: releaseResult, error: releaseError } = await supabase.functions.invoke(
+      'release-escrow-payment',
+      { body: { paymentId: payment.id } }
+    );
+
+    if (releaseError || !releaseResult?.success) {
+      console.error('❌ [CONFIRM-DELIVERY] Erro ao liberar escrow', {
+        error: releaseError,
+        result: releaseResult
+      });
+      throw new Error(releaseResult?.error || 'Falha ao transferir pagamento para fornecedor');
+    }
+
+    console.log('✅ [CONFIRM-DELIVERY] Escrow liberado e transferido', {
+      payment_id: payment.id,
+      transfer_id: releaseResult.transfer_id
+    });
 
     // Verificar se todas as atualizações foram bem-sucedidas
     if (updateDeliveryError || updatePaymentError) {

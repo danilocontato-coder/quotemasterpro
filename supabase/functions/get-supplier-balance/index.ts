@@ -80,14 +80,38 @@ Deno.serve(async (req) => {
     // Mapear todos os campos possíveis com fallback correto
     const totalBalance = balanceData.totalBalance ?? 0;
     const balance = balanceData.balance ?? totalBalance;
-    const availableForTransfer = balanceData.availableForTransfer ?? balance;
-    const blockedBalance = balanceData.blockedBalance ?? 0;
+    const asaasAvailable = balanceData.availableForTransfer ?? balance;
 
-    console.log('📊 Mapped balance values:', {
+    // 🆕 CORREÇÃO: Calcular saldo bloqueado baseado em pagamentos in_escrow
+    console.log('🔍 Fetching escrow payments for supplier:', profile.supplier_id);
+    
+    const { data: escrowPayments, error: escrowError } = await supabaseClient
+      .from('payments')
+      .select('supplier_net_amount, amount, base_amount')
+      .eq('supplier_id', profile.supplier_id)
+      .eq('status', 'in_escrow');
+
+    if (escrowError) {
+      console.error('⚠️ Error fetching escrow payments:', escrowError);
+    }
+
+    // Calcular valor total bloqueado (aguardando confirmação de entrega)
+    const blockedBalance = escrowPayments?.reduce((sum, p) => {
+      // Usar supplier_net_amount se disponível, senão calcular baseAmount * 0.95
+      const netAmount = p.supplier_net_amount || (p.base_amount || p.amount) * 0.95;
+      return sum + netAmount;
+    }, 0) || 0;
+
+    // Disponível = saldo Asaas - bloqueado (não pode transferir o que está em escrow)
+    const availableForTransfer = Math.max(0, asaasAvailable - blockedBalance);
+
+    console.log('📊 Calculated balance values:', {
       totalBalance,
       balance,
+      asaasAvailable,
+      blockedBalance,
       availableForTransfer,
-      blockedBalance
+      escrowPaymentsCount: escrowPayments?.length || 0
     });
 
     // Log de auditoria
