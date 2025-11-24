@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Clock, Package, Truck } from "lucide-react";
+import { Calendar, MapPin, Clock, Package, Truck, Phone, Mail, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -105,13 +105,10 @@ export function ScheduleDeliveryModal({
 
   if (!quote) return null;
 
-  // Extrair dados do endereço do cliente
-  const clientAddress = quote.client_address || '';
-  const clientCity = quote.client_city || '';
-  const clientState = quote.client_state || '';
-  const fullAddress = [clientAddress, clientCity, clientState]
-    .filter(Boolean)
-    .join(', ');
+  // Endereço completo já vem formatado do banco
+  const fullAddress = quote.clients?.address || '';
+  const clientPhone = quote.clients?.phone || '';
+  const clientEmail = quote.clients?.email || '';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,16 +123,37 @@ export function ScheduleDeliveryModal({
         <div className="space-y-6">
           {/* Quote Summary */}
           <div className="bg-muted/50 p-4 rounded-lg">
-            <h3 className="font-medium mb-2">Resumo da Cotação</h3>
+            <h3 className="font-medium mb-3">Resumo da Cotação</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Título</p>
-                <p className="font-medium">{quote.title}</p>
+                <p className="text-muted-foreground">Cotação</p>
+                <p className="font-medium">{quote.local_code || `#${quote.id.substring(0, 8)}`}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Cliente</p>
                 <p className="font-medium">{quote.clients?.name || quote.client_name}</p>
               </div>
+              
+              {clientPhone && (
+                <div>
+                  <p className="text-muted-foreground">Telefone</p>
+                  <p className="font-medium flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5" />
+                    {clientPhone}
+                  </p>
+                </div>
+              )}
+              
+              {clientEmail && (
+                <div>
+                  <p className="text-muted-foreground">Email</p>
+                  <p className="font-medium text-xs flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5" />
+                    {clientEmail}
+                  </p>
+                </div>
+              )}
+              
               <div className="col-span-2">
                 <p className="text-muted-foreground">Frete</p>
                 {quote.shipping_cost === 0 ? (
@@ -147,25 +165,45 @@ export function ScheduleDeliveryModal({
             </div>
           </div>
 
-          {/* Endereço do Cliente */}
+          {/* Endereço de Entrega */}
           <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
-            <h3 className="font-medium mb-2 flex items-center gap-2">
+            <h3 className="font-medium mb-3 flex items-center gap-2">
               <MapPin className="h-4 w-4 text-blue-600" />
-              Endereço do Cliente
+              Endereço de Entrega
             </h3>
+            
             {fullAddress ? (
-              <div className="space-y-1 text-sm">
-                <p className="font-medium text-foreground">{fullAddress}</p>
-                <p className="text-muted-foreground text-xs">
-                  Este é o endereço cadastrado do cliente. 
-                  Se a entrega for para outro local, preencha o campo abaixo.
+              <div className="space-y-3">
+                <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                  <p className="font-medium text-sm">{fullAddress}</p>
+                </div>
+                
+                <div className="flex flex-col gap-2 text-sm">
+                  {clientPhone && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5" />
+                      <span>{clientPhone}</span>
+                    </div>
+                  )}
+                  {clientEmail && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="h-3.5 w-3.5" />
+                      <span className="text-xs">{clientEmail}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <p className="text-muted-foreground text-xs flex items-center gap-1.5">
+                  💡 Se a entrega for para outro local, preencha o campo "Endereço Alternativo" abaixo.
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                ⚠️ Cliente não possui endereço cadastrado. 
-                Por favor, informe o endereço de entrega abaixo.
-              </p>
+              <div className="bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded border border-yellow-200 dark:border-yellow-900">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Cliente não possui endereço cadastrado. Por favor, informe o endereço de entrega abaixo.
+                </p>
+              </div>
             )}
           </div>
 
