@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, TrendingUp, Clock, CreditCard, Search, Filter, Eye, CheckCircle, Wallet, ArrowDownCircle, RefreshCw } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DollarSign, TrendingUp, Clock, CreditCard, Search, Filter, Eye, CheckCircle, Wallet, ArrowDownCircle, RefreshCw, Info } from 'lucide-react';
 import { useSupplierReceivables, SupplierReceivable } from '@/hooks/useSupplierReceivables';
 import { OfflinePaymentSupplierView } from '@/components/payments/OfflinePaymentSupplierView';
 import { useSupplierBalance } from '@/hooks/useSupplierBalance';
@@ -14,6 +15,7 @@ import { useSupplierTransfers } from '@/hooks/useSupplierTransfers';
 import { RequestTransferDialog } from '@/components/supplier/RequestTransferDialog';
 import { useSupplierData } from '@/hooks/useSupplierData';
 import { EditBankDataModal } from '@/components/suppliers/EditBankDataModal';
+import { calculateCustomerTotal } from '@/lib/asaas-fees';
 import { toast } from 'sonner';
 
 export default function SupplierReceivables() {
@@ -285,40 +287,54 @@ export default function SupplierReceivables() {
             <CardContent>
               <div className="space-y-4">
                 {/* Cálculo detalhado */}
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">💰 Total Bruto (Vendas)</p>
+                    <p className="text-xs text-muted-foreground">💰 Total Bruto</p>
                     <p className="text-2xl font-bold text-blue-600">
                       {formatCurrency(receivables.reduce((sum, r) => sum + r.amount, 0))}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Valor total de todas as suas vendas
+                      Valor das vendas
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">📊 Comissão Plataforma ({receivables[0]?.platform_commission_percentage || 5}%)</p>
+                    <p className="text-xs text-muted-foreground">📊 Comissão (5%)</p>
                     <p className="text-2xl font-bold text-red-600">
                       -{formatCurrency(receivables.reduce((sum, r) => {
-                        const commission = r.platform_commission_amount || 
-                          (r.amount * ((r.platform_commission_percentage || 5) / 100));
+                        const commission = r.platform_commission || 
+                          (r.base_amount || r.amount) * 0.05;
                         return sum + commission;
                       }, 0))}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Taxa de intermediação da plataforma
+                      Plataforma
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">✅ Valor Líquido (Seu Crédito)</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {formatCurrency(receivables.reduce((sum, r) => {
-                        const netAmount = r.supplier_net_amount || 
-                          (r.amount * (1 - ((r.platform_commission_percentage || 5) / 100)));
-                        return sum + netAmount;
+                    <p className="text-xs text-muted-foreground">💳 Taxas Asaas</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      -{formatCurrency(receivables.reduce((sum, r) => {
+                        const fee = r.asaas_fee || 1.98;
+                        return sum + fee;
                       }, 0))}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Este é o valor que você receberá
+                      Processamento
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">✅ Valor Líquido</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {formatCurrency(receivables.reduce((sum, r) => {
+                        if (r.supplier_net_amount) {
+                          return sum + r.supplier_net_amount;
+                        }
+                        const breakdown = calculateCustomerTotal(r.amount, 'PIX');
+                        return sum + breakdown.supplierNet;
+                      }, 0))}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Você recebe
                     </p>
                   </div>
                 </div>
@@ -326,7 +342,7 @@ export default function SupplierReceivables() {
                 {/* Alerta informativo */}
                 <div className="bg-blue-100 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-800">
-                    <strong>💡 Como funciona:</strong> A comissão de {receivables[0]?.platform_commission_percentage || 5}% é descontada automaticamente do valor bruto. 
+                    <strong>💡 Como funciona:</strong> A comissão de 5% e as taxas Asaas (processamento + mensageria) são descontadas automaticamente. 
                     Você recebe o valor líquido diretamente na sua Wallet Asaas.
                   </p>
                 </div>
@@ -409,11 +425,66 @@ export default function SupplierReceivables() {
                             </span>
                           </TableCell>
                           <TableCell className="font-semibold text-green-600">
-                            {(() => {
-                              const netAmount = receivable.supplier_net_amount || 
-                                (receivable.amount * (1 - ((receivable.platform_commission_percentage || 5) / 100)));
-                              return formatCurrency(netAmount);
-                            })()}
+                            <TooltipProvider>
+                              <div className="flex items-center gap-1">
+                                {(() => {
+                                  let netAmount: number;
+                                  let baseAmount: number;
+                                  let commission: number;
+                                  let asaasFee: number;
+
+                                  if (receivable.supplier_net_amount) {
+                                    netAmount = receivable.supplier_net_amount;
+                                    baseAmount = receivable.base_amount || receivable.amount;
+                                    commission = receivable.platform_commission || (baseAmount * 0.05);
+                                    asaasFee = receivable.asaas_fee || 1.98;
+                                  } else {
+                                    const breakdown = calculateCustomerTotal(
+                                      receivable.amount,
+                                      receivable.payment_method === 'PIX' ? 'PIX' : 
+                                      receivable.payment_method === 'BOLETO' ? 'BOLETO' : 
+                                      receivable.payment_method === 'CREDIT_CARD' ? 'CREDIT_CARD' : 
+                                      'UNDEFINED'
+                                    );
+                                    netAmount = breakdown.supplierNet;
+                                    baseAmount = breakdown.baseAmount;
+                                    commission = breakdown.platformCommission;
+                                    asaasFee = breakdown.asaasFee;
+                                  }
+
+                                  return (
+                                    <>
+                                      <span>{formatCurrency(netAmount)}</span>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs">
+                                          <div className="text-xs space-y-1">
+                                            <div className="flex justify-between gap-4">
+                                              <span>Valor da venda:</span>
+                                              <span className="font-medium">{formatCurrency(baseAmount)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-4 text-red-600">
+                                              <span>Comissão (5%):</span>
+                                              <span>-{formatCurrency(commission)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-4 text-red-600">
+                                              <span>Taxa Asaas:</span>
+                                              <span>-{formatCurrency(asaasFee)}</span>
+                                            </div>
+                                            <div className="flex justify-between gap-4 font-bold border-t pt-1 mt-1">
+                                              <span>Você recebe:</span>
+                                              <span className="text-green-600">{formatCurrency(netAmount)}</span>
+                                            </div>
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </TooltipProvider>
                           </TableCell>
                           <TableCell>
                             <Badge variant={receivable.split_applied ? "approved" : "draft"}>

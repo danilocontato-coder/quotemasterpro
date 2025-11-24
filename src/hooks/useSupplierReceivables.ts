@@ -19,6 +19,11 @@ export interface SupplierReceivable {
   platform_commission_amount?: number;
   supplier_net_amount?: number;
   split_applied?: boolean;
+  base_amount?: number;
+  asaas_fee?: number;
+  asaas_payment_fee?: number;
+  asaas_messaging_fee?: number;
+  platform_commission?: number;
 }
 
 export interface ReceivablesMetrics {
@@ -61,6 +66,11 @@ export const useSupplierReceivables = () => {
           platform_commission_amount,
           supplier_net_amount,
           split_applied,
+          base_amount,
+          asaas_fee,
+          asaas_payment_fee,
+          asaas_messaging_fee,
+          platform_commission,
           quotes(title, client_name, local_code)
         `)
         .eq('supplier_id', user.supplierId)
@@ -86,7 +96,12 @@ export const useSupplierReceivables = () => {
         platform_commission_percentage: payment.platform_commission_percentage,
         platform_commission_amount: payment.platform_commission_amount,
         supplier_net_amount: payment.supplier_net_amount,
-        split_applied: payment.split_applied
+        split_applied: payment.split_applied,
+        base_amount: payment.base_amount,
+        asaas_fee: payment.asaas_fee,
+        asaas_payment_fee: payment.asaas_payment_fee,
+        asaas_messaging_fee: payment.asaas_messaging_fee,
+        platform_commission: payment.platform_commission
       }));
 
       setReceivables(formattedReceivables);
