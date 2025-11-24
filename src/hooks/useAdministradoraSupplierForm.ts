@@ -83,6 +83,11 @@ export const useAdministradoraSupplierForm = ({
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [existingSupplierId, setExistingSupplierId] = useState<string | null>(null);
+  const [submissionProgress, setSubmissionProgress] = useState<{
+    step: 'idle' | 'validating' | 'creating_supplier' | 'creating_user' | 'syncing_profile' | 'sending_notifications' | 'completed';
+    message: string;
+  }>({ step: 'idle', message: '' });
+  const [createdSupplierId, setCreatedSupplierId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<Partial<SupplierFormData>>(() => {
     if (editingSupplier) {
@@ -336,6 +341,7 @@ export const useAdministradoraSupplierForm = ({
       console.log('📝 [ADMINISTRADORA-SUPPLIER-FORM] Dados:', formData);
       console.log('🆔 [ADMINISTRADORA-SUPPLIER-FORM] Existing supplier ID:', existingSupplierId);
       
+      setSubmissionProgress({ step: 'validating', message: 'Validando dados...' });
       const validatedData = supplierFormSchema.parse(formData);
       console.log('✅ [ADMINISTRADORA-SUPPLIER-FORM] Dados validados:', validatedData);
       
@@ -430,6 +436,7 @@ export const useAdministradoraSupplierForm = ({
 
       // Cenário 3: Criar novo fornecedor
       console.log('[useAdministradoraSupplierForm] Criando novo fornecedor');
+      setSubmissionProgress({ step: 'creating_supplier', message: 'Criando fornecedor no banco...' });
 
       const cleanDoc = normalizeDocument(validatedData.document_number);
 
@@ -480,6 +487,8 @@ export const useAdministradoraSupplierForm = ({
       }
 
       console.log('[useAdministradoraSupplierForm] Fornecedor criado:', newSupplier.id);
+      setCreatedSupplierId(newSupplier.id);
+      setSubmissionProgress({ step: 'creating_user', message: 'Criando acesso ao sistema...' });
 
       // Criar associação
       const { error: assocError } = await supabase
@@ -496,6 +505,12 @@ export const useAdministradoraSupplierForm = ({
       }
 
       console.log('[useAdministradoraSupplierForm] Fornecedor criado e associado com sucesso');
+      setSubmissionProgress({ step: 'syncing_profile', message: 'Sincronizando perfil...' });
+      
+      // Aguardar um pouco para sincronização
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setSubmissionProgress({ step: 'sending_notifications', message: 'Enviando notificações...' });
       
       // Enviar notificações (email + WhatsApp)
       const { sendSupplierWelcomeNotifications } = await import('@/services/supplierNotificationService');
@@ -512,6 +527,8 @@ export const useAdministradoraSupplierForm = ({
         notificationStatus.email ? '✅ Email' : '❌ Email',
         notificationStatus.whatsapp ? '✅ WhatsApp' : '❌ WhatsApp',
       ].join(' | ');
+
+      setSubmissionProgress({ step: 'completed', message: 'Fornecedor criado!' });
 
       toast({
         title: 'Fornecedor criado!',
@@ -542,6 +559,7 @@ export const useAdministradoraSupplierForm = ({
       });
     } finally {
       setIsLoading(false);
+      setSubmissionProgress({ step: 'idle', message: '' });
     }
   }, [currentStep, validateStep, formData, existingSupplierId, editingSupplier, administradoraId, toast, onSuccess]);
 
@@ -554,6 +572,30 @@ export const useAdministradoraSupplierForm = ({
   const canGoPrev = currentStep > 1;
   const isLastStep = currentStep === steps.length;
   const isEditMode = !!editingSupplier;
+
+  // Calcular % de preenchimento do formulário
+  const calculateCompletionPercentage = useCallback(() => {
+    const requiredFields = ['name', 'document_number', 'email', 'whatsapp', 'state', 'city'];
+    const optionalFields = ['phone', 'website', 'address'];
+    
+    const requiredFilled = requiredFields.filter(field => {
+      const value = formData[field as keyof typeof formData];
+      return value && String(value).trim() !== '';
+    }).length;
+    
+    const optionalFilled = optionalFields.filter(field => {
+      const value = formData[field as keyof typeof formData];
+      return value && String(value).trim() !== '';
+    }).length;
+    
+    const requiredWeight = 70;
+    const optionalWeight = 30;
+    
+    const requiredPercentage = (requiredFilled / requiredFields.length) * requiredWeight;
+    const optionalPercentage = (optionalFilled / optionalFields.length) * optionalWeight;
+    
+    return Math.round(requiredPercentage + optionalPercentage);
+  }, [formData]);
 
   return {
     formData,
@@ -572,5 +614,8 @@ export const useAdministradoraSupplierForm = ({
     canGoPrev,
     isLastStep,
     isEditMode,
+    submissionProgress,
+    createdSupplierId,
+    completionPercentage: calculateCompletionPercentage(),
   };
 };

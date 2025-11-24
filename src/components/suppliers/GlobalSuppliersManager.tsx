@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Globe, MapPin, Star, Plus, Search, Filter, Edit, Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -51,6 +51,8 @@ export function GlobalSuppliersManager({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [highlightedSupplierId, setHighlightedSupplierId] = useState<string | null>(null);
+  const supplierRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const { toast } = useToast();
 
   // Filtrar por tipo (all, local ou certified)
@@ -83,6 +85,20 @@ export function GlobalSuppliersManager({
     specialties: [] as string[],
     subscriptionPlan: 'basic' as 'basic' | 'premium' | 'enterprise'
   });
+
+  // Scroll para fornecedor e destaque
+  const scrollToSupplier = (supplierId: string) => {
+    const element = supplierRefs.current[supplierId];
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedSupplierId(supplierId);
+      
+      // Remover destaque após 10 segundos
+      setTimeout(() => {
+        setHighlightedSupplierId(null);
+      }, 10000);
+    }
+  };
 
   const handleCreateSupplier = async () => {
     setIsSaving(true);
@@ -152,6 +168,13 @@ export function GlobalSuppliersManager({
       if (onRefresh) {
         onRefresh();
       }
+      
+      // Scroll e destaque após pequeno delay para garantir que o fornecedor foi adicionado
+      setTimeout(() => {
+        if (result.supplierId) {
+          scrollToSupplier(result.supplierId);
+        }
+      }, 500);
       
     } catch (error: any) {
       console.error('Erro ao criar fornecedor:', error);
@@ -413,18 +436,34 @@ export function GlobalSuppliersManager({
 
       {/* Suppliers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredSuppliers.map((supplier) => (
-          <Card key={supplier.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <CardTitle className="text-lg">{supplier.name}</CardTitle>
-                    <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                      <Globe className="h-3 w-3 mr-1" />
-                      Global
-                    </Badge>
-                  </div>
+        {filteredSuppliers.map((supplier) => {
+          const isHighlighted = highlightedSupplierId === supplier.id;
+          
+          return (
+            <Card 
+              key={supplier.id} 
+              ref={(el) => (supplierRefs.current[supplier.id] = el)}
+              className={`hover:shadow-lg transition-all duration-300 ${
+                isHighlighted 
+                  ? 'border-2 border-green-500 shadow-xl animate-pulse bg-green-50' 
+                  : ''
+              }`}
+            >
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CardTitle className="text-lg">{supplier.name}</CardTitle>
+                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                        <Globe className="h-3 w-3 mr-1" />
+                        Global
+                      </Badge>
+                      {isHighlighted && (
+                        <Badge className="text-xs bg-green-600 text-white animate-bounce">
+                          ✨ Novo
+                        </Badge>
+                      )}
+                    </div>
                   <p className="text-sm text-muted-foreground font-mono">
                     {supplier.cnpj}
                   </p>
@@ -508,7 +547,8 @@ export function GlobalSuppliersManager({
               </div>
             </CardContent>
           </Card>
-        ))}
+        );
+        })}
       </div>
 
       {/* Create/Edit Modal */}
