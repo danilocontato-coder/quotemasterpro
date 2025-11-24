@@ -15,7 +15,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { quoteId, invoiceNumber, dueDate, notes } = await req.json()
+    const { quoteId, invoiceNumber, dueDate, notes, nfeUrl } = await req.json()
 
     console.log(`📄 Supplier issuing invoice for quote ${quoteId}`)
 
@@ -116,7 +116,8 @@ serve(async (req) => {
         metadata: {
           asaas_invoice_url: asaasPayment.invoiceUrl,
           asaas_bank_slip_url: asaasPayment.bankSlipUrl,
-          notes: notes
+          notes: notes,
+          nfe_url: nfeUrl // URL da NF-e enviada pelo fornecedor
         }
       })
       .select()
