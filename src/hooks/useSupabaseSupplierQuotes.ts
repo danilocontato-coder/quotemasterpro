@@ -24,6 +24,7 @@ export interface SupplierQuote {
   visit_deadline?: string;
   client_name?: string;
   supplierCount?: number; // Número de fornecedores convidados para esta cotação
+  payment_id?: string; // ID do pagamento, se existir
 }
 
 export interface SupplierQuoteItem {
@@ -191,7 +192,8 @@ export const useSupabaseSupplierQuotes = () => {
             requires_visit,
             visit_deadline,
             created_at,
-            updated_at
+            updated_at,
+            payments!quote_id(id, status)
           )
         `)
         .eq('supplier_id', user.supplierId);
@@ -229,7 +231,8 @@ export const useSupabaseSupplierQuotes = () => {
             requires_visit,
             visit_deadline,
             created_at,
-            updated_at
+            updated_at,
+            payments!quote_id(id, status)
           )
         `)
         .eq('supplier_id', user.supplierId);
@@ -289,6 +292,8 @@ export const useSupabaseSupplierQuotes = () => {
         const response = responsesMap.get(quote.id);
         // Usar client_name da tabela quotes
         const clientName = quote.client_name || 'Cliente não informado';
+        // Extrair primeiro pagamento (se existir múltiplos, pegar o primeiro)
+        const payment = Array.isArray(quote.payments) && quote.payments.length > 0 ? quote.payments[0] : null;
         
         return {
           id: quote.id,
@@ -309,6 +314,7 @@ export const useSupabaseSupplierQuotes = () => {
           requires_visit: quote.requires_visit || false,
           visit_deadline: quote.visit_deadline,
           supplierCount: supplierCountMap.get(quote.id) || 1, // Número de fornecedores convidados
+          payment_id: payment?.id, // ID do pagamento existente
         };
       });
 
