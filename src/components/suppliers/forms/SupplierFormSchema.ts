@@ -99,8 +99,9 @@ export const supplierFormSchema = z.object({
   // Especialidades
   specialties: z
     .array(z.string().trim().min(1))
-    .min(1, 'Selecione pelo menos uma especialidade')
-    .max(10, 'Máximo de 10 especialidades permitidas'),
+    .max(10, 'Máximo de 10 especialidades permitidas')
+    .optional()
+    .default([]),
   
   // Campos opcionais
   status: z.enum(['active', 'inactive', 'pending']).default('active'),
