@@ -38,24 +38,38 @@ export const useSupabaseAdminSuppliers = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Função de fetch mais simples possível
+  // Fetch suppliers with client associations
   const fetchSuppliers = async () => {
     try {
       setIsLoading(true);
-      console.log('🔄 Fetching suppliers...');
+      console.log('🔄 Fetching suppliers with associations...');
       
+      // Buscar todos os fornecedores + suas associações (se houver)
       const { data, error } = await supabase
         .from('suppliers')
-        .select('*')
+        .select(`
+          *,
+          client_suppliers!inner(
+            client_id,
+            status,
+            associated_at
+          )
+        `)
         .order('name', { ascending: true });
 
       if (error) throw error;
       
-      console.log('✅ Suppliers loaded:', data?.length || 0);
-      setSuppliers((data as any[])?.map(supplier => ({
+      console.log('✅ Suppliers with associations loaded:', data?.length || 0);
+      
+      // Transformar dados para incluir informações de associação
+      const suppliersWithAssociations = (data as any[])?.map(supplier => ({
         ...supplier,
-        type: supplier.type as 'local' | 'certified'
-      })) || []);
+        type: supplier.type as 'local' | 'certified',
+        // Incluir IDs dos clientes associados
+        associated_client_ids: supplier.client_suppliers?.map((cs: any) => cs.client_id) || []
+      })) || [];
+      
+      setSuppliers(suppliersWithAssociations);
     } catch (error) {
       console.error('❌ Error fetching suppliers:', error);
       toast({
@@ -155,29 +169,41 @@ export const useSupabaseAdminSuppliers = () => {
       const normalizedCnpj = (supplierData.cnpj || '').replace(/\D/g, '');
       const effectiveType = (supplierData.type as 'local' | 'certified') || 'local';
 
-      // VALIDAÇÃO: Fornecedores locais DEVEM ter client_id
+      // Determinar client_id baseado no contexto (admin pode especificar, manager usa o seu)
       const effectiveClientId = effectiveType === 'local' 
         ? (supplierData.client_id || currentClientId || null) 
         : null;
 
-      if (effectiveType === 'local' && !effectiveClientId) {
-        throw new Error('Fornecedores locais devem ter um cliente vinculado. Selecione um cliente antes de continuar.');
-      }
+      console.log('📝 Creating supplier:', { 
+        type: effectiveType, 
+        clientId: effectiveClientId,
+        isAdmin 
+      });
 
+      // Criar fornecedor no catálogo global SEM client_id
       const insertData: any = {
-        ...supplierData,
+        name: supplierData.name,
         cnpj: normalizedCnpj,
-        document_number: normalizedCnpj, // ← SEMPRE preencher document_number
+        document_number: normalizedCnpj,
+        email: supplierData.email,
+        phone: supplierData.phone,
+        whatsapp: supplierData.whatsapp,
+        website: supplierData.website,
+        address: supplierData.address,
+        city: supplierData.city,
+        state: supplierData.state,
+        business_info: supplierData.business_info,
+        specialties: supplierData.specialties,
         type: effectiveType,
-        client_id: effectiveClientId,
-        // Certified suppliers are global and flagged as certified
+        status: supplierData.status || 'active',
         visibility_scope: effectiveType === 'certified' ? 'global' : (supplierData.visibility_scope || 'region'),
         is_certified: effectiveType === 'certified' ? true : (supplierData as any).is_certified || false,
+        // NÃO incluir client_id - usar client_suppliers para associações
       };
 
-      console.log('📝 insertData (admin flow):', { insertData, isAdmin, currentClientId });
+      console.log('📝 insertData (global catalog):', insertData);
 
-      // Create supplier with enforced payload
+      // Create supplier in global catalog
       const { data: supplier, error } = await supabase
         .from('suppliers')
         .insert([insertData])
@@ -186,24 +212,22 @@ export const useSupabaseAdminSuppliers = () => {
 
       if (error) throw error;
 
-      // Ensure client association for local suppliers so clients can view them via RLS
-      try {
-        if (effectiveType === 'local' && insertData.client_id && supplier?.id) {
-          const { error: assocErr } = await supabase
-            .from('client_suppliers')
-            .upsert({
-              client_id: insertData.client_id,
-              supplier_id: (supplier as any).id,
-              status: 'active'
-            }, { onConflict: 'client_id,supplier_id' });
-          if (assocErr) {
-            console.warn('⚠️ Could not create client_suppliers association:', assocErr);
-          } else {
-            console.log('🔗 Association created in client_suppliers');
-          }
+      // Create client association if needed (local suppliers or if clientId specified)
+      if (effectiveClientId && supplier?.id) {
+        const { error: assocErr } = await supabase
+          .from('client_suppliers')
+          .upsert({
+            client_id: effectiveClientId,
+            supplier_id: (supplier as any).id,
+            status: 'active',
+            associated_at: new Date().toISOString()
+          }, { onConflict: 'client_id,supplier_id' });
+        
+        if (assocErr) {
+          console.warn('⚠️ Could not create client_suppliers association:', assocErr);
+        } else {
+          console.log('🔗 Association created in client_suppliers');
         }
-      } catch (assocEx) {
-        console.warn('⚠️ Association step failed:', assocEx);
       }
 
       console.log('✅ Supplier created successfully');

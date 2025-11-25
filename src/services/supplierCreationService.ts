@@ -44,14 +44,64 @@ export interface CreateSupplierResult {
 }
 
 /**
+ * Busca fornecedor existente por CNPJ
+ */
+export const findSupplierByCNPJ = async (cnpj: string): Promise<string | null> => {
+  const cleanCnpj = normalizeDocument(cnpj);
+  
+  const { data, error } = await supabase
+    .from('suppliers')
+    .select('id')
+    .eq('cnpj', cleanCnpj)
+    .maybeSingle();
+  
+  if (error) {
+    console.error('[SupplierCreationService] Erro ao buscar fornecedor:', error);
+    return null;
+  }
+  
+  return data?.id || null;
+};
+
+/**
+ * Cria associação entre cliente e fornecedor na tabela client_suppliers
+ */
+export const createClientSupplierAssociation = async (clientId: string, supplierId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('client_suppliers')
+      .upsert({
+        client_id: clientId,
+        supplier_id: supplierId,
+        status: 'active',
+        associated_at: new Date().toISOString()
+      }, {
+        onConflict: 'client_id,supplier_id'
+      });
+    
+    if (error) {
+      console.error('[SupplierCreationService] Erro ao criar associação:', error);
+      return false;
+    }
+    
+    console.log('[SupplierCreationService] ✅ Associação criada:', { clientId, supplierId });
+    return true;
+  } catch (error) {
+    console.error('[SupplierCreationService] Erro ao criar associação:', error);
+    return false;
+  }
+};
+
+/**
  * Cria fornecedor completo com autenticação e notificações
  * 
  * Fluxo:
- * 1. Criar/buscar fornecedor no DB
- * 2. Associar ao cliente
- * 3. Criar usuário de autenticação
- * 4. Aguardar sincronização do profile
- * 5. Enviar notificações (email, WhatsApp, in-app)
+ * 1. Buscar fornecedor por CNPJ (evitar duplicação)
+ * 2. Se não existe, criar novo fornecedor SEM client_id
+ * 3. Criar associação em client_suppliers
+ * 4. Criar usuário de autenticação (apenas se novo)
+ * 5. Aguardar sincronização do profile
+ * 6. Enviar notificações (email, WhatsApp, in-app)
  */
 export const createSupplierWithAuth = async (params: CreateSupplierParams): Promise<CreateSupplierResult> => {
   const { clientId, type = 'local', ...supplierData } = params;
@@ -60,35 +110,48 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
     console.log('[SupplierCreationService] 🚀 Iniciando criação completa de fornecedor');
     console.log('[SupplierCreationService] 📦 Parâmetros:', { clientId, type, name: supplierData.name });
     
-    // 1. Criar/buscar fornecedor
+    // 1. Buscar fornecedor existente por CNPJ
     const cleanDoc = normalizeDocument(supplierData.document_number);
+    let supplierId = await findSupplierByCNPJ(cleanDoc);
+    let isNewSupplier = !supplierId;
     
-    const { data: supplierResult, error: supplierError } = await supabase.rpc(
-      'find_or_create_supplier_by_cnpj',
-      {
-        p_cnpj: cleanDoc,
-        p_name: supplierData.name,
-        p_email: supplierData.email,
-        p_phone: supplierData.phone || null,
-        p_whatsapp: supplierData.whatsapp ? normalizePhoneForDB(supplierData.whatsapp) : null,
-        p_website: supplierData.website || null,
-        p_city: supplierData.city || null,
-        p_state: supplierData.state || null,
-        p_address: supplierData.address ? { street: supplierData.address } : null,
-        p_specialties: supplierData.specialties || null
+    if (supplierId) {
+      console.log('[SupplierCreationService] ✅ Fornecedor existente encontrado:', supplierId);
+    } else {
+      // 2. Criar novo fornecedor SEM client_id (catálogo global)
+      console.log('[SupplierCreationService] 🆕 Criando novo fornecedor no catálogo global');
+      
+      const { data: newSupplier, error: createError } = await supabase
+        .from('suppliers')
+        .insert({
+          name: supplierData.name,
+          cnpj: cleanDoc,
+          document_number: cleanDoc,
+          email: supplierData.email,
+          phone: supplierData.phone || null,
+          whatsapp: supplierData.whatsapp ? normalizePhoneForDB(supplierData.whatsapp) : null,
+          website: supplierData.website || null,
+          city: supplierData.city || null,
+          state: supplierData.state || null,
+          address: supplierData.address ? { street: supplierData.address } : null,
+          specialties: supplierData.specialties || null,
+          type: type,
+          status: 'active',
+          bank_data: params.bank_data || null
+        })
+        .select('id')
+        .single();
+      
+      if (createError || !newSupplier) {
+        console.error('[SupplierCreationService] ❌ Erro ao criar fornecedor:', createError);
+        throw createError || new Error('Falha ao criar fornecedor');
       }
-    );
-    
-    if (supplierError || !supplierResult?.[0]) {
-      console.error('[SupplierCreationService] ❌ Erro ao criar fornecedor:', supplierError);
-      throw supplierError || new Error('Falha ao criar fornecedor');
+      
+      supplierId = newSupplier.id;
+      console.log('[SupplierCreationService] ✅ Novo fornecedor criado:', supplierId);
     }
     
-    const supplierId = supplierResult[0].supplier_id;
-    const isNewSupplier = supplierResult[0].is_new;
-    console.log('[SupplierCreationService] ✅ Fornecedor:', supplierId, isNewSupplier ? '(NOVO)' : '(EXISTENTE)');
-    
-    // Se fornecedor já existia, atualizar campos extras
+    // 3. Se fornecedor já existia, atualizar campos extras (merge de dados)
     if (!isNewSupplier && (supplierData.whatsapp || supplierData.website || supplierData.address || params.bank_data)) {
       console.log('[SupplierCreationService] 📝 Fornecedor existente - atualizando campos extras');
       
@@ -113,34 +176,13 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
       }
     }
     
-    // Se fornecedor é novo e tem bank_data, salvar
-    if (isNewSupplier && params.bank_data) {
-      console.log('[SupplierCreationService] 💳 Salvando dados bancários do novo fornecedor');
-      const { error: bankDataError } = await supabase
-        .from('suppliers')
-        .update({ bank_data: params.bank_data })
-        .eq('id', supplierId);
-      
-      if (bankDataError) {
-        console.warn('[SupplierCreationService] ⚠️ Erro ao salvar bank_data (não crítico):', bankDataError);
-      } else {
-        console.log('[SupplierCreationService] ✅ Dados bancários salvos');
-      }
+    // 4. Criar associação em client_suppliers
+    const associationCreated = await createClientSupplierAssociation(clientId, supplierId);
+    if (!associationCreated) {
+      console.warn('[SupplierCreationService] ⚠️ Falha ao criar associação (não crítico)');
     }
     
-    // 2. Associar ao cliente
-    const { error: assocError } = await supabase.rpc('associate_supplier_to_client', {
-      p_supplier_id: supplierId,
-      p_client_id: clientId
-    });
-    
-    if (assocError) {
-      console.error('[SupplierCreationService] ❌ Erro ao associar:', assocError);
-      throw assocError;
-    }
-    console.log('[SupplierCreationService] ✅ Associado ao cliente:', clientId);
-    
-    // 3. Criar auth user (apenas se for novo fornecedor)
+    // 5. Criar auth user (apenas se for novo fornecedor)
     let authUserId: string | undefined;
     
     if (isNewSupplier) {
@@ -170,7 +212,7 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
           authUserId = authResp.auth_user_id;
           console.log('[SupplierCreationService] ✅ Auth user criado:', authUserId);
           
-          // 4. Aguardar sincronização do profile
+          // 6. Aguardar sincronização do profile
           const profileSynced = await waitForProfileSync(authUserId);
           
           if (!profileSynced) {
@@ -185,7 +227,7 @@ export const createSupplierWithAuth = async (params: CreateSupplierParams): Prom
       console.log('[SupplierCreationService] ℹ️ Fornecedor existente - pulando criação de auth');
     }
     
-    // 5. Enviar notificações
+    // 7. Enviar notificações
     const notificationResults = {
       email: false,
       whatsapp: false,
