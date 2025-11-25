@@ -52,13 +52,22 @@ Deno.serve(async (req) => {
       throw new Error('Wallet Asaas não configurada para este fornecedor');
     }
 
+    // 🔒 VALIDAÇÃO CRÍTICA: Verificar se wallet_id é real (não UUID interno)
+    const walletId = supplier.asaas_wallet_id;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(walletId);
+    
+    if (isUUID) {
+      console.error('⚠️ ALERTA DE SEGURANÇA: asaas_wallet_id é um UUID interno, não um wallet Asaas válido:', walletId);
+      throw new Error('Subconta Asaas não configurada corretamente. Entre em contato com o suporte.');
+    }
+
     // Obter configuração do Asaas
     const { apiKey, baseUrl } = await getAsaasConfig(supabaseClient);
 
-    console.log(`Fetching balance for wallet: ${supplier.asaas_wallet_id}`);
+    console.log(`✅ Fetching balance for VALID wallet: ${walletId}`);
 
-    // Buscar saldo na API do Asaas
-    const response = await fetch(`${baseUrl}/finance/getCurrentBalance?wallet=${supplier.asaas_wallet_id}`, {
+    // Buscar saldo na API do Asaas usando o wallet validado
+    const response = await fetch(`${baseUrl}/finance/getCurrentBalance?wallet=${walletId}`, {
       method: 'GET',
       headers: {
         'access_token': apiKey,
@@ -115,7 +124,9 @@ Deno.serve(async (req) => {
       inEscrow,
       availableForTransfer,
       totalProjected,
-      escrowPaymentsCount: escrowPayments?.length || 0
+      escrowPaymentsCount: escrowPayments?.length || 0,
+      walletId: walletId,
+      isValidWallet: !isUUID
     });
 
     // Log de auditoria
