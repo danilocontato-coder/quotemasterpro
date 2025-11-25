@@ -81,13 +81,14 @@ export function calculateCustomerTotal(
   // As taxas Asaas já foram pagas pelo cliente (embutidas no customerTotal)
   const supplierNet = baseAmount - platformCommission;
 
+  // Arredondar todos os valores para 2 casas decimais para evitar erros de precisão
   return {
-    baseAmount,
-    asaasFee: fees.totalFees,
-    asaasPaymentFee: fees.paymentFee,
-    asaasMessagingFee: fees.messagingFee,
-    customerTotal,
-    platformCommission,
-    supplierNet
+    baseAmount: Math.round(baseAmount * 100) / 100,
+    asaasFee: Math.round(fees.totalFees * 100) / 100,
+    asaasPaymentFee: Math.round(fees.paymentFee * 100) / 100,
+    asaasMessagingFee: Math.round(fees.messagingFee * 100) / 100,
+    customerTotal: Math.round(customerTotal * 100) / 100,
+    platformCommission: Math.round(platformCommission * 100) / 100,
+    supplierNet: Math.round(supplierNet * 100) / 100
   };
 }
