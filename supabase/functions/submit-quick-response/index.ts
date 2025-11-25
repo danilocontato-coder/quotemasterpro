@@ -125,6 +125,24 @@ serve(async (req) => {
     if (existingSupplier) {
       supplierId = existingSupplier.id;
       console.log('✅ Fornecedor encontrado por email:', supplierId);
+      
+      // ✅ VINCULAR PROFILE: Se existe um profile de fornecedor com este email mas sem supplier_id, vincular agora
+      const { data: orphanProfile } = await supabase
+        .from('profiles')
+        .select('id, email, role, supplier_id')
+        .eq('email', supplier_email)
+        .eq('role', 'supplier')
+        .is('supplier_id', null)
+        .maybeSingle();
+      
+      if (orphanProfile) {
+        console.log('🔗 [Quick Response] Vinculando profile órfão ao supplier:', orphanProfile.id, '→', supplierId);
+        await supabase
+          .from('profiles')
+          .update({ supplier_id: supplierId })
+          .eq('id', orphanProfile.id);
+        console.log('✅ Profile vinculado com sucesso ao fornecedor');
+      }
     } else {
       // 2. Buscar por nome + client_id para evitar duplicatas
       const { data: supplierByName } = await supabase
