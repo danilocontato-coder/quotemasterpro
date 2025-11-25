@@ -88,8 +88,8 @@ serve(async (req) => {
       body: JSON.stringify({
         walletId: payment.suppliers.asaas_wallet_id,
         value: supplierNetAmount,
-        description: `Cotação ${payment.quotes.local_code} - Líquido após comissão`,
-        operationType: 'PIX'
+        description: `Cotação ${payment.quotes.local_code} - Líquido após comissão`
+        // Sem operationType para transferência entre contas Asaas (walletId)
       })
     })
 
@@ -138,11 +138,11 @@ serve(async (req) => {
       })
       .eq('id', paymentId)
 
-    // Atualizar status da cotação
+    // Atualizar status da cotação para finalized (entregue e pago)
     await supabase
       .from('quotes')
       .update({
-        status: 'paid',
+        status: 'finalized',
         updated_at: new Date().toISOString()
       })
       .eq('id', payment.quote_id)

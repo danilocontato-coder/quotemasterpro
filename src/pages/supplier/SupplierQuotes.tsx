@@ -604,8 +604,11 @@ export default function SupplierQuotes() {
                             </Button>
                           )}
 
-                          {/* Botão Emitir Cobrança - quando cotação aprovada e sem pagamento */}
-                          {quote.status === 'approved' && !quote.payment_id && (
+                          {/* Botão Emitir Cobrança - quando cotação aprovada e sem pagamento/entrega */}
+                          {quote.status === 'approved' && 
+                           !quote.payment_id && 
+                           !pendingDeliveryQuoteIds.has(quote.id) && 
+                           !quotesWithDeliveries.has(quote.id) && (
                             <Button
                               variant="default"
                               size="sm"
