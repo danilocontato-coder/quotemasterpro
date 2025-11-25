@@ -347,7 +347,7 @@ export default function SupplierReceivables() {
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">💰 Total Bruto</p>
                     <p className="text-2xl font-bold text-blue-600">
-                      {formatCurrency(receivables.reduce((sum, r) => sum + r.amount, 0))}
+                      {formatCurrency(receivables.reduce((sum, r) => sum + (r.base_amount || r.amount), 0))}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Valor das vendas
