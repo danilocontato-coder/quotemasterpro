@@ -35,7 +35,7 @@ export function WalletSetupAlert({ walletId, walletConfigured = true, onWalletCr
       if (data.success) {
         setCreatedWalletId(data.walletId);
         setShowInstructions(true);
-        toast.success('Subconta Asaas criada com sucesso!', {
+        toast.success('Carteira Digital criada com sucesso!', {
           description: 'Verifique seu e-mail e SMS para completar a ativação.'
         });
         onWalletCreated?.();
@@ -64,9 +64,9 @@ export function WalletSetupAlert({ walletId, walletConfigured = true, onWalletCr
           <div className="flex items-start gap-3">
             <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
             <div className="space-y-1">
-              <CardTitle className="text-green-900">Subconta Asaas Criada com Sucesso!</CardTitle>
+              <CardTitle className="text-green-900">Sua Carteira Digital foi Ativada!</CardTitle>
               <CardDescription className="text-green-800">
-                ID da Subconta: <code className="font-mono text-xs bg-green-100 px-2 py-0.5 rounded">{createdWalletId}</code>
+                ID da Conta: <code className="font-mono text-xs bg-green-100 px-2 py-0.5 rounded">{createdWalletId}</code>
               </CardDescription>
             </div>
           </div>
@@ -133,10 +133,10 @@ export function WalletSetupAlert({ walletId, walletConfigured = true, onWalletCr
   return (
     <Alert variant="destructive" className="border-amber-200 bg-amber-50">
       <AlertTriangle className="h-4 w-4 text-amber-600" />
-      <AlertTitle className="text-amber-900">Wallet Asaas não configurada</AlertTitle>
+      <AlertTitle className="text-amber-900">Carteira Digital não ativada</AlertTitle>
       <AlertDescription className="text-amber-800 space-y-3">
         <p>
-          Sua subconta Asaas ainda não foi criada. Você não poderá receber transferências até configurar.
+          Sua conta de recebimentos ainda não foi criada. Você não poderá receber transferências até ativar.
         </p>
         <Button 
           onClick={handleCreateWallet} 
@@ -144,7 +144,7 @@ export function WalletSetupAlert({ walletId, walletConfigured = true, onWalletCr
           size="sm"
           className="bg-amber-600 hover:bg-amber-700"
         >
-          {isCreating ? 'Configurando...' : 'Configurar Wallet Agora'}
+          {isCreating ? 'Ativando...' : 'Ativar Carteira Digital'}
         </Button>
       </AlertDescription>
     </Alert>

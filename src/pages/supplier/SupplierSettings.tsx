@@ -243,7 +243,7 @@ function SupplierSettings() {
           </TabsTrigger>
           <TabsTrigger value="wallet">
             <Wallet className="h-4 w-4 mr-2" />
-            Pagamentos
+            Carteira
           </TabsTrigger>
           <TabsTrigger value="security">
             <Lock className="h-4 w-4 mr-2" />

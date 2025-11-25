@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
           totalProjected: inEscrow,
           totalBalance: 0,
           wallet_configured: false,
-          message: 'Subconta Asaas não configurada. Configure para receber transferências.'
+          message: 'Sua carteira digital ainda não foi ativada. Ative para receber transferências.'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

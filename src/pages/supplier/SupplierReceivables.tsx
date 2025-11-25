@@ -163,7 +163,7 @@ export default function SupplierReceivables() {
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-green-600" />
-              Wallet Asaas
+              Sua Carteira Digital
             </span>
             <Button onClick={fetchBalance} variant="ghost" size="sm" disabled={isLoadingBalance}>
               <RefreshCw className={`h-4 w-4 ${isLoadingBalance ? 'animate-spin' : ''}`} />
@@ -399,7 +399,7 @@ export default function SupplierReceivables() {
                 <div className="bg-blue-100 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-800">
                     <strong>💡 Como funciona:</strong> A comissão de 5% e as taxas Asaas (processamento + mensageria) são descontadas automaticamente. 
-                    Você recebe o valor líquido diretamente na sua Wallet Asaas.
+                    Você recebe o valor líquido diretamente na sua carteira digital.
                   </p>
                 </div>
               </div>
