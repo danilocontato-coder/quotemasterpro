@@ -7,11 +7,10 @@ import { toast } from 'sonner';
 
 interface WalletSetupAlertProps {
   walletId: string | null;
-  supplierId: string;
   onWalletCreated?: () => void;
 }
 
-export function WalletSetupAlert({ walletId, supplierId, onWalletCreated }: WalletSetupAlertProps) {
+export function WalletSetupAlert({ walletId, onWalletCreated }: WalletSetupAlertProps) {
   const [isCreating, setIsCreating] = useState(false);
 
   // Validar se é um wallet real (não UUID interno)
@@ -21,7 +20,7 @@ export function WalletSetupAlert({ walletId, supplierId, onWalletCreated }: Wall
     setIsCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-asaas-subaccount', {
-        body: { supplier_id: supplierId }
+        body: {}
       });
 
       if (error) throw error;

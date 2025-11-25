@@ -6,10 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface CreateSubaccountRequest {
-  supplier_id: string;
-}
-
 interface AsaasSubaccountResponse {
   id: string;
   apiKey: string;
@@ -43,12 +39,21 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { supplier_id } = await req.json() as CreateSubaccountRequest;
+    console.log(`🔍 Buscando fornecedor para usuário: ${user.id}`);
 
-    if (!supplier_id) {
-      throw new Error('supplier_id é obrigatório');
+    // Buscar supplier_id do profile do usuário autenticado
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('supplier_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile?.supplier_id) {
+      console.error('❌ Profile não encontrado ou sem supplier_id:', profileError);
+      throw new Error('Usuário não está vinculado a um fornecedor');
     }
 
+    const supplier_id = profile.supplier_id;
     console.log(`🚀 Criando subconta Asaas para fornecedor: ${supplier_id}`);
 
     // Buscar dados do fornecedor

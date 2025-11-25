@@ -150,7 +150,6 @@ export default function SupplierReceivables() {
       {/* Alerta se wallet não está configurado */}
       <WalletSetupAlert 
         walletId={supplierData?.asaas_wallet_id || null}
-        supplierId={supplierData?.id || ''}
         onWalletCreated={() => {
           refetchSupplier();
           fetchBalance();
