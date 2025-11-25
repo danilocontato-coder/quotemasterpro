@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOptimizedCache } from './useOptimizedCache';
 
 export interface SupplierReceivable {
   id: string;
@@ -38,6 +39,7 @@ export const useSupplierReceivables = () => {
   const [receivables, setReceivables] = useState<SupplierReceivable[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const { getCache, setCache, clearCache } = useOptimizedCache();
 
   const fetchReceivables = async () => {
     if (!user?.supplierId) {
@@ -46,8 +48,19 @@ export const useSupplierReceivables = () => {
       return;
     }
 
+    // ✅ Verificar cache primeiro
+    const cacheKey = `receivables_${user.supplierId}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      console.log('📦 [RECEIVABLES-CACHE] Cache hit! Dados carregados instantaneamente:', cached.length, 'recebimentos');
+      setReceivables(cached);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
+      console.log('🌐 [RECEIVABLES-FETCH] Cache miss, buscando do Supabase');
 
       // Buscar pagamentos onde o fornecedor é o beneficiário
       // Usando LEFT JOIN (implícito) para evitar que RLS de quotes oculte pagamentos
@@ -104,6 +117,11 @@ export const useSupplierReceivables = () => {
         platform_commission: payment.platform_commission
       }));
 
+      // ✅ Salvar no cache após buscar
+      const cacheKey = `receivables_${user.supplierId}`;
+      setCache(cacheKey, formattedReceivables, 2 * 60 * 1000); // 2 minutos TTL
+      console.log('💾 [RECEIVABLES-CACHE] Salvando', formattedReceivables.length, 'recebimentos no cache (TTL: 2min)');
+      
       setReceivables(formattedReceivables);
     } catch (error) {
       console.error('Error fetching supplier receivables:', error);
@@ -127,7 +145,8 @@ export const useSupplierReceivables = () => {
           table: 'payments'
         },
         (payload) => {
-          console.log('Payment updated, refetching receivables');
+          console.log('🔔 Payment updated, clearing cache and refetching');
+          clearCache('receivables_'); // Limpar cache antes de refetch
           fetchReceivables();
 
           // Notificar quando pagamento for confirmado (mudou para in_escrow)
@@ -158,7 +177,8 @@ export const useSupplierReceivables = () => {
           table: 'deliveries'
         },
         () => {
-          console.log('Delivery updated, refetching receivables');
+          console.log('🔔 Delivery updated, clearing cache and refetching');
+          clearCache('receivables_'); // Limpar cache antes de refetch
           fetchReceivables();
         }
       )
@@ -224,12 +244,18 @@ export const useSupplierReceivables = () => {
     }
   };
 
+  const refreshReceivables = () => {
+    console.log('🗑️ [RECEIVABLES-CACHE] Cache invalidado manualmente');
+    clearCache(`receivables_${user?.supplierId || user?.id}`);
+    fetchReceivables();
+  };
+
   return {
     receivables,
     metrics,
     isLoading,
     getStatusText,
     getStatusColor,
-    refreshReceivables: fetchReceivables
+    refreshReceivables
   };
 };
