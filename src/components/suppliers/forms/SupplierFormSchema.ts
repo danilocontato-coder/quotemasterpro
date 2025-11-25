@@ -43,7 +43,14 @@ export const supplierFormSchema = z.object({
   whatsapp: z
     .string()
     .trim()
-    .transform(val => val.replace(/\D/g, '')) // Remove formatação
+    .transform(val => {
+      const cleaned = val.replace(/\D/g, '');
+      // Remove código do país (+55) se presente
+      if (cleaned.startsWith('55') && cleaned.length >= 12) {
+        return cleaned.slice(2);
+      }
+      return cleaned;
+    })
     .refine(val => !val || (val.length >= 10 && val.length <= 11), 'WhatsApp deve ter 10 ou 11 dígitos')
     .optional()
     .or(z.literal('')),
@@ -52,7 +59,15 @@ export const supplierFormSchema = z.object({
     .string()
     .trim()
     .optional()
-    .transform(val => val ? val.replace(/\D/g, '') : undefined)
+    .transform(val => {
+      if (!val) return undefined;
+      const cleaned = val.replace(/\D/g, '');
+      // Remove código do país (+55) se presente
+      if (cleaned.startsWith('55') && cleaned.length >= 12) {
+        return cleaned.slice(2);
+      }
+      return cleaned;
+    })
     .refine(val => !val || val.length === 10 || val.length === 11, 'Telefone deve ter 10 ou 11 dígitos')
     .refine(val => !val || /^[1-9]{2}9?[0-9]{8}$/.test(val), 'Telefone inválido'),
   

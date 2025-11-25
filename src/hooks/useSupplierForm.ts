@@ -13,6 +13,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { normalizeDocument } from '@/utils/documentValidation';
 import { brazilStates } from '@/data/brazilStates';
 
+// Função auxiliar para normalizar telefones (remove código do país se presente)
+const normalizePhone = (phone?: string): string | undefined => {
+  if (!phone) return undefined;
+  const cleaned = phone.replace(/\D/g, '');
+  // Se começa com 55 e tem 12+ dígitos, remover código do país
+  if (cleaned.startsWith('55') && cleaned.length >= 12) {
+    return cleaned.slice(2);
+  }
+  return cleaned;
+};
+
 // Função auxiliar para formatar telefones
 const formatPhone = (phone: string): string => {
   if (!phone) return '';
@@ -123,8 +134,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
         document_type: (editingSupplier.document_type as 'cpf' | 'cnpj') || 'cnpj',
         document_number: editingSupplier.document_number || '',
         email: editingSupplier.email || '',
-        whatsapp: editingSupplier.whatsapp || undefined,
-        phone: editingSupplier.phone || undefined,
+        whatsapp: normalizePhone(editingSupplier.whatsapp),
+        phone: normalizePhone(editingSupplier.phone),
         website: editingSupplier.website || undefined,
         state: uf,
         city,
@@ -181,8 +192,8 @@ export const useSupplierForm = ({ editingSupplier, onSuccess, onCancel }: UseSup
         document_type: (editingSupplier.document_type as 'cpf' | 'cnpj') || 'cnpj',
         document_number: editingSupplier.document_number || '',
         email: editingSupplier.email || '',
-        whatsapp: editingSupplier.whatsapp || undefined,
-        phone: editingSupplier.phone || undefined,
+        whatsapp: normalizePhone(editingSupplier.whatsapp),
+        phone: normalizePhone(editingSupplier.phone),
         website: editingSupplier.website || undefined,
         state: uf,
         city,
