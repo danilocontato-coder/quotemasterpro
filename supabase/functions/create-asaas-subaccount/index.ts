@@ -103,7 +103,11 @@ Deno.serve(async (req) => {
       addressNumber: typeof supplier.address === 'object' && supplier.address?.number 
         ? supplier.address.number 
         : '',
-      province: supplier.city || '',
+      city: supplier.city || (typeof supplier.address === 'object' ? supplier.address?.city : ''),
+      province: typeof supplier.address === 'object' && supplier.address?.neighborhood 
+        ? supplier.address.neighborhood 
+        : '',
+      state: supplier.state || (typeof supplier.address === 'object' ? supplier.address?.state : ''),
       postalCode: typeof supplier.address === 'object' && supplier.address?.postal_code
         ? supplier.address.postal_code?.replace(/\D/g, '')
         : '',
