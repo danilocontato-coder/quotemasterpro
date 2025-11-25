@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getAsaasConfig } from '../_shared/asaas-utils.ts'
+import { detectPixKeyType } from '../_shared/pix-utils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,7 +27,7 @@ serve(async (req) => {
       .from('payments')
       .select(`
         *,
-        suppliers!payments_supplier_id_fkey!inner(id, name, email, asaas_wallet_id, bank_data),
+        suppliers!payments_supplier_id_fkey!inner(id, name, email, cnpj, bank_data, pix_key),
         clients!inner(id, name),
         quotes!inner(id, local_code, title)
       `)
@@ -42,25 +43,6 @@ serve(async (req) => {
       )
     }
 
-    // Validar wallet do fornecedor
-    if (!payment.suppliers.asaas_wallet_id) {
-      console.error('❌ Fornecedor não possui wallet Asaas')
-      
-      // Criar registro de erro para retry
-      await supabase.from('escrow_release_errors').insert({
-        payment_id: paymentId,
-        error_type: 'missing_wallet',
-        error_message: 'Fornecedor não possui wallet Asaas configurada',
-        retry_count: retryAttempt,
-        next_retry_at: new Date(Date.now() + 3600000).toISOString() // 1 hora
-      })
-      
-      return new Response(
-        JSON.stringify({ error: 'Fornecedor não possui wallet Asaas' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Calcular valores - usar supplier_net_amount se disponível
     const supplierNetAmount = payment.supplier_net_amount || (payment.base_amount ? payment.base_amount * 0.95 : payment.amount * 0.95);
     const platformCommission = payment.platform_commission || (payment.base_amount ? payment.base_amount * 0.05 : payment.amount * 0.05);
@@ -73,24 +55,71 @@ serve(async (req) => {
       asaas_fee: payment.asaas_fee || 0
     });
 
+    // Validar dados bancários do fornecedor
+    const supplier = payment.suppliers;
+    const bankData = supplier.bank_data;
+    const pixKey = supplier.pix_key;
+
+    // Verificar se possui chave PIX ou dados bancários completos
+    if (!pixKey && (!bankData?.account_number || !bankData?.bank_code)) {
+      console.error('❌ Fornecedor não possui dados bancários configurados')
+      
+      // Criar registro de erro para retry
+      await supabase.from('escrow_release_errors').insert({
+        payment_id: paymentId,
+        error_type: 'missing_bank_data',
+        error_message: 'Fornecedor não possui chave PIX ou dados bancários completos',
+        retry_count: retryAttempt,
+        next_retry_at: new Date(Date.now() + 3600000).toISOString() // 1 hora
+      })
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Fornecedor não possui dados bancários configurados',
+          requires_manual_transfer: true
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Obter configuração Asaas
     const { apiKey, baseUrl } = await getAsaasConfig(supabase)
 
+    // Construir payload para transferência
+    let transferPayload: any = {
+      value: supplierNetAmount,
+      description: `Cotação ${payment.quotes.local_code} - Líquido após comissão`
+    }
+
+    // Priorizar chave PIX se disponível
+    if (pixKey) {
+      console.log(`📤 Criando transferência PIX para chave: ${pixKey}`)
+      transferPayload.pixAddressKey = pixKey
+      transferPayload.pixAddressKeyType = detectPixKeyType(pixKey)
+    } else {
+      // Usar dados bancários tradicionais
+      console.log(`📤 Criando transferência bancária para: ${bankData.bank_code} - ${bankData.account_number}`)
+      transferPayload.bankAccount = {
+        bank: {
+          code: bankData.bank_code
+        },
+        accountName: bankData.account_holder_name || supplier.name,
+        ownerName: bankData.account_holder_name || supplier.name,
+        cpfCnpj: supplier.cnpj,
+        agency: bankData.agency,
+        account: bankData.account_number,
+        accountDigit: bankData.account_digit || '0'
+      }
+    }
+
     // Criar transferência via API Asaas
-    console.log(`📤 Criando transferência para wallet: ${payment.suppliers.asaas_wallet_id}`)
-    
     const transferResponse = await fetch(`${baseUrl}/transfers`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'access_token': apiKey,
       },
-      body: JSON.stringify({
-        walletId: payment.suppliers.asaas_wallet_id,
-        value: supplierNetAmount,
-        description: `Cotação ${payment.quotes.local_code} - Líquido após comissão`
-        // Sem operationType para transferência entre contas Asaas (walletId)
-      })
+      body: JSON.stringify(transferPayload)
     })
 
     if (!transferResponse.ok) {
@@ -163,15 +192,18 @@ serve(async (req) => {
         platform_commission: platformCommission,
         supplier_net_amount: supplierNetAmount,
         transfer_id: transferData.id,
+        transfer_method: pixKey ? 'PIX' : 'TED',
+        pix_key: pixKey || null,
         retry_attempt: retryAttempt
       }
     })
 
     // Notificar fornecedor
+    const transferMethod = pixKey ? 'via PIX' : 'via TED';
     await supabase.rpc('create_notification', {
       p_user_id: payment.supplier_id,
       p_title: '💰 Pagamento Liberado',
-      p_message: `R$ ${supplierNetAmount.toFixed(2)} foram transferidos para sua Wallet Asaas (cotação ${payment.quotes.local_code})`,
+      p_message: `R$ ${supplierNetAmount.toFixed(2)} foram transferidos ${transferMethod} (cotação ${payment.quotes.local_code})`,
       p_type: 'payment',
       p_priority: 'high',
       p_action_url: '/supplier/receivables'
@@ -184,6 +216,7 @@ serve(async (req) => {
         success: true,
         payment_id: paymentId,
         transfer_id: transferData.id,
+        transfer_method: pixKey ? 'PIX' : 'TED',
         supplier_received: supplierNetAmount,
         platform_commission: platformCommission,
         message: 'Pagamento liberado e transferido com sucesso'
