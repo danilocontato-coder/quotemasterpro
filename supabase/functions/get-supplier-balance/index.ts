@@ -48,17 +48,55 @@ Deno.serve(async (req) => {
       .eq('id', profile.supplier_id)
       .single();
 
-    if (!supplier?.asaas_wallet_id) {
-      throw new Error('Wallet Asaas não configurada para este fornecedor');
-    }
-
-    // 🔒 VALIDAÇÃO CRÍTICA: Verificar se wallet_id é real (não UUID interno)
-    const walletId = supplier.asaas_wallet_id;
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(walletId);
+    // 🔒 VALIDAÇÃO CRÍTICA: Verificar se wallet está configurado
+    const walletId = supplier?.asaas_wallet_id;
+    const isUUID = walletId ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(walletId) : true;
     
-    if (isUUID) {
-      console.error('⚠️ ALERTA DE SEGURANÇA: asaas_wallet_id é um UUID interno, não um wallet Asaas válido:', walletId);
-      throw new Error('Subconta Asaas não configurada corretamente. Entre em contato com o suporte.');
+    if (!walletId || isUUID) {
+      console.log('⚠️ Wallet não configurado ou UUID interno. Retornando zeros.', { walletId, isUUID });
+      
+      // Calcular valor em custódia mesmo sem wallet configurado
+      const { data: escrowPayments } = await supabaseClient
+        .from('payments')
+        .select('supplier_net_amount, amount, base_amount')
+        .eq('supplier_id', profile.supplier_id)
+        .eq('status', 'in_escrow');
+
+      const inEscrow = escrowPayments?.reduce((sum, p) => {
+        const netAmount = p.supplier_net_amount || (p.base_amount || p.amount) * 0.95;
+        return sum + netAmount;
+      }, 0) || 0;
+
+      // Log de auditoria
+      await supabaseClient
+        .from('audit_logs')
+        .insert({
+          user_id: user.id,
+          action: 'ASAAS_BALANCE_NOT_CONFIGURED',
+          entity_type: 'suppliers',
+          entity_id: profile.supplier_id,
+          panel_type: 'supplier',
+          details: {
+            wallet_id: walletId || 'not_set',
+            is_uuid: isUUID,
+            message: 'Subconta Asaas não configurada',
+            timestamp: new Date().toISOString()
+          }
+        });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          balance: 0,
+          availableForTransfer: 0,
+          inEscrow: inEscrow,
+          totalProjected: inEscrow,
+          totalBalance: 0,
+          wallet_configured: false,
+          message: 'Subconta Asaas não configurada. Configure para receber transferências.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Obter configuração do Asaas

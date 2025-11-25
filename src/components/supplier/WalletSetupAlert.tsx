@@ -7,14 +7,18 @@ import { toast } from 'sonner';
 
 interface WalletSetupAlertProps {
   walletId: string | null;
+  walletConfigured?: boolean;
   onWalletCreated?: () => void;
 }
 
-export function WalletSetupAlert({ walletId, onWalletCreated }: WalletSetupAlertProps) {
+export function WalletSetupAlert({ walletId, walletConfigured = true, onWalletCreated }: WalletSetupAlertProps) {
   const [isCreating, setIsCreating] = useState(false);
 
   // Validar se é um wallet real (não UUID interno)
   const isValidWallet = walletId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(walletId);
+
+  // Mostrar alerta se wallet não está configurado OU se o backend reportou que não está configurado
+  const shouldShowAlert = !isValidWallet || !walletConfigured;
 
   const handleCreateWallet = async () => {
     setIsCreating(true);
@@ -43,8 +47,8 @@ export function WalletSetupAlert({ walletId, onWalletCreated }: WalletSetupAlert
     }
   };
 
-  // Não mostrar nada se já tiver wallet válido
-  if (isValidWallet) {
+  // Não mostrar nada se wallet está configurado corretamente
+  if (!shouldShowAlert) {
     return null;
   }
 
