@@ -8,6 +8,8 @@ export interface SupplierBalance {
   inEscrow: number;
   totalProjected: number;
   totalBalance: number;
+  wallet_configured?: boolean;
+  message?: string;
 }
 
 export const useSupplierBalance = () => {
@@ -35,14 +37,24 @@ export const useSupplierBalance = () => {
         availableForTransfer: data.availableForTransfer || 0,
         inEscrow: data.inEscrow || 0,
         totalProjected: data.totalProjected || 0,
-        totalBalance: data.totalBalance || 0
+        totalBalance: data.totalBalance || 0,
+        wallet_configured: data.wallet_configured !== false,
+        message: data.message
       });
 
       console.log('[useSupplierBalance] Balance fetched:', data);
+      
+      // Não mostrar toast de erro se wallet apenas não está configurado
+      if (data.wallet_configured === false) {
+        console.log('[useSupplierBalance] Wallet não configurado - mostrando alerta visual');
+      }
     } catch (err: any) {
       console.error('[useSupplierBalance] Error:', err);
       setError(err.message || 'Erro ao buscar saldo');
-      toast.error(err.message || 'Erro ao buscar saldo da wallet Asaas');
+      // Não mostrar toast se for apenas wallet não configurado
+      if (!err.message?.includes('não configurad')) {
+        toast.error(err.message || 'Erro ao buscar saldo da wallet Asaas');
+      }
     } finally {
       setIsLoading(false);
     }
