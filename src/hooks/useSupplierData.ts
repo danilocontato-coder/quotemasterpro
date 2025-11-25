@@ -13,6 +13,7 @@ export interface SupplierData {
   bank_data?: any;
   document_number?: string;
   document_type?: string;
+  asaas_wallet_id?: string;
 }
 
 export const useSupplierData = () => {
@@ -56,7 +57,8 @@ export const useSupplierData = () => {
           planDisplayName: supplier.subscription_plans?.display_name || 'Basic',
           bank_data: supplier.bank_data,
           document_number: supplier.document_number,
-          document_type: supplier.document_type
+          document_type: supplier.document_type,
+          asaas_wallet_id: supplier.asaas_wallet_id
         });
       }
     } catch (error) {

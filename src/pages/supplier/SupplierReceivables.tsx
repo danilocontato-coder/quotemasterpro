@@ -17,6 +17,7 @@ import { useSupplierData } from '@/hooks/useSupplierData';
 import { EditBankDataModal } from '@/components/suppliers/EditBankDataModal';
 import { calculateCustomerTotal } from '@/lib/asaas-fees';
 import { toast } from 'sonner';
+import { WalletSetupAlert } from '@/components/supplier/WalletSetupAlert';
 
 export default function SupplierReceivables() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,6 +146,16 @@ export default function SupplierReceivables() {
           </p>
         </div>
       </div>
+
+      {/* Alerta se wallet não está configurado */}
+      <WalletSetupAlert 
+        walletId={supplierData?.asaas_wallet_id || null}
+        supplierId={supplierData?.id || ''}
+        onWalletCreated={() => {
+          refetchSupplier();
+          fetchBalance();
+        }}
+      />
 
       {/* Wallet Asaas - Saldo Disponível */}
       <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
