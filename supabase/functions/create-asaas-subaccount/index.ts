@@ -108,8 +108,8 @@ Deno.serve(async (req) => {
         ? supplier.address.neighborhood 
         : '',
       state: supplier.state || (typeof supplier.address === 'object' ? supplier.address?.state : ''),
-      postalCode: typeof supplier.address === 'object' && supplier.address?.postal_code
-        ? supplier.address.postal_code?.replace(/\D/g, '')
+      postalCode: typeof supplier.address === 'object' && supplier.address?.zipCode
+        ? supplier.address.zipCode?.replace(/\D/g, '')
         : '',
       companyType: supplier.cnpj?.length === 14 ? 'MEI' : 'INDIVIDUAL',
       incomeValue: 5000.00, // Valor padrão de renda/faturamento mensal em R$
