@@ -26,7 +26,7 @@ serve(async (req) => {
       .from('payments')
       .select(`
         *,
-        suppliers!inner(id, name, email, asaas_wallet_id, bank_data),
+        suppliers!payments_supplier_id_fkey!inner(id, name, email, asaas_wallet_id, bank_data),
         clients!inner(id, name),
         quotes!inner(id, local_code, title)
       `)
