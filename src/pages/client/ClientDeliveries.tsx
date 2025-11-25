@@ -230,25 +230,12 @@ export default function ClientDeliveries() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredDeliveries.map((delivery) => (
-                <div className="space-y-2">
-                  <DeliveryCard
-                    key={delivery.id}
-                    delivery={delivery}
-                    onConfirm={handleConfirm}
-                  />
-                  {delivery.status === 'scheduled' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleResendCode(delivery.id)}
-                      disabled={resendingCode === delivery.id}
-                      className="w-full"
-                    >
-                      <Mail className="h-4 w-4 mr-2" />
-                      {resendingCode === delivery.id ? 'Reenviando...' : 'Reenviar Código de Confirmação'}
-                    </Button>
-                  )}
-                </div>
+            <DeliveryCard
+              key={delivery.id}
+              delivery={delivery}
+              onConfirm={handleConfirm}
+              onResendCode={handleResendCode}
+            />
           ))}
         </div>
       )}

@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ClientDelivery } from '@/hooks/useClientDeliveries';
-import { Package, MapPin, Calendar, DollarSign, Building2, Truck, Key, CheckCircle2, Clock, Star } from 'lucide-react';
+import { Package, MapPin, Calendar, DollarSign, Building2, Truck, Key, CheckCircle2, Clock, Star, Copy, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -10,17 +10,36 @@ import { UberDeliveryTracking } from '@/components/client/delivery/UberDeliveryT
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
 import SupplierRatingModal from '@/components/ratings/SupplierRatingModal';
+import { useToast } from '@/hooks/use-toast';
 
 interface DeliveryCardProps {
   delivery: ClientDelivery;
   onConfirm: (deliveryId: string) => void;
+  onResendCode?: (deliveryId: string) => void;
 }
 
-export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
+export function DeliveryCard({ delivery, onConfirm, onResendCode }: DeliveryCardProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [deliveryMethod, setDeliveryMethod] = useState<string>('own');
   const [hasRating, setHasRating] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "✅ Código copiado!",
+        description: "O código de confirmação foi copiado para a área de transferência.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o código.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchDeliveryData = async () => {
@@ -178,6 +197,48 @@ export function DeliveryCard({ delivery, onConfirm }: DeliveryCardProps) {
                 <code className="px-2 py-1 bg-muted rounded text-xs font-mono">
                   {delivery.tracking_code}
                 </code>
+              </div>
+            )}
+
+            {/* Código de Confirmação */}
+            {delivery.confirmation_code && (delivery.status === 'scheduled' || delivery.status === 'in_transit') && (
+              <div className="mt-4 p-4 bg-primary/5 border-2 border-primary/20 rounded-lg space-y-3">
+                <div className="flex items-center gap-2">
+                  <Key className="h-5 w-5 text-primary" />
+                  <h4 className="font-semibold text-sm">Código de Confirmação</h4>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center justify-center gap-2 p-3 bg-background rounded-lg border-2 border-primary/30">
+                    <span className="text-3xl font-bold tracking-[0.3em] font-mono text-primary">
+                      {delivery.confirmation_code}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(delivery.confirmation_code!)}
+                    className="shrink-0"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  ℹ️ Use este código para confirmar o recebimento da entrega quando os produtos chegarem.
+                </p>
+
+                {onResendCode && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onResendCode(delivery.id)}
+                    className="w-full text-xs"
+                  >
+                    <Mail className="h-3 w-3 mr-2" />
+                    Reenviar por Email/WhatsApp
+                  </Button>
+                )}
               </div>
             )}
 
