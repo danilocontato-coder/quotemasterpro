@@ -34,8 +34,27 @@ serve(async (req) => {
       throw new Error('Cotação não encontrada')
     }
 
-    if (quote.status !== 'approved') {
-      throw new Error('Cotação precisa estar aprovada para emitir cobrança')
+    // 1.1. Buscar resposta aprovada do fornecedor para esta cotação
+    const { data: quoteResponse, error: responseError } = await supabaseClient
+      .from('quote_responses')
+      .select('id, status, total_amount, shipping_cost, items')
+      .eq('quote_id', quoteId)
+      .in('status', ['approved', 'sent'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (responseError) {
+      console.error('❌ Error fetching quote response:', responseError)
+      throw new Error('Erro ao buscar resposta da cotação')
+    }
+
+    if (!quoteResponse) {
+      throw new Error('Nenhuma resposta aprovada encontrada para esta cotação')
+    }
+
+    if (quoteResponse.status !== 'approved') {
+      throw new Error('A resposta da cotação precisa estar aprovada pelo cliente para emitir cobrança')
     }
 
     if (!quote.supplier || !quote.supplier.asaas_wallet_id) {
@@ -57,8 +76,8 @@ serve(async (req) => {
       throw new Error('Já existe uma cobrança para esta cotação')
     }
 
-    // 3. Calcular valores
-    const baseAmount = quote.total || 0
+    // 3. Calcular valores usando o total da resposta aprovada
+    const baseAmount = quoteResponse.total_amount || 0
     const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED')
     
     console.log(`💰 Calculation:`, calculation)
