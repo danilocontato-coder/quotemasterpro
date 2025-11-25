@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
         ? supplier.address.postal_code?.replace(/\D/g, '')
         : '',
       companyType: supplier.cnpj?.length === 14 ? 'MEI' : 'INDIVIDUAL',
+      incomeValue: 5000.00, // Valor padrão de renda/faturamento mensal em R$
       site: '',
     };
 
