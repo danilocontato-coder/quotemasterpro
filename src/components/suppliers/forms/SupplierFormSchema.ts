@@ -170,20 +170,6 @@ export const supplierFormSchema = z.object({
 }, {
   message: 'Documento inválido para o tipo selecionado',
   path: ['document_number'],
-}).refine((data) => {
-  // Validação: Fornecedores locais DEVEM ter client_id
-  // EXCETO quando estamos apenas buscando duplicatas (antes de preencher o formulário)
-  if (data.type === 'local' && !data.client_id) {
-    // Se estamos no contexto de busca (name vazio), não validar ainda
-    if (!data.name || data.name.trim() === '') {
-      return true; // ✅ Permitir durante busca
-    }
-    return false; // ❌ Falhar se já temos dados mas sem client_id
-  }
-  return true;
-}, {
-  message: 'Fornecedores locais devem ter um cliente vinculado',
-  path: ['client_id'],
 });
 
 export type SupplierFormData = z.infer<typeof supplierFormSchema>;
