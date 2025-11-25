@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     // Buscar dados do fornecedor
     const { data: supplier, error: supplierError } = await supabaseClient
       .from('suppliers')
-      .select('id, name, email, cnpj, phone, address, city, state, postal_code, asaas_wallet_id')
+      .select('id, name, email, cnpj, phone, address, city, state, asaas_wallet_id')
       .eq('id', supplier_id)
       .single();
 
@@ -97,10 +97,16 @@ Deno.serve(async (req) => {
       email: supplier.email,
       cpfCnpj: supplier.cnpj?.replace(/\D/g, ''),
       mobilePhone: supplier.phone?.replace(/\D/g, ''),
-      address: supplier.address || '',
-      addressNumber: '',
+      address: typeof supplier.address === 'object' && supplier.address?.street 
+        ? supplier.address.street 
+        : supplier.address || '',
+      addressNumber: typeof supplier.address === 'object' && supplier.address?.number 
+        ? supplier.address.number 
+        : '',
       province: supplier.city || '',
-      postalCode: supplier.postal_code?.replace(/\D/g, '') || '',
+      postalCode: typeof supplier.address === 'object' && supplier.address?.postal_code
+        ? supplier.address.postal_code?.replace(/\D/g, '')
+        : '',
       companyType: supplier.cnpj?.length === 14 ? 'MEI' : 'INDIVIDUAL',
       site: '',
     };
