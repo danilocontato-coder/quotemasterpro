@@ -58,7 +58,7 @@ serve(async (req) => {
     // Validar dados bancários do fornecedor
     const supplier = payment.suppliers;
     const bankData = supplier.bank_data;
-    const pixKey = supplier.pix_key;
+    const pixKey = supplier.pix_key || bankData?.pix_key;
 
     // Verificar se possui chave PIX ou dados bancários completos
     if (!pixKey && (!bankData?.account_number || !bankData?.bank_code)) {
