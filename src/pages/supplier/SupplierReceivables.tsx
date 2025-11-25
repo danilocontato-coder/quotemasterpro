@@ -182,21 +182,66 @@ export default function SupplierReceivables() {
             <>
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Disponível</p>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 cursor-help">
+                          <p className="text-sm text-muted-foreground mb-1">💰 Disponível para Saque</p>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-xs">Valor já transferido para sua subconta Asaas e disponível para saque imediato.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <p className="text-2xl font-bold text-green-600">
                     {formatCurrency(balance?.availableForTransfer || 0)}
                   </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Bloqueado</p>
-                  <p className="text-xl font-medium text-orange-600">
-                    {formatCurrency(balance?.blockedBalance || 0)}
+                  <p className="text-xs text-green-600 font-medium">
+                    Saque agora
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Total</p>
-                  <p className="text-xl font-medium">
-                    {formatCurrency(balance?.totalBalance || 0)}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 cursor-help">
+                          <p className="text-sm text-muted-foreground mb-1">🔒 Em Custódia</p>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-xs">Valor retido aguardando confirmação de entrega pelos clientes. Será liberado automaticamente após confirmação.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(balance?.inEscrow || 0)}
+                  </p>
+                  <p className="text-xs text-blue-600 font-medium">
+                    Aguardando entrega
+                  </p>
+                </div>
+                <div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 cursor-help">
+                          <p className="text-sm text-muted-foreground mb-1">📊 Total Projetado</p>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-xs">Soma do disponível + em custódia. É o total que você tem direito a receber.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <p className="text-2xl font-bold text-foreground">
+                    {formatCurrency(balance?.totalProjected || 0)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Disponível + Custódia
                   </p>
                 </div>
               </div>
@@ -610,14 +655,14 @@ export default function SupplierReceivables() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Bloqueado</CardTitle>
+                <CardTitle className="text-sm font-medium">Em Custódia</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  {formatCurrency(balance?.blockedBalance || 0)}
+                <div className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(balance?.inEscrow || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Em garantia ou processamento
+                  Aguardando confirmação de entrega
                 </p>
               </CardContent>
             </Card>

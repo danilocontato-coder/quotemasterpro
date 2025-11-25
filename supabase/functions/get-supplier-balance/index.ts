@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     const balance = balanceData.balance ?? totalBalance;
     const asaasAvailable = balanceData.availableForTransfer ?? balance;
 
-    // 🆕 CORREÇÃO: Calcular saldo bloqueado baseado em pagamentos in_escrow
+    // 🔄 CORREÇÃO CRÍTICA: Calcular saldo em custódia baseado em pagamentos in_escrow
     console.log('🔍 Fetching escrow payments for supplier:', profile.supplier_id);
     
     const { data: escrowPayments, error: escrowError } = await supabaseClient
@@ -95,22 +95,26 @@ Deno.serve(async (req) => {
       console.error('⚠️ Error fetching escrow payments:', escrowError);
     }
 
-    // Calcular valor total bloqueado (aguardando confirmação de entrega)
-    const blockedBalance = escrowPayments?.reduce((sum, p) => {
+    // Calcular valor total EM CUSTÓDIA (aguardando confirmação de entrega)
+    const inEscrow = escrowPayments?.reduce((sum, p) => {
       // Usar supplier_net_amount se disponível, senão calcular baseAmount * 0.95
       const netAmount = p.supplier_net_amount || (p.base_amount || p.amount) * 0.95;
       return sum + netAmount;
     }, 0) || 0;
 
-    // Disponível = saldo Asaas - bloqueado (não pode transferir o que está em escrow)
-    const availableForTransfer = Math.max(0, asaasAvailable - blockedBalance);
+    // ✅ DISPONÍVEL = Saldo REAL na subconta Asaas (o que pode sacar AGORA)
+    const availableForTransfer = asaasAvailable;
+
+    // Total projetado = disponível agora + em custódia
+    const totalProjected = availableForTransfer + inEscrow;
 
     console.log('📊 Calculated balance values:', {
       totalBalance,
       balance,
       asaasAvailable,
-      blockedBalance,
+      inEscrow,
       availableForTransfer,
+      totalProjected,
       escrowPaymentsCount: escrowPayments?.length || 0
     });
 
@@ -134,10 +138,11 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        balance: balance,
-        availableForTransfer: availableForTransfer,
-        blockedBalance: blockedBalance,
-        totalBalance: totalBalance
+        balance: balance,                          // Saldo total na subconta
+        availableForTransfer: availableForTransfer, // O que pode sacar AGORA
+        inEscrow: inEscrow,                        // Aguardando confirmação de entrega
+        totalProjected: totalProjected,            // Projetado (disponível + custódia)
+        totalBalance: totalBalance                 // Para compatibilidade
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 export interface SupplierBalance {
   balance: number;
   availableForTransfer: number;
-  blockedBalance: number;
+  inEscrow: number;
+  totalProjected: number;
   totalBalance: number;
 }
 
@@ -32,7 +33,8 @@ export const useSupplierBalance = () => {
       setBalance({
         balance: data.balance || 0,
         availableForTransfer: data.availableForTransfer || 0,
-        blockedBalance: data.blockedBalance || 0,
+        inEscrow: data.inEscrow || 0,
+        totalProjected: data.totalProjected || 0,
         totalBalance: data.totalBalance || 0
       });
 
