@@ -7,6 +7,9 @@ import { useSupplierForm } from '@/hooks/useSupplierForm';
 import { BasicInfoStep } from './forms/BasicInfoStep';
 import { ContactStep } from './forms/ContactStep';
 import { LocationStep } from './forms/LocationStep';
+import { BankDataStep } from './forms/BankDataStep';
+import { SpecialtiesStep } from './forms/SpecialtiesStep';
+import { ConfirmationStep } from './forms/ConfirmationStep';
 
 interface SupplierFormModalProps {
   open: boolean;
@@ -69,6 +72,28 @@ export function SupplierFormModal({ open, onClose, editingSupplier }: SupplierFo
             onChange={updateField}
           />
         );
+        case 4:
+          return (
+            <BankDataStep
+              data={formData}
+              errors={errors}
+              onChange={updateField}
+            />
+          );
+        case 5:
+          return (
+            <SpecialtiesStep
+              data={formData}
+              errors={errors}
+              onChange={updateField}
+            />
+          );
+        case 6:
+          return (
+            <ConfirmationStep
+              data={formData}
+            />
+          );
       default:
         return null;
     }
@@ -91,7 +116,7 @@ export function SupplierFormModal({ open, onClose, editingSupplier }: SupplierFo
               <DialogDescription className="text-sm text-muted-foreground mt-1">
                 {isEditMode 
                   ? 'Atualize as informações do fornecedor nos campos abaixo.' 
-                  : 'Preencha as informações básicas do fornecedor para cadastrá-lo rapidamente.'}
+                  : 'Preencha as informações do fornecedor em cada etapa do formulário.'}
               </DialogDescription>
             </div>
             <Button
@@ -127,9 +152,9 @@ export function SupplierFormModal({ open, onClose, editingSupplier }: SupplierFo
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>Passo {currentStep} de {steps.length}</span>
             {isLastStep && (
-              <div className="flex items-center gap-1 text-success">
+              <div className="flex items-center gap-1 text-green-600">
                 <CheckCircle className="h-4 w-4" />
-                <span>Pronto para cadastrar</span>
+                <span>Pronto para finalizar</span>
               </div>
             )}
           </div>
