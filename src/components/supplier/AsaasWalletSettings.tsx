@@ -156,7 +156,7 @@ export function AsaasWalletSettings({ supplierData }: AsaasWalletSettingsProps) 
         <CardHeader>
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5" />
-            <CardTitle>Carteira Digital Asaas</CardTitle>
+            <CardTitle>Sua Carteira Digital</CardTitle>
           </div>
           <CardDescription>
             Sua conta para recebimento de pagamentos via plataforma

@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (!supplier?.asaas_wallet_id) {
-      throw new Error('Wallet Asaas não configurada');
+      throw new Error('Carteira digital não ativada');
     }
 
     // Validar dados bancários completos

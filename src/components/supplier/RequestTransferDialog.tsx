@@ -80,7 +80,7 @@ export const RequestTransferDialog = ({ open, onOpenChange, availableBalance, on
             Solicitar Transferência
           </DialogTitle>
           <DialogDescription>
-            Transfira seu saldo Asaas para sua conta bancária
+            Transfira seu saldo para sua conta bancária
           </DialogDescription>
         </DialogHeader>
 
