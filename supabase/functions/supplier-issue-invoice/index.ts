@@ -149,7 +149,7 @@ serve(async (req) => {
     const { data: payment, error: paymentError } = await supabaseClient
       .from('payments')
       .insert({
-        id: `PAY${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`,
+        // id é gerado automaticamente pelo trigger trg_payments_generate_friendly_id
         quote_id: quoteId,
         client_id: quote.client_id,
         supplier_id: quote.supplier_id,
