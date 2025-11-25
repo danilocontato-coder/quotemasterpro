@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Trash2 } from "lucide-react";
+import { Bell, Trash2, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,7 +16,16 @@ import { NotificationContent } from "@/components/notifications/NotificationCont
 import { useToast } from "@/hooks/use-toast";
 
 export function RoleBasedNotificationDropdown() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAllNotifications, isLoading } = useSupabaseNotifications();
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    clearAllNotifications, 
+    isLoading,
+    realtimeStatus,
+    refetch
+  } = useSupabaseNotifications();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -39,8 +48,31 @@ export function RoleBasedNotificationDropdown() {
     total: notifications.length,
     unread: unreadCount,
     highPriority: highPriorityUnread,
-    isLoading
+    isLoading,
+    realtimeStatus
   });
+
+  const getStatusIcon = () => {
+    if (realtimeStatus === 'connected') {
+      return (
+        <span title="Conectado em tempo real">
+          <Wifi className="h-3 w-3 text-green-500" />
+        </span>
+      );
+    } else if (realtimeStatus === 'connecting') {
+      return (
+        <span title="Conectando...">
+          <Wifi className="h-3 w-3 text-yellow-500 animate-pulse" />
+        </span>
+      );
+    } else {
+      return (
+        <span title="Desconectado - usando polling">
+          <WifiOff className="h-3 w-3 text-red-500" />
+        </span>
+      );
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -68,8 +100,28 @@ export function RoleBasedNotificationDropdown() {
       
       <DropdownMenuContent align="end" className="w-96 max-w-[95vw]">
         <div className="flex items-center justify-between p-4">
-          <DropdownMenuLabel className="p-0">Notificações</DropdownMenuLabel>
+          <div className="flex items-center gap-2">
+            <DropdownMenuLabel className="p-0">Notificações</DropdownMenuLabel>
+            {getStatusIcon()}
+          </div>
           <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                console.log('🔄 [NOTIFICATIONS] Manual refresh triggered');
+                refetch();
+                toast({
+                  title: "Atualizando...",
+                  description: "Buscando novas notificações",
+                });
+              }}
+              className="text-xs"
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
             {unreadCount > 0 && (
               <Button 
                 variant="ghost" 

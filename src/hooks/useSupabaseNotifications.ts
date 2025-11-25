@@ -21,6 +21,7 @@ export function useSupabaseNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error' | 'disconnected'>('disconnected');
 
   const fetchNotifications = async () => {
     if (!user) {
@@ -133,11 +134,29 @@ export function useSupabaseNotifications() {
     fetchNotifications();
   }, [user]);
 
+  // Polling fallback (executa a cada 30s se realtime estiver desconectado)
+  useEffect(() => {
+    if (!user) return;
+    
+    const pollInterval = setInterval(() => {
+      if (realtimeStatus !== 'connected') {
+        console.log('🔄 [NOTIFICATIONS-POLLING] Realtime desconectado, fazendo polling...');
+        fetchNotifications();
+      }
+    }, 30000); // 30 segundos
+
+    return () => clearInterval(pollInterval);
+  }, [user, realtimeStatus]);
+
   // Subscribe to real-time updates with immediate toast notifications
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔔 [NOTIFICATIONS] Setting up real-time subscription for user:', user.id);
+    console.log('🔔 [NOTIFICATIONS-REALTIME] Setting up real-time subscription for user:', user.id);
+    setRealtimeStatus('connecting');
+
+    let reconnectTimeout: NodeJS.Timeout;
+    let isSubscribed = true;
 
     // Buscar client_id e supplier_id para incluir no filtro realtime
     const setupSubscription = async () => {
@@ -152,7 +171,14 @@ export function useSupabaseNotifications() {
 
       // Handlers de INSERT e UPDATE reutilizáveis
       const handleInsert = (payload: any) => {
-        console.log('🔔 [NOTIFICATIONS] New notification received:', payload);
+        console.log('✅ [NOTIFICATIONS-REALTIME] New notification INSERT received:', {
+          id: payload.new?.id,
+          title: payload.new?.title,
+          type: payload.new?.type,
+          user_id: payload.new?.user_id,
+          client_id: payload.new?.client_id,
+          supplier_id: payload.new?.supplier_id,
+        });
         
         const newNotification = payload.new as any;
         
@@ -187,7 +213,10 @@ export function useSupabaseNotifications() {
       };
 
       const handleUpdate = (payload: any) => {
-        console.log('🔔 [NOTIFICATIONS] Notification updated:', payload);
+        console.log('🔄 [NOTIFICATIONS-REALTIME] Notification UPDATE received:', {
+          id: payload.new?.id,
+          read: payload.new?.read,
+        });
         
         const updatedNotification = payload.new as any;
         setNotifications(prev => 
@@ -267,15 +296,55 @@ export function useSupabaseNotifications() {
       }
 
       channel.subscribe((status) => {
-        console.log('🔔 [NOTIFICATIONS] Real-time subscription status:', status);
-        if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-          console.error('🔔 [NOTIFICATIONS] Subscription error:', status);
+        console.log('📡 [NOTIFICATIONS-REALTIME] Subscription status changed:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [NOTIFICATIONS-REALTIME] Successfully connected to realtime');
+          setRealtimeStatus('connected');
+          setError(null);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [NOTIFICATIONS-REALTIME] Channel error detected');
+          setRealtimeStatus('error');
+          setError('Erro na conexão em tempo real');
+          
+          // Tentar reconectar após 5 segundos
+          if (isSubscribed) {
+            reconnectTimeout = setTimeout(() => {
+              console.log('🔄 [NOTIFICATIONS-REALTIME] Attempting to reconnect...');
+              setupSubscription();
+            }, 5000);
+          }
+        } else if (status === 'CLOSED') {
+          console.warn('⚠️ [NOTIFICATIONS-REALTIME] Connection closed');
+          setRealtimeStatus('disconnected');
+          
+          // Tentar reconectar após 3 segundos
+          if (isSubscribed) {
+            reconnectTimeout = setTimeout(() => {
+              console.log('🔄 [NOTIFICATIONS-REALTIME] Attempting to reconnect after close...');
+              setupSubscription();
+            }, 3000);
+          }
+        } else if (status === 'TIMED_OUT') {
+          console.error('⏱️ [NOTIFICATIONS-REALTIME] Connection timed out');
+          setRealtimeStatus('error');
+          
+          // Tentar reconectar após 5 segundos
+          if (isSubscribed) {
+            reconnectTimeout = setTimeout(() => {
+              console.log('🔄 [NOTIFICATIONS-REALTIME] Attempting to reconnect after timeout...');
+              setupSubscription();
+            }, 5000);
+          }
         }
       });
 
       return () => {
-        console.log('🔔 [NOTIFICATIONS] Cleaning up real-time subscription');
+        console.log('🔌 [NOTIFICATIONS-REALTIME] Cleaning up real-time subscription');
+        isSubscribed = false;
+        clearTimeout(reconnectTimeout);
         supabase.removeChannel(channel);
+        setRealtimeStatus('disconnected');
       };
     };
 
@@ -462,6 +531,7 @@ export function useSupabaseNotifications() {
     unreadCount,
     isLoading,
     error,
+    realtimeStatus,
     markAsRead,
     markAllAsRead,
     clearAllNotifications,
