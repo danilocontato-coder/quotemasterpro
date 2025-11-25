@@ -146,6 +146,20 @@ serve(async (req) => {
       offlineNotes += (offlineNotes ? '\n\n' : '') + `NF-e: ${nfeUrl}`;
     }
 
+    console.log('💾 Inserting payment with values:', {
+      quote_id: quoteId,
+      client_id: quote.client_id,
+      supplier_id: quote.supplier_id,
+      amount: calculation.customerTotal,
+      base_amount: calculation.baseAmount,
+      asaas_fee: calculation.asaasFee,
+      asaas_payment_fee: calculation.asaasPaymentFee,
+      asaas_messaging_fee: calculation.asaasMessagingFee,
+      platform_commission: calculation.platformCommission,
+      supplier_net_amount: calculation.supplierNet,
+      validation: `${calculation.baseAmount} - ${calculation.platformCommission} = ${calculation.baseAmount - calculation.platformCommission} (expected: ${calculation.supplierNet})`
+    })
+
     const { data: payment, error: paymentError } = await supabaseClient
       .from('payments')
       .insert({
