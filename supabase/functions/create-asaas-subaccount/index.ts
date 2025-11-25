@@ -63,9 +63,16 @@ Deno.serve(async (req) => {
       .eq('id', supplier_id)
       .single();
 
-    if (supplierError || !supplier) {
-      throw new Error('Fornecedor não encontrado');
+    if (supplierError) {
+      console.error('❌ Erro ao buscar fornecedor:', supplierError);
+      console.error('❌ Detalhes do erro:', JSON.stringify(supplierError, null, 2));
     }
+
+    if (supplierError || !supplier) {
+      throw new Error(`Fornecedor não encontrado. supplier_id: ${supplier_id}, error: ${supplierError?.message || 'unknown'}`);
+    }
+
+    console.log('✅ Fornecedor encontrado:', supplier.name);
 
     // Verificar se já tem subconta configurada
     if (supplier.asaas_wallet_id && supplier.asaas_wallet_id.length > 36) {
