@@ -185,18 +185,13 @@ export function DeliveryCard({ delivery, onConfirm, onResendCode }: DeliveryCard
               </div>
             )}
 
-            <div className="flex items-start gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-              <span className="text-muted-foreground">{delivery.delivery_address}</span>
-            </div>
-
-            {delivery.tracking_code && (
-              <div className="flex items-center gap-2 text-sm">
-                <Truck className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Rastreio:</span>
-                <code className="px-2 py-1 bg-muted rounded text-xs font-mono">
-                  {delivery.tracking_code}
-                </code>
+            {delivery.delivery_address && (
+              <div className="flex items-start gap-2 text-sm">
+                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <span className="font-medium text-foreground">Endereço de Entrega:</span>
+                  <p className="text-muted-foreground mt-0.5">{delivery.delivery_address}</p>
+                </div>
               </div>
             )}
 
