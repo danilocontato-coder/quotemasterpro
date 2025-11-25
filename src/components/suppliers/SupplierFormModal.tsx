@@ -7,7 +7,6 @@ import { useSupplierForm } from '@/hooks/useSupplierForm';
 import { BasicInfoStep } from './forms/BasicInfoStep';
 import { ContactStep } from './forms/ContactStep';
 import { LocationStep } from './forms/LocationStep';
-import { BankDataStep } from './forms/BankDataStep';
 import { SpecialtiesStep } from './forms/SpecialtiesStep';
 import { ConfirmationStep } from './forms/ConfirmationStep';
 
@@ -74,21 +73,13 @@ export function SupplierFormModal({ open, onClose, editingSupplier }: SupplierFo
         );
         case 4:
           return (
-            <BankDataStep
-              data={formData}
-              errors={errors}
-              onChange={updateField}
-            />
-          );
-        case 5:
-          return (
             <SpecialtiesStep
               data={formData}
               errors={errors}
               onChange={updateField}
             />
           );
-        case 6:
+        case 5:
           return (
             <ConfirmationStep
               data={formData}
