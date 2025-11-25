@@ -15,7 +15,6 @@ import { useSupplierTransfers } from '@/hooks/useSupplierTransfers';
 import { RequestTransferDialog } from '@/components/supplier/RequestTransferDialog';
 import { useSupplierData } from '@/hooks/useSupplierData';
 import { EditBankDataModal } from '@/components/suppliers/EditBankDataModal';
-import { calculateCustomerTotal } from '@/lib/asaas-fees';
 import { toast } from 'sonner';
 import { WalletSetupAlert } from '@/components/supplier/WalletSetupAlert';
 
@@ -343,7 +342,7 @@ export default function SupplierReceivables() {
             <CardContent>
               <div className="space-y-4">
                 {/* Cálculo detalhado */}
-                <div className="grid gap-4 md:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">💰 Total Bruto</p>
                     <p className="text-2xl font-bold text-blue-600">
@@ -367,26 +366,15 @@ export default function SupplierReceivables() {
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">💳 Taxas Asaas</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      -{formatCurrency(receivables.reduce((sum, r) => {
-                        const fee = r.asaas_fee || 1.98;
-                        return sum + fee;
-                      }, 0))}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Processamento
-                    </p>
-                  </div>
-                  <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">✅ Valor Líquido</p>
                     <p className="text-2xl font-bold text-green-600">
                       {formatCurrency(receivables.reduce((sum, r) => {
                         if (r.supplier_net_amount) {
                           return sum + r.supplier_net_amount;
                         }
-                        const breakdown = calculateCustomerTotal(r.amount, 'PIX');
-                        return sum + breakdown.supplierNet;
+                        const baseAmount = r.base_amount || r.amount;
+                        const commission = baseAmount * 0.05;
+                        return sum + (baseAmount - commission);
                       }, 0))}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -398,7 +386,7 @@ export default function SupplierReceivables() {
                 {/* Alerta informativo */}
                 <div className="bg-blue-100 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-800">
-                    <strong>💡 Como funciona:</strong> A comissão de 5% e as taxas Asaas (processamento + mensageria) são descontadas automaticamente. 
+                    <strong>💡 Como funciona:</strong> A comissão de 5% é descontada automaticamente. 
                     Você recebe o valor líquido diretamente na sua carteira digital.
                   </p>
                 </div>
@@ -490,29 +478,19 @@ export default function SupplierReceivables() {
                                   let netAmount: number;
                                   let baseAmount: number;
                                   let commission: number;
-                                  let asaasFee: number;
 
                                   if (receivable.supplier_net_amount) {
                                     netAmount = receivable.supplier_net_amount;
                                     baseAmount = receivable.base_amount || receivable.amount;
                                     commission = receivable.platform_commission || (baseAmount * 0.05);
-                                    asaasFee = receivable.asaas_fee || 1.98;
                                   } else {
-                                    const breakdown = calculateCustomerTotal(
-                                      receivable.amount,
-                                      receivable.payment_method === 'PIX' ? 'PIX' : 
-                                      receivable.payment_method === 'BOLETO' ? 'BOLETO' : 
-                                      receivable.payment_method === 'CREDIT_CARD' ? 'CREDIT_CARD' : 
-                                      'UNDEFINED'
-                                    );
-                                    netAmount = breakdown.supplierNet;
-                                    baseAmount = breakdown.baseAmount;
-                                    commission = breakdown.platformCommission;
-                                    asaasFee = breakdown.asaasFee;
+                                    baseAmount = receivable.base_amount || receivable.amount;
+                                    commission = baseAmount * 0.05;
+                                    netAmount = baseAmount - commission;
                                   }
 
                                   // Verificar se valor está correto (calculado vs armazenado)
-                                  const calculatedNet = baseAmount - commission - asaasFee;
+                                  const calculatedNet = baseAmount - commission;
                                   const isValidated = receivable.supplier_net_amount && 
                                     Math.abs(receivable.supplier_net_amount - calculatedNet) < 0.01;
 
@@ -526,7 +504,7 @@ export default function SupplierReceivables() {
                                               <Info className="h-3 w-3 text-muted-foreground cursor-help" />
                                             </TooltipTrigger>
                                             <TooltipContent className="max-w-xs">
-                                              <div className="text-xs space-y-1">
+                                               <div className="text-xs space-y-1">
                                                 <div className="flex justify-between gap-4">
                                                   <span>Valor da venda:</span>
                                                   <span className="font-medium">{formatCurrency(baseAmount)}</span>
@@ -534,10 +512,6 @@ export default function SupplierReceivables() {
                                                 <div className="flex justify-between gap-4 text-red-600">
                                                   <span>Comissão (5%):</span>
                                                   <span>-{formatCurrency(commission)}</span>
-                                                </div>
-                                                <div className="flex justify-between gap-4 text-red-600">
-                                                  <span>Taxa Asaas:</span>
-                                                  <span>-{formatCurrency(asaasFee)}</span>
                                                 </div>
                                                 <div className="flex justify-between gap-4 font-bold border-t pt-1 mt-1">
                                                   <span>Você recebe:</span>
