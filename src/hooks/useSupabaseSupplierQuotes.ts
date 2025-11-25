@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useOptimizedCache } from './useOptimizedCache';
 
 export interface SupplierQuote {
   id: string;
@@ -125,10 +126,22 @@ export const useSupabaseSupplierQuotes = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { getCache, setCache, clearCache } = useOptimizedCache();
+  const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch quotes for supplier
   const fetchSupplierQuotes = useCallback(async () => {
     if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    // ✅ Verificar cache primeiro
+    const cacheKey = `supplier_quotes_${user.supplierId || user.id}`;
+    const cached = getCache(cacheKey);
+    if (cached) {
+      console.log('📦 [QUOTES-CACHE] Cache hit! Dados carregados instantaneamente:', cached.length, 'cotações');
+      setSupplierQuotes(cached);
       setIsLoading(false);
       return;
     }
@@ -165,6 +178,7 @@ export const useSupabaseSupplierQuotes = () => {
       setIsLoading(true);
       setError(null);
 
+      console.log('🌐 [QUOTES-FETCH] Cache miss, buscando do Supabase');
       console.log('🎯 Buscando cotações para fornecedor:', {
         supplierId: user.supplierId,
         email: user.email,
@@ -324,6 +338,11 @@ export const useSupabaseSupplierQuotes = () => {
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA; // Mais recentes primeiro
       });
+
+      // ✅ Salvar no cache após buscar
+      const cacheKey = `supplier_quotes_${user.supplierId || user.id}`;
+      setCache(cacheKey, sortedQuotes, 2 * 60 * 1000); // 2 minutos TTL
+      console.log('💾 [QUOTES-CACHE] Salvando', sortedQuotes.length, 'cotações no cache (TTL: 2min)');
 
       setSupplierQuotes(sortedQuotes);
       console.log('✅ Supplier quotes sorted by date (newest first):', sortedQuotes.length);
@@ -656,33 +675,71 @@ export const useSupabaseSupplierQuotes = () => {
     console.log('Remove attachment:', quoteId, attachmentId);
   }, []);
 
+  // Debounced refetch para evitar race conditions
+  const debouncedRefetch = useCallback(() => {
+    if (refetchTimeoutRef.current) {
+      clearTimeout(refetchTimeoutRef.current);
+    }
+    refetchTimeoutRef.current = setTimeout(() => {
+      console.log('🔄 [QUOTES-REALTIME] Executando refetch debounced');
+      clearCache(`supplier_quotes_`);
+      fetchSupplierQuotes();
+    }, 500); // 500ms debounce
+  }, [fetchSupplierQuotes, clearCache]);
+
   // Load quotes on mount
   useEffect(() => {
     fetchSupplierQuotes();
     
-    // Subscribe to real-time quote updates
-    const channel = supabase
+    // ✅ Subscribe to real-time quote updates (all events)
+    const quotesChannel = supabase
       .channel('supplier-quotes')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // ✅ Escutar INSERT, UPDATE, DELETE
           schema: 'public',
-          table: 'quotes',
-          filter: 'status=eq.paid'
+          table: 'quotes'
         },
         (payload) => {
-          console.log('Quote payment confirmed:', payload);
-          // Refetch quotes when payment is confirmed
-          fetchSupplierQuotes();
+          console.log('🔔 [QUOTES-REALTIME] Quote updated:', payload.eventType);
+          debouncedRefetch();
+        }
+      )
+      .subscribe();
+
+    // ✅ NOVO: Subscribe para tabela payments
+    const paymentsChannel = supabase
+      .channel('supplier-quotes-payments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'payments'
+        },
+        (payload) => {
+          console.log('🔔 [PAYMENTS-REALTIME] Payment updated, refetching quotes:', payload.eventType);
+          debouncedRefetch();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (refetchTimeoutRef.current) {
+        clearTimeout(refetchTimeoutRef.current);
+      }
+      supabase.removeChannel(quotesChannel);
+      supabase.removeChannel(paymentsChannel);
     };
-  }, [fetchSupplierQuotes]);
+  }, [fetchSupplierQuotes, debouncedRefetch]);
+
+  // Função para invalidar cache manualmente
+  const refreshQuotes = useCallback(() => {
+    console.log('🗑️ [QUOTES-CACHE] Cache invalidado manualmente');
+    clearCache(`supplier_quotes_${user?.supplierId || user?.id}`);
+    fetchSupplierQuotes();
+  }, [fetchSupplierQuotes, clearCache, user]);
 
   return {
     supplierQuotes,
@@ -697,6 +754,6 @@ export const useSupabaseSupplierQuotes = () => {
     sendProposal,
     addAttachment,
     removeAttachment,
-    refetch: fetchSupplierQuotes,
+    refetch: refreshQuotes,
   };
 };
