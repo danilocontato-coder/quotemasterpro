@@ -445,11 +445,11 @@ export default function SupplierReceivables() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Cotação</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Valor Bruto</TableHead>
-                        <TableHead>Comissão</TableHead>
-                        <TableHead>Valor Líquido</TableHead>
+              <TableHead>Cotação</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Valor da Venda</TableHead>
+              <TableHead>Comissão</TableHead>
+              <TableHead>Valor Líquido</TableHead>
                         <TableHead>Split</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Data</TableHead>
@@ -469,11 +469,14 @@ export default function SupplierReceivables() {
                               <div className="text-sm text-muted-foreground">{receivable.quote_title}</div>
                             </div>
                           </TableCell>
-                          <TableCell className="font-medium">{formatCurrency(receivable.amount)}</TableCell>
+                          <TableCell className="font-medium">
+                            {formatCurrency(receivable.base_amount || receivable.amount)}
+                          </TableCell>
                           <TableCell className="text-red-600">
                             {(() => {
+                              const baseAmount = receivable.base_amount || receivable.amount;
                               const commission = receivable.platform_commission_amount || 
-                                (receivable.amount * ((receivable.platform_commission_percentage || 5) / 100));
+                                (baseAmount * ((receivable.platform_commission_percentage || 5) / 100));
                               return `-${formatCurrency(commission)}`;
                             })()}
                             <span className="text-xs text-muted-foreground ml-1">
