@@ -31,7 +31,8 @@ import {
   Calendar,
   Truck,
   Filter,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { QuoteCompetitiveContext } from "@/components/supplier/QuoteCompetitiveContext";
@@ -82,7 +83,7 @@ export default function SupplierQuotes() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const { user, isLoading: isAuthLoading } = useAuth();
-  const { supplierQuotes, isLoading } = useSupabaseSupplierQuotes();
+  const { supplierQuotes, isLoading, refetch } = useSupabaseSupplierQuotes();
   const { pendingDeliveries } = usePendingDeliveries();
   
   // 🆕 Hook para rastrear visualizações
@@ -274,18 +275,38 @@ export default function SupplierQuotes() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Minhas Cotações
-          {getNewQuotesCount() > 0 && (
-            <Badge variant="destructive" className="ml-3 animate-pulse">
-              {getNewQuotesCount()} Novas
-            </Badge>
-          )}
-        </h1>
-        <p className="text-muted-foreground">
-          Gerencie suas solicitações de cotação e propostas
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">
+            Minhas Cotações
+            {getNewQuotesCount() > 0 && (
+              <Badge variant="destructive" className="ml-3 animate-pulse">
+                {getNewQuotesCount()} Novas
+              </Badge>
+            )}
+          </h1>
+          <p className="text-muted-foreground">
+            Gerencie suas solicitações de cotação e propostas
+          </p>
+        </div>
+        <Button 
+          onClick={() => {
+            // Limpar todo cache relacionado
+            for (let i = sessionStorage.length - 1; i >= 0; i--) {
+              const key = sessionStorage.key(i);
+              if (key && key.includes('supplier_quotes')) {
+                sessionStorage.removeItem(key);
+              }
+            }
+            refetch();
+            toast.success('Dados atualizados!');
+          }} 
+          variant="outline" 
+          size="sm"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Atualizar
+        </Button>
       </div>
 
       {/* Status Overview Cards */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -15,6 +15,9 @@ import { TourProvider } from '@/components/tour/TourProvider';
 import { usePWAUpdate } from '@/hooks/usePWAUpdate';
 import { useThemeSync } from '@/hooks/useThemeSync';
 import '@/styles/tour-custom.css';
+
+// ✅ Versionamento de cache
+const CACHE_VERSION = 'v1.0.1';
 
 // Componente interno para sincronizar tema (precisa estar dentro dos providers)
 function ThemeSyncWrapper() {
@@ -51,6 +54,21 @@ const queryClient = new QueryClient({
 function App() {
   // ✅ Sistema unificado de atualização via PWA
   usePWAUpdate();
+  
+  // ✅ Limpar cache antigo automaticamente ao carregar nova versão
+  useEffect(() => {
+    const cacheCleared = sessionStorage.getItem(`cache_cleared_${CACHE_VERSION}`);
+    if (!cacheCleared) {
+      console.log('🧹 Limpando cache antigo para nova versão:', CACHE_VERSION);
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const key = sessionStorage.key(i);
+        if (key && (key.startsWith('supplier_quotes_') || key.startsWith('receivables_') || key.startsWith('quotes_'))) {
+          sessionStorage.removeItem(key);
+        }
+      }
+      sessionStorage.setItem(`cache_cleared_${CACHE_VERSION}`, 'true');
+    }
+  }, []);
   
   // 🚀 Feature Flag: Permite alternar entre AuthContext (atual) e AuthContextV2 (novo modular)
   // Configure VITE_USE_AUTH_V2=true no .env para usar a nova versão
