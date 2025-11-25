@@ -5597,6 +5597,7 @@ export type Database = {
           name: string
           next_validation_due: string | null
           phone: string | null
+          pix_key: string | null
           qualification_score: number | null
           qualification_status: string | null
           rating: number | null
@@ -5641,6 +5642,7 @@ export type Database = {
           name: string
           next_validation_due?: string | null
           phone?: string | null
+          pix_key?: string | null
           qualification_score?: number | null
           qualification_status?: string | null
           rating?: number | null
@@ -5685,6 +5687,7 @@ export type Database = {
           name?: string
           next_validation_due?: string | null
           phone?: string | null
+          pix_key?: string | null
           qualification_score?: number | null
           qualification_status?: string | null
           rating?: number | null
