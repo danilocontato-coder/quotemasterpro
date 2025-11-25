@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Wallet, CheckCircle2, AlertTriangle, Clock, Info, Shield, RefreshCw, RotateCcw } from "lucide-react";
+import { Wallet, CheckCircle2, AlertTriangle, Clock, Info, Shield, RefreshCw, RotateCcw, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -169,6 +169,34 @@ export function AsaasWalletSettings({ supplierData }: AsaasWalletSettingsProps) 
                 <CheckCircle2 className="h-4 w-4 text-success" />
                 <AlertDescription className="text-success">
                   Sua carteira digital está configurada e pronta para receber pagamentos
+                </AlertDescription>
+              </Alert>
+
+              {/* Instruções de Validação */}
+              <Alert className="border-blue-200 bg-blue-50">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-900 space-y-3">
+                  <div>
+                    <p className="font-medium mb-2">Ative sua conta Asaas para começar a receber</p>
+                    <div className="text-sm space-y-2">
+                      <p>1. <strong>Verifique seu e-mail</strong> - O Asaas enviou instruções para criar sua senha</p>
+                      <p>2. <strong>Use o código SMS</strong> - O código recebido será solicitado durante a ativação</p>
+                      <p>3. <strong>Acesse o painel</strong> - Após ativar, você poderá gerenciar seus recebimentos</p>
+                    </div>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                    onClick={() => window.open(
+                      import.meta.env.VITE_ASAAS_ENVIRONMENT === 'production' 
+                        ? 'https://www.asaas.com' 
+                        : 'https://sandbox.asaas.com',
+                      '_blank'
+                    )}
+                  >
+                    Abrir Painel Asaas
+                  </Button>
                 </AlertDescription>
               </Alert>
 
