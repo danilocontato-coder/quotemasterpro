@@ -167,29 +167,6 @@ serve(async (req) => {
       );
     }
 
-    // Atualizar código como usado
-    console.log('📝 [CONFIRM-DELIVERY] Marcando código como usado', {
-      confirmation_id: confirmationData.id,
-      confirmed_at: new Date().toISOString(),
-      confirmed_by: user.id
-    });
-    
-    const { error: updateCodeError } = await supabase
-      .from('delivery_confirmations')
-      .update({
-        is_used: true,
-        confirmed_at: new Date().toISOString(),
-        confirmed_by: user.id
-      })
-      .eq('id', confirmationData.id);
-
-    if (updateCodeError) {
-      console.error('❌ [CONFIRM-DELIVERY] Erro ao marcar código', updateCodeError);
-      throw updateCodeError;
-    }
-
-    console.log('✅ [CONFIRM-DELIVERY] Código marcado como usado');
-
     // Atualizar status da entrega para delivered
     console.log('📦 [CONFIRM-DELIVERY] Atualizando status da entrega', {
       delivery_id: confirmationData.delivery_id,
@@ -257,24 +234,28 @@ serve(async (req) => {
       transfer_id: releaseResult.transfer_id
     });
 
-    // Verificar se todas as atualizações foram bem-sucedidas
-    if (updateDeliveryError || updatePaymentError) {
-      console.error('⚠️ [CONFIRM-DELIVERY] Falha parcial detectada - revertendo código', {
-        delivery_error: updateDeliveryError?.message,
-        payment_error: updatePaymentError?.message
-      });
-      
-      // Reverter marcação do código
-      await supabase
-        .from('delivery_confirmations')
-        .update({
-          is_used: false,
-          confirmed_at: null,
-          confirmed_by: null
-        })
-        .eq('id', confirmationData.id);
-      
-      throw new Error('Falha ao atualizar entrega ou pagamento');
+    // 🆕 Marcar código como usado SOMENTE APÓS sucesso de todas operações
+    console.log('📝 [CONFIRM-DELIVERY] Marcando código como usado', {
+      confirmation_id: confirmationData.id,
+      confirmed_at: new Date().toISOString(),
+      confirmed_by: user.id
+    });
+    
+    const { error: updateCodeError } = await supabase
+      .from('delivery_confirmations')
+      .update({
+        is_used: true,
+        confirmed_at: new Date().toISOString(),
+        confirmed_by: user.id
+      })
+      .eq('id', confirmationData.id);
+
+    if (updateCodeError) {
+      console.error('❌ [CONFIRM-DELIVERY] Erro ao marcar código', updateCodeError);
+      // Não throw aqui - pagamento já foi liberado, apenas log o erro
+      console.error('⚠️ [CONFIRM-DELIVERY] Pagamento liberado mas código não marcado como usado');
+    } else {
+      console.log('✅ [CONFIRM-DELIVERY] Código marcado como usado');
     }
 
     // Notificar fornecedor sobre entrega confirmada
