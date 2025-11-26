@@ -7,16 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DollarSign, TrendingUp, Clock, CreditCard, Search, Filter, Eye, CheckCircle, Wallet, ArrowDownCircle, RefreshCw, Info } from 'lucide-react';
+import { FileText, TrendingUp, Clock, CreditCard, Search, Filter, Eye, CheckCircle, DollarSign, Info, RefreshCw } from 'lucide-react';
 import { useSupplierReceivables, SupplierReceivable } from '@/hooks/useSupplierReceivables';
 import { OfflinePaymentSupplierView } from '@/components/payments/OfflinePaymentSupplierView';
 import { useSupplierBalance } from '@/hooks/useSupplierBalance';
-import { useSupplierTransfers } from '@/hooks/useSupplierTransfers';
-import { RequestTransferDialog } from '@/components/supplier/RequestTransferDialog';
-import { useSupplierData } from '@/hooks/useSupplierData';
-import { EditBankDataModal } from '@/components/suppliers/EditBankDataModal';
-import { toast } from 'sonner';
-import { WalletSetupAlert } from '@/components/supplier/WalletSetupAlert';
 
 export default function SupplierReceivables() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,8 +18,6 @@ export default function SupplierReceivables() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPayment, setSelectedPayment] = useState<SupplierReceivable | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-  const [isEditBankModalOpen, setIsEditBankModalOpen] = useState(false);
   const itemsPerPage = 10;
 
   const { 
@@ -38,13 +30,6 @@ export default function SupplierReceivables() {
   } = useSupplierReceivables();
 
   const { balance, isLoading: isLoadingBalance, fetchBalance } = useSupplierBalance();
-  const { 
-    transfers, 
-    isLoading: isLoadingTransfers, 
-    getStatusText: getTransferStatusText, 
-    getStatusColor: getTransferStatusColor 
-  } = useSupplierTransfers();
-  const { supplierData, refetch: refetchSupplier } = useSupplierData();
 
   // Carregar saldo ao montar componente
   useEffect(() => {
@@ -58,8 +43,7 @@ export default function SupplierReceivables() {
     }).format(value);
   };
 
-  const getStatusBadge = (status: string, receivable?: SupplierReceivable) => {
-    // Badge especial para escrow
+  const getStatusBadge = (status: string) => {
     if (status === 'in_escrow') {
       return (
         <div className="flex items-center gap-2">
@@ -73,7 +57,6 @@ export default function SupplierReceivables() {
       );
     }
     
-    // Badge especial para completed mostrando que foi transferido
     if (status === 'completed') {
       return (
         <div className="flex items-center gap-2">
@@ -133,50 +116,31 @@ export default function SupplierReceivables() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <FileText className="h-8 w-8 text-primary" />
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <DollarSign className="h-8 w-8" />
-            Recebimentos
-          </h1>
-          <p className="text-muted-foreground">
-            Acompanhe seus recebimentos e ganhos
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">Contas a Receber</h1>
+          <p className="text-muted-foreground">Acompanhe seus pagamentos e saldos</p>
         </div>
       </div>
 
-      {/* Alerta se wallet não está configurado */}
-      <WalletSetupAlert 
-        walletId={supplierData?.asaas_wallet_id || null}
-        walletConfigured={balance?.wallet_configured}
-        onWalletCreated={() => {
-          refetchSupplier();
-          fetchBalance();
-        }}
-      />
-
-      {/* Wallet Asaas - Saldo Disponível */}
-      <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+      {/* Card de Saldo Simplificado */}
+      <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-green-600" />
-              Sua Carteira Digital
+              <DollarSign className="h-5 w-5 text-blue-600" />
+              Resumo de Recebimentos
             </span>
             <Button onClick={fetchBalance} variant="ghost" size="sm" disabled={isLoadingBalance}>
               <RefreshCw className={`h-4 w-4 ${isLoadingBalance ? 'animate-spin' : ''}`} />
             </Button>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           {isLoadingBalance ? (
             <div className="animate-pulse space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-                </div>
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
                   <div className="h-8 bg-gray-200 rounded w-3/4"></div>
@@ -186,85 +150,58 @@ export default function SupplierReceivables() {
                   <div className="h-8 bg-gray-200 rounded w-3/4"></div>
                 </div>
               </div>
-              <div className="h-10 bg-gray-200 rounded"></div>
             </div>
           ) : (
-            <>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center gap-2 cursor-help">
-                          <p className="text-sm text-muted-foreground mb-1">💰 Disponível para Saque</p>
-                          <Info className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-xs">Valor já transferido para sua subconta Asaas e disponível para saque imediato.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(balance?.availableForTransfer || 0)}
-                  </p>
-                  <p className="text-xs text-green-600 font-medium">
-                    Saque agora
-                  </p>
-                </div>
-                <div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center gap-2 cursor-help">
-                          <p className="text-sm text-muted-foreground mb-1">🔒 Em Custódia</p>
-                          <Info className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-xs">Valor retido aguardando confirmação de entrega pelos clientes. Será liberado automaticamente após confirmação.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(balance?.inEscrow || 0)}
-                  </p>
-                  <p className="text-xs text-blue-600 font-medium">
-                    Aguardando entrega
-                  </p>
-                </div>
-                <div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center gap-2 cursor-help">
-                          <p className="text-sm text-muted-foreground mb-1">📊 Total Projetado</p>
-                          <Info className="h-3 w-3 text-muted-foreground" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-xs">Soma do disponível + em custódia. É o total que você tem direito a receber.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <p className="text-2xl font-bold text-foreground">
-                    {formatCurrency(balance?.totalProjected || 0)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Disponível + Custódia
-                  </p>
-                </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 cursor-help">
+                        <p className="text-sm text-muted-foreground mb-1">🔒 Em Custódia</p>
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-xs">Valor aguardando confirmação de entrega. Será transferido automaticamente para sua conta bancária após confirmação.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <p className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(balance?.inEscrow || 0)}
+                </p>
+                <p className="text-xs text-blue-600 font-medium">
+                  Aguardando entrega
+                </p>
               </div>
-              <Button 
-                onClick={() => setIsTransferDialogOpen(true)} 
-                className="w-full"
-                disabled={(balance?.availableForTransfer || 0) <= 0}
-              >
-                <ArrowDownCircle className="h-4 w-4 mr-2" />
-                Solicitar Transferência
-              </Button>
-            </>
+              <div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 cursor-help">
+                        <p className="text-sm text-muted-foreground mb-1">✅ Transferido este Mês</p>
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-xs">Valor já transferido via PIX/TED para sua conta bancária neste mês após confirmação de entregas.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatCurrency(balance?.transferredThisMonth || 0)}
+                </p>
+                <p className="text-xs text-green-600 font-medium">
+                  Já na sua conta
+                </p>
+              </div>
+            </div>
           )}
+          <div className="mt-4 bg-blue-100 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Como funciona:</strong> Quando a entrega for confirmada, transferiremos automaticamente o valor líquido (menos 5% de comissão) para sua conta bancária via PIX ou TED.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -326,8 +263,6 @@ export default function SupplierReceivables() {
       <Tabs defaultValue="receivables" className="w-full">
         <TabsList>
           <TabsTrigger value="receivables">Recebimentos</TabsTrigger>
-          <TabsTrigger value="transfers">Transferências</TabsTrigger>
-          <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
 
         <TabsContent value="receivables" className="space-y-4">
@@ -341,7 +276,6 @@ export default function SupplierReceivables() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Cálculo detalhado */}
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">💰 Total Bruto</p>
@@ -383,11 +317,10 @@ export default function SupplierReceivables() {
                   </div>
                 </div>
 
-                {/* Alerta informativo */}
                 <div className="bg-blue-100 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-800">
                     <strong>💡 Como funciona:</strong> A comissão de 5% é descontada automaticamente. 
-                    Você recebe o valor líquido diretamente na sua carteira digital.
+                    Quando a entrega for confirmada, você recebe o valor líquido diretamente na sua conta bancária.
                   </p>
                 </div>
               </div>
@@ -412,429 +345,121 @@ export default function SupplierReceivables() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pending">Aguardando</SelectItem>
-                <SelectItem value="manual_confirmation">Aguardando Confirmação</SelectItem>
-                <SelectItem value="in_escrow">Em Garantia</SelectItem>
-                <SelectItem value="completed">Recebido</SelectItem>
-                <SelectItem value="failed">Falhou</SelectItem>
+                <SelectItem value="pending">Pendente</SelectItem>
+                <SelectItem value="in_escrow">Em Custódia</SelectItem>
+                <SelectItem value="completed">Transferido</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Tabela de Recebimentos */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Histórico de Recebimentos ({filteredReceivables.length})</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-              <TableHead>Cotação</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Valor da Venda</TableHead>
-              <TableHead>Comissão</TableHead>
-              <TableHead>Valor Líquido</TableHead>
-                        <TableHead>Split</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead>Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {currentReceivables.map((receivable) => (
-                        <TableRow key={receivable.id}>
-                          <TableCell className="font-mono">
-                            {receivable.quote_local_code || `#${receivable.quote_id.substring(0, 8)}`}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{receivable.client_name}</div>
-                              <div className="text-sm text-muted-foreground">{receivable.quote_title}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {formatCurrency(receivable.base_amount || receivable.amount)}
-                          </TableCell>
-                          <TableCell className="text-red-600">
-                            {(() => {
-                              const baseAmount = receivable.base_amount || receivable.amount;
-                              const commission = receivable.platform_commission_amount || 
-                                (baseAmount * ((receivable.platform_commission_percentage || 5) / 100));
-                              return `-${formatCurrency(commission)}`;
-                            })()}
-                            <span className="text-xs text-muted-foreground ml-1">
-                              ({receivable.platform_commission_percentage || 5}%)
-                            </span>
-                          </TableCell>
-                          <TableCell className="font-semibold text-green-600">
-                            <TooltipProvider>
-                              <div className="flex items-center gap-1">
-                                {(() => {
-                                  let netAmount: number;
-                                  let baseAmount: number;
-                                  let commission: number;
-
-                                  if (receivable.supplier_net_amount) {
-                                    netAmount = receivable.supplier_net_amount;
-                                    baseAmount = receivable.base_amount || receivable.amount;
-                                    commission = receivable.platform_commission || (baseAmount * 0.05);
-                                  } else {
-                                    baseAmount = receivable.base_amount || receivable.amount;
-                                    commission = baseAmount * 0.05;
-                                    netAmount = baseAmount - commission;
-                                  }
-
-                                  // Verificar se valor está correto (calculado vs armazenado)
-                                  const calculatedNet = baseAmount - commission;
-                                  const isValidated = receivable.supplier_net_amount && 
-                                    Math.abs(receivable.supplier_net_amount - calculatedNet) < 0.01;
-
-                                  return (
-                                    <>
-                                      <div className="flex flex-col gap-1">
-                                        <div className="flex items-center gap-1">
-                                          <span>{formatCurrency(netAmount)}</span>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-xs">
-                                               <div className="text-xs space-y-1">
-                                                <div className="flex justify-between gap-4">
-                                                  <span>Valor da venda:</span>
-                                                  <span className="font-medium">{formatCurrency(baseAmount)}</span>
-                                                </div>
-                                                <div className="flex justify-between gap-4 text-red-600">
-                                                  <span>Comissão (5%):</span>
-                                                  <span>-{formatCurrency(commission)}</span>
-                                                </div>
-                                                <div className="flex justify-between gap-4 font-bold border-t pt-1 mt-1">
-                                                  <span>Você recebe:</span>
-                                                  <span className="text-green-600">{formatCurrency(netAmount)}</span>
-                                                </div>
-                                              </div>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </div>
-                                        {isValidated && (
-                                          <Badge variant="outline" className="text-xs w-fit">
-                                            <CheckCircle className="h-3 w-3 mr-1" />
-                                            Valor Validado
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            </TooltipProvider>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={receivable.split_applied ? "approved" : "draft"}>
-                              {receivable.split_applied ? "✓ Aplicado" : "Manual"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(receivable.status, receivable)}</TableCell>
-                          <TableCell>
-                            {new Date(receivable.created_at).toLocaleDateString('pt-BR')}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <CreditCard className="h-4 w-4 text-muted-foreground" />
-                              {receivable.payment_method || 'Online'}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {receivable.status === 'manual_confirmation' && (
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedPayment(receivable);
-                                    setIsDialogOpen(true);
-                                  }}
-                                >
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Ver
-                                </Button>
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedPayment(receivable);
-                                    setIsDialogOpen(true);
-                                  }}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  Confirmar
-                                </Button>
-                              </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                </Table>
-
-                {filteredReceivables.length === 0 && !isLoading && (
-                  <div className="text-center py-8">
-                    <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                      {searchTerm || statusFilter !== 'all'
-                        ? 'Nenhum recebimento encontrado com os filtros aplicados'
-                        : 'Nenhum recebimento ainda. Suas vendas aparecerão aqui.'
-                      }
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Paginação */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Mostrando {startIndex + 1} a {Math.min(endIndex, filteredReceivables.length)} de {filteredReceivables.length} recebimentos
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Anterior
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Próximo
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="transfers" className="space-y-4">
-          {/* Resumo de Saldo */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Disponível para Saque</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(balance?.availableForTransfer || 0)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Pode ser transferido agora
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Em Custódia</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(balance?.inEscrow || 0)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Aguardando confirmação de entrega
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Transferido</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(
-                    transfers
-                      .filter(t => t.status === 'completed')
-                      .reduce((sum, t) => sum + t.amount, 0)
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Já sacado para sua conta
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Histórico de Transferências ({transfers.length})</span>
-                <Button 
-                  onClick={() => setIsTransferDialogOpen(true)} 
-                  size="sm"
-                  disabled={(balance?.availableForTransfer || 0) <= 0}
-                >
-                  <ArrowDownCircle className="h-4 w-4 mr-2" />
-                  Nova Transferência
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingTransfers ? (
-                <div className="text-center py-8">
-                  <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-                  <p className="text-muted-foreground">Carregando...</p>
-                </div>
-              ) : transfers.length === 0 ? (
-                <div className="text-center py-8">
-                  <ArrowDownCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Nenhuma transferência realizada ainda</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cotação</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Valor Base</TableHead>
+                    <TableHead>Comissão</TableHead>
+                    <TableHead>Valor Líquido</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentReceivables.length === 0 ? (
                     <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Método</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Banco</TableHead>
-                      <TableHead>Observações</TableHead>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        Nenhum recebimento encontrado
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transfers.map((transfer) => (
-                      <TableRow key={transfer.id}>
+                  ) : (
+                    currentReceivables.map((receivable) => (
+                      <TableRow key={receivable.id}>
+                        <TableCell className="font-medium">
+                          {receivable.quote_local_code || receivable.quote_id.substring(0, 8)}
+                        </TableCell>
+                        <TableCell>{receivable.client_name || 'N/A'}</TableCell>
+                        <TableCell>{formatCurrency(receivable.base_amount || receivable.amount)}</TableCell>
+                        <TableCell className="text-red-600">
+                          -{formatCurrency(receivable.platform_commission || (receivable.base_amount || receivable.amount) * 0.05)}
+                        </TableCell>
+                        <TableCell className="font-bold text-green-600">
+                          {formatCurrency(receivable.supplier_net_amount || 
+                            ((receivable.base_amount || receivable.amount) * 0.95)
+                          )}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(receivable.status)}</TableCell>
                         <TableCell>
-                          {new Date(transfer.requested_at).toLocaleString('pt-BR')}
+                          {new Date(receivable.created_at).toLocaleDateString('pt-BR')}
                         </TableCell>
-                        <TableCell className="font-bold">
-                          {formatCurrency(transfer.amount)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{transfer.transfer_method}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${getTransferStatusColor(transfer.status)} text-white`}>
-                            {getTransferStatusText(transfer.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="font-medium">
-                              {transfer.bank_account?.bank_name || `Banco ${transfer.bank_account?.bank_code}`}
-                            </div>
-                            <div className="text-muted-foreground">
-                              Ag: {transfer.bank_account?.agency} / Conta: {transfer.bank_account?.account}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {transfer.error_message || transfer.notes || '-'}
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPayment(receivable);
+                              setIsDialogOpen(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configurações de Recebimento</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Conta Stripe</h4>
-                <p className="text-sm text-blue-700 mb-3">
-                  Configure sua conta Stripe para receber pagamentos automaticamente
-                </p>
-                <Button variant="outline" size="sm">
-                  Configurar Stripe
-                </Button>
-              </div>
-              
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">Informações Bancárias</h4>
-                <p className="text-sm text-gray-700 mb-3">
-                  Mantenha seus dados bancários atualizados para recebimentos por transferência
-                </p>
-                <Button 
-                  variant="outline" 
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {startIndex + 1} a {Math.min(endIndex, filteredReceivables.length)} de {filteredReceivables.length} resultados
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => setIsEditBankModalOpen(true)}
-                  disabled={!supplierData}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
                 >
-                  Atualizar Dados
+                  Anterior
+                </Button>
+                <span className="flex items-center px-3 text-sm">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Próxima
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
-      {/* Dialog de confirmação de pagamento offline */}
+      {/* Modal de Detalhes */}
       {selectedPayment && (
         <OfflinePaymentSupplierView
-          payment={{
-            id: selectedPayment.id,
-            quote_id: selectedPayment.quote_id,
-            quote_local_code: selectedPayment.quote_local_code,
-            amount: selectedPayment.amount,
-            status: selectedPayment.status,
-            payment_method: selectedPayment.payment_method || '',
-            client_name: selectedPayment.client_name || '',
-            quote_title: selectedPayment.quote_title || '',
-            created_at: selectedPayment.created_at,
-            offline_attachments: selectedPayment.offline_attachments || []
-          }}
+          payment={selectedPayment}
           open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) setSelectedPayment(null);
+          }}
           onConfirm={() => {
-            refreshReceivables();
             setIsDialogOpen(false);
             setSelectedPayment(null);
-          }}
-        />
-      )}
-
-      {/* Dialog de solicitação de transferência */}
-      <RequestTransferDialog
-        open={isTransferDialogOpen}
-        onOpenChange={setIsTransferDialogOpen}
-        availableBalance={balance?.availableForTransfer || 0}
-        onSuccess={() => {
-          fetchBalance();
-        }}
-      />
-
-      {/* Modal de edição de dados bancários */}
-      {supplierData && (
-        <EditBankDataModal
-          open={isEditBankModalOpen}
-          onClose={() => setIsEditBankModalOpen(false)}
-          supplier={{
-            id: supplierData.id,
-            name: supplierData.name,
-            document_number: supplierData.document_number || '',
-            bank_data: supplierData.bank_data
-          }}
-          onSuccess={() => {
-            refetchSupplier();
-            fetchBalance();
-            toast.success('Dados bancários atualizados com sucesso!');
-            setIsEditBankModalOpen(false);
+            refreshReceivables();
           }}
         />
       )}

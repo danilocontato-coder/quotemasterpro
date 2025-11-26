@@ -6,6 +6,7 @@ export interface SupplierBalance {
   balance: number;
   availableForTransfer: number;
   inEscrow: number;
+  transferredThisMonth?: number;
   totalProjected: number;
   totalBalance: number;
   wallet_configured?: boolean;
@@ -36,6 +37,7 @@ export const useSupplierBalance = () => {
         balance: data.balance || 0,
         availableForTransfer: data.availableForTransfer || 0,
         inEscrow: data.inEscrow || 0,
+        transferredThisMonth: data.transferredThisMonth || 0,
         totalProjected: data.totalProjected || 0,
         totalBalance: data.totalBalance || 0,
         wallet_configured: data.wallet_configured !== false,
