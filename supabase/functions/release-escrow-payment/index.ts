@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getAsaasConfig } from '../_shared/asaas-utils.ts'
-import { detectPixKeyType } from '../_shared/pix-utils.ts'
+import { detectPixKeyType, cleanPixKey } from '../_shared/pix-utils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -93,9 +93,10 @@ serve(async (req) => {
 
     // Priorizar chave PIX se disponível
     if (pixKey) {
-      console.log(`📤 Criando transferência PIX para chave: ${pixKey}`)
-      transferPayload.pixAddressKey = pixKey
-      transferPayload.pixAddressKeyType = detectPixKeyType(pixKey)
+      const cleanedPixKey = cleanPixKey(pixKey);
+      console.log(`📤 Criando transferência PIX para chave: ${pixKey} (limpa: ${cleanedPixKey})`)
+      transferPayload.pixAddressKey = cleanedPixKey
+      transferPayload.pixAddressKeyType = detectPixKeyType(cleanedPixKey)
     } else {
       // Usar dados bancários tradicionais
       console.log(`📤 Criando transferência bancária para: ${bankData.bank_code} - ${bankData.account_number}`)
