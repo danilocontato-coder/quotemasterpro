@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface ScheduleDeliveryModalProps {
-  quote: any;
+  quote?: any;
+  delivery?: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDeliveryScheduled?: () => void;
@@ -19,6 +20,7 @@ interface ScheduleDeliveryModalProps {
 
 export function ScheduleDeliveryModal({ 
   quote, 
+  delivery,
   open, 
   onOpenChange,
   onDeliveryScheduled 
@@ -31,6 +33,10 @@ export function ScheduleDeliveryModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Detectar modo: criar nova entrega ou atualizar existente
+  const isUpdateMode = !!delivery && !quote;
+  const sourceData = quote || delivery?.payments?.quotes;
+
   const handleScheduleDelivery = async () => {
     if (isSubmitting) return; // Prevenir duplo clique
     
@@ -41,21 +47,42 @@ export function ScheduleDeliveryModal({
 
     setIsLoading(true);
     setIsSubmitting(true);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('schedule-delivery', {
-        body: {
-          quote_id: quote.id,
-          scheduled_date: scheduledDate,
-          delivery_address: deliveryAddress,
-          notes: notes,
-          transport_type: transportType,
-          transport_details: transportDetails
-        }
-      });
+      if (isUpdateMode && delivery) {
+        // Modo atualização: atualizar entrega existente
+        const { error } = await supabase
+          .from('deliveries')
+          .update({
+            status: 'scheduled',
+            scheduled_date: new Date(scheduledDate).toISOString(),
+            notes: notes,
+            delivery_method: transportType || 'own',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', delivery.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast.success("Entrega agendada com sucesso!");
+        toast.success("Entrega agendada com sucesso!");
+      } else if (quote) {
+        // Modo criação: criar nova entrega via edge function
+        const { data, error } = await supabase.functions.invoke('schedule-delivery', {
+          body: {
+            quote_id: quote.id,
+            scheduled_date: scheduledDate,
+            delivery_address: deliveryAddress,
+            notes: notes,
+            transport_type: transportType,
+            transport_details: transportDetails
+          }
+        });
+
+        if (error) throw error;
+
+        toast.success("Entrega agendada com sucesso! Código enviado ao cliente.");
+      }
+
       onDeliveryScheduled?.();
       onOpenChange(false);
       
@@ -103,12 +130,12 @@ export function ScheduleDeliveryModal({
     });
   };
 
-  if (!quote) return null;
+  if (!quote && !delivery) return null;
 
   // Endereço completo já vem formatado do banco
-  const fullAddress = quote.clients?.address || '';
-  const clientPhone = quote.clients?.phone || '';
-  const clientEmail = quote.clients?.email || '';
+  const fullAddress = quote?.clients?.address || delivery?.payments?.quotes?.client_address || '';
+  const clientPhone = quote?.clients?.phone || delivery?.payments?.quotes?.client_phone || '';
+  const clientEmail = quote?.clients?.email || delivery?.payments?.quotes?.client_email || '';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,54 +143,56 @@ export function ScheduleDeliveryModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Agendar Entrega - Cotação {quote.local_code || `#${quote.id}`}
+            {isUpdateMode ? 'Agendar Entrega' : `Agendar Entrega - Cotação ${quote?.local_code || `#${quote?.id}`}`}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Quote Summary */}
-          <div className="bg-muted/50 p-4 rounded-lg">
-            <h3 className="font-medium mb-3">Resumo da Cotação</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Cotação</p>
-                <p className="font-medium">{quote.local_code || `#${quote.id.substring(0, 8)}`}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Cliente</p>
-                <p className="font-medium">{quote.clients?.name || quote.client_name}</p>
-              </div>
-              
-              {clientPhone && (
+          {sourceData && (
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h3 className="font-medium mb-3">Resumo da Cotação</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Telefone</p>
-                  <p className="font-medium flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5" />
-                    {clientPhone}
-                  </p>
+                  <p className="text-muted-foreground">Cotação</p>
+                  <p className="font-medium">{sourceData.local_code || `#${quote?.id || delivery?.quote_id.substring(0, 8)}`}</p>
                 </div>
-              )}
-              
-              {clientEmail && (
                 <div>
-                  <p className="text-muted-foreground">Email</p>
-                  <p className="font-medium text-xs flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5" />
-                    {clientEmail}
-                  </p>
+                  <p className="text-muted-foreground">Cliente</p>
+                  <p className="font-medium">{quote?.clients?.name || sourceData.client_name}</p>
                 </div>
-              )}
-              
-              <div className="col-span-2">
-                <p className="text-muted-foreground">Frete</p>
-                {quote.shipping_cost === 0 ? (
-                  <Badge variant="approved">Grátis</Badge>
-                ) : (
-                  <p className="font-medium">{formatCurrency(quote.shipping_cost || 0)}</p>
+                
+                {clientPhone && (
+                  <div>
+                    <p className="text-muted-foreground">Telefone</p>
+                    <p className="font-medium flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5" />
+                      {clientPhone}
+                    </p>
+                  </div>
                 )}
+                
+                {clientEmail && (
+                  <div>
+                    <p className="text-muted-foreground">Email</p>
+                    <p className="font-medium text-xs flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5" />
+                      {clientEmail}
+                    </p>
+                  </div>
+                )}
+                
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Frete</p>
+                  {(sourceData.shipping_cost === 0 || quote?.shipping_cost === 0) ? (
+                    <Badge variant="approved">Grátis</Badge>
+                  ) : (
+                    <p className="font-medium">{formatCurrency(sourceData.shipping_cost || quote?.shipping_cost || 0)}</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Endereço de Entrega */}
           <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
