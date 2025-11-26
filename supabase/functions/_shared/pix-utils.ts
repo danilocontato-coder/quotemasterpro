@@ -1,4 +1,21 @@
 /**
+ * Remove formatação de chave PIX (mantém apenas caracteres válidos)
+ */
+export function cleanPixKey(pixKey: string): string {
+  if (!pixKey) return '';
+  
+  // Remove todos os caracteres exceto dígitos, letras, @, ., +, -
+  const cleaned = pixKey.replace(/[^\w@.+-]/g, '');
+  
+  // Para CPF/CNPJ, remover pontos e hífens também (apenas dígitos)
+  if (/^\d+$/.test(cleaned.replace(/[.-]/g, ''))) {
+    return cleaned.replace(/[.-]/g, '');
+  }
+  
+  return cleaned;
+}
+
+/**
  * Detecta o tipo de chave PIX baseado no formato
  */
 export function detectPixKeyType(pixKey: string): 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'EVP' {
