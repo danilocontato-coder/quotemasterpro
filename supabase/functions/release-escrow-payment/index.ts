@@ -14,13 +14,15 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 [RELEASE-ESCROW] Iniciando função...')
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     const { paymentId, retryAttempt = 0 } = await req.json()
-    console.log(`🔓 Liberando escrow para pagamento: ${paymentId} (tentativa ${retryAttempt + 1})`)
+    console.log(`🔓 [RELEASE-ESCROW] Liberando escrow para pagamento: ${paymentId} (tentativa ${retryAttempt + 1})`)
 
     // Buscar dados do pagamento
     const { data: payment, error: paymentError } = await supabase
@@ -59,6 +61,15 @@ serve(async (req) => {
     const supplier = payment.suppliers;
     const bankData = supplier.bank_data;
     const pixKey = supplier.pix_key || bankData?.pix_key;
+    
+    console.log(`🔍 [RELEASE-ESCROW] Dados do fornecedor:`, {
+      supplier_id: supplier.id,
+      supplier_name: supplier.name,
+      has_pix_key: !!pixKey,
+      pix_key_raw: pixKey,
+      has_bank_data: !!bankData,
+      bank_account: bankData?.account_number || null
+    })
 
     // Verificar se possui chave PIX ou dados bancários completos
     if (!pixKey && (!bankData?.account_number || !bankData?.bank_code)) {
@@ -94,9 +105,17 @@ serve(async (req) => {
     // Priorizar chave PIX se disponível
     if (pixKey) {
       const cleanedPixKey = cleanPixKey(pixKey);
-      console.log(`📤 Criando transferência PIX para chave: ${pixKey} (limpa: ${cleanedPixKey})`)
+      const pixType = detectPixKeyType(cleanedPixKey);
+      
+      console.log(`🧹 [RELEASE-ESCROW] Limpeza de chave PIX:`, {
+        original: pixKey,
+        cleaned: cleanedPixKey,
+        type: pixType
+      })
+      
+      console.log(`📤 [RELEASE-ESCROW] Criando transferência PIX`)
       transferPayload.pixAddressKey = cleanedPixKey
-      transferPayload.pixAddressKeyType = detectPixKeyType(cleanedPixKey)
+      transferPayload.pixAddressKeyType = pixType
     } else {
       // Usar dados bancários tradicionais
       console.log(`📤 Criando transferência bancária para: ${bankData.bank_code} - ${bankData.account_number}`)
@@ -114,6 +133,11 @@ serve(async (req) => {
     }
 
     // Criar transferência via API Asaas
+    console.log(`📡 [RELEASE-ESCROW] Enviando requisição para Asaas:`, {
+      url: `${baseUrl}/transfers`,
+      payload: transferPayload
+    })
+    
     const transferResponse = await fetch(`${baseUrl}/transfers`, {
       method: 'POST',
       headers: {
@@ -122,6 +146,8 @@ serve(async (req) => {
       },
       body: JSON.stringify(transferPayload)
     })
+    
+    console.log(`📥 [RELEASE-ESCROW] Resposta Asaas status: ${transferResponse.status}`)
 
     if (!transferResponse.ok) {
       const error = await transferResponse.json()
