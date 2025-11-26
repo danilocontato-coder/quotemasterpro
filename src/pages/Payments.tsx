@@ -134,6 +134,13 @@ export default function Payments() {
   const handleReleaseEscrow = async (notes: string, deliveryConfirmed: boolean) => {
     if (!selectedPayment) return;
 
+    console.log('🔓 [UI] Iniciando liberação de escrow:', {
+      paymentId: selectedPayment.id,
+      localCode: selectedPayment.local_code,
+      deliveryConfirmed,
+      notes
+    });
+
     try {
       const { data, error } = await supabase.functions.invoke('release-escrow-payment', {
         body: {
@@ -143,7 +150,12 @@ export default function Payments() {
         },
       });
 
+      console.log('📥 [UI] Resposta da edge function:', { data, error });
+
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      console.log('✅ [UI] Escrow liberado com sucesso');
 
       showToast({
         title: "Fundos Liberados!",
@@ -153,11 +165,13 @@ export default function Payments() {
       refetch();
       setShowReleaseEscrowModal(false);
     } catch (error: any) {
+      console.error('❌ [UI] Erro ao liberar escrow:', error);
       showToast({
         title: "Erro",
         description: error.message || "Não foi possível liberar os fundos",
         variant: "destructive",
       });
+      throw error; // Re-throw para o modal não fechar
     }
   };
 

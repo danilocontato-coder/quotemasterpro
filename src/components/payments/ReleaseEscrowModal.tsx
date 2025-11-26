@@ -37,9 +37,13 @@ export function ReleaseEscrowModal({
     setIsLoading(true);
     try {
       await onConfirm(notes, deliveryConfirmed);
+      // Só fecha se não deu erro
       onOpenChange(false);
       setNotes('');
       setDeliveryConfirmed(false);
+    } catch (error) {
+      // Erro já tratado pelo onConfirm (toast), apenas não fechar o modal
+      console.error('❌ [MODAL] Erro ao liberar escrow:', error);
     } finally {
       setIsLoading(false);
     }
