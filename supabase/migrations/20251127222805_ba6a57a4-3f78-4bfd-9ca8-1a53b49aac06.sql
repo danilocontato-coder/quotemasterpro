@@ -1,0 +1,4 @@
+-- Configurar PIX da MOTIZ MOTOS com CNPJ
+UPDATE suppliers 
+SET pix_key = '22965655000137'
+WHERE id = '4399414c-8554-4099-a4d1-fcb17b972256';
