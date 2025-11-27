@@ -110,11 +110,30 @@ serve(async (req) => {
       
       // Adicionar endereço se disponível
       if (clientData.address) {
-        const addr = typeof clientData.address === 'string' 
-          ? JSON.parse(clientData.address) 
-          : clientData.address
+        let addr: any = null
         
-        if (addr) {
+        // Verificar se é uma string JSON ou objeto
+        if (typeof clientData.address === 'string') {
+          // Tentar parse apenas se parecer ser JSON (começa com {)
+          if (clientData.address.trim().startsWith('{')) {
+            try {
+              addr = JSON.parse(clientData.address)
+            } catch (e) {
+              console.log('📍 Endereço é string simples, usando diretamente')
+              customerPayload.address = clientData.address
+            }
+          } else {
+            // É uma string simples de endereço
+            console.log('📍 Endereço é string simples:', clientData.address)
+            customerPayload.address = clientData.address
+          }
+        } else {
+          // É um objeto JSON
+          addr = clientData.address
+        }
+        
+        // Se conseguiu extrair objeto, usar campos individuais
+        if (addr && typeof addr === 'object') {
           customerPayload.address = addr.street || addr.logradouro || undefined
           customerPayload.addressNumber = addr.number || addr.numero || undefined
           customerPayload.complement = addr.complement || addr.complemento || undefined
