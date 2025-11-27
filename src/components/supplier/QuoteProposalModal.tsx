@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuoteVisits } from '@/hooks/useQuoteVisits';
 import { VisitSection } from '@/components/quotes/VisitSection';
+import { PaymentConditionsSelect, PaymentCondition } from './PaymentConditionsSelect';
 
 interface QuoteProposalModalProps {
   quote: SupplierQuote | null;
@@ -32,6 +33,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
   const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
   const [deliveryTime, setDeliveryTime] = useState(quote?.proposal?.deliveryTime || 7);
   const [paymentTerms, setPaymentTerms] = useState(quote?.proposal?.paymentTerms || '30 dias');
+  const [paymentConditions, setPaymentConditions] = useState<PaymentCondition | undefined>(undefined);
   const [shippingCost, setShippingCost] = useState(quote?.proposal?.shippingCost || 0);
   const [warrantyMonths, setWarrantyMonths] = useState(quote?.proposal?.warrantyMonths || 12);
   const [observations, setObservations] = useState(quote?.proposal?.observations || '');
@@ -229,6 +231,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
         shipping_cost: shippingCost,
         warranty_months: warrantyMonths,
         payment_terms: paymentTerms,
+        payment_conditions: paymentConditions ? JSON.parse(JSON.stringify(paymentConditions)) : null,
         notes: observations || undefined,
         status: 'draft'
       };
@@ -329,6 +332,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
         shipping_cost: shippingCost,
         warranty_months: warrantyMonths,
         payment_terms: paymentTerms,
+        payment_conditions: paymentConditions ? JSON.parse(JSON.stringify(paymentConditions)) : null,
         notes: observations || undefined
       });
 
@@ -641,7 +645,7 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
 
                 <Separator className="my-6" />
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Prazo de Entrega (dias) *</Label>
                     <Input
@@ -653,15 +657,6 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                     />
                   </div>
                   <div>
-                    <Label>Condições de Pagamento *</Label>
-                    <Input
-                      value={paymentTerms}
-                      onChange={(e) => setPaymentTerms(e.target.value)}
-                      placeholder="Ex: 30 dias após entrega"
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div>
                     <Label>Valor Total</Label>
                     <Input
                       value={`R$ ${totalValue.toFixed(2)}`}
@@ -669,6 +664,18 @@ export function QuoteProposalModal({ quote, open, onOpenChange }: QuoteProposalM
                       className="font-bold text-lg"
                     />
                   </div>
+                </div>
+
+                {/* Condições de Pagamento Estruturadas */}
+                <div className="mt-4">
+                  <PaymentConditionsSelect
+                    value={paymentConditions}
+                    onChange={(condition) => {
+                      setPaymentConditions(condition);
+                      setPaymentTerms(condition.description);
+                    }}
+                    totalAmount={totalValue + shippingCost}
+                  />
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 mt-4">

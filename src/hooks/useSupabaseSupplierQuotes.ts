@@ -417,6 +417,7 @@ export const useSupabaseSupplierQuotes = () => {
     shipping_cost?: number;
     warranty_months?: number;
     payment_terms: string;
+    payment_conditions?: any;
     notes?: string;
   }) => {
     if (!user?.supplierId) {
@@ -446,6 +447,7 @@ export const useSupabaseSupplierQuotes = () => {
             shipping_cost: responseData.shipping_cost || 0,
             warranty_months: responseData.warranty_months || 12,
             payment_terms: responseData.payment_terms,
+            payment_conditions: responseData.payment_conditions || null,
             notes: responseData.notes,
             status: 'sent'
           })
