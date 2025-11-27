@@ -3566,6 +3566,47 @@ export type Database = {
           },
         ]
       }
+      payment_condition_templates: {
+        Row: {
+          client_id: string | null
+          conditions: Json
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          conditions: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          conditions?: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_condition_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_disputes: {
         Row: {
           created_at: string | null
@@ -3639,11 +3680,13 @@ export type Database = {
           created_at: string | null
           escrow_release_date: string | null
           id: string
+          installment_number: number | null
           invoice_issued_at: string | null
           invoice_number: string | null
           issued_by: string | null
           offline_attachments: string[] | null
           offline_notes: string | null
+          parent_payment_id: string | null
           payment_method: string | null
           payment_type: string | null
           platform_commission: number | null
@@ -3660,6 +3703,7 @@ export type Database = {
           stripe_session_id: string | null
           supplier_id: string | null
           supplier_net_amount: number | null
+          total_installments: number | null
           transaction_id: string | null
           transfer_date: string | null
           transfer_method: string | null
@@ -3683,11 +3727,13 @@ export type Database = {
           created_at?: string | null
           escrow_release_date?: string | null
           id: string
+          installment_number?: number | null
           invoice_issued_at?: string | null
           invoice_number?: string | null
           issued_by?: string | null
           offline_attachments?: string[] | null
           offline_notes?: string | null
+          parent_payment_id?: string | null
           payment_method?: string | null
           payment_type?: string | null
           platform_commission?: number | null
@@ -3704,6 +3750,7 @@ export type Database = {
           stripe_session_id?: string | null
           supplier_id?: string | null
           supplier_net_amount?: number | null
+          total_installments?: number | null
           transaction_id?: string | null
           transfer_date?: string | null
           transfer_method?: string | null
@@ -3727,11 +3774,13 @@ export type Database = {
           created_at?: string | null
           escrow_release_date?: string | null
           id?: string
+          installment_number?: number | null
           invoice_issued_at?: string | null
           invoice_number?: string | null
           issued_by?: string | null
           offline_attachments?: string[] | null
           offline_notes?: string | null
+          parent_payment_id?: string | null
           payment_method?: string | null
           payment_type?: string | null
           platform_commission?: number | null
@@ -3748,6 +3797,7 @@ export type Database = {
           stripe_session_id?: string | null
           supplier_id?: string | null
           supplier_net_amount?: number | null
+          total_installments?: number | null
           transaction_id?: string | null
           transfer_date?: string | null
           transfer_method?: string | null
@@ -3756,6 +3806,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_payments_parent_payment_id"
+            columns: ["parent_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_client_id_fkey"
             columns: ["client_id"]
@@ -4401,6 +4458,7 @@ export type Database = {
           id: string
           items: Json | null
           notes: string | null
+          payment_conditions: Json | null
           payment_terms: string | null
           quote_id: string | null
           shipping_cost: number | null
@@ -4416,6 +4474,7 @@ export type Database = {
           id?: string
           items?: Json | null
           notes?: string | null
+          payment_conditions?: Json | null
           payment_terms?: string | null
           quote_id?: string | null
           shipping_cost?: number | null
@@ -4431,6 +4490,7 @@ export type Database = {
           id?: string
           items?: Json | null
           notes?: string | null
+          payment_conditions?: Json | null
           payment_terms?: string | null
           quote_id?: string | null
           shipping_cost?: number | null
