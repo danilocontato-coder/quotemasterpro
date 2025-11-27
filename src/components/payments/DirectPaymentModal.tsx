@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -27,7 +29,10 @@ import {
   Building2, 
   Smartphone,
   FileText,
-  Camera
+  Camera,
+  AlertTriangle,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -174,6 +179,7 @@ export const DirectPaymentModal = ({
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [acceptedRisk, setAcceptedRisk] = useState(false);
   const { toast } = useToast();
 
   const hasPixKey = !!pixKey;
@@ -341,16 +347,59 @@ export const DirectPaymentModal = ({
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            💰 Pagar Direto ao Fornecedor
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Pagar Direto ao Fornecedor
           </DialogTitle>
           <DialogDescription>
-            {hasPixKey 
-              ? 'Escaneie o QR Code ou copie o código PIX para pagar'
-              : 'Realize o pagamento e anexe o comprovante'}
+            Pagamento sem a proteção de custódia da plataforma
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* ⚠️ ALERTA DE RISCO */}
+          <Alert variant="destructive" className="border-red-300 bg-red-50 dark:bg-red-950/30">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle className="text-red-800 dark:text-red-200">Pagamento Sem Proteção</AlertTitle>
+            <AlertDescription className="text-red-700 dark:text-red-300">
+              <ul className="list-disc list-inside space-y-1 mt-2 text-sm">
+                <li><strong>Sem garantia de reembolso</strong> em caso de problemas</li>
+                <li>Fundos transferidos <strong>diretamente</strong>, sem custódia</li>
+                <li>A plataforma <strong>não pode mediar</strong> disputas</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+
+          {/* 💚 RECOMENDAÇÃO - Pagar com Segurança */}
+          <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="h-6 w-6 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold text-green-900 dark:text-green-100">
+                  Recomendamos: Pagar com Segurança
+                </p>
+                <p className="text-sm text-green-800 dark:text-green-200 mt-1">
+                  Use o botão <strong>"Pagar com Segurança"</strong> para ter proteção total. 
+                  O valor fica em custódia até você confirmar a entrega.
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-3 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900"
+                  onClick={onClose}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Voltar e Pagar com Segurança
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <Separator className="my-2" />
+
+          <p className="text-sm text-muted-foreground text-center font-medium">
+            Se ainda assim deseja continuar com o pagamento direto:
+          </p>
+
           {/* Payment Info Summary */}
           <Card className="bg-muted/30">
             <CardContent className="p-4">
@@ -603,20 +652,46 @@ export const DirectPaymentModal = ({
               className="min-h-[60px]"
             />
           </div>
+
+          <Separator />
+
+          {/* ☑️ CHECKBOX DE CONFIRMAÇÃO DE RISCO */}
+          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <Checkbox 
+              id="accept-risk" 
+              checked={acceptedRisk}
+              onCheckedChange={(checked) => setAcceptedRisk(checked === true)}
+              className="mt-0.5"
+            />
+            <Label 
+              htmlFor="accept-risk" 
+              className="text-sm text-amber-900 dark:text-amber-200 cursor-pointer leading-relaxed"
+            >
+              <strong>Entendo e aceito os riscos:</strong> Este pagamento é feito diretamente ao fornecedor, 
+              sem a proteção de custódia da plataforma. Em caso de problemas, não haverá garantia de reembolso.
+            </Label>
+          </div>
         </div>
 
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose} disabled={isUploading}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isUploading || !paymentMethod}>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isUploading || !paymentMethod || !acceptedRisk}
+            variant={acceptedRisk ? "default" : "secondary"}
+          >
             {isUploading ? (
               <>
                 <Upload className="mr-2 h-4 w-4 animate-spin" />
                 Enviando...
               </>
             ) : (
-              'Confirmar Pagamento'
+              <>
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Confirmar Pagamento Direto
+              </>
             )}
           </Button>
         </DialogFooter>
