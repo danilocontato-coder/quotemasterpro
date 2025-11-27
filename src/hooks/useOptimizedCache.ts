@@ -1,7 +1,5 @@
 import { useCallback } from 'react';
-
-// ✅ Versionamento de cache - incrementar a cada deploy importante
-const CACHE_VERSION = 'v1.0.1';
+import { APP_VERSION } from '@/config/version';
 
 interface CacheOptions {
   ttl?: number; // Time to live in milliseconds
@@ -14,7 +12,7 @@ export function useOptimizedCache() {
       data,
       timestamp: Date.now(),
       ttl,
-      version: CACHE_VERSION
+      version: APP_VERSION
     };
     sessionStorage.setItem(key, JSON.stringify(cacheData));
   }, []);
@@ -27,8 +25,8 @@ export function useOptimizedCache() {
       const cacheData = JSON.parse(cached);
       
       // ✅ Verificar versão - invalidar se versão diferente
-      if (cacheData.version !== CACHE_VERSION) {
-        console.log('🔄 [CACHE] Versão desatualizada, invalidando cache:', cacheData.version, '→', CACHE_VERSION);
+      if (cacheData.version !== APP_VERSION) {
+        console.log('🔄 [CACHE] Versão desatualizada, invalidando cache:', cacheData.version, '→', APP_VERSION);
         sessionStorage.removeItem(key);
         return null;
       }
