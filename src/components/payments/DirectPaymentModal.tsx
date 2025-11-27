@@ -10,29 +10,24 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Copy, 
-  Upload, 
   AlertCircle, 
   Check, 
   QrCode, 
   Building2, 
-  Smartphone,
-  FileText,
-  Camera,
   AlertTriangle,
   ShieldCheck,
-  Lock
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -173,13 +168,10 @@ export const DirectPaymentModal = ({
   bankData,
   onSuccess,
 }: DirectPaymentModalProps) => {
-  const [paymentMethod, setPaymentMethod] = useState(pixKey ? 'pix' : '');
-  const [transactionId, setTransactionId] = useState('');
-  const [notes, setNotes] = useState('');
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [step, setStep] = useState<'warning' | 'payment'>('warning');
   const [acceptedRisk, setAcceptedRisk] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const hasPixKey = !!pixKey;
@@ -219,83 +211,29 @@ export const DirectPaymentModal = ({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      const maxSize = 10 * 1024 * 1024;
-      const validFiles = files.filter(f => f.size <= maxSize);
-      
-      if (validFiles.length < files.length) {
-        toast({
-          title: 'Arquivo muito grande',
-          description: 'Alguns arquivos excedem 10MB e foram ignorados',
-          variant: 'destructive',
-        });
-      }
-      
-      setAttachments(prev => [...prev, ...validFiles]);
+  const handleProceed = () => {
+    if (acceptedRisk) {
+      setStep('payment');
     }
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async () => {
-    if (!paymentMethod) {
-      toast({
-        title: 'Selecione o método de pagamento',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (attachments.length === 0) {
-      toast({
-        title: 'Comprovante obrigatório',
-        description: 'Por favor, anexe o comprovante de pagamento',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsUploading(true);
+  const handleConfirmPayment = async () => {
+    setIsSubmitting(true);
 
     try {
-      const uploadedUrls: string[] = [];
-      
-      for (const file of attachments) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${payment.id}-${Date.now()}.${fileExt}`;
-        const filePath = `payment-proofs/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('attachments')
-          .upload(filePath, file, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('attachments')
-          .getPublicUrl(filePath);
-
-        uploadedUrls.push(publicUrl);
-      }
-
+      // Atualiza o pagamento para aguardar confirmação manual
       const { error: updateError } = await supabase
         .from('payments')
         .update({
           status: 'manual_confirmation',
-          payment_method: paymentMethod,
-          transaction_id: transactionId || null,
-          offline_notes: notes || null,
-          offline_attachments: uploadedUrls,
+          payment_method: hasPixKey ? 'pix' : 'bank_transfer',
           updated_at: new Date().toISOString(),
         })
         .eq('id', payment.id);
 
       if (updateError) throw updateError;
 
+      // Registra log de auditoria
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
@@ -307,394 +245,348 @@ export const DirectPaymentModal = ({
           panel_type: 'client',
           details: {
             payment_id: payment.id,
-            method: paymentMethod,
+            method: hasPixKey ? 'pix' : 'bank_transfer',
             pix_key: pixKey,
-            transaction_id: transactionId,
-            attachments_count: uploadedUrls.length,
           },
         });
       }
 
+      // Criar notificação para o fornecedor
+      await supabase.from('notifications').insert({
+        user_id: payment.supplier_id,
+        title: 'Pagamento Direto Realizado',
+        message: `O cliente informou que realizou o pagamento de ${formatCurrency(paymentAmount)} referente à cotação ${payment.quotes?.local_code || payment.id.substring(0, 8)}. Verifique sua conta e confirme o recebimento.`,
+        type: 'payment',
+        reference_id: payment.id,
+        reference_type: 'payments',
+      });
+
       toast({
-        title: 'Pagamento registrado',
-        description: 'O fornecedor foi notificado e precisa confirmar o recebimento',
+        title: 'Pagamento informado!',
+        description: 'O fornecedor foi notificado e irá confirmar o recebimento.',
       });
 
       onSuccess?.();
-      onClose();
+      handleClose();
     } catch (error) {
-      console.error('Error submitting payment:', error);
+      console.error('Error confirming payment:', error);
       toast({
-        title: 'Erro ao registrar pagamento',
+        title: 'Erro ao confirmar pagamento',
         description: 'Tente novamente ou entre em contato com o suporte',
         variant: 'destructive',
       });
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const paymentMethods = [
-    { value: 'pix', label: 'PIX', icon: Smartphone },
-    { value: 'bank_transfer', label: 'Transferência Bancária', icon: Building2 },
-    { value: 'cash', label: 'Dinheiro', icon: null },
-    { value: 'check', label: 'Cheque', icon: null },
-    { value: 'other', label: 'Outro', icon: null },
-  ];
+  const handleClose = () => {
+    setStep('warning');
+    setAcceptedRisk(false);
+    setCopiedField(null);
+    onClose();
+  };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
-            Pagar Direto ao Fornecedor
-          </DialogTitle>
-          <DialogDescription>
-            Pagamento sem a proteção de custódia da plataforma
-          </DialogDescription>
-        </DialogHeader>
+  // TELA 1: Avisos de Risco
+  const WarningStep = () => (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          Pagar Direto ao Fornecedor
+        </DialogTitle>
+        <DialogDescription>
+          Pagamento sem a proteção de custódia da plataforma
+        </DialogDescription>
+      </DialogHeader>
 
-        <div className="space-y-4">
-          {/* ⚠️ ALERTA DE RISCO */}
-          <Alert variant="destructive" className="border-red-300 bg-red-50 dark:bg-red-950/30">
-            <AlertTriangle className="h-5 w-5" />
-            <AlertTitle className="text-red-800 dark:text-red-200">Pagamento Sem Proteção</AlertTitle>
-            <AlertDescription className="text-red-700 dark:text-red-300">
-              <ul className="list-disc list-inside space-y-1 mt-2 text-sm">
-                <li><strong>Sem garantia de reembolso</strong> em caso de problemas</li>
-                <li>Fundos transferidos <strong>diretamente</strong>, sem custódia</li>
-                <li>A plataforma <strong>não pode mediar</strong> disputas</li>
-              </ul>
-            </AlertDescription>
-          </Alert>
+      <div className="space-y-4">
+        {/* ⚠️ ALERTA DE RISCO */}
+        <Alert variant="destructive" className="border-red-300 bg-red-50 dark:bg-red-950/30">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertTitle className="text-red-800 dark:text-red-200">Pagamento Sem Proteção</AlertTitle>
+          <AlertDescription className="text-red-700 dark:text-red-300">
+            <ul className="list-disc list-inside space-y-1 mt-2 text-sm">
+              <li><strong>Sem garantia de reembolso</strong> em caso de problemas</li>
+              <li>Fundos transferidos <strong>diretamente</strong>, sem custódia</li>
+              <li>A plataforma <strong>não pode mediar</strong> disputas</li>
+            </ul>
+          </AlertDescription>
+        </Alert>
 
-          {/* 💚 RECOMENDAÇÃO - Pagar com Segurança */}
-          <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="h-6 w-6 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-semibold text-green-900 dark:text-green-100">
-                  Recomendamos: Pagar com Segurança
-                </p>
-                <p className="text-sm text-green-800 dark:text-green-200 mt-1">
-                  Use o botão <strong>"Pagar com Segurança"</strong> para ter proteção total. 
-                  O valor fica em custódia até você confirmar a entrega.
-                </p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-3 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900"
-                  onClick={onClose}
-                >
-                  <Lock className="h-4 w-4 mr-2" />
-                  Voltar e Pagar com Segurança
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <Separator className="my-2" />
-
-          <p className="text-sm text-muted-foreground text-center font-medium">
-            Se ainda assim deseja continuar com o pagamento direto:
-          </p>
-
-          {/* Payment Info Summary */}
-          <Card className="bg-muted/30">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Cotação</p>
-                  <p className="font-medium">{payment.quotes?.local_code || payment.id.substring(0, 8)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Fornecedor</p>
-                  <p className="font-medium">{supplierName}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* VALOR em Destaque */}
-          <div className="text-center py-4 bg-primary/5 rounded-lg border border-primary/20">
-            <p className="text-sm text-muted-foreground mb-1">Valor a Pagar</p>
-            <p className="text-3xl font-bold text-primary">{formatCurrency(paymentAmount)}</p>
-          </div>
-
-          {/* QR Code PIX (se tiver chave) */}
-          {hasPixKey && pixKey && (
-            <>
-              <div className="flex flex-col items-center gap-3 p-4 bg-white dark:bg-background rounded-lg border-2 border-primary/30">
-                <div className="flex items-center gap-2 text-primary">
-                  <QrCode className="h-5 w-5" />
-                  <span className="font-semibold">PIX com QR Code</span>
-                </div>
-                
-                <div className="bg-white p-3 rounded-lg shadow-sm">
-                  <QRCode value={pixPayload} size={180} level="M" />
-                </div>
-                
-                <p className="text-xs text-muted-foreground text-center">
-                  QR Code com valor já incluído - escaneie no app do banco
-                </p>
-              </div>
-
-              {/* Copia e Cola */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">PIX Copia e Cola</Label>
-                <div className="flex gap-2">
-                  <div className="flex-1 p-3 bg-muted rounded-lg font-mono text-xs break-all max-h-16 overflow-y-auto">
-                    {pixPayload}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopy(pixPayload, 'Código PIX')}
-                    className="flex-shrink-0"
-                  >
-                    {copiedField === 'Código PIX' ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Chave PIX */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Chave PIX</Label>
-                  <Badge variant="secondary" className="text-xs">{getPixKeyType(pixKey)}</Badge>
-                </div>
-                <div className="flex gap-2">
-                  <Input 
-                    value={formatPixKeyDisplay(pixKey)} 
-                    readOnly 
-                    className="font-mono text-sm bg-muted" 
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleCopy(pixKey.replace(/[^\w@.+-]/g, ''), 'Chave PIX')}
-                  >
-                    {copiedField === 'Chave PIX' ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-            </>
-          )}
-
-          {/* Dados Bancários (se não tiver PIX mas tiver dados bancários) */}
-          {!hasPixKey && hasBankData && bankData && (
-            <>
-              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                <div className="flex items-center gap-2 mb-3">
-                  <Building2 className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">Dados Bancários</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Banco</p>
-                    <p className="font-medium">{bankData.bank_name || bankData.bank_code}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Agência</p>
-                    <p className="font-medium">{bankData.agency}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Conta</p>
-                    <p className="font-medium">{bankData.account_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Tipo</p>
-                    <p className="font-medium capitalize">{bankData.account_type || 'Corrente'}</p>
-                  </div>
-                  {bankData.account_holder_name && (
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground">Titular</p>
-                      <p className="font-medium">{bankData.account_holder_name}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
-
-          {/* Aviso se não tem nenhum dado */}
-          {!hasPixKey && !hasBankData && (
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <div className="flex gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
-                <div className="text-sm text-amber-800 dark:text-amber-200">
-                  <p className="font-semibold mb-1">Fornecedor sem dados de pagamento cadastrados</p>
-                  <p>Entre em contato com o fornecedor para obter os dados de pagamento e registre abaixo.</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Instruções */}
-          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <div className="flex gap-2">
-              <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-500 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800 dark:text-blue-200">
-                <p className="font-semibold mb-1">Após realizar o pagamento:</p>
-                <ol className="list-decimal list-inside space-y-0.5">
-                  <li>Tire print ou baixe o comprovante</li>
-                  <li>Anexe abaixo</li>
-                  <li>Aguarde confirmação do fornecedor</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Método de Pagamento */}
-          <div className="space-y-2">
-            <Label>Método de Pagamento *</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                {paymentMethods.map((method) => (
-                  <SelectItem key={method.value} value={method.value}>
-                    {method.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Upload de Comprovante */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Comprovante de Pagamento *
-            </Label>
-            <div className="border-2 border-dashed rounded-lg p-4 text-center">
-              <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground mb-2">
-                Arraste ou clique para enviar
+        {/* 💚 RECOMENDAÇÃO - Pagar com Segurança */}
+        <div className="p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="h-6 w-6 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-green-900 dark:text-green-100">
+                Recomendamos: Pagar com Segurança
               </p>
-              <Input
-                type="file"
-                accept="image/*,.pdf"
-                multiple
-                onChange={handleFileChange}
-                className="hidden"
-                id="proof-upload"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => document.getElementById('proof-upload')?.click()}
+              <p className="text-sm text-green-800 dark:text-green-200 mt-1">
+                Use o botão <strong>"Pagar com Segurança"</strong> para ter proteção total. 
+                O valor fica em custódia até você confirmar a entrega.
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-3 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900"
+                onClick={handleClose}
               >
-                <Camera className="h-4 w-4 mr-2" />
-                Selecionar Arquivo
+                <Lock className="h-4 w-4 mr-2" />
+                Voltar e Pagar com Segurança
               </Button>
             </div>
-            
-            {attachments.length > 0 && (
-              <div className="space-y-2 mt-2">
-                {attachments.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm truncate">{file.name}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeAttachment(index)}
-                    >
-                      Remover
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ID da Transação */}
-          <div className="space-y-2">
-            <Label htmlFor="transaction-id" className="text-sm font-medium">
-              ID da Transação (opcional)
-            </Label>
-            <Input
-              id="transaction-id"
-              placeholder="Código PIX, número do comprovante..."
-              value={transactionId}
-              onChange={(e) => setTransactionId(e.target.value)}
-            />
-          </div>
-
-          {/* Observações */}
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-sm font-medium">
-              Observações (opcional)
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="Informações adicionais..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[60px]"
-            />
-          </div>
-
-          <Separator />
-
-          {/* ☑️ CHECKBOX DE CONFIRMAÇÃO DE RISCO */}
-          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <Checkbox 
-              id="accept-risk" 
-              checked={acceptedRisk}
-              onCheckedChange={(checked) => setAcceptedRisk(checked === true)}
-              className="mt-0.5"
-            />
-            <Label 
-              htmlFor="accept-risk" 
-              className="text-sm text-amber-900 dark:text-amber-200 cursor-pointer leading-relaxed"
-            >
-              <strong>Entendo e aceito os riscos:</strong> Este pagamento é feito diretamente ao fornecedor, 
-              sem a proteção de custódia da plataforma. Em caso de problemas, não haverá garantia de reembolso.
-            </Label>
           </div>
         </div>
 
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={onClose} disabled={isUploading}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isUploading || !paymentMethod || !acceptedRisk}
-            variant={acceptedRisk ? "default" : "secondary"}
+        <Separator className="my-2" />
+
+        {/* Payment Info Summary */}
+        <Card className="bg-muted/30">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Cotação</p>
+                <p className="font-medium">{payment.quotes?.local_code || payment.id.substring(0, 8)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Fornecedor</p>
+                <p className="font-medium">{supplierName}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* VALOR em Destaque */}
+        <div className="text-center py-4 bg-primary/5 rounded-lg border border-primary/20">
+          <p className="text-sm text-muted-foreground mb-1">Valor a Pagar</p>
+          <p className="text-3xl font-bold text-primary">{formatCurrency(paymentAmount)}</p>
+        </div>
+
+        {/* ☑️ CHECKBOX DE CONFIRMAÇÃO DE RISCO */}
+        <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <Checkbox 
+            id="accept-risk" 
+            checked={acceptedRisk}
+            onCheckedChange={(checked) => setAcceptedRisk(checked === true)}
+            className="mt-0.5"
+          />
+          <Label 
+            htmlFor="accept-risk" 
+            className="text-sm text-amber-900 dark:text-amber-200 cursor-pointer leading-relaxed"
           >
-            {isUploading ? (
-              <>
-                <Upload className="mr-2 h-4 w-4 animate-spin" />
-                Enviando...
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Confirmar Pagamento Direto
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+            <strong>Entendo e aceito os riscos:</strong> Este pagamento é feito diretamente ao fornecedor, 
+            sem a proteção de custódia da plataforma. Em caso de problemas, não haverá garantia de reembolso.
+          </Label>
+        </div>
+      </div>
+
+      <DialogFooter className="mt-4">
+        <Button variant="outline" onClick={handleClose}>
+          Cancelar
+        </Button>
+        <Button 
+          onClick={handleProceed} 
+          disabled={!acceptedRisk}
+          variant={acceptedRisk ? "default" : "secondary"}
+        >
+          Continuar
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </DialogFooter>
+    </>
+  );
+
+  // TELA 2: QR Code e Dados de Pagamento
+  const PaymentStep = () => (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <QrCode className="h-5 w-5 text-primary" />
+          Dados para Pagamento
+        </DialogTitle>
+        <DialogDescription>
+          Realize o pagamento e depois clique em "Já Paguei"
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4">
+        {/* Payment Info Summary */}
+        <Card className="bg-muted/30">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between text-sm">
+              <div>
+                <span className="text-muted-foreground">Cotação:</span>{' '}
+                <span className="font-medium">{payment.quotes?.local_code || payment.id.substring(0, 8)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Fornecedor:</span>{' '}
+                <span className="font-medium">{supplierName}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* VALOR em Destaque */}
+        <div className="text-center py-3 bg-primary/5 rounded-lg border border-primary/20">
+          <p className="text-sm text-muted-foreground mb-1">Valor a Pagar</p>
+          <p className="text-2xl font-bold text-primary">{formatCurrency(paymentAmount)}</p>
+        </div>
+
+        {/* QR Code PIX (se tiver chave) */}
+        {hasPixKey && pixKey && (
+          <>
+            <div className="flex flex-col items-center gap-3 p-4 bg-white dark:bg-background rounded-lg border-2 border-primary/30">
+              <div className="flex items-center gap-2 text-primary">
+                <QrCode className="h-5 w-5" />
+                <span className="font-semibold">PIX com QR Code</span>
+              </div>
+              
+              <div className="bg-white p-3 rounded-lg shadow-sm">
+                <QRCode value={pixPayload} size={180} level="M" />
+              </div>
+              
+              <p className="text-xs text-muted-foreground text-center">
+                QR Code com valor já incluído - escaneie no app do banco
+              </p>
+            </div>
+
+            {/* Copia e Cola */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">PIX Copia e Cola</Label>
+              <div className="flex gap-2">
+                <div className="flex-1 p-3 bg-muted rounded-lg font-mono text-xs break-all max-h-16 overflow-y-auto">
+                  {pixPayload}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopy(pixPayload, 'Código PIX')}
+                  className="flex-shrink-0"
+                >
+                  {copiedField === 'Código PIX' ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Chave PIX */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Chave PIX</Label>
+                <Badge variant="secondary" className="text-xs">{getPixKeyType(pixKey)}</Badge>
+              </div>
+              <div className="flex gap-2">
+                <Input 
+                  value={formatPixKeyDisplay(pixKey)} 
+                  readOnly 
+                  className="font-mono text-sm bg-muted" 
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleCopy(pixKey.replace(/[^\w@.+-]/g, ''), 'Chave PIX')}
+                >
+                  {copiedField === 'Chave PIX' ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Dados Bancários (se não tiver PIX mas tiver dados bancários) */}
+        {!hasPixKey && hasBankData && bankData && (
+          <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="h-5 w-5 text-primary" />
+              <span className="font-semibold">Dados Bancários</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <p className="text-muted-foreground">Banco</p>
+                <p className="font-medium">{bankData.bank_name || bankData.bank_code}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Agência</p>
+                <p className="font-medium">{bankData.agency}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Conta</p>
+                <p className="font-medium">{bankData.account_number}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Tipo</p>
+                <p className="font-medium capitalize">{bankData.account_type || 'Corrente'}</p>
+              </div>
+              {bankData.account_holder_name && (
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Titular</p>
+                  <p className="font-medium">{bankData.account_holder_name}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Aviso se não tem nenhum dado */}
+        {!hasPixKey && !hasBankData && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div className="flex gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+              <div className="text-sm text-amber-800 dark:text-amber-200">
+                <p className="font-semibold mb-1">Fornecedor sem dados de pagamento cadastrados</p>
+                <p>Entre em contato com o fornecedor para obter os dados de pagamento.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Info sobre notificação */}
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <div className="flex gap-2">
+            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-500 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-800 dark:text-blue-200">
+              <p>
+                Após clicar em <strong>"Já Paguei"</strong>, o fornecedor será notificado 
+                automaticamente para confirmar o recebimento.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter className="mt-4">
+        <Button variant="outline" onClick={() => setStep('warning')}>
+          Voltar
+        </Button>
+        <Button 
+          onClick={handleConfirmPayment} 
+          disabled={isSubmitting || (!hasPixKey && !hasBankData)}
+        >
+          {isSubmitting ? (
+            'Enviando...'
+          ) : (
+            <>
+              <Check className="mr-2 h-4 w-4" />
+              Já Paguei
+            </>
+          )}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        {step === 'warning' ? <WarningStep /> : <PaymentStep />}
       </DialogContent>
     </Dialog>
   );
