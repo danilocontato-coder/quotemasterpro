@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, FileText, Camera, Receipt, AlertCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload, FileText, Camera, Receipt, AlertCircle, Smartphone, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { DirectPaymentDetails } from "./DirectPaymentDetails";
 
 interface OfflinePaymentModalProps {
   payment: any;
@@ -17,17 +19,69 @@ interface OfflinePaymentModalProps {
   onConfirm: () => void;
 }
 
+interface SupplierBankData {
+  pix_key?: string;
+  bank_data?: {
+    bank_code?: string;
+    bank_name?: string;
+    agency?: string;
+    account_number?: string;
+    account_type?: string;
+    account_holder_name?: string;
+    account_holder_document?: string;
+  };
+  name?: string;
+}
+
 export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: OfflinePaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [transactionId, setTransactionId] = useState("");
   const [notes, setNotes] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [supplierData, setSupplierData] = useState<SupplierBankData | null>(null);
+  const [isLoadingSupplier, setIsLoadingSupplier] = useState(false);
   const { toast } = useToast();
 
+  // Carregar dados do fornecedor quando modal abre
+  useEffect(() => {
+    if (open && payment?.supplier_id) {
+      loadSupplierData();
+    }
+  }, [open, payment?.supplier_id]);
+
+  const loadSupplierData = async () => {
+    if (!payment?.supplier_id) return;
+    
+    setIsLoadingSupplier(true);
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('name, pix_key, bank_data')
+        .eq('id', payment.supplier_id)
+        .single();
+
+      if (error) {
+        console.error('Error loading supplier:', error);
+        return;
+      }
+
+      // Cast bank_data from JSON to our interface
+      setSupplierData({
+        name: data.name,
+        pix_key: data.pix_key || undefined,
+        bank_data: data.bank_data as SupplierBankData['bank_data']
+      });
+    } catch (error) {
+      console.error('Error in loadSupplierData:', error);
+    } finally {
+      setIsLoadingSupplier(false);
+    }
+  };
+
   const paymentMethods = [
-    { value: "bank_transfer", label: "Transferência Bancária" },
     { value: "pix", label: "PIX" },
+    { value: "bank_transfer", label: "Transferência Bancária" },
     { value: "cash", label: "Dinheiro" },
     { value: "check", label: "Cheque" },
     { value: "bank_slip", label: "Boleto Bancário" },
@@ -210,13 +264,16 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
 
   if (!payment) return null;
 
+  const supplierName = payment.suppliers?.name || supplierData?.name || 'Fornecedor';
+  const hasSupplierBankData = supplierData?.pix_key || supplierData?.bank_data?.account_number;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
-            Registrar Pagamento Offline
+            Pagar Direto ao Fornecedor
           </DialogTitle>
         </DialogHeader>
 
@@ -233,19 +290,43 @@ export function OfflinePaymentModal({ payment, open, onOpenChange, onConfirm }: 
                   <p className="text-muted-foreground">Valor</p>
                   <p className="font-bold text-lg">{formatCurrency(payment.amount)}</p>
                 </div>
+                <div>
+                  <p className="text-muted-foreground">Fornecedor</p>
+                  <p className="font-medium">{supplierName}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Dados do Fornecedor para Pagamento Direto */}
+          {isLoadingSupplier ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <span>Carregando dados de pagamento...</span>
+                </div>
+              </CardContent>
+            </Card>
+          ) : hasSupplierBankData ? (
+            <DirectPaymentDetails
+              supplierName={supplierName}
+              pixKey={supplierData?.pix_key}
+              bankData={supplierData?.bank_data as any}
+              amount={payment.base_amount || payment.amount}
+              quoteReference={payment.quotes?.local_code || payment.quote_id}
+            />
+          ) : null}
+
           {/* Warning */}
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium text-amber-900 mb-1">Pagamento Offline</p>
-                <p className="text-sm text-amber-800">
-                  Este pagamento será analisado pela equipe financeira. O status será atualizado após a confirmação.
-                  Certifique-se de anexar comprovantes válidos.
+                <p className="font-medium text-amber-900 dark:text-amber-200 mb-1">Pagamento Direto</p>
+                <p className="text-sm text-amber-800 dark:text-amber-300">
+                  Realize o pagamento diretamente ao fornecedor usando os dados acima.
+                  Após pagar, anexe o comprovante abaixo para registrar o pagamento.
                 </p>
               </div>
             </div>

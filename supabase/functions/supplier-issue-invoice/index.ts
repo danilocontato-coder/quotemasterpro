@@ -57,8 +57,25 @@ serve(async (req) => {
       throw new Error('A resposta da cotação precisa estar aprovada pelo cliente para emitir cobrança')
     }
 
-    if (!quote.supplier || !quote.supplier.asaas_wallet_id) {
-      throw new Error('Fornecedor não possui wallet do Asaas configurado')
+    if (!quote.supplier) {
+      throw new Error('Fornecedor não encontrado para esta cotação')
+    }
+
+    // Buscar dados bancários do fornecedor para validação
+    const { data: supplierBankData } = await supabaseClient
+      .from('suppliers')
+      .select('pix_key, bank_data')
+      .eq('id', quote.supplier_id)
+      .single()
+
+    const hasPixKey = supplierBankData?.pix_key && supplierBankData.pix_key.trim() !== ''
+    const hasBankData = supplierBankData?.bank_data && 
+      supplierBankData.bank_data.account_number && 
+      supplierBankData.bank_data.agency
+
+    if (!hasPixKey && !hasBankData) {
+      console.warn('⚠️ Fornecedor sem dados bancários configurados:', quote.supplier_id)
+      // Não bloquear - permitir emissão, transferência será marcada para processamento manual
     }
 
     if (!quote.client.asaas_customer_id) {
