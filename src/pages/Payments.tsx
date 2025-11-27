@@ -28,7 +28,7 @@ import { OfflinePaymentModal } from "@/components/payments/OfflinePaymentModal";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { Badge } from "@/components/ui/badge";
 
-import { PixQRCodeModal } from "@/components/payments/PixQRCodeModal";
+import { DirectPaymentModal } from "@/components/payments/DirectPaymentModal";
 import { PaymentsSyncStatus } from "@/components/payments/PaymentsSyncStatus";
 import { AutoSyncIndicator } from "@/components/payments/AutoSyncIndicator";
 import {
@@ -56,9 +56,13 @@ export default function Payments() {
   const [showReleaseEscrowModal, setShowReleaseEscrowModal] = useState(false);
   const [showOfflinePaymentModal, setShowOfflinePaymentModal] = useState(false);
   const [selectedOfflinePayment, setSelectedOfflinePayment] = useState<any>(null);
-  const [showPixModal, setShowPixModal] = useState(false);
-  const [selectedPaymentForPix, setSelectedPaymentForPix] = useState<any>(null);
-  const [supplierPixData, setSupplierPixData] = useState<{ name: string; pixKey: string } | null>(null);
+  const [showDirectPaymentModal, setShowDirectPaymentModal] = useState(false);
+  const [selectedDirectPayment, setSelectedDirectPayment] = useState<any>(null);
+  const [supplierPaymentData, setSupplierPaymentData] = useState<{ 
+    name: string; 
+    pixKey: string | null; 
+    bankData: any | null;
+  } | null>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -178,7 +182,7 @@ export default function Payments() {
   };
 
   const handleOfflinePayment = async (payment: any) => {
-    // Fetch supplier data - pix_key is a separate column, not inside bank_data
+    // Fetch supplier data - pix_key is a separate column
     const { data: supplierData, error } = await supabase
       .from('suppliers')
       .select('name, pix_key, bank_data')
@@ -197,19 +201,14 @@ export default function Payments() {
     // Check pix_key from dedicated column first, fallback to bank_data
     const pixKey = supplierData?.pix_key || (supplierData?.bank_data as any)?.pix_key;
 
-    if (pixKey) {
-      // Supplier has PIX - open QR Code modal directly
-      setSupplierPixData({
-        name: supplierData.name,
-        pixKey: pixKey,
-      });
-      setSelectedPaymentForPix(payment);
-      setShowPixModal(true);
-    } else {
-      // No PIX - show offline payment modal
-      setSelectedOfflinePayment(payment);
-      setShowOfflinePaymentModal(true);
-    }
+    // Always open unified DirectPaymentModal
+    setSupplierPaymentData({
+      name: supplierData.name,
+      pixKey: pixKey || null,
+      bankData: supplierData.bank_data || null,
+    });
+    setSelectedDirectPayment(payment);
+    setShowDirectPaymentModal(true);
   };
 
   const getPaymentStatusIcon = (status: string) => {
@@ -509,26 +508,29 @@ export default function Payments() {
         }}
       />
 
-      {/* PIX QR Code Modal */}
-      {selectedPaymentForPix && supplierPixData && (
-        <PixQRCodeModal
-          isOpen={showPixModal}
+      {/* Direct Payment Modal (unified PIX + manual) */}
+      {selectedDirectPayment && supplierPaymentData && (
+        <DirectPaymentModal
+          isOpen={showDirectPaymentModal}
           onClose={() => {
-            setShowPixModal(false);
-            setSelectedPaymentForPix(null);
-            setSupplierPixData(null);
+            setShowDirectPaymentModal(false);
+            setSelectedDirectPayment(null);
+            setSupplierPaymentData(null);
           }}
           payment={{
-            id: selectedPaymentForPix.id,
-            amount: selectedPaymentForPix.amount,
-            supplier_id: selectedPaymentForPix.supplier_id || '',
+            id: selectedDirectPayment.id,
+            amount: selectedDirectPayment.amount,
+            base_amount: selectedDirectPayment.base_amount,
+            supplier_id: selectedDirectPayment.supplier_id || '',
+            quotes: selectedDirectPayment.quotes,
           }}
-          supplierName={supplierPixData.name}
-          pixKey={supplierPixData.pixKey}
+          supplierName={supplierPaymentData.name}
+          pixKey={supplierPaymentData.pixKey}
+          bankData={supplierPaymentData.bankData}
           onSuccess={() => {
             refetch();
-            setSelectedPaymentForPix(null);
-            setSupplierPixData(null);
+            setSelectedDirectPayment(null);
+            setSupplierPaymentData(null);
           }}
         />
       )}
