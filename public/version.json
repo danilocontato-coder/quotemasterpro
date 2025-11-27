@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
-  "releaseDate": "2025-01-24",
-  "description": "Sistema de cache corrigido - sem conflitos de Service Worker"
+  "version": "1.0.3",
+  "releaseDate": "2025-11-27",
+  "description": "Sistema de cache corrigido - versão centralizada e limpeza agressiva"
 }

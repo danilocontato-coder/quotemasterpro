@@ -10,8 +10,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     hmr: {
-      // Reduce aggressive hot reloading
-      overlay: false, // Disable error overlay that might interfere
+      overlay: false,
     },
   },
   plugins: [
@@ -19,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' &&
     componentTagger(),
     VitePWA({
-      registerType: 'prompt', // ✅ Avisa usuário sobre atualizações
+      registerType: 'autoUpdate', // ✅ Atualização automática silenciosa
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'Cotiz - Sistema de Cotações',
@@ -57,7 +56,8 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // ✅ Só pre-cachear assets estáticos (NÃO JS/CSS/HTML)
+        globPatterns: ['**/*.{ico,png,svg,woff2}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -66,7 +66,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -74,29 +74,46 @@ export default defineConfig(({ mode }) => ({
             }
           },
           {
-            // ✅ Assets críticos - SEMPRE buscar da rede
-            urlPattern: /\.(?:js|css|html)$/i,
-            handler: 'NetworkOnly',
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
             options: {
-              cacheName: 'app-assets',
+              cacheName: 'google-fonts-webfonts',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 365
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
             }
           },
           {
-            // ✅ Imagens e fontes - Cache agressivo
-            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|woff|woff2)$/i,
+            // ✅ JS/CSS/HTML - Rede primeiro, cache como fallback
+            urlPattern: /\.(?:js|css|html)$/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'app-code',
+              networkTimeoutSeconds: 3,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 // 1 dia
+              }
+            }
+          },
+          {
+            // ✅ Imagens - Cache agressivo
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'static-assets',
+              cacheName: 'static-images',
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 ano
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 dias
               }
             }
           }
         ],
-        // ✅ Limpar cache antigo automaticamente
         cleanupOutdatedCaches: true,
-        // ✅ Recarregar clientes antigos
         clientsClaim: true,
         skipWaiting: true
       }

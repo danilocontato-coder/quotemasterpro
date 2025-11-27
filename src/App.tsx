@@ -14,10 +14,8 @@ import { AppWithProviders } from '@/components/layout/AppWithProviders';
 import { TourProvider } from '@/components/tour/TourProvider';
 import { usePWAUpdate } from '@/hooks/usePWAUpdate';
 import { useThemeSync } from '@/hooks/useThemeSync';
+import { APP_VERSION } from '@/config/version';
 import '@/styles/tour-custom.css';
-
-// ✅ Versionamento de cache
-const CACHE_VERSION = 'v1.0.1';
 
 // Componente interno para sincronizar tema (precisa estar dentro dos providers)
 function ThemeSyncWrapper() {
@@ -32,15 +30,14 @@ if (import.meta.env.DEV) {
 }
 
 // ⚡ OTIMIZAÇÃO: Cache agressivo para reduzir requisições de API
-// Redução estimada: 50% do tráfego de queries
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,      // 5 min - dados considerados "frescos"
-      gcTime: 10 * 60 * 1000,        // 10 min - manter em cache
-      refetchOnWindowFocus: false,   // Não recarregar ao focar janela
-      refetchOnMount: false,         // Não recarregar ao montar
-      refetchOnReconnect: false,     // Não recarregar ao reconectar
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
       retry: 1,
       networkMode: 'online',
     },
@@ -52,26 +49,63 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // ✅ Sistema unificado de atualização via PWA
   usePWAUpdate();
   
-  // ✅ Limpar cache antigo automaticamente ao carregar nova versão
+  // ✅ Limpeza AGRESSIVA de cache ao detectar nova versão
   useEffect(() => {
-    const cacheCleared = sessionStorage.getItem(`cache_cleared_${CACHE_VERSION}`);
-    if (!cacheCleared) {
-      console.log('🧹 Limpando cache antigo para nova versão:', CACHE_VERSION);
-      for (let i = sessionStorage.length - 1; i >= 0; i--) {
-        const key = sessionStorage.key(i);
-        if (key && (key.startsWith('supplier_quotes_') || key.startsWith('receivables_') || key.startsWith('quotes_'))) {
-          sessionStorage.removeItem(key);
+    const lastVersion = localStorage.getItem('cotiz_app_version');
+    
+    if (lastVersion !== APP_VERSION) {
+      console.log(`🧹 Nova versão detectada (${lastVersion} → ${APP_VERSION}), limpando TODO o cache...`);
+      
+      // 1. Limpar TODO sessionStorage
+      sessionStorage.clear();
+      console.log('✅ sessionStorage limpo');
+      
+      // 2. Limpar localStorage (exceto dados críticos do Supabase)
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && !key.startsWith('sb-') && key !== 'cotiz_app_version') {
+          keysToRemove.push(key);
         }
       }
-      sessionStorage.setItem(`cache_cleared_${CACHE_VERSION}`, 'true');
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      console.log(`✅ localStorage limpo (${keysToRemove.length} chaves removidas)`);
+      
+      // 3. Limpar TODOS os caches do navegador (Service Worker caches)
+      if ('caches' in window) {
+        caches.keys().then(cacheNames => {
+          console.log(`🗑️ Limpando ${cacheNames.length} caches do navegador...`);
+          return Promise.all(
+            cacheNames.map(cacheName => {
+              console.log(`  - Deletando cache: ${cacheName}`);
+              return caches.delete(cacheName);
+            })
+          );
+        }).then(() => {
+          console.log('✅ Todos os caches do navegador limpos');
+        }).catch(err => {
+          console.error('❌ Erro ao limpar caches:', err);
+        });
+      }
+      
+      // 4. Forçar atualização do Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          console.log(`🔄 Atualizando ${registrations.length} Service Workers...`);
+          registrations.forEach(registration => {
+            registration.update();
+          });
+        });
+      }
+      
+      // 5. Marcar versão como processada
+      localStorage.setItem('cotiz_app_version', APP_VERSION);
+      console.log(`✅ Versão ${APP_VERSION} registrada`);
     }
   }, []);
   
-  // 🚀 Feature Flag: Permite alternar entre AuthContext (atual) e AuthContextV2 (novo modular)
-  // Configure VITE_USE_AUTH_V2=true no .env para usar a nova versão
   const USE_AUTH_V2 = import.meta.env.VITE_USE_AUTH_V2 === 'true';
   const AuthProviderComponent = USE_AUTH_V2 ? AuthProviderV2 : AuthProvider;
   
