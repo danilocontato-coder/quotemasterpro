@@ -78,8 +78,83 @@ serve(async (req) => {
       // Não bloquear - permitir emissão, transferência será marcada para processamento manual
     }
 
-    if (!quote.client.asaas_customer_id) {
-      throw new Error('Cliente não possui cadastro no Asaas. Entre em contato com o suporte.')
+    // Auto-criar cliente no Asaas se não existir
+    let asaasCustomerId = quote.client.asaas_customer_id
+    
+    if (!asaasCustomerId) {
+      console.log('📝 Cliente não possui cadastro no Asaas, criando automaticamente...')
+      
+      // Buscar dados completos do cliente
+      const { data: clientData, error: clientError } = await supabaseClient
+        .from('clients')
+        .select('*')
+        .eq('id', quote.client_id)
+        .single()
+      
+      if (clientError || !clientData) {
+        throw new Error('Erro ao buscar dados do cliente')
+      }
+      
+      // Buscar configuração do Asaas
+      const asaasConfigForCustomer = await getAsaasConfig(supabaseClient)
+      
+      // Preparar dados do cliente para o Asaas
+      const customerPayload: Record<string, any> = {
+        name: clientData.name,
+        email: clientData.email,
+        cpfCnpj: clientData.cnpj?.replace(/[^\d]/g, '') || '',
+        phone: clientData.phone?.replace(/[^\d]/g, '') || undefined,
+        externalReference: clientData.id,
+        notificationDisabled: false
+      }
+      
+      // Adicionar endereço se disponível
+      if (clientData.address) {
+        const addr = typeof clientData.address === 'string' 
+          ? JSON.parse(clientData.address) 
+          : clientData.address
+        
+        if (addr) {
+          customerPayload.address = addr.street || addr.logradouro || undefined
+          customerPayload.addressNumber = addr.number || addr.numero || undefined
+          customerPayload.complement = addr.complement || addr.complemento || undefined
+          customerPayload.province = addr.neighborhood || addr.bairro || undefined
+          customerPayload.postalCode = addr.postal_code || addr.cep || addr.postalCode || undefined
+        }
+      }
+      
+      // Adicionar cidade e estado
+      if (clientData.state) {
+        customerPayload.state = clientData.state
+      }
+      
+      console.log('📤 Creating Asaas customer:', customerPayload)
+      
+      const customerResponse = await fetch(`${asaasConfigForCustomer.baseUrl}/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': asaasConfigForCustomer.apiKey,
+        },
+        body: JSON.stringify(customerPayload)
+      })
+      
+      if (!customerResponse.ok) {
+        const errorText = await customerResponse.text()
+        console.error('❌ Asaas customer creation error:', errorText)
+        throw new Error(`Erro ao criar cliente no Asaas: ${errorText}`)
+      }
+      
+      const asaasCustomer = await customerResponse.json()
+      asaasCustomerId = asaasCustomer.id
+      
+      console.log('✅ Asaas customer created:', asaasCustomerId)
+      
+      // Atualizar cliente no banco com o ID do Asaas
+      await supabaseClient
+        .from('clients')
+        .update({ asaas_customer_id: asaasCustomerId })
+        .eq('id', quote.client_id)
     }
 
     // 2. Verificar se já existe pagamento para esta cotação
@@ -126,7 +201,7 @@ serve(async (req) => {
 
     // 5. Criar cobrança no Asaas
     const asaasPayload = {
-      customer: quote.client.asaas_customer_id, // ID do cliente no Asaas
+      customer: asaasCustomerId, // ID do cliente no Asaas (criado automaticamente se necessário)
       billingType: 'UNDEFINED', // Cliente escolhe ao pagar
       value: calculation.customerTotal,
       dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
