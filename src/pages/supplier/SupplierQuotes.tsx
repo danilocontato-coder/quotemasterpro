@@ -181,6 +181,8 @@ export default function SupplierQuotes() {
         return <Badge variant="destructive">Reprovada</Badge>;
       case 'expired':
         return <Badge variant="outline" className="text-orange-600 border-orange-600">Expirado</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive" className="bg-gray-600 text-white">❌ Cancelada</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -363,6 +365,14 @@ export default function SupplierQuotes() {
           isActive={statusFilter === 'rejected'}
           onClick={() => setStatusFilter('rejected')}
           variant="destructive"
+        />
+        <FilterMetricCard
+          title="Canceladas"
+          value={statusCounts.cancelled || 0}
+          icon={<XCircle />}
+          isActive={statusFilter === 'cancelled'}
+          onClick={() => setStatusFilter('cancelled')}
+          variant="secondary"
         />
       </div>
       )}
@@ -580,6 +590,11 @@ export default function SupplierQuotes() {
                     
                     {/* Coluna: Ações */}
                     <TableCell>
+                       {quote.status === 'cancelled' ? (
+                         <div className="flex items-center gap-2 text-muted-foreground">
+                           <span className="text-xs">Cancelada pelo cliente</span>
+                         </div>
+                       ) : (
                        <div className="flex items-center gap-2">
                          <Button 
                            variant="ghost" 
@@ -763,16 +778,17 @@ export default function SupplierQuotes() {
                            </Button>
                          )}
                          
-                           {/* Botão de Mensagens integrado no modal principal */}
-                           <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             title="Ver cotação completa"
-                             onClick={() => handleViewQuote(quote)}
-                           >
-                             <MessageSquare className="h-4 w-4" />
-                           </Button>
-                       </div>
+                            {/* Botão de Mensagens integrado no modal principal */}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              title="Ver cotação completa"
+                              onClick={() => handleViewQuote(quote)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                        </div>
+                       )}
                      </TableCell>
                   </TableRow>
                 ))}
