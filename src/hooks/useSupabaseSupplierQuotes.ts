@@ -13,7 +13,7 @@ export interface SupplierQuote {
   clientId: string;
   clientName?: string;
   supplierId?: string;
-  status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired' | 'paid' | 'delivering' | 'awaiting_visit' | 'visit_scheduled' | 'visit_confirmed' | 'visit_overdue';
+  status: 'pending' | 'proposal_sent' | 'approved' | 'rejected' | 'expired' | 'paid' | 'delivering' | 'awaiting_visit' | 'visit_scheduled' | 'visit_confirmed' | 'visit_overdue' | 'cancelled';
   deadline: string;
   estimatedValue?: number;
   sentAt?: string;
@@ -75,6 +75,11 @@ export interface ProposalItem {
 }
 
 const getSupplierStatus = (quoteStatus: string, responseStatus?: string): SupplierQuote['status'] => {
+  // Se a cotação foi cancelada, retornar 'cancelled'
+  if (quoteStatus === 'cancelled') {
+    return 'cancelled';
+  }
+  
   // Se a cotação está paga, retornar 'paid'
   if (quoteStatus === 'paid') {
     return 'paid';
@@ -114,6 +119,8 @@ const getSupplierStatus = (quoteStatus: string, responseStatus?: string): Suppli
       return 'approved';
     case 'rejected':
       return 'rejected';
+    case 'cancelled':
+      return 'cancelled';
     default:
       return 'pending';
   }

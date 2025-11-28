@@ -349,14 +349,18 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
 
   if (!quote) return null;
 
+  // Verificar se cotação foi cancelada
+  const isQuoteCancelled = quote.status === 'cancelled';
+  
   // Verificar se cotação foi aprovada/finalizada (status do fornecedor)
   const isQuoteLocked = quote.status === 'approved' || 
                         quote.status === 'paid' || 
-                        quote.status === 'delivering';
+                        quote.status === 'delivering' ||
+                        isQuoteCancelled;
   const totalValue = proposalItems.reduce((sum, item) => sum + item.total, 0);
   const latestVisit = visits[0];
-  const canSchedule = quote.requires_visit && (!latestVisit || latestVisit.status === 'confirmed' || latestVisit.status === 'overdue');
-  const canConfirm = quote.requires_visit && latestVisit && latestVisit.status === 'scheduled';
+  const canSchedule = !isQuoteCancelled && quote.requires_visit && (!latestVisit || latestVisit.status === 'confirmed' || latestVisit.status === 'overdue');
+  const canConfirm = !isQuoteCancelled && quote.requires_visit && latestVisit && latestVisit.status === 'scheduled';
   const hasConfirmedVisit = visits.some(v => v.status === 'confirmed');
 
   return (
@@ -366,9 +370,28 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {quote.local_code} - {quote.title}
-              <Badge>{quote.status}</Badge>
+              {isQuoteCancelled ? (
+                <Badge variant="destructive" className="bg-gray-600">❌ Cancelada</Badge>
+              ) : (
+                <Badge>{quote.status}</Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
+
+          {/* Alerta de cotação cancelada */}
+          {isQuoteCancelled && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mx-4 mb-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-red-900">Cotação Cancelada</p>
+                  <p className="text-sm text-red-700 mt-1">
+                    Esta cotação foi cancelada pelo cliente. Todas as cobranças e entregas associadas foram automaticamente canceladas.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <Tabs defaultValue="resumo" className="flex-1 overflow-hidden flex flex-col">
             <TabsList className="grid w-full grid-cols-4">
