@@ -27,18 +27,41 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { condominioId, condominioName, condominioEmail, administradoraName } = await req.json();
+    const { 
+      condominioId, 
+      condominioName, 
+      condominioEmail, 
+      administradoraName,
+      // Novos parâmetros para usuários individuais
+      userName,
+      userEmail,
+      userRole = 'collaborator' // manager ou collaborator
+    } = await req.json();
 
-    console.log('🏗️ [create-condominio-user] Iniciando criação de usuário para:', condominioEmail);
+    // Determinar dados do usuário (priorizar parâmetros individuais)
+    const finalUserName = userName || condominioName;
+    const finalUserEmail = userEmail || condominioEmail;
+    const finalUserRole = userRole === 'manager' ? 'manager' : 'collaborator';
+
+    console.log('🏗️ [create-condominio-user] Iniciando criação de usuário:', {
+      email: finalUserEmail,
+      name: finalUserName,
+      role: finalUserRole,
+      condominioId
+    });
 
     // Validações
-    if (!condominioId || !condominioName || !condominioEmail) {
-      throw new Error('Dados incompletos: condominioId, condominioName e condominioEmail são obrigatórios');
+    if (!condominioId || !condominioName) {
+      throw new Error('Dados incompletos: condominioId e condominioName são obrigatórios');
+    }
+
+    if (!finalUserEmail) {
+      throw new Error('Email do usuário é obrigatório');
     }
 
     // Verificar se email já existe
     const { data: existingUser } = await supabase.auth.admin.listUsers();
-    const userExists = existingUser.users.some(u => u.email?.toLowerCase() === condominioEmail.toLowerCase());
+    const userExists = existingUser.users.some(u => u.email?.toLowerCase() === finalUserEmail.toLowerCase());
 
     if (userExists) {
       console.log('⚠️ [create-condominio-user] Usuário já existe para este email');
@@ -57,11 +80,11 @@ Deno.serve(async (req) => {
 
     // Criar usuário no auth.users
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-      email: condominioEmail,
+      email: finalUserEmail,
       password: temporaryPassword,
       email_confirm: true, // Confirmar email automaticamente
       user_metadata: {
-        name: condominioName,
+        name: finalUserName,
         client_type: 'condominio_vinculado',
         onboarding_completed: false
       }
@@ -79,9 +102,9 @@ Deno.serve(async (req) => {
       .from('profiles')
       .insert({
         id: authUser.user.id,
-        email: condominioEmail,
-        name: condominioName,
-        role: 'manager',
+        email: finalUserEmail,
+        name: finalUserName,
+        role: finalUserRole,
         client_id: condominioId,
         tenant_type: 'client',
         onboarding_completed: true,
@@ -103,9 +126,9 @@ Deno.serve(async (req) => {
       .insert({
         auth_user_id: authUser.user.id,
         client_id: condominioId,
-        name: condominioName,
-        email: condominioEmail,
-        role: 'manager',
+        name: finalUserName,
+        email: finalUserEmail,
+        role: finalUserRole,
         status: 'active'
       });
 
@@ -113,19 +136,21 @@ Deno.serve(async (req) => {
       console.error('❌ [create-condominio-user] Erro ao criar em users:', usersError);
     }
 
-    // Atribuir role admin_cliente (primeiro usuário)
+    // Atribuir role baseado no tipo de usuário
+    // Primeiro usuário (gestor principal) = admin_cliente, outros = role selecionado
+    const dbRole = finalUserRole === 'manager' ? 'admin_cliente' : 'collaborator';
     const { error: roleError } = await supabase
       .from('user_roles')
       .insert({
         user_id: authUser.user.id,
-        role: 'admin_cliente'
+        role: dbRole
       });
 
     if (roleError) {
       console.error('⚠️ [create-condominio-user] Erro ao atribuir role (pode já existir):', roleError);
     }
 
-    console.log('✅ [create-condominio-user] Role admin_cliente atribuída');
+    console.log('✅ [create-condominio-user] Role', dbRole, 'atribuída');
 
     // Buscar configurações do sistema para base_url
     const { data: settings } = await supabase
@@ -139,15 +164,17 @@ Deno.serve(async (req) => {
     // Enviar email de boas-vindas
     const { error: emailError } = await supabase.functions.invoke('send-email', {
       body: {
-        to: condominioEmail,
+        to: finalUserEmail,
         template_type: 'condominio_welcome',
         template_data: {
           condominio_name: condominioName,
-          administradora_name: administradoraName,
-          email: condominioEmail,
+          administradora_name: administradoraName || 'Administradora',
+          email: finalUserEmail,
           temporary_password: temporaryPassword,
           login_url: `${baseUrl}/auth`,
-          support_email: 'suporte@cotiz.com'
+          support_email: 'suporte@cotiz.com',
+          user_name: finalUserName,
+          user_role: finalUserRole === 'manager' ? 'Gestor' : 'Colaborador'
         },
         client_id: condominioId
       }
@@ -157,7 +184,7 @@ Deno.serve(async (req) => {
       console.error('⚠️ [create-condominio-user] Erro ao enviar email:', emailError);
       // Não falhar a operação por causa do email
     } else {
-      console.log('📧 [create-condominio-user] Email de boas-vindas enviado');
+      console.log('📧 [create-condominio-user] Email de boas-vindas enviado para', finalUserEmail);
     }
 
     // Audit log
@@ -166,10 +193,13 @@ Deno.serve(async (req) => {
       action: 'CONDOMINIO_USER_CREATED',
       entity_type: 'users',
       entity_id: authUser.user.id,
-      panel_type: 'system',
+      panel_type: 'administradora',
       details: {
         condominio_id: condominioId,
         condominio_name: condominioName,
+        user_name: finalUserName,
+        user_email: finalUserEmail,
+        user_role: finalUserRole,
         created_by_administradora: administradoraName
       }
     });
@@ -177,10 +207,13 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        userId: authUser.user.id,
-        email: condominioEmail,
-        temporaryPassword: temporaryPassword,
-        profileId: authUser.user.id
+        user: {
+          id: authUser.user.id,
+          email: finalUserEmail,
+          name: finalUserName,
+          role: finalUserRole
+        },
+        temporaryPassword: temporaryPassword
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

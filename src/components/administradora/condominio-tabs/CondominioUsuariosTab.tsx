@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,16 +19,29 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Database } from '@/integrations/supabase/types';
+import { AddCondominioUserModal } from '../AddCondominioUserModal';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface CondominioUsuariosTabProps {
   condominioId: string;
+  condominioName: string;
+  condominioEmail: string;
+  administradoraName: string;
   users: Profile[];
   onRefresh: () => void;
 }
 
-export function CondominioUsuariosTab({ condominioId, users, onRefresh }: CondominioUsuariosTabProps) {
+export function CondominioUsuariosTab({
+  condominioId,
+  condominioName,
+  condominioEmail,
+  administradoraName,
+  users,
+  onRefresh,
+}: CondominioUsuariosTabProps) {
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
       admin: 'Administrador',
@@ -54,6 +67,10 @@ export function CondominioUsuariosTab({ condominioId, users, onRefresh }: Condom
   const activeUsers = users.filter(u => u.active);
   const inactiveUsers = users.filter(u => !u.active);
 
+  const handleAddUserSuccess = () => {
+    onRefresh();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -66,7 +83,7 @@ export function CondominioUsuariosTab({ condominioId, users, onRefresh }: Condom
                 {activeUsers.length} usuário(s) ativo(s) • {inactiveUsers.length} inativo(s)
               </CardDescription>
             </div>
-            <Button>
+            <Button onClick={() => setIsAddUserModalOpen(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
               Adicionar Usuário
             </Button>
@@ -83,7 +100,7 @@ export function CondominioUsuariosTab({ condominioId, users, onRefresh }: Condom
             <p className="text-muted-foreground text-sm mb-4">
               Adicione usuários para que possam acessar o sistema
             </p>
-            <Button>
+            <Button onClick={() => setIsAddUserModalOpen(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
               Adicionar Primeiro Usuário
             </Button>
@@ -159,6 +176,17 @@ export function CondominioUsuariosTab({ condominioId, users, onRefresh }: Condom
           </CardContent>
         </Card>
       )}
+
+      {/* Add User Modal */}
+      <AddCondominioUserModal
+        open={isAddUserModalOpen}
+        onOpenChange={setIsAddUserModalOpen}
+        condominioId={condominioId}
+        condominioName={condominioName}
+        condominioEmail={condominioEmail}
+        administradoraName={administradoraName}
+        onSuccess={handleAddUserSuccess}
+      />
     </div>
   );
 }
