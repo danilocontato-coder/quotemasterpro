@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Plus, RefreshCw, Building2, Users, FileText, MapPin } from 'lucide-react';
+import { Plus, RefreshCw, Building2, Users, FileText, MapPin, ChevronRight } from 'lucide-react';
 import { useCondominiosVinculados } from '@/hooks/useCondominiosVinculados';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CondominioQuickCreate } from '@/components/admin/CondominioQuickCreate';
-import { CondominioDetailModal } from '@/components/administradora/CondominioDetailModal';
 
 export default function CondominiosPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedCondominioId, setSelectedCondominioId] = useState<string | null>(null);
   
   const { condominios, isLoading, refetch } = useCondominiosVinculados();
 
@@ -73,7 +73,11 @@ export default function CondominiosPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {condominios.map((condo) => (
-            <Card key={condo.id} className="hover:shadow-lg transition-shadow">
+            <Card 
+              key={condo.id} 
+              className="hover:shadow-lg transition-all cursor-pointer group"
+              onClick={() => navigate(`/administradora/condominios/${condo.id}`)}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
@@ -114,11 +118,11 @@ export default function CondominiosPage() {
                 <div className="pt-3 border-t">
                   <Button 
                     variant="outline" 
-                    className="w-full" 
+                    className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors" 
                     size="sm"
-                    onClick={() => setSelectedCondominioId(condo.id)}
                   >
-                    Ver Detalhes
+                    Acessar Painel
+                    <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
               </CardContent>
@@ -136,14 +140,6 @@ export default function CondominiosPage() {
           onSuccess={handleCondominioCreated}
         />
       )}
-
-      {/* Modal de Detalhes */}
-      <CondominioDetailModal
-        open={!!selectedCondominioId}
-        onOpenChange={(open) => !open && setSelectedCondominioId(null)}
-        condominioId={selectedCondominioId}
-        onUpdate={refetch}
-      />
     </div>
   );
 }
