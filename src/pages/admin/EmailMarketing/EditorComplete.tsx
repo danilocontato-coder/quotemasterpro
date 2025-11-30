@@ -4,6 +4,7 @@ import { ArrowLeft, Send, Users, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AIContentGenerator } from '@/components/email-marketing/AIContentGenerator';
 import { EmailPreview } from '@/components/email-marketing/EmailPreview';
+import { EmailContentEditor } from '@/components/email-marketing/EmailContentEditor';
 import { MergeTagsPanel } from '@/components/email-marketing/MergeTagsPanel';
 import { SegmentBuilder } from '@/components/email-marketing/SegmentBuilder';
 import { useEmailCampaigns } from '@/hooks/useEmailCampaigns';
@@ -19,6 +20,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 
+interface EmailContent {
+  subject: string;
+  htmlBody: string;
+  plainTextBody: string;
+}
+
 export default function EditorComplete() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -28,7 +35,11 @@ export default function EditorComplete() {
   
   const [campaignName, setCampaignName] = useState('');
   const [fromName, setFromName] = useState('Cotiz');
-  const [generatedContent, setGeneratedContent] = useState<any>(null);
+  const [emailContent, setEmailContent] = useState<EmailContent>({
+    subject: '',
+    htmlBody: '',
+    plainTextBody: ''
+  });
   const [segmentFilters, setSegmentFilters] = useState<any>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientsOptions, setClientsOptions] = useState<Array<{ id: string; name: string }>>([]);
@@ -65,19 +76,12 @@ export default function EditorComplete() {
     }
   }, [user?.role, toast]);
 
-  // Carregar preview de destinatários quando cliente selecionado ou filtros mudam
+  // Carregar preview de destinatários - CORRIGIDO: busca todos os clientes ativos
   useEffect(() => {
     const fetchRecipientPreview = async () => {
-      const targetClientId = user?.role === 'admin' ? selectedClientId : client?.id;
-      if (!targetClientId) {
-        setRecipientCount(0);
-        setRecipientPreview([]);
-        return;
-      }
-
       setLoadingRecipients(true);
       try {
-        // Buscar clientes ativos como destinatários (mesmo comportamento do send-campaign-batch)
+        // Buscar todos os clientes ativos como destinatários
         let query = supabase
           .from('clients')
           .select('id, name, email')
@@ -113,7 +117,16 @@ export default function EditorComplete() {
     };
 
     fetchRecipientPreview();
-  }, [selectedClientId, client?.id, user?.role, segmentFilters]);
+  }, [segmentFilters]);
+
+  // Handler para quando a IA gera conteúdo
+  const handleAIGenerated = (content: any) => {
+    setEmailContent({
+      subject: content.subject_lines?.[0] || '',
+      htmlBody: content.html_body || '',
+      plainTextBody: content.plain_text_body || ''
+    });
+  };
 
   const handleSave = async (sendNow = false) => {
     // Validação para admin: precisa selecionar cliente
@@ -131,18 +144,23 @@ export default function EditorComplete() {
       toast({ title: 'Erro', description: 'Cliente não identificado. Faça login novamente.', variant: 'destructive' });
       return;
     }
-    
-    if (!generatedContent) {
-      toast({ title: 'Erro', description: 'Gere o conteúdo primeiro usando a IA', variant: 'destructive' });
-      return;
-    }
 
     if (!campaignName.trim()) {
       toast({ title: 'Erro', description: 'Informe um nome para a campanha', variant: 'destructive' });
       return;
     }
 
-    if (recipientCount === 0) {
+    if (!emailContent.subject.trim()) {
+      toast({ title: 'Erro', description: 'Informe o assunto do e-mail', variant: 'destructive' });
+      return;
+    }
+
+    if (!emailContent.htmlBody.trim()) {
+      toast({ title: 'Erro', description: 'Informe o conteúdo HTML do e-mail', variant: 'destructive' });
+      return;
+    }
+
+    if (sendNow && recipientCount === 0) {
       toast({ title: 'Erro', description: 'Nenhum destinatário encontrado. Verifique os filtros de segmentação.', variant: 'destructive' });
       return;
     }
@@ -153,9 +171,9 @@ export default function EditorComplete() {
         client_id: user?.role === 'admin' ? selectedClientId! : client!.id,
         name: campaignName,
         from_name: fromName,
-        subject_line: generatedContent.subject_lines?.[0] || '',
-        html_content: generatedContent.html_body || '',
-        plain_text_content: generatedContent.plain_text_body || '',
+        subject_line: emailContent.subject,
+        html_content: emailContent.htmlBody,
+        plain_text_content: emailContent.plainTextBody,
         target_segment: segmentFilters,
         status: sendNow ? 'sending' : 'draft'
       });
@@ -190,6 +208,9 @@ export default function EditorComplete() {
     }
   };
 
+  const canSaveDraft = campaignName.trim() && emailContent.subject.trim() && emailContent.htmlBody.trim();
+  const canSend = canSaveDraft && recipientCount > 0;
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -201,8 +222,12 @@ export default function EditorComplete() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label>Nome da Campanha</Label>
-          <Input value={campaignName} onChange={(e) => setCampaignName(e.target.value)} />
+          <Label>Nome da Campanha *</Label>
+          <Input 
+            value={campaignName} 
+            onChange={(e) => setCampaignName(e.target.value)} 
+            placeholder="Ex: Newsletter Junho 2024"
+          />
         </div>
         <div>
           <Label>Nome do Remetente</Label>
@@ -212,7 +237,7 @@ export default function EditorComplete() {
 
       {user?.role === 'admin' && (
         <div className="space-y-2">
-          <Label>Cliente (obrigatório) *</Label>
+          <Label>Cliente (obrigatório para salvar) *</Label>
           <Select value={selectedClientId || ''} onValueChange={setSelectedClientId} disabled={loadingClients}>
             <SelectTrigger>
               <SelectValue placeholder={loadingClients ? 'Carregando clientes...' : 'Selecione um cliente'} />
@@ -221,19 +246,14 @@ export default function EditorComplete() {
               {clientsOptions.length === 0 && !loadingClients ? (
                 <div className="p-2 text-sm text-muted-foreground">Nenhum cliente ativo encontrado</div>
               ) : (
-                clientsOptions.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
+                clientsOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
                   </SelectItem>
                 ))
               )}
             </SelectContent>
           </Select>
-          {!selectedClientId && (
-            <p className="text-sm text-muted-foreground">
-              Selecione o cliente para o qual esta campanha será criada
-            </p>
-          )}
         </div>
       )}
 
@@ -253,9 +273,7 @@ export default function EditorComplete() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Nenhum destinatário</AlertTitle>
               <AlertDescription>
-                {user?.role === 'admin' && !selectedClientId 
-                  ? 'Selecione um cliente primeiro'
-                  : 'Nenhum cliente ativo encontrado com os filtros atuais'}
+                Nenhum cliente ativo encontrado com os filtros atuais
               </AlertDescription>
             </Alert>
           ) : (
@@ -287,40 +305,46 @@ export default function EditorComplete() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <AIContentGenerator onGenerated={setGeneratedContent} />
+          <AIContentGenerator onGenerated={handleAIGenerated} />
           <SegmentBuilder onSegmentChange={setSegmentFilters} />
           <MergeTagsPanel />
         </div>
 
         <div className="lg:col-span-3 space-y-6">
-          <EmailPreview
-            htmlContent={generatedContent?.html_body || ''}
-            plainTextContent={generatedContent?.plain_text_body || ''}
-            subjectLine={generatedContent?.subject_lines?.[0] || ''}
+          {/* Editor de Conteúdo Editável */}
+          <EmailContentEditor
+            content={emailContent}
+            onChange={setEmailContent}
           />
 
-          {generatedContent && (
-            <div className="flex gap-2">
-              <LoadingButton 
-                variant="outline" 
-                onClick={() => handleSave(false)} 
-                className="flex-1"
-                isLoading={saving}
-                disabled={saving || (user?.role === 'admin' && !selectedClientId) || recipientCount === 0}
-              >
-                Salvar Rascunho
-              </LoadingButton>
-              <LoadingButton 
-                onClick={() => handleSave(true)} 
-                className="flex-1"
-                isLoading={saving}
-                disabled={saving || (user?.role === 'admin' && !selectedClientId) || recipientCount === 0}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Enviar para {recipientCount} destinatários
-              </LoadingButton>
-            </div>
-          )}
+          {/* Preview do E-mail */}
+          <EmailPreview
+            htmlContent={emailContent.htmlBody}
+            plainTextContent={emailContent.plainTextBody}
+            subjectLine={emailContent.subject}
+          />
+
+          {/* Botões sempre visíveis */}
+          <div className="flex gap-2">
+            <LoadingButton 
+              variant="outline" 
+              onClick={() => handleSave(false)} 
+              className="flex-1"
+              isLoading={saving}
+              disabled={saving || !canSaveDraft || (user?.role === 'admin' && !selectedClientId)}
+            >
+              Salvar Rascunho
+            </LoadingButton>
+            <LoadingButton 
+              onClick={() => handleSave(true)} 
+              className="flex-1"
+              isLoading={saving}
+              disabled={saving || !canSend || (user?.role === 'admin' && !selectedClientId)}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Enviar para {recipientCount} destinatários
+            </LoadingButton>
+          </div>
         </div>
       </div>
     </div>
