@@ -4,7 +4,7 @@ project_id = "bpsqyaxdhqejozmlejcb"
 verify_jwt = true
 
 [functions.test-asaas-webhook]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-delivery-code-email]
 verify_jwt = false
@@ -38,9 +38,6 @@ verify_jwt = false
 
 [functions.approve-transfer-webhook]
 verify_jwt = false
-
-[functions.test-transfer-webhook]
-verify_jwt = true
 
 [functions.issue-nfse]
 verify_jwt = true
@@ -237,14 +234,11 @@ verify_jwt = true
 [functions.scheduled-sync-payments]
 verify_jwt = false
 
-[functions.test-asaas-webhook]
-verify_jwt = false
-
-[functions.approve-transfer-webhook]
-verify_jwt = false
-
 [functions.test-asaas-connection]
 verify_jwt = true
 
 [functions.cancel-asaas-payment]
+verify_jwt = true
+
+[functions.create-asaas-wallet]
 verify_jwt = true
