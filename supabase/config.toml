@@ -1,5 +1,8 @@
 project_id = "bpsqyaxdhqejozmlejcb"
 
+[functions.extract-supplier-proposal]
+verify_jwt = false
+
 [functions.update-asaas-bank-account]
 verify_jwt = true
 
