@@ -129,8 +129,20 @@ export default function EditorComplete() {
   };
 
   const handleSave = async (sendNow = false) => {
+    console.log('📧 handleSave called', { 
+      sendNow, 
+      campaignName, 
+      subject: emailContent.subject,
+      hasHtmlBody: !!emailContent.htmlBody,
+      recipientCount,
+      selectedClientId,
+      userRole: user?.role,
+      clientId: client?.id
+    });
+
     // Validação para admin: precisa selecionar cliente
     if (user?.role === 'admin' && !selectedClientId) {
+      console.log('❌ Admin sem cliente selecionado');
       toast({ 
         title: 'Erro', 
         description: 'Selecione um cliente para salvar a campanha', 
@@ -141,32 +153,39 @@ export default function EditorComplete() {
     
     // Validação para não-admin: precisa ter client.id
     if (user?.role !== 'admin' && !client?.id) {
+      console.log('❌ Não-admin sem client.id');
       toast({ title: 'Erro', description: 'Cliente não identificado. Faça login novamente.', variant: 'destructive' });
       return;
     }
 
     if (!campaignName.trim()) {
+      console.log('❌ campaignName vazio');
       toast({ title: 'Erro', description: 'Informe um nome para a campanha', variant: 'destructive' });
       return;
     }
 
     if (!emailContent.subject.trim()) {
+      console.log('❌ subject vazio');
       toast({ title: 'Erro', description: 'Informe o assunto do e-mail', variant: 'destructive' });
       return;
     }
 
     if (!emailContent.htmlBody.trim()) {
+      console.log('❌ htmlBody vazio');
       toast({ title: 'Erro', description: 'Informe o conteúdo HTML do e-mail', variant: 'destructive' });
       return;
     }
 
     if (sendNow && recipientCount === 0) {
+      console.log('❌ Tentando enviar sem destinatários');
       toast({ title: 'Erro', description: 'Nenhum destinatário encontrado. Verifique os filtros de segmentação.', variant: 'destructive' });
       return;
     }
 
+    console.log('✅ Validações passaram, iniciando save...');
     setSaving(true);
     try {
+      console.log('📤 Criando campanha...');
       const campaign = await createCampaign({
         client_id: user?.role === 'admin' ? selectedClientId! : client!.id,
         name: campaignName,
@@ -180,11 +199,14 @@ export default function EditorComplete() {
         status: sendNow ? 'sending' : 'draft'
       });
 
+      console.log('📥 Campanha criada:', campaign);
+
       if (!campaign) {
         throw new Error('Falha ao criar campanha');
       }
 
       if (sendNow && campaign?.id) {
+        console.log('📨 Enviando campanha...', campaign.id);
         await sendCampaign(campaign.id);
         toast({ 
           title: 'Campanha enviada!', 
@@ -199,7 +221,7 @@ export default function EditorComplete() {
       
       navigate('/admin/email-marketing');
     } catch (error: any) {
-      console.error('Error saving campaign:', error);
+      console.error('❌ Error saving campaign:', error);
       toast({ 
         title: 'Erro ao salvar campanha', 
         description: error?.message || 'Ocorreu um erro ao salvar. Tente novamente.', 
@@ -207,11 +229,34 @@ export default function EditorComplete() {
       });
     } finally {
       setSaving(false);
+      console.log('🏁 handleSave finalizado, saving=false');
     }
   };
 
   const canSaveDraft = campaignName.trim() && emailContent.subject.trim() && emailContent.htmlBody.trim();
   const canSend = canSaveDraft && recipientCount > 0;
+
+  // Debug: log estado dos botões
+  console.log('🔘 Button states:', { 
+    canSaveDraft, 
+    canSend, 
+    saving, 
+    recipientCount,
+    selectedClientId,
+    isAdmin: user?.role === 'admin',
+    sendButtonDisabled: saving || !canSend || (user?.role === 'admin' && !selectedClientId)
+  });
+
+  // Helper para mensagem de desabilitado
+  const getDisabledReason = (forSend = false) => {
+    if (saving) return 'Salvando...';
+    if (user?.role === 'admin' && !selectedClientId) return 'Selecione um cliente';
+    if (!campaignName.trim()) return 'Informe o nome da campanha';
+    if (!emailContent.subject.trim()) return 'Informe o assunto';
+    if (!emailContent.htmlBody.trim()) return 'Informe o conteúdo HTML';
+    if (forSend && recipientCount === 0) return 'Nenhum destinatário encontrado';
+    return '';
+  };
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -327,25 +372,45 @@ export default function EditorComplete() {
           />
 
           {/* Botões sempre visíveis */}
-          <div className="flex gap-2">
-            <LoadingButton 
-              variant="outline" 
-              onClick={() => handleSave(false)} 
-              className="flex-1"
-              isLoading={saving}
-              disabled={saving || !canSaveDraft || (user?.role === 'admin' && !selectedClientId)}
-            >
-              Salvar Rascunho
-            </LoadingButton>
-            <LoadingButton 
-              onClick={() => handleSave(true)} 
-              className="flex-1"
-              isLoading={saving}
-              disabled={saving || !canSend || (user?.role === 'admin' && !selectedClientId)}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Enviar para {recipientCount} destinatários
-            </LoadingButton>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <LoadingButton 
+                type="button"
+                variant="outline" 
+                onClick={() => {
+                  console.log('🖱️ Salvar Rascunho clicked');
+                  handleSave(false);
+                }} 
+                className="flex-1"
+                isLoading={saving}
+                loadingText="Salvando..."
+                disabled={saving || !canSaveDraft || (user?.role === 'admin' && !selectedClientId)}
+                title={getDisabledReason(false) || 'Salvar como rascunho'}
+              >
+                Salvar Rascunho
+              </LoadingButton>
+              <LoadingButton 
+                type="button"
+                onClick={() => {
+                  console.log('🖱️ Enviar clicked');
+                  handleSave(true);
+                }} 
+                className="flex-1"
+                isLoading={saving}
+                loadingText="Enviando..."
+                disabled={saving || !canSend || (user?.role === 'admin' && !selectedClientId)}
+                title={getDisabledReason(true) || 'Enviar campanha'}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Enviar para {recipientCount} destinatários
+              </LoadingButton>
+            </div>
+            {/* Feedback visual de estado desabilitado */}
+            {(getDisabledReason(true)) && (
+              <p className="text-sm text-muted-foreground text-center">
+                ⚠️ {getDisabledReason(true)}
+              </p>
+            )}
           </div>
         </div>
       </div>
