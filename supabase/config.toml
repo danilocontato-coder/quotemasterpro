@@ -245,3 +245,6 @@ verify_jwt = true
 
 [functions.create-asaas-wallet]
 verify_jwt = true
+
+[functions.test-evolution-connection]
+verify_jwt = true
