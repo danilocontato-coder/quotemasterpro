@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Brain, ChevronDown, ChevronUp, DollarSign, Clock, Shield, Star, Package, TrendingUp } from 'lucide-react';
+import { CheckCircle, Brain, ChevronDown, ChevronUp, DollarSign, Clock, Shield, Star, Package, TrendingUp, Loader2 } from 'lucide-react';
 import { QuoteProposal, QuoteItem } from './QuoteDetailModal';
 import { ProposalRadarChart } from './ProposalRadarChart';
 
@@ -18,6 +18,7 @@ interface ProposalCardProps {
   canNegotiate: boolean;
   negotiationAttempts: number;
   allProposals: QuoteProposal[];
+  isApproving?: boolean;
 }
 
 export const ProposalCard: React.FC<ProposalCardProps> = ({
@@ -31,7 +32,8 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
   onNegotiate,
   canNegotiate,
   negotiationAttempts,
-  allProposals
+  allProposals,
+  isApproving = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(isWinner);
 
@@ -266,11 +268,19 @@ export const ProposalCard: React.FC<ProposalCardProps> = ({
           <Button
             size="sm"
             onClick={onApprove}
-            disabled={isQuoteLocked}
+            disabled={isQuoteLocked || isApproving}
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
           >
-            <CheckCircle className="h-4 w-4" />
-            {isQuoteLocked ? 'Proposta Já Selecionada' : (isWinner ? 'Aprovar Melhor Proposta' : 'Aprovar Proposta')}
+            {isApproving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle className="h-4 w-4" />
+            )}
+            {isApproving 
+              ? 'Aprovando...' 
+              : isQuoteLocked 
+                ? 'Proposta Já Selecionada' 
+                : (isWinner ? 'Aprovar Melhor Proposta' : 'Aprovar Proposta')}
           </Button>
           
           {canNegotiate && (
