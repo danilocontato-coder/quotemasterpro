@@ -330,7 +330,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             </div>
 
             {!uploadedFile ? (
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors">
+              <div className="relative border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors">
                 <Upload className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold">Selecione um documento</h3>
