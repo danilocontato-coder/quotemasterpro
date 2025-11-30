@@ -110,7 +110,9 @@ const CondominiosPage = React.lazy(() => import('@/pages/administradora/Condomin
 const CondominioView = React.lazy(() => import('@/pages/administradora/CondominioView'));
 const ConfiguracoesPage = React.lazy(() => import('@/pages/administradora/ConfiguracoesPage'));
 
-// Condomínio pages
+// Condomínio pages - Portal do Síndico
+import CondominioLayout from '@/components/layout/CondominioLayout';
+const CondominioDashboard = React.lazy(() => import('@/pages/condominio/CondominioDashboard'));
 const CondominioAprovacoesPage = React.lazy(() => import('@/pages/condominio/AprovacoesPage'));
 const CotacoesPage = React.lazy(() => import('@/pages/administradora/CotacoesPage'));
 const FornecedoresPage = React.lazy(() => import('@/pages/administradora/FornecedoresPage'));
@@ -829,15 +831,79 @@ export const AppWithProviders: React.FC = () => {
         } />
       </Route>
 
-      {/* Rotas de Condomínio - Módulo de Aprovações */}
+      {/* Rotas do Síndico/Condomínio - Portal Dedicado */}
       <Route path="/condominio/*" element={
-        <ProtectedRoute allowedRoles={['manager', 'admin_cliente']}>
-          <MainLayout />
+        <ProtectedRoute allowedRoles={['manager', 'admin_cliente', 'client']}>
+          <CondominioLayout />
         </ProtectedRoute>
       }>
+        {/* Dashboard Principal */}
+        <Route index element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
+          </Suspense>
+        } />
+        
+        {/* Cotações (visualização) */}
+        <Route path="cotacoes" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
+          </Suspense>
+        } />
+        
+        {/* Aprovações */}
         <Route path="aprovacoes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <CondominioAprovacoesPage />
+          </Suspense>
+        } />
+        
+        {/* Entregas */}
+        <Route path="entregas" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
+          </Suspense>
+        } />
+        
+        {/* Pagamentos */}
+        <Route path="pagamentos" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
+          </Suspense>
+        } />
+        
+        {/* Fornecedores (visualização) */}
+        <Route path="fornecedores" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
+          </Suspense>
+        } />
+        
+        {/* Análise de IA */}
+        <Route path="analise-ia" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
+          </Suspense>
+        } />
+        
+        {/* Relatórios */}
+        <Route path="relatorios" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
+          </Suspense>
+        } />
+        
+        {/* Configurações */}
+        <Route path="configuracoes" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
+          </Suspense>
+        } />
+        
+        {/* Ajuda */}
+        <Route path="ajuda" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioDashboard />
           </Suspense>
         } />
       </Route>
