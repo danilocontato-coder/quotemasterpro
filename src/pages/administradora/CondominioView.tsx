@@ -11,6 +11,7 @@ import { CondominioCotacoesTab } from '@/components/administradora/condominio-ta
 import { CondominioFornecedoresTab } from '@/components/administradora/condominio-tabs/CondominioFornecedoresTab';
 import { CondominioAprovacoesTab } from '@/components/administradora/condominio-tabs/CondominioAprovacoesTab';
 import { CondominioUsuariosTab } from '@/components/administradora/condominio-tabs/CondominioUsuariosTab';
+import { CondominioNiveisAprovacaoTab } from '@/components/administradora/condominio-tabs/CondominioNiveisAprovacaoTab';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft,
@@ -25,6 +26,7 @@ import {
   MapPin,
   Mail,
   Phone,
+  Layers,
 } from 'lucide-react';
 
 export default function CondominioView() {
@@ -172,7 +174,7 @@ export default function CondominioView() {
       {/* Tabs Navigation */}
       {!isEditing && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
             <TabsTrigger value="dashboard" className="gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -191,6 +193,10 @@ export default function CondominioView() {
             <TabsTrigger value="aprovacoes" className="gap-2">
               <CheckCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Aprovações</span>
+            </TabsTrigger>
+            <TabsTrigger value="niveis" className="gap-2">
+              <Layers className="h-4 w-4" />
+              <span className="hidden sm:inline">Níveis</span>
             </TabsTrigger>
             <TabsTrigger value="usuarios" className="gap-2">
               <Users className="h-4 w-4" />
@@ -225,6 +231,13 @@ export default function CondominioView() {
             <CondominioAprovacoesTab 
               condominioId={condominio.id}
               onRefresh={refetch}
+            />
+          </TabsContent>
+
+          <TabsContent value="niveis">
+            <CondominioNiveisAprovacaoTab 
+              condominioId={condominio.id}
+              administradoraId={condominio.parent_client_id}
             />
           </TabsContent>
 
