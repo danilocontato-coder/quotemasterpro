@@ -112,10 +112,10 @@ Deno.serve(async (req) => {
 
     console.log('✅ [create-condominio-user] Usuário criado no auth:', authUser.user.id);
 
-    // Criar profile
+    // Criar ou atualizar profile (UPSERT para lidar com triggers automáticos)
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert({
+      .upsert({
         id: authUser.user.id,
         email: finalUserEmail,
         name: finalUserName,
@@ -124,10 +124,12 @@ Deno.serve(async (req) => {
         tenant_type: 'client',
         onboarding_completed: true,
         active: true
+      }, {
+        onConflict: 'id'
       });
 
     if (profileError) {
-      console.error('❌ [create-condominio-user] Erro ao criar profile:', profileError);
+      console.error('❌ [create-condominio-user] Erro ao criar/atualizar profile:', profileError);
       // Reverter criação do usuário
       await supabase.auth.admin.deleteUser(authUser.user.id);
       throw profileError;
