@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { getRoleBasedRoute } from '@/contexts/auth/AuthNavigation';
 import { useAuthTenant } from '@/hooks/useAuthTenant';
 
 import { Skeleton } from '@/components/ui/skeleton';
@@ -77,16 +78,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     if (!allowedRoles.includes(user.role)) {
       console.warn(`🔒 [SECURITY] Acesso negado: role ${user.role} não autorizado para ${allowedRoles.join(', ')}`);
-      // Redirecionar para dashboard apropriado baseado no role/contexto
-      const dashboardMap: Record<string, string> = {
-        admin: '/admin/superadmin',
-        client: '/dashboard',
-        manager: '/dashboard',
-        collaborator: '/dashboard',
-        supplier: '/supplier',
-        support: '/support'
-      };
-      return <Navigate to={dashboardMap[user.role] || (isSupplierContext ? '/supplier' : '/dashboard')} replace />;
+      // Redirecionar para dashboard apropriado baseado no role/contexto usando getRoleBasedRoute
+      const targetRoute = getRoleBasedRoute(user.role, {
+        supplierId: user.supplierId,
+        clientId: user.clientId,
+        clientType: user.clientType
+      });
+      return <Navigate to={targetRoute} replace />;
     }
   }
 

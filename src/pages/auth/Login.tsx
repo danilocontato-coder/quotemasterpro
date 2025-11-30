@@ -40,7 +40,7 @@ const Login: React.FC = () => {
         return;
       }
 
-      const redirectPath = getRoleBasedRoute(user.role, { supplierId: user.supplierId, clientId: user.clientId });
+      const redirectPath = getRoleBasedRoute(user.role, { supplierId: user.supplierId, clientId: user.clientId, clientType: user.clientType });
       console.log('Login: redirecting user', user.email, 'with role', user.role, 'to', redirectPath);
       
       const timeoutId = setTimeout(() => {

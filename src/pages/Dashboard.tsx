@@ -43,11 +43,16 @@ export default function Dashboard() {
   const { metrics, activities, isLoading, error, refetch } = useSupabaseDashboard();
   const { settings } = useBranding();
 
-  // Redirecionar administradoras para dashboard específico
+  // Redirecionar para dashboard específico baseado no tipo de cliente
   useEffect(() => {
-    if (!clientLoading && clientType === 'administradora') {
-      console.log('🔍 Dashboard: Tipo administradora detectado, redirecionando...');
-      navigate('/administradora/dashboard', { replace: true });
+    if (!clientLoading) {
+      if (clientType === 'administradora') {
+        console.log('🔍 Dashboard: Tipo administradora detectado, redirecionando...');
+        navigate('/administradora/dashboard', { replace: true });
+      } else if (clientType === 'condominio_vinculado') {
+        console.log('🔍 Dashboard: Tipo condomínio vinculado detectado, redirecionando...');
+        navigate('/condominio', { replace: true });
+      }
     }
   }, [clientType, clientLoading, navigate]);
 
