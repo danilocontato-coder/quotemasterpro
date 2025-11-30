@@ -107,6 +107,7 @@ const SupplierPlansPage = React.lazy(() => import('@/pages/supplier/SupplierPlan
 const AdministradoraDashboard = React.lazy(() => import('@/pages/admin/AdministradoraDashboard'));
 const AdministradoraRelatorios = React.lazy(() => import('@/pages/administradora/AdministradoraRelatorios'));
 const CondominiosPage = React.lazy(() => import('@/pages/administradora/CondominiosPage'));
+const CondominioView = React.lazy(() => import('@/pages/administradora/CondominioView'));
 const ConfiguracoesPage = React.lazy(() => import('@/pages/administradora/ConfiguracoesPage'));
 
 // Condomínio pages
@@ -764,10 +765,17 @@ export const AppWithProviders: React.FC = () => {
           </Suspense>
         } />
         
-        {/* Condomínios - Página Específica */}
+        {/* Condomínios - Lista */}
         <Route path="condominios" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
             <CondominiosPage />
+          </Suspense>
+        } />
+        
+        {/* Condomínio - Tela Dedicada */}
+        <Route path="condominios/:id" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioView />
           </Suspense>
         } />
         
