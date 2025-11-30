@@ -20,12 +20,14 @@ import {
   DollarSign,
   Shield,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Paperclip
 } from 'lucide-react';
 import { useCondominioQuoteDetail, QuoteResponse, QuoteApproval, QuoteItem } from '@/hooks/useCondominioQuotes';
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { QuoteAttachmentsSection } from '@/components/quotes/QuoteAttachmentsSection';
 
 const STATUS_CONFIG: Record<string, { label: string; bgColor: string; icon: React.ReactNode }> = {
   draft: { label: 'Rascunho', bgColor: 'bg-gray-100 text-gray-700 border-gray-300', icon: <FileText className="h-4 w-4" /> },
@@ -413,6 +415,26 @@ export default function CotacaoDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Attachments */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Paperclip className="h-5 w-5" />
+            Documentos Anexados
+          </CardTitle>
+          <CardDescription>
+            Arquivos anexados à cotação
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <QuoteAttachmentsSection 
+            quoteId={quote.id} 
+            readOnly={quote.status === 'finalized' || quote.status === 'cancelled'}
+            compact
+          />
+        </CardContent>
+      </Card>
 
       {/* Approvals */}
       <Card>

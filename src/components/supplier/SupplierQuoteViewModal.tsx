@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertCircle, Calendar, MapPin, Clock, Package, FileText, MessageSquare, Send, Plus, Check } from 'lucide-react';
+import { AlertCircle, Calendar, MapPin, Clock, Package, FileText, MessageSquare, Send, Plus, Check, Paperclip } from 'lucide-react';
 import { SupplierQuote } from '@/hooks/useSupabaseSupplierQuotes';
 import { useQuoteVisits } from '@/hooks/useQuoteVisits';
 import { VisitTimeline } from '@/components/quotes/VisitTimeline';
@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabaseSupplierQuotes } from '@/hooks/useSupabaseSupplierQuotes';
+import { QuoteAttachmentsSection } from '@/components/quotes/QuoteAttachmentsSection';
 
 interface SupplierQuoteViewModalProps {
   quote: SupplierQuote | null;
@@ -394,10 +395,14 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
           )}
 
           <Tabs defaultValue="resumo" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="resumo">
                 <Package className="h-4 w-4 mr-2" />
                 Resumo
+              </TabsTrigger>
+              <TabsTrigger value="anexos">
+                <Paperclip className="h-4 w-4 mr-2" />
+                Anexos
               </TabsTrigger>
               {quote.requires_visit && (
                 <TabsTrigger value="visita">
@@ -473,6 +478,24 @@ export function SupplierQuoteViewModal({ quote, open, onOpenChange, onProposalSe
                         </TableBody>
                       </Table>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="anexos" className="space-y-4 mt-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Paperclip className="h-5 w-5" />
+                      Documentos Anexados pelo Cliente
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <QuoteAttachmentsSection 
+                      quoteId={quote.id} 
+                      readOnly={true}
+                      compact
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>
