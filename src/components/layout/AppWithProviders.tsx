@@ -833,7 +833,7 @@ export const AppWithProviders: React.FC = () => {
 
       {/* Rotas do Síndico/Condomínio - Portal Dedicado */}
       <Route path="/condominio/*" element={
-        <ProtectedRoute allowedRoles={['manager', 'admin_cliente', 'client']}>
+        <ProtectedRoute allowedRoles={['manager', 'admin_cliente', 'client', 'collaborator']}>
           <CondominioLayout />
         </ProtectedRoute>
       }>
