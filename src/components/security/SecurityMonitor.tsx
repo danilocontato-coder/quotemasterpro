@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRoleBasedRoute } from '@/contexts/auth/AuthNavigation';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -52,7 +53,12 @@ export const SecurityMonitor: React.FC = () => {
         attemptedPath: currentPath
       });
       
-      navigate('/dashboard', { replace: true });
+      const targetRoute = getRoleBasedRoute(user.role, {
+        supplierId: user.supplierId,
+        clientId: user.clientId,
+        clientType: user.clientType
+      });
+      navigate(targetRoute, { replace: true });
       return;
     }
 
