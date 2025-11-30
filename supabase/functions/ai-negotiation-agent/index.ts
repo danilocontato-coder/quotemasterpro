@@ -507,21 +507,66 @@ Escreva UMA mensagem WhatsApp profissional em português:
 Responda APENAS a mensagem, sem aspas ou formatação.`;
 
   try {
-    const messageResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Usar Lovable AI Gateway (pré-configurado) em vez de OpenAI direto
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    
+    if (!LOVABLE_API_KEY) {
+      console.error('❌ [AI] LOVABLE_API_KEY não configurada');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Chave de API Lovable não configurada' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('📤 [AI] Gerando mensagem de negociação via Lovable AI Gateway...');
+    
+    const messageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'google/gemini-2.5-flash',
         messages: [{ role: 'user', content: negotiationPrompt }],
-        max_completion_tokens: 400,
       }),
     });
 
+    console.log('📥 [AI] Response status:', messageResponse.status);
+    
     const messageData = await messageResponse.json();
+    console.log('📥 [AI] Response data (preview):', JSON.stringify(messageData).substring(0, 300));
+
+    // Verificar erro na resposta
+    if (!messageResponse.ok || messageData.error) {
+      const errorMsg = messageData.error?.message || messageData.error || `HTTP ${messageResponse.status}`;
+      console.error('❌ [AI] API Error:', errorMsg);
+      return new Response(
+        JSON.stringify({ success: false, error: `Erro na API de IA: ${errorMsg}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar se há conteúdo válido na resposta
+    if (!messageData.choices || !messageData.choices[0]?.message?.content) {
+      console.error('❌ [AI] No content in response:', JSON.stringify(messageData));
+      return new Response(
+        JSON.stringify({ success: false, error: 'IA não retornou mensagem válida' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const aiMessage = messageData.choices[0].message.content.trim();
+    console.log('✅ [AI] Mensagem gerada:', aiMessage);
+
+    // Validar que a mensagem não está vazia
+    if (!aiMessage) {
+      console.error('❌ [AI] Mensagem gerada está vazia');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Mensagem de negociação vazia' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Rastrear uso de tokens (negociação)
     if (messageData.usage && quote.client_id) {
@@ -529,8 +574,8 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
         supabaseUrl,
         supabaseKey: supabaseServiceKey,
         clientId: quote.client_id,
-        provider: 'openai',
-        model: messageData.model || 'gpt-5-2025-08-07',
+        provider: 'lovable',
+        model: messageData.model || 'google/gemini-2.5-flash',
         feature: 'negotiation',
         promptTokens: messageData.usage.prompt_tokens || 0,
         completionTokens: messageData.usage.completion_tokens || 0,
@@ -548,6 +593,9 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
     // Normalizar telefone uma única vez
     const normalizedPhone = normalizePhone(supplierPhone);
 
+    // Log da mensagem antes do envio
+    console.log('📱 [WhatsApp] Preparando envio para:', normalizedPhone);
+    console.log('📱 [WhatsApp] Mensagem completa:', aiMessage);
 
     // Resolver config Evolution: cliente primeiro, depois global
     const clientCfg = await resolveEvolutionConfig(sb, quote.client_id, false);
