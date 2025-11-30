@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle, Key, LogIn, Eye, Wallet } from "lucide-react";
+import { Plus, Search, Filter, Edit, Trash2, Star, Shield, CheckCircle, XCircle, AlertTriangle, Key, LogIn, Eye, Wallet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +48,8 @@ export const SuppliersManagement = () => {
   const [editingBankData, setEditingBankData] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [toggleStatusLoading, setToggleStatusLoading] = useState<string | null>(null);
+  const [resetPasswordLoading, setResetPasswordLoading] = useState<string | null>(null);
+  const [walletLoading, setWalletLoading] = useState<string | null>(null);
   const { toast } = useToast();
   
   const handleAccessAsSupplier = async (supplier: any) => {
@@ -182,11 +184,18 @@ export const SuppliersManagement = () => {
   };
 
   const handleCreateAsaasWallet = async (supplier: any, force: boolean = false) => {
-    setIsProcessing(true);
+    if (walletLoading === supplier.id) return;
+    
+    setWalletLoading(supplier.id);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
       const { data, error } = await supabase.functions.invoke('create-asaas-wallet', {
         body: { supplierId: supplier.id, force }
       });
+      
+      clearTimeout(timeoutId);
 
       if (error) throw error;
 
@@ -201,6 +210,7 @@ export const SuppliersManagement = () => {
         // Oferecer opção de recriar
         const recreate = confirm('A wallet cadastrada no banco não existe mais no Asaas. Deseja recriar?');
         if (recreate) {
+          setWalletLoading(null);
           await handleCreateAsaasWallet(supplier, true);
         }
         return;
@@ -216,11 +226,26 @@ export const SuppliersManagement = () => {
       console.error('Erro ao criar wallet:', error);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível processar a wallet Asaas",
+        description: error.name === 'AbortError' 
+          ? "Tempo limite excedido. Tente novamente."
+          : (error.message || "Não foi possível processar a wallet Asaas"),
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setWalletLoading(null);
+    }
+  };
+
+  const handleResetPassword = async (supplier: any) => {
+    if (resetPasswordLoading === supplier.id) return;
+    
+    setResetPasswordLoading(supplier.id);
+    try {
+      await resetSupplierPassword(supplier.id, supplier.email);
+    } catch (error) {
+      console.error('Erro ao resetar senha:', error);
+    } finally {
+      setResetPasswordLoading(null);
     }
   };
 
@@ -535,29 +560,41 @@ export const SuppliersManagement = () => {
                             {!(supplier as any).asaas_wallet_id ? (
                               <DropdownMenuItem
                                 onClick={() => handleCreateAsaasWallet(supplier, false)}
-                                disabled={isProcessing}
+                                disabled={walletLoading === supplier.id}
                                 className="text-blue-600"
                               >
-                                <Wallet className="h-4 w-4 mr-2" />
-                                {isProcessing ? 'Criando Wallet...' : 'Criar Wallet Asaas'}
+                                {walletLoading === supplier.id ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Wallet className="h-4 w-4 mr-2" />
+                                )}
+                                {walletLoading === supplier.id ? 'Criando Wallet...' : 'Criar Wallet Asaas'}
                               </DropdownMenuItem>
                             ) : (
                               <>
                                 <DropdownMenuItem
                                   onClick={() => handleCreateAsaasWallet(supplier, false)}
-                                  disabled={isProcessing}
+                                  disabled={walletLoading === supplier.id}
                                   className="text-blue-600"
                                 >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Revalidar Wallet
+                                  {walletLoading === supplier.id ? (
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                  )}
+                                  {walletLoading === supplier.id ? 'Validando...' : 'Revalidar Wallet'}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleCreateAsaasWallet(supplier, true)}
-                                  disabled={isProcessing}
+                                  disabled={walletLoading === supplier.id}
                                   className="text-purple-600"
                                 >
-                                  <Wallet className="h-4 w-4 mr-2" />
-                                  Recriar Wallet (Forçar)
+                                  {walletLoading === supplier.id ? (
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <Wallet className="h-4 w-4 mr-2" />
+                                  )}
+                                  {walletLoading === supplier.id ? 'Recriando...' : 'Recriar Wallet (Forçar)'}
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -598,12 +635,15 @@ export const SuppliersManagement = () => {
                               </DropdownMenuItem>
 
                              <DropdownMenuItem 
-                               onClick={async () => {
-                                 await resetSupplierPassword(supplier.id, supplier.email);
-                               }}
+                               onClick={() => handleResetPassword(supplier)}
+                               disabled={resetPasswordLoading === supplier.id}
                               >
-                                <Key className="h-4 w-4 mr-2" />
-                                Resetar Senha
+                                {resetPasswordLoading === supplier.id ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Key className="h-4 w-4 mr-2" />
+                                )}
+                                {resetPasswordLoading === supplier.id ? 'Resetando...' : 'Resetar Senha'}
                               </DropdownMenuItem>
                               
                               <DropdownMenuItem 
