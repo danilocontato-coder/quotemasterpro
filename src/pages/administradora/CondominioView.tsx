@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { CondominioCotacoesTab } from '@/components/administradora/condominio-ta
 import { CondominioFornecedoresTab } from '@/components/administradora/condominio-tabs/CondominioFornecedoresTab';
 import { CondominioAprovacoesTab } from '@/components/administradora/condominio-tabs/CondominioAprovacoesTab';
 import { CondominioUsuariosTab } from '@/components/administradora/condominio-tabs/CondominioUsuariosTab';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft,
   Building2,
@@ -32,6 +33,26 @@ export default function CondominioView() {
   const { data, isLoading, error, refetch } = useCondominioDetail(id || null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isEditing, setIsEditing] = useState(false);
+  const [administradoraName, setAdministradoraName] = useState('Administradora');
+
+  // Fetch administradora name from parent_client_id
+  useEffect(() => {
+    const fetchAdministradoraName = async () => {
+      if (data?.condominio?.parent_client_id) {
+        const { data: parentClient } = await supabase
+          .from('clients')
+          .select('name')
+          .eq('id', data.condominio.parent_client_id)
+          .single();
+        
+        if (parentClient?.name) {
+          setAdministradoraName(parentClient.name);
+        }
+      }
+    };
+
+    fetchAdministradoraName();
+  }, [data?.condominio?.parent_client_id]);
 
   if (isLoading) {
     return (
@@ -210,6 +231,9 @@ export default function CondominioView() {
           <TabsContent value="usuarios">
             <CondominioUsuariosTab 
               condominioId={condominio.id}
+              condominioName={condominio.name}
+              condominioEmail={condominio.email || ''}
+              administradoraName={administradoraName}
               users={data.users}
               onRefresh={refetch}
             />
