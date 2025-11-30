@@ -10,7 +10,6 @@ import {
   Users,
   Settings,
   HelpCircle,
-  Brain
 } from 'lucide-react';
 import {
   Sidebar,
@@ -35,7 +34,6 @@ const menuItems = [
 
 const analyticsItems = [
   { title: 'Fornecedores', url: '/condominio/fornecedores', icon: Users },
-  { title: 'Análise de IA', url: '/condominio/analise-ia', icon: Brain },
   { title: 'Relatórios', url: '/condominio/relatorios', icon: BarChart3 },
 ];
 

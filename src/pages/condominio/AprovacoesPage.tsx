@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,9 +12,13 @@ import {
   Building2,
   Calendar,
   DollarSign,
-  MessageSquare
+  MessageSquare,
+  Layers
 } from 'lucide-react';
 import { useCondominioApprovals } from '@/hooks/useCondominioApprovals';
+import { useCondominioApprovalLevels } from '@/hooks/useCondominioApprovalLevels';
+import { useAuth } from '@/contexts/AuthContext';
+import { ApprovalLevelBadge } from '@/components/approvals/ApprovalLevelBadge';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +33,11 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function AprovacoesPage() {
+  const { user } = useAuth();
   const { approvals, isLoading, approveQuote, rejectQuote } = useCondominioApprovals();
+  const { approvalLevels, getApprovalLevelForAmount, getUserNameById } = useCondominioApprovalLevels({ 
+    condominioId: user?.clientId || null 
+  });
   const [selectedApproval, setSelectedApproval] = useState<string | null>(null);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -69,6 +77,18 @@ export default function AprovacoesPage() {
     }
   };
 
+  // Get approval level info for a quote
+  const getApprovalLevelInfo = (total: number) => {
+    const level = getApprovalLevelForAmount(total);
+    if (!level) return null;
+    
+    const approverNames = level.approvers?.map(id => getUserNameById(id)) || [];
+    return {
+      ...level,
+      approverNames
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -103,86 +123,114 @@ export default function AprovacoesPage() {
         </Card>
       ) : (
         <div className="grid gap-6">
-          {approvals.map((approval) => (
-            <Card key={approval.id} className="border-l-4 border-l-warning">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
+          {approvals.map((approval) => {
+            const levelInfo = getApprovalLevelInfo(approval.quote.total);
+            
+            return (
+              <Card key={approval.id} className="border-l-4 border-l-warning">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-xl">{approval.quote.title}</CardTitle>
+                      </div>
+                      <CardDescription className="flex items-center gap-2 mt-2">
+                        <Building2 className="h-4 w-4" />
+                        Criado por: {approval.quote.client_name}
+                      </CardDescription>
+                    </div>
                     <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-primary" />
-                      <CardTitle className="text-xl">{approval.quote.title}</CardTitle>
+                      {levelInfo && (
+                        <ApprovalLevelBadge
+                          levelName={levelInfo.name}
+                          levelOrder={levelInfo.order_level}
+                          minAmount={levelInfo.amount_threshold}
+                          maxAmount={levelInfo.max_amount_threshold}
+                          approverNames={levelInfo.approverNames}
+                          variant="secondary"
+                        />
+                      )}
+                      <Badge variant="outline" className="bg-warning/10 text-warning border-warning">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Pendente
+                      </Badge>
                     </div>
-                    <CardDescription className="flex items-center gap-2 mt-2">
-                      <Building2 className="h-4 w-4" />
-                      Criado por: {approval.quote.client_name}
-                    </CardDescription>
                   </div>
-                  <Badge variant="outline" className="bg-warning/10 text-warning border-warning">
-                    <Clock className="h-3 w-3 mr-1" />
-                    Pendente
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {approval.quote.description && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {approval.quote.description}
-                    </p>
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {approval.quote.description && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Valor Total</p>
-                      <p className="font-semibold text-lg">
-                        {formatCurrency(approval.quote.total)}
+                      <p className="text-sm text-muted-foreground">
+                        {approval.quote.description}
                       </p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Data de Solicitação</p>
-                      <p className="font-medium">
-                        {format(new Date(approval.created_at), "dd 'de' MMM, yyyy", { locale: ptBR })}
-                      </p>
+                  )}
+
+                  {levelInfo && (
+                    <div className="bg-muted/50 rounded-lg p-3 flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-primary" />
+                      <span className="text-sm">
+                        Esta cotação requer aprovação do <strong>{levelInfo.name}</strong>
+                        {levelInfo.approverNames.length > 0 && (
+                          <> por: {levelInfo.approverNames.join(', ')}</>
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Valor Total</p>
+                        <p className="font-semibold text-lg">
+                          {formatCurrency(approval.quote.total)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Data de Solicitação</p>
+                        <p className="font-medium">
+                          {format(new Date(approval.created_at), "dd 'de' MMM, yyyy", { locale: ptBR })}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <Separator />
+                  <Separator />
 
-                <div className="flex gap-3 justify-end">
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => {
-                      setSelectedApproval(approval.id);
-                      setShowRejectDialog(true);
-                    }}
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Rejeitar
-                  </Button>
-                  <Button
-                    className="gap-2 bg-success hover:bg-success/90"
-                    onClick={() => {
-                      setSelectedApproval(approval.id);
-                      setShowApproveDialog(true);
-                    }}
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    Aprovar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex gap-3 justify-end">
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => {
+                        setSelectedApproval(approval.id);
+                        setShowRejectDialog(true);
+                      }}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Rejeitar
+                    </Button>
+                    <Button
+                      className="gap-2 bg-success hover:bg-success/90"
+                      onClick={() => {
+                        setSelectedApproval(approval.id);
+                        setShowApproveDialog(true);
+                      }}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Aprovar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
