@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { QuoteItemsPreview } from "./QuoteItemsPreview";
 import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
+import { LoadingButton } from "@/components/ui/loading-button";
+import { Button } from "@/components/ui/button";
 
 interface ApprovalDetailModalProps {
   open: boolean;
@@ -30,6 +31,8 @@ export function ApprovalDetailModal({ open, onClose, approval }: ApprovalDetailM
   const [rejectComment, setRejectComment] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [approverName, setApproverName] = useState<string>("");
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Fetch approver name
   useEffect(() => {
@@ -67,9 +70,14 @@ useEffect(() => {
 }, [open, approval?.quote_id, quotes]);
 
   const handleApprove = async () => {
-    const success = await approveRequest(approval.id, "Aprovado via interface");
-    if (success) {
-      onClose();
+    setIsApproving(true);
+    try {
+      const success = await approveRequest(approval.id, "Aprovado via interface");
+      if (success) {
+        onClose();
+      }
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -83,11 +91,16 @@ useEffect(() => {
       return;
     }
 
-    const success = await rejectRequest(approval.id, rejectComment);
-    if (success) {
-      setRejectComment("");
-      setShowRejectForm(false);
-      onClose();
+    setIsRejecting(true);
+    try {
+      const success = await rejectRequest(approval.id, rejectComment);
+      if (success) {
+        setRejectComment("");
+        setShowRejectForm(false);
+        onClose();
+      }
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -257,12 +270,17 @@ const getQuoteStatusText = (status: string) => {
                       <Button 
                         variant="destructive" 
                         onClick={() => setShowRejectForm(true)}
+                        disabled={isApproving}
                       >
                         Rejeitar
                       </Button>
-                      <Button onClick={handleApprove}>
+                      <LoadingButton 
+                        onClick={handleApprove}
+                        isLoading={isApproving}
+                        loadingText="Aprovando..."
+                      >
                         Aprovar
-                      </Button>
+                      </LoadingButton>
                     </>
                   ) : (
                     <div className="flex flex-col gap-2 w-full max-w-md">
@@ -273,6 +291,7 @@ const getQuoteStatusText = (status: string) => {
                         value={rejectComment}
                         onChange={(e) => setRejectComment(e.target.value)}
                         className="min-h-20"
+                        disabled={isRejecting}
                       />
                       <div className="flex gap-2">
                         <Button 
@@ -281,12 +300,18 @@ const getQuoteStatusText = (status: string) => {
                             setShowRejectForm(false);
                             setRejectComment("");
                           }}
+                          disabled={isRejecting}
                         >
                           Cancelar
                         </Button>
-                        <Button variant="destructive" onClick={handleReject}>
+                        <LoadingButton 
+                          variant="destructive" 
+                          onClick={handleReject}
+                          isLoading={isRejecting}
+                          loadingText="Rejeitando..."
+                        >
                           Confirmar Rejeição
-                        </Button>
+                        </LoadingButton>
                       </div>
                     </div>
                   )}

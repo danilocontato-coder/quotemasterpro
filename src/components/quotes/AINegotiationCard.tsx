@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAINegotiation, type AINegotiation } from '@/hooks/useAINegotiation';
-import { Brain, TrendingDown, MessageSquare, Check, X, AlertCircle, FileText } from 'lucide-react';
+import { Brain, TrendingDown, MessageSquare, Check, X, AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { NegotiationLogModal } from './NegotiationLogModal';
 
@@ -34,10 +34,12 @@ export function AINegotiationCard({
   onStartAnalysis
 }: AINegotiationCardProps) {
   const [showLogModal, setShowLogModal] = useState(false);
+  const [isNegotiating, setIsNegotiating] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  
   const config = statusConfig[negotiation.status];
   const IconComponent = config.icon;
-
-  const [isNegotiating, setIsNegotiating] = useState(false);
 
   const handleStartNegotiation = async () => {
     console.log('🔵 [Card] ========== INÍCIO handleStartNegotiation ==========');
@@ -78,13 +80,23 @@ export function AINegotiationCard({
 
   const handleApprove = async () => {
     if (onApproveNegotiation) {
-      await onApproveNegotiation(negotiation.id);
+      setIsApproving(true);
+      try {
+        await onApproveNegotiation(negotiation.id);
+      } finally {
+        setIsApproving(false);
+      }
     }
   };
 
   const handleReject = async () => {
     if (onRejectNegotiation) {
-      await onRejectNegotiation(negotiation.id);
+      setIsRejecting(true);
+      try {
+        await onRejectNegotiation(negotiation.id);
+      } finally {
+        setIsRejecting(false);
+      }
     }
   };
 
@@ -265,19 +277,29 @@ export function AINegotiationCard({
                 size="sm" 
                 variant="outline"
                 onClick={handleApprove}
+                disabled={isApproving || isRejecting}
                 className="flex-1"
               >
-                <Check className="h-4 w-4 mr-2" />
-                Aprovar
+                {isApproving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4 mr-2" />
+                )}
+                {isApproving ? 'Aprovando...' : 'Aprovar'}
               </Button>
               <Button 
                 size="sm" 
                 variant="destructive"
                 onClick={handleReject}
+                disabled={isApproving || isRejecting}
                 className="flex-1"
               >
-                <X className="h-4 w-4 mr-2" />
-                Rejeitar
+                {isRejecting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4 mr-2" />
+                )}
+                {isRejecting ? 'Rejeitando...' : 'Rejeitar'}
               </Button>
             </div>
           )}
