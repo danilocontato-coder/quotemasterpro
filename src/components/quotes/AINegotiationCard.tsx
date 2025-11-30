@@ -37,12 +37,36 @@ export function AINegotiationCard({
   const config = statusConfig[negotiation.status];
   const IconComponent = config.icon;
 
+  const [isNegotiating, setIsNegotiating] = useState(false);
+
   const handleStartNegotiation = async () => {
-    if (onStartNegotiation && negotiation.id) {
-      console.log('🔵 [AINegotiationCard] Iniciando negociação com ID:', negotiation.id);
+    console.log('🔵 [Card] ========== INÍCIO handleStartNegotiation ==========');
+    console.log('🔵 [Card] negotiation.id:', negotiation.id);
+    console.log('🔵 [Card] negotiation.status:', negotiation.status);
+    console.log('🔵 [Card] onStartNegotiation disponível:', !!onStartNegotiation);
+    
+    if (!negotiation.id) {
+      console.error('❌ [Card] negotiation.id está undefined!');
+      console.error('❌ [Card] Objeto negotiation completo:', JSON.stringify(negotiation, null, 2));
+      return;
+    }
+    
+    if (!onStartNegotiation) {
+      console.error('❌ [Card] onStartNegotiation callback não foi fornecido!');
+      return;
+    }
+
+    setIsNegotiating(true);
+    try {
+      console.log('🔵 [Card] Chamando onStartNegotiation com ID:', negotiation.id);
       await onStartNegotiation(negotiation.id);
-    } else if (!negotiation.id) {
-      console.error('❌ [AINegotiationCard] negotiation.id está undefined:', negotiation);
+      console.log('✅ [Card] onStartNegotiation executado com sucesso');
+    } catch (error: any) {
+      console.error('❌ [Card] Erro ao chamar onStartNegotiation:', error);
+      console.error('❌ [Card] Mensagem do erro:', error?.message);
+    } finally {
+      setIsNegotiating(false);
+      console.log('🔵 [Card] ========== FIM handleStartNegotiation ==========');
     }
   };
 
@@ -212,10 +236,15 @@ export function AINegotiationCard({
               <Button 
                 size="sm" 
                 onClick={handleStartNegotiation}
-                disabled={!negotiation.id}
+                disabled={!negotiation.id || isNegotiating}
                 className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {!negotiation.id ? (
+                {isNegotiating ? (
+                  <>
+                    <Brain className="h-4 w-4 mr-2 animate-spin" />
+                    Enviando WhatsApp...
+                  </>
+                ) : !negotiation.id ? (
                   <>
                     <Brain className="h-4 w-4 mr-2 animate-pulse" />
                     Processando...
