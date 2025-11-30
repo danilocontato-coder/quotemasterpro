@@ -174,7 +174,9 @@ export default function EditorComplete() {
         subject_line: emailContent.subject,
         html_content: emailContent.htmlBody,
         plain_text_content: emailContent.plainTextBody,
-        target_segment: segmentFilters,
+        target_segment: segmentFilters && Object.keys(segmentFilters).length > 0 
+          ? segmentFilters 
+          : { type: 'all_active_clients' },
         status: sendNow ? 'sending' : 'draft'
       });
 
