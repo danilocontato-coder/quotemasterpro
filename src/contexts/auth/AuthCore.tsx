@@ -20,6 +20,7 @@ export interface User {
   tenantType?: string;
   forcePasswordChange?: boolean;
   termsAccepted?: boolean;
+  clientType?: string; // 'direct' | 'administradora' | 'condominio_vinculado'
 }
 
 export interface AuthContextType {
@@ -86,11 +87,12 @@ export const useAuthCore = () => {
       }
 
       if (profile) {
-        // Verificar se cliente está ativo
+        // Verificar se cliente está ativo e buscar client_type
+        let clientType: string | null = null;
         if (profile.client_id) {
           const { data: clientData } = await supabase
             .from('clients')
-            .select('status')
+            .select('status, client_type')
             .eq('id', profile.client_id)
             .maybeSingle();
 
@@ -101,6 +103,8 @@ export const useAuthCore = () => {
             await supabase.auth.signOut();
             return;
           }
+          
+          clientType = clientData?.client_type || null;
         }
 
         // Verificar se fornecedor está ativo
@@ -151,6 +155,7 @@ export const useAuthCore = () => {
           tourCompleted: profile.tour_completed,
           forcePasswordChange: userRecord?.force_password_change,
           termsAccepted: profile.terms_accepted ?? false,
+          clientType: clientType || undefined,
         };
 
         setUser(userProfile);

@@ -23,11 +23,17 @@ export interface User {
   tenantType?: string;
   forcePasswordChange?: boolean;
   termsAccepted?: boolean;
+  clientType?: string; // 'direct' | 'administradora' | 'condominio_vinculado'
 }
 
 export const getRoleBasedRoute = (
   role: UserRole,
-  ctx?: { supplierId?: string | null; clientId?: string | null; tenantType?: string | null }
+  ctx?: { 
+    supplierId?: string | null; 
+    clientId?: string | null; 
+    tenantType?: string | null;
+    clientType?: string | null; // 'direct' | 'administradora' | 'condominio_vinculado'
+  }
 ): string => {
   logger.navigation('getRoleBasedRoute', { role, ctx });
 
@@ -45,7 +51,16 @@ export const getRoleBasedRoute = (
     return '/supplier';
   }
 
-  // Client/Manager context (inclui admin_cliente)
+  // Redirecionar baseado no tipo de cliente
+  if (ctx?.clientType === 'condominio_vinculado') {
+    return '/condominio';
+  }
+  
+  if (ctx?.clientType === 'administradora') {
+    return '/administradora/dashboard';
+  }
+
+  // Client/Manager direto (client_type = 'direct' ou null)
   switch (role) {
     case 'admin_cliente':
     case 'manager':
@@ -147,11 +162,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           onboarding_completed: profile.onboarding_completed
         });
 
-        // Verificar se é usuário de cliente e se o cliente está ativo
+        // Verificar se é usuário de cliente, se está ativo e buscar client_type
+        let clientType: string | null = null;
         if (profile.client_id) {
           const { data: clientData, error: clientError } = await supabase
             .from('clients')
-            .select('status')
+            .select('status, client_type')
             .eq('id', profile.client_id)
             .maybeSingle();
 
@@ -165,6 +181,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
             await supabase.auth.signOut();
             return;
           }
+          
+          clientType = clientData?.client_type || null;
         }
 
         // Verificar se é usuário de fornecedor e se o fornecedor está ativo
@@ -210,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = React.memo(
           tenantType: profile.tenant_type,
           forcePasswordChange: userRecord?.force_password_change ?? false,
           termsAccepted: profile.terms_accepted ?? false,
+          clientType: clientType || undefined,
         };
         setUser(userProfile); // 1º: Setar user primeiro
 
