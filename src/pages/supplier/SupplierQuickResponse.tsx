@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, Building2, Package, Clock, DollarSign, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Building2, Package, Clock, DollarSign, AlertCircle, Loader2, Upload, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
@@ -55,6 +55,8 @@ const SupplierQuickResponse = () => {
   const [dataConfirmed, setDataConfirmed] = useState(false);
   const [existingSupplier, setExistingSupplier] = useState<SupplierData | null>(null);
   const [visitModalOpen, setVisitModalOpen] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [isExtractingFromPdf, setIsExtractingFromPdf] = useState(false);
   
   // Hook para gerenciar visitas
   const { visits, isLoading: visitsLoading, fetchVisits } = useQuoteVisits(quote?.id);
@@ -243,6 +245,112 @@ const SupplierQuickResponse = () => {
     }
 
     setDataConfirmed(true);
+  };
+
+  // Função para converter arquivo em base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  // Função para extrair dados do PDF
+  const extractDataFromPdf = async (file: File) => {
+    setIsExtractingFromPdf(true);
+    
+    try {
+      toast({
+        title: '🔍 Analisando PDF...',
+        description: 'Extraindo dados automaticamente com IA.'
+      });
+
+      const base64 = await fileToBase64(file);
+      
+      const { data, error } = await supabase.functions.invoke('extract-supplier-proposal', {
+        body: { pdfBase64: base64, fileName: file.name }
+      });
+
+      if (error) {
+        console.error('❌ [PDF-EXTRACT] Erro:', error);
+        toast({
+          title: 'Erro na extração',
+          description: 'Não foi possível extrair dados do PDF. Preencha manualmente.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (!data?.success) {
+        console.error('❌ [PDF-EXTRACT] Extração falhou:', data?.error);
+        toast({
+          title: 'Extração incompleta',
+          description: data?.error || 'Não foi possível extrair todos os dados. Verifique e complete manualmente.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      console.log('✅ [PDF-EXTRACT] Dados extraídos:', data);
+
+      // Preencher campos do formulário com dados extraídos
+      setProposalData(prev => ({
+        ...prev,
+        totalAmount: data.total_amount !== undefined ? String(data.total_amount - (data.shipping_cost || 0)) : prev.totalAmount,
+        shippingCost: data.shipping_cost !== undefined ? String(data.shipping_cost) : prev.shippingCost,
+        deliveryDays: data.delivery_days !== undefined ? String(data.delivery_days) : prev.deliveryDays,
+        warrantyMonths: data.warranty_months !== undefined ? String(data.warranty_months) : prev.warrantyMonths,
+        notes: data.notes || prev.notes
+      }));
+
+      toast({
+        title: '✅ Dados extraídos com sucesso!',
+        description: `${data.items?.length || 0} itens encontrados. Verifique os valores e ajuste se necessário.`
+      });
+
+    } catch (error) {
+      console.error('❌ [PDF-EXTRACT] Erro geral:', error);
+      toast({
+        title: 'Erro na extração',
+        description: 'Ocorreu um erro ao processar o PDF.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsExtractingFromPdf(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ 
+          title: 'Arquivo muito grande', 
+          description: 'O arquivo deve ter no máximo 10MB.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+      
+      setAttachment(file);
+      
+      toast({
+        title: '✅ Arquivo selecionado',
+        description: `${file.name} será enviado com sua resposta.`
+      });
+
+      // Se for PDF, tentar extrair dados automaticamente
+      if (file.type === 'application/pdf') {
+        await extractDataFromPdf(file);
+      }
+    }
   };
 
   const handleSubmitProposal = async () => {
@@ -671,10 +779,52 @@ const SupplierQuickResponse = () => {
               <CardHeader>
                 <CardTitle>Sua Proposta</CardTitle>
                 <CardDescription>
-                  Informe os detalhes da sua proposta comercial
+                  Informe os detalhes da sua proposta comercial ou envie um PDF para extração automática
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Upload de PDF com Extração Automática */}
+                <div className="space-y-2">
+                  <Label>Enviar PDF da Proposta (opcional)</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 hover:border-primary/50 transition-colors">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="proposal-file-upload"
+                      disabled={isExtractingFromPdf}
+                    />
+                    <label 
+                      htmlFor="proposal-file-upload" 
+                      className="flex flex-col items-center gap-2 cursor-pointer"
+                    >
+                      {isExtractingFromPdf ? (
+                        <>
+                          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                          <span className="text-sm text-primary font-medium">Extraindo dados do PDF...</span>
+                        </>
+                      ) : attachment ? (
+                        <>
+                          <FileText className="w-8 h-8 text-primary" />
+                          <span className="text-sm text-primary font-medium">{attachment.name}</span>
+                          <span className="text-xs text-muted-foreground">Clique para trocar</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Arraste ou clique para enviar PDF</span>
+                          <span className="text-xs text-muted-foreground">
+                            IA irá extrair automaticamente os valores
+                          </span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                <Separator />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="totalAmount">Valor Total dos Itens (sem frete) *</Label>

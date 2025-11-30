@@ -183,6 +183,135 @@ export default function QuickResponse() {
     validateAndFetch();
   }, [token, navigate, toast]);
 
+  // Função para converter arquivo em base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remover prefixo "data:application/pdf;base64,"
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  // Função para extrair dados do PDF
+  const extractDataFromPdf = async (file: File) => {
+    setIsExtractingFromPdf(true);
+    
+    try {
+      toast({
+        title: '🔍 Analisando PDF...',
+        description: 'Extraindo dados automaticamente com IA.'
+      });
+
+      const base64 = await fileToBase64(file);
+      
+      const { data, error } = await supabase.functions.invoke('extract-supplier-proposal', {
+        body: { pdfBase64: base64, fileName: file.name }
+      });
+
+      if (error) {
+        console.error('❌ [PDF-EXTRACT] Erro:', error);
+        toast({
+          title: 'Erro na extração',
+          description: 'Não foi possível extrair dados do PDF. Preencha manualmente.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (!data?.success) {
+        console.error('❌ [PDF-EXTRACT] Extração falhou:', data?.error);
+        toast({
+          title: 'Extração incompleta',
+          description: data?.error || 'Não foi possível extrair todos os dados. Verifique e complete manualmente.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      console.log('✅ [PDF-EXTRACT] Dados extraídos:', data);
+
+      // Preencher itens se extraídos
+      if (data.items && data.items.length > 0) {
+        // Se já existem itens da cotação, tentar fazer match por nome ou adicionar novos
+        if (quoteItems.length > 0) {
+          const updatedItems = [...quoteItems];
+          
+          data.items.forEach((extractedItem: any) => {
+            // Tentar encontrar item correspondente pelo nome (fuzzy match simples)
+            const matchIndex = updatedItems.findIndex(qi => 
+              qi.product_name?.toLowerCase().includes(extractedItem.product_name?.toLowerCase().substring(0, 10)) ||
+              extractedItem.product_name?.toLowerCase().includes(qi.product_name?.toLowerCase().substring(0, 10))
+            );
+            
+            if (matchIndex >= 0) {
+              // Atualizar item existente com preço extraído
+              updatedItems[matchIndex] = {
+                ...updatedItems[matchIndex],
+                proposed_quantity: extractedItem.quantity || updatedItems[matchIndex].proposed_quantity,
+                proposed_unit_price: String(extractedItem.unit_price || ''),
+                proposed_total: extractedItem.total || 0
+              };
+            } else {
+              // Adicionar como novo item
+              updatedItems.push({
+                id: `extracted-${Date.now()}-${Math.random()}`,
+                product_name: extractedItem.product_name,
+                quantity: extractedItem.quantity,
+                proposed_quantity: extractedItem.quantity,
+                proposed_unit_price: String(extractedItem.unit_price || ''),
+                proposed_total: extractedItem.total || 0
+              });
+            }
+          });
+          
+          setQuoteItems(updatedItems);
+        } else {
+          // Não há itens existentes, usar os extraídos
+          const extractedItems = data.items.map((item: any, index: number) => ({
+            id: `extracted-${Date.now()}-${index}`,
+            product_name: item.product_name,
+            quantity: item.quantity,
+            proposed_quantity: item.quantity,
+            proposed_unit_price: String(item.unit_price || ''),
+            proposed_total: item.total || 0
+          }));
+          setQuoteItems(extractedItems);
+        }
+      }
+
+      // Preencher campos do formulário
+      setFormData(prev => ({
+        ...prev,
+        shippingCost: data.shipping_cost !== undefined ? String(data.shipping_cost) : prev.shippingCost,
+        deliveryDays: data.delivery_days !== undefined ? String(data.delivery_days) : prev.deliveryDays,
+        warrantyMonths: data.warranty_months !== undefined ? String(data.warranty_months) : prev.warrantyMonths,
+        paymentTerms: data.payment_terms || prev.paymentTerms,
+        notes: data.notes || prev.notes
+      }));
+
+      toast({
+        title: '✅ Dados extraídos com sucesso!',
+        description: `${data.items?.length || 0} itens encontrados. Verifique e ajuste se necessário.`
+      });
+
+    } catch (error) {
+      console.error('❌ [PDF-EXTRACT] Erro geral:', error);
+      toast({
+        title: 'Erro na extração',
+        description: 'Ocorreu um erro ao processar o PDF.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsExtractingFromPdf(false);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -203,6 +332,11 @@ export default function QuickResponse() {
         title: '✅ Arquivo selecionado',
         description: `${file.name} será enviado com sua resposta.`
       });
+
+      // Se for PDF, tentar extrair dados automaticamente
+      if (file.type === 'application/pdf') {
+        await extractDataFromPdf(file);
+      }
     }
   };
 
