@@ -170,7 +170,8 @@ export function useAINegotiation() {
       // Refetch continua como backup para garantir sincronização
       setTimeout(() => fetchNegotiations(), 1000);
       
-      return data;
+      // ✅ CORREÇÃO 2: Sempre retornar AINegotiation | null (padronizado)
+      return data?.negotiation || null;
     } catch (error) {
       console.error('🤖 [AI-NEGOTIATION] Error starting analysis:', error);
       toast({

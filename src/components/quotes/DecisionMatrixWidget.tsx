@@ -134,15 +134,29 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
     
     try {
       // 1. Iniciar análise se não existir
-      const existingNegotiation = await getNegotiationByQuoteId(quoteId);
+      const existingNegotiation = getNegotiationByQuoteId(quoteId);
       let negotiationId = existingNegotiation?.id;
       
+      console.log('🔵 [DecisionMatrix] existingNegotiation:', existingNegotiation);
+      console.log('🔵 [DecisionMatrix] negotiationId inicial:', negotiationId);
+      
       if (!negotiationId) {
+        console.log('🔵 [DecisionMatrix] Criando nova análise para quoteId:', quoteId);
         const analysis = await startAnalysis(quoteId);
-        negotiationId = analysis.id;
+        console.log('🔵 [DecisionMatrix] Resposta de startAnalysis:', analysis);
+        
+        // ✅ CORREÇÃO: startAnalysis agora retorna AINegotiation diretamente
+        negotiationId = analysis?.id;
+        console.log('🔵 [DecisionMatrix] negotiationId extraído:', negotiationId);
+      }
+      
+      // ✅ Validação antes de continuar
+      if (!negotiationId) {
+        throw new Error('Não foi possível obter o ID da negociação. Tente novamente.');
       }
       
       // 2. Iniciar negociação
+      console.log('🔵 [DecisionMatrix] Chamando startNegotiation com ID:', negotiationId);
       const result = await startNegotiation(negotiationId);
       
       // 3. Incrementar contador de tentativas
