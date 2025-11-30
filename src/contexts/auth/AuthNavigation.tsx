@@ -4,7 +4,12 @@ import { UserRole } from './AuthCore';
 
 export const getRoleBasedRoute = (
   role: UserRole,
-  ctx?: { supplierId?: string | null; clientId?: string | null; tenantType?: string | null }
+  ctx?: { 
+    supplierId?: string | null; 
+    clientId?: string | null; 
+    tenantType?: string | null;
+    clientType?: string | null; // 'direct' | 'administradora' | 'condominio_vinculado'
+  }
 ): string => {
   logger.navigation('getRoleBasedRoute', { role, ctx });
 
@@ -22,7 +27,16 @@ export const getRoleBasedRoute = (
     return '/supplier';
   }
 
-  // Client/Manager context (inclui admin_cliente)
+  // Redirecionar baseado no tipo de cliente
+  if (ctx?.clientType === 'condominio_vinculado') {
+    return '/condominio';
+  }
+  
+  if (ctx?.clientType === 'administradora') {
+    return '/administradora/dashboard';
+  }
+
+  // Client/Manager direto (client_type = 'direct' ou null)
   switch (role) {
     case 'admin_cliente':
     case 'manager':
