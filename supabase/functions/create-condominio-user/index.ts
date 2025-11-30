@@ -59,12 +59,15 @@ Deno.serve(async (req) => {
       throw new Error('Email do usuário é obrigatório');
     }
 
-    // Verificar se email já existe
-    const { data: existingUser } = await supabase.auth.admin.listUsers();
-    const userExists = existingUser.users.some(u => u.email?.toLowerCase() === finalUserEmail.toLowerCase());
+    // Verificar se email já existe na tabela profiles (mais confiável que listUsers)
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', finalUserEmail.toLowerCase())
+      .maybeSingle();
 
-    if (userExists) {
-      console.log('⚠️ [create-condominio-user] Usuário já existe para este email');
+    if (existingProfile) {
+      console.log('⚠️ [create-condominio-user] Usuário já existe para este email (encontrado em profiles)');
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -92,6 +95,18 @@ Deno.serve(async (req) => {
 
     if (authError) {
       console.error('❌ [create-condominio-user] Erro ao criar usuário:', authError);
+      
+      // Tratar erro específico de email duplicado
+      if (authError.code === 'email_exists' || authError.message?.includes('already been registered')) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Este email já está cadastrado no sistema' 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+      
       throw authError;
     }
 
