@@ -114,6 +114,8 @@ const ConfiguracoesPage = React.lazy(() => import('@/pages/administradora/Config
 import CondominioLayout from '@/components/layout/CondominioLayout';
 const CondominioDashboard = React.lazy(() => import('@/pages/condominio/CondominioDashboard'));
 const CondominioAprovacoesPage = React.lazy(() => import('@/pages/condominio/AprovacoesPage'));
+const CondominioCotacoesListPage = React.lazy(() => import('@/pages/condominio/CotacoesListPage'));
+const CondominioCotacaoDetailPage = React.lazy(() => import('@/pages/condominio/CotacaoDetailPage'));
 const CotacoesPage = React.lazy(() => import('@/pages/administradora/CotacoesPage'));
 const FornecedoresPage = React.lazy(() => import('@/pages/administradora/FornecedoresPage'));
 const AprovacoesPage = React.lazy(() => import('@/pages/administradora/AprovacoesPage'));
@@ -847,7 +849,14 @@ export const AppWithProviders: React.FC = () => {
         {/* Cotações (visualização) */}
         <Route path="cotacoes" element={
           <Suspense fallback={<LoadingFallback className="p-6" />}>
-            <CondominioDashboard />
+            <CondominioCotacoesListPage />
+          </Suspense>
+        } />
+        
+        {/* Detalhe da Cotação */}
+        <Route path="cotacoes/:id" element={
+          <Suspense fallback={<LoadingFallback className="p-6" />}>
+            <CondominioCotacaoDetailPage />
           </Suspense>
         } />
         
