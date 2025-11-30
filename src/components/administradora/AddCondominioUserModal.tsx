@@ -108,7 +108,7 @@ export function AddCondominioUserModal({
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('create-condominio-user', {
+      const response = await supabase.functions.invoke('create-condominio-user', {
         body: {
           condominioId,
           condominioName,
@@ -120,10 +120,17 @@ export function AddCondominioUserModal({
         },
       });
 
-      if (error) throw error;
+      // Handle edge function errors (non-2xx responses)
+      if (response.error) {
+        // Try to get the error message from the response data
+        const errorMessage = response.data?.error || response.error.message || 'Erro desconhecido';
+        throw new Error(errorMessage);
+      }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      const data = response.data;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erro ao criar usuário');
       }
 
       setCreatedUser({
