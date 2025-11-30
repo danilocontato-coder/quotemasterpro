@@ -35,34 +35,20 @@ export function buildEndpoints(cfg: EvolutionConfig): string[] {
     return endpoints
   }
 
-  // 2) Heuristics with and without instance
+  // 2) Evolution API v2 OFFICIAL endpoint (HIGHEST PRIORITY)
+  // Documentação: https://doc.evolution-api.com/v2/pt/send-messages
   if (instance) {
-    endpoints.push(
-      `${baseRaw}/message/sendText/${instance}`,
-      `${baseRaw}/message/send/${instance}`,
-      `${baseRaw}/messages/sendText/${instance}`,
-      `${baseRaw}/sendMessage/${instance}`,
-      `${baseRaw}/api/message/sendText/${instance}`,
-      `${baseRaw}/api/message/send/${instance}`,
-      `${baseRaw}/api/sendMessage/${instance}`,
-      `${baseRaw}/v1/message/sendText/${instance}`,
-      `${baseRaw}/v1/sendMessage/${instance}`,
-      `${baseRaw}/${instance}/sendMessage`,
-      `${baseRaw}/${instance}/message/sendText`,
-      `${baseRaw}/${instance}/message/send`
-    )
+    // Official v2 endpoint - MUST be first
+    endpoints.push(`${baseRaw}/message/sendText/${instance}`)
   }
 
-  endpoints.push(
-    `${baseRaw}/message/sendText`,
-    `${baseRaw}/message/send`,
-    `${baseRaw}/messages/sendText`,
-    `${baseRaw}/chat/sendText`,
-    `${baseRaw}/sendMessage`,
-    `${baseRaw}/api/message/sendText`,
-    `${baseRaw}/api/sendMessage`,
-    `${baseRaw}/v1/sendMessage`
-  )
+  // 3) Fewer fallbacks - only common alternatives
+  if (instance) {
+    endpoints.push(
+      `${baseRaw}/${instance}/sendText`,
+      `${baseRaw}/api/message/sendText/${instance}`
+    )
+  }
 
   return endpoints
 }
@@ -71,31 +57,27 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
   const endpoints = buildEndpoints(cfg)
   
   console.log(`🔍 [Evolution] Starting WhatsApp send to ${number}`)
-  console.log(`🔍 [Evolution] Will try ${endpoints.length} endpoint(s)`)
+  console.log(`🔍 [Evolution] Config: apiUrl=${cfg.apiUrl}, instance=${cfg.instance}, scope=${cfg.scope}`)
+  console.log(`🔍 [Evolution] Will try ${endpoints.length} endpoint(s): ${endpoints.join(', ')}`)
   
-  // ✅ CORREÇÃO 6: Adicionar mais variantes de header
+  // Evolution API v2 official header - apikey is the standard
+  // Ref: https://doc.evolution-api.com/v2/pt/authentication
   const headersVariants: Record<string, string>[] = [
-    { 'Content-Type': 'application/json', 'apikey': cfg.token },
+    { 'Content-Type': 'application/json', 'apikey': cfg.token },  // v2 official
     { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.token}` },
-    { 'Content-Type': 'application/json', 'api-key': cfg.token },
-    { 'Content-Type': 'application/json', 'x-api-key': cfg.token },
-    { 'Content-Type': 'application/json', 'x-evolution-token': cfg.token },
-    { 'Content-Type': 'application/json', 'token': cfg.token },
-    { 'Content-Type': 'application/json', 'x-webhook-token': cfg.token },
+    { 'Content-Type': 'application/json', 'Authorization': `${cfg.token}` },
   ]
   
-  // Try different payload formats
+  // Evolution API v2 official payload format
+  // Ref: https://doc.evolution-api.com/v2/pt/send-messages
   const payloads: any[] = [
-    { number, text },
-    { number, textMessage: { text } },
-    { phone: number, message: text },
-    { to: number, message: text },
-    { chatId: number, message: text },
-    { recipient: number, body: text }
+    { number, text },  // v2 official format
+    { number, textMessage: { text } },  // alternative v2 format
   ]
 
   let lastError = ''
   let lastEndpoint = ''
+  let lastResponse = ''
   let attemptCount = 0
   
   for (const endpoint of endpoints) {
@@ -103,9 +85,10 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
       for (const body of payloads) {
         try {
           attemptCount++
-          console.log(`[${attemptCount}] Trying: ${endpoint}`)
-          console.log(`    Headers: [${Object.keys(headers).join(', ')}]`)
-          console.log(`    Payload: {${Object.keys(body).join(', ')}}`)
+          const headerKeys = Object.keys(headers).filter(k => k !== 'Content-Type')
+          console.log(`[${attemptCount}] POST ${endpoint}`)
+          console.log(`    Auth: ${headerKeys.join(', ')}`)
+          console.log(`    Body: ${JSON.stringify(body)}`)
           
           const res = await fetch(endpoint, {
             method: 'POST',
@@ -113,32 +96,48 @@ export async function sendEvolutionWhatsApp(cfg: EvolutionConfig, number: string
             body: JSON.stringify(body)
           })
           
+          const responseText = await res.text()
+          let responseData: any = null
+          try { responseData = JSON.parse(responseText) } catch { responseData = responseText }
+          
+          console.log(`    Response: ${res.status} ${res.statusText}`)
+          console.log(`    Body: ${responseText.substring(0, 300)}`)
+          
           if (res.ok) {
-            const data = await res.json().catch(() => ({}))
-            console.log(`✅ SUCCESS! Endpoint worked: ${endpoint}`)
-            console.log(`✅ Response: ${JSON.stringify(data).substring(0, 200)}`)
-            return { success: true, endpoint, messageId: data.messageId || data.id || `whatsapp_${Date.now()}` }
+            console.log(`✅ SUCCESS! Endpoint: ${endpoint}`)
+            return { 
+              success: true, 
+              endpoint, 
+              messageId: responseData?.key?.id || responseData?.messageId || responseData?.id || `whatsapp_${Date.now()}`,
+              response: responseData
+            }
           } else {
-            const txt = await res.text()
-            lastError = `HTTP ${res.status} - ${txt.substring(0, 100)}`
+            lastError = `HTTP ${res.status} - ${responseText.substring(0, 150)}`
             lastEndpoint = endpoint
-            console.log(`❌ Failed: ${res.status} ${res.statusText}`)
+            lastResponse = responseText.substring(0, 300)
           }
         } catch (e: any) {
           lastError = e?.message || String(e)
           lastEndpoint = endpoint
-          console.log(`❌ Exception: ${lastError}`)
+          console.log(`    Exception: ${lastError}`)
         }
       }
     }
   }
   
-  console.error(`⚠️ All ${attemptCount} attempts failed for ${number}`)
-  console.error(`⚠️ Last error: ${lastError}`)
+  console.error(`⚠️ [Evolution] All ${attemptCount} attempts failed`)
   console.error(`⚠️ Last endpoint: ${lastEndpoint}`)
-  console.error(`⚠️ Suggestion: Configure 'send_endpoint' in Evolution integration`)
+  console.error(`⚠️ Last error: ${lastError}`)
+  console.error(`⚠️ Last response: ${lastResponse}`)
+  console.error(`⚠️ Suggestion: Verify instance "${cfg.instance}" exists and is connected at ${cfg.apiUrl}`)
   
-  return { success: false, error: `All ${attemptCount} attempts failed. Last: ${lastError}`, tried_endpoints: endpoints }
+  return { 
+    success: false, 
+    error: `All ${attemptCount} attempts failed. Last: ${lastError}`,
+    lastEndpoint,
+    lastResponse,
+    suggestion: `Verify instance "${cfg.instance}" exists and is connected. Check logs at Evolution API dashboard.`
+  }
 }
 
 // Resolve Evolution config with DB integration priority over ENV for admin control
