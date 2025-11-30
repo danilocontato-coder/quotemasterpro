@@ -4264,6 +4264,56 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_attachments: {
+        Row: {
+          client_id: string | null
+          description: string | null
+          document_type: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          quote_id: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          description?: string | null
+          document_type?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          quote_id: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          description?: string | null
+          document_type?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          quote_id?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_attachments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_client_views: {
         Row: {
           client_id: string

@@ -26,7 +26,8 @@ import {
   User,
   AlertTriangle,
   ShoppingCart,
-  Sparkles
+  Sparkles,
+  Paperclip
 } from 'lucide-react';
 import { Quote } from '@/hooks/useSupabaseQuotes';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +53,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { calculateDeliveryScore, calculateSupplierReputation } from '@/utils/supplierMetrics';
 import { AuditLog } from '@/hooks/useAuditLogs';
 import { useAuth } from '@/contexts/AuthContext';
+import { QuoteAttachmentsSection } from './QuoteAttachmentsSection';
+import { useQuoteAttachments } from '@/hooks/useQuoteAttachments';
 
 export interface QuoteProposal {
   id: string;
@@ -802,7 +805,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-6' : 'grid-cols-5'}`}>
+            <TabsList className={`grid w-full ${quote.requires_visit ? 'grid-cols-7' : 'grid-cols-6'}`}>
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="proposals" className="flex items-center gap-2">
                 Propostas ({proposals.length})
@@ -811,6 +814,10 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                     <Sparkles className="h-3 w-3" />
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="attachments" className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4" />
+                Anexos
               </TabsTrigger>
               <TabsTrigger value="analysis">🧩 Combinação Inteligente</TabsTrigger>
               {quote.requires_visit && (
@@ -990,6 +997,13 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="attachments" className="space-y-6">
+              <QuoteAttachmentsSection 
+                quoteId={quote.id} 
+                readOnly={quote.status === 'finalized' || quote.status === 'cancelled'}
+              />
             </TabsContent>
 
             <TabsContent value="proposals" className="space-y-6">
