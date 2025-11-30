@@ -183,37 +183,64 @@ export function useAINegotiation() {
   };
 
   const startNegotiation = async (negotiationId: string) => {
+    console.log('🚀 [NEGOTIATION] ========== INÍCIO startNegotiation ==========');
+    console.log('🚀 [NEGOTIATION] negotiationId recebido:', negotiationId);
+    console.log('🚀 [NEGOTIATION] Tipo do negotiationId:', typeof negotiationId);
+    
     try {
-      console.log('🤖 [AI-NEGOTIATION] Iniciando negociação com ID:', negotiationId);
-      
       if (!negotiationId) {
-        throw new Error('negotiationId é obrigatório para iniciar negociação');
+        const errorMsg = 'negotiationId é obrigatório para iniciar negociação';
+        console.error('❌ [NEGOTIATION] Validação falhou:', errorMsg);
+        throw new Error(errorMsg);
       }
+      
+      console.log('🚀 [NEGOTIATION] Chamando edge function ai-negotiation-agent...');
+      console.log('🚀 [NEGOTIATION] Payload:', JSON.stringify({ action: 'negotiate', negotiationId }));
       
       const { data, error } = await supabase.functions.invoke('ai-negotiation-agent', {
         body: { action: 'negotiate', negotiationId }
       });
 
-      if (error) throw error;
+      console.log('🚀 [NEGOTIATION] Resposta da edge function:');
+      console.log('🚀 [NEGOTIATION] - data:', JSON.stringify(data, null, 2));
+      console.log('🚀 [NEGOTIATION] - error:', error);
+
+      if (error) {
+        console.error('❌ [NEGOTIATION] Erro retornado pela edge function:', error);
+        throw error;
+      }
+      
       if (data && data.success === false) {
-        throw new Error(data.error || 'Falha na negociação via WhatsApp');
+        const errorMsg = data.error || 'Falha na negociação via WhatsApp';
+        console.error('❌ [NEGOTIATION] Edge function retornou success=false:', errorMsg);
+        throw new Error(errorMsg);
       }
 
+      console.log('✅ [NEGOTIATION] Negociação iniciada com sucesso!');
+      
       toast({
         title: 'Negociação Iniciada',
-        description: 'A IA começou a negociar com o fornecedor',
+        description: 'A IA começou a negociar com o fornecedor via WhatsApp',
       });
 
       setTimeout(() => fetchNegotiations(), 500);
       return data;
-    } catch (error) {
-      console.error('Error starting negotiation:', error);
+    } catch (error: any) {
+      console.error('❌ [NEGOTIATION] ========== ERRO ==========');
+      console.error('❌ [NEGOTIATION] Tipo do erro:', error?.name);
+      console.error('❌ [NEGOTIATION] Mensagem:', error?.message);
+      console.error('❌ [NEGOTIATION] Stack:', error?.stack);
+      
+      const errorMessage = error?.message || 'Erro desconhecido ao iniciar negociação';
+      
       toast({
-        title: 'Erro',
-        description: 'Erro ao iniciar negociação',
+        title: 'Erro ao iniciar negociação',
+        description: errorMessage,
         variant: 'destructive',
       });
       throw error;
+    } finally {
+      console.log('🚀 [NEGOTIATION] ========== FIM startNegotiation ==========');
     }
   };
 

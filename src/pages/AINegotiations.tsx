@@ -34,9 +34,10 @@ export default function AINegotiations() {
   }, [negotiations]);
 
   // Filtrar negociações por status
+  // CORREÇÃO: 'analyzed' agora aparece na aba "Ativas" para que o botão "Negociar via WhatsApp" seja visível
   const negotiationsByStatus = React.useMemo(() => {
     return {
-      active: negotiations.filter(n => ['analyzing', 'negotiating'].includes(n.status)),
+      active: negotiations.filter(n => ['analyzing', 'analyzed', 'negotiating'].includes(n.status)),
       pending: negotiations.filter(n => n.status === 'completed' && !n.human_approved),
       completed: negotiations.filter(n => ['approved', 'rejected'].includes(n.status)),
       all: negotiations
