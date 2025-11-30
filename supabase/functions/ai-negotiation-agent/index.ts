@@ -745,21 +745,37 @@ Responda APENAS a mensagem, sem aspas ou formatação.`;
 }
 
 async function approveNegotiation(sb: any, negotiationId: string) {
+  console.log('📝 [approve] Aprovando negociação:', negotiationId);
+  
   const { data, error } = await sb
     .from('ai_negotiations')
     .update({
       status: 'approved',
       human_approved: true,
-      approved_by: 'current_user' // TODO: capturar do JWT
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     })
     .eq('id', negotiationId)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    throw new Error('Erro ao aprovar negociação');
+    console.error('❌ [approve] Erro ao aprovar:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
+  if (!data) {
+    console.error('❌ [approve] Negociação não encontrada:', negotiationId);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Negociação não encontrada' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log('✅ [approve] Negociação aprovada com sucesso');
   return new Response(
     JSON.stringify({ success: true, negotiation: data }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -767,20 +783,37 @@ async function approveNegotiation(sb: any, negotiationId: string) {
 }
 
 async function rejectNegotiation(sb: any, negotiationId: string) {
+  console.log('📝 [reject] Rejeitando negociação:', negotiationId);
+  
   const { data, error } = await sb
     .from('ai_negotiations')
     .update({
       status: 'rejected',
-      human_approved: false
+      human_approved: false,
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     })
     .eq('id', negotiationId)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    throw new Error('Erro ao rejeitar negociação');
+    console.error('❌ [reject] Erro ao rejeitar:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
+  if (!data) {
+    console.error('❌ [reject] Negociação não encontrada:', negotiationId);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Negociação não encontrada' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log('✅ [reject] Negociação rejeitada com sucesso');
   return new Response(
     JSON.stringify({ success: true, negotiation: data }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
