@@ -77,7 +77,7 @@ const DomainSettings = React.lazy(() => import('@/pages/admin/DomainSettings'));
 const FinancialManagement = React.lazy(() => import('@/pages/admin/FinancialManagement'));
 const LiquidityDashboard = React.lazy(() => import('@/pages/admin/LiquidityDashboard'));
 const EmailMarketingDashboard = React.lazy(() => import('@/pages/admin/EmailMarketing/index'));
-const EmailMarketingEditor = React.lazy(() => import('@/pages/admin/EmailMarketing/Editor'));
+const EmailMarketingEditor = React.lazy(() => import('@/pages/admin/EmailMarketing/EditorComplete'));
 const EmailMarketingCampaigns = React.lazy(() => import('@/pages/admin/EmailMarketing/Campaigns'));
 const EmailMarketingContacts = React.lazy(() => import('@/pages/admin/EmailMarketing/Contacts'));
 const EmailMarketingAnalytics = React.lazy(() => import('@/pages/admin/EmailMarketing/Analytics'));
