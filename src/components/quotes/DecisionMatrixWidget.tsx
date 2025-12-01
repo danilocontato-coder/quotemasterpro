@@ -8,7 +8,8 @@ import { WeightEditorModal } from './WeightEditorModal';
 import { NegotiationConfirmModal } from './NegotiationConfirmModal';
 import { NegotiationResultModal } from './NegotiationResultModal';
 import { ProposalCard } from './ProposalCard';
-import { DollarSign, Clock, Package, Shield, Star, Zap, Save, CheckCircle, Settings, Brain } from 'lucide-react';
+import { DollarSign, Clock, Package, Shield, Star, Zap, Save, CheckCircle, Settings, Brain, FileDown } from 'lucide-react';
+import { exportDecisionMatrixToPDF } from '@/utils/exportDecisionMatrixPDF';
 import { QuoteProposal } from './QuoteDetailModal';
 import { isQuoteLocked as checkQuoteLocked } from '@/utils/statusUtils';
 import { useSavedDecisionMatrices } from '@/hooks/useSavedDecisionMatrices';
@@ -124,6 +125,32 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
       })) as any
     });
     setTimeout(() => setIsSaving(false), 1000);
+  };
+
+  const handleExportPDF = () => {
+    exportDecisionMatrixToPDF({
+      quoteName,
+      quoteCode: quoteId.substring(0, 8).toUpperCase(),
+      weights,
+      rankedProposals: rankedProposals.map(r => ({
+        id: r.id,
+        name: r.name,
+        score: r.score,
+        metrics: r.metrics,
+        proposal: {
+          totalPrice: r.proposal.totalPrice,
+          deliveryTime: r.proposal.deliveryTime,
+          shippingCost: r.proposal.shippingCost,
+          warrantyMonths: r.proposal.warrantyMonths
+        }
+      })),
+      quoteItems
+    });
+    
+    toast({
+      title: 'PDF exportado!',
+      description: 'Documento pronto para apresentação.',
+    });
   };
 
   const handleConfirmNegotiation = async () => {
@@ -267,6 +294,15 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
                   >
                     <Save className="h-4 w-4" />
                     {isSaving ? 'Salvando...' : 'Salvar Matriz'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Exportar PDF
                   </Button>
                 </div>
               </div>
