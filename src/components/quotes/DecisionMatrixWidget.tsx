@@ -21,6 +21,7 @@ interface DecisionMatrixWidgetProps {
   quoteItems: QuoteItem[];
   quoteId: string;
   quoteName: string;
+  quoteLocalCode?: string;
   defaultOpen?: boolean;
   onApprove?: (proposal: QuoteProposal) => void;
   quoteStatus: string;
@@ -39,6 +40,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   quoteItems,
   quoteId,
   quoteName,
+  quoteLocalCode,
   defaultOpen = false,
   onApprove,
   quoteStatus
@@ -130,7 +132,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
   const handleExportPDF = () => {
     exportDecisionMatrixToPDF({
       quoteName,
-      quoteCode: quoteId.substring(0, 8).toUpperCase(),
+      quoteCode: quoteLocalCode ? `#${quoteLocalCode}` : `#${quoteId.substring(0, 8).toUpperCase()}`,
       weights,
       rankedProposals: rankedProposals.map(r => ({
         id: r.id,
@@ -149,7 +151,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
     
     toast({
       title: 'PDF exportado!',
-      description: 'Documento pronto para apresentação.',
+      description: 'Documento pronto para apresentacao.',
     });
   };
 
@@ -232,7 +234,7 @@ export const DecisionMatrixWidget: React.FC<DecisionMatrixWidgetProps> = ({
     { key: 'deliveryTime' as const, label: 'Prazo', icon: Clock, color: 'bg-blue-100 text-blue-700' },
     { key: 'shippingCost' as const, label: 'Frete', icon: Package, color: 'bg-orange-100 text-orange-700' },
     { key: 'warranty' as const, label: 'Garantia', icon: Shield, color: 'bg-purple-100 text-purple-700' },
-    { key: 'sla' as const, label: 'Pontualidade', icon: Zap, color: 'bg-yellow-100 text-yellow-700' },
+    { key: 'deliveryScore' as const, label: 'Pontualidade', icon: Zap, color: 'bg-yellow-100 text-yellow-700' },
     { key: 'reputation' as const, label: 'Reputação', icon: Star, color: 'bg-amber-100 text-amber-700' },
   ];
 

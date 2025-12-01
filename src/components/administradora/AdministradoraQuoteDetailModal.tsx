@@ -504,6 +504,7 @@ export const AdministradoraQuoteDetailModal: React.FC<AdministradoraQuoteDetailM
                   quoteItems={quote.items}
                   quoteId={quote.id}
                   quoteName={quote.title}
+                  quoteLocalCode={quote.local_code || undefined}
                   defaultOpen={true}
                   onApprove={onApprove}
                   quoteStatus={quote.status}
