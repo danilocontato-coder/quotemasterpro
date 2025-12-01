@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { WeightConfig } from './decisionMatrixCalculator';
 import { formatCurrency } from '@/lib/utils';
 
@@ -180,7 +180,7 @@ export function exportDecisionMatrixToPDF(params: ExportParams): void {
     `${p.proposal.warrantyMonths} meses`
   ]);
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: yPos,
     head: [['Pos', 'Fornecedor', 'Score', 'Preço Total', 'Prazo', 'Frete', 'Garantia']],
     body: tableData,
@@ -284,7 +284,7 @@ export function exportDecisionMatrixToPDF(params: ExportParams): void {
       `${item.quantity}`,
     ]);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [['#', 'Produto', 'Qtd']],
       body: itemsData,
