@@ -1076,6 +1076,7 @@ const QuoteDetailModal: React.FC<QuoteDetailModalProps> = ({
                 quoteItems={quoteItems}
                 quoteId={quote.id}
                 quoteName={quote.title}
+                quoteLocalCode={quote.local_code || undefined}
                 defaultOpen={true}
                 onApprove={onApprove}
                 quoteStatus={quote.status}

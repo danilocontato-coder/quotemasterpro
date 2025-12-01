@@ -55,6 +55,11 @@ export function exportDecisionMatrixToPDF(params: ExportParams): void {
   const accentGreen: [number, number, number] = [34, 197, 94]; // #22C55E
   const lightGray: [number, number, number] = [245, 245, 245]; // #F5F5F5
   const darkText: [number, number, number] = [15, 23, 42]; // #0F172A
+  
+  // Medal colors
+  const goldColor: [number, number, number] = [255, 193, 7];
+  const silverColor: [number, number, number] = [158, 158, 158];
+  const bronzeColor: [number, number, number] = [205, 127, 50];
 
   // Helper to add page footer
   const addFooter = () => {
@@ -64,7 +69,7 @@ export function exportDecisionMatrixToPDF(params: ExportParams): void {
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
       doc.text(
-        `Gerado pelo Cotiz em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} • Página ${i} de ${pageCount}`,
+        `Gerado pelo Cotiz em ${new Date().toLocaleDateString('pt-BR')} as ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - Pagina ${i} de ${pageCount}`,
         pageWidth / 2,
         doc.internal.pageSize.getHeight() - 10,
         { align: 'center' }
@@ -72,61 +77,112 @@ export function exportDecisionMatrixToPDF(params: ExportParams): void {
     }
   };
 
+  // Helper to draw medal circle
+  const drawMedal = (x: number, y: number, rank: number) => {
+    const radius = 6;
+    let color: [number, number, number];
+    let label: string;
+    
+    switch (rank) {
+      case 0:
+        color = goldColor;
+        label = '1';
+        break;
+      case 1:
+        color = silverColor;
+        label = '2';
+        break;
+      case 2:
+        color = bronzeColor;
+        label = '3';
+        break;
+      default:
+        color = [100, 100, 100];
+        label = `${rank + 1}`;
+    }
+    
+    doc.setFillColor(...color);
+    doc.circle(x, y, radius, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(label, x, y + 3, { align: 'center' });
+  };
+
   // ========== HEADER ==========
   doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, pageWidth, 35, 'F');
+  doc.rect(0, 0, pageWidth, 40, 'F');
   
+  // Logo text
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
+  doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('ANÁLISE COMPARATIVA DE PROPOSTAS', pageWidth / 2, 15, { align: 'center' });
+  doc.text('COTIZ', margin, 18);
+  
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'normal');
+  doc.text('ANALISE COMPARATIVA DE PROPOSTAS', pageWidth / 2, 18, { align: 'center' });
   
   doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Matriz de Decisão Ponderada', pageWidth / 2, 23, { align: 'center' });
+  doc.text('Matriz de Decisao Ponderada', pageWidth / 2, 28, { align: 'center' });
   
   doc.setFontSize(8);
-  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth / 2, 30, { align: 'center' });
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')} as ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth / 2, 36, { align: 'center' });
 
-  yPos = 45;
+  yPos = 50;
 
   // ========== QUOTE INFO ==========
-  doc.setTextColor(...darkText);
+  doc.setTextColor(...primaryColor);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INFORMACOES DA COTACAO', margin, yPos);
+  
+  // Underline
+  doc.setDrawColor(...primaryColor);
+  doc.setLineWidth(0.5);
+  doc.line(margin, yPos + 2, margin + 60, yPos + 2);
+  
+  yPos += 10;
+  
   doc.setFillColor(...lightGray);
-  doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 25, 3, 3, 'F');
+  doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 28, 3, 3, 'F');
   
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Cotação: ${quoteCode}`, margin + 5, yPos + 8);
+  doc.setTextColor(...darkText);
+  doc.text(`Codigo: ${quoteCode}`, margin + 5, yPos + 10);
   
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text(quoteName, margin + 5, yPos + 16);
+  doc.text(`Descricao: ${quoteName}`, margin + 5, yPos + 18);
   
   if (clientName) {
     doc.setTextColor(100, 100, 100);
-    doc.text(`Cliente: ${clientName}`, pageWidth - margin - 5, yPos + 8, { align: 'right' });
+    doc.text(`Cliente: ${clientName}`, pageWidth - margin - 5, yPos + 10, { align: 'right' });
   }
   
   doc.setTextColor(...darkText);
-  doc.text(`${rankedProposals.length} propostas analisadas`, pageWidth - margin - 5, yPos + 16, { align: 'right' });
+  doc.text(`Propostas analisadas: ${rankedProposals.length}`, pageWidth - margin - 5, yPos + 18, { align: 'right' });
 
-  yPos += 35;
+  yPos += 38;
 
   // ========== WEIGHTS CONFIGURATION ==========
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...primaryColor);
-  doc.text('⚖️ CONFIGURAÇÃO DE PESOS', margin, yPos);
-  yPos += 8;
+  doc.text('CONFIGURACAO DE PESOS', margin, yPos);
+  
+  // Underline
+  doc.line(margin, yPos + 2, margin + 55, yPos + 2);
+  yPos += 10;
 
   const weightLabels = [
-    { key: 'price', label: 'Preço', emoji: '💰' },
-    { key: 'deliveryTime', label: 'Prazo', emoji: '⏱️' },
-    { key: 'shippingCost', label: 'Frete', emoji: '📦' },
-    { key: 'warranty', label: 'Garantia', emoji: '🛡️' },
-    { key: 'sla', label: 'Pontualidade', emoji: '⚡' },
-    { key: 'reputation', label: 'Reputação', emoji: '⭐' },
+    { key: 'price', label: 'Preco' },
+    { key: 'deliveryTime', label: 'Prazo' },
+    { key: 'shippingCost', label: 'Frete' },
+    { key: 'warranty', label: 'Garantia' },
+    { key: 'deliveryScore', label: 'Pontualidade' },
+    { key: 'reputation', label: 'Reputacao' },
   ];
 
   const weightColWidth = (pageWidth - (margin * 2)) / 6;
@@ -137,52 +193,55 @@ export function exportDecisionMatrixToPDF(params: ExportParams): void {
     
     // Background box
     doc.setFillColor(240, 245, 255);
-    doc.roundedRect(x + 2, yPos, weightColWidth - 4, 22, 2, 2, 'F');
+    doc.roundedRect(x + 2, yPos, weightColWidth - 4, 24, 2, 2, 'F');
     
     // Label
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(80, 80, 80);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${w.emoji} ${w.label}`, x + weightColWidth / 2, yPos + 7, { align: 'center' });
+    doc.text(w.label, x + weightColWidth / 2, yPos + 8, { align: 'center' });
     
     // Value
     doc.setFontSize(14);
     doc.setTextColor(...primaryColor);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${value}%`, x + weightColWidth / 2, yPos + 17, { align: 'center' });
+    doc.text(`${value}%`, x + weightColWidth / 2, yPos + 19, { align: 'center' });
   });
 
-  yPos += 32;
+  yPos += 34;
 
   // ========== RANKING TABLE ==========
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...primaryColor);
-  doc.text('🏆 RANKING DAS PROPOSTAS', margin, yPos);
-  yPos += 5;
+  doc.text('RANKING DAS PROPOSTAS', margin, yPos);
+  
+  // Underline
+  doc.line(margin, yPos + 2, margin + 55, yPos + 2);
+  yPos += 8;
 
-  const getMedalEmoji = (index: number) => {
+  const getMedalText = (index: number) => {
     switch (index) {
-      case 0: return '🥇';
-      case 1: return '🥈';
-      case 2: return '🥉';
-      default: return `${index + 1}º`;
+      case 0: return '1o';
+      case 1: return '2o';
+      case 2: return '3o';
+      default: return `${index + 1}o`;
     }
   };
 
   const tableData = rankedProposals.map((p, i) => [
-    getMedalEmoji(i),
+    getMedalText(i),
     p.name,
     p.score.toFixed(1),
     formatCurrency(p.proposal.totalPrice),
     `${p.proposal.deliveryTime} dias`,
-    p.proposal.shippingCost > 0 ? formatCurrency(p.proposal.shippingCost) : 'Grátis',
+    p.proposal.shippingCost > 0 ? formatCurrency(p.proposal.shippingCost) : 'Gratis',
     `${p.proposal.warrantyMonths} meses`
   ]);
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Pos', 'Fornecedor', 'Score', 'Preço Total', 'Prazo', 'Frete', 'Garantia']],
+    head: [['Pos', 'Fornecedor', 'Score', 'Preco Total', 'Prazo', 'Frete', 'Garantia']],
     body: tableData,
     theme: 'striped',
     headStyles: {
@@ -209,74 +268,111 @@ export function exportDecisionMatrixToPDF(params: ExportParams): void {
       fillColor: [250, 250, 250]
     },
     didParseCell: function(data: any) {
-      // Highlight winner row
+      // Highlight winner row with gold background
       if (data.row.index === 0 && data.section === 'body') {
-        data.cell.styles.fillColor = [220, 252, 231]; // Light green
+        data.cell.styles.fillColor = [255, 251, 235]; // Light gold
         data.cell.styles.fontStyle = 'bold';
+      }
+      // Silver for second
+      if (data.row.index === 1 && data.section === 'body') {
+        data.cell.styles.fillColor = [248, 250, 252]; // Light silver
+      }
+      // Bronze for third
+      if (data.row.index === 2 && data.section === 'body') {
+        data.cell.styles.fillColor = [254, 249, 244]; // Light bronze
       }
     },
     margin: { left: margin, right: margin }
   });
 
-  yPos = (doc as any).lastAutoTable.finalY + 10;
+  yPos = (doc as any).lastAutoTable.finalY + 12;
 
   // ========== WINNER HIGHLIGHT ==========
   if (rankedProposals.length > 0) {
     const winner = rankedProposals[0];
     
     // Check if we need a new page
-    if (yPos > doc.internal.pageSize.getHeight() - 70) {
+    if (yPos > doc.internal.pageSize.getHeight() - 80) {
       doc.addPage();
       yPos = margin;
     }
 
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...primaryColor);
-    doc.text('⭐ PROPOSTA RECOMENDADA', margin, yPos);
-    yPos += 5;
+    doc.text('PROPOSTA RECOMENDADA', margin, yPos);
+    
+    // Star icon (drawn as filled shape)
+    doc.setFillColor(...goldColor);
+    const starX = margin + 58;
+    const starY = yPos - 3;
+    doc.circle(starX, starY, 3, 'F');
+    
+    // Underline
+    doc.line(margin, yPos + 2, margin + 55, yPos + 2);
+    yPos += 8;
 
     // Winner card with green border
     doc.setDrawColor(...accentGreen);
-    doc.setLineWidth(1.5);
+    doc.setLineWidth(2);
     doc.setFillColor(240, 253, 244);
-    doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 45, 3, 3, 'FD');
+    doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 50, 3, 3, 'FD');
+
+    // Draw gold medal
+    drawMedal(margin + 12, yPos + 15, 0);
 
     // Winner content
     doc.setTextColor(...darkText);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`🥇 ${winner.name}`, margin + 8, yPos + 12);
+    doc.text(winner.name, margin + 25, yPos + 18);
     
-    doc.setFontSize(20);
+    doc.setFontSize(22);
     doc.setTextColor(...accentGreen);
-    doc.text(`${winner.score.toFixed(1)} pts`, pageWidth - margin - 8, yPos + 14, { align: 'right' });
+    doc.text(`${winner.score.toFixed(1)} pts`, pageWidth - margin - 8, yPos + 18, { align: 'right' });
 
-    // Winner details
+    // Winner details in grid
     doc.setFontSize(10);
-    doc.setTextColor(80, 80, 80);
+    doc.setTextColor(60, 60, 60);
     doc.setFont('helvetica', 'normal');
     
-    const detailsY = yPos + 25;
-    const detailsCol1 = margin + 8;
-    const detailsCol2 = margin + 80;
+    const detailsY = yPos + 30;
+    const col1 = margin + 10;
+    const col2 = margin + 90;
     
-    doc.text(`💰 Preço: ${formatCurrency(winner.proposal.totalPrice)}`, detailsCol1, detailsY);
-    doc.text(`⏱️ Prazo: ${winner.proposal.deliveryTime} dias`, detailsCol2, detailsY);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Preco:', col1, detailsY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(formatCurrency(winner.proposal.totalPrice), col1 + 25, detailsY);
     
-    doc.text(`📦 Frete: ${winner.proposal.shippingCost > 0 ? formatCurrency(winner.proposal.shippingCost) : 'Grátis'}`, detailsCol1, detailsY + 10);
-    doc.text(`🛡️ Garantia: ${winner.proposal.warrantyMonths} meses`, detailsCol2, detailsY + 10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Prazo:', col2, detailsY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${winner.proposal.deliveryTime} dias`, col2 + 25, detailsY);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Frete:', col1, detailsY + 12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(winner.proposal.shippingCost > 0 ? formatCurrency(winner.proposal.shippingCost) : 'Gratis', col1 + 25, detailsY + 12);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Garantia:', col2, detailsY + 12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${winner.proposal.warrantyMonths} meses`, col2 + 35, detailsY + 12);
 
-    yPos += 55;
+    yPos += 60;
   }
 
   // ========== QUOTE ITEMS (if space available) ==========
-  if (quoteItems.length > 0 && yPos < doc.internal.pageSize.getHeight() - 60) {
-    doc.setFontSize(12);
+  if (quoteItems.length > 0 && yPos < doc.internal.pageSize.getHeight() - 70) {
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...primaryColor);
-    doc.text('📋 ITENS DA COTAÇÃO', margin, yPos);
-    yPos += 5;
+    doc.text('ITENS DA COTACAO', margin, yPos);
+    
+    // Underline
+    doc.line(margin, yPos + 2, margin + 45, yPos + 2);
+    yPos += 8;
 
     const itemsData = quoteItems.map((item, i) => [
       `${i + 1}`,
@@ -308,35 +404,46 @@ export function exportDecisionMatrixToPDF(params: ExportParams): void {
       margin: { left: margin, right: margin }
     });
 
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 12;
   }
 
   // ========== METHODOLOGY NOTE ==========
-  if (yPos < doc.internal.pageSize.getHeight() - 40) {
+  if (yPos < doc.internal.pageSize.getHeight() - 45) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryColor);
+    doc.text('METODOLOGIA', margin, yPos);
+    
+    // Underline
+    doc.line(margin, yPos + 2, margin + 35, yPos + 2);
+    yPos += 8;
+    
     doc.setFillColor(...lightGray);
-    doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 25, 2, 2, 'F');
+    doc.roundedRect(margin, yPos, pageWidth - (margin * 2), 28, 2, 2, 'F');
     
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.setFont('helvetica', 'bold');
-    doc.text('💡 Metodologia:', margin + 5, yPos + 7);
-    
+    doc.setTextColor(80, 80, 80);
     doc.setFont('helvetica', 'normal');
     doc.text(
-      'Cada proposta é avaliada em 6 dimensões (preço, prazo, frete, garantia, pontualidade, reputação). Os valores são normalizados',
-      margin + 5, yPos + 14
+      'Cada proposta e avaliada em 6 dimensoes: preco, prazo de entrega, custo de frete, garantia, pontualidade',
+      margin + 5, yPos + 8
     );
     doc.text(
-      'em escala 0-100 e multiplicados pelos pesos configurados. O score final indica a melhor escolha considerando os critérios definidos.',
-      margin + 5, yPos + 20
+      'e reputacao do fornecedor. Os valores sao normalizados em escala 0-100 e multiplicados pelos pesos',
+      margin + 5, yPos + 15
+    );
+    doc.text(
+      'configurados. O score final indica a melhor escolha considerando os criterios definidos pelo cliente.',
+      margin + 5, yPos + 22
     );
   }
 
   // Add footer to all pages
   addFooter();
 
-  // Save the PDF
+  // Save the PDF - use quoteCode directly (already formatted as RFQ015)
   const timestamp = new Date().toISOString().split('T')[0];
-  const filename = `Matriz_Decisao_${quoteCode}_${timestamp}.pdf`;
+  const safeCode = quoteCode.replace('#', '').replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `Matriz_Decisao_${safeCode}_${timestamp}.pdf`;
   doc.save(filename);
 }
