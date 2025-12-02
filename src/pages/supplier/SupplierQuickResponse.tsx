@@ -7,13 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, Building2, Package, Clock, DollarSign, AlertCircle, Loader2, Upload, FileText } from 'lucide-react';
+import { CheckCircle, Building2, Package, Clock, DollarSign, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { checkSupplierDuplicate, normalizeCNPJ } from '@/lib/supplierDeduplication';
 import { useAuth } from '@/contexts/AuthContext';
 import { VisitManagementModal } from '@/components/supplier/VisitManagementModal';
 import { useQuoteVisits } from '@/hooks/useQuoteVisits';
+import { ProposalMethodSelector, type ProposalMethod } from '@/components/supplier/ProposalMethodSelector';
+import { PdfUploadZone } from '@/components/supplier/PdfUploadZone';
 
 interface QuoteItem {
   id: string;
@@ -55,8 +57,13 @@ const SupplierQuickResponse = () => {
   const [dataConfirmed, setDataConfirmed] = useState(false);
   const [existingSupplier, setExistingSupplier] = useState<SupplierData | null>(null);
   const [visitModalOpen, setVisitModalOpen] = useState(false);
+  
+  // Estados para upload de PDF
+  const [proposalMethod, setProposalMethod] = useState<ProposalMethod>('manual');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [isExtractingFromPdf, setIsExtractingFromPdf] = useState(false);
+  const [extractionSuccess, setExtractionSuccess] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Hook para gerenciar visitas
   const { visits, isLoading: visitsLoading, fetchVisits } = useQuoteVisits(quote?.id);
@@ -264,6 +271,7 @@ const SupplierQuickResponse = () => {
   // Função para extrair dados do PDF
   const extractDataFromPdf = async (file: File) => {
     setIsExtractingFromPdf(true);
+    setExtractionSuccess(false);
     
     try {
       toast({
@@ -309,6 +317,8 @@ const SupplierQuickResponse = () => {
         notes: data.notes || prev.notes
       }));
 
+      setExtractionSuccess(true);
+      
       toast({
         title: '✅ Dados extraídos com sucesso!',
         description: `${data.items?.length || 0} itens encontrados. Verifique os valores e ajuste se necessário.`
@@ -326,31 +336,35 @@ const SupplierQuickResponse = () => {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      if (file.size > 10 * 1024 * 1024) {
-        toast({ 
-          title: 'Arquivo muito grande', 
-          description: 'O arquivo deve ter no máximo 10MB.',
-          variant: 'destructive' 
-        });
-        return;
-      }
-      
-      setAttachment(file);
-      
+  // Handler para seleção de arquivo via dropzone
+  const handleFileSelect = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ 
+        title: 'Arquivo muito grande', 
+        description: 'O arquivo deve ter no máximo 10MB.',
+        variant: 'destructive' 
+      });
+      return;
+    }
+    
+    setAttachment(file);
+    setExtractionSuccess(false);
+
+    // Se for PDF, tentar extrair dados automaticamente
+    if (file.type === 'application/pdf') {
+      await extractDataFromPdf(file);
+    } else {
       toast({
         title: '✅ Arquivo selecionado',
         description: `${file.name} será enviado com sua resposta.`
       });
-
-      // Se for PDF, tentar extrair dados automaticamente
-      if (file.type === 'application/pdf') {
-        await extractDataFromPdf(file);
-      }
     }
+  };
+
+  // Handler para remover arquivo
+  const handleRemoveFile = () => {
+    setAttachment(null);
+    setExtractionSuccess(false);
   };
 
   const handleSubmitProposal = async () => {
@@ -416,6 +430,45 @@ const SupplierQuickResponse = () => {
         }
       }
 
+      // Upload do anexo se existir
+      let attachmentUrl: string | null = null;
+      
+      if (attachment) {
+        setIsUploading(true);
+        console.log('📎 [SUPPLIER-QUICK] Iniciando upload de anexo:', attachment.name);
+        
+        try {
+          const fileExt = attachment.name.split('.').pop();
+          const fileName = `${quoteId}_${supplierId}_${Date.now()}.${fileExt}`;
+          const filePath = `quick-responses/${fileName}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('quote-attachments')
+            .upload(filePath, attachment);
+          
+          if (uploadError) {
+            console.error('❌ [UPLOAD] Erro no upload:', uploadError);
+            toast({
+              title: "Erro no upload do anexo",
+              description: "Não foi possível enviar o arquivo. A proposta será enviada sem anexo.",
+              variant: "destructive"
+            });
+          } else {
+            // Gerar signed URL (bucket é privado)
+            const { data: signedUrlData } = await supabase.storage
+              .from('quote-attachments')
+              .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 ano
+            
+            attachmentUrl = signedUrlData?.signedUrl || null;
+            console.log('✅ [UPLOAD] Anexo enviado com sucesso:', filePath);
+          }
+        } catch (uploadErr) {
+          console.error('❌ [UPLOAD] Erro geral:', uploadErr);
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
       // Criar resposta da cotação
       console.log('🚚 [SHIPPING-QUICK] proposalData.shippingCost (raw):', proposalData.shippingCost, typeof proposalData.shippingCost);
       const shippingValue = proposalData.shippingCost && proposalData.shippingCost !== '' 
@@ -438,7 +491,8 @@ const SupplierQuickResponse = () => {
           warranty_months: parseInt(proposalData.warrantyMonths) || 12,
           shipping_cost: isNaN(shippingValue) ? 0 : shippingValue,
           notes: proposalData.notes,
-          status: 'pending'
+          status: 'pending',
+          attachment_url: attachmentUrl
         });
 
       if (responseError) throw responseError;
@@ -779,49 +833,28 @@ const SupplierQuickResponse = () => {
               <CardHeader>
                 <CardTitle>Sua Proposta</CardTitle>
                 <CardDescription>
-                  Informe os detalhes da sua proposta comercial ou envie um PDF para extração automática
+                  Escolha como deseja enviar sua proposta comercial
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Upload de PDF com Extração Automática */}
-                <div className="space-y-2">
-                  <Label>Enviar PDF da Proposta (opcional)</Label>
-                  <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 hover:border-primary/50 transition-colors">
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      id="proposal-file-upload"
-                      disabled={isExtractingFromPdf}
-                    />
-                    <label 
-                      htmlFor="proposal-file-upload" 
-                      className="flex flex-col items-center gap-2 cursor-pointer"
-                    >
-                      {isExtractingFromPdf ? (
-                        <>
-                          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                          <span className="text-sm text-primary font-medium">Extraindo dados do PDF...</span>
-                        </>
-                      ) : attachment ? (
-                        <>
-                          <FileText className="w-8 h-8 text-primary" />
-                          <span className="text-sm text-primary font-medium">{attachment.name}</span>
-                          <span className="text-xs text-muted-foreground">Clique para trocar</span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-8 h-8 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">Arraste ou clique para enviar PDF</span>
-                          <span className="text-xs text-muted-foreground">
-                            IA irá extrair automaticamente os valores
-                          </span>
-                        </>
-                      )}
-                    </label>
-                  </div>
-                </div>
+              <CardContent className="space-y-6">
+                {/* Seletor de Método */}
+                <ProposalMethodSelector
+                  selectedMethod={proposalMethod}
+                  onMethodChange={setProposalMethod}
+                  hasAttachment={!!attachment}
+                  attachmentName={attachment?.name}
+                />
+
+                {/* Upload Zone - Mostra quando PDF está selecionado */}
+                {proposalMethod === 'pdf' && (
+                  <PdfUploadZone
+                    attachment={attachment}
+                    isExtracting={isExtractingFromPdf}
+                    extractionSuccess={extractionSuccess}
+                    onFileSelect={handleFileSelect}
+                    onRemoveFile={handleRemoveFile}
+                  />
+                )}
 
                 <Separator />
 
@@ -938,19 +971,20 @@ const SupplierQuickResponse = () => {
 
                 <Button
                   onClick={handleSubmitProposal}
-                  disabled={submitting || !canSubmitProposal}
+                  disabled={submitting || isUploading || !canSubmitProposal}
                   className="w-full"
                   size="lg"
                 >
-                  {submitting ? (
+                  {submitting || isUploading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Enviando proposta...
+                      {isUploading ? 'Enviando anexo...' : 'Enviando proposta...'}
                     </>
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4 mr-2" />
                       Enviar Proposta
+                      {attachment && <span className="ml-1 text-xs opacity-75">(com anexo)</span>}
                     </>
                   )}
                 </Button>
