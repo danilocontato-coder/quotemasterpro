@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { validateCPF, validateCNPJ, normalizeDocument } from '@/utils/documentValidation';
+import { detectPixKeyType } from '@/utils/pixKeyValidation';
 
 // Validação de CEP (com ou sem formatação)
 const cepRegex = /^\d{5}-?\d{3}$/;
@@ -74,7 +75,27 @@ export const supplierRegistrationSchema = z.object({
   // Descrição opcional
   description: z.string()
     .max(500, 'Descrição deve ter no máximo 500 caracteres')
-    .optional()
+    .optional(),
+
+  // === DADOS BANCÁRIOS (obrigatório: PIX ou conta bancária) ===
+  
+  // Tipo de recebimento escolhido
+  payment_method: z.enum(['pix', 'bank_account']).default('pix'),
+  
+  // Chave PIX (obrigatória se payment_method = 'pix')
+  pix_key: z.string().max(100, 'Chave PIX muito longa').optional(),
+  
+  // Dados bancários (obrigatórios se payment_method = 'bank_account')
+  bank_code: z.string().regex(/^\d{3}$/, 'Código do banco deve ter 3 dígitos').optional(),
+  bank_name: z.string().max(100).optional(),
+  agency: z.string().max(10, 'Agência muito longa').optional(),
+  agency_digit: z.string().max(2).optional(),
+  account_number: z.string().max(20, 'Número da conta muito longo').optional(),
+  account_digit: z.string().max(2).optional(),
+  account_type: z.enum(['corrente', 'poupanca']).optional(),
+  account_holder_name: z.string().max(150).optional(),
+  account_holder_document: z.string().optional(),
+
 }).refine((data) => {
   // Validação condicional do documento baseado no tipo
   const normalized = normalizeDocument(data.document_number);
@@ -89,6 +110,29 @@ export const supplierRegistrationSchema = z.object({
 }, {
   message: 'Documento inválido para o tipo selecionado',
   path: ['document_number'],
+}).refine((data) => {
+  // Validação: pelo menos PIX ou dados bancários completos
+  if (data.payment_method === 'pix') {
+    // Se escolheu PIX, deve ter chave PIX válida
+    if (!data.pix_key || data.pix_key.trim() === '') {
+      return false;
+    }
+    // Validar formato da chave PIX
+    const pixType = detectPixKeyType(data.pix_key);
+    return pixType !== null;
+  } else {
+    // Se escolheu conta bancária, deve ter todos os campos obrigatórios
+    return !!(
+      data.bank_code &&
+      data.agency &&
+      data.account_number &&
+      data.account_holder_name &&
+      data.account_holder_document
+    );
+  }
+}, {
+  message: 'Informe uma chave PIX válida ou dados bancários completos',
+  path: ['pix_key'],
 });
 
 export type SupplierRegistrationData = z.infer<typeof supplierRegistrationSchema>;

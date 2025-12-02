@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Mail, Phone, MapPin, FileText, Loader2, ChevronRight, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, FileText, Loader2, ChevronRight, ChevronLeft, CheckCircle2, CreditCard, AlertTriangle, Wallet } from 'lucide-react';
 import { supplierRegistrationSchema, type SupplierRegistrationData } from '@/lib/validations/supplierRegistration';
 import { formatDocument, normalizeDocument } from '@/utils/documentValidation';
 import { formatPhoneNumber } from '@/utils/phoneUtils';
 import { SpecialtiesInput } from '@/components/common/SpecialtiesInput';
+import { detectPixKeyType, getPixKeyTypeLabel, BRAZILIAN_BANKS } from '@/utils/pixKeyValidation';
 
 export default function SupplierRegisterWithToken() {
   const { token } = useParams<{ token: string }>();
@@ -40,8 +42,23 @@ export default function SupplierRegisterWithToken() {
     state: '',
     specialties: [],
     website: '',
-    description: ''
+    description: '',
+    // Dados bancários
+    payment_method: 'pix',
+    pix_key: '',
+    bank_code: '',
+    bank_name: '',
+    agency: '',
+    agency_digit: '',
+    account_number: '',
+    account_digit: '',
+    account_type: 'corrente',
+    account_holder_name: '',
+    account_holder_document: ''
   });
+
+  // Detectar tipo de chave PIX em tempo real
+  const detectedPixType = formData.pix_key ? detectPixKeyType(formData.pix_key) : null;
 
   useEffect(() => {
     validateToken();
@@ -77,7 +94,10 @@ export default function SupplierRegisterWithToken() {
           whatsapp: formatPhoneNumber(data.supplier.whatsapp || data.supplier.phone || ''),
           city: data.supplier.city || '',
           state: data.supplier.state || '',
-          specialties: data.supplier.specialties || []
+          specialties: data.supplier.specialties || [],
+          // Pré-preencher titular da conta com nome do fornecedor
+          account_holder_name: data.supplier.name || '',
+          account_holder_document: data.supplier.document_number || data.supplier.cnpj || ''
         }));
       }
 
@@ -153,6 +173,22 @@ export default function SupplierRegisterWithToken() {
         newErrors.specialties = 'Selecione ao menos uma especialidade';
       }
     }
+
+    if (step === 4) {
+      if (formData.payment_method === 'pix') {
+        if (!formData.pix_key || formData.pix_key.trim() === '') {
+          newErrors.pix_key = 'Chave PIX é obrigatória';
+        } else if (!detectedPixType) {
+          newErrors.pix_key = 'Formato de chave PIX inválido';
+        }
+      } else {
+        if (!formData.bank_code) newErrors.bank_code = 'Selecione o banco';
+        if (!formData.agency) newErrors.agency = 'Agência é obrigatória';
+        if (!formData.account_number) newErrors.account_number = 'Número da conta é obrigatório';
+        if (!formData.account_holder_name) newErrors.account_holder_name = 'Nome do titular é obrigatório';
+        if (!formData.account_holder_document) newErrors.account_holder_document = 'CPF/CNPJ do titular é obrigatório';
+      }
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -160,7 +196,7 @@ export default function SupplierRegisterWithToken() {
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 3));
+      setCurrentStep(prev => Math.min(prev + 1, 4));
     }
   };
 
@@ -173,7 +209,7 @@ export default function SupplierRegisterWithToken() {
     e.preventDefault();
 
     // Validar etapa final
-    if (!validateStep(3)) return;
+    if (!validateStep(4)) return;
 
     try {
       setLoading(true);
@@ -498,109 +534,333 @@ export default function SupplierRegisterWithToken() {
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center py-8">
-      <div className="container mx-auto px-4 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center flex items-center justify-center gap-2">
-              <Building2 className="w-6 h-6" />
-              Complete seu Cadastro
-            </CardTitle>
-            
-            {supplierData && (
-              <div className="mt-4 p-4 bg-primary/10 rounded-lg space-y-2">
-                <p className="text-sm font-medium text-primary">{supplierData.name}</p>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Mail className="w-3 h-3" />
-                  {supplierData.email}
-                </div>
-              </div>
-            )}
+  const renderStep4 = () => (
+    <div className="space-y-4">
+      <Alert className="border-primary/20 bg-primary/5">
+        <Wallet className="h-4 w-4" />
+        <AlertDescription>
+          Esses dados são necessários para que você receba pagamentos após a entrega ser confirmada pelo cliente.
+        </AlertDescription>
+      </Alert>
 
-            {/* Progress Stepper */}
-            <div className="flex items-center justify-between mt-6 px-4">
-              {[1, 2, 3].map((step) => (
-                <div key={step} className="flex items-center flex-1">
-                  <div className={`
-                    flex items-center justify-center w-8 h-8 rounded-full border-2 
-                    ${currentStep >= step 
-                      ? 'bg-primary text-primary-foreground border-primary' 
-                      : 'bg-background text-muted-foreground border-muted'
-                    }
-                  `}>
-                    {currentStep > step ? <CheckCircle2 className="w-5 h-5" /> : step}
-                  </div>
-                  {step < 3 && (
-                    <div className={`
-                      flex-1 h-0.5 mx-2
-                      ${currentStep > step ? 'bg-primary' : 'bg-muted'}
-                    `} />
-                  )}
-                </div>
-              ))}
+      <div>
+        <Label>Como deseja receber? *</Label>
+        <RadioGroup
+          value={formData.payment_method}
+          onValueChange={(value: 'pix' | 'bank_account') => {
+            setFormData({...formData, payment_method: value});
+            setErrors({});
+          }}
+          className="flex gap-4 mt-2"
+        >
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="pix" id="pix" />
+            <Label htmlFor="pix" className="cursor-pointer">Chave PIX (mais rápido)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="bank_account" id="bank_account" />
+            <Label htmlFor="bank_account" className="cursor-pointer">Conta Bancária</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {formData.payment_method === 'pix' ? (
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+          <div>
+            <Label htmlFor="pix_key">Chave PIX *</Label>
+            <div className="relative">
+              <CreditCard className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="pix_key"
+                value={formData.pix_key}
+                onChange={(e) => {
+                  setFormData({...formData, pix_key: e.target.value});
+                  if (errors.pix_key) setErrors({...errors, pix_key: undefined});
+                }}
+                placeholder="CPF, CNPJ, e-mail, celular ou chave aleatória"
+                className="pl-10"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Tipos aceitos: CPF, CNPJ, E-mail, Celular ou Chave Aleatória
+            </p>
+            {detectedPixType && (
+              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Chave identificada: {getPixKeyTypeLabel(detectedPixType)}
+              </p>
+            )}
+            {errors.pix_key && (
+              <p className="text-sm text-destructive mt-1">{errors.pix_key}</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+          <div>
+            <Label htmlFor="bank_code">Banco *</Label>
+            <Select
+              value={formData.bank_code}
+              onValueChange={(value) => {
+                const bank = BRAZILIAN_BANKS.find(b => b.code === value);
+                setFormData({
+                  ...formData, 
+                  bank_code: value,
+                  bank_name: bank?.name || ''
+                });
+                if (errors.bank_code) setErrors({...errors, bank_code: undefined});
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o banco" />
+              </SelectTrigger>
+              <SelectContent>
+                {BRAZILIAN_BANKS.map((bank) => (
+                  <SelectItem key={bank.code} value={bank.code}>
+                    {bank.code} - {bank.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.bank_code && (
+              <p className="text-sm text-destructive mt-1">{errors.bank_code}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="agency">Agência *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="agency"
+                  value={formData.agency}
+                  onChange={(e) => {
+                    setFormData({...formData, agency: e.target.value.replace(/\D/g, '')});
+                    if (errors.agency) setErrors({...errors, agency: undefined});
+                  }}
+                  placeholder="0000"
+                  className="flex-1"
+                  maxLength={6}
+                />
+                <Input
+                  value={formData.agency_digit}
+                  onChange={(e) => setFormData({...formData, agency_digit: e.target.value})}
+                  placeholder="Dígito"
+                  className="w-16"
+                  maxLength={2}
+                />
+              </div>
+              {errors.agency && (
+                <p className="text-sm text-destructive mt-1">{errors.agency}</p>
+              )}
             </div>
 
-            <CardDescription className="text-center mt-3">
-              {currentStep === 1 && 'Dados Básicos'}
-              {currentStep === 2 && 'Endereço Completo'}
-              {currentStep === 3 && 'Especialidades e Informações'}
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            <form onSubmit={handleSubmit}>
-              {currentStep === 1 && renderStep1()}
-              {currentStep === 2 && renderStep2()}
-              {currentStep === 3 && renderStep3()}
-
-              <div className="flex gap-3 mt-6">
-                {currentStep > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={prevStep}
-                    disabled={loading}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Voltar
-                  </Button>
-                )}
-                
-                {currentStep < 3 ? (
-                  <Button
-                    type="button"
-                    onClick={nextStep}
-                    className="flex-1"
-                  >
-                    Próximo
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                ) : (
-                  <Button type="submit" className="flex-1" disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Finalizando...
-                      </>
-                    ) : (
-                      'Completar Cadastro'
-                    )}
-                  </Button>
-                )}
+            <div>
+              <Label htmlFor="account_number">Conta *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="account_number"
+                  value={formData.account_number}
+                  onChange={(e) => {
+                    setFormData({...formData, account_number: e.target.value.replace(/\D/g, '')});
+                    if (errors.account_number) setErrors({...errors, account_number: undefined});
+                  }}
+                  placeholder="00000000"
+                  className="flex-1"
+                  maxLength={15}
+                />
+                <Input
+                  value={formData.account_digit}
+                  onChange={(e) => setFormData({...formData, account_digit: e.target.value})}
+                  placeholder="Dígito"
+                  className="w-16"
+                  maxLength={2}
+                />
               </div>
-
-              {currentStep === 3 && (
-                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-4">
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    🔑 Uma senha temporária será gerada e enviada para seu WhatsApp.
-                  </p>
-                </div>
+              {errors.account_number && (
+                <p className="text-sm text-destructive mt-1">{errors.account_number}</p>
               )}
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="account_type">Tipo de Conta *</Label>
+            <Select
+              value={formData.account_type}
+              onValueChange={(value: 'corrente' | 'poupanca') => 
+                setFormData({...formData, account_type: value})
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="corrente">Conta Corrente</SelectItem>
+                <SelectItem value="poupanca">Conta Poupança</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="account_holder_name">Nome do Titular *</Label>
+            <Input
+              id="account_holder_name"
+              value={formData.account_holder_name}
+              onChange={(e) => {
+                setFormData({...formData, account_holder_name: e.target.value});
+                if (errors.account_holder_name) setErrors({...errors, account_holder_name: undefined});
+              }}
+              placeholder="Nome completo do titular"
+            />
+            {errors.account_holder_name && (
+              <p className="text-sm text-destructive mt-1">{errors.account_holder_name}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="account_holder_document">CPF/CNPJ do Titular *</Label>
+            <Input
+              id="account_holder_document"
+              value={formData.account_holder_document}
+              onChange={(e) => {
+                const formatted = formatDocument(e.target.value, e.target.value.replace(/\D/g, '').length > 11 ? 'cnpj' : 'cpf');
+                setFormData({...formData, account_holder_document: formatted});
+                if (errors.account_holder_document) setErrors({...errors, account_holder_document: undefined});
+              }}
+              placeholder="000.000.000-00"
+              maxLength={18}
+            />
+            {errors.account_holder_document && (
+              <p className="text-sm text-destructive mt-1">{errors.account_holder_document}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <Alert variant="default" className="border-amber-200 bg-amber-50">
+        <AlertTriangle className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-800">
+          Certifique-se de que os dados estão corretos. Erros nos dados bancários podem atrasar o recebimento dos pagamentos.
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+
+  const totalSteps = 4;
+  const stepTitles = [
+    { icon: FileText, label: 'Documento' },
+    { icon: MapPin, label: 'Endereço' },
+    { icon: Building2, label: 'Empresa' },
+    { icon: CreditCard, label: 'Recebimento' }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
+      <Card className="w-full max-w-lg shadow-xl">
+        <CardHeader className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Building2 className="w-8 h-8 text-primary" />
+            <span className="text-2xl font-bold text-primary">COTIZ</span>
+          </div>
+          <CardTitle className="text-xl">
+            Complete seu Cadastro
+          </CardTitle>
+          <CardDescription>
+            {supplierData?.name && (
+              <span className="font-medium text-foreground">{supplierData.name}</span>
+            )}
+            {' • '}
+            {supplierData?.email}
+          </CardDescription>
+
+          {/* Progress indicator */}
+          <div className="flex items-center justify-center gap-2 mt-4">
+            {stepTitles.map((step, index) => {
+              const StepIcon = step.icon;
+              const stepNum = index + 1;
+              const isActive = currentStep === stepNum;
+              const isCompleted = currentStep > stepNum;
+              
+              return (
+                <div key={index} className="flex items-center">
+                  <div className={`
+                    flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium
+                    ${isCompleted ? 'bg-green-500 text-white' : 
+                      isActive ? 'bg-primary text-primary-foreground' : 
+                      'bg-muted text-muted-foreground'}
+                  `}>
+                    {isCompleted ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <StepIcon className="w-4 h-4" />
+                    )}
+                  </div>
+                  {index < totalSteps - 1 && (
+                    <div className={`w-8 h-0.5 mx-1 ${isCompleted ? 'bg-green-500' : 'bg-muted'}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Etapa {currentStep} de {totalSteps}: {stepTitles[currentStep - 1].label}
+          </p>
+        </CardHeader>
+
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            {currentStep === 1 && renderStep1()}
+            {currentStep === 2 && renderStep2()}
+            {currentStep === 3 && renderStep3()}
+            {currentStep === 4 && renderStep4()}
+
+            <div className="flex justify-between mt-6">
+              {currentStep > 1 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={prevStep}
+                  disabled={loading}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Voltar
+                </Button>
+              ) : (
+                <div />
+              )}
+
+              {currentStep < totalSteps ? (
+                <Button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={loading}
+                >
+                  Próximo
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Finalizando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Concluir Cadastro
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
