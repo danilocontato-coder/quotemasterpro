@@ -4503,6 +4503,7 @@ export type Database = {
       }
       quote_responses: {
         Row: {
+          attachment_url: string | null
           created_at: string | null
           delivery_time: number | null
           id: string
@@ -4519,6 +4520,7 @@ export type Database = {
           warranty_months: number | null
         }
         Insert: {
+          attachment_url?: string | null
           created_at?: string | null
           delivery_time?: number | null
           id?: string
@@ -4535,6 +4537,7 @@ export type Database = {
           warranty_months?: number | null
         }
         Update: {
+          attachment_url?: string | null
           created_at?: string | null
           delivery_time?: number | null
           id?: string
