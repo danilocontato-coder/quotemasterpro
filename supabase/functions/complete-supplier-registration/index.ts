@@ -13,6 +13,43 @@ function generateTemporaryPassword(): string {
   return password;
 }
 
+// Função para detectar tipo de chave PIX
+function detectPixKeyType(pixKey: string): string | null {
+  if (!pixKey || typeof pixKey !== 'string') return null;
+  
+  const cleanKey = pixKey.trim();
+  const digitsOnly = cleanKey.replace(/\D/g, '');
+  
+  // CPF: 11 dígitos
+  if (digitsOnly.length === 11 && /^\d{11}$/.test(digitsOnly)) {
+    return 'CPF';
+  }
+  
+  // CNPJ: 14 dígitos
+  if (digitsOnly.length === 14 && /^\d{14}$/.test(digitsOnly)) {
+    return 'CNPJ';
+  }
+  
+  // Email
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanKey)) {
+    return 'EMAIL';
+  }
+  
+  // Telefone
+  if (digitsOnly.length >= 10 && digitsOnly.length <= 13) {
+    if (/^(?:55)?[1-9]{2}9?\d{8}$/.test(digitsOnly)) {
+      return 'PHONE';
+    }
+  }
+  
+  // EVP (Chave aleatória)
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanKey)) {
+    return 'EVP';
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -191,7 +228,7 @@ serve(async (req) => {
       console.log(`✅ New user created: ${userId}`);
     }
 
-    // 5. Preparar dados de atualização do fornecedor (NÃO atualizar ainda)
+    // 5. Preparar dados de atualização do fornecedor
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
@@ -237,6 +274,51 @@ serve(async (req) => {
       };
     }
 
+    // ============ DADOS BANCÁRIOS (NOVO) ============
+    
+    // Chave PIX
+    if (supplier_data?.pix_key && supplier_data.pix_key.trim() !== '') {
+      updateData.pix_key = supplier_data.pix_key.trim();
+      console.log('💳 PIX key provided:', supplier_data.pix_key);
+    }
+
+    // Dados bancários completos (se fornecidos)
+    if (supplier_data?.bank_code || supplier_data?.agency || supplier_data?.account_number) {
+      const bankData: any = {
+        bank_code: supplier_data.bank_code || null,
+        bank_name: supplier_data.bank_name || null,
+        agency: supplier_data.agency || null,
+        agency_digit: supplier_data.agency_digit || null,
+        account_number: supplier_data.account_number || null,
+        account_digit: supplier_data.account_digit || null,
+        account_type: supplier_data.account_type || 'corrente',
+        account_holder_name: supplier_data.account_holder_name || null,
+        account_holder_document: supplier_data.account_holder_document?.replace(/\D/g, '') || null,
+        verified: false,
+        updated_at: new Date().toISOString()
+      };
+
+      // Adicionar chave PIX aos dados bancários também (para consistência)
+      if (supplier_data?.pix_key && supplier_data.pix_key.trim() !== '') {
+        bankData.pix_key = supplier_data.pix_key.trim();
+        bankData.pix_key_type = detectPixKeyType(supplier_data.pix_key);
+      }
+
+      updateData.bank_data = bankData;
+      console.log('🏦 Bank data provided:', JSON.stringify(bankData, null, 2));
+    } else if (supplier_data?.pix_key && supplier_data.pix_key.trim() !== '') {
+      // Apenas PIX, sem conta bancária completa - ainda assim criar bank_data
+      updateData.bank_data = {
+        pix_key: supplier_data.pix_key.trim(),
+        pix_key_type: detectPixKeyType(supplier_data.pix_key),
+        verified: false,
+        updated_at: new Date().toISOString()
+      };
+      console.log('💳 PIX-only bank_data created');
+    }
+
+    // ============ FIM DADOS BANCÁRIOS ============
+
     // Atualizar dados do fornecedor (SEM mudar status ainda)
     const { error: updateError } = await supabase
       .from('suppliers')
@@ -248,7 +330,7 @@ serve(async (req) => {
       throw new Error(`Failed to update supplier: ${updateError.message}`);
     }
 
-    console.log('✅ Supplier data updated');
+    console.log('✅ Supplier data updated (including bank data)');
 
     // 6. Vincular profile ao fornecedor
     const { error: profileError } = await supabase
@@ -378,7 +460,10 @@ serve(async (req) => {
           whatsapp_sent: whatsappSent,
           whatsapp_error: whatsappError,
           quote_id: tokenData.quote_id,
-          invited_by_client_id: supplier.client_id
+          invited_by_client_id: supplier.client_id,
+          has_pix_key: !!supplier_data?.pix_key,
+          has_bank_data: !!(supplier_data?.bank_code && supplier_data?.account_number),
+          payment_method: supplier_data?.payment_method || 'not_specified'
         }
       });
 
