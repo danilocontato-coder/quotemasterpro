@@ -3706,6 +3706,7 @@ export type Database = {
           total_installments: number | null
           transaction_id: string | null
           transfer_date: string | null
+          transfer_error: string | null
           transfer_method: string | null
           transfer_notes: string | null
           transfer_status: string | null
@@ -3753,6 +3754,7 @@ export type Database = {
           total_installments?: number | null
           transaction_id?: string | null
           transfer_date?: string | null
+          transfer_error?: string | null
           transfer_method?: string | null
           transfer_notes?: string | null
           transfer_status?: string | null
@@ -3800,6 +3802,7 @@ export type Database = {
           total_installments?: number | null
           transaction_id?: string | null
           transfer_date?: string | null
+          transfer_error?: string | null
           transfer_method?: string | null
           transfer_notes?: string | null
           transfer_status?: string | null
@@ -5548,6 +5551,41 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_transfer_events: {
+        Row: {
+          asaas_transfer_id: string | null
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          payment_id: string | null
+        }
+        Insert: {
+          asaas_transfer_id?: string | null
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          payment_id?: string | null
+        }
+        Update: {
+          asaas_transfer_id?: string | null
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          payment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_transfer_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]

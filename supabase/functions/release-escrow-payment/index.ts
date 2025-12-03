@@ -157,6 +157,7 @@ serve(async (req) => {
       const shouldRetry = retryAttempt < 3 // Máximo 3 tentativas
       const nextRetryHours = Math.pow(2, retryAttempt) // Exponential backoff: 1h, 2h, 4h
       
+      // Registrar erro na tabela de erros
       await supabase.from('escrow_release_errors').insert({
         payment_id: paymentId,
         error_type: 'transfer_failed',
@@ -167,6 +168,16 @@ serve(async (req) => {
           ? new Date(Date.now() + nextRetryHours * 3600000).toISOString()
           : null
       })
+
+      // ✅ CORREÇÃO: Marcar pagamento com erro de transferência (não completed!)
+      await supabase
+        .from('payments')
+        .update({
+          transfer_status: 'failed',
+          transfer_error: error.errors?.[0]?.description || 'Erro ao criar transferência',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', paymentId)
       
       return new Response(
         JSON.stringify({ 
@@ -182,30 +193,36 @@ serve(async (req) => {
     const transferData = await transferResponse.json()
     console.log('✅ Transferência criada com sucesso:', transferData)
 
-    // Atualizar status do pagamento
+    // ✅ CORREÇÃO: NÃO marcar como completed ainda! Marcar como transfer_pending
+    // O status completed só será definido quando o webhook TRANSFER_DONE chegar
     await supabase
       .from('payments')
       .update({
-        status: 'completed',
-        transfer_status: 'completed',
+        status: 'transfer_pending',  // ✅ Aguardando confirmação real da transferência
+        transfer_status: 'pending',
         transfer_date: new Date().toISOString(),
         asaas_transfer_id: transferData.id,
+        transfer_error: null,  // Limpar erros anteriores
         updated_at: new Date().toISOString(),
       })
       .eq('id', paymentId)
 
-    // Atualizar status da cotação para finalized (entregue e pago)
-    await supabase
-      .from('quotes')
-      .update({
-        status: 'finalized',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', payment.quote_id)
+    // Registrar evento de transferência criada
+    await supabase.from('supplier_transfer_events').insert({
+      payment_id: paymentId,
+      asaas_transfer_id: transferData.id,
+      event_type: 'created',
+      event_data: {
+        value: supplierNetAmount,
+        transfer_method: pixKey ? 'PIX' : 'TED',
+        supplier_id: supplier.id,
+        supplier_name: supplier.name
+      }
+    })
 
     // Log de auditoria
     await supabase.from('audit_logs').insert({
-      action: 'ESCROW_RELEASED',
+      action: 'ESCROW_TRANSFER_INITIATED',  // ✅ Mudança: "initiated" em vez de "released"
       entity_type: 'payments',
       entity_id: paymentId,
       user_id: null, // Sistema
@@ -221,22 +238,28 @@ serve(async (req) => {
         transfer_id: transferData.id,
         transfer_method: pixKey ? 'PIX' : 'TED',
         pix_key: pixKey || null,
-        retry_attempt: retryAttempt
+        retry_attempt: retryAttempt,
+        status: 'pending_confirmation'  // ✅ Aguardando confirmação
       }
     })
 
-    // Notificar fornecedor
+    // Notificar fornecedor (informando que transferência foi iniciada)
     const transferMethod = pixKey ? 'via PIX' : 'via TED';
-    await supabase.rpc('create_notification', {
-      p_user_id: payment.supplier_id,
-      p_title: '💰 Pagamento Liberado',
-      p_message: `R$ ${supplierNetAmount.toFixed(2)} foram transferidos ${transferMethod} (cotação ${payment.quotes.local_code})`,
+    await supabase.rpc('notify_supplier_users', {
+      p_supplier_id: payment.supplier_id,
+      p_title: '💸 Transferência Iniciada',
+      p_message: `Transferência de R$ ${supplierNetAmount.toFixed(2)} ${transferMethod} foi iniciada (cotação ${payment.quotes.local_code}). Aguarde confirmação.`,
       p_type: 'payment',
       p_priority: 'high',
-      p_action_url: '/supplier/receivables'
+      p_action_url: '/supplier/receivables',
+      p_metadata: {
+        payment_id: paymentId,
+        transfer_id: transferData.id,
+        status: 'pending'
+      }
     })
 
-    console.log(`✅ Escrow liberado com sucesso: ${paymentId}`)
+    console.log(`✅ Transferência iniciada com sucesso: ${paymentId} - Aguardando confirmação via webhook`)
 
     return new Response(
       JSON.stringify({
@@ -244,9 +267,10 @@ serve(async (req) => {
         payment_id: paymentId,
         transfer_id: transferData.id,
         transfer_method: pixKey ? 'PIX' : 'TED',
-        supplier_received: supplierNetAmount,
+        supplier_will_receive: supplierNetAmount,
         platform_commission: platformCommission,
-        message: 'Pagamento liberado e transferido com sucesso'
+        status: 'transfer_pending',
+        message: 'Transferência iniciada. Aguardando confirmação do Asaas.'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
