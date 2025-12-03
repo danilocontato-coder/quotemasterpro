@@ -46,12 +46,202 @@ serve(async (req) => {
     }
 
     const webhook = await req.json();
-    console.log('Received Asaas webhook:', webhook.event);
+    console.log('📥 [ASAAS-WEBHOOK] Received event:', webhook.event);
 
     const event = webhook.event;
     const payment = webhook.payment;
+    const transfer = webhook.transfer;
 
-    // Processar eventos de pagamento
+    // ============================================
+    // 🆕 PROCESSAR EVENTOS DE TRANSFERÊNCIA
+    // ============================================
+    if (event === 'TRANSFER_CREATED' || event === 'TRANSFER_PENDING') {
+      console.log(`📤 [TRANSFER] Transferência ${event}: ${transfer?.id}`);
+      
+      if (transfer?.id) {
+        // Buscar pagamento pelo asaas_transfer_id
+        const { data: paymentRecord } = await supabaseClient
+          .from('payments')
+          .select('*, quotes!inner(id, local_code, supplier_id)')
+          .eq('asaas_transfer_id', transfer.id)
+          .single();
+
+        if (paymentRecord) {
+          // Registrar evento
+          await supabaseClient.from('supplier_transfer_events').insert({
+            payment_id: paymentRecord.id,
+            asaas_transfer_id: transfer.id,
+            event_type: event === 'TRANSFER_CREATED' ? 'created' : 'pending',
+            event_data: transfer
+          });
+
+          console.log(`✅ [TRANSFER] Evento ${event} registrado para pagamento ${paymentRecord.id}`);
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, type: 'transfer_event' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ✅ TRANSFERÊNCIA CONCLUÍDA COM SUCESSO
+    if (event === 'TRANSFER_DONE') {
+      console.log(`✅ [TRANSFER_DONE] Transferência concluída: ${transfer?.id}`);
+      
+      if (transfer?.id) {
+        // Buscar pagamento pelo asaas_transfer_id
+        const { data: paymentRecord, error: paymentError } = await supabaseClient
+          .from('payments')
+          .select('*, quotes!inner(id, local_code, supplier_id, client_id)')
+          .eq('asaas_transfer_id', transfer.id)
+          .single();
+
+        if (paymentRecord && !paymentError) {
+          console.log(`✅ [TRANSFER_DONE] Pagamento encontrado: ${paymentRecord.id}`);
+
+          // ✅ AGORA SIM: Marcar pagamento como completed
+          await supabaseClient
+            .from('payments')
+            .update({
+              status: 'completed',
+              transfer_status: 'done',
+              transfer_error: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', paymentRecord.id);
+
+          // ✅ Atualizar cotação para finalized
+          await supabaseClient
+            .from('quotes')
+            .update({
+              status: 'finalized',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', paymentRecord.quote_id);
+
+          // Registrar evento
+          await supabaseClient.from('supplier_transfer_events').insert({
+            payment_id: paymentRecord.id,
+            asaas_transfer_id: transfer.id,
+            event_type: 'done',
+            event_data: transfer
+          });
+
+          // Log de auditoria
+          await supabaseClient.from('audit_logs').insert({
+            action: 'ESCROW_RELEASED',
+            entity_type: 'payments',
+            entity_id: paymentRecord.id,
+            panel_type: 'system',
+            details: {
+              transfer_id: transfer.id,
+              value: transfer.value,
+              quote_code: paymentRecord.quotes.local_code,
+              status: 'completed'
+            }
+          });
+
+          // Notificar fornecedor - transferência concluída
+          await supabaseClient.rpc('notify_supplier_users', {
+            p_supplier_id: paymentRecord.quotes.supplier_id,
+            p_title: '💰 Pagamento Liberado!',
+            p_message: `R$ ${transfer.value?.toFixed(2) || '0.00'} foi transferido para sua conta (cotação ${paymentRecord.quotes.local_code})`,
+            p_type: 'payment',
+            p_priority: 'high',
+            p_action_url: '/supplier/receivables',
+            p_metadata: {
+              payment_id: paymentRecord.id,
+              transfer_id: transfer.id,
+              status: 'completed'
+            }
+          });
+
+          console.log(`✅ [TRANSFER_DONE] Pagamento ${paymentRecord.id} marcado como completed`);
+        } else {
+          console.warn(`⚠️ [TRANSFER_DONE] Pagamento não encontrado para transfer_id: ${transfer.id}`);
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, type: 'transfer_done' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ❌ TRANSFERÊNCIA FALHOU OU FOI CANCELADA
+    if (event === 'TRANSFER_FAILED' || event === 'TRANSFER_CANCELLED') {
+      console.error(`❌ [${event}] Transferência falhou/cancelada: ${transfer?.id}`);
+      
+      if (transfer?.id) {
+        // Buscar pagamento pelo asaas_transfer_id
+        const { data: paymentRecord, error: paymentError } = await supabaseClient
+          .from('payments')
+          .select('*, quotes!inner(id, local_code, supplier_id)')
+          .eq('asaas_transfer_id', transfer.id)
+          .single();
+
+        if (paymentRecord && !paymentError) {
+          const failReason = transfer.failReason || transfer.cancellationReason || 'Motivo não informado';
+          
+          console.error(`❌ [${event}] Pagamento ${paymentRecord.id} - Motivo: ${failReason}`);
+
+          // ⚠️ NÃO marcar como completed - voltar para in_escrow para permitir retry
+          await supabaseClient
+            .from('payments')
+            .update({
+              status: 'in_escrow',  // Voltar para escrow para permitir nova tentativa
+              transfer_status: 'failed',
+              transfer_error: failReason,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', paymentRecord.id);
+
+          // Registrar evento
+          await supabaseClient.from('supplier_transfer_events').insert({
+            payment_id: paymentRecord.id,
+            asaas_transfer_id: transfer.id,
+            event_type: event === 'TRANSFER_FAILED' ? 'failed' : 'cancelled',
+            event_data: transfer
+          });
+
+          // Log de auditoria
+          await supabaseClient.from('audit_logs').insert({
+            action: event === 'TRANSFER_FAILED' ? 'TRANSFER_FAILED' : 'TRANSFER_CANCELLED',
+            entity_type: 'payments',
+            entity_id: paymentRecord.id,
+            panel_type: 'system',
+            details: {
+              transfer_id: transfer.id,
+              fail_reason: failReason,
+              quote_code: paymentRecord.quotes.local_code
+            }
+          });
+
+          // Notificar admin sobre falha
+          await supabaseClient.from('notifications').insert({
+            user_id: null,
+            title: '⚠️ Transferência Falhou',
+            message: `Transferência para ${paymentRecord.quotes.local_code} falhou: ${failReason}`,
+            type: 'transfer_failed',
+            priority: 'high',
+            metadata: {
+              payment_id: paymentRecord.id,
+              transfer_id: transfer.id,
+              fail_reason: failReason
+            }
+          });
+
+          console.log(`⚠️ [${event}] Pagamento ${paymentRecord.id} voltou para in_escrow`);
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, type: 'transfer_failed' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ============================================
+    // PROCESSAR EVENTOS DE PAGAMENTO (existente)
+    // ============================================
     if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
       console.log(`Payment received: ${payment.id}`);
 

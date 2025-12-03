@@ -78,7 +78,9 @@ export const useSupplierTransfers = () => {
     const statusMap: Record<string, string> = {
       pending: 'Pendente',
       processing: 'Processando',
+      transfer_pending: 'Aguardando Confirmação',
       completed: 'Concluída',
+      done: 'Concluída',
       failed: 'Falhou',
       cancelled: 'Cancelada'
     };
@@ -89,7 +91,9 @@ export const useSupplierTransfers = () => {
     const colorMap: Record<string, string> = {
       pending: 'bg-yellow-500',
       processing: 'bg-blue-500',
+      transfer_pending: 'bg-amber-500',
       completed: 'bg-green-500',
+      done: 'bg-green-500',
       failed: 'bg-red-500',
       cancelled: 'bg-gray-500'
     };
