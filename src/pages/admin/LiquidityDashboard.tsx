@@ -101,7 +101,7 @@ export default function LiquidityDashboard() {
           quote_id,
           created_at,
           transfer_status,
-          quotes(local_code, clients(name)),
+          quotes(local_code, clients!quotes_client_id_fkey(name)),
           suppliers!payments_supplier_id_fkey(name),
           deliveries(scheduled_date, status, actual_delivery_date)
         `)
@@ -165,7 +165,7 @@ export default function LiquidityDashboard() {
           amount,
           created_at,
           asaas_payment_id,
-          quotes(local_code, clients(name)),
+          quotes(local_code, clients!quotes_client_id_fkey(name)),
           suppliers!payments_supplier_id_fkey(name)
         `)
         .eq('status', 'pending')
