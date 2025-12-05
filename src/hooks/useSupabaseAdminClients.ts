@@ -412,63 +412,67 @@ export function useSupabaseAdminClients() {
         // Não bloqueia a criação do cliente se falhar
       }
 
-      // 3) Criar registro de assinatura no Supabase com ciclo completo de 1 mês
-      try {
-        console.log('📋 Criando assinatura no Supabase...');
-        const currentDate = new Date();
-        
-        // Calcular current_period_end: 1 mês após a criação (mantendo o mesmo dia)
-        const periodEndDate = new Date(currentDate);
-        periodEndDate.setMonth(periodEndDate.getMonth() + 1);
-        
-        // Ajustar para meses com menos dias (ex: 31 jan → 28/29 fev)
-        if (periodEndDate.getDate() !== currentDate.getDate()) {
-          periodEndDate.setDate(0); // Último dia do mês anterior
-        }
-        
-        console.log(`📅 Ciclo inicial: ${currentDate.toISOString().split('T')[0]} até ${periodEndDate.toISOString().split('T')[0]}`);
-        console.log(`📍 Aniversário da assinatura será: dia ${periodEndDate.getDate()} de cada mês`);
-
-        const { data: subscriptionData, error: subError } = await supabase
-          .from('subscriptions')
-          .insert({
-            client_id: createdClientId,
-            plan_id: clientData.plan,
-            billing_cycle: 'monthly',
-            status: 'active',
-            current_period_start: currentDate.toISOString(),
-            current_period_end: periodEndDate.toISOString()
-          })
-          .select('id')
-          .single();
-
-        if (subError) {
-          console.error('⚠️ Erro ao criar assinatura (não bloqueante):', subError);
-        } else if (subscriptionData?.id) {
-          console.log('✅ Assinatura criada no Supabase:', subscriptionData.id);
-
-          // 4) Configurar cobrança automática (boleto + NF-e)
-          try {
-            console.log('💳 Configurando cobrança automática...');
-            const { data: billingResult, error: billingError } = await supabase.functions.invoke(
-              'setup-client-billing',
-              { body: { subscription_id: subscriptionData.id } }
-            );
-
-            if (billingError) {
-              console.error('⚠️ Erro ao configurar cobrança (não bloqueante):', billingError);
-            } else if (billingResult?.success) {
-              console.log('✅ Cobrança configurada:', {
-                boleto: billingResult.boleto_url,
-                nfse: billingResult.nfse_issued ? 'Emitida' : 'Não emitida'
-              });
-            }
-          } catch (billingErr) {
-            console.error('⚠️ Falha ao configurar cobrança:', billingErr);
+      // 3) Criar registro de assinatura no Supabase APENAS se createAsaasSubscription = true
+      if (clientData.createAsaasSubscription !== false) {
+        try {
+          console.log('📋 Criando assinatura no Supabase...');
+          const currentDate = new Date();
+          
+          // Calcular current_period_end: 1 mês após a criação (mantendo o mesmo dia)
+          const periodEndDate = new Date(currentDate);
+          periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+          
+          // Ajustar para meses com menos dias (ex: 31 jan → 28/29 fev)
+          if (periodEndDate.getDate() !== currentDate.getDate()) {
+            periodEndDate.setDate(0); // Último dia do mês anterior
           }
+          
+          console.log(`📅 Ciclo inicial: ${currentDate.toISOString().split('T')[0]} até ${periodEndDate.toISOString().split('T')[0]}`);
+          console.log(`📍 Aniversário da assinatura será: dia ${periodEndDate.getDate()} de cada mês`);
+
+          const { data: subscriptionData, error: subError } = await supabase
+            .from('subscriptions')
+            .insert({
+              client_id: createdClientId,
+              plan_id: clientData.plan,
+              billing_cycle: 'monthly',
+              status: 'active',
+              current_period_start: currentDate.toISOString(),
+              current_period_end: periodEndDate.toISOString()
+            })
+            .select('id')
+            .single();
+
+          if (subError) {
+            console.error('⚠️ Erro ao criar assinatura (não bloqueante):', subError);
+          } else if (subscriptionData?.id) {
+            console.log('✅ Assinatura criada no Supabase:', subscriptionData.id);
+
+            // 4) Configurar cobrança automática (boleto + NF-e)
+            try {
+              console.log('💳 Configurando cobrança automática...');
+              const { data: billingResult, error: billingError } = await supabase.functions.invoke(
+                'setup-client-billing',
+                { body: { subscription_id: subscriptionData.id } }
+              );
+
+              if (billingError) {
+                console.error('⚠️ Erro ao configurar cobrança (não bloqueante):', billingError);
+              } else if (billingResult?.success) {
+                console.log('✅ Cobrança configurada:', {
+                  boleto: billingResult.boleto_url,
+                  nfse: billingResult.nfse_issued ? 'Emitida' : 'Não emitida'
+                });
+              }
+            } catch (billingErr) {
+              console.error('⚠️ Falha ao configurar cobrança:', billingErr);
+            }
+          }
+        } catch (subscriptionErr) {
+          console.error('⚠️ Falha ao criar assinatura:', subscriptionErr);
         }
-      } catch (subscriptionErr) {
-        console.error('⚠️ Falha ao criar assinatura:', subscriptionErr);
+      } else {
+        console.log('⏭️ Assinatura não criada (opção desativada pelo usuário)');
       }
 
       // 2) Tenta criar usuário de autenticação (opcional - não bloqueia se falhar)
