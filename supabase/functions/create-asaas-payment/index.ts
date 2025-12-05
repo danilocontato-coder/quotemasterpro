@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getAsaasConfig } from '../_shared/asaas-utils.ts'
-import { calculateCustomerTotal } from '../_shared/asaas-fees.ts'
+import { getAsaasFees, calculateCustomerTotal } from '../_shared/asaas-fees.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 serve(async (req) => {
@@ -261,9 +261,18 @@ serve(async (req) => {
       console.log(`✅ Customer Asaas criado: ${asaasCustomerId}`);
     }
 
-    // ✅ NOVO: Calcular valores corretos (cliente paga base + taxa, fornecedor paga comissão)
+    // ✅ Buscar taxas dinâmicas do banco
+    const fees = await getAsaasFees(supabase);
+    console.log('📊 Taxas do Asaas:', { 
+      pix: fees.pix, 
+      boleto: fees.boleto, 
+      source: fees.source,
+      last_synced: fees.last_synced 
+    });
+    
+    // Calcular valores corretos (cliente paga base + taxa, fornecedor paga comissão)
     const baseAmount = totalAmount; // Valor da cotação (itens + frete)
-    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED'); // Cliente ainda não escolheu
+    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED', fees); // Cliente ainda não escolheu
 
     console.log('💰 Detalhamento de valores:', {
       valor_base_cotacao: calculation.baseAmount,

@@ -41,6 +41,7 @@ import { BoletoIntegrationPanel } from '@/components/admin/BoletoIntegrationPane
 import { AsaasIntegrationPanel } from '@/components/admin/AsaasIntegrationPanel';
 import { AsaasWebhookConfigPanel } from '@/components/admin/AsaasWebhookConfigPanel';
 import { WalletStatusDashboard } from '@/components/admin/WalletStatusDashboard';
+import { AsaasFeesSettings } from '@/components/admin/AsaasFeesSettings';
 import { useSupabaseIntegrations, Integration } from '@/hooks/useSupabaseIntegrations';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -503,6 +504,11 @@ export const IntegrationsAndApisManagement = () => {
             {/* Dashboard de Status de Wallets */}
             <div className="mt-8">
               <WalletStatusDashboard />
+            </div>
+            
+            {/* Taxas do Asaas */}
+            <div className="mt-8">
+              <AsaasFeesSettings />
             </div>
           </TabsContent>
 
