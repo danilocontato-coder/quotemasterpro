@@ -136,3 +136,47 @@ export function ApprovalFlowDiagram({ title, description, className }: DecisionF
     />
   );
 }
+
+export function ClientPurchaseFlowDiagram({ title, description, className }: DecisionFlowProps) {
+  const steps: FlowStep[] = [
+    { id: "1", icon: "📝", label: "Criar Cotação", description: "Descrever necessidade" },
+    { id: "2", icon: "🏢", label: "Selecionar Fornecedores", description: "Escolher quem recebe" },
+    { id: "3", icon: "📥", label: "Receber Propostas", description: "Fornecedores respondem" },
+    { id: "4", icon: "📊", label: "Comparar", description: "Analisar preços/prazos" },
+    { id: "5", icon: "✅", label: "Aprovar", description: "Escolher melhor proposta" },
+    { id: "6", icon: "💳", label: "Pagar", description: "PIX com custódia" },
+    { id: "7", icon: "🚚", label: "Receber", description: "Acompanhar entrega" },
+    { id: "8", icon: "✔️", label: "Confirmar", description: "Liberar pagamento" },
+  ];
+
+  return (
+    <FlowDiagram
+      title={title}
+      description={description}
+      steps={steps}
+      className={className}
+    />
+  );
+}
+
+export function SupplierSaleFlowDiagram({ title, description, className }: DecisionFlowProps) {
+  const steps: FlowStep[] = [
+    { id: "1", icon: "📩", label: "Receber Cotação", description: "Via e-mail/WhatsApp" },
+    { id: "2", icon: "📋", label: "Analisar", description: "Ver itens solicitados" },
+    { id: "3", icon: "💰", label: "Enviar Proposta", description: "Preço + frete + prazo" },
+    { id: "4", icon: "⏳", label: "Aguardar", description: "Cliente decide" },
+    { id: "5", icon: "✅", label: "Aprovado!", description: "Você foi escolhido" },
+    { id: "6", icon: "📄", label: "Emitir Cobrança", description: "Gerar PIX" },
+    { id: "7", icon: "🚚", label: "Entregar", description: "Agendar e enviar" },
+    { id: "8", icon: "💵", label: "Receber", description: "Após confirmação" },
+  ];
+
+  return (
+    <FlowDiagram
+      title={title}
+      description={description}
+      steps={steps}
+      className={className}
+    />
+  );
+}

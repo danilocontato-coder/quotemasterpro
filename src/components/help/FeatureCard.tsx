@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface FeatureCardProps {
-  icon: LucideIcon;
+  icon: LucideIcon | string;
   title: string;
   description: string;
   location?: string;
@@ -14,8 +14,13 @@ interface FeatureCardProps {
   className?: string;
 }
 
+function IconRenderer({ icon }: { icon: LucideIcon }) {
+  const Icon = icon;
+  return <Icon className="h-5 w-5" />;
+}
+
 export function FeatureCard({
-  icon: Icon,
+  icon,
   title,
   description,
   location,
@@ -24,6 +29,8 @@ export function FeatureCard({
   variant = "default",
   className,
 }: FeatureCardProps) {
+  const isEmojiIcon = typeof icon === "string";
+  
   return (
     <Card
       className={cn(
@@ -43,7 +50,11 @@ export function FeatureCard({
                 : "bg-muted text-muted-foreground"
             )}
           >
-            <Icon className="h-5 w-5" />
+            {isEmojiIcon ? (
+              <span className="text-lg">{icon}</span>
+            ) : (
+              <IconRenderer icon={icon} />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold text-sm mb-1">{title}</h4>
