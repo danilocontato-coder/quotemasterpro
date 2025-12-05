@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Search, BookOpen, FileText, Users, Package, CreditCard, BarChart3, Settings, MessageSquare, Building2, CheckSquare, Home } from "lucide-react";
+import { Search, BookOpen, FileText, Users, Package, CreditCard, BarChart3, Settings, MessageSquare, Building2, CheckSquare, Home, HelpCircle } from "lucide-react";
+import { HowItWorksHelp } from "@/components/help/HowItWorksHelp";
 import { DashboardHelp } from "@/components/help/DashboardHelp";
 import { QuotesHelp } from "@/components/help/QuotesHelp";
 import { ApprovalsHelp } from "@/components/help/ApprovalsHelp";
@@ -19,10 +20,11 @@ import { useBranding } from "@/contexts/BrandingContext";
 
 export default function Help() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("how-it-works");
   const { settings } = useBranding();
 
   const modules = [
+    { id: "how-it-works", label: "Como Funciona", icon: HelpCircle, component: HowItWorksHelp },
     { id: "dashboard", label: "Dashboard", icon: Home, component: DashboardHelp },
     { id: "quotes", label: "Cotações", icon: FileText, component: QuotesHelp },
     { id: "approvals", label: "Aprovações", icon: CheckSquare, component: ApprovalsHelp },
