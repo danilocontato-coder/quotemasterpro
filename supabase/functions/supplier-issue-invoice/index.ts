@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { getAsaasConfig } from '../_shared/asaas-utils.ts'
-import { calculateCustomerTotal } from '../_shared/asaas-fees.ts'
+import { getAsaasFees, calculateCustomerTotal } from '../_shared/asaas-fees.ts'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -189,7 +189,17 @@ serve(async (req) => {
 
     // 3. Calcular valores usando o total da resposta aprovada
     const baseAmount = quoteResponse.total_amount || 0
-    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED')
+    
+    // Buscar taxas dinâmicas do banco
+    const fees = await getAsaasFees(supabaseClient)
+    console.log('📊 Taxas do Asaas:', { 
+      pix: fees.pix, 
+      boleto: fees.boleto, 
+      source: fees.source,
+      last_synced: fees.last_synced 
+    })
+    
+    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED', fees)
     
     console.log(`💰 Calculation:`, calculation)
 
