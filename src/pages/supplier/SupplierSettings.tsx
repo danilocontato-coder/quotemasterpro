@@ -17,41 +17,14 @@ import { PasswordChange } from "@/components/settings/PasswordChange";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { detectPixKeyType, getPixKeyTypeLabel, maskPixKeyDisplay } from "@/utils/pixKeyValidation";
 
-// Helper function to detect PIX key type
-function detectPixKeyType(pixKey: string): string {
-  if (!pixKey) return 'Desconhecido';
-  
-  const cleaned = pixKey.replace(/\D/g, '');
-  
-  // CPF: 11 digits
-  if (/^\d{11}$/.test(cleaned) || /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(pixKey)) {
-    return 'CPF';
-  }
-  
-  // CNPJ: 14 digits
-  if (/^\d{14}$/.test(cleaned) || /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(pixKey)) {
-    return 'CNPJ';
-  }
-  
-  // Email
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pixKey)) {
-    return 'E-mail';
-  }
-  
-  // Phone (Brazilian format)
-  if (/^\+?55?\d{10,11}$/.test(cleaned) || /^\(\d{2}\)\s?\d{4,5}-?\d{4}$/.test(pixKey)) {
-    return 'Telefone';
-  }
-  
-  // EVP (Random key - 32 hex characters with dashes)
-  if (/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(pixKey)) {
-    return 'Chave Aleatória';
-  }
-  
-  return 'Outro';
+// Helper to get masked display value
+function getPixKeyMaskedDisplay(pixKey: string | undefined): string {
+  if (!pixKey) return '';
+  const keyType = detectPixKeyType(pixKey);
+  return maskPixKeyDisplay(pixKey, keyType);
 }
-
 function SupplierSettings() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'profile';
@@ -510,12 +483,12 @@ function SupplierSettings() {
                     <div className="flex items-center justify-between">
                       <Label>Sua Chave PIX</Label>
                       <Badge variant="secondary" className="text-xs">
-                        {detectPixKeyType(supplierData.pix_key || supplierData.bank_data?.pix_key)}
+                        {getPixKeyTypeLabel(detectPixKeyType(supplierData.pix_key || supplierData.bank_data?.pix_key || ''))}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
                       <Input 
-                        value={supplierData.pix_key || supplierData.bank_data?.pix_key || ''} 
+                        value={getPixKeyMaskedDisplay(supplierData.pix_key || supplierData.bank_data?.pix_key)} 
                         disabled 
                         className="bg-muted font-mono" 
                       />
