@@ -63,7 +63,7 @@ export function SupplierLayout() {
           </header>
 
           {/* Banner de Alerta - Chave PIX não cadastrada */}
-          {!isLoading && supplierData && !supplierData.bank_data?.pix_key && (
+          {!isLoading && supplierData && !supplierData.pix_key && !supplierData.bank_data?.pix_key && (
             <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 shrink-0" />
@@ -78,7 +78,7 @@ export function SupplierLayout() {
                 asChild 
                 className="shrink-0 bg-white text-amber-700 hover:bg-amber-50"
               >
-                <Link to="/supplier/settings">
+              <Link to="/supplier/settings?tab=bank">
                   Cadastrar Agora
                 </Link>
               </Button>
