@@ -78,7 +78,7 @@ export function SupplierLayout() {
                 asChild 
                 className="shrink-0 bg-white text-amber-700 hover:bg-amber-50"
               >
-              <Link to="/supplier/settings?tab=bank">
+                <Link to="/supplier/settings?tab=bank">
                   Cadastrar Agora
                 </Link>
               </Button>
