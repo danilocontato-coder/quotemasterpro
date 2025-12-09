@@ -1,4 +1,4 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SupplierSidebar } from "./SupplierSidebar";
 import { Search, CreditCard } from "lucide-react";
@@ -14,6 +14,7 @@ import { SupplierStatusToast } from "@/components/auth/SupplierStatusToast";
 import { useSimpleRefreshPrevention } from "@/hooks/useSimpleRefreshPrevention";
 
 export function SupplierLayout() {
+  const navigate = useNavigate();
   const { supplierData, isLoading } = useSupplierData();
   
   // Prevenção simples de refresh que não interfere com auth
@@ -75,12 +76,10 @@ export function SupplierLayout() {
               <Button 
                 variant="secondary" 
                 size="sm" 
-                asChild 
+                onClick={() => navigate("/supplier/settings?tab=bank")}
                 className="shrink-0 bg-white text-amber-700 hover:bg-amber-50"
               >
-                <Link to="/supplier/settings?tab=bank">
-                  Cadastrar Agora
-                </Link>
+                Cadastrar Agora
               </Button>
             </div>
           )}
