@@ -133,3 +133,48 @@ export function getPixKeyTypeLabel(type: PixKeyType | null): string {
     default: return 'Desconhecido';
   }
 }
+
+/**
+ * Mascara a chave PIX para exibição segura (LGPD)
+ * CPF: 123.•••.•••-56 → mostra primeiros 3 e últimos 2 dígitos
+ * CNPJ: 12.•••.•••/••••-89 → mostra primeiros 2 e últimos 2 dígitos
+ * Email: ab•••@dominio.com → mostra primeiros 2 chars + domínio
+ * Telefone: (11) •••••-1234 → mostra DDD e últimos 4 dígitos
+ * EVP: abc1••••-••••-••••-••••-••••9xyz → mostra primeiros 4 e últimos 4 chars
+ */
+export function maskPixKeyDisplay(pixKey: string): string {
+  if (!pixKey) return '•••';
+  
+  const type = detectPixKeyType(pixKey);
+  if (!type) return '•••••••••';
+  
+  switch (type) {
+    case 'cpf': {
+      const cpfClean = pixKey.replace(/\D/g, '');
+      return `${cpfClean.slice(0, 3)}.•••.•••-${cpfClean.slice(-2)}`;
+    }
+    case 'cnpj': {
+      const cnpjClean = pixKey.replace(/\D/g, '');
+      return `${cnpjClean.slice(0, 2)}.•••.•••/••••-${cnpjClean.slice(-2)}`;
+    }
+    case 'email': {
+      const [local, domain] = pixKey.split('@');
+      const maskedLocal = local.length > 2 
+        ? `${local.slice(0, 2)}${'•'.repeat(Math.min(local.length - 2, 5))}`
+        : local;
+      return `${maskedLocal}@${domain}`;
+    }
+    case 'phone': {
+      const phoneClean = pixKey.replace(/\D/g, '');
+      const ddd = phoneClean.length >= 11 
+        ? phoneClean.slice(-11, -9) 
+        : phoneClean.slice(0, 2);
+      return `(${ddd}) •••••-${phoneClean.slice(-4)}`;
+    }
+    case 'evp': {
+      return `${pixKey.slice(0, 4)}••••-••••-••••-••••-••••${pixKey.slice(-4)}`;
+    }
+    default:
+      return '•••••••••';
+  }
+}

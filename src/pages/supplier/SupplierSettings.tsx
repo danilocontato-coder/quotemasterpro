@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Bell, Palette, Settings as SettingsIcon, Building2, Package, Shield, Star, Landmark, CheckCircle, AlertCircle } from "lucide-react";
+import { User, Lock, Bell, Palette, Settings as SettingsIcon, Building2, Package, Shield, Star, Landmark, CheckCircle, AlertCircle, Pencil } from "lucide-react";
 import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
@@ -16,8 +17,12 @@ import { PasswordChange } from "@/components/settings/PasswordChange";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
+import { maskPixKeyDisplay, detectPixKeyType, getPixKeyTypeLabel } from "@/utils/pixKeyValidation";
 function SupplierSettings() {
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'profile';
+  const [activeTab, setActiveTab] = useState(initialTab);
+  
   const { 
     settings, 
     currentUser, 
@@ -230,7 +235,7 @@ function SupplierSettings() {
         </div>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">
             <User className="h-4 w-4 mr-2" />
@@ -457,7 +462,16 @@ function SupplierSettings() {
                   {supplierData.bank_data.pix_key && (
                     <div className="space-y-2">
                       <Label>Chave PIX</Label>
-                      <Input value={supplierData.bank_data.pix_key} disabled className="bg-muted" />
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          value={maskPixKeyDisplay(supplierData.bank_data.pix_key)} 
+                          disabled 
+                          className="bg-muted flex-1" 
+                        />
+                        <Badge variant="outline" className="shrink-0">
+                          {getPixKeyTypeLabel(detectPixKeyType(supplierData.bank_data.pix_key))}
+                        </Badge>
+                      </div>
                     </div>
                   )}
                   
