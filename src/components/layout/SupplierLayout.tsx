@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SupplierSidebar } from "./SupplierSidebar";
 import { Search, CreditCard } from "lucide-react";
@@ -14,7 +14,6 @@ import { SupplierStatusToast } from "@/components/auth/SupplierStatusToast";
 import { useSimpleRefreshPrevention } from "@/hooks/useSimpleRefreshPrevention";
 
 export function SupplierLayout() {
-  const navigate = useNavigate();
   const { supplierData, isLoading } = useSupplierData();
   
   // Prevenção simples de refresh que não interfere com auth
@@ -64,7 +63,7 @@ export function SupplierLayout() {
           </header>
 
           {/* Banner de Alerta - Chave PIX não cadastrada */}
-          {!isLoading && supplierData && !supplierData.pix_key && !supplierData.bank_data?.pix_key && (
+          {!isLoading && supplierData && !supplierData.bank_data?.pix_key && (
             <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 shrink-0" />
@@ -76,10 +75,12 @@ export function SupplierLayout() {
               <Button 
                 variant="secondary" 
                 size="sm" 
-                onClick={() => navigate("/supplier/settings?tab=bank")}
+                asChild 
                 className="shrink-0 bg-white text-amber-700 hover:bg-amber-50"
               >
-                Cadastrar Agora
+                <Link to="/supplier/settings">
+                  Cadastrar Agora
+                </Link>
               </Button>
             </div>
           )}

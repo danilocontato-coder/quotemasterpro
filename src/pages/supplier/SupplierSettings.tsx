@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Bell, Palette, Settings as SettingsIcon, Building2, Package, Shield, Star, Landmark, CheckCircle, AlertCircle, Pencil, X, Loader2 } from "lucide-react";
+import { User, Lock, Bell, Palette, Settings as SettingsIcon, Building2, Package, Shield, Star, Landmark, CheckCircle, AlertCircle } from "lucide-react";
 import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
@@ -17,18 +16,8 @@ import { PasswordChange } from "@/components/settings/PasswordChange";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { detectPixKeyType, getPixKeyTypeLabel, maskPixKeyDisplay } from "@/utils/pixKeyValidation";
 
-// Helper to get masked display value
-function getPixKeyMaskedDisplay(pixKey: string | undefined): string {
-  if (!pixKey) return '';
-  const keyType = detectPixKeyType(pixKey);
-  return maskPixKeyDisplay(pixKey, keyType);
-}
 function SupplierSettings() {
-  const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'profile';
-  
   const { 
     settings, 
     currentUser, 
@@ -62,18 +51,11 @@ function SupplierSettings() {
     business_info: {},
     asaas_wallet_id: '',
     bank_data: null as any,
-    created_at: '',
-    pix_key: '',
-    supplier_id: ''
+    created_at: ''
   });
 
   const [isLoadingSupplier, setIsLoadingSupplier] = useState(true);
   const [isSavingSupplier, setIsSavingSupplier] = useState(false);
-  
-  // PIX key editing state
-  const [isEditingPixKey, setIsEditingPixKey] = useState(false);
-  const [newPixKey, setNewPixKey] = useState('');
-  const [isSavingPixKey, setIsSavingPixKey] = useState(false);
 
   // Load supplier data
   useEffect(() => {
@@ -109,9 +91,7 @@ function SupplierSettings() {
               business_info: supplier.business_info || {},
               asaas_wallet_id: supplier.asaas_wallet_id || '',
               bank_data: supplier.bank_data || null,
-              created_at: supplier.created_at || '',
-              pix_key: supplier.pix_key || '',
-              supplier_id: supplier.id
+              created_at: supplier.created_at || ''
             });
           }
         }
@@ -250,7 +230,7 @@ function SupplierSettings() {
         </div>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="space-y-4">
+      <Tabs defaultValue="profile" className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">
             <User className="h-4 w-4 mr-2" />
@@ -458,240 +438,66 @@ function SupplierSettings() {
                 Dados para Recebimento
               </CardTitle>
               <CardDescription>
-                Configure sua chave PIX para receber pagamentos. Quando uma entrega for confirmada, o valor será transferido automaticamente para sua conta.
+                Configure sua chave PIX ou dados bancários para receber pagamentos. Quando uma entrega for confirmada, o valor será transferido automaticamente para sua conta.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* PIX Key Section */}
-              {(supplierData.pix_key || supplierData.bank_data?.pix_key) && !isEditingPixKey ? (
+              {supplierData.bank_data ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-                          <CheckCircle className="h-5 w-5" />
-                          <span className="font-medium">Chave PIX Configurada</span>
-                        </div>
-                        <p className="text-sm text-green-600 dark:text-green-500">
-                          Você está pronto para receber transferências.
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Dados configurados</span>
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Sua Chave PIX</Label>
-                      <Badge variant="secondary" className="text-xs">
-                        {getPixKeyTypeLabel(detectPixKeyType(supplierData.pix_key || supplierData.bank_data?.pix_key || ''))}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        value={getPixKeyMaskedDisplay(supplierData.pix_key || supplierData.bank_data?.pix_key)} 
-                        disabled 
-                        className="bg-muted font-mono" 
-                      />
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => {
-                          setNewPixKey(supplierData.pix_key || supplierData.bank_data?.pix_key || '');
-                          setIsEditingPixKey(true);
-                        }}
-                        title="Alterar Chave PIX"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Show bank account details if available */}
-                  {supplierData.bank_data?.account_number && (
-                    <div className="pt-4 border-t">
-                      <Label className="text-muted-foreground text-sm mb-3 block">Dados Bancários Adicionais</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs text-muted-foreground">Banco</Label>
-                          <Input value={supplierData.bank_data.bank_code} disabled className="bg-muted h-8 text-sm" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs text-muted-foreground">Agência</Label>
-                          <Input value={supplierData.bank_data.agency} disabled className="bg-muted h-8 text-sm" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs text-muted-foreground">Conta</Label>
-                          <Input value={supplierData.bank_data.account_number} disabled className="bg-muted h-8 text-sm" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs text-muted-foreground">Titular</Label>
-                          <Input value={supplierData.bank_data.account_holder_name} disabled className="bg-muted h-8 text-sm" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : isEditingPixKey ? (
-                // Edit PIX Key Form
-                <div className="space-y-4">
-                  <div className="p-4 bg-muted/50 border rounded-lg">
-                    <div className="flex items-center justify-between mb-4">
-                      <Label className="text-base font-medium">Alterar Chave PIX</Label>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => {
-                          setIsEditingPixKey(false);
-                          setNewPixKey('');
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="new-pix-key">Nova Chave PIX</Label>
-                        <Input
-                          id="new-pix-key"
-                          value={newPixKey}
-                          onChange={(e) => setNewPixKey(e.target.value)}
-                          placeholder="CPF, CNPJ, E-mail, Telefone ou Chave Aleatória"
-                          className="font-mono"
-                        />
-                        {newPixKey && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-muted-foreground">Tipo detectado:</span>
-                            <Badge variant="outline">{detectPixKeyType(newPixKey)}</Badge>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline"
-                          onClick={() => {
-                            setIsEditingPixKey(false);
-                            setNewPixKey('');
-                          }}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button 
-                          onClick={async () => {
-                            if (!newPixKey.trim() || !supplierData.supplier_id) {
-                              toast.error('Informe uma chave PIX válida');
-                              return;
-                            }
-                            
-                            setIsSavingPixKey(true);
-                            try {
-                              const { error } = await supabase
-                                .from('suppliers')
-                                .update({ 
-                                  pix_key: newPixKey.trim(),
-                                  updated_at: new Date().toISOString()
-                                })
-                                .eq('id', supplierData.supplier_id);
-                              
-                              if (error) throw error;
-                              
-                              setSupplierData(prev => ({ ...prev, pix_key: newPixKey.trim() }));
-                              setIsEditingPixKey(false);
-                              setNewPixKey('');
-                              toast.success('Chave PIX atualizada com sucesso!');
-                            } catch (error) {
-                              console.error('Erro ao atualizar chave PIX:', error);
-                              toast.error('Erro ao atualizar chave PIX');
-                            } finally {
-                              setIsSavingPixKey(false);
-                            }
-                          }}
-                          disabled={isSavingPixKey || !newPixKey.trim()}
-                        >
-                          {isSavingPixKey ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Salvando...
-                            </>
-                          ) : (
-                            'Salvar Nova Chave'
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                // No PIX Key - Show form to add
-                <div className="space-y-4">
-                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
-                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-2">
-                      <AlertCircle className="h-5 w-5" />
-                      <span className="font-medium">Chave PIX não configurada</span>
-                    </div>
-                    <p className="text-sm text-amber-600 dark:text-amber-500">
-                      Configure sua chave PIX para receber pagamentos quando as entregas forem confirmadas.
+                    <p className="text-sm text-green-600 dark:text-green-500">
+                      Seus dados bancários estão configurados e prontos para receber transferências.
                     </p>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="pix-key">Chave PIX</Label>
-                    <Input
-                      id="pix-key"
-                      value={newPixKey}
-                      onChange={(e) => setNewPixKey(e.target.value)}
-                      placeholder="CPF, CNPJ, E-mail, Telefone ou Chave Aleatória"
-                      className="font-mono"
-                    />
-                    {newPixKey && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">Tipo detectado:</span>
-                        <Badge variant="outline">{detectPixKeyType(newPixKey)}</Badge>
-                      </div>
-                    )}
-                  </div>
+                  {supplierData.bank_data.pix_key && (
+                    <div className="space-y-2">
+                      <Label>Chave PIX</Label>
+                      <Input value={supplierData.bank_data.pix_key} disabled className="bg-muted" />
+                    </div>
+                  )}
                   
-                  <Button 
-                    onClick={async () => {
-                      if (!newPixKey.trim() || !supplierData.supplier_id) {
-                        toast.error('Informe uma chave PIX válida');
-                        return;
-                      }
-                      
-                      setIsSavingPixKey(true);
-                      try {
-                        const { error } = await supabase
-                          .from('suppliers')
-                          .update({ 
-                            pix_key: newPixKey.trim(),
-                            updated_at: new Date().toISOString()
-                          })
-                          .eq('id', supplierData.supplier_id);
-                        
-                        if (error) throw error;
-                        
-                        setSupplierData(prev => ({ ...prev, pix_key: newPixKey.trim() }));
-                        setNewPixKey('');
-                        toast.success('Chave PIX cadastrada com sucesso!');
-                      } catch (error) {
-                        console.error('Erro ao cadastrar chave PIX:', error);
-                        toast.error('Erro ao cadastrar chave PIX');
-                      } finally {
-                        setIsSavingPixKey(false);
-                      }
-                    }}
-                    disabled={isSavingPixKey || !newPixKey.trim()}
-                  >
-                    {isSavingPixKey ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      'Cadastrar Chave PIX'
-                    )}
-                  </Button>
+                  {supplierData.bank_data.account_number && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Banco</Label>
+                        <Input value={supplierData.bank_data.bank_code} disabled className="bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Agência</Label>
+                        <Input value={supplierData.bank_data.agency} disabled className="bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Conta</Label>
+                        <Input value={supplierData.bank_data.account_number} disabled className="bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Titular</Label>
+                        <Input value={supplierData.bank_data.account_holder_name} disabled className="bg-muted" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <p className="text-sm text-muted-foreground">
+                    Para alterar seus dados bancários, entre em contato com o suporte.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg">
+                  <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
+                    <AlertCircle className="h-5 w-5" />
+                    <span className="font-medium">Dados bancários não configurados</span>
+                  </div>
+                  <p className="text-sm text-yellow-600 dark:text-yellow-500 mb-4">
+                    Configure seus dados bancários para receber pagamentos quando as entregas forem confirmadas.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Entre em contato com o suporte para configurar sua chave PIX ou dados bancários.
+                  </p>
                 </div>
               )}
             </CardContent>
