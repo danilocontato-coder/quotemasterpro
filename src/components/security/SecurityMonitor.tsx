@@ -36,7 +36,8 @@ export const SecurityMonitor: React.FC = () => {
     }
 
     // PROTEÇÃO 2: Bloquear fornecedores de acessar rotas de cliente
-    if (user.supplierId && !currentPath.startsWith('/supplier/') && !currentPath.startsWith('/auth/')) {
+    // PRIORIZA O ROLE do usuário, não apenas a existência de IDs
+    if (user.role === 'supplier' && !currentPath.startsWith('/supplier/') && !currentPath.startsWith('/auth/')) {
       console.warn('🔒 [SECURITY] Fornecedor tentou acessar rota de cliente:', {
         supplierId: user.supplierId,
         attemptedPath: currentPath
@@ -47,7 +48,8 @@ export const SecurityMonitor: React.FC = () => {
     }
 
     // PROTEÇÃO 3: Bloquear clientes de acessar rotas de fornecedor
-    if (user.clientId && currentPath.startsWith('/supplier/')) {
+    // PRIORIZA O ROLE do usuário para evitar conflitos com dados inconsistentes
+    if (user.role !== 'supplier' && user.role !== 'admin' && currentPath.startsWith('/supplier/')) {
       console.warn('🔒 [SECURITY] Cliente tentou acessar rota de fornecedor:', {
         clientId: user.clientId,
         attemptedPath: currentPath
