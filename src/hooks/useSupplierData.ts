@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,6 +14,7 @@ export interface SupplierData {
   document_number?: string;
   document_type?: string;
   asaas_wallet_id?: string;
+  pix_key?: string;
 }
 
 export const useSupplierData = () => {
@@ -21,7 +22,7 @@ export const useSupplierData = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
-  const fetchSupplierData = async () => {
+  const fetchSupplierData = useCallback(async () => {
     if (!user?.supplierId) {
       setIsLoading(false);
       return;
@@ -58,7 +59,8 @@ export const useSupplierData = () => {
           bank_data: supplier.bank_data,
           document_number: supplier.document_number,
           document_type: supplier.document_type,
-          asaas_wallet_id: supplier.asaas_wallet_id
+          asaas_wallet_id: supplier.asaas_wallet_id,
+          pix_key: supplier.pix_key
         });
       }
     } catch (error) {
@@ -66,11 +68,38 @@ export const useSupplierData = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.supplierId]);
 
+  // Fetch inicial
   useEffect(() => {
     fetchSupplierData();
-  }, [user?.supplierId]);
+  }, [fetchSupplierData]);
+
+  // Real-time subscription para auto-refresh quando dados do fornecedor mudam
+  useEffect(() => {
+    if (!user?.supplierId) return;
+
+    const channel = supabase
+      .channel(`supplier-data-${user.supplierId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'suppliers',
+          filter: `id=eq.${user.supplierId}`
+        },
+        () => {
+          // Refetch quando dados do fornecedor são atualizados
+          fetchSupplierData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.supplierId, fetchSupplierData]);
 
   return {
     supplierData,

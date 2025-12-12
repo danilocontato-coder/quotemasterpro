@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Sparkles, Crown } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 export default function TemplatesGallery() {
   const navigate = useNavigate();
@@ -95,10 +96,10 @@ export default function TemplatesGallery() {
               </CardHeader>
               <CardContent>
                 <div className="border rounded p-4 bg-accent/50 min-h-[200px] max-h-[200px] overflow-hidden">
-                  <div 
+<div 
                     className="text-xs"
                     dangerouslySetInnerHTML={{ 
-                      __html: template.html_template.substring(0, 500) + '...' 
+                      __html: DOMPurify.sanitize(template.html_template.substring(0, 500) + '...') 
                     }}
                   />
                 </div>

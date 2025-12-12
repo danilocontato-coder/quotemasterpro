@@ -9,6 +9,7 @@ import { useEmailCampaigns } from '@/hooks/useEmailCampaigns';
 import { Sparkles, ArrowLeft, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import DOMPurify from 'dompurify';
 
 export default function EmailMarketingEditor() {
   const navigate = useNavigate();
@@ -120,9 +121,9 @@ export default function EmailMarketingEditor() {
                 </div>
                 <div>
                   <Label>Conteúdo HTML</Label>
-                  <div 
+<div 
                     className="border rounded p-4 max-h-96 overflow-auto"
-                    dangerouslySetInnerHTML={{ __html: generatedContent.html_body }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(generatedContent.html_body) }}
                   />
                 </div>
                 <div className="flex gap-2">

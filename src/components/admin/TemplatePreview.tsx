@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Mail, Bell, Smartphone } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface TemplatePreviewProps {
   template: {
@@ -84,10 +85,10 @@ export function TemplatePreview({ template, variables = {} }: TemplatePreviewPro
             </p>
           )}
         </CardHeader>
-        <CardContent>
+<CardContent>
           <div 
             className="border rounded-lg overflow-hidden bg-white"
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
           />
         </CardContent>
       </Card>
