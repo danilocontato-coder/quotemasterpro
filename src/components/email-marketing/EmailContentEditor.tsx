@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Code, Eye } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface EmailContent {
   subject: string;
@@ -91,10 +92,10 @@ export function EmailContentEditor({ content, onChange }: EmailContentEditorProp
                 <p className="text-sm text-muted-foreground">Assunto:</p>
                 <p className="font-medium">{content.subject || '(sem assunto)'}</p>
               </div>
-              {content.htmlBody ? (
+{content.htmlBody ? (
                 <div
                   className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: content.htmlBody }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content.htmlBody) }}
                 />
               ) : (
                 <p className="text-muted-foreground text-sm italic">

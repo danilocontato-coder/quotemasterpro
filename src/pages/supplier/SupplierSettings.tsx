@@ -14,10 +14,12 @@ import { useSupabaseSettings } from "@/hooks/useSupabaseSettings";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
 import { PasswordChange } from "@/components/settings/PasswordChange";
+import { BankDataSection } from "@/components/supplier/BankDataSection";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { maskPixKeyDisplay, detectPixKeyType, getPixKeyTypeLabel } from "@/utils/pixKeyValidation";
+
 function SupplierSettings() {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'profile';
@@ -434,88 +436,13 @@ function SupplierSettings() {
           </Card>
         </TabsContent>
 
-        {/* Bank Data Tab */}
+{/* Bank Data Tab */}
         <TabsContent value="bank" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Landmark className="h-5 w-5" />
-                Dados para Recebimento
-              </CardTitle>
-              <CardDescription>
-                Configure sua chave PIX ou dados bancários para receber pagamentos. Quando uma entrega for confirmada, o valor será transferido automaticamente para sua conta.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {supplierData.bank_data ? (
-                <div className="space-y-4">
-                  <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                    <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-                      <CheckCircle className="h-5 w-5" />
-                      <span className="font-medium">Dados configurados</span>
-                    </div>
-                    <p className="text-sm text-green-600 dark:text-green-500">
-                      Seus dados bancários estão configurados e prontos para receber transferências.
-                    </p>
-                  </div>
-                  
-                  {supplierData.bank_data.pix_key && (
-                    <div className="space-y-2">
-                      <Label>Chave PIX</Label>
-                      <div className="flex items-center gap-2">
-                        <Input 
-                          value={maskPixKeyDisplay(supplierData.bank_data.pix_key)} 
-                          disabled 
-                          className="bg-muted flex-1" 
-                        />
-                        <Badge variant="outline" className="shrink-0">
-                          {getPixKeyTypeLabel(detectPixKeyType(supplierData.bank_data.pix_key))}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {supplierData.bank_data.account_number && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Banco</Label>
-                        <Input value={supplierData.bank_data.bank_code} disabled className="bg-muted" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Agência</Label>
-                        <Input value={supplierData.bank_data.agency} disabled className="bg-muted" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Conta</Label>
-                        <Input value={supplierData.bank_data.account_number} disabled className="bg-muted" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Titular</Label>
-                        <Input value={supplierData.bank_data.account_holder_name} disabled className="bg-muted" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <p className="text-sm text-muted-foreground">
-                    Para alterar seus dados bancários, entre em contato com o suporte.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-lg">
-                  <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
-                    <AlertCircle className="h-5 w-5" />
-                    <span className="font-medium">Dados bancários não configurados</span>
-                  </div>
-                  <p className="text-sm text-yellow-600 dark:text-yellow-500 mb-4">
-                    Configure seus dados bancários para receber pagamentos quando as entregas forem confirmadas.
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Entre em contato com o suporte para configurar sua chave PIX ou dados bancários.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <BankDataSection 
+            supplierData={supplierData}
+            setSupplierData={setSupplierData}
+            currentUser={currentUser}
+          />
         </TabsContent>
 
         {/* Security Tab */}

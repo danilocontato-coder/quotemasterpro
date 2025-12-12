@@ -8,6 +8,7 @@ import { Maximize2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useSupabaseCurrentClient } from "@/hooks/useSupabaseCurrentClient";
 import { replaceVariables } from "@/lib/replaceVariables";
+import DOMPurify from "dompurify";
 
 interface EmailPreviewProps {
   htmlContent: string;
@@ -32,9 +33,10 @@ export function EmailPreview({ htmlContent, plainTextContent, subjectLine, previ
     };
   }, [client, previewWithRealData]);
 
-  const processedHtmlContent = useMemo(() => {
-    if (!previewWithRealData || !htmlContent) return htmlContent;
-    return replaceVariables(htmlContent, mergeTags);
+const processedHtmlContent = useMemo(() => {
+    if (!htmlContent) return '';
+    const content = previewWithRealData ? replaceVariables(htmlContent, mergeTags) : htmlContent;
+    return DOMPurify.sanitize(content);
   }, [htmlContent, previewWithRealData, mergeTags]);
 
   const processedSubject = useMemo(() => {

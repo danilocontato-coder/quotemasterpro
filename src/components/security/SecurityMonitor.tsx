@@ -19,13 +19,14 @@ export const SecurityMonitor: React.FC = () => {
     const currentPath = location.pathname;
     
     // PROTEÇÃO 1: Bloquear acesso de não-admins às rotas administrativas
-    if (currentPath.startsWith('/admin/') && user.role !== 'admin') {
-      console.error('🚨 [SECURITY BREACH] Tentativa de acesso não autorizado às rotas administrativas:', {
-        userId: user.id,
-        userRole: user.role,
-        attemptedPath: currentPath,
-        timestamp: new Date().toISOString()
-      });
+if (currentPath.startsWith('/admin/') && user.role !== 'admin') {
+      // Log apenas em desenvolvimento - não expor dados sensíveis em produção
+      if (import.meta.env.DEV) {
+        console.error('[SECURITY] Tentativa de acesso não autorizado às rotas administrativas:', {
+          userRole: user.role,
+          attemptedPath: currentPath
+        });
+      }
       
       toast.error('Acesso negado', {
         description: 'Você não tem permissão para acessar esta área.'
@@ -35,25 +36,23 @@ export const SecurityMonitor: React.FC = () => {
       return;
     }
 
-    // PROTEÇÃO 2: Bloquear fornecedores de acessar rotas de cliente
+// PROTEÇÃO 2: Bloquear fornecedores de acessar rotas de cliente
     // PRIORIZA O ROLE do usuário, não apenas a existência de IDs
     if (user.role === 'supplier' && !currentPath.startsWith('/supplier/') && !currentPath.startsWith('/auth/')) {
-      console.warn('🔒 [SECURITY] Fornecedor tentou acessar rota de cliente:', {
-        supplierId: user.supplierId,
-        attemptedPath: currentPath
-      });
+      if (import.meta.env.DEV) {
+        console.warn('[SECURITY] Fornecedor tentou acessar rota de cliente');
+      }
       
       navigate('/supplier/dashboard', { replace: true });
       return;
     }
 
-    // PROTEÇÃO 3: Bloquear clientes de acessar rotas de fornecedor
+// PROTEÇÃO 3: Bloquear clientes de acessar rotas de fornecedor
     // PRIORIZA O ROLE do usuário para evitar conflitos com dados inconsistentes
     if (user.role !== 'supplier' && user.role !== 'admin' && currentPath.startsWith('/supplier/')) {
-      console.warn('🔒 [SECURITY] Cliente tentou acessar rota de fornecedor:', {
-        clientId: user.clientId,
-        attemptedPath: currentPath
-      });
+      if (import.meta.env.DEV) {
+        console.warn('[SECURITY] Cliente tentou acessar rota de fornecedor');
+      }
       
       const targetRoute = getRoleBasedRoute(user.role, {
         supplierId: user.supplierId,
@@ -76,19 +75,13 @@ export const SecurityMonitor: React.FC = () => {
       '/admin/coupons'
     ];
 
-    if (adminPaths.some(path => currentPath.startsWith(path)) && user.role !== 'admin') {
-      console.error('🚨 [SECURITY BREACH] Tentativa de acesso direto a painel administrativo:', {
-        userId: user.id,
-        userRole: user.role,
-        clientId: user.clientId,
-        supplierId: user.supplierId,
-        attemptedPath: currentPath,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString()
-      });
-
-      // Log crítico de segurança - poderia ser enviado para sistema de monitoramento
-      console.error('CRITICAL SECURITY EVENT: Unauthorized admin access attempt');
+if (adminPaths.some(path => currentPath.startsWith(path)) && user.role !== 'admin') {
+      // Log apenas em desenvolvimento - não expor dados sensíveis em produção
+      if (import.meta.env.DEV) {
+        console.error('[SECURITY] Tentativa de acesso direto a painel administrativo:', {
+          attemptedPath: currentPath
+        });
+      }
       
       toast.error('Violação de segurança detectada', {
         description: 'Tentativa de acesso não autorizado foi registrada.'
