@@ -387,6 +387,39 @@ export function AsaasIntegrationPanel() {
           </TabsContent>
 
           <TabsContent value="advanced" className="space-y-4">
+            {/* Toggle de Comissão */}
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+              <div className="space-y-1">
+                <Label className="text-base font-medium flex items-center gap-2">
+                  💰 Cobrar Comissão da Plataforma
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {asaasConfig.platform_commission_percentage > 0 
+                    ? `Cobrando ${asaasConfig.platform_commission_percentage}% sobre cada pagamento`
+                    : 'Modo promocional: sem comissão (0%)'}
+                </p>
+              </div>
+              <Switch
+                checked={asaasConfig.platform_commission_percentage > 0}
+                onCheckedChange={(checked) => {
+                  setAsaasConfig(prev => ({ 
+                    ...prev, 
+                    platform_commission_percentage: checked ? 5.0 : 0 
+                  }))
+                }}
+              />
+            </div>
+
+            {asaasConfig.platform_commission_percentage === 0 && (
+              <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-500" />
+                <AlertTitle>Modo Promocional Ativo</AlertTitle>
+                <AlertDescription>
+                  A plataforma não está cobrando comissão. Ideal para validações e atrair novos fornecedores.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="commission-percentage">Comissão da Plataforma (%)</Label>
@@ -400,7 +433,9 @@ export function AsaasIntegrationPanel() {
                   onChange={(e) => setAsaasConfig(prev => ({ ...prev, platform_commission_percentage: parseFloat(e.target.value) || 0 }))}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Percentual que a plataforma receberá de cada pagamento
+                  {asaasConfig.platform_commission_percentage === 0 
+                    ? 'Sem cobrança de comissão (gratuito)'
+                    : 'Percentual que a plataforma receberá de cada pagamento'}
                 </p>
               </div>
               <div className="space-y-2">

@@ -45,13 +45,18 @@ serve(async (req) => {
       )
     }
 
-    // Calcular valores - usar supplier_net_amount se disponível
-    const supplierNetAmount = payment.supplier_net_amount || (payment.base_amount ? payment.base_amount * 0.95 : payment.amount * 0.95);
-    const platformCommission = payment.platform_commission || (payment.base_amount ? payment.base_amount * 0.05 : payment.amount * 0.05);
+    // Buscar configuração de comissão da plataforma
+    const asaasConfig = await getAsaasConfig(supabase)
+    const commissionPercentage = asaasConfig.config?.platform_commission_percentage ?? 5.0
+
+    // Calcular valores - usar supplier_net_amount se disponível, ou recalcular com comissão dinâmica
     const baseAmount = payment.base_amount || payment.amount;
+    const platformCommission = payment.platform_commission || (baseAmount * (commissionPercentage / 100));
+    const supplierNetAmount = payment.supplier_net_amount || (baseAmount - platformCommission);
 
     console.log(`💰 Valores do pagamento:`, {
       base_amount: baseAmount,
+      commission_percentage: commissionPercentage,
       platform_commission: platformCommission,
       supplier_net_amount: supplierNetAmount,
       asaas_fee: payment.asaas_fee || 0

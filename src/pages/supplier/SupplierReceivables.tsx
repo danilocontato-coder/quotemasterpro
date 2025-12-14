@@ -11,6 +11,7 @@ import { FileText, TrendingUp, Clock, CreditCard, Search, Filter, Eye, CheckCirc
 import { useSupplierReceivables, SupplierReceivable } from '@/hooks/useSupplierReceivables';
 import { OfflinePaymentSupplierView } from '@/components/payments/OfflinePaymentSupplierView';
 import { useSupplierBalance } from '@/hooks/useSupplierBalance';
+import { usePlatformCommission } from '@/hooks/usePlatformCommission';
 
 export default function SupplierReceivables() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +31,7 @@ export default function SupplierReceivables() {
   } = useSupplierReceivables();
 
   const { balance, isLoading: isLoadingBalance, fetchBalance } = useSupplierBalance();
+  const { percentage: commissionPercentage, isPromoMode } = usePlatformCommission();
 
   // Carregar saldo ao montar componente
   useEffect(() => {
@@ -199,7 +201,11 @@ export default function SupplierReceivables() {
           )}
           <div className="mt-4 bg-blue-100 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-800">
-              <strong>💡 Como funciona:</strong> Quando a entrega for confirmada, transferiremos automaticamente o valor líquido (menos 5% de comissão) para sua conta bancária via PIX ou TED.
+              <strong>💡 Como funciona:</strong> Quando a entrega for confirmada, transferiremos automaticamente o valor líquido 
+              {isPromoMode 
+                ? ' (sem cobrança de comissão - modo promocional)' 
+                : ` (menos ${commissionPercentage}% de comissão)`
+              } para sua conta bancária via PIX ou TED.
             </p>
           </div>
         </CardContent>
@@ -287,16 +293,18 @@ export default function SupplierReceivables() {
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">📊 Comissão (5%)</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      -{formatCurrency(receivables.reduce((sum, r) => {
+                    <p className="text-xs text-muted-foreground">
+                      📊 Comissão {isPromoMode ? '(Grátis!)' : `(${commissionPercentage}%)`}
+                    </p>
+                    <p className={`text-2xl font-bold ${isPromoMode ? 'text-green-600' : 'text-red-600'}`}>
+                      {isPromoMode ? 'R$ 0,00' : `-${formatCurrency(receivables.reduce((sum, r) => {
                         const commission = r.platform_commission || 
-                          (r.base_amount || r.amount) * 0.05;
+                          (r.base_amount || r.amount) * (commissionPercentage / 100);
                         return sum + commission;
-                      }, 0))}
+                      }, 0))}`}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Plataforma
+                      {isPromoMode ? 'Modo promocional' : 'Plataforma'}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -307,7 +315,7 @@ export default function SupplierReceivables() {
                           return sum + r.supplier_net_amount;
                         }
                         const baseAmount = r.base_amount || r.amount;
-                        const commission = baseAmount * 0.05;
+                        const commission = baseAmount * (commissionPercentage / 100);
                         return sum + (baseAmount - commission);
                       }, 0))}
                     </p>
@@ -319,8 +327,9 @@ export default function SupplierReceivables() {
 
                 <div className="bg-blue-100 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-800">
-                    <strong>💡 Como funciona:</strong> A comissão de 5% é descontada automaticamente. 
-                    Quando a entrega for confirmada, você recebe o valor líquido diretamente na sua conta bancária.
+                    <strong>💡 Como funciona:</strong> {isPromoMode 
+                      ? 'Você recebe 100% do valor da venda - sem comissão! Modo promocional ativo.' 
+                      : `A comissão de ${commissionPercentage}% é descontada automaticamente. Quando a entrega for confirmada, você recebe o valor líquido diretamente na sua conta bancária.`}
                   </p>
                 </div>
               </div>
@@ -383,12 +392,15 @@ export default function SupplierReceivables() {
                         </TableCell>
                         <TableCell>{receivable.client_name || 'N/A'}</TableCell>
                         <TableCell>{formatCurrency(receivable.base_amount || receivable.amount)}</TableCell>
-                        <TableCell className="text-red-600">
-                          -{formatCurrency(receivable.platform_commission || (receivable.base_amount || receivable.amount) * 0.05)}
+                        <TableCell className={isPromoMode ? 'text-green-600' : 'text-red-600'}>
+                          {isPromoMode 
+                            ? 'R$ 0,00' 
+                            : `-${formatCurrency(receivable.platform_commission || (receivable.base_amount || receivable.amount) * (commissionPercentage / 100))}`
+                          }
                         </TableCell>
                         <TableCell className="font-bold text-green-600">
                           {formatCurrency(receivable.supplier_net_amount || 
-                            ((receivable.base_amount || receivable.amount) * 0.95)
+                            ((receivable.base_amount || receivable.amount) * (1 - commissionPercentage / 100))
                           )}
                         </TableCell>
                         <TableCell>{getStatusBadge(receivable.status)}</TableCell>
