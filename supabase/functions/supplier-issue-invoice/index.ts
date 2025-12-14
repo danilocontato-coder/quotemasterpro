@@ -192,14 +192,20 @@ serve(async (req) => {
     
     // Buscar taxas dinâmicas do banco
     const fees = await getAsaasFees(supabaseClient)
+    
+    // Buscar configuração de comissão da plataforma
+    const asaasConfig = await getAsaasConfig(supabaseClient)
+    const commissionPercentage = asaasConfig.config?.platform_commission_percentage ?? 5.0
+    
     console.log('📊 Taxas do Asaas:', { 
       pix: fees.pix, 
       boleto: fees.boleto, 
       source: fees.source,
-      last_synced: fees.last_synced 
+      last_synced: fees.last_synced,
+      commission_percentage: commissionPercentage
     })
     
-    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED', fees)
+    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED', fees, 1, commissionPercentage)
     
     console.log(`💰 Calculation:`, calculation)
 

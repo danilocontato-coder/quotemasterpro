@@ -263,22 +263,28 @@ serve(async (req) => {
 
     // ✅ Buscar taxas dinâmicas do banco
     const fees = await getAsaasFees(supabase);
+    
+    // Buscar comissão configurada
+    const commissionPercentage = config.platform_commission_percentage ?? 5.0;
+    
     console.log('📊 Taxas do Asaas:', { 
       pix: fees.pix, 
       boleto: fees.boleto, 
       source: fees.source,
-      last_synced: fees.last_synced 
+      last_synced: fees.last_synced,
+      commission_percentage: commissionPercentage
     });
     
-    // Calcular valores corretos (cliente paga base + taxa, fornecedor paga comissão)
+    // Calcular valores corretos (cliente paga base + taxa, fornecedor paga comissão dinâmica)
     const baseAmount = totalAmount; // Valor da cotação (itens + frete)
-    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED', fees); // Cliente ainda não escolheu
+    const calculation = calculateCustomerTotal(baseAmount, 'UNDEFINED', fees, 1, commissionPercentage);
 
     console.log('💰 Detalhamento de valores:', {
       valor_base_cotacao: calculation.baseAmount,
       taxa_asaas: calculation.asaasFee,
       total_cobrado_cliente: calculation.customerTotal,
       comissao_plataforma: calculation.platformCommission,
+      comissao_percentual: commissionPercentage,
       liquido_fornecedor: calculation.supplierNet
     });
 

@@ -159,7 +159,8 @@ export function calculateCustomerTotal(
   baseAmount: number,
   billingType: 'PIX' | 'BOLETO' | 'CREDIT_CARD' | 'UNDEFINED' = 'UNDEFINED',
   fees: AsaasFees = FALLBACK_FEES,
-  installments: number = 1
+  installments: number = 1,
+  commissionPercentage: number = 5.0 // Novo parâmetro - padrão 5%
 ): {
   baseAmount: number;
   asaasFee: number;
@@ -167,13 +168,14 @@ export function calculateCustomerTotal(
   asaasMessagingFee: number;
   customerTotal: number;
   platformCommission: number;
+  platformCommissionPercentage: number;
   supplierNet: number;
 } {
   const feeDetails = calculateCompleteAsaasFees(baseAmount, billingType, fees, installments);
   const customerTotal = baseAmount + feeDetails.totalFees;
   
   // Comissão calculada APENAS sobre o valor base (não sobre taxas)
-  const commissionPercentage = 5.0;
+  // Agora usa o percentual passado como parâmetro (pode ser 0 para modo promocional)
   const platformCommission = baseAmount * (commissionPercentage / 100);
   
   // Fornecedor paga APENAS a comissão
@@ -188,6 +190,7 @@ export function calculateCustomerTotal(
     asaasMessagingFee: Math.round(feeDetails.messagingFee * 100) / 100,
     customerTotal: Math.round(customerTotal * 100) / 100,
     platformCommission: Math.round(platformCommission * 100) / 100,
+    platformCommissionPercentage: commissionPercentage,
     supplierNet: Math.round(supplierNet * 100) / 100
   };
 }
