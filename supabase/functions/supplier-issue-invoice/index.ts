@@ -231,10 +231,7 @@ serve(async (req) => {
 
     console.log('✅ Cálculo financeiro validado:', calculation)
 
-    // 4. Buscar configuração do Asaas
-    const asaasConfig = await getAsaasConfig(supabaseClient)
-
-    // 5. Criar cobrança no Asaas
+    // 4. Criar cobrança no Asaas (asaasConfig já foi obtido acima)
     const asaasPayload = {
       customer: asaasCustomerId, // ID do cliente no Asaas (criado automaticamente se necessário)
       billingType: 'UNDEFINED', // Cliente escolhe ao pagar
