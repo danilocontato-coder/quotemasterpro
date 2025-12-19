@@ -42,10 +42,19 @@ serve(async (req) => {
       );
     }
 
-    // Validar token de autenticação se configurado
-    const authToken = req.headers.get('asaas-webhook-token');
+    // Validar token de autenticação (Asaas usa "asaas-access-token" no header)
+    const authToken = req.headers.get('asaas-access-token') || req.headers.get('asaas-webhook-token');
+    
+    console.log('🔐 Headers recebidos:', {
+      'asaas-access-token': req.headers.get('asaas-access-token') ? '***configurado***' : null,
+      'asaas-webhook-token': req.headers.get('asaas-webhook-token') ? '***configurado***' : null,
+      'content-type': req.headers.get('content-type'),
+      'user-agent': req.headers.get('user-agent')
+    });
+    
     if (config?.auth_token && authToken !== config.auth_token) {
-      console.error('❌ Token de autenticação inválido');
+      console.error('❌ Token de autenticação inválido. Esperado:', config.auth_token?.substring(0, 8) + '...');
+      console.error('❌ Token recebido:', authToken ? authToken.substring(0, 8) + '...' : 'NENHUM');
       return new Response(
         JSON.stringify({ 
           status: 'REJECTED',
@@ -57,6 +66,8 @@ serve(async (req) => {
         }
       );
     }
+    
+    console.log('✅ Token de autenticação validado');
 
     const payload = await req.json();
     console.log('📦 Payload recebido:', JSON.stringify(payload, null, 2));
