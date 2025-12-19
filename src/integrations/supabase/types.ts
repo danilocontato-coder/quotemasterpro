@@ -2809,6 +2809,42 @@ export type Database = {
           },
         ]
       }
+      email_verifications: {
+        Row: {
+          attempts: number | null
+          code: string
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          code: string
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          code?: string
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       escrow_release_errors: {
         Row: {
           created_at: string | null

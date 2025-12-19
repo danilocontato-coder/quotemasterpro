@@ -257,3 +257,12 @@ verify_jwt = true
 
 [functions.supplier-issue-invoice]
 verify_jwt = true
+
+[functions.send-verification-code]
+verify_jwt = false
+
+[functions.verify-email-code]
+verify_jwt = false
+
+[functions.validate-cnpj]
+verify_jwt = false
