@@ -3940,6 +3940,42 @@ export type Database = {
           },
         ]
       }
+      phone_verifications: {
+        Row: {
+          attempts: number | null
+          code: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          ip_address: string | null
+          phone: string
+          user_agent: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          code: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          phone: string
+          user_agent?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          code?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          phone?: string
+          user_agent?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       product_batches: {
         Row: {
           batch_number: string
@@ -6829,6 +6865,7 @@ export type Database = {
           valid_approvers_count: number
         }[]
       }
+      cleanup_expired_phone_verifications: { Args: never; Returns: undefined }
       create_default_cost_centers: {
         Args: { p_client_id: string }
         Returns: undefined
