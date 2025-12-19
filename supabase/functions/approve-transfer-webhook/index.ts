@@ -169,9 +169,9 @@ serve(async (req) => {
       difference: Math.abs(recordAmount - value)
     });
     
-    // Para payments, aceitar status 'in_escrow', 'escrow', 'releasing' (quando estamos liberando fundos)
+    // Para payments, aceitar status 'in_escrow', 'escrow', 'releasing', 'transfer_pending' (quando estamos liberando fundos)
     const validStatuses = recordType === 'payments' 
-      ? ['in_escrow', 'escrow', 'releasing', 'processing']
+      ? ['in_escrow', 'escrow', 'releasing', 'processing', 'transfer_pending']
       : ['pending'];
 
     const validations = {
