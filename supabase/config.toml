@@ -269,3 +269,9 @@ verify_jwt = false
 
 [functions.register-supplier-public]
 verify_jwt = false
+
+[functions.send-phone-verification]
+verify_jwt = false
+
+[functions.verify-phone-code]
+verify_jwt = false

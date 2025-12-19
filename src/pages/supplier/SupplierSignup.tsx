@@ -6,20 +6,42 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Building2, Shield, BadgeCheck, Wallet, Users, BarChart3, 
   CheckCircle2, ArrowRight, ArrowLeft, TrendingUp,
   Clock, Headphones, CreditCard, Globe, Loader2, PartyPopper,
-  Zap, Lock, Award
+  Zap, Lock, Award, Banknote, QrCode
 } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { usePlatformCommission } from '@/hooks/usePlatformCommission';
 import { EmailVerificationInput } from '@/components/supplier/EmailVerificationInput';
 import { CNPJValidationInput, CompanyData } from '@/components/supplier/CNPJValidationInput';
+import { WhatsAppVerificationInput } from '@/components/supplier/WhatsAppVerificationInput';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { BrandedLogo } from '@/components/branding/BrandedLogo';
+
+// Brazilian banks list
+const BRAZILIAN_BANKS = [
+  { code: '001', name: 'Banco do Brasil' },
+  { code: '033', name: 'Santander' },
+  { code: '104', name: 'Caixa Econômica' },
+  { code: '237', name: 'Bradesco' },
+  { code: '341', name: 'Itaú' },
+  { code: '756', name: 'Sicoob' },
+  { code: '748', name: 'Sicredi' },
+  { code: '077', name: 'Inter' },
+  { code: '260', name: 'Nubank' },
+  { code: '336', name: 'C6 Bank' },
+  { code: '380', name: 'PicPay' },
+  { code: '290', name: 'PagBank' },
+  { code: '212', name: 'Banco Original' },
+  { code: '655', name: 'Neon' },
+  { code: '323', name: 'Mercado Pago' },
+];
 
 // Step interface
 interface FormData {
@@ -38,6 +60,7 @@ interface FormData {
   // Step 3
   phone: string;
   whatsapp: string;
+  whatsappVerified: boolean;
   website: string;
   address: string;
   city: string;
@@ -46,10 +69,13 @@ interface FormData {
   
   // Step 4
   specialties: string;
-  bankName: string;
+  paymentMethod: 'pix' | 'bank';
+  pixKey: string;
+  pixKeyType: string;
+  bankCode: string;
   bankAgency: string;
   bankAccount: string;
-  pixKey: string;
+  bankAccountType: 'checking' | 'savings';
 }
 
 const initialFormData: FormData = {
@@ -63,16 +89,20 @@ const initialFormData: FormData = {
   tradeName: '',
   phone: '',
   whatsapp: '',
+  whatsappVerified: false,
   website: '',
   address: '',
   city: '',
   state: '',
   zipCode: '',
   specialties: '',
-  bankName: '',
+  paymentMethod: 'pix',
+  pixKey: '',
+  pixKeyType: 'cnpj',
+  bankCode: '',
   bankAgency: '',
   bankAccount: '',
-  pixKey: ''
+  bankAccountType: 'checking'
 };
 
 const STEPS = [
@@ -120,6 +150,10 @@ export default function SupplierSignup() {
     }
   };
 
+  const handleWhatsAppVerified = () => {
+    handleInputChange('whatsappVerified', true);
+  };
+
   const validateStep = (step: number): boolean => {
     const newErrors: Partial<FormData> = {};
     
@@ -137,10 +171,18 @@ export default function SupplierSignup() {
         if (!formData.companyName) newErrors.companyName = 'Razão social obrigatória';
         break;
       case 3:
-        if (!formData.phone && !formData.whatsapp) newErrors.phone = 'Informe telefone ou WhatsApp';
+        if (!formData.whatsapp) newErrors.whatsapp = 'WhatsApp é obrigatório';
+        if (!formData.whatsappVerified) newErrors.whatsapp = 'WhatsApp precisa ser verificado';
         break;
       case 4:
-        // Optional fields
+        // Dados bancários obrigatórios
+        if (formData.paymentMethod === 'pix') {
+          if (!formData.pixKey) newErrors.pixKey = 'Chave PIX é obrigatória';
+        } else {
+          if (!formData.bankCode) newErrors.bankCode = 'Banco é obrigatório';
+          if (!formData.bankAgency) newErrors.bankAgency = 'Agência é obrigatória';
+          if (!formData.bankAccount) newErrors.bankAccount = 'Conta é obrigatória';
+        }
         break;
     }
     
@@ -190,11 +232,16 @@ export default function SupplierSignup() {
           state: formData.state,
           zipCode: formData.zipCode,
           specialties: formData.specialties,
-          bankData: {
-            bankName: formData.bankName,
+          paymentMethod: formData.paymentMethod,
+          bankData: formData.paymentMethod === 'pix' ? {
+            pixKey: formData.pixKey,
+            pixKeyType: formData.pixKeyType
+          } : {
+            bankCode: formData.bankCode,
+            bankName: BRAZILIAN_BANKS.find(b => b.code === formData.bankCode)?.name || '',
             agency: formData.bankAgency,
             account: formData.bankAccount,
-            pixKey: formData.pixKey
+            accountType: formData.bankAccountType
           }
         }
       });
@@ -612,31 +659,33 @@ export default function SupplierSignup() {
               {/* Step 3: Contact & Address */}
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone</Label>
-                      <Input
-                        id="phone"
-                        placeholder="(00) 0000-0000"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        className="h-11"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="whatsapp">WhatsApp</Label>
-                      <Input
-                        id="whatsapp"
-                        placeholder="(00) 00000-0000"
-                        value={formData.whatsapp}
-                        onChange={(e) => handleInputChange('whatsapp', e.target.value)}
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
-                  {errors.phone && (
-                    <p className="text-sm text-destructive">{errors.phone}</p>
+                  {/* WhatsApp Verification */}
+                  <WhatsAppVerificationInput
+                    phone={formData.whatsapp}
+                    onPhoneChange={(phone) => handleInputChange('whatsapp', phone)}
+                    onVerified={handleWhatsAppVerified}
+                    error={errors.whatsapp}
+                  />
+
+                  {formData.whatsappVerified && (
+                    <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-green-700 dark:text-green-400">
+                        WhatsApp verificado com sucesso!
+                      </AlertDescription>
+                    </Alert>
                   )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone Fixo (opcional)</Label>
+                    <Input
+                      id="phone"
+                      placeholder="(00) 0000-0000"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="website">Website (opcional)</Label>
@@ -704,7 +753,7 @@ export default function SupplierSignup() {
                       placeholder="Descreva os produtos ou serviços que você oferece..."
                       value={formData.specialties}
                       onChange={(e) => handleInputChange('specialties', e.target.value)}
-                      rows={4}
+                      rows={3}
                     />
                     <p className="text-xs text-muted-foreground">
                       Isso ajuda os clientes a encontrarem você nas buscas
@@ -712,58 +761,204 @@ export default function SupplierSignup() {
                   </div>
 
                   <div className="border-t pt-6">
-                    <h4 className="font-medium mb-4 flex items-center gap-2">
-                      <CreditCard className="w-4 h-4" />
-                      Dados Bancários (opcional)
-                    </h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Você pode preencher depois nas configurações
-                    </p>
+                    {/* Explicação de segurança */}
+                    <Alert className="mb-6 border-primary/30 bg-primary/5">
+                      <Shield className="h-4 w-4 text-primary" />
+                      <AlertTitle className="text-primary font-semibold">Por que precisamos desses dados?</AlertTitle>
+                      <AlertDescription className="text-sm space-y-1.5 mt-2 text-muted-foreground">
+                        <p className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                          Os clientes pagam diretamente pela plataforma Cotiz
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                          Garantimos o recebimento das suas cotações aprovadas
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                          Transferimos para sua conta após confirmação de entrega
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <Lock className="h-3.5 w-3.5 text-primary shrink-0" />
+                          Dados protegidos com criptografia (LGPD)
+                        </p>
+                      </AlertDescription>
+                    </Alert>
 
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="bankName">Banco</Label>
-                        <Input
-                          id="bankName"
-                          placeholder="Nome do banco"
-                          value={formData.bankName}
-                          onChange={(e) => handleInputChange('bankName', e.target.value)}
-                          className="h-11"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                    <h4 className="font-semibold mb-4 flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-primary" />
+                      Dados para Recebimento
+                      <Badge variant="destructive" className="text-[10px] px-1.5">Obrigatório</Badge>
+                    </h4>
+
+                    {/* Payment Method Selector */}
+                    <RadioGroup
+                      value={formData.paymentMethod}
+                      onValueChange={(value) => handleInputChange('paymentMethod', value as 'pix' | 'bank')}
+                      className="grid grid-cols-2 gap-4 mb-6"
+                    >
+                      <Label
+                        htmlFor="pix"
+                        className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          formData.paymentMethod === 'pix' 
+                            ? 'border-green-500 bg-green-50 dark:bg-green-950/20' 
+                            : 'border-border hover:border-muted-foreground/30'
+                        }`}
+                      >
+                        <RadioGroupItem value="pix" id="pix" />
+                        <div className="flex items-center gap-2">
+                          <QrCode className="h-5 w-5 text-green-600" />
+                          <div>
+                            <p className="font-medium">PIX</p>
+                            <p className="text-xs text-green-600">⚡ Mais rápido</p>
+                          </div>
+                        </div>
+                      </Label>
+                      <Label
+                        htmlFor="bank"
+                        className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          formData.paymentMethod === 'bank' 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border hover:border-muted-foreground/30'
+                        }`}
+                      >
+                        <RadioGroupItem value="bank" id="bank" />
+                        <div className="flex items-center gap-2">
+                          <Banknote className="h-5 w-5 text-primary" />
+                          <div>
+                            <p className="font-medium">Conta Bancária</p>
+                            <p className="text-xs text-muted-foreground">TED/DOC</p>
+                          </div>
+                        </div>
+                      </Label>
+                    </RadioGroup>
+
+                    {/* PIX Fields */}
+                    {formData.paymentMethod === 'pix' && (
+                      <div className="space-y-4 p-4 rounded-lg bg-green-50/50 dark:bg-green-950/10 border border-green-200 dark:border-green-900">
                         <div className="space-y-2">
-                          <Label htmlFor="bankAgency">Agência</Label>
-                          <Input
-                            id="bankAgency"
-                            placeholder="0000"
-                            value={formData.bankAgency}
-                            onChange={(e) => handleInputChange('bankAgency', e.target.value)}
-                            className="h-11"
-                          />
+                          <Label htmlFor="pixKeyType">Tipo de Chave</Label>
+                          <Select
+                            value={formData.pixKeyType}
+                            onValueChange={(value) => handleInputChange('pixKeyType', value)}
+                          >
+                            <SelectTrigger className="h-11 bg-background">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cnpj">CNPJ</SelectItem>
+                              <SelectItem value="cpf">CPF</SelectItem>
+                              <SelectItem value="email">E-mail</SelectItem>
+                              <SelectItem value="phone">Telefone</SelectItem>
+                              <SelectItem value="random">Chave Aleatória</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="bankAccount">Conta</Label>
+                          <Label htmlFor="pixKey">
+                            Chave PIX <span className="text-destructive">*</span>
+                          </Label>
                           <Input
-                            id="bankAccount"
-                            placeholder="00000-0"
-                            value={formData.bankAccount}
-                            onChange={(e) => handleInputChange('bankAccount', e.target.value)}
-                            className="h-11"
+                            id="pixKey"
+                            placeholder={
+                              formData.pixKeyType === 'cnpj' ? '00.000.000/0001-00' :
+                              formData.pixKeyType === 'cpf' ? '000.000.000-00' :
+                              formData.pixKeyType === 'email' ? 'email@empresa.com' :
+                              formData.pixKeyType === 'phone' ? '(00) 00000-0000' :
+                              'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+                            }
+                            value={formData.pixKey}
+                            onChange={(e) => handleInputChange('pixKey', e.target.value)}
+                            className="h-11 bg-background"
                           />
+                          {errors.pixKey && (
+                            <p className="text-sm text-destructive">{errors.pixKey}</p>
+                          )}
+                        </div>
+                        <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                          <Zap className="h-3.5 w-3.5" />
+                          Pagamentos via PIX são processados em minutos!
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Bank Account Fields */}
+                    {formData.paymentMethod === 'bank' && (
+                      <div className="space-y-4 p-4 rounded-lg bg-muted/30 border">
+                        <div className="space-y-2">
+                          <Label htmlFor="bankCode">
+                            Banco <span className="text-destructive">*</span>
+                          </Label>
+                          <Select
+                            value={formData.bankCode}
+                            onValueChange={(value) => handleInputChange('bankCode', value)}
+                          >
+                            <SelectTrigger className="h-11 bg-background">
+                              <SelectValue placeholder="Selecione o banco" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {BRAZILIAN_BANKS.map((bank) => (
+                                <SelectItem key={bank.code} value={bank.code}>
+                                  {bank.code} - {bank.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errors.bankCode && (
+                            <p className="text-sm text-destructive">{errors.bankCode}</p>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="bankAgency">
+                              Agência <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id="bankAgency"
+                              placeholder="0000"
+                              value={formData.bankAgency}
+                              onChange={(e) => handleInputChange('bankAgency', e.target.value)}
+                              className="h-11 bg-background"
+                            />
+                            {errors.bankAgency && (
+                              <p className="text-sm text-destructive">{errors.bankAgency}</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="bankAccount">
+                              Conta <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id="bankAccount"
+                              placeholder="00000-0"
+                              value={formData.bankAccount}
+                              onChange={(e) => handleInputChange('bankAccount', e.target.value)}
+                              className="h-11 bg-background"
+                            />
+                            {errors.bankAccount && (
+                              <p className="text-sm text-destructive">{errors.bankAccount}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Tipo de Conta</Label>
+                          <RadioGroup
+                            value={formData.bankAccountType}
+                            onValueChange={(value) => handleInputChange('bankAccountType', value as 'checking' | 'savings')}
+                            className="flex gap-4"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="checking" id="checking" />
+                              <Label htmlFor="checking" className="font-normal cursor-pointer">Conta Corrente</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="savings" id="savings" />
+                              <Label htmlFor="savings" className="font-normal cursor-pointer">Poupança</Label>
+                            </div>
+                          </RadioGroup>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="pixKey">Chave PIX</Label>
-                        <Input
-                          id="pixKey"
-                          placeholder="CPF, CNPJ, e-mail ou chave aleatória"
-                          value={formData.pixKey}
-                          onChange={(e) => handleInputChange('pixKey', e.target.value)}
-                          className="h-11"
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
