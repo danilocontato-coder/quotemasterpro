@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Truck, Calendar, MapPin, Clock, CheckCircle, Copy, Key, AlertCircle } from "lucide-react";
+import { Package, Truck, Calendar, MapPin, Clock, CheckCircle, Copy, Key, AlertCircle, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,7 @@ import { UberDeliveryForm } from "@/components/supplier/delivery/UberDeliveryFor
 import { PendingDeliveriesTab } from "@/components/supplier/PendingDeliveriesTab";
 import { ScheduleDeliveryModal } from "@/components/supplier/ScheduleDeliveryModal";
 import { PostPaymentActionModal } from "@/components/supplier/PostPaymentActionModal";
+import { SupplierDeliveryConfirmationModal } from "@/components/supplier/SupplierDeliveryConfirmationModal";
 import { usePendingDeliveries } from "@/hooks/usePendingDeliveries";
 
 // Componente para mostrar status de envio do código
@@ -67,6 +68,12 @@ export default function SupplierDeliveries() {
   const [postPaymentModal, setPostPaymentModal] = useState<{
     open: boolean;
     quoteData?: any;
+  }>({ open: false });
+  const [confirmationModal, setConfirmationModal] = useState<{
+    open: boolean;
+    deliveryId?: string;
+    quoteLocalCode?: string;
+    clientName?: string;
   }>({ open: false });
   const { toast } = useToast();
   const { user } = useAuth();
@@ -584,10 +591,26 @@ export default function SupplierDeliveries() {
                     </Button>
                   )}
 
+                  {delivery.status === 'in_transit' && (
+                    <Button
+                      onClick={() => setConfirmationModal({
+                        open: true,
+                        deliveryId: delivery.id,
+                        quoteLocalCode: delivery.payments?.quotes?.local_code,
+                        clientName: delivery.payments?.quotes?.client_name
+                      })}
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <KeyRound className="h-4 w-4 mr-2" />
+                      Confirmar Entrega
+                    </Button>
+                  )}
+
                   {delivery.status === 'delivered' && (
                     <div className="flex items-center gap-2 text-green-600">
                       <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Entrega confirmada pelo cliente</span>
+                      <span className="text-sm font-medium">Entrega confirmada - Pagamento liberado</span>
                     </div>
                   )}
                 </div>
@@ -616,6 +639,19 @@ export default function SupplierDeliveries() {
           onDeliveryScheduled={fetchDeliveries}
         />
       )}
+
+      {/* Modal para fornecedor confirmar entrega com código do cliente */}
+      <SupplierDeliveryConfirmationModal
+        open={confirmationModal.open}
+        onOpenChange={(open) => setConfirmationModal({ ...confirmationModal, open })}
+        deliveryId={confirmationModal.deliveryId}
+        quoteLocalCode={confirmationModal.quoteLocalCode}
+        clientName={confirmationModal.clientName}
+        onConfirmed={() => {
+          fetchDeliveries();
+          setConfirmationModal({ open: false });
+        }}
+      />
     </div>
   );
 }

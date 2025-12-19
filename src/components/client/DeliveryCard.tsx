@@ -195,17 +195,19 @@ export function DeliveryCard({ delivery, onConfirm, onResendCode }: DeliveryCard
               </div>
             )}
 
-            {/* Código de Confirmação */}
+            {/* Código de Confirmação - Cliente visualiza para informar ao entregador */}
             {delivery.confirmation_code && (delivery.status === 'scheduled' || delivery.status === 'in_transit') && (
-              <div className="mt-4 p-4 bg-primary/5 border-2 border-primary/20 rounded-lg space-y-3">
+              <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-800 rounded-lg space-y-3">
                 <div className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold text-sm">Código de Confirmação</h4>
+                  <Key className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <h4 className="font-semibold text-sm text-amber-900 dark:text-amber-100">
+                    Seu Código de Confirmação
+                  </h4>
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center justify-center gap-2 p-3 bg-background rounded-lg border-2 border-primary/30">
-                    <span className="text-3xl font-bold tracking-[0.3em] font-mono text-primary">
+                  <div className="flex-1 flex items-center justify-center gap-2 p-3 bg-white dark:bg-background rounded-lg border-2 border-amber-400 dark:border-amber-600">
+                    <span className="text-3xl font-bold tracking-[0.3em] font-mono text-amber-700 dark:text-amber-300">
                       {delivery.confirmation_code}
                     </span>
                   </div>
@@ -219,9 +221,14 @@ export function DeliveryCard({ delivery, onConfirm, onResendCode }: DeliveryCard
                   </Button>
                 </div>
 
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  ℹ️ Use este código para confirmar o recebimento da entrega quando os produtos chegarem.
-                </p>
+                <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                  <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                    📢 Ao receber sua entrega, informe este código ao entregador
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                    O fornecedor usará este código para confirmar a entrega e liberar o pagamento.
+                  </p>
+                </div>
 
                 {onResendCode && (
                   <Button
@@ -257,17 +264,9 @@ export function DeliveryCard({ delivery, onConfirm, onResendCode }: DeliveryCard
           {/* Divider */}
           <div className="border-t" />
 
-          {/* Actions */}
+          {/* Actions - Cliente não confirma mais, apenas visualiza */}
           <div className="flex gap-2 flex-wrap">
-            {delivery.can_confirm && (
-              <Button 
-                onClick={() => onConfirm(delivery.id)}
-                className="flex-1"
-              >
-                <Key className="h-4 w-4 mr-2" />
-                Confirmar Recebimento
-              </Button>
-            )}
+            {/* Botão de copiar código removido - cliente não precisa mais confirmar */}
             
             {delivery.status === 'delivered' && !hasRating && (
               <Button 
@@ -282,7 +281,7 @@ export function DeliveryCard({ delivery, onConfirm, onResendCode }: DeliveryCard
             <Button 
               variant="outline"
               onClick={() => navigate(`/client/payments#${delivery.payment_id}`)}
-              className={delivery.can_confirm || (delivery.status === 'delivered' && !hasRating) ? '' : 'flex-1'}
+              className={delivery.status === 'delivered' && !hasRating ? '' : 'flex-1'}
             >
               <DollarSign className="h-4 w-4 mr-2" />
               Ver Pagamento
