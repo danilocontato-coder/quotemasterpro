@@ -153,12 +153,25 @@ serve(async (req) => {
     // 2. VALIDAÇÕES DE SEGURANÇA
     // ========================================
     // Adaptar campos baseado no tipo de registro
-    const recordAmount = recordType === 'payments' ? transferRecord.amount : transferRecord.amount;
+    // Para payments: usar supplier_net_amount (valor líquido que será transferido ao fornecedor)
+    // Para supplier_transfers: usar amount diretamente
+    const recordAmount = recordType === 'payments' 
+      ? (transferRecord.supplier_net_amount || transferRecord.amount)
+      : transferRecord.amount;
     const recordStatus = transferRecord.status;
     
-    // Para payments, aceitar status 'escrow' ou 'releasing' (quando estamos liberando fundos)
+    console.log('💵 Comparação de valores:', {
+      recordType,
+      payment_amount: transferRecord.amount,
+      supplier_net_amount: transferRecord.supplier_net_amount,
+      recordAmount,
+      expectedValue: value,
+      difference: Math.abs(recordAmount - value)
+    });
+    
+    // Para payments, aceitar status 'in_escrow', 'escrow', 'releasing' (quando estamos liberando fundos)
     const validStatuses = recordType === 'payments' 
-      ? ['escrow', 'releasing', 'processing']
+      ? ['in_escrow', 'escrow', 'releasing', 'processing']
       : ['pending'];
 
     const validations = {
