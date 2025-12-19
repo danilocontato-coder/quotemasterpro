@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Building2, CheckCircle2, XCircle, Search, AlertTriangle } from 'lucide-react';
+import { Loader2, Building2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -83,41 +83,38 @@ export const CNPJValidationInput: React.FC<CNPJValidationInputProps> = ({
   const [state, setState] = useState<ValidationState>('idle');
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const validationInProgress = useRef(false);
+  const lastValidatedCNPJ = useRef<string>('');
 
-  const handleCNPJChange = (value: string) => {
-    const formatted = formatCNPJ(value);
-    onCNPJChange(formatted);
+  const handleValidate = useCallback(async (cnpjToValidate: string) => {
+    const digits = cnpjToValidate.replace(/\D/g, '');
     
-    // Reset estado se mudar o CNPJ
-    if (state !== 'idle') {
-      setState('idle');
-      setCompany(null);
-      setValidationError(null);
-      onValidated(false);
+    // Evita validar o mesmo CNPJ duas vezes
+    if (lastValidatedCNPJ.current === digits || validationInProgress.current) {
+      return;
     }
-  };
 
-  const handleValidate = async () => {
-    const digits = cnpj.replace(/\D/g, '');
-    
-    if (!isValidCNPJFormat(cnpj)) {
+    if (!isValidCNPJFormat(cnpjToValidate)) {
       setState('invalid');
       setValidationError('CNPJ inválido. Verifique os dígitos.');
       onValidated(false);
       return;
     }
 
+    validationInProgress.current = true;
     setState('validating');
     setValidationError(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('validate-cnpj', {
+      const { data, error: apiError } = await supabase.functions.invoke('validate-cnpj', {
         body: { cnpj: digits }
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (apiError) {
+        throw new Error(apiError.message);
       }
+
+      lastValidatedCNPJ.current = digits;
 
       if (!data?.valid) {
         setState('invalid');
@@ -136,59 +133,98 @@ export const CNPJValidationInput: React.FC<CNPJValidationInputProps> = ({
       setValidationError(err.message || 'Erro ao consultar CNPJ');
       onValidated(false);
       toast.error(err.message || 'Erro ao consultar CNPJ');
+    } finally {
+      validationInProgress.current = false;
+    }
+  }, [onValidated]);
+
+  // Validação automática com debounce
+  useEffect(() => {
+    const digits = cnpj.replace(/\D/g, '');
+    
+    // Só validar quando tiver 14 dígitos e formato válido
+    if (digits.length !== 14 || !isValidCNPJFormat(cnpj) || state === 'valid' || state === 'validating') {
+      return;
+    }
+
+    // Evita revalidar o mesmo CNPJ
+    if (lastValidatedCNPJ.current === digits) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      handleValidate(cnpj);
+    }, 800);
+    
+    return () => clearTimeout(timeout);
+  }, [cnpj, state, handleValidate]);
+
+  const handleCNPJChange = (value: string) => {
+    const formatted = formatCNPJ(value);
+    onCNPJChange(formatted);
+    
+    // Reset estado se mudar o CNPJ
+    if (state !== 'idle' && state !== 'validating') {
+      const newDigits = formatted.replace(/\D/g, '');
+      const currentDigits = cnpj.replace(/\D/g, '');
+      
+      if (newDigits !== currentDigits) {
+        setState('idle');
+        setCompany(null);
+        setValidationError(null);
+        lastValidatedCNPJ.current = '';
+        onValidated(false);
+      }
     }
   };
 
   const digits = cnpj.replace(/\D/g, '');
-  const canValidate = digits.length === 14 && isValidCNPJFormat(cnpj);
 
   return (
     <div className="space-y-4">
       {/* Campo de CNPJ */}
       <div className="space-y-2">
         <Label htmlFor="cnpj">CNPJ</Label>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Input
-              id="cnpj"
-              type="text"
-              value={cnpj}
-              onChange={(e) => handleCNPJChange(e.target.value)}
-              disabled={disabled || state === 'valid'}
-              placeholder="00.000.000/0000-00"
-              className={cn(
-                "pr-10",
-                state === 'valid' && "border-green-500 bg-green-50",
-                (state === 'invalid' || error) && "border-destructive"
-              )}
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              {state === 'valid' ? (
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-              ) : state === 'invalid' ? (
-                <XCircle className="h-5 w-5 text-destructive" />
-              ) : (
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-              )}
-            </div>
+        <div className="relative">
+          <Input
+            id="cnpj"
+            type="text"
+            value={cnpj}
+            onChange={(e) => handleCNPJChange(e.target.value)}
+            disabled={disabled || state === 'valid'}
+            placeholder="00.000.000/0000-00"
+            className={cn(
+              "pr-10",
+              state === 'valid' && "border-green-500 bg-green-50 dark:bg-green-950/20",
+              (state === 'invalid' || error) && "border-destructive"
+            )}
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {state === 'validating' ? (
+              <Loader2 className="h-5 w-5 text-primary animate-spin" />
+            ) : state === 'valid' ? (
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+            ) : state === 'invalid' || state === 'error' ? (
+              <XCircle className="h-5 w-5 text-destructive" />
+            ) : (
+              <Building2 className="h-5 w-5 text-muted-foreground" />
+            )}
           </div>
-          
-          {state !== 'valid' && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleValidate}
-              disabled={!canValidate || disabled || state === 'validating'}
-            >
-              {state === 'validating' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              <span className="ml-2 hidden sm:inline">Validar</span>
-            </Button>
-          )}
         </div>
+        
+        {/* Status de validação */}
+        {state === 'validating' && (
+          <p className="text-sm text-muted-foreground flex items-center gap-1 animate-fade-in">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Consultando Receita Federal...
+          </p>
+        )}
+        
+        {digits.length === 14 && state === 'idle' && (
+          <p className="text-sm text-muted-foreground">
+            Validando automaticamente...
+          </p>
+        )}
         
         {(error || validationError) && (
           <p className="text-sm text-destructive flex items-center gap-1">
@@ -201,24 +237,27 @@ export const CNPJValidationInput: React.FC<CNPJValidationInputProps> = ({
       {/* Dados da empresa */}
       {company && (
         <div className={cn(
-          "p-4 rounded-lg border",
-          state === 'valid' ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+          "p-4 rounded-lg border animate-fade-in",
+          state === 'valid' ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800" : "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"
         )}>
           <div className="flex items-start gap-3">
             {state === 'valid' ? (
-              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
             ) : (
-              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
             )}
             
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-2 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="font-semibold text-foreground">
+                <h4 className="font-semibold text-foreground truncate">
                   {company.nome_fantasia || company.razao_social}
                 </h4>
                 <Badge 
                   variant={state === 'valid' ? 'default' : 'destructive'}
-                  className={state === 'valid' ? 'bg-green-600' : ''}
+                  className={cn(
+                    "flex-shrink-0",
+                    state === 'valid' && 'bg-green-600'
+                  )}
                 >
                   {company.situacao_cadastral}
                 </Badge>
@@ -259,6 +298,7 @@ export const CNPJValidationInput: React.FC<CNPJValidationInputProps> = ({
           onClick={() => {
             setState('idle');
             setCompany(null);
+            lastValidatedCNPJ.current = '';
             onCNPJChange('');
             onValidated(false);
           }}
