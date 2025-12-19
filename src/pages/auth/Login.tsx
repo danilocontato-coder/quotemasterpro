@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff, Building2, Users, User, CheckCircle2, Zap, Shield, TrendingUp } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Building2, Users, User, CheckCircle2, Zap, Shield, TrendingUp, Store, Rocket } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getRoleBasedRoute } from '@/contexts/AuthContext';
 import { InactiveClientAlert } from '@/components/auth/InactiveClientAlert';
@@ -260,7 +260,30 @@ const Login: React.FC = () => {
           </div>
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 space-y-4">
+          {/* CTA para Fornecedores */}
+          <div className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 backdrop-blur-sm rounded-2xl p-6 border border-emerald-400/30 hover:border-emerald-400/50 transition-all">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="bg-emerald-500/30 p-2 rounded-lg">
+                <Store className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-white font-semibold text-lg">Seja um Fornecedor</span>
+            </div>
+            <p className="text-primary-foreground/90 text-sm mb-4">
+              Expanda seus negócios! Cadastre-se gratuitamente e receba cotações de centenas de clientes.
+            </p>
+            <Button
+              asChild
+              variant="secondary"
+              className="w-full bg-white hover:bg-white/90 text-emerald-700 font-semibold"
+            >
+              <Link to="/supplier/signup">
+                <Rocket className="w-4 h-4 mr-2" />
+                Cadastrar como Fornecedor
+              </Link>
+            </Button>
+          </div>
+
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
             <div className="flex items-center gap-3 mb-3">
               <CheckCircle2 className="w-5 h-5 text-white" />
@@ -372,10 +395,19 @@ const Login: React.FC = () => {
                 </Button>
               </form>
 
-              <div className="text-center pt-4 border-t">
+              <div className="text-center pt-4 border-t space-y-3">
                 <p className="text-sm text-muted-foreground">
                   Precisa de acesso? <Link to="/contact" className="text-primary hover:underline font-medium">Entre em contato</Link>
                 </p>
+                
+                {/* CTA Fornecedor para Mobile */}
+                <div className="lg:hidden flex items-center justify-center gap-2 text-sm">
+                  <Store className="h-4 w-4 text-emerald-600" />
+                  <span className="text-muted-foreground">É fornecedor?</span>
+                  <Link to="/supplier/signup" className="text-emerald-600 hover:underline font-medium">
+                    Cadastre-se gratuitamente
+                  </Link>
+                </div>
               </div>
             </CardContent>
           </Card>
