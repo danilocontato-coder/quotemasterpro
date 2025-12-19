@@ -25,7 +25,7 @@ import { PaymentBreakdown } from "@/components/quotes/PaymentBreakdown";
 interface PaymentCardProps {
   payment: any;
   onPay: (paymentId: string) => void;
-  onConfirmDelivery: (paymentId: string) => void;
+  onConfirmDelivery: (payment: any) => void;
   onViewDetails: (payment: any) => void;
   onOfflinePayment?: (payment: any) => void;
 }
