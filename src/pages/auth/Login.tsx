@@ -261,29 +261,20 @@ const Login: React.FC = () => {
         </div>
 
         <div className="relative z-10 space-y-4">
-          {/* CTA para Fornecedores */}
-          <div className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 backdrop-blur-sm rounded-2xl p-6 border border-emerald-400/30 hover:border-emerald-400/50 transition-all">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="bg-emerald-500/30 p-2 rounded-lg">
-                <Store className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-white font-semibold text-lg">Seja um Fornecedor</span>
+          {/* CTA para Fornecedores - Compacto */}
+          <Link 
+            to="/supplier/signup"
+            className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 hover:bg-white/20 hover:border-emerald-400/50 transition-all group"
+          >
+            <div className="bg-emerald-500/30 p-2.5 rounded-lg group-hover:bg-emerald-500/50 transition-colors">
+              <Store className="w-5 h-5 text-white" />
             </div>
-            <p className="text-primary-foreground/90 text-sm mb-4">
-              Expanda seus negócios! Cadastre-se gratuitamente e receba cotações de centenas de clientes.
-            </p>
-            <Button
-              asChild
-              variant="secondary"
-              className="w-full bg-white hover:bg-white/90 text-emerald-700 font-semibold"
-            >
-              <Link to="/supplier/signup">
-                <Rocket className="w-4 h-4 mr-2" />
-                Cadastrar como Fornecedor
-              </Link>
-            </Button>
-          </div>
-
+            <div className="flex-1">
+              <span className="text-white font-medium block">É fornecedor?</span>
+              <span className="text-primary-foreground/70 text-sm">Cadastre-se gratuitamente</span>
+            </div>
+            <Rocket className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+          </Link>
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
             <div className="flex items-center gap-3 mb-3">
               <CheckCircle2 className="w-5 h-5 text-white" />
