@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-interface CompanyData {
+export interface CompanyData {
   razao_social: string;
   nome_fantasia: string;
   situacao_cadastral: string;

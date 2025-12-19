@@ -91,7 +91,7 @@ export default function SupplierRegister() {
                 </Button>
               </div>
 
-              <div className="text-center pt-4 border-t">
+              <div className="text-center pt-4 border-t space-y-3">
                 <p className="text-sm text-muted-foreground">
                   Já recebeu um link de cotação?{' '}
                   <Button
@@ -101,6 +101,17 @@ export default function SupplierRegister() {
                     onClick={() => navigate('/supplier/auth')}
                   >
                     Acesse por aqui
+                  </Button>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Quer se cadastrar como fornecedor certificado?{' '}
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="p-0 h-auto font-semibold"
+                    onClick={() => navigate('/supplier/signup')}
+                  >
+                    Auto-cadastro
                   </Button>
                 </p>
               </div>
