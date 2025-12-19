@@ -401,13 +401,7 @@ export default function Payments() {
                   // Error already handled by toast
                 }
               }}
-              onConfirmDelivery={async (paymentId) => {
-                try {
-                  await confirmDelivery(paymentId);
-                } catch (error) {
-                  // Error already handled by toast
-                }
-              }}
+              onConfirmDelivery={handleConfirmDelivery}
               onViewDetails={handleViewPayment}
               onOfflinePayment={handleOfflinePayment}
             />
