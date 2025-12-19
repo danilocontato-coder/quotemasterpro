@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'asaas-webhook-token': config.auth_token,
+        'asaas-access-token': config.auth_token,  // Header correto do Asaas
+        'asaas-webhook-token': config.auth_token, // Fallback para compatibilidade
       },
       body: JSON.stringify(testPayload),
     });
