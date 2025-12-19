@@ -53,6 +53,8 @@ const DebugCostCenters = React.lazy(() => import('@/pages/DebugCostCenters'));
 const Help = React.lazy(() => import('@/pages/Help'));
 const PredictiveDashboard = React.lazy(() => import('@/pages/PredictiveDashboard'));
 const LinkExpiredPage = React.lazy(() => import('@/pages/supplier/LinkExpiredPage'));
+const SupplierSignup = React.lazy(() => import('@/pages/supplier/SupplierSignup'));
+const SupplierPendingApproval = React.lazy(() => import('@/pages/supplier/SupplierPendingApproval'));
 // BrandingSettings removido - só acessível por admins via /admin/brand
 
 // Admin pages
@@ -677,6 +679,16 @@ export const AppWithProviders: React.FC = () => {
       <Route path="/supplier/register" element={
         <Suspense fallback={<LoadingFallback />}>
           <SupplierRegister />
+        </Suspense>
+      } />
+      <Route path="/supplier/signup" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <SupplierSignup />
+        </Suspense>
+      } />
+      <Route path="/supplier/pending-approval" element={
+        <Suspense fallback={<LoadingFallback />}>
+          <SupplierPendingApproval />
         </Suspense>
       } />
       <Route path="/supplier/register/:token" element={

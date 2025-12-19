@@ -266,3 +266,6 @@ verify_jwt = false
 
 [functions.validate-cnpj]
 verify_jwt = false
+
+[functions.register-supplier-public]
+verify_jwt = false
