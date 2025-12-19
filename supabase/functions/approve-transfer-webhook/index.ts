@@ -96,17 +96,47 @@ serve(async (req) => {
     console.log(`💰 Analisando transferência: ID=${transferId}, Valor=R$ ${value}`);
 
     // ========================================
-    // 1. BUSCAR TRANSFERÊNCIA NO BANCO
+    // 1. BUSCAR TRANSFERÊNCIA NO BANCO (supplier_transfers OU payments)
     // ========================================
-    const { data: supplierTransfer, error: fetchError } = await supabase
+    let transferRecord: any = null;
+    let recordType: 'supplier_transfers' | 'payments' = 'supplier_transfers';
+    let supplierData: any = null;
+
+    // Primeiro tentar em supplier_transfers
+    const { data: supplierTransfer, error: stError } = await supabase
       .from('supplier_transfers')
-      .select('*, suppliers(id, name, bank_data)')
+      .select('*, suppliers(id, name, bank_data, pix_key)')
       .eq('asaas_transfer_id', transferId)
       .single();
 
-    if (fetchError || !supplierTransfer) {
-      console.warn('⚠️ Transferência não encontrada no banco:', transferId);
-      // Rejeitar por segurança
+    if (supplierTransfer) {
+      transferRecord = supplierTransfer;
+      recordType = 'supplier_transfers';
+      supplierData = supplierTransfer.suppliers;
+      console.log(`✅ Transferência encontrada em supplier_transfers: Fornecedor=${supplierData?.name}`);
+    } else {
+      console.log('⚠️ Não encontrado em supplier_transfers, buscando em payments...');
+      
+      // Tentar buscar em payments
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .select(`
+          *,
+          suppliers!payments_supplier_id_fkey(id, name, bank_data, pix_key)
+        `)
+        .eq('asaas_transfer_id', transferId)
+        .single();
+      
+      if (payment) {
+        transferRecord = payment;
+        recordType = 'payments';
+        supplierData = payment.suppliers;
+        console.log(`✅ Transferência encontrada em payments: Fornecedor=${supplierData?.name}, PaymentID=${payment.id}`);
+      }
+    }
+
+    if (!transferRecord) {
+      console.warn('⚠️ Transferência não encontrada em nenhuma tabela:', transferId);
       return new Response(
         JSON.stringify({ 
           status: 'REJECTED',
@@ -119,32 +149,57 @@ serve(async (req) => {
       );
     }
 
-    console.log(`✅ Transferência encontrada: Fornecedor=${supplierTransfer.suppliers?.name}`);
-
     // ========================================
     // 2. VALIDAÇÕES DE SEGURANÇA
     // ========================================
+    // Adaptar campos baseado no tipo de registro
+    const recordAmount = recordType === 'payments' ? transferRecord.amount : transferRecord.amount;
+    const recordStatus = transferRecord.status;
+    
+    // Para payments, aceitar status 'escrow' ou 'releasing' (quando estamos liberando fundos)
+    const validStatuses = recordType === 'payments' 
+      ? ['escrow', 'releasing', 'processing']
+      : ['pending'];
+
     const validations = {
-      valueMatch: Math.abs(supplierTransfer.amount - value) < 0.01,
-      statusValid: supplierTransfer.status === 'pending',
-      supplierActive: supplierTransfer.suppliers !== null,
+      valueMatch: Math.abs(recordAmount - value) < 0.01,
+      statusValid: validStatuses.includes(recordStatus),
+      supplierActive: supplierData !== null,
       valuePositive: value > 0
     };
 
-    console.log('🔍 Validações:', validations);
+    console.log('🔍 Validações:', { 
+      ...validations, 
+      recordType, 
+      recordAmount, 
+      expectedValue: value,
+      recordStatus,
+      validStatuses 
+    });
 
     // Se qualquer validação falhar, rejeitar
     if (!Object.values(validations).every(v => v)) {
       console.error('❌ Validações falharam:', validations);
       
-      await supabase
-        .from('supplier_transfers')
-        .update({ 
-          status: 'failed',
-          error_message: 'Validação de segurança falhou no webhook',
-          processed_at: new Date().toISOString()
-        })
-        .eq('id', supplierTransfer.id);
+      // Atualizar status baseado no tipo de registro
+      if (recordType === 'supplier_transfers') {
+        await supabase
+          .from('supplier_transfers')
+          .update({ 
+            status: 'failed',
+            error_message: 'Validação de segurança falhou no webhook',
+            processed_at: new Date().toISOString()
+          })
+          .eq('id', transferRecord.id);
+      } else {
+        await supabase
+          .from('payments')
+          .update({ 
+            status: 'failed',
+            notes: (transferRecord.notes || '') + '\n[Webhook] Validação de segurança falhou'
+          })
+          .eq('id', transferRecord.id);
+      }
 
       return new Response(
         JSON.stringify({ 
@@ -165,14 +220,24 @@ serve(async (req) => {
     if (value > MAX_TRANSFER_VALUE) {
       console.warn(`⚠️ Valor excede limite máximo: R$ ${value} > R$ ${MAX_TRANSFER_VALUE}`);
       
-      await supabase
-        .from('supplier_transfers')
-        .update({ 
-          status: 'pending',
-          error_message: `Valor excede limite de R$ ${MAX_TRANSFER_VALUE.toFixed(2)} - requer aprovação manual`,
-          notes: `${supplierTransfer.notes || ''}\n[Sistema] Valor excede limite automático`
-        })
-        .eq('id', supplierTransfer.id);
+      if (recordType === 'supplier_transfers') {
+        await supabase
+          .from('supplier_transfers')
+          .update({ 
+            status: 'pending',
+            error_message: `Valor excede limite de R$ ${MAX_TRANSFER_VALUE.toFixed(2)} - requer aprovação manual`,
+            notes: `${transferRecord.notes || ''}\n[Sistema] Valor excede limite automático`
+          })
+          .eq('id', transferRecord.id);
+      } else {
+        await supabase
+          .from('payments')
+          .update({ 
+            status: 'pending_approval',
+            notes: `${transferRecord.notes || ''}\n[Sistema] Valor excede limite de R$ ${MAX_TRANSFER_VALUE.toFixed(2)} - requer aprovação manual`
+          })
+          .eq('id', transferRecord.id);
+      }
 
       return new Response(
         JSON.stringify({ 
@@ -189,18 +254,16 @@ serve(async (req) => {
     // ========================================
     // 4. VALIDAÇÃO DE DADOS BANCÁRIOS (se habilitado)
     // ========================================
-    if (config?.validate_pix_key !== false) {
-      const supplierBankData = supplierTransfer.suppliers?.bank_data;
+    if (config?.validate_pix_key !== false && supplierData) {
+      const supplierBankData = supplierData.bank_data;
+      const supplierPixKey = supplierData.pix_key || supplierBankData?.pix_key;
       
-      if (supplierBankData) {
-        const expectedPixKey = supplierBankData.pix_key;
-        const expectedAccount = supplierBankData.account;
-
-        if (expectedPixKey && pixKey) {
-          const pixMatches = expectedPixKey.toLowerCase().trim() === pixKey.toLowerCase().trim();
-          if (!pixMatches) {
-            console.error(`❌ Chave PIX não confere: esperado=${expectedPixKey}, recebido=${pixKey}`);
-            
+      if (supplierPixKey && pixKey) {
+        const pixMatches = supplierPixKey.toLowerCase().trim() === pixKey.toLowerCase().trim();
+        if (!pixMatches) {
+          console.error(`❌ Chave PIX não confere: esperado=${supplierPixKey}, recebido=${pixKey}`);
+          
+          if (recordType === 'supplier_transfers') {
             await supabase
               .from('supplier_transfers')
               .update({ 
@@ -208,19 +271,27 @@ serve(async (req) => {
                 error_message: 'Chave PIX não confere com cadastro do fornecedor',
                 processed_at: new Date().toISOString()
               })
-              .eq('id', supplierTransfer.id);
-
-            return new Response(
-              JSON.stringify({ 
-                status: 'REJECTED',
-                message: 'Dados bancários não conferem'
-              }),
-              { 
-                status: 200,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              }
-            );
+              .eq('id', transferRecord.id);
+          } else {
+            await supabase
+              .from('payments')
+              .update({ 
+                status: 'failed',
+                notes: (transferRecord.notes || '') + '\n[Webhook] Chave PIX não confere'
+              })
+              .eq('id', transferRecord.id);
           }
+
+          return new Response(
+            JSON.stringify({ 
+              status: 'REJECTED',
+              message: 'Dados bancários não conferem'
+            }),
+            { 
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
         }
       }
     }
@@ -230,34 +301,59 @@ serve(async (req) => {
     // ========================================
     console.log('✅ Todas as validações passaram - APROVANDO transferência');
 
-    await supabase
-      .from('supplier_transfers')
-      .update({ 
-        status: 'processing',
-        processed_at: new Date().toISOString()
-      })
-      .eq('id', supplierTransfer.id);
+    if (recordType === 'supplier_transfers') {
+      await supabase
+        .from('supplier_transfers')
+        .update({ 
+          status: 'processing',
+          processed_at: new Date().toISOString()
+        })
+        .eq('id', transferRecord.id);
+    } else {
+      // Para payments, atualizar para 'released' indicando que a transferência foi aprovada
+      await supabase
+        .from('payments')
+        .update({ 
+          status: 'released',
+          released_at: new Date().toISOString()
+        })
+        .eq('id', transferRecord.id);
+      
+      // Também atualizar a cotação para 'paid'
+      if (transferRecord.quote_id) {
+        await supabase
+          .from('quotes')
+          .update({ 
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', transferRecord.quote_id);
+        
+        console.log(`✅ Quote ${transferRecord.quote_id} atualizada para 'paid'`);
+      }
+    }
 
     // Log de auditoria
     await supabase
       .from('audit_logs')
       .insert({
         action: 'TRANSFER_AUTO_APPROVED',
-        entity_type: 'supplier_transfers',
-        entity_id: supplierTransfer.id,
+        entity_type: recordType,
+        entity_id: transferRecord.id,
         panel_type: 'system',
         details: {
           asaas_transfer_id: transferId,
-          supplier_id: supplierTransfer.supplier_id,
-          supplier_name: supplierTransfer.suppliers?.name,
+          supplier_id: supplierData?.id,
+          supplier_name: supplierData?.name,
           amount: value,
-          transfer_method: supplierTransfer.transfer_method,
+          record_type: recordType,
+          quote_id: transferRecord.quote_id,
           validations_passed: validations,
           webhook_timestamp: new Date().toISOString()
         }
       });
 
-    console.log('✅ Transferência aprovada automaticamente:', transferId);
+    console.log(`✅ Transferência aprovada automaticamente (${recordType}):`, transferId);
 
     return new Response(
       JSON.stringify({ 
