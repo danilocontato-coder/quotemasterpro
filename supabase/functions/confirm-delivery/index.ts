@@ -134,33 +134,34 @@ serve(async (req) => {
       client_id: confirmationData.deliveries.client_id
     });
 
-    // Verificar se usuário tem permissão (cliente da entrega)
+    // Verificar se usuário tem permissão (FORNECEDOR da entrega - fluxo invertido)
+    // O fornecedor/entregador digita o código que o cliente informou
     console.log('🔐 [CONFIRM-DELIVERY] Verificando permissões', {
       user_id: user.id
     });
     
     const { data: userProfile } = await supabase
       .from('profiles')
-      .select('client_id')
+      .select('supplier_id')
       .eq('id', user.id)
       .single();
 
     console.log('🔐 [CONFIRM-DELIVERY] Permissões obtidas', {
-      user_client_id: userProfile?.client_id,
-      delivery_client_id: confirmationData.deliveries.client_id,
-      has_permission: userProfile?.client_id === confirmationData.deliveries.client_id
+      user_supplier_id: userProfile?.supplier_id,
+      delivery_supplier_id: confirmationData.deliveries.supplier_id,
+      has_permission: userProfile?.supplier_id === confirmationData.deliveries.supplier_id
     });
 
-    if (!userProfile || userProfile.client_id !== confirmationData.deliveries.client_id) {
+    if (!userProfile || userProfile.supplier_id !== confirmationData.deliveries.supplier_id) {
       console.error('❌ [CONFIRM-DELIVERY] Permissão negada', {
         user_id: user.id,
-        user_client_id: userProfile?.client_id,
-        delivery_client_id: confirmationData.deliveries.client_id
+        user_supplier_id: userProfile?.supplier_id,
+        delivery_supplier_id: confirmationData.deliveries.supplier_id
       });
       
       return new Response(
         JSON.stringify({ 
-          error: 'Você não tem permissão para confirmar esta entrega',
+          error: 'Você não tem permissão para confirmar esta entrega. Apenas o fornecedor pode confirmar.',
           code: 'PERMISSION_DENIED'
         }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -295,11 +296,12 @@ serve(async (req) => {
         entity_type: 'deliveries',
         entity_id: confirmationData.delivery_id,
         user_id: user.id,
-        panel_type: 'client',
+        panel_type: 'supplier',  // Agora é o fornecedor que confirma
         details: {
           confirmation_code,
           quote_id: confirmationData.deliveries.quote_id,
-          payment_released: true
+          payment_released: true,
+          confirmed_by_supplier: true
         }
       });
 

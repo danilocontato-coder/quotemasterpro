@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DeliveryMetrics } from '@/components/client/DeliveryMetrics';
 import { DeliveryCard } from '@/components/client/DeliveryCard';
-import { DeliveryConfirmationModal } from '@/components/supplier/DeliveryConfirmationModal';
 import { useClientDeliveries, ClientDelivery } from '@/hooks/useClientDeliveries';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -18,22 +17,19 @@ export default function ClientDeliveries() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedDelivery, setSelectedDelivery] = useState<ClientDelivery | null>(null);
   const [awaitingScheduling, setAwaitingScheduling] = useState<any[]>([]);
   const [resendingCode, setResendingCode] = useState<string | null>(null);
 
-  const handleConfirm = (deliveryId: string) => {
+  // Cliente não confirma mais - apenas passa o código para o fornecedor
+  const handleViewCode = (deliveryId: string) => {
     const delivery = deliveries.find(d => d.id === deliveryId);
-    if (delivery) {
-      setSelectedDelivery(delivery);
-      setShowConfirmModal(true);
+    if (delivery?.confirmation_code) {
+      toast({
+        title: "📋 Código de Confirmação",
+        description: `Informe este código ao entregador: ${delivery.confirmation_code}`,
+        duration: 10000,
+      });
     }
-  };
-
-  const handleConfirmed = () => {
-    refetch();
-    setSelectedDelivery(null);
   };
 
   const handleResendCode = async (deliveryId: string) => {
@@ -134,7 +130,7 @@ export default function ClientDeliveries() {
           Minhas Entregas
         </h1>
         <p className="text-muted-foreground">
-          Acompanhe o status das suas entregas e confirme recebimentos para liberar pagamentos
+          Acompanhe o status das suas entregas. Ao receber, informe o código de confirmação ao entregador.
         </p>
       </div>
 
@@ -233,19 +229,12 @@ export default function ClientDeliveries() {
             <DeliveryCard
               key={delivery.id}
               delivery={delivery}
-              onConfirm={handleConfirm}
+              onConfirm={handleViewCode}
               onResendCode={handleResendCode}
             />
           ))}
         </div>
       )}
-
-      {/* Confirmation Modal */}
-      <DeliveryConfirmationModal
-        open={showConfirmModal}
-        onOpenChange={setShowConfirmModal}
-        onConfirmed={handleConfirmed}
-      />
     </div>
   );
 }

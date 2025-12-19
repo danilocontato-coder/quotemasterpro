@@ -76,23 +76,107 @@ serve(async (req) => {
       bank_account: bankData?.account_number || null
     })
 
-    // Verificar se possui chave PIX ou dados bancários completos
-    if (!pixKey && (!bankData?.account_number || !bankData?.bank_code)) {
-      console.error('❌ Fornecedor não possui dados bancários configurados')
+    // Validação robusta da chave PIX
+    let validPixKey = false;
+    let pixValidationError = '';
+    
+    if (pixKey) {
+      const cleanedPixKey = cleanPixKey(pixKey);
+      const pixType = detectPixKeyType(cleanedPixKey);
+      
+      console.log(`🔍 [RELEASE-ESCROW] Validação de chave PIX:`, {
+        original: pixKey,
+        cleaned: cleanedPixKey,
+        detected_type: pixType,
+        cleaned_length: cleanedPixKey.length
+      });
+      
+      // Validar formato baseado no tipo
+      if (pixType === 'CPF' && cleanedPixKey.length !== 11) {
+        pixValidationError = `CPF inválido: deve ter 11 dígitos (possui ${cleanedPixKey.length})`;
+      } else if (pixType === 'CNPJ' && cleanedPixKey.length !== 14) {
+        pixValidationError = `CNPJ inválido: deve ter 14 dígitos (possui ${cleanedPixKey.length})`;
+      } else if (pixType === 'EMAIL' && !cleanedPixKey.includes('@')) {
+        pixValidationError = 'E-mail inválido';
+      } else if (pixType === 'PHONE' && cleanedPixKey.replace(/\D/g, '').length < 10) {
+        pixValidationError = 'Telefone inválido: deve ter pelo menos 10 dígitos';
+      } else if (pixType === 'EVP' && cleanedPixKey.length !== 36) {
+        pixValidationError = 'Chave aleatória inválida: formato UUID esperado';
+      } else if (cleanedPixKey.length < 5) {
+        pixValidationError = 'Chave PIX muito curta';
+      } else {
+        validPixKey = true;
+      }
+    }
+    
+    // Validação de dados bancários tradicionais
+    let validBankAccount = false;
+    let bankValidationError = '';
+    
+    if (!validPixKey && bankData) {
+      if (!bankData.bank_code || bankData.bank_code === '' || bankData.bank_code === '000') {
+        bankValidationError = 'Código do banco não informado';
+      } else if (!bankData.agency || bankData.agency === '' || bankData.agency === '0000') {
+        bankValidationError = 'Agência não informada';
+      } else if (!bankData.account_number || bankData.account_number === '' || bankData.account_number === '0000') {
+        bankValidationError = 'Número da conta não informado';
+      } else {
+        validBankAccount = true;
+      }
+    }
+
+    // Verificar se possui chave PIX ou dados bancários válidos
+    if (!validPixKey && !validBankAccount) {
+      const errorMessage = pixValidationError || bankValidationError || 
+        'Fornecedor não possui chave PIX ou dados bancários completos';
+      
+      console.error(`❌ [RELEASE-ESCROW] Dados bancários inválidos:`, {
+        pix_error: pixValidationError,
+        bank_error: bankValidationError,
+        supplier_id: supplier.id
+      });
       
       // Criar registro de erro para retry
       await supabase.from('escrow_release_errors').insert({
         payment_id: paymentId,
-        error_type: 'missing_bank_data',
-        error_message: 'Fornecedor não possui chave PIX ou dados bancários completos',
+        error_type: 'invalid_bank_data',
+        error_message: errorMessage,
+        error_details: {
+          pix_key_provided: !!pixKey,
+          pix_validation_error: pixValidationError,
+          bank_data_provided: !!bankData,
+          bank_validation_error: bankValidationError
+        },
         retry_count: retryAttempt,
         next_retry_at: new Date(Date.now() + 3600000).toISOString() // 1 hora
       })
       
+      // Atualizar pagamento com erro específico
+      await supabase.from('payments').update({
+        transfer_status: 'failed',
+        transfer_error: errorMessage,
+        updated_at: new Date().toISOString()
+      }).eq('id', paymentId)
+      
+      // Notificar fornecedor sobre o problema
+      await supabase.rpc('notify_supplier_users', {
+        p_supplier_id: supplier.id,
+        p_title: '⚠️ Dados Bancários Incompletos',
+        p_message: `Não foi possível transferir o pagamento da cotação ${payment.quotes.local_code}. ${errorMessage}. Por favor, atualize seus dados bancários.`,
+        p_type: 'payment_error',
+        p_priority: 'high',
+        p_action_url: '/supplier/settings',
+        p_metadata: {
+          payment_id: paymentId,
+          error: errorMessage
+        }
+      })
+      
       return new Response(
         JSON.stringify({ 
-          error: 'Fornecedor não possui dados bancários configurados',
-          requires_manual_transfer: true
+          error: errorMessage,
+          requires_bank_update: true,
+          supplier_id: supplier.id
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
