@@ -369,7 +369,7 @@ export function IssueInvoiceModal({
             <ul className="list-disc list-inside space-y-1 text-muted-foreground">
               <li>O cliente receberá a cobrança por e-mail</li>
               <li>Ele poderá pagar via PIX, boleto ou cartão</li>
-              <li>O valor ficará em escrow até a entrega</li>
+              <li>O valor ficará em garantia até a entrega</li>
               <li>Após confirmação, você receberá o valor em sua carteira</li>
               <li>A comissão da plataforma será descontada automaticamente</li>
             </ul>

@@ -28,7 +28,7 @@ export const getStatusText = (status: string) => {
     case 'pending': return 'Pendente';
     case 'processing': return 'Processando';
     case 'completed': return 'Recebido';
-    case 'in_escrow': return 'Em Custódia';
+    case 'in_escrow': return 'Em Garantia';
     case 'manual_confirmation': return 'Confirmação Pagamento Manual';
     case 'failed': return 'Falhou';
     default: return status;
