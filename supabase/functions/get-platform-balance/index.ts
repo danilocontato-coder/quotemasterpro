@@ -62,7 +62,14 @@ Deno.serve(async (req) => {
     }
 
     const balanceData = await response.json();
-    console.log('✅ Platform balance fetched:', JSON.stringify(balanceData, null, 2));
+    console.log('🔍 Raw Asaas response:', JSON.stringify(balanceData));
+
+    // Map with fallbacks - Asaas may return only totalBalance
+    const totalBalance = balanceData.totalBalance ?? 0;
+    const balance = balanceData.balance ?? totalBalance;
+    const asaasAvailable = balanceData.availableForTransfer ?? balance;
+
+    console.log('📊 Mapped values:', { totalBalance, balance, asaasAvailable });
 
     // Calculate totals from database
     const { data: inEscrowPayments } = await supabaseClient
@@ -112,11 +119,11 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        // Asaas account balance
+        // Asaas account balance (with proper mapping)
         asaas: {
-          balance: balanceData.balance ?? 0,
-          totalBalance: balanceData.totalBalance ?? 0,
-          availableForTransfer: balanceData.availableForTransfer ?? 0,
+          balance: balance,
+          totalBalance: totalBalance,
+          availableForTransfer: asaasAvailable,
         },
         // Escrow metrics
         escrow: {
