@@ -24,8 +24,8 @@ import { useAdministradora } from "@/contexts/AdministradoraContext";
 import { getStatusColor, getStatusText } from "@/data/mockData";
 import { PaymentDetailModal } from "@/components/payments/PaymentDetailModal";
 import { CreatePaymentModal } from "@/components/payments/CreatePaymentModal";
-import { ReleaseEscrowModal } from "@/components/payments/ReleaseEscrowModal";
-import { EscrowDashboard } from "@/components/payments/EscrowDashboard";
+import { ReleaseGuaranteeModal } from "@/components/payments/ReleaseGuaranteeModal";
+import { PaymentsGuaranteeDashboard } from "@/components/payments/PaymentsGuaranteeDashboard";
 import { PaymentCard } from "@/components/payments/PaymentCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -84,13 +84,12 @@ export default function PagamentosPage() {
     setShowReleaseEscrowModal(true);
   };
 
-  const handleReleaseEscrow = async (notes: string, deliveryConfirmed: boolean) => {
+  const handleReleaseGuarantee = async (notes: string) => {
     if (!selectedPayment) return;
 
-    console.log('🔓 [ADMIN-UI] Iniciando liberação de escrow:', {
+    console.log('🔓 [ADMIN-UI] Iniciando liberação de garantia:', {
       paymentId: selectedPayment.id,
       localCode: selectedPayment.local_code,
-      deliveryConfirmed,
       notes
     });
 
@@ -98,7 +97,7 @@ export default function PagamentosPage() {
       const { data, error } = await supabase.functions.invoke('release-escrow-payment', {
         body: {
           paymentId: selectedPayment.id,
-          deliveryConfirmed,
+          deliveryConfirmed: true,
           notes,
         },
       });
@@ -108,15 +107,15 @@ export default function PagamentosPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      console.log('✅ [ADMIN-UI] Escrow liberado com sucesso');
+      console.log('✅ [ADMIN-UI] Garantia liberada com sucesso');
 
       toast.success("Fundos liberados com sucesso!");
       refetch();
       setShowReleaseEscrowModal(false);
     } catch (error: any) {
-      console.error('❌ [ADMIN-UI] Erro ao liberar escrow:', error);
+      console.error('❌ [ADMIN-UI] Erro ao liberar garantia:', error);
       toast.error(error.message || "Não foi possível liberar os fundos");
-      throw error; // Re-throw para o modal não fechar
+      throw error;
     }
   };
 
@@ -166,7 +165,7 @@ export default function PagamentosPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Pagamentos</h1>
           <p className="text-muted-foreground">
-            Gerencie pagamentos seguros dos condomínios com sistema de escrow
+            Gerencie pagamentos seguros dos condomínios com sistema de garantia
           </p>
         </div>
         <div className="flex gap-2">
@@ -174,7 +173,7 @@ export default function PagamentosPage() {
         </div>
       </div>
 
-      <EscrowDashboard payments={payments} />
+      <PaymentsGuaranteeDashboard payments={payments} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <FilterMetricCard
@@ -326,10 +325,10 @@ export default function PagamentosPage() {
             open={!!selectedPayment}
             onOpenChange={(open) => !open && setSelectedPayment(null)}
           />
-          <ReleaseEscrowModal
+          <ReleaseGuaranteeModal
             open={showReleaseEscrowModal}
             onOpenChange={setShowReleaseEscrowModal}
-            onConfirm={handleReleaseEscrow}
+            onConfirm={handleReleaseGuarantee}
             payment={selectedPayment}
           />
         </>

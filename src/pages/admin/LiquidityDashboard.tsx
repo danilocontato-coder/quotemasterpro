@@ -343,7 +343,7 @@ export default function LiquidityDashboard() {
             Dashboard de Liquidez
           </h1>
           <p className="text-muted-foreground">
-            Monitore pagamentos em escrow e fluxo de caixa
+            Monitore pagamentos em garantia e fluxo de caixa
           </p>
         </div>
         <div className="flex gap-2">
@@ -368,7 +368,7 @@ export default function LiquidityDashboard() {
                 {metrics.inconsistencies_count} Inconsistência(s) Detectada(s)
               </h3>
               <p className="text-sm text-muted-foreground">
-                Pagamentos em escrow com entregas já confirmadas ou erros de transferência
+                Pagamentos em garantia com entregas já confirmadas ou erros de transferência
               </p>
             </div>
             <Button 
@@ -386,7 +386,7 @@ export default function LiquidityDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total em Escrow</CardTitle>
+            <CardTitle className="text-sm font-medium">Total em Garantia</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -444,13 +444,13 @@ export default function LiquidityDashboard() {
       {/* Breakdown Financeiro */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Breakdown Financeiro (Escrow)</CardTitle>
-          <CardDescription>Composição do valor total em custódia</CardDescription>
+          <CardTitle className="text-lg">Breakdown Financeiro (Garantia)</CardTitle>
+          <CardDescription>Composição do valor total em garantia</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground">Total em Custódia</p>
+              <p className="text-sm text-muted-foreground">Total em Garantia</p>
               <p className="text-2xl font-bold">{formatCurrency(metrics.total_in_escrow)}</p>
             </div>
             <div className="p-4 rounded-lg bg-blue-500/10">
@@ -473,7 +473,7 @@ export default function LiquidityDashboard() {
       <Tabs defaultValue="escrow" className="space-y-4">
         <TabsList>
           <TabsTrigger value="escrow">
-            Em Escrow ({metrics.escrow_count})
+            Em Garantia ({metrics.escrow_count})
           </TabsTrigger>
           <TabsTrigger value="pending">
             Aguardando Pagamento ({metrics.pending_payment_count})

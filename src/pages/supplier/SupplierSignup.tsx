@@ -324,7 +324,7 @@ export default function SupplierSignup() {
             <div className="space-y-4">
               {[
                 { icon: Zap, text: 'Receba cotações em tempo real' },
-                { icon: Shield, text: 'Pagamento garantido via escrow' },
+                { icon: Shield, text: 'Pagamento garantido com proteção' },
                 { icon: Award, text: 'Selo de fornecedor certificado' },
                 { icon: BarChart3, text: 'Dashboard completo de vendas' }
               ].map((feature, i) => (
@@ -399,7 +399,7 @@ export default function SupplierSignup() {
                   'Dashboard completo e relatórios',
                   'Suporte via WhatsApp e e-mail',
                   'Selo de fornecedor verificado',
-                  'Pagamento garantido via escrow'
+                  'Pagamento garantido com proteção'
                 ].map((benefit, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />

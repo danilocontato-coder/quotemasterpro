@@ -99,7 +99,7 @@ export default function SupplierFinancial() {
       case 'in_escrow':
         return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
           <Clock className="h-3 w-3 mr-1" />
-          Em Custódia
+          Em Garantia
         </Badge>;
       case 'manual_confirmation':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
@@ -273,7 +273,7 @@ export default function SupplierFinancial() {
                     <SelectItem value="completed">Recebido</SelectItem>
                     <SelectItem value="pending">Pendente</SelectItem>
                     <SelectItem value="processing">Processando</SelectItem>
-                    <SelectItem value="in_escrow">Em Custódia</SelectItem>
+                    <SelectItem value="in_escrow">Em Garantia</SelectItem>
                     <SelectItem value="manual_confirmation">Aguardando Confirmação</SelectItem>
                     <SelectItem value="failed">Falhou</SelectItem>
                     <SelectItem value="cancelled">Cancelado</SelectItem>
