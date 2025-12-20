@@ -6,31 +6,35 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   DollarSign, TrendingUp, Clock, AlertCircle, RefreshCw, Wallet, 
   ArrowUpCircle, AlertTriangle, CheckCircle, XCircle, Download,
-  Loader2, RotateCcw
+  Loader2, RotateCcw, Shield, Send, Ban
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-interface LiquidityMetrics {
-  total_in_escrow: number;
-  escrow_count: number;
-  releasing_next_7_days: number;
-  releasing_next_30_days: number;
-  pending_payment_count: number;
-  pending_payment_total: number;
-  transfer_errors_count: number;
-  inconsistencies_count: number;
-  transferred_this_month: number;
-  commission_this_month: number;
-  base_amount_in_escrow: number;
-  commission_in_escrow: number;
-  fees_in_escrow: number;
+interface PlatformBalance {
+  asaas: {
+    balance: number;
+    totalBalance: number;
+    availableForTransfer: number;
+  };
+  escrow: {
+    total: number;
+    supplierNet: number;
+    commission: number;
+    fees: number;
+    count: number;
+  };
+  transfers: {
+    completedThisMonth: number;
+    commissionThisMonth: number;
+    errorsCount: number;
+    pendingErrorAmount: number;
+  };
 }
 
-interface EscrowPayment {
+interface GuaranteePayment {
   id: string;
-  friendly_id: string;
   amount: number;
   base_amount: number;
   supplier_net_amount: number;
@@ -44,11 +48,23 @@ interface EscrowPayment {
   scheduled_delivery_date?: string;
   delivery_status?: string;
   transfer_status?: string;
+  transfer_error?: string;
+}
+
+interface TransferRecord {
+  id: string;
+  amount: number;
+  supplier_net_amount: number;
+  quote_local_code: string;
+  supplier_name: string;
+  status: string;
+  transfer_status: string;
+  transfer_date: string;
+  transfer_error?: string;
 }
 
 interface PendingPayment {
   id: string;
-  friendly_id: string;
   amount: number;
   quote_local_code: string;
   client_name: string;
@@ -57,42 +73,40 @@ interface PendingPayment {
   asaas_payment_id?: string;
 }
 
-interface InconsistentPayment extends EscrowPayment {
-  delivery_actual_date?: string;
-  issue_reason: string;
-}
-
 export default function LiquidityDashboard() {
-  const [metrics, setMetrics] = useState<LiquidityMetrics>({
-    total_in_escrow: 0,
-    escrow_count: 0,
-    releasing_next_7_days: 0,
-    releasing_next_30_days: 0,
-    pending_payment_count: 0,
-    pending_payment_total: 0,
-    transfer_errors_count: 0,
-    inconsistencies_count: 0,
-    transferred_this_month: 0,
-    commission_this_month: 0,
-    base_amount_in_escrow: 0,
-    commission_in_escrow: 0,
-    fees_in_escrow: 0
-  });
-  const [escrowPayments, setEscrowPayments] = useState<EscrowPayment[]>([]);
+  const [platformBalance, setPlatformBalance] = useState<PlatformBalance | null>(null);
+  const [guaranteePayments, setGuaranteePayments] = useState<GuaranteePayment[]>([]);
+  const [transferRecords, setTransferRecords] = useState<TransferRecord[]>([]);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
-  const [inconsistentPayments, setInconsistentPayments] = useState<InconsistentPayment[]>([]);
+  const [inconsistentPayments, setInconsistentPayments] = useState<GuaranteePayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [transferFilter, setTransferFilter] = useState<'all' | 'completed' | 'processing' | 'error'>('all');
+
+  const fetchPlatformBalance = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-platform-balance');
+      if (error) throw error;
+      if (data.success) {
+        setPlatformBalance(data);
+      }
+    } catch (error: any) {
+      console.error('Error fetching platform balance:', error);
+      // Continue with other data even if Asaas fails
+    }
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Buscar pagamentos em escrow com FK explícito
+      // Fetch platform balance from Asaas
+      await fetchPlatformBalance();
+
+      // Buscar pagamentos em garantia
       const { data: escrowData, error: escrowError } = await supabase
         .from('payments')
         .select(`
           id,
-          friendly_id,
           amount,
           base_amount,
           supplier_net_amount,
@@ -101,6 +115,7 @@ export default function LiquidityDashboard() {
           quote_id,
           created_at,
           transfer_status,
+          transfer_error,
           quotes(local_code, clients!quotes_client_id_fkey(name)),
           suppliers!payments_supplier_id_fkey(name),
           deliveries(scheduled_date, status, actual_delivery_date)
@@ -108,13 +123,12 @@ export default function LiquidityDashboard() {
         .eq('status', 'in_escrow');
 
       if (escrowError) {
-        console.error('Escrow query error:', escrowError);
+        console.error('Guarantee query error:', escrowError);
         throw escrowError;
       }
 
-      const payments: EscrowPayment[] = escrowData?.map((p: any) => ({
+      const payments: GuaranteePayment[] = escrowData?.map((p: any) => ({
         id: p.id,
-        friendly_id: p.friendly_id || p.id.substring(0, 8),
         amount: p.amount || 0,
         base_amount: p.base_amount || p.amount || 0,
         supplier_net_amount: p.supplier_net_amount || 0,
@@ -127,41 +141,58 @@ export default function LiquidityDashboard() {
         created_at: p.created_at,
         scheduled_delivery_date: p.deliveries?.[0]?.scheduled_date,
         delivery_status: p.deliveries?.[0]?.status,
-        transfer_status: p.transfer_status
+        transfer_status: p.transfer_status,
+        transfer_error: p.transfer_error
       })) || [];
 
-      setEscrowPayments(payments);
+      setGuaranteePayments(payments);
 
-      // Identificar inconsistências (entrega confirmada mas ainda em escrow)
-      const inconsistencies: InconsistentPayment[] = payments
-        .filter(p => p.delivery_status === 'delivered' || p.delivery_status === 'confirmed')
-        .map(p => ({
-          ...p,
-          issue_reason: 'Entrega confirmada mas pagamento ainda em escrow'
-        }));
-
-      // Também checar transfer_status com erro
-      const transferErrors = payments.filter(p => 
-        p.transfer_status === 'failed' || p.transfer_status === 'error'
+      // Identificar inconsistências
+      const inconsistencies: GuaranteePayment[] = payments.filter(p => 
+        p.delivery_status === 'delivered' || 
+        p.delivery_status === 'confirmed' ||
+        p.transfer_status === 'failed' || 
+        p.transfer_status === 'error'
       );
-      
-      transferErrors.forEach(p => {
-        if (!inconsistencies.find(i => i.id === p.id)) {
-          inconsistencies.push({
-            ...p,
-            issue_reason: 'Erro na transferência'
-          });
-        }
-      });
-
       setInconsistentPayments(inconsistencies);
 
-      // Buscar pagamentos pendentes (aguardando cliente pagar)
-      const { data: pendingData, error: pendingError } = await supabase
+      // Buscar histórico de transferências (completed + in_escrow com transfer_status)
+      const { data: transferData } = await supabase
         .from('payments')
         .select(`
           id,
-          friendly_id,
+          amount,
+          supplier_net_amount,
+          status,
+          transfer_status,
+          transfer_date,
+          transfer_error,
+          quotes(local_code),
+          suppliers!payments_supplier_id_fkey(name)
+        `)
+        .or('status.eq.completed,transfer_status.neq.null')
+        .order('transfer_date', { ascending: false, nullsFirst: false })
+        .limit(50);
+
+      const transfers: TransferRecord[] = transferData?.map((p: any) => ({
+        id: p.id,
+        amount: p.amount || 0,
+        supplier_net_amount: p.supplier_net_amount || 0,
+        quote_local_code: p.quotes?.local_code || 'N/A',
+        supplier_name: p.suppliers?.name || 'N/A',
+        status: p.status,
+        transfer_status: p.transfer_status || (p.status === 'completed' ? 'completed' : 'pending'),
+        transfer_date: p.transfer_date,
+        transfer_error: p.transfer_error
+      })) || [];
+
+      setTransferRecords(transfers);
+
+      // Buscar pagamentos pendentes
+      const { data: pendingData } = await supabase
+        .from('payments')
+        .select(`
+          id,
           amount,
           created_at,
           asaas_payment_id,
@@ -171,13 +202,8 @@ export default function LiquidityDashboard() {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (pendingError) {
-        console.error('Pending query error:', pendingError);
-      }
-
       const pending: PendingPayment[] = pendingData?.map((p: any) => ({
         id: p.id,
-        friendly_id: p.friendly_id || p.id.substring(0, 8),
         amount: p.amount || 0,
         quote_local_code: p.quotes?.local_code || 'N/A',
         client_name: p.quotes?.clients?.name || 'N/A',
@@ -188,59 +214,9 @@ export default function LiquidityDashboard() {
 
       setPendingPayments(pending);
 
-      // Calcular métricas
-      const totalInEscrow = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-      const baseAmountInEscrow = payments.reduce((sum, p) => sum + (p.base_amount || 0), 0);
-      const commissionInEscrow = payments.reduce((sum, p) => sum + (p.platform_commission_amount || 0), 0);
-      const feesInEscrow = payments.reduce((sum, p) => sum + (p.asaas_fee || 0), 0);
-      const escrowCount = payments.length;
-
-      // Liberações próximas 7 e 30 dias
-      const now = new Date();
-      const next7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const next30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-      const releasing7d = payments
-        .filter(p => p.scheduled_delivery_date && new Date(p.scheduled_delivery_date) <= next7Days)
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
-
-      const releasing30d = payments
-        .filter(p => p.scheduled_delivery_date && new Date(p.scheduled_delivery_date) <= next30Days)
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
-
-      // Pendentes
-      const pendingPaymentTotal = pending.reduce((sum, p) => sum + (p.amount || 0), 0);
-
-      // Transferências deste mês
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const { data: completedData } = await supabase
-        .from('payments')
-        .select('amount, platform_commission_amount')
-        .eq('status', 'completed')
-        .gte('transfer_date', startOfMonth.toISOString());
-
-      const transferredThisMonth = completedData?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
-      const commissionThisMonth = completedData?.reduce((sum, p) => sum + (p.platform_commission_amount || 0), 0) || 0;
-
-      setMetrics({
-        total_in_escrow: totalInEscrow,
-        escrow_count: escrowCount,
-        releasing_next_7_days: releasing7d,
-        releasing_next_30_days: releasing30d,
-        pending_payment_count: pending.length,
-        pending_payment_total: pendingPaymentTotal,
-        transfer_errors_count: transferErrors.length,
-        inconsistencies_count: inconsistencies.length,
-        transferred_this_month: transferredThisMonth,
-        commission_this_month: commissionThisMonth,
-        base_amount_in_escrow: baseAmountInEscrow,
-        commission_in_escrow: commissionInEscrow,
-        fees_in_escrow: feesInEscrow
-      });
-
     } catch (error: any) {
       console.error('Error fetching liquidity data:', error);
-      toast.error('Erro ao carregar dados de liquidez: ' + error.message);
+      toast.error('Erro ao carregar dados: ' + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -248,7 +224,7 @@ export default function LiquidityDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 60000); // Refresh every minute
     return () => clearInterval(interval);
   }, []);
 
@@ -260,11 +236,11 @@ export default function LiquidityDashboard() {
   };
 
   const formatDate = (date: string) => {
+    if (!date) return '-';
     return new Date(date).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: '2-digit'
     });
   };
 
@@ -287,15 +263,39 @@ export default function LiquidityDashboard() {
     }
   };
 
+  const getTransferStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Concluída</Badge>;
+      case 'processing':
+        return <Badge variant="secondary"><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Em Andamento</Badge>;
+      case 'failed':
+      case 'error':
+        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Erro</Badge>;
+      case 'pending':
+        return <Badge variant="outline"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
+      default:
+        return <Badge variant="outline">{status || 'N/A'}</Badge>;
+    }
+  };
+
+  const filteredTransfers = transferRecords.filter(t => {
+    if (transferFilter === 'all') return true;
+    if (transferFilter === 'completed') return t.transfer_status === 'completed' || t.status === 'completed';
+    if (transferFilter === 'processing') return t.transfer_status === 'processing';
+    if (transferFilter === 'error') return t.transfer_status === 'failed' || t.transfer_status === 'error';
+    return true;
+  });
+
   const exportToCSV = () => {
-    const headers = ['ID', 'Cotação', 'Cliente', 'Fornecedor', 'Valor', 'Base', 'Comissão', 'Taxa', 'Status Entrega', 'Criado'];
-    const rows = escrowPayments.map(p => [
-      p.friendly_id,
+    const headers = ['ID', 'Cotação', 'Cliente', 'Fornecedor', 'Valor', 'Líquido', 'Comissão', 'Taxa', 'Status Entrega', 'Criado'];
+    const rows = guaranteePayments.map(p => [
+      p.id.substring(0, 8),
       p.quote_local_code,
       p.client_name,
       p.supplier_name,
       p.amount,
-      p.base_amount,
+      p.supplier_net_amount,
       p.platform_commission_amount,
       p.asaas_fee,
       p.delivery_status || 'N/A',
@@ -307,10 +307,25 @@ export default function LiquidityDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `liquidez-escrow-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `liquidez-garantia-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Relatório exportado');
+  };
+
+  // Calculate metrics from local data if platform balance not available
+  const metrics = {
+    totalInGuarantee: platformBalance?.escrow.total || guaranteePayments.reduce((sum, p) => sum + p.amount, 0),
+    guaranteeCount: platformBalance?.escrow.count || guaranteePayments.length,
+    supplierNetInGuarantee: platformBalance?.escrow.supplierNet || guaranteePayments.reduce((sum, p) => sum + p.supplier_net_amount, 0),
+    commissionInGuarantee: platformBalance?.escrow.commission || guaranteePayments.reduce((sum, p) => sum + p.platform_commission_amount, 0),
+    feesInGuarantee: platformBalance?.escrow.fees || guaranteePayments.reduce((sum, p) => sum + p.asaas_fee, 0),
+    transferredThisMonth: platformBalance?.transfers.completedThisMonth || 0,
+    commissionThisMonth: platformBalance?.transfers.commissionThisMonth || 0,
+    errorsCount: platformBalance?.transfers.errorsCount || inconsistentPayments.filter(p => p.transfer_status === 'failed' || p.transfer_status === 'error').length,
+    pendingPaymentTotal: pendingPayments.reduce((sum, p) => sum + p.amount, 0),
+    asaasBalance: platformBalance?.asaas.balance || 0,
+    asaasAvailable: platformBalance?.asaas.availableForTransfer || 0
   };
 
   if (isLoading) {
@@ -343,13 +358,13 @@ export default function LiquidityDashboard() {
             Dashboard de Liquidez
           </h1>
           <p className="text-muted-foreground">
-            Monitore pagamentos em garantia e fluxo de caixa
+            Monitore pagamentos em garantia, transferências e fluxo de caixa
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportToCSV}>
             <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
+            Exportar
           </Button>
           <Button onClick={fetchData} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -358,17 +373,17 @@ export default function LiquidityDashboard() {
         </div>
       </div>
 
-      {/* Alertas de Inconsistências */}
-      {metrics.inconsistencies_count > 0 && (
+      {/* Alertas */}
+      {metrics.errorsCount > 0 && (
         <Card className="border-destructive bg-destructive/5">
           <CardContent className="p-4 flex items-center gap-4">
             <AlertTriangle className="h-8 w-8 text-destructive" />
             <div className="flex-1">
               <h3 className="font-semibold text-destructive">
-                {metrics.inconsistencies_count} Inconsistência(s) Detectada(s)
+                {metrics.errorsCount} Erro(s) de Transferência
               </h3>
               <p className="text-sm text-muted-foreground">
-                Pagamentos em garantia com entregas já confirmadas ou erros de transferência
+                Existem transferências com erro que precisam de ação manual
               </p>
             </div>
             <Button 
@@ -382,34 +397,37 @@ export default function LiquidityDashboard() {
         </Card>
       )}
 
-      {/* Métricas Principais */}
+      {/* Cards Principais */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        {/* Saldo Asaas */}
+        <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total em Garantia</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Saldo Asaas</CardTitle>
+            <Wallet className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(metrics.total_in_escrow)}</div>
+            <div className="text-2xl font-bold text-primary">{formatCurrency(metrics.asaasBalance)}</div>
             <p className="text-xs text-muted-foreground">
-              {metrics.escrow_count} pagamentos retidos
+              Disponível: {formatCurrency(metrics.asaasAvailable)}
             </p>
           </CardContent>
         </Card>
 
+        {/* Em Garantia */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aguardando Pagamento</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+            <CardTitle className="text-sm font-medium">Em Garantia</CardTitle>
+            <Shield className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{formatCurrency(metrics.pending_payment_total)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(metrics.totalInGuarantee)}</div>
             <p className="text-xs text-muted-foreground">
-              {metrics.pending_payment_count} cobranças pendentes
+              {metrics.guaranteeCount} pagamentos retidos
             </p>
           </CardContent>
         </Card>
 
+        {/* Transferido (Mês) */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Transferido (Mês)</CardTitle>
@@ -417,25 +435,24 @@ export default function LiquidityDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(metrics.transferred_this_month)}
+              {formatCurrency(metrics.transferredThisMonth)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Liberado aos fornecedores
+              Comissão: {formatCurrency(metrics.commissionThisMonth)}
             </p>
           </CardContent>
         </Card>
 
+        {/* A Transferir / Pendentes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Comissão (Mês)</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium">Aguardando Pgto</CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(metrics.commission_this_month)}
-            </div>
+            <div className="text-2xl font-bold text-amber-600">{formatCurrency(metrics.pendingPaymentTotal)}</div>
             <p className="text-xs text-muted-foreground">
-              Receita da plataforma
+              {pendingPayments.length} cobranças pendentes
             </p>
           </CardContent>
         </Card>
@@ -444,54 +461,61 @@ export default function LiquidityDashboard() {
       {/* Breakdown Financeiro */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Breakdown Financeiro (Garantia)</CardTitle>
-          <CardDescription>Composição do valor total em garantia</CardDescription>
+          <CardTitle className="text-lg">Composição do Valor em Garantia</CardTitle>
+          <CardDescription>Breakdown dos {metrics.guaranteeCount} pagamentos retidos</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground">Total em Garantia</p>
-              <p className="text-2xl font-bold">{formatCurrency(metrics.total_in_escrow)}</p>
+              <p className="text-sm text-muted-foreground">Total Bruto</p>
+              <p className="text-2xl font-bold">{formatCurrency(metrics.totalInGuarantee)}</p>
             </div>
             <div className="p-4 rounded-lg bg-blue-500/10">
-              <p className="text-sm text-blue-600">Valor Base (Fornecedores)</p>
-              <p className="text-2xl font-bold text-blue-600">{formatCurrency(metrics.base_amount_in_escrow)}</p>
+              <p className="text-sm text-blue-600">Líquido Fornecedores</p>
+              <p className="text-2xl font-bold text-blue-600">{formatCurrency(metrics.supplierNetInGuarantee)}</p>
             </div>
             <div className="p-4 rounded-lg bg-green-500/10">
-              <p className="text-sm text-green-600">Comissão Plataforma (5%)</p>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(metrics.commission_in_escrow)}</p>
+              <p className="text-sm text-green-600">Comissão Plataforma</p>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(metrics.commissionInGuarantee)}</p>
             </div>
             <div className="p-4 rounded-lg bg-amber-500/10">
               <p className="text-sm text-amber-600">Taxas Asaas</p>
-              <p className="text-2xl font-bold text-amber-600">{formatCurrency(metrics.fees_in_escrow)}</p>
+              <p className="text-2xl font-bold text-amber-600">{formatCurrency(metrics.feesInGuarantee)}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabs para diferentes visualizações */}
-      <Tabs defaultValue="escrow" className="space-y-4">
+      {/* Tabs */}
+      <Tabs defaultValue="guarantee" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="escrow">
-            Em Garantia ({metrics.escrow_count})
+          <TabsTrigger value="guarantee">
+            <Shield className="h-4 w-4 mr-1" />
+            Em Garantia ({metrics.guaranteeCount})
+          </TabsTrigger>
+          <TabsTrigger value="transfers">
+            <Send className="h-4 w-4 mr-1" />
+            Transferências
           </TabsTrigger>
           <TabsTrigger value="pending">
-            Aguardando Pagamento ({metrics.pending_payment_count})
+            <Clock className="h-4 w-4 mr-1" />
+            Pendentes ({pendingPayments.length})
           </TabsTrigger>
           <TabsTrigger value="inconsistencies" id="tab-inconsistencies">
-            <span className={metrics.inconsistencies_count > 0 ? 'text-destructive' : ''}>
-              Inconsistências ({metrics.inconsistencies_count})
+            <span className={inconsistentPayments.length > 0 ? 'text-destructive flex items-center' : 'flex items-center'}>
+              <AlertTriangle className="h-4 w-4 mr-1" />
+              Inconsistências ({inconsistentPayments.length})
             </span>
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab: Pagamentos em Escrow */}
-        <TabsContent value="escrow">
+        {/* Tab: Em Garantia */}
+        <TabsContent value="guarantee">
           <Card>
             <CardHeader>
-              <CardTitle>Pagamentos em Escrow</CardTitle>
+              <CardTitle>Pagamentos em Garantia</CardTitle>
               <CardDescription>
-                Pagamentos recebidos aguardando confirmação de entrega
+                Pagamentos recebidos aguardando confirmação de entrega para liberação
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -503,15 +527,15 @@ export default function LiquidityDashboard() {
                     <TableHead>Cliente</TableHead>
                     <TableHead>Fornecedor</TableHead>
                     <TableHead className="text-right">Valor Total</TableHead>
-                    <TableHead className="text-right">Líquido Fornecedor</TableHead>
+                    <TableHead className="text-right">Líquido Fornec.</TableHead>
                     <TableHead>Status Entrega</TableHead>
-                    <TableHead>Entrega Agendada</TableHead>
+                    <TableHead>Entrega Prevista</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {escrowPayments.map((payment) => (
+                  {guaranteePayments.map((payment) => (
                     <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-xs">{payment.friendly_id}</TableCell>
+                      <TableCell className="font-mono text-xs">{payment.id.substring(0, 8)}</TableCell>
                       <TableCell className="font-medium">{payment.quote_local_code}</TableCell>
                       <TableCell>{payment.client_name}</TableCell>
                       <TableCell>{payment.supplier_name}</TableCell>
@@ -521,7 +545,7 @@ export default function LiquidityDashboard() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={
-                          payment.delivery_status === 'delivered' ? 'default' :
+                          payment.delivery_status === 'delivered' || payment.delivery_status === 'confirmed' ? 'default' :
                           payment.delivery_status === 'scheduled' ? 'secondary' :
                           payment.delivery_status === 'in_transit' ? 'outline' :
                           'destructive'
@@ -540,17 +564,115 @@ export default function LiquidityDashboard() {
                 </TableBody>
               </Table>
 
-              {escrowPayments.length === 0 && (
+              {guaranteePayments.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-                  <p>Nenhum pagamento em escrow no momento</p>
+                  <p>Nenhum pagamento em garantia no momento</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Tab: Pagamentos Pendentes */}
+        {/* Tab: Transferências */}
+        <TabsContent value="transfers">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Histórico de Transferências</CardTitle>
+                  <CardDescription>
+                    Transferências concluídas, em andamento e com erro
+                  </CardDescription>
+                </div>
+                <div className="flex gap-1">
+                  <Button 
+                    variant={transferFilter === 'all' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTransferFilter('all')}
+                  >
+                    Todas
+                  </Button>
+                  <Button 
+                    variant={transferFilter === 'completed' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTransferFilter('completed')}
+                  >
+                    <CheckCircle className="h-3 w-3 mr-1" /> Concluídas
+                  </Button>
+                  <Button 
+                    variant={transferFilter === 'processing' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTransferFilter('processing')}
+                  >
+                    <Loader2 className="h-3 w-3 mr-1" /> Em Andamento
+                  </Button>
+                  <Button 
+                    variant={transferFilter === 'error' ? 'destructive' : 'outline'} 
+                    size="sm"
+                    onClick={() => setTransferFilter('error')}
+                  >
+                    <XCircle className="h-3 w-3 mr-1" /> Com Erro
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Cotação</TableHead>
+                    <TableHead>Fornecedor</TableHead>
+                    <TableHead className="text-right">Valor Líquido</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTransfers.map((transfer) => (
+                    <TableRow key={transfer.id}>
+                      <TableCell className="font-mono text-xs">{transfer.id.substring(0, 8)}</TableCell>
+                      <TableCell className="font-medium">{transfer.quote_local_code}</TableCell>
+                      <TableCell>{transfer.supplier_name}</TableCell>
+                      <TableCell className="text-right font-bold">
+                        {formatCurrency(transfer.supplier_net_amount)}
+                      </TableCell>
+                      <TableCell>{getTransferStatusBadge(transfer.transfer_status)}</TableCell>
+                      <TableCell className="text-xs">{formatDate(transfer.transfer_date)}</TableCell>
+                      <TableCell>
+                        {(transfer.transfer_status === 'failed' || transfer.transfer_status === 'error') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRetryTransfer(transfer.id)}
+                            disabled={processingId === transfer.id}
+                          >
+                            {processingId === transfer.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {filteredTransfers.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Send className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Nenhuma transferência encontrada</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Pendentes */}
         <TabsContent value="pending">
           <Card>
             <CardHeader>
@@ -575,7 +697,7 @@ export default function LiquidityDashboard() {
                 <TableBody>
                   {pendingPayments.map((payment) => (
                     <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-xs">{payment.friendly_id}</TableCell>
+                      <TableCell className="font-mono text-xs">{payment.id.substring(0, 8)}</TableCell>
                       <TableCell className="font-medium">{payment.quote_local_code}</TableCell>
                       <TableCell>{payment.client_name}</TableCell>
                       <TableCell>{payment.supplier_name}</TableCell>
@@ -601,14 +723,14 @@ export default function LiquidityDashboard() {
 
         {/* Tab: Inconsistências */}
         <TabsContent value="inconsistencies">
-          <Card className={metrics.inconsistencies_count > 0 ? 'border-destructive' : ''}>
+          <Card className={inconsistentPayments.length > 0 ? 'border-destructive' : ''}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className={metrics.inconsistencies_count > 0 ? 'text-destructive' : 'text-muted-foreground'} />
+                <AlertTriangle className={inconsistentPayments.length > 0 ? 'text-destructive' : 'text-muted-foreground'} />
                 Inconsistências Detectadas
               </CardTitle>
               <CardDescription>
-                Pagamentos que requerem ação administrativa (entrega confirmada mas ainda em escrow, ou erros de transferência)
+                Pagamentos que requerem ação administrativa
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -620,46 +742,53 @@ export default function LiquidityDashboard() {
                     <TableHead>Fornecedor</TableHead>
                     <TableHead className="text-right">Valor Líquido</TableHead>
                     <TableHead>Problema</TableHead>
-                    <TableHead>Status Entrega</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Ação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {inconsistentPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-xs">{payment.friendly_id}</TableCell>
-                      <TableCell className="font-medium">{payment.quote_local_code}</TableCell>
-                      <TableCell>{payment.supplier_name}</TableCell>
-                      <TableCell className="text-right font-bold">
-                        {formatCurrency(payment.supplier_net_amount)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="destructive" className="text-xs">
-                          {payment.issue_reason}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{payment.delivery_status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRetryTransfer(payment.id)}
-                          disabled={processingId === payment.id}
-                        >
-                          {processingId === payment.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <RotateCcw className="h-4 w-4 mr-1" />
-                              Reprocessar
-                            </>
-                          )}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {inconsistentPayments.map((payment) => {
+                    const isTransferError = payment.transfer_status === 'failed' || payment.transfer_status === 'error';
+                    const issueReason = isTransferError 
+                      ? `Erro: ${payment.transfer_error || 'Falha na transferência'}`
+                      : 'Entrega confirmada mas ainda em garantia';
+                    
+                    return (
+                      <TableRow key={payment.id}>
+                        <TableCell className="font-mono text-xs">{payment.id.substring(0, 8)}</TableCell>
+                        <TableCell className="font-medium">{payment.quote_local_code}</TableCell>
+                        <TableCell>{payment.supplier_name}</TableCell>
+                        <TableCell className="text-right font-bold">
+                          {formatCurrency(payment.supplier_net_amount)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="destructive" className="text-xs">
+                            {issueReason}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{payment.delivery_status || 'N/A'}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRetryTransfer(payment.id)}
+                            disabled={processingId === payment.id}
+                          >
+                            {processingId === payment.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <RotateCcw className="h-4 w-4 mr-1" />
+                                Reprocessar
+                              </>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
 
